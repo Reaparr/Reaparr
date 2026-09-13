@@ -122,7 +122,7 @@ public sealed class MediaOverviewRebuildCoordinator : IMediaOverviewRebuildCoord
         lock (_sync)
         {
             _rebuildJobActive = false;
-            if (succeeded)
+            if (succeeded && !_rebuildDirty)
             {
                 _lastSuccessfulRebuildAt = completedAt;
                 _rebuildDirty = false;
