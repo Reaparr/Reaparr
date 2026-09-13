@@ -301,7 +301,6 @@ function scrollToIndex(index: number, highlight = true) {
 
 	Log.debug('Scrolling to index:', index);
 
-
 	const rowIndex = Math.floor(index / get(gridItems));
 	get(rowVirtualizer).scrollToIndex(rowIndex, { align: 'start' });
 
