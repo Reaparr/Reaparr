@@ -7,7 +7,14 @@ public sealed record GetMediaOverviewTvShowCommand(MediaQueryFilter Filter) : IC
 
 public sealed class GetMediaOverviewTvShowCommandValidator : AbstractValidator<GetMediaOverviewTvShowCommand>
 {
-    public GetMediaOverviewTvShowCommandValidator() => RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.TvShow);
+    public GetMediaOverviewTvShowCommandValidator()
+    {
+        RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.TvShow);
+        RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
+        RuleFor(x => x.Filter.Parameters.PageSize)
+            .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
+            .When(x => x.Filter.Parameters.PageSize.HasValue);
+    }
 }
 
 public sealed class GetMediaOverviewTvShowCommandHandler
@@ -15,14 +22,17 @@ public sealed class GetMediaOverviewTvShowCommandHandler
 {
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ILogger _log;
 
     public GetMediaOverviewTvShowCommandHandler(
         IReaparrDbContextFactory dbContextFactory,
-        ICommandExecutor commandExecutor
+        ICommandExecutor commandExecutor,
+        ILogger log
     )
     {
         _dbContextFactory = dbContextFactory;
         _commandExecutor = commandExecutor;
+        _log = log.ForContext<GetMediaOverviewTvShowCommandHandler>();
     }
 
     public async Task<Result<PagedMediaQueryResult>> ExecuteAsync(
@@ -30,6 +40,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
         CancellationToken cancellationToken
     )
     {
+        var stopwatch = Stopwatch.StartNew();
         var filter = command.Filter;
         var options = QueryOptionsParser.Parse(filter.Parameters);
         var sort = options.ResolveSort();
@@ -39,11 +50,14 @@ public sealed class GetMediaOverviewTvShowCommandHandler
                 new GetMediaByTypeCommand { Filter = filter },
                 cancellationToken
             );
+            LogPhase(filter, "CanonicalFallback", stopwatch.Elapsed, 0);
             return mediaResult.LogIfFailed();
         }
 
         using var context = await _dbContextFactory.CreateAsync();
         var allowedLibraryIds = await context.ResolveAllowedLibraryIdsAsync(filter, cancellationToken);
+        LogPhase(filter, "ResolveLibraries", stopwatch.Elapsed, allowedLibraryIds.Count);
+        stopwatch.Restart();
         if (allowedLibraryIds.Count == 0)
         {
             return Result.Ok(
@@ -63,6 +77,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             )
         )
         {
+            LogPhase(filter, "SnapshotMissing", stopwatch.Elapsed, 0);
             var mediaResult = await _commandExecutor.Send(
                 new GetMediaByTypeCommand { Filter = filter },
                 cancellationToken
@@ -70,16 +85,22 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             return mediaResult.LogIfFailed();
         }
 
+        LogPhase(filter, "SnapshotExists", stopwatch.Elapsed, 1);
+        stopwatch.Restart();
+
         var candidates = context.PlexTvShows.ApplyFilter(options);
         var snapshots = context.MediaOverviewTvShowSnapshots.Where(snapshot =>
             allowedLibraryIds.Contains(snapshot.PlexLibraryId)
             && candidates.Any(tvShow => tvShow.Id == snapshot.PlexTvShowId)
         );
-        var ids = await ApplyOrder(snapshots, sort.Value.Field, sort.Value.Descending)
+        var orderedSnapshots = ApplyOrder(snapshots, sort.Value.Field, sort.Value.Descending);
+        var ids = await orderedSnapshots
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
             .Select(x => x.PlexTvShowId)
             .ToListAsync(cancellationToken);
+        LogPhase(filter, "PageIds", stopwatch.Elapsed, ids.Count);
+        stopwatch.Restart();
         var aggregate = await snapshots
             .Join(
                 context.PlexTvShows,
@@ -92,6 +113,8 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             .FirstOrDefaultAsync(cancellationToken);
         var totalCount = aggregate?.Count ?? 0;
         var mediaSize = aggregate?.MediaSize ?? 0;
+        LogPhase(filter, "Aggregate", stopwatch.Elapsed, totalCount);
+        stopwatch.Restart();
         var items = await context
             .PlexTvShows.Where(x => ids.Contains(x.Id))
             .Select(x => new PlexMediaSlimDTO
@@ -113,19 +136,26 @@ public sealed class GetMediaOverviewTvShowCommandHandler
                 HasThumb = x.HasThumb,
                 PlexApiRatingKey = x.PlexApiRatingKey,
                 PlexApiMetaDataKey = x.PlexApiMetaDataKey,
-                Qualities = x
-                    .Qualities.OrderBy(quality => quality.Quality)
-                    .Select(quality => new PlexMediaQualityDTO
-                    {
-                        Quality = quality.Quality,
-                        MediaDataType = PlexMediaType.TvShow,
-                        DataId = quality.Id,
-                        MediaId = x.Id,
-                    })
-                    .ToList(),
+                Qualities = new List<PlexMediaQualityDTO>(),
             })
             .ToListAsync(cancellationToken);
+        var qualities = await context
+            .PlexTvShowMediaQualities.Where(x => ids.Contains(x.PlexTvShowId))
+            .OrderBy(x => x.Quality)
+            .Select(x => new PlexMediaQualityDTO
+            {
+                Quality = x.Quality,
+                MediaDataType = PlexMediaType.TvShow,
+                DataId = x.Id,
+                MediaId = x.PlexTvShowId,
+            })
+            .ToListAsync(cancellationToken);
+        var qualitiesByMediaId = qualities.ToLookup(x => x.MediaId);
+        foreach (var item in items)
+            item.Qualities.AddRange(qualitiesByMediaId[item.Id]);
         items = items.RestorePageOrder(ids);
+        LogPhase(filter, "Items", stopwatch.Elapsed, items.Count);
+        stopwatch.Restart();
 
         var result = await context.CreatePageResultAsync(
             filter,
@@ -136,6 +166,32 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             mediaSize,
             cancellationToken
         );
+        if (filter.Parameters.Page is null or 1)
+        {
+            var navigationRows = await orderedSnapshots
+                .Join(
+                    context.PlexTvShows,
+                    snapshot => snapshot.PlexTvShowId,
+                    tvShow => tvShow.Id,
+                    (_, tvShow) =>
+                        new MediaNavigationIndexRow(
+                            tvShow.SearchTitle,
+                            tvShow.Year,
+                            (int?)tvShow.Quality,
+                            tvShow.Duration,
+                            tvShow.AddedAt,
+                            tvShow.UpdatedAt,
+                            tvShow.MediaSize
+                        )
+                )
+                .ToListAsync(cancellationToken);
+            result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+                navigationRows,
+                options.Sort.FirstOrDefault()?.Field
+            );
+        }
+        LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
+        stopwatch.Restart();
         if (items.Count > 0)
         {
             var pageIds = items.Select(x => x.Id).AsEnumerable();
@@ -158,6 +214,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             result.Countries = metadata.Where(x => x.Type == 1).Select(x => x.Id).OrderBy(x => x).ToList();
             result.Genres = metadata.Where(x => x.Type == 2).Select(x => x.Id).OrderBy(x => x).ToList();
         }
+        LogPhase(filter, "Metadata", stopwatch.Elapsed, items.Count);
         result.Qualities = items
             .SelectMany(x => x.Qualities)
             .Select(x => x.Quality.ToId())
@@ -166,6 +223,19 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             .ToList();
         return Result.Ok(result);
     }
+
+    private void LogPhase(MediaQueryFilter filter, string phase, TimeSpan elapsed, int rowCount) =>
+        _log.Here()
+            .Debug(
+                "Media overview query phase {Phase} completed for {MediaType}: page {Page}, page size {PageSize}, sort {Sort}, {RowCount} rows in {ElapsedMilliseconds} ms",
+                phase,
+                filter.MediaType,
+                filter.Parameters.Page,
+                filter.Parameters.PageSize,
+                filter.Parameters.Sort,
+                rowCount,
+                elapsed.TotalMilliseconds
+            );
 
     private static IQueryable<MediaOverviewTvShowSnapshot> ApplyOrder(
         IQueryable<MediaOverviewTvShowSnapshot> query,

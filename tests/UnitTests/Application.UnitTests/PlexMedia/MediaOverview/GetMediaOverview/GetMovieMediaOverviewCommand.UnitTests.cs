@@ -78,6 +78,110 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     }
 
     [Test]
+    public async Task ShouldBuildNavigationIndexesFromFullOrderedSnapshot_WhenFirstPageIsBounded()
+    {
+        // Arrange
+        await SetupDatabase(
+            84003,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 3;
+            }
+        );
+        var dbContext = IDbContext;
+        var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var libraryId = movies[0].PlexLibraryId;
+        await dbContext
+            .PlexMovies.Where(x => x.Id == movies[0].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "alien"), CancellationToken);
+        await dbContext
+            .PlexMovies.Where(x => x.Id == movies[1].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "blade runner"), CancellationToken);
+        await dbContext
+            .PlexMovies.Where(x => x.Id == movies[2].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "arrival"), CancellationToken);
+        await dbContext.MediaOverviewMovieSnapshots.AddRangeAsync(
+            movies.Select((movie, index) => CreateMovieSnapshot(movie.Id, index, libraryId)),
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.Movie,
+            PlexLibraryId = libraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters { Page = 1, PageSize = 1, Sort = "sortIndex:asc" },
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMovieCommand(filter));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Items.Count.ShouldBe(1);
+        result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([("A", 0), ("B", 1)]);
+    }
+
+    [Test]
+    [Arguments("sortIndex:asc")]
+    [Arguments("sortIndex:desc")]
+    [Arguments("year:asc")]
+    [Arguments("year:desc")]
+    [Arguments("addedAt:asc")]
+    [Arguments("addedAt:desc")]
+    [Arguments("updatedAt:asc")]
+    [Arguments("updatedAt:desc")]
+    [Arguments("duration:asc")]
+    [Arguments("duration:desc")]
+    [Arguments("mediaSize:asc")]
+    [Arguments("mediaSize:desc")]
+    [Arguments("quality:asc")]
+    [Arguments("quality:desc")]
+    public async Task ShouldReturnNavigationIndexes_ForEverySupportedSort(string sort)
+    {
+        // Arrange
+        await SetupDatabase(
+            84004,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 3;
+            }
+        );
+        var dbContext = IDbContext;
+        var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var libraryId = movies[0].PlexLibraryId;
+        await dbContext.MediaOverviewMovieSnapshots.AddRangeAsync(
+            movies.Select((movie, index) => CreateMovieSnapshot(movie.Id, index, libraryId)),
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.Movie,
+            PlexLibraryId = libraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters { Page = 1, PageSize = 1, Sort = sort },
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMovieCommand(filter));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.NavigationIndexes.ShouldNotBeEmpty();
+        result.Value.NavigationIndexes[0].Index.ShouldBe(0);
+        result.Value.NavigationIndexes.ShouldAllBe(x => x.Index >= 0 && x.Index < result.Value.TotalCount);
+    }
+
+    [Test]
     public async Task ShouldFilterSnapshotRowsBeforePaging()
     {
         await SetupDatabase(

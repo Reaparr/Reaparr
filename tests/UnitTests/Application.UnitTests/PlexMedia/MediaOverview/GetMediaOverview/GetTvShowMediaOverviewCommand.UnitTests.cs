@@ -55,6 +55,96 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
     }
 
     [Test]
+    public async Task ShouldBuildNavigationIndexesFromFullOrderedSnapshot_WhenFirstPageIsBounded()
+    {
+        // Arrange
+        await SetupDatabase(
+            84103,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 3;
+            }
+        );
+        var dbContext = IDbContext;
+        var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var libraryId = tvShows[0].PlexLibraryId;
+        await dbContext
+            .PlexTvShows.Where(x => x.Id == tvShows[0].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "andor"), CancellationToken);
+        await dbContext
+            .PlexTvShows.Where(x => x.Id == tvShows[1].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "breaking bad"), CancellationToken);
+        await dbContext
+            .PlexTvShows.Where(x => x.Id == tvShows[2].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "arcane"), CancellationToken);
+        await dbContext.MediaOverviewTvShowSnapshots.AddRangeAsync(
+            tvShows.Select((show, index) => CreateSnapshot(show.Id, index, libraryId)),
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var filter = CreateFilter(libraryId, pageSize: 1, sort: "sortIndex:asc");
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Items.Count.ShouldBe(1);
+        result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([("A", 0), ("B", 1)]);
+    }
+
+    [Test]
+    [Arguments("sortIndex:asc")]
+    [Arguments("sortIndex:desc")]
+    [Arguments("year:asc")]
+    [Arguments("year:desc")]
+    [Arguments("addedAt:asc")]
+    [Arguments("addedAt:desc")]
+    [Arguments("updatedAt:asc")]
+    [Arguments("updatedAt:desc")]
+    [Arguments("duration:asc")]
+    [Arguments("duration:desc")]
+    [Arguments("mediaSize:asc")]
+    [Arguments("mediaSize:desc")]
+    [Arguments("quality:asc")]
+    [Arguments("quality:desc")]
+    public async Task ShouldReturnNavigationIndexes_ForEverySupportedSort(string sort)
+    {
+        // Arrange
+        await SetupDatabase(
+            84104,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 3;
+            }
+        );
+        var dbContext = IDbContext;
+        var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var libraryId = tvShows[0].PlexLibraryId;
+        await dbContext.MediaOverviewTvShowSnapshots.AddRangeAsync(
+            tvShows.Select((show, index) => CreateSnapshot(show.Id, index, libraryId)),
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var filter = CreateFilter(libraryId, pageSize: 1, sort: sort);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.NavigationIndexes.ShouldNotBeEmpty();
+        result.Value.NavigationIndexes[0].Index.ShouldBe(0);
+        result.Value.NavigationIndexes.ShouldAllBe(x => x.Index >= 0 && x.Index < result.Value.TotalCount);
+    }
+
+    [Test]
     public async Task ShouldFallbackOnce_WhenSnapshotIsMissing()
     {
         // Arrange

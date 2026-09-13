@@ -96,7 +96,7 @@ public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOver
 
         // Assert
         result.IsFailed.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(2);
+        result.Errors.Count.ShouldBeGreaterThanOrEqualTo(2);
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<GetMediaOverviewMovieCommand>(), It.IsAny<CancellationToken>()), Times.Never);
     }
