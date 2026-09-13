@@ -20,13 +20,13 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaQueryCache _mediaQueryCache;
+    private readonly ICommandExecutor _commandExecutor;
 
-    public SetServerEnabledEndpoint(ILogger log, IReaparrDbContext dbContext, IMediaQueryCache mediaQueryCache)
+    public SetServerEnabledEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
     {
         _log = log.ForContext<SetServerEnabledEndpoint>();
         _dbContext = dbContext;
-        _mediaQueryCache = mediaQueryCache;
+        _commandExecutor = commandExecutor;
     }
 
     public override void Configure()
@@ -80,12 +80,13 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
             return;
         }
 
-        var libraryIds = await _dbContext
-            .PlexLibraries.IgnoreQueryFilters()
-            .Where(x => x.PlexServerId == req.PlexServerId)
-            .Select(x => x.Id)
-            .ToListAsync(ct);
-        _mediaQueryCache.InvalidateLibraries(libraryIds, "Plex server enabled scope changed");
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
+        rebuildResult.LogIfFailed();
+        if (rebuildResult.IsFailed)
+        {
+            await Send.FluentResult(rebuildResult, ct);
+            return;
+        }
 
         await Send.FluentResult(Result.Ok(plexServer), x => x.ToDTO(), ct);
     }

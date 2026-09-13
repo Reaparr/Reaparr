@@ -39,8 +39,7 @@ public class DeletePlexServerEndpointUnitTests
             .PlexLibraries.Where(x => x.PlexServerId == otherServerId)
             .Select(x => x.Id)
             .ToListAsync(CancellationToken);
-        Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok());
         var targetMovieDownloadId = Guid.Parse("91301000-0000-0000-0000-000000000001");
         var targetMovieFileDownloadId = Guid.Parse("91301000-0000-0000-0000-000000000002");
@@ -249,8 +248,7 @@ public class DeletePlexServerEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
-        Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok());
 
         // Act
@@ -265,7 +263,7 @@ public class DeletePlexServerEndpointUnitTests
         (
             await dbContext.PlexServers.IgnoreIsEnabledFilter().AnyAsync(x => x.Id == server.Id, CancellationToken)
         ).ShouldBeFalse();
-        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
     }
 
     private static DownloadTaskDirectory CreateDownloadTaskDirectory() =>
@@ -287,8 +285,7 @@ public class DeletePlexServerEndpointUnitTests
 
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
-        Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok());
 
         // Act

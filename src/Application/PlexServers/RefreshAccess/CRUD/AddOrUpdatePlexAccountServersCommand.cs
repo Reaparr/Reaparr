@@ -16,17 +16,17 @@ public class AddOrUpdatePlexAccountServersCommandHandler
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaOverviewReadStore _mediaOverviewReadStore;
+    private readonly ICommandExecutor _commandExecutor;
 
     public AddOrUpdatePlexAccountServersCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
-        IMediaOverviewReadStore mediaOverviewReadStore
+        ICommandExecutor commandExecutor
     )
     {
         _log = log.ForContext<AddOrUpdatePlexAccountServersCommandHandler>();
         _dbContext = dbContext;
-        _mediaOverviewReadStore = mediaOverviewReadStore;
+        _commandExecutor = commandExecutor;
     }
 
     public async Task<Result<RefreshPlexServerAccessRapport>> ExecuteAsync(
@@ -182,7 +182,7 @@ public class AddOrUpdatePlexAccountServersCommandHandler
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
 
-        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(cancellationToken);
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
         if (rebuildResult.IsFailed)
         {
             rebuildResult.LogIfFailed();

@@ -21,21 +21,18 @@ public class RefreshPlexServerAccessCommandHandler
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
-    private readonly IMediaQueryCache _mediaQueryCache;
 
     public RefreshPlexServerAccessCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        INotificationHubService notificationHubService,
-        IMediaQueryCache mediaQueryCache
+        INotificationHubService notificationHubService
     )
     {
         _log = log.ForContext<RefreshPlexServerAccessCommandHandler>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
-        _mediaQueryCache = mediaQueryCache;
     }
 
     public async Task<Result<RefreshPlexServerAccessRapport>> ExecuteAsync(
@@ -149,7 +146,8 @@ public class RefreshPlexServerAccessCommandHandler
             .PlexAccountServers.Where(x => x.PlexAccountId == plexAccountId)
             .ExecuteDeleteAsync(CancellationToken.None);
 
-        _mediaQueryCache.InvalidateLibraries(affectedLibraryIds, "Plex server access revoked");
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), CancellationToken.None);
+        rebuildResult.LogIfFailed();
 
         return Result.Ok(rapport);
     }

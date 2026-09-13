@@ -22,21 +22,18 @@ public class RefreshPlexAccountAccessCommandHandler
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
-    private readonly IMediaQueryCache _mediaQueryCache;
 
     public RefreshPlexAccountAccessCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        INotificationHubService notificationHubService,
-        IMediaQueryCache mediaQueryCache
+        INotificationHubService notificationHubService
     )
     {
         _log = log.ForContext<RefreshPlexAccountAccessCommandHandler>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
-        _mediaQueryCache = mediaQueryCache;
     }
 
     public async Task<Result<List<RefreshPlexAccountAccessRapportDTO>>> ExecuteAsync(
@@ -136,7 +133,6 @@ public class RefreshPlexAccountAccessCommandHandler
                         x.PlexAccountId == plexAccount.Id && lostServerIds.Contains(x.PlexServerId)
                     )
                     .ExecuteDeleteAsync(cancellationToken);
-                _mediaQueryCache.InvalidateLibraries(deletedLibraryIds, "Plex account server access revoked");
             }
 
             var libraryAccessResult = await _commandExecutor.Send(
@@ -162,6 +158,9 @@ public class RefreshPlexAccountAccessCommandHandler
             RefreshDataType.PlexServerConnection,
             RefreshDataType.PlexLibrary,
         ]);
+
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        rebuildResult.LogIfFailed();
 
         return Result.Ok(rapports);
     }
@@ -210,8 +209,12 @@ public class RefreshPlexAccountAccessCommandHandler
         if (transactionResult.IsFailed)
             return Result.Fail(transactionResult.Errors);
 
-        _mediaQueryCache.InvalidateLibraries(libraryAccess.AffectedLibraryIds, "Plex account library access revoked");
-        return ToDTO(serverAccessRapport, libraryAccess.Response);
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        if (rebuildResult.IsCancelled)
+            return Result.Fail<RefreshPlexAccountAccessRapportDTO>(rebuildResult.Errors).LogWarning();
+        if (rebuildResult.IsFailed)
+            return Result.Fail<RefreshPlexAccountAccessRapportDTO>(rebuildResult.Errors).LogError();
+        return Result.Ok(ToDTO(serverAccessRapport, libraryAccess.Response));
     }
 
     private async Task<(

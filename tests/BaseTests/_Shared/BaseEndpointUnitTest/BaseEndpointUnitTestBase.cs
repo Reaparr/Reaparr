@@ -146,17 +146,7 @@ public abstract class BaseEndpointUnitTestBase<TEndpoint, TResponse> : BaseUnitT
                 s.AddSingleton(_ => Mock.Mock<IDownloadTaskScheduler>().Object);
                 s.AddSingleton(_ => Mock.Container.Resolve<IPathProvider>());
                 s.AddSingleton(_ => Mock.Container.Resolve<IAppBuildInfo>());
-                s.AddSingleton(_ =>
-                {
-                    var mediaQueryCache = new Mock<IMediaQueryCache>(MockBehavior.Loose);
-                    mediaQueryCache.Setup(x =>
-                        x.InvalidateLibraries(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<string>())
-                    );
-                    mediaQueryCache.Setup(x => x.InvalidateLibrary(It.IsAny<int>(), It.IsAny<string>()));
-                    return mediaQueryCache.Object;
-                });
                 s.AddSingleton(_ => Mock.Mock<IHostApplicationLifetime>().Object);
-
                 extraServices?.Invoke(s);
             });
         });

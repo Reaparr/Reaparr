@@ -20,19 +20,16 @@ public class SetServerOwnedEndpoint : Endpoint<SetServerOwnedRequest, ResultDTO<
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaQueryCache _mediaQueryCache;
     private readonly ICommandExecutor _commandExecutor;
 
     public SetServerOwnedEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,
-        IMediaQueryCache mediaQueryCache,
         ICommandExecutor commandExecutor
     )
     {
         _log = log.ForContext<SetServerOwnedEndpoint>();
         _dbContext = dbContext;
-        _mediaQueryCache = mediaQueryCache;
         _commandExecutor = commandExecutor;
     }
 
@@ -89,7 +86,6 @@ public class SetServerOwnedEndpoint : Endpoint<SetServerOwnedRequest, ResultDTO<
             .ToListAsync(ct);
         var libraryIds = libraries.Select(x => x.Id).ToList();
 
-        _mediaQueryCache.InvalidateLibraries(libraryIds, "Plex server ownership scope changed");
 
         var invalidationResult = await _commandExecutor.Send(
             new InvalidateLibraryComparisonJobsCommand(libraryIds),

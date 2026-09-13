@@ -270,35 +270,18 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
-        var expectedLibraryIds = await dbContext
-            .PlexLibraries.IgnoreQueryFilters()
-            .Where(x => x.PlexServerId == server.Id)
-            .Select(x => x.Id)
-            .OrderBy(x => x)
-            .ToListAsync(CancellationToken);
-        var mediaQueryCache = new Mock<IMediaQueryCache>(MockBehavior.Strict);
-
-        mediaQueryCache
-            .Setup(x =>
-                x.InvalidateLibraries(
-                    It.Is<IReadOnlyCollection<int>>(libraryIds =>
-                        libraryIds.OrderBy(id => id).SequenceEqual(expectedLibraryIds)
-                    ),
-                    "Plex server enabled scope changed"
-                )
-            )
-            .Verifiable(Times.Once);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new SetServerEnabledRequest { PlexServerId = server.Id, IsEnabled = false },
-            services => services.AddSingleton(_ => mediaQueryCache.Object)
+            new SetServerEnabledRequest { PlexServerId = server.Id, IsEnabled = false }
         );
 
         // Assert
         endpointResult.Response.ShouldNotBeNull();
         endpointResult.Response.IsSuccess.ShouldBe(true);
-        mediaQueryCache.Verify();
+        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Test]

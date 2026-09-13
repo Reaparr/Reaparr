@@ -49,13 +49,8 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseUnitTest<RefreshPlexS
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
-        var expectedLibraryIds = await dbContext
-            .PlexLibraries.IgnoreQueryFilters()
-            .OrderBy(x => x.Id)
-            .Select(x => x.Id)
-            .ToListAsync(CancellationToken);
-        var mediaQueryCache = new Mock<IMediaQueryCache>(MockBehavior.Strict);
-
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok());
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -63,24 +58,10 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseUnitTest<RefreshPlexS
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(new List<PlexServerAccessDTO>())
-            .Verifiable(Times.Once);
-
-        mediaQueryCache
-            .Setup(x =>
-                x.InvalidateLibraries(
-                    It.Is<IReadOnlyCollection<int>>(libraryIds =>
-                        libraryIds.OrderBy(id => id).SequenceEqual(expectedLibraryIds)
-                    ),
-                    "Plex server access revoked"
-                )
-            )
-            .Verifiable(Times.Once);
+            .ReturnsAsync(new List<PlexServerAccessDTO>());
 
         // Act
-        var result = await Mock.Create<RefreshPlexServerAccessCommandHandler>(
-                new TypedParameter(typeof(IMediaQueryCache), mediaQueryCache.Object)
-            )
+        var result = await Mock.Create<RefreshPlexServerAccessCommandHandler>()
             .ExecuteAsync(new RefreshPlexServerAccessCommand(plexAccount.Id), CancellationToken);
 
         // Assert
@@ -89,8 +70,7 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseUnitTest<RefreshPlexS
         (
             await dbContext.PlexAccountServers.AnyAsync(x => x.PlexAccountId == plexAccount.Id, CancellationToken)
         ).ShouldBeFalse();
-        Mock.Mock<ICommandExecutor>().Verify();
-        mediaQueryCache.Verify();
+        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Test]

@@ -20,21 +20,18 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaQueryCache _mediaQueryCache;
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
 
     public SetLibraryEnabledEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,
-        IMediaQueryCache mediaQueryCache,
         ICommandExecutor commandExecutor,
         INotificationHubService notificationHubService
     )
     {
         _log = log.ForContext<SetLibraryEnabledEndpoint>();
         _dbContext = dbContext;
-        _mediaQueryCache = mediaQueryCache;
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
     }
@@ -104,8 +101,8 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         if (queueResult.IsFailed)
             return queueResult.LogError();
 
-        // Invalidate/re-build media query cache scopes for this library
-        _mediaQueryCache.InvalidateLibrary(plexLibrary.Id, "PlexLibrary re-enabled");
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
+        rebuildResult.LogIfFailed();
 
         // Notify frontend
         await _notificationHubService.SendRefreshNotificationAsync([
@@ -166,8 +163,8 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         _log.Here()
             .Information("Purged {Count} media items from library {PlexLibraryId}", deleteResult.Value, plexLibrary.Id);
 
-        // Remove all media query cache references to this library and rebuild affected snapshots
-        _mediaQueryCache.InvalidateLibrary(plexLibrary.Id, "PlexLibrary disabled");
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
+        rebuildResult.LogIfFailed();
 
         // Notify frontend
         await _notificationHubService.SendRefreshNotificationAsync([

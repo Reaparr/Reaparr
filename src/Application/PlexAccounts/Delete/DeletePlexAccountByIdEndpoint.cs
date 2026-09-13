@@ -15,19 +15,19 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly INotificationHubService _notificationHubService;
-    private readonly IMediaOverviewReadStore _mediaOverviewReadStore;
+    private readonly ICommandExecutor _commandExecutor;
 
     public DeletePlexAccountByIdEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,
         INotificationHubService notificationHubService,
-        IMediaOverviewReadStore mediaOverviewReadStore
+        ICommandExecutor commandExecutor
     )
     {
         _log = log.ForContext<DeletePlexAccountByIdEndpoint>();
         _dbContext = dbContext;
         _notificationHubService = notificationHubService;
-        _mediaOverviewReadStore = mediaOverviewReadStore;
+        _commandExecutor = commandExecutor;
     }
 
     public override void Configure()
@@ -115,7 +115,7 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
             RefreshDataType.PlexLibrary,
         ]);
 
-        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(ct);
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
         rebuildResult.LogIfFailed();
 
         await Send.FluentResult(rebuildResult, ct);

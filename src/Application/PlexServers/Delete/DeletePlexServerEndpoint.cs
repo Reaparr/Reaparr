@@ -18,17 +18,13 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaOverviewReadStore _mediaOverviewReadStore;
+    private readonly ICommandExecutor _commandExecutor;
 
-    public DeletePlexServerEndpoint(
-        ILogger log,
-        IReaparrDbContext dbContext,
-        IMediaOverviewReadStore mediaOverviewReadStore
-    )
+    public DeletePlexServerEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
     {
         _log = log.ForContext<DeletePlexServerEndpoint>();
         _dbContext = dbContext;
-        _mediaOverviewReadStore = mediaOverviewReadStore;
+        _commandExecutor = commandExecutor;
     }
 
     public override void Configure()
@@ -64,7 +60,7 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
             return;
         }
 
-        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(ct);
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
         rebuildResult.LogIfFailed();
 
         await Send.FluentResult(rebuildResult, ct);

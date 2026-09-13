@@ -51,9 +51,10 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
             .ReturnsAsync(Result.Ok(episodes));
     }
 
-    private void SetupMediaQueryCacheInvalidate()
+    private void SetupMediaOverviewRebuild()
     {
-        Mock.Mock<IMediaQueryCache>().Setup(x => x.InvalidateLibrary(It.IsAny<int>(), It.IsAny<string>()));
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok());
     }
 
     private void SetupSyncCommandSuccess(BulkInsertTvShowsRapport? rapport = null)
@@ -98,7 +99,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
         var (seasons, episodes) = BuildSeasonsAndEpisodes(seed);
         SetupCommandExecutorForMedia(seasons, episodes);
         SetupSyncCommandSuccess();
-        SetupMediaQueryCacheInvalidate();
+        SetupMediaOverviewRebuild();
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -139,7 +140,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
         var (seasons, episodes) = BuildSeasonsAndEpisodes(seed);
         SetupCommandExecutorForMedia(seasons, episodes);
         SetupSyncCommandSuccess();
-        SetupMediaQueryCacheInvalidate();
+        SetupMediaOverviewRebuild();
 
         // Act
         await Sut.ExecuteAsync(
@@ -293,7 +294,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
 
         SyncPlexTvShowsCommand? capturedCommand = null;
         SetupSyncCommandCapture(cmd => capturedCommand = cmd);
-        SetupMediaQueryCacheInvalidate();
+        SetupMediaOverviewRebuild();
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -340,7 +341,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
         SetupCommandExecutorForMedia([season], episodes);
         SyncPlexTvShowsCommand? capturedCommand = null;
         SetupSyncCommandCapture(cmd => capturedCommand = cmd);
-        SetupMediaQueryCacheInvalidate();
+        SetupMediaOverviewRebuild();
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -382,7 +383,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
         SetupCommandExecutorForMedia([season], episodes);
         SyncPlexTvShowsCommand? capturedCommand = null;
         SetupSyncCommandCapture(cmd => capturedCommand = cmd);
-        SetupMediaQueryCacheInvalidate();
+        SetupMediaOverviewRebuild();
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -426,7 +427,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
 
         SyncPlexTvShowsCommand? capturedCommand = null;
         SetupSyncCommandCapture(cmd => capturedCommand = cmd);
-        SetupMediaQueryCacheInvalidate();
+        SetupMediaOverviewRebuild();
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -471,7 +472,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
 
         SyncPlexTvShowsCommand? capturedCommand = null;
         SetupSyncCommandCapture(cmd => capturedCommand = cmd);
-        SetupMediaQueryCacheInvalidate();
+        SetupMediaOverviewRebuild();
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -527,7 +528,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
 
         SyncPlexTvShowsCommand? capturedCommand = null;
         SetupSyncCommandCapture(cmd => capturedCommand = cmd);
-        SetupMediaQueryCacheInvalidate();
+        SetupMediaOverviewRebuild();
 
         // Act
         var result = await Sut.ExecuteAsync(
