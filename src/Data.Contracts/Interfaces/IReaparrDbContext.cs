@@ -39,6 +39,10 @@ public interface IReaparrDbContext : IDisposable
 
     DbSet<PlexMovieMediaData> PlexMovieData { get; }
 
+    DbSet<MovieMediaOverviewSnapshot> MovieMediaOverviewSnapshots { get; }
+
+    DbSet<TvShowMediaOverviewSnapshot> TvShowMediaOverviewSnapshots { get; }
+
     #endregion
 
     #region PlexTvShow
