@@ -21,6 +21,9 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseUnitTest<RefreshPlexS
             .Setup(x => x.Send(It.IsAny<GetAccessiblePlexServersCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<PlexServerAccessDTO>())
             .Verifiable(Times.Once);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var request = new RefreshPlexServerAccessCommand(plexAccount.Id);
@@ -49,8 +52,6 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseUnitTest<RefreshPlexS
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
-            .ReturnsAsync(Result.Ok());
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -59,7 +60,9 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseUnitTest<RefreshPlexS
                 )
             )
             .ReturnsAsync(new List<PlexServerAccessDTO>());
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Mock.Create<RefreshPlexServerAccessCommandHandler>()

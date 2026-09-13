@@ -18,6 +18,9 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == server.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -42,6 +45,9 @@ public class SetServerEnabledEndpointUnitTests
 
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -71,6 +77,9 @@ public class SetServerEnabledEndpointUnitTests
             .ToListAsync(CancellationToken);
         var targetId = servers[0].Id;
         var otherId = servers[1].Id;
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -120,6 +129,9 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == server.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.OwnedOverride, true), CancellationToken);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -149,6 +161,9 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == server.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsDownloadsPausedByUser, true), CancellationToken);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -172,6 +187,9 @@ public class SetServerEnabledEndpointUnitTests
         await SetupDatabase(91207, config => config.PlexServerCount = 1);
         var db = IDbContext;
         var server = await db.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -199,6 +217,9 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == server.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -222,6 +243,10 @@ public class SetServerEnabledEndpointUnitTests
         await SetupDatabase(91209, config => config.PlexServerCount = 1);
         var db = IDbContext;
         var server = await db.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
+
         // Act
         await TestEndpointHandleAsync(new SetServerEnabledRequest { PlexServerId = server.Id, IsEnabled = false });
         await TestEndpointHandleAsync(new SetServerEnabledRequest { PlexServerId = server.Id, IsEnabled = true });
@@ -240,6 +265,9 @@ public class SetServerEnabledEndpointUnitTests
         await SetupDatabase(91210, config => config.PlexServerCount = 1);
         var db = IDbContext;
         var server = await db.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(

@@ -38,6 +38,12 @@ public class ServerOnlineStatusChangedHandler : IEventHandler<ServerOnlineStatus
         CancellationToken cancellationToken
     )
     {
+        var rebuildResult = await _commandExecutor.Send(
+            new QueueMediaOverviewRebuildCommand(),
+            cancellationToken
+        );
+        rebuildResult.LogIfFailed();
+
         if (notification.IsOnline)
         {
             // Create a new DbContext for this operation to avoid threading issues

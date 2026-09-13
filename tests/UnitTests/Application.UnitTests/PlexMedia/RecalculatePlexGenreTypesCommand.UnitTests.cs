@@ -119,7 +119,7 @@ public class RecalculatePlexGenreTypesCommandUnitTests : BaseCommandUnitTest<Rec
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.ScannedCount.ShouldBe(5);
-        result.Value.UpdatedCount.ShouldBe(2);
+        result.Value.UpdatedCount.ShouldBe(3);
         var genreTypes = await GetGenreTypes();
         genreTypes["sport"].ShouldBe(PlexGenreType.Sport);
         genreTypes["comedy"].ShouldBe(PlexGenreType.Comedy);

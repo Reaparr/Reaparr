@@ -1,4 +1,4 @@
-﻿namespace Reaparr.Application.UnitTests;
+namespace Reaparr.Application.UnitTests;
 
 public class DeletePlexAccountByIdEndpointUnitTests
     : BaseEndpointUnitTest<DeletePlexAccountByIdEndpoint, DeletePlexAccountByIdRequest, BaseResultDTO>
@@ -28,6 +28,9 @@ public class DeletePlexAccountByIdEndpointUnitTests
 
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
         Mock.SendRefreshNotification();
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(testAccount.Id));
@@ -136,10 +139,10 @@ public class DeletePlexAccountByIdEndpointUnitTests
 
         await dbContext.SaveChangesAsync(CancellationToken);
 
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
-        Mock.Mock<INotificationHubService>()
-            .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
-            .Returns(Task.CompletedTask);
+        Mock.SendRefreshNotification();
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpoint = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(deleteAccountId));

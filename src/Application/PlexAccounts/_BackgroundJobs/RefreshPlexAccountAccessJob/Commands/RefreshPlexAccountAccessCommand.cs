@@ -121,13 +121,6 @@ public class RefreshPlexAccountAccessCommandHandler
 
             if (lostServerIds.Count > 0)
             {
-                var deletedLibraryIds = await _dbContext
-                    .PlexAccountLibraries.Where(x =>
-                        x.PlexAccountId == plexAccount.Id && lostServerIds.Contains(x.PlexServerId)
-                    )
-                    .Select(x => x.PlexLibraryId)
-                    .Distinct()
-                    .ToListAsync(cancellationToken);
                 await _dbContext
                     .PlexAccountLibraries.Where(x =>
                         x.PlexAccountId == plexAccount.Id && lostServerIds.Contains(x.PlexServerId)
@@ -209,11 +202,6 @@ public class RefreshPlexAccountAccessCommandHandler
         if (transactionResult.IsFailed)
             return Result.Fail(transactionResult.Errors);
 
-        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
-        if (rebuildResult.IsCancelled)
-            return Result.Fail<RefreshPlexAccountAccessRapportDTO>(rebuildResult.Errors).LogWarning();
-        if (rebuildResult.IsFailed)
-            return Result.Fail<RefreshPlexAccountAccessRapportDTO>(rebuildResult.Errors).LogError();
         return Result.Ok(ToDTO(serverAccessRapport, libraryAccess.Response));
     }
 

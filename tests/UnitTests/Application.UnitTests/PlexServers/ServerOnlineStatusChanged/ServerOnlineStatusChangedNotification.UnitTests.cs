@@ -5,7 +5,7 @@ public class ServerOnlineStatusChangedHandlerUnitTests : BaseUnitTest<ServerOnli
     [Test]
     public async Task ShouldInvalidateServerLibraries_WhenServerGoesOffline()
     {
-
+        // Arrange
         await SetupDatabase(
             91301,
             config =>
@@ -28,10 +28,14 @@ public class ServerOnlineStatusChangedHandlerUnitTests : BaseUnitTest<ServerOnli
             .Setup(x => x.Send(It.IsAny<ResetFailedLibrarySyncJobsCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Never);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         await Sut.HandleAsync(new ServerOnlineStatusChangedNotification(targetServer.Id, false), CancellationToken);
 
+        // Assert
         Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
         Mock.Mock<IDownloadQueue>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
@@ -40,7 +44,7 @@ public class ServerOnlineStatusChangedHandlerUnitTests : BaseUnitTest<ServerOnli
     [Test]
     public async Task ShouldInvalidateServerLibrariesAndResumeQueues_WhenServerComesOnline()
     {
-
+        // Arrange
         await SetupDatabase(
             91302,
             config =>
@@ -71,6 +75,9 @@ public class ServerOnlineStatusChangedHandlerUnitTests : BaseUnitTest<ServerOnli
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         await Sut.HandleAsync(new ServerOnlineStatusChangedNotification(targetServer.Id, true), CancellationToken);
