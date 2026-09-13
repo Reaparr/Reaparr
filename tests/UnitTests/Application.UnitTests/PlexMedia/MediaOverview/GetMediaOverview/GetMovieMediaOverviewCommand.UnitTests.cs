@@ -22,6 +22,10 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
             .PlexMovies.Where(x => x.Id == movieIds[0])
             .Select(x => x.PlexLibraryId)
             .SingleAsync(CancellationToken);
+        const int expectedYear = 1999;
+        await IDbContext
+            .PlexMovies.Where(x => x.Id == movieIds[1])
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.Year, expectedYear), CancellationToken);
         var setupContext = IDbContext;
         await setupContext.MediaOverviewMovieSnapshots.AddRangeAsync(
             movieIds.Select((id, index) => CreateMovieSnapshot(id, movieIds.Count - index - 1, libraryId)),
@@ -53,6 +57,7 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
         result.Value.Items.Count.ShouldBe(1);
         result.Value.TotalCount.ShouldBe(3);
         result.Value.Items[0].Id.ShouldBe(movieIds[1]);
+        result.Value.Items[0].Year.ShouldBe(expectedYear);
         result.Value.Items[0].SortIndex.ShouldBe(2);
         result.Errors.Count.ShouldBe(0);
         result.Value.QueryHash.ShouldBe(
@@ -73,6 +78,9 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
         result.Value.Page.ShouldBe(2);
         result.Value.PageSize.ShouldBe(1);
         result.Value.Items[0].Type.ShouldBe(PlexMediaType.Movie);
+        result.Value.Items[0].Year.ShouldBe(
+            await IDbContext.PlexMovies.Where(x => x.Id == movieIds[1]).Select(x => x.Year).SingleAsync(CancellationToken)
+        );
         result.Value.Items[0].GrandChildCount.ShouldBe(0);
         result.Value.Items[0].Qualities.Select(x => x.Quality).ShouldBeInOrder();
     }

@@ -23,6 +23,10 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
         var libraryId = tvShows[0].PlexLibraryId;
+        const int expectedYear = 2007;
+        await dbContext
+            .PlexTvShows.Where(x => x.Id == tvShows[1].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.Year, expectedYear), CancellationToken);
         await dbContext.MediaOverviewTvShowSnapshots.AddRangeAsync(
             tvShows.Select((show, index) => CreateSnapshot(show.Id, tvShows.Count - index - 1, libraryId)),
             CancellationToken
@@ -45,6 +49,7 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
         result.Value.Items[0].Type.ShouldBe(PlexMediaType.TvShow);
         result.Value.Items[0].SortIndex.ShouldBe(2);
         result.Value.Items[0].GrandChildCount.ShouldBe(tvShows[1].GrandChildCount);
+        result.Value.Items[0].Year.ShouldBe(expectedYear);
         result
             .Value.Items[0]
             .Qualities.Select(x => x.Quality)
