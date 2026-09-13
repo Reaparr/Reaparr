@@ -10,11 +10,11 @@ public sealed class RebuildMediaOverviewCommandValidator : AbstractValidator<Reb
 public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<RebuildMediaOverviewCommand, Result>
 {
     private readonly IReaparrDbContextFactory _dbContextFactory;
-    private readonly MediaOverviewRebuildCoordinator _coordinator;
+    private readonly IMediaOverviewRebuildCoordinator _coordinator;
 
     public RebuildMediaOverviewCommandHandler(
         IReaparrDbContextFactory dbContextFactory,
-        MediaOverviewRebuildCoordinator coordinator
+        IMediaOverviewRebuildCoordinator coordinator
     )
     {
         _dbContextFactory = dbContextFactory;
@@ -42,42 +42,58 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
         {
             case PlexMediaType.Movie:
             {
-                var source = await context
-                    .PlexMovies.Select(x => new PlexMovieRankSource(
-                        x.Id,
-                        x.PlexLibraryId,
-                        x.SearchTitle,
-                        x.Year,
-                        x.AddedAt,
-                        x.UpdatedAt,
-                        x.Duration,
-                        x.MediaSize,
-                        x.Quality
-                    ))
+                var snapshots = await context
+                    .PlexMovies.Select(x => new MediaOverviewMovieSnapshot
+                    {
+                        PlexMovieId = x.Id,
+                        PlexLibraryId = x.PlexLibraryId,
+                        SearchTitle = x.SearchTitle,
+                        Year = x.Year,
+                        AddedAt = x.AddedAt,
+                        UpdatedAt = x.UpdatedAt,
+                        Duration = x.Duration,
+                        MediaSize = x.MediaSize,
+                        Quality = x.Quality,
+                        TitleRank = 0,
+                        YearRank = 0,
+                        AddedAtRank = 0,
+                        UpdatedAtRank = 0,
+                        DurationRank = 0,
+                        MediaSizeRank = 0,
+                        QualityRank = 0,
+                    })
                     .ToListAsync(cancellationToken);
                 return await ReplaceAsync(
-                    source.BuildMovieSnapshots(),
+                    snapshots.AssignRanks(),
                     static dbContext => dbContext.MovieMediaOverviewSnapshots,
                     cancellationToken
                 );
             }
             case PlexMediaType.TvShow:
             {
-                var source = await context
-                    .PlexTvShows.Select(x => new PlexTvShowRankSource(
-                        x.Id,
-                        x.PlexLibraryId,
-                        x.SearchTitle,
-                        x.Year,
-                        x.AddedAt,
-                        x.UpdatedAt,
-                        x.Duration,
-                        x.MediaSize,
-                        x.Quality
-                    ))
+                var snapshots = await context
+                    .PlexTvShows.Select(x => new MediaOverviewTvShowSnapshot
+                    {
+                        PlexTvShowId = x.Id,
+                        PlexLibraryId = x.PlexLibraryId,
+                        SearchTitle = x.SearchTitle,
+                        Year = x.Year,
+                        AddedAt = x.AddedAt,
+                        UpdatedAt = x.UpdatedAt,
+                        Duration = x.Duration,
+                        MediaSize = x.MediaSize,
+                        Quality = x.Quality,
+                        TitleRank = 0,
+                        YearRank = 0,
+                        AddedAtRank = 0,
+                        UpdatedAtRank = 0,
+                        DurationRank = 0,
+                        MediaSizeRank = 0,
+                        QualityRank = 0,
+                    })
                     .ToListAsync(cancellationToken);
                 return await ReplaceAsync(
-                    source.BuildTvShowSnapshots(),
+                    snapshots.AssignRanks(),
                     static dbContext => dbContext.TvShowMediaOverviewSnapshots,
                     cancellationToken
                 );
@@ -91,7 +107,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
     }
 
     private async Task<Result> ReplaceAsync<TSnapshot>(
-        IReadOnlyCollection<TSnapshot> snapshots,
+        IList<TSnapshot> snapshots,
         Func<IReaparrDbContext, DbSet<TSnapshot>> table,
         CancellationToken cancellationToken
     )
@@ -103,7 +119,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
             {
                 await table(dbContext).ExecuteDeleteAsync(transactionToken);
                 if (snapshots.Count > 0)
-                    await dbContext.BulkInsertAsync(snapshots.ToList(), BulkConfigPreset.Default, transactionToken);
+                    await dbContext.BulkInsertAsync(snapshots, BulkConfigPreset.Default, transactionToken);
             },
             cancellationToken
         );
