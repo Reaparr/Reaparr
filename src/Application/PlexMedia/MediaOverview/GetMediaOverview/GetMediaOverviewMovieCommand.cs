@@ -155,6 +155,13 @@ public sealed class GetMediaOverviewMovieCommandHandler
             item.Qualities.AddRange(qualitiesByMediaId[item.Id]);
         items = items.RestorePageOrder(ids);
         LogPhase(filter, "Items", stopwatch.Elapsed, items.Count);
+        var comparisonResult = await _commandExecutor.Send(
+            new ApplyComparisonStateCommand(items, filter.PlexLibraryId, filter.MediaType),
+            cancellationToken
+        );
+        comparisonResult.LogIfFailed();
+        LogPhase(filter, "ApplyComparison", stopwatch.Elapsed, items.Count);
+
         stopwatch.Restart();
 
         var result = await context.CreatePageResultAsync(

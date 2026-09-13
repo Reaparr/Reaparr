@@ -32,6 +32,9 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
             CancellationToken
         );
         await setupContext.SaveChangesAsync(CancellationToken);
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
@@ -115,6 +118,9 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
             CancellationToken
         );
         await dbContext.SaveChangesAsync(CancellationToken);
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         var filter = new MediaQueryFilter
         {
             MediaType = PlexMediaType.Movie,
@@ -155,6 +161,9 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
             CancellationToken
         );
         await dbContext.SaveChangesAsync(CancellationToken);
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         var filter = new MediaQueryFilter
         {
             MediaType = PlexMediaType.Movie,
@@ -218,6 +227,9 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
             FilterOwnedMedia = false,
             Parameters = new FlexQueryParameters { Page = 1, PageSize = 1, Sort = sort },
         };
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMovieCommand(filter));
@@ -263,6 +275,9 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
             CancellationToken
         );
         await setupContext.SaveChangesAsync(CancellationToken);
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(

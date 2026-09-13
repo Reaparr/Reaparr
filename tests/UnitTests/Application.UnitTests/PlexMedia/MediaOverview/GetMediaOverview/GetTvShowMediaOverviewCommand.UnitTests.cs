@@ -33,6 +33,9 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
         );
         await dbContext.SaveChangesAsync(CancellationToken);
         var filter = CreateFilter(libraryId, page: 2, pageSize: 1, sort: "year:desc");
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
@@ -90,6 +93,9 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
         );
         await dbContext.SaveChangesAsync(CancellationToken);
         var filter = CreateFilter(libraryId, pageSize: 1, sort: "sortIndex:asc");
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
@@ -123,6 +129,9 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
         );
         await dbContext.SaveChangesAsync(CancellationToken);
         var filter = CreateFilter(libraryId, page: 2, pageSize: 1, sort: "sortIndex:asc");
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
@@ -171,6 +180,9 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
         );
         await dbContext.SaveChangesAsync(CancellationToken);
         var filter = CreateFilter(libraryId, pageSize: 1, sort: sort);
+        Mock.SetupCommand<Result>(command => command is ApplyComparisonStateCommand)
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
