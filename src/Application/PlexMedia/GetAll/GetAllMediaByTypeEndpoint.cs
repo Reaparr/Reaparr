@@ -73,12 +73,12 @@ public class GetAllMediaByTypeRequestValidator : Validator<GetAllMediaByTypeRequ
 public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, PlexMediaStatisticsDTO>
 {
     private readonly ILogger _log;
-    private readonly IMediaQueryCache _mediaQueryCache;
+    private readonly ICommandExecutor _commandExecutor;
 
-    public GetAllMediaByTypeEndpoint(ILogger log, IMediaQueryCache mediaQueryCache)
+    public GetAllMediaByTypeEndpoint(ILogger log, ICommandExecutor commandExecutor)
     {
         _log = log.ForContext<GetAllMediaByTypeEndpoint>();
-        _mediaQueryCache = mediaQueryCache;
+        _commandExecutor = commandExecutor;
     }
 
     public override void Configure()
@@ -95,37 +95,32 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
     public override async Task HandleAsync(GetAllMediaByTypeRequest req, CancellationToken ct)
     {
         _log.Here().DebugApiCall(HttpContext, req);
-
         var stopWatch = Stopwatch.StartNew();
-
-        var mediaListResult = await _mediaQueryCache.GetMediaAsync(
-            new MediaQueryFilter
-            {
-                MediaType = req.MediaType,
-                PlexLibraryId = req.PlexLibraryId ?? 0,
-                FilterOfflineMedia = req.FilterOfflineMedia,
-                FilterOwnedMedia = req.FilterOwnedMedia,
-                ComparisonState = req.ComparisonState,
-                Parameters = new FlexQueryParameters
+        var result = await _commandExecutor.Send(
+            new GetMediaOverviewCommand(
+                new MediaQueryFilter
                 {
-                    Filter = BuildFilter(req),
-                    Sort = req.Sort,
-                    Page = req.Page,
-                    PageSize = req.PageSize,
-                },
-            },
+                    MediaType = req.MediaType,
+                    PlexLibraryId = req.PlexLibraryId ?? 0,
+                    FilterOfflineMedia = req.FilterOfflineMedia,
+                    FilterOwnedMedia = req.FilterOwnedMedia,
+                    ComparisonState = req.ComparisonState,
+                    Parameters = new FlexQueryParameters
+                    {
+                        Filter = BuildFilter(req),
+                        Sort = req.Sort,
+                        Page = req.Page,
+                        PageSize = req.PageSize,
+                    },
+                }
+            ),
             ct
         );
-
         stopWatch.StopAndLog($"GetAllMediaByTypeEndpoint - Retrieved media with filter: {req}");
 
-        if (mediaListResult.IsFailed)
-        {
-            await Send.FluentResult(mediaListResult, ct);
-            return;
-        }
+        result.LogIfFailed();
 
-        await Send.FluentResult(Result.Ok(ToStatisticsDTO(mediaListResult.Value)), ct);
+        await Send.FluentResult(result.IsFailed ? result.ToResult() : Result.Ok(ToStatisticsDTO(result.Value)), ct);
     }
 
     private static string BuildFilter(GetAllMediaByTypeRequest req)

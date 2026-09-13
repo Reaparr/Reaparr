@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+
 
 namespace Reaparr.Application.UnitTests;
 
@@ -6,22 +6,10 @@ public class GetAllMediaByTypeEndpointUnitTests
     : BaseEndpointUnitTest<GetAllMediaByTypeEndpoint, GetAllMediaByTypeRequest, PlexMediaStatisticsDTO>
 {
     [Test]
-    public async Task ShouldMapFriendlyRequestFiltersToMediaQueryFilter_WhenHandlingRequest()
+    public async Task ShouldMapFriendlyRequestToMediaOverviewQuery_WhenHandlingRequest()
     {
-        // Arrange
-        await SetupDatabase(
-            42,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
-        var libraryId = await IDbContext
-            .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
-            .Select(x => x.Id)
-            .FirstAsync(CancellationToken);
-
+        await SetupDatabase(42, config => { config.PlexServerCount = 1; config.PlexMovieLibraryCount = 1; });
+        var libraryId = await IDbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.Movie).Select(x => x.Id).FirstAsync(CancellationToken);
         var request = new GetAllMediaByTypeRequest
         {
             MediaType = PlexMediaType.Movie,
@@ -38,50 +26,32 @@ public class GetAllMediaByTypeEndpointUnitTests
             FilterOwnedMedia = true,
             FilterOfflineMedia = true,
         };
-
-        var expectedFilter = string.Join(
-            '&',
-            [
-                $"SearchTitle:contains:{request.Search}",
-                $"Countries:any:Id:eq:{request.CountryId}",
-                $"Actors:any:Id:eq:{request.RoleId}",
-                $"Genres:any:Id:eq:{request.GenreId}",
-                $"MediaDataList:any:Quality:eq:{request.QualityId!.Value.ToVideoQuality()}",
-            ]
-        );
-
-        var mediaQueryCache = new Mock<IMediaQueryCache>(MockBehavior.Strict);
-        mediaQueryCache
-            .Setup(x =>
-                x.GetMediaAsync(
-                    It.Is<MediaQueryFilter>(filter =>
-                        filter.MediaType == PlexMediaType.Movie
-                        && filter.PlexLibraryId == libraryId
-                        && filter.FilterOwnedMedia
-                        && filter.FilterOfflineMedia
-                        && filter.ComparisonState == PlexMediaComparisonState.Missing
-                        && filter.Parameters.Page == 2
-                        && filter.Parameters.PageSize == 25
-                        && filter.Parameters.Sort == "sortIndex:asc"
-                        && filter.Parameters.Filter == expectedFilter
-                    ),
-                    It.IsAny<CancellationToken>()
-                )
+        Mock.SetupCommand<Result<PagedMediaQueryResult>>(
+                command =>
+                    ((GetMediaOverviewCommand)command).Filter.MediaType == PlexMediaType.Movie
+                    && ((GetMediaOverviewCommand)command).Filter.PlexLibraryId == libraryId
+                    && ((GetMediaOverviewCommand)command).Filter.Parameters.Page == 2
+                    && ((GetMediaOverviewCommand)command).Filter.Parameters.PageSize == 25
+                    && ((GetMediaOverviewCommand)command).Filter.Parameters.Filter
+                        == "SearchTitle:contains:matrix&Countries:any:Id:eq:7&Actors:any:Id:eq:11&Genres:any:Id:eq:13&MediaDataList:any:Quality:eq:SD"
+                    && ((GetMediaOverviewCommand)command).Filter.ComparisonState == PlexMediaComparisonState.Missing
+                    && ((GetMediaOverviewCommand)command).Filter.Parameters.Sort == "sortIndex:asc"
+                    && ((GetMediaOverviewCommand)command).Filter.FilterOwnedMedia
+                    && ((GetMediaOverviewCommand)command).Filter.FilterOfflineMedia
             )
             .ReturnsAsync(Result.Ok(new PagedMediaQueryResult()))
             .Verifiable(Times.Once());
 
         // Act
-        await TestEndpointHandleAsync(request, services => services.AddSingleton(_ => mediaQueryCache.Object));
+        await TestEndpointHandleAsync(request);
 
         // Assert
-        mediaQueryCache.Verify();
+        Mock.Mock<ICommandExecutor>().Verify();
     }
 
     [Test]
     public void ShouldRejectNonPositiveFriendlyFilterIdsButAllowAllMediaComparisonState_WhenValidatingRequest()
     {
-        // Arrange
         var validator = new GetAllMediaByTypeRequestValidator();
         var request = new GetAllMediaByTypeRequest
         {
@@ -93,11 +63,7 @@ public class GetAllMediaByTypeEndpointUnitTests
             QualityId = -1,
             ComparisonState = PlexMediaComparisonState.Missing,
         };
-
-        // Act
         var result = validator.Validate(request);
-
-        // Assert
         result.IsValid.ShouldBeFalse();
         result.Errors.ShouldContain(x => x.PropertyName == nameof(GetAllMediaByTypeRequest.CountryId));
         result.Errors.ShouldContain(x => x.PropertyName == nameof(GetAllMediaByTypeRequest.GenreId));
