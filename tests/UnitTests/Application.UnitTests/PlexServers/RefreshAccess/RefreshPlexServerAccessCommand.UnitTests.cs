@@ -59,6 +59,7 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseUnitTest<RefreshPlexS
                 )
             )
             .ReturnsAsync(new List<PlexServerAccessDTO>());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
 
         // Act
         var result = await Mock.Create<RefreshPlexServerAccessCommandHandler>()

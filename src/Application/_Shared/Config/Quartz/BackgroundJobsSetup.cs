@@ -190,8 +190,8 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
         await _scheduler.TriggerJob(CheckPlexLibrariesForUpdatesJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(RefreshPlexAccountAccessJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(CheckForUpdateJob.GetJobKey(), cancellationToken);
+        await _scheduler.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken);
     }
-
     public async Task<Result> StopAsync(CancellationToken cancellationToken = default)
     {
         return await Result.Try(async Task () =>

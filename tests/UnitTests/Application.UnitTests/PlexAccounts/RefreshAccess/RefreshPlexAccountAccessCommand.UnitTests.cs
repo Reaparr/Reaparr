@@ -35,6 +35,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
             .Returns(Task.CompletedTask);
 
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
         var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(), CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
@@ -130,6 +131,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
             .Returns(Task.CompletedTask);
 
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
         var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(plexAccount.Id), CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();

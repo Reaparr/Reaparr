@@ -26,6 +26,7 @@ public class DeletePlexAccountByIdEndpointUnitTests
         IDbContext.PlexMovies.ShouldNotBeEmpty();
         IDbContext.PlexTvShows.ShouldNotBeEmpty();
 
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
         Mock.SendRefreshNotification();
 
         // Act
@@ -135,7 +136,10 @@ public class DeletePlexAccountByIdEndpointUnitTests
 
         await dbContext.SaveChangesAsync(CancellationToken);
 
-        Mock.SendRefreshNotification();
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
+        Mock.Mock<INotificationHubService>()
+            .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         var endpoint = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(deleteAccountId));

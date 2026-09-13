@@ -36,7 +36,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
     {
         var filter = command.Filter;
         var page = Math.Max(filter.Parameters.Page ?? 1, 1);
-        var pageSize = Math.Max(filter.Parameters.PageSize ?? 0, 0);
+        var pageSize = filter.PageSize;
         var response = new PagedMediaQueryResult
         {
             QueryHash = filter.QueryHash,

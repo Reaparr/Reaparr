@@ -140,8 +140,6 @@ public class CheckConnectionStatusByIdCommandHandler
             cancellationToken
         );
 
-        upsertResult.LogIfFailed();
-
-        return upsertResult.Value;
+        return upsertResult.LogIfFailed();
     }
 }

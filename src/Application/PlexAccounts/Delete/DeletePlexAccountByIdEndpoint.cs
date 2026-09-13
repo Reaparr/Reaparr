@@ -118,6 +118,6 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
         var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
         rebuildResult.LogIfFailed();
 
-        await Send.FluentResult(rebuildResult, ct);
+        await Send.FluentResult(Result.Ok(), ct);
     }
 }

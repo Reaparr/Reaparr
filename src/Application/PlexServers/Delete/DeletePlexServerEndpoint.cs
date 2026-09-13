@@ -63,6 +63,6 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
         var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
         rebuildResult.LogIfFailed();
 
-        await Send.FluentResult(rebuildResult, ct);
+        await Send.FluentResult(Result.Ok(), ct);
     }
 }
