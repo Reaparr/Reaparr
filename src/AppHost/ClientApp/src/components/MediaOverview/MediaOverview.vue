@@ -84,11 +84,10 @@
 						class="q-mt-md"
 						justify="center">
 						<QCol cols="auto">
-							<QAlert type="negative">
+							<QAlert type="error">
 								<div>{{ t('components.media-overview.media-load-failed') }}</div>
 								<BaseButton
 									class="q-mt-sm"
-									color="primary"
 									:label="t('components.media-overview.retry-media-load')"
 									@click="retryMediaLoad" />
 							</QAlert>
@@ -271,7 +270,7 @@ function onAction(event: IMediaOverviewBarActions) {
 }
 
 function retryMediaLoad() {
-	useSubscription(mediaOverviewStore.refreshMediaData().subscribe());
+	useSubscription(mediaOverviewStore.retryMediaLoad().subscribe());
 }
 
 function onOptionsClosed(hasChanged: boolean) {

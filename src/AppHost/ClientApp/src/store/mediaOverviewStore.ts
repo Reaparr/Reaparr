@@ -42,6 +42,7 @@ interface IMediaOverviewStoreState {
 	pendingMediaHighlightId: number | null;
 	pendingMediaHighlightLibraryId: number | null;
 	mediaLoadError: boolean;
+	loading: boolean;
 	navLoading: boolean;
 	filterMetadataLoading: boolean;
 	isDetailView: boolean;
@@ -78,6 +79,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		pendingMediaHighlightId: null,
 		pendingMediaHighlightLibraryId: null,
 		mediaLoadError: false,
+		loading: false,
 		navLoading: false,
 		filterMetadataLoading: false,
 		isDetailView: false,
@@ -297,6 +299,9 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 					},
 				}),
 			);
+		},
+		retryMediaLoad(): Observable<PlexMediaStatisticsDTO | null> {
+			return actions.refreshMediaData();
 		},
 		requestMediaPage(page: number, size: number = state.pageSize, forceRefresh: boolean = false): Observable<PlexMediaStatisticsDTO | null> {
 			if (pendingPages.has(page) || (!forceRefresh && mediaPages.has(page))) {
