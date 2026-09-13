@@ -127,6 +127,47 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     }
 
     [Test]
+    public async Task ShouldReturnNavigationIndexes_WhenRequestingLaterPage()
+    {
+        // Arrange
+        await SetupDatabase(
+            84005,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 3;
+            }
+        );
+        var dbContext = IDbContext;
+        var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var libraryId = movies[0].PlexLibraryId;
+        await dbContext.MediaOverviewMovieSnapshots.AddRangeAsync(
+            movies.Select((movie, index) => CreateMovieSnapshot(movie.Id, index, libraryId)),
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.Movie,
+            PlexLibraryId = libraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters { Page = 2, PageSize = 1, Sort = "sortIndex:asc" },
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMovieCommand(filter));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Page.ShouldBe(2);
+        result.Value.NavigationIndexes.ShouldNotBeEmpty();
+        result.Value.NavigationIndexes[0].Index.ShouldBe(0);
+    }
+
+    [Test]
     [Arguments("sortIndex:asc")]
     [Arguments("sortIndex:desc")]
     [Arguments("year:asc")]

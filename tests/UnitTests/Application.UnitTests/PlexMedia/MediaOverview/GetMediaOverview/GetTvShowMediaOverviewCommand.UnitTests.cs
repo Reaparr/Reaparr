@@ -97,6 +97,40 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
     }
 
     [Test]
+    public async Task ShouldReturnNavigationIndexes_WhenRequestingLaterPage()
+    {
+        // Arrange
+        await SetupDatabase(
+            84105,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 3;
+            }
+        );
+        var dbContext = IDbContext;
+        var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var libraryId = tvShows[0].PlexLibraryId;
+        await dbContext.MediaOverviewTvShowSnapshots.AddRangeAsync(
+            tvShows.Select((show, index) => CreateSnapshot(show.Id, index, libraryId)),
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var filter = CreateFilter(libraryId, page: 2, pageSize: 1, sort: "sortIndex:asc");
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Page.ShouldBe(2);
+        result.Value.NavigationIndexes.ShouldNotBeEmpty();
+        result.Value.NavigationIndexes[0].Index.ShouldBe(0);
+    }
+
+    [Test]
     [Arguments("sortIndex:asc")]
     [Arguments("sortIndex:desc")]
     [Arguments("year:asc")]

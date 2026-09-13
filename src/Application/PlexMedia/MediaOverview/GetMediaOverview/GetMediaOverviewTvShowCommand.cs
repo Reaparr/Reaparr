@@ -166,30 +166,27 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             mediaSize,
             cancellationToken
         );
-        if (filter.Parameters.Page is null or 1)
-        {
-            var navigationRows = await orderedSnapshots
-                .Join(
-                    context.PlexTvShows,
-                    snapshot => snapshot.PlexTvShowId,
-                    tvShow => tvShow.Id,
-                    (_, tvShow) =>
-                        new MediaNavigationIndexRow(
-                            tvShow.SearchTitle,
-                            tvShow.Year,
-                            (int?)tvShow.Quality,
-                            tvShow.Duration,
-                            tvShow.AddedAt,
-                            tvShow.UpdatedAt,
-                            tvShow.MediaSize
-                        )
-                )
-                .ToListAsync(cancellationToken);
-            result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
-                navigationRows,
-                options.Sort.FirstOrDefault()?.Field
-            );
-        }
+        var navigationRows = await orderedSnapshots
+            .Join(
+                context.PlexTvShows,
+                snapshot => snapshot.PlexTvShowId,
+                tvShow => tvShow.Id,
+                (_, tvShow) =>
+                    new MediaNavigationIndexRow(
+                        tvShow.SearchTitle,
+                        tvShow.Year,
+                        (int?)tvShow.Quality,
+                        tvShow.Duration,
+                        tvShow.AddedAt,
+                        tvShow.UpdatedAt,
+                        tvShow.MediaSize
+                    )
+            )
+            .ToListAsync(cancellationToken);
+        result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+            navigationRows,
+            options.Sort.FirstOrDefault()?.Field
+        );
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
         if (items.Count > 0)

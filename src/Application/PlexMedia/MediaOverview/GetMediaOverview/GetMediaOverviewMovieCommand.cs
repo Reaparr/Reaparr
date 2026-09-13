@@ -166,30 +166,27 @@ public sealed class GetMediaOverviewMovieCommandHandler
             mediaSize,
             cancellationToken
         );
-        if (filter.Parameters.Page is null or 1)
-        {
-            var navigationRows = await orderedSnapshots
-                .Join(
-                    context.PlexMovies,
-                    snapshot => snapshot.PlexMovieId,
-                    movie => movie.Id,
-                    (_, movie) =>
-                        new MediaNavigationIndexRow(
-                            movie.SearchTitle,
-                            movie.Year,
-                            (int?)movie.Quality,
-                            movie.Duration,
-                            movie.AddedAt,
-                            movie.UpdatedAt,
-                            movie.MediaSize
-                        )
-                )
-                .ToListAsync(cancellationToken);
-            result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
-                navigationRows,
-                options.Sort.FirstOrDefault()?.Field
-            );
-        }
+        var navigationRows = await orderedSnapshots
+            .Join(
+                context.PlexMovies,
+                snapshot => snapshot.PlexMovieId,
+                movie => movie.Id,
+                (_, movie) =>
+                    new MediaNavigationIndexRow(
+                        movie.SearchTitle,
+                        movie.Year,
+                        (int?)movie.Quality,
+                        movie.Duration,
+                        movie.AddedAt,
+                        movie.UpdatedAt,
+                        movie.MediaSize
+                    )
+            )
+            .ToListAsync(cancellationToken);
+        result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+            navigationRows,
+            options.Sort.FirstOrDefault()?.Field
+        );
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
         if (items.Count > 0)
