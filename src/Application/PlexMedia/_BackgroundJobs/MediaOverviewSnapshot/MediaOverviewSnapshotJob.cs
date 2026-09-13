@@ -9,12 +9,19 @@ public sealed class MediaOverviewSnapshotJob : IJob
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IScheduler _scheduler;
+    private readonly IMediaOverviewRebuildCoordinator _coordinator;
 
-    public MediaOverviewSnapshotJob(ILogger log, ICommandExecutor commandExecutor, IScheduler scheduler)
+    public MediaOverviewSnapshotJob(
+        ILogger log,
+        ICommandExecutor commandExecutor,
+        IScheduler scheduler,
+        IMediaOverviewRebuildCoordinator coordinator
+    )
     {
         _log = log.ForContext<MediaOverviewSnapshotJob>();
         _commandExecutor = commandExecutor;
         _scheduler = scheduler;
+        _coordinator = coordinator;
     }
 
     public static JobKey GetJobKey() =>
@@ -23,42 +30,58 @@ public sealed class MediaOverviewSnapshotJob : IJob
     public async Task Execute(IJobExecutionContext context)
     {
         var cancellationToken = context.CancellationToken;
-        var result = await _commandExecutor.Send(new RebuildMediaOverviewCommand(), cancellationToken);
-
-        result.LogIfFailed();
-
-        if (result.IsCancelled)
+        if (!_coordinator.BeginRebuild(DateTimeOffset.UtcNow))
         {
-            _log.Here().Warning("Media overview snapshot rebuild was cancelled");
-            context.SetResult(JobStatus.Cancelled, result);
+            context.SetResult(JobStatus.Completed);
+            _log.Here()
+                .Debug("Media overview snapshot rebuild skipped because a successful rebuild completed recently");
             return;
         }
 
-        if (result.IsFailed)
+        var succeeded = false;
+        try
         {
-            _log.Here().Error("Media overview snapshot job failed");
-            context.SetResult(JobStatus.Failed, result);
-            return;
+            Result? rebuildResult = null;
+            var dispatchResult = await Result.Try(async Task () =>
+                rebuildResult = await _commandExecutor.Send(new RebuildMediaOverviewCommand(), cancellationToken)
+            );
+            var result = dispatchResult.IsFailed ? dispatchResult : rebuildResult!;
+
+            if (result.IsCancelled)
+            {
+                _log.Here().Warning("Media overview snapshot rebuild was cancelled");
+                context.SetResult(JobStatus.Cancelled, result);
+                return;
+            }
+
+            if (result.IsFailed)
+            {
+                result.LogError();
+                _log.Here().Error("Media overview snapshot job failed");
+                context.SetResult(JobStatus.Failed, result);
+                return;
+            }
+
+            succeeded = true;
+            context.SetResult(JobStatus.Completed);
+            _log.Here().Information("Media overview snapshots rebuilt successfully");
         }
-
-        context.SetResult(JobStatus.Completed);
-        _log.Here().Information("Media overview snapshots rebuilt successfully");
-
-        var scheduleResult = await ScheduleNextRunAsync(cancellationToken);
-        scheduleResult.LogIfFailed();
+        finally
+        {
+            if (_coordinator.CompleteRebuild(succeeded, DateTimeOffset.UtcNow))
+            {
+                var triggerResult = await TriggerFollowUpRebuildAsync(cancellationToken);
+                triggerResult.LogIfFailed();
+            }
+        }
     }
 
-    private async Task<Result> ScheduleNextRunAsync(CancellationToken cancellationToken)
+    private async Task<Result> TriggerFollowUpRebuildAsync(CancellationToken cancellationToken)
     {
-        var trigger = TriggerBuilder
-            .Create()
-            .WithIdentity(GetJobKey().Name, GetJobKey().Group)
-            .ForJob(GetJobKey())
-            .StartAt(DateTimeOffset.UtcNow.AddHours(1))
-            .WithSimpleSchedule(x => x.WithMisfireHandlingInstructionFireNow())
-            .Build();
-        return await Result.Try(async Task () =>
-            await _scheduler.RescheduleJob(trigger.Key, trigger, cancellationToken)
-        );
+        var result = await Result.Try(async Task () => await _scheduler.TriggerJob(GetJobKey(), cancellationToken));
+        if (result.IsFailed)
+            _coordinator.CancelPendingRebuild();
+
+        return result;
     }
 }
