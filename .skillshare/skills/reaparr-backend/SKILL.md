@@ -267,7 +267,8 @@ catch (Exception ex)
 - Never read `.Value` until success is established.
 - Do not replace structured errors with only `error.Message`; retain `ExceptionalError`, HTTP/status metadata, and domain error types.
 - Use existing `ResultExtensions` helpers for validation, not-found, conflict, timeout, and other expected failures so API metadata remains intact.
-- Do not use `LogIfFailed()` where cancellation and ordinary failure require different severity; branch on `IsCancelled` first.
+- `LogIfFailed()` already logs cancelled results at warning level, failed results at error level, and returns the original result unchanged. Use it when the boundary only needs to record a result and continue with its existing control flow, especially for best-effort post-commit queue or rebuild requests.
+- Branch manually on `IsCancelled` and `IsFailed` only when those states require different control flow, result mapping, response handling, or safe access to `.Value`. Do not replace a logging-only `result.LogIfFailed()` call with equivalent manual branches.
 - Avoid duplicate logging at every stack frame. Log at the boundary that handles or returns the result, and always log results consumed locally rather than propagated.
 - When using `Result.Try`, inspect its returned result. Do not assume wrapping an operation is sufficient by itself.
 
