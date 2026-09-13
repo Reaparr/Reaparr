@@ -44,5 +44,7 @@ public enum JobTypes
     [JsonStringEnumMemberName(nameof(RefreshPlexAccountAccessJob))]
     RefreshPlexAccountAccessJob = 10,
 
+    [JsonStringEnumMemberName(nameof(MediaOverviewSnapshotJob))]
+    MediaOverviewSnapshotJob = 11,
     // Ensure to also add in EnumMapperExtensions.JobType.cs
 }

@@ -70,6 +70,7 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
         await _scheduler.DeleteJob(CheckPlexLibrariesForUpdatesJob.GetJobKey(), cancellationToken);
         await _scheduler.DeleteJob(RefreshPlexAccountAccessJob.GetJobKey(), cancellationToken);
         await _scheduler.DeleteJob(CheckForUpdateJob.GetJobKey(), cancellationToken);
+        await _scheduler.DeleteJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken);
 
         {
             var jobKey = CheckAllConnectionsStatusByPlexServerJob.GetJobKey();
@@ -150,6 +151,29 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
                 .Create()
                 .WithIdentity(jobKey.Name, jobKey.Group)
                 .ForJob(jobKey)
+                .WithCronSchedule(
+                    "0 0 * * * ?", // Every hour
+                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionDoNothing()
+                )
+                .Build();
+
+            await _scheduler.ScheduleJob(job, trigger, cancellationToken);
+        }
+        {
+            var jobKey = MediaOverviewSnapshotJob.GetJobKey();
+            var job = JobBuilder
+                .Create<MediaOverviewSnapshotJob>()
+                .WithIdentity(jobKey)
+                .DisallowConcurrentExecution()
+                .StoreDurably()
+                .RequestRecovery()
+                .Build();
+
+            var trigger = TriggerBuilder
+                .Create()
+                .WithIdentity(jobKey.Name, jobKey.Group)
+                .ForJob(jobKey)
+                .StartNow()
                 .WithCronSchedule(
                     "0 0 * * * ?", // Every hour
                     x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionDoNothing()

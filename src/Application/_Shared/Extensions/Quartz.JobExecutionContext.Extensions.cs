@@ -74,6 +74,7 @@ public static partial class QuartzExtensions
             case JobTypes.CheckForUpdateJob:
             case JobTypes.CheckPlexLibrariesForUpdatesJob:
             case JobTypes.RefreshPlexAccountAccessJob:
+            case JobTypes.MediaOverviewSnapshotJob:
                 return defaultJson;
             case JobTypes.Unknown:
             case JobTypes.None:
