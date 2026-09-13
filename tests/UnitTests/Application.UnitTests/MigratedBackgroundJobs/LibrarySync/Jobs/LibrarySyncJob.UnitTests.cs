@@ -4,6 +4,14 @@ namespace Reaparr.Application.UnitTests;
 
 public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
 {
+    public LibrarySyncJobUnitTests() =>
+        SetupDependencies(builder =>
+            builder
+                .RegisterType<MediaOverviewRebuildCoordinator>()
+                .As<IMediaOverviewRebuildCoordinator>()
+                .SingleInstance()
+        );
+
     private static IJobExecutionContext SetupJobContext(int serverId, int libraryId)
     {
         var jobDetail = new Mock<IJobDetail>();
