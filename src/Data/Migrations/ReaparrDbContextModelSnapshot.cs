@@ -974,14 +974,6 @@ namespace Reaparr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .IsUnicode(false)
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("\"Unknown\"");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Key")
