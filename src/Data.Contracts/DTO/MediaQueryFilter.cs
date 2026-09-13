@@ -23,6 +23,11 @@ public record MediaQueryFilter
 
     public string QueryHash => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(BuildHashInput())));
 
+    public int Page => Parameters.Page ?? 1;
+    public int PageSize => Parameters.PageSize ?? MaximumPageSize;
+
+    public static readonly int MaximumPageSize = 100;
+
     private string BuildHashInput()
     {
         var parameters = Parameters;
