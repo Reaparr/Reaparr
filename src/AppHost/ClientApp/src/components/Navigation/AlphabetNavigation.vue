@@ -23,6 +23,9 @@
 </template>
 
 <script setup lang="ts">
+import { set } from '@vueuse/core';
+import { useSubscription } from '@vueuse/rxjs';
+import { useMediaOverviewStore } from '@store';
 import { MediaSortField } from '@enums';
 import { getVideoQualityFromValue, translateVideoQuality } from '@composables';
 
@@ -31,14 +34,14 @@ const clickedLabel = ref<string | null>(null);
 
 watch(() => mediaOverviewStore.navLoading, (isLoading) => {
 	if (!isLoading) {
-		clickedLabel.value = null;
+		set(clickedLabel, null);
 	}
 });
 
 function onLetterClick(label: string, scrollIndex: number) {
-	clickedLabel.value = label;
+	set(clickedLabel, label);
 	mediaOverviewStore.clearPendingMediaHighlight();
-	mediaOverviewStore.scrollToIndex(scrollIndex);
+	useSubscription(mediaOverviewStore.scrollToIndex(scrollIndex).subscribe());
 }
 
 function getDisplayValue(value: string): string {

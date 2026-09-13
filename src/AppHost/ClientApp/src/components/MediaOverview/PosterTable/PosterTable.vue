@@ -301,10 +301,6 @@ function scrollToIndex(index: number, highlight = true) {
 
 	Log.debug('Scrolling to index:', index);
 
-	// Prefetch the target page range before scrolling so data loads during the scroll animation
-	const prefetchStart = Math.max(0, index - mediaOverviewStore.pageSize);
-	const prefetchEnd = Math.min(mediaOverviewStore.totalCount, index + mediaOverviewStore.pageSize);
-	useSubscription(mediaOverviewStore.requestRange(prefetchStart, prefetchEnd).subscribe());
 
 	const rowIndex = Math.floor(index / get(gridItems));
 	get(rowVirtualizer).scrollToIndex(rowIndex, { align: 'start' });

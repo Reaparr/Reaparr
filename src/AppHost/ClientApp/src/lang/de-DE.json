@@ -113,8 +113,6 @@
             "library-not-yet-synced": "Die Mediendaten der Bibliothek wurden noch nicht synchronisiert. Bitte warten Sie oder aktualisieren Sie jetzt.",
             "no-search-results": "Es wurden keine Medien gefunden, die \"{query}\" enthalten.",
             "no-media-items-available": "Keine Medienelemente gefunden!",
-            "failed-to-load-media": "Fehler beim Laden der Medien. Der Server ist möglicherweise ausgelastet. Bitte versuchen Sie es erneut oder warten Sie, bis der Cache aufgewärmt ist.",
-            "retrying-in-seconds": "Erneuter Versuch in {seconds}s...",
             "no-filter-results": "Keine Medienergebnisse entsprechen den aktuellen Filtereinstellungen. Bitte passen Sie Ihre Filter an oder setzen Sie sie zurück, um die verfügbaren Ergebnisse anzuzeigen",
             "library-disabled": "Die Mediathek \"{library}\" ist deaktiviert. Aktivieren Sie sie und synchronisieren Sie sie erneut, bevor Sie ihre Medien anzeigen.",
             "enable-library-button": "Mediathek aktivieren",

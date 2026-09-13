@@ -113,8 +113,6 @@
             "library-not-yet-synced": "Dane multimediów bibliotecznych nie zostały jeszcze zsynchronizowane. Proszę czekać lub odświeżyć teraz.",
             "no-search-results": "Nie znaleziono nośników zawierających „{query}”",
             "no-media-items-available": "Nie znaleziono żadnych elementów multimedialnych!",
-            "failed-to-load-media": "Nie udało się załadować multimediów. Serwer może być zajęty. Spróbuj ponownie lub poczekaj na rozgrzanie pamięci podręcznej.",
-            "retrying-in-seconds": "Ponowna próba za {seconds}s...",
             "no-filter-results": "Brak wyników wyszukiwania multimediów zgodnych z aktualnymi ustawieniami filtra. Dostosuj lub zresetuj filtry, aby wyświetlić dostępne wyniki.",
             "library-disabled": "Biblioteka \"{library}\" jest wyłączona. Włącz ją i zsynchronizuj ponownie, zanim wyświetlisz jej multimedia.",
             "enable-library-button": "Włącz bibliotekę",

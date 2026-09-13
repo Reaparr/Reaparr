@@ -114,7 +114,7 @@ const BROWSER_MAX_CSS_HEIGHT = 33_000_000;
 
 const rowVirtualizer = useVirtualizer(
 	computed(() => ({
-		count: props.rows?.length ?? mediaOverviewStore.itemsLength,
+		count: props.rows?.length ?? mediaOverviewStore.totalCount,
 		getScrollElement,
 		estimateSize: () => ROW_HEIGHT,
 		overscan: 10,
