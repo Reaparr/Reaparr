@@ -10,16 +10,31 @@ public sealed class QueueMediaOverviewRebuildCommandValidator : AbstractValidato
 public sealed class QueueMediaOverviewRebuildCommandHandler : ICommandHandler<QueueMediaOverviewRebuildCommand, Result>
 {
     private readonly IScheduler _scheduler;
+    private readonly IMediaOverviewRebuildCoordinator _coordinator;
 
-    public QueueMediaOverviewRebuildCommandHandler(IScheduler scheduler) => _scheduler = scheduler;
+    public QueueMediaOverviewRebuildCommandHandler(
+        IScheduler scheduler,
+        IMediaOverviewRebuildCoordinator coordinator
+    )
+    {
+        _scheduler = scheduler;
+        _coordinator = coordinator;
+    }
 
     public async Task<Result> ExecuteAsync(
         QueueMediaOverviewRebuildCommand command,
         CancellationToken cancellationToken
     )
     {
-        return await Result.Try(async Task () =>
+        if (!_coordinator.RequestRebuild(DateTimeOffset.UtcNow))
+            return Result.Ok();
+
+        var result = await Result.Try(async Task () =>
             await _scheduler.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken)
         );
+        if (result.IsFailed)
+            _coordinator.CancelPendingRebuild();
+
+        return result;
     }
 }

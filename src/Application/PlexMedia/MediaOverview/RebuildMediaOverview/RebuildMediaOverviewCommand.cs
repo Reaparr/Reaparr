@@ -11,14 +11,17 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
 {
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly IMediaOverviewRebuildCoordinator _coordinator;
+    private readonly ILogger _log;
 
     public RebuildMediaOverviewCommandHandler(
         IReaparrDbContextFactory dbContextFactory,
-        IMediaOverviewRebuildCoordinator coordinator
+        IMediaOverviewRebuildCoordinator coordinator,
+        ILogger log
     )
     {
         _dbContextFactory = dbContextFactory;
         _coordinator = coordinator;
+        _log = log.ForContext<RebuildMediaOverviewCommandHandler>();
     }
 
     public async Task<Result> ExecuteAsync(RebuildMediaOverviewCommand command, CancellationToken cancellationToken)
@@ -36,12 +39,14 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
 
     private async Task<Result> RebuildRootAsync(PlexMediaType mediaType, CancellationToken cancellationToken)
     {
+        var totalStopwatch = Stopwatch.StartNew();
         using var context = await _dbContextFactory.CreateAsync();
 
         switch (mediaType)
         {
             case PlexMediaType.Movie:
             {
+                var loadStopwatch = Stopwatch.StartNew();
                 var snapshots = await context
                     .PlexMovies.Select(x => new MediaOverviewMovieSnapshot
                     {
@@ -63,16 +68,27 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                         QualityRank = 0,
                     })
                     .ToListAsync(cancellationToken);
-                return await ReplaceAsync(
-                    snapshots.AssignRanks(),
+                LogPhase(mediaType, "Load", snapshots.Count, loadStopwatch.Elapsed);
+
+                var rankStopwatch = Stopwatch.StartNew();
+                snapshots.AssignRanks();
+                LogPhase(mediaType, "Rank", snapshots.Count, rankStopwatch.Elapsed);
+
+                var replaceResult = await ReplaceAsync(
+                    mediaType,
+                    snapshots,
                     static dbContext => dbContext.MediaOverviewMovieSnapshots,
                     cancellationToken
                 );
+                LogPhase(mediaType, "Total", snapshots.Count, totalStopwatch.Elapsed);
+                return replaceResult;
             }
             case PlexMediaType.TvShow:
             {
+                var loadStopwatch = Stopwatch.StartNew();
                 var snapshots = await context
-                    .PlexTvShows.Select(x => new MediaOverviewTvShowSnapshot
+                    .PlexTvShows.AsNoTracking()
+                    .Select(x => new MediaOverviewTvShowSnapshot
                     {
                         PlexTvShowId = x.Id,
                         PlexLibraryId = x.PlexLibraryId,
@@ -92,11 +108,20 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                         QualityRank = 0,
                     })
                     .ToListAsync(cancellationToken);
-                return await ReplaceAsync(
-                    snapshots.AssignRanks(),
+                LogPhase(mediaType, "Load", snapshots.Count, loadStopwatch.Elapsed);
+
+                var rankStopwatch = Stopwatch.StartNew();
+                snapshots.AssignRanks();
+                LogPhase(mediaType, "Rank", snapshots.Count, rankStopwatch.Elapsed);
+
+                var replaceResult = await ReplaceAsync(
+                    mediaType,
+                    snapshots,
                     static dbContext => dbContext.MediaOverviewTvShowSnapshots,
                     cancellationToken
                 );
+                LogPhase(mediaType, "Total", snapshots.Count, totalStopwatch.Elapsed);
+                return replaceResult;
             }
             default:
                 return Result.Fail(
@@ -107,12 +132,14 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
     }
 
     private async Task<Result> ReplaceAsync<TSnapshot>(
+        PlexMediaType mediaType,
         IList<TSnapshot> snapshots,
         Func<IReaparrDbContext, DbSet<TSnapshot>> table,
         CancellationToken cancellationToken
     )
         where TSnapshot : class
     {
+        var stopwatch = Stopwatch.StartNew();
         using var context = await _dbContextFactory.CreateAsync();
         var result = await context.ExecuteTransactionAsync(
             async (dbContext, transactionToken) =>
@@ -123,7 +150,18 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
             },
             cancellationToken
         );
+        LogPhase(mediaType, "Replace", snapshots.Count, stopwatch.Elapsed);
         result.LogIfFailed();
         return result;
     }
+
+    private void LogPhase(PlexMediaType mediaType, string phase, int rowCount, TimeSpan elapsed) =>
+        _log.Here()
+            .Debug(
+                "Media overview rebuild phase {Phase} completed for {MediaType}: {RowCount} rows in {ElapsedMilliseconds} ms",
+                phase,
+                mediaType,
+                rowCount,
+                elapsed.TotalMilliseconds
+            );
 }

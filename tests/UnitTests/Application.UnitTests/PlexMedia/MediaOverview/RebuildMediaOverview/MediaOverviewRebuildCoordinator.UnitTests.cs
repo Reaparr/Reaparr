@@ -56,4 +56,77 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         using var nextRebuildLease = await coordinator.AcquireRebuildLeaseAsync(CancellationToken.None);
         nextRebuildLease.ShouldNotBeNull();
     }
+
+    [Test]
+    public void ShouldQueueOnlyOneTrigger_WhenMultipleInvalidationsArriveBeforeExecution()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = DateTimeOffset.UtcNow;
+
+        // Act
+        var firstRequest = coordinator.RequestRebuild(now);
+        var secondRequest = coordinator.RequestRebuild(now);
+
+        // Assert
+        firstRequest.ShouldBeTrue();
+        secondRequest.ShouldBeFalse();
+    }
+
+    [Test]
+    public void ShouldIgnoreInvalidationsForFifteenMinutes_AfterSuccessfulRebuild()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var completedAt = DateTimeOffset.UtcNow;
+        coordinator.RequestRebuild(completedAt).ShouldBeTrue();
+        coordinator.BeginRebuild(completedAt).ShouldBeTrue();
+
+        // Act
+        var followUpRequired = coordinator.CompleteRebuild(succeeded: true, completedAt);
+        var withinCooldown = coordinator.RequestRebuild(completedAt.AddMinutes(14).AddSeconds(59));
+        var atCooldownBoundary = coordinator.RequestRebuild(completedAt.AddMinutes(15));
+
+        // Assert
+        followUpRequired.ShouldBeFalse();
+        withinCooldown.ShouldBeFalse();
+        atCooldownBoundary.ShouldBeTrue();
+    }
+
+    [Test]
+    public void ShouldQueueOneFollowUp_WhenRebuildFailsAfterInvalidationDuringExecution()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = DateTimeOffset.UtcNow;
+        coordinator.RequestRebuild(now).ShouldBeTrue();
+        coordinator.BeginRebuild(now).ShouldBeTrue();
+
+        // Act
+        var firstRequest = coordinator.RequestRebuild(now);
+        var secondRequest = coordinator.RequestRebuild(now);
+        var shouldTriggerFollowUp = coordinator.CompleteRebuild(succeeded: false, now);
+
+        // Assert
+        firstRequest.ShouldBeFalse();
+        secondRequest.ShouldBeFalse();
+        shouldTriggerFollowUp.ShouldBeTrue();
+        coordinator.RequestRebuild(now).ShouldBeFalse();
+    }
+
+    [Test]
+    public void ShouldAllowRetry_WhenPendingTriggerFails()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = DateTimeOffset.UtcNow;
+        coordinator.RequestRebuild(now).ShouldBeTrue();
+
+        // Act
+        coordinator.CancelPendingRebuild();
+        var retryRequest = coordinator.RequestRebuild(now);
+
+        // Assert
+        retryRequest.ShouldBeTrue();
+    }
 }
