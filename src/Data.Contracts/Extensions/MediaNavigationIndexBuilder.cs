@@ -1,17 +1,6 @@
 using System.Globalization;
-using Reaparr.Application.Contracts;
 
-namespace Reaparr.Data;
-
-public sealed record MediaNavigationIndexRow(
-    string? SearchTitle,
-    int Year,
-    int? QualityValue,
-    int Duration,
-    DateTime AddedAt,
-    DateTime? UpdatedAt,
-    long MediaSize
-);
+namespace Reaparr.Data.Contracts;
 
 public static class MediaNavigationIndexBuilder
 {
