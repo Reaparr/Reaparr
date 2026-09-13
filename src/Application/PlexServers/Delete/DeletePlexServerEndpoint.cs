@@ -64,7 +64,7 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
             return;
         }
 
-        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(libraryIds, ct);
+        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(ct);
         rebuildResult.LogIfFailed();
 
         await Send.FluentResult(rebuildResult, ct);

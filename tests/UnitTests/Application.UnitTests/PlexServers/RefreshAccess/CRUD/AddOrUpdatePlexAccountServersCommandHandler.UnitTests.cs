@@ -25,7 +25,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
         await IDbContext.PlexAccountServers.ExecuteDeleteAsync(CancellationToken);
 
         Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
 
         // Act
@@ -34,7 +34,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<CancellationToken>()), Times.Once());
         var plexAccountServers = IDbContext.PlexAccountServers.Include(x => x.PlexServer).ToList();
         plexAccountServers.Count.ShouldBe(serverAccessTokens.Count);
 
@@ -75,7 +75,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
         await IDbContext.PlexAccountServers.ExecuteDeleteAsync(CancellationToken);
 
         Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
 
         // Act
@@ -84,7 +84,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<CancellationToken>()), Times.Once());
         var plexAccountServers = IDbContext
             .PlexAccountServers.Include(x => x.PlexServer)
             .Include(x => x.PlexAccount)
@@ -127,7 +127,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
             .ToList();
 
         Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
 
         // Act
@@ -136,7 +136,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Test]
@@ -164,7 +164,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
         await IDbContext.PlexAccountServers.ExecuteDeleteAsync(CancellationToken);
 
         Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
 
         // Act
@@ -173,7 +173,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<CancellationToken>()), Times.Once());
         var plexAccountServers = IDbContext.PlexAccountServers.Include(x => x.PlexServer).ToList();
         plexAccountServers.Count.ShouldBe(3);
 

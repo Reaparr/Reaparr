@@ -40,7 +40,7 @@ public class DeletePlexServerEndpointUnitTests
             .Select(x => x.Id)
             .ToListAsync(CancellationToken);
         Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
         var targetMovieDownloadId = Guid.Parse("91301000-0000-0000-0000-000000000001");
         var targetMovieFileDownloadId = Guid.Parse("91301000-0000-0000-0000-000000000002");
@@ -250,12 +250,13 @@ public class DeletePlexServerEndpointUnitTests
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
         Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new DeletePlexServerEndpointRequest { PlexServerId = server.Id });
+            new DeletePlexServerEndpointRequest { PlexServerId = server.Id }
+        );
         var result = endpointResult.Response;
 
         // Assert
@@ -264,7 +265,7 @@ public class DeletePlexServerEndpointUnitTests
         (
             await dbContext.PlexServers.IgnoreIsEnabledFilter().AnyAsync(x => x.Id == server.Id, CancellationToken)
         ).ShouldBeFalse();
-        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<IMediaOverviewReadStore>().Verify(x => x.RebuildAsync(It.IsAny<CancellationToken>()), Times.Once());
     }
 
     private static DownloadTaskDirectory CreateDownloadTaskDirectory() =>
@@ -287,7 +288,7 @@ public class DeletePlexServerEndpointUnitTests
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
         Mock.Mock<IMediaOverviewReadStore>()
-            .Setup(x => x.RebuildAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.RebuildAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
 
         // Act

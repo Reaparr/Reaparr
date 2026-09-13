@@ -115,7 +115,7 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
             RefreshDataType.PlexLibrary,
         ]);
 
-        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(affectedLibraryIds.Distinct().ToList(), ct);
+        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(ct);
         rebuildResult.LogIfFailed();
 
         await Send.FluentResult(rebuildResult, ct);

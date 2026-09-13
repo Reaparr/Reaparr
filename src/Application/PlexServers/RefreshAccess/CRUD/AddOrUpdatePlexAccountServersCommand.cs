@@ -182,7 +182,7 @@ public class AddOrUpdatePlexAccountServersCommandHandler
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
 
-        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(affectedLibraryIds, cancellationToken);
+        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(cancellationToken);
         if (rebuildResult.IsFailed)
         {
             rebuildResult.LogIfFailed();
