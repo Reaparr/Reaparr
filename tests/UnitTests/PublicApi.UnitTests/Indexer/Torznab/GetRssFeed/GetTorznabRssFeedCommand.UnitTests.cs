@@ -204,7 +204,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public void ShouldAcceptUnboundedNonNegativeLimit()
+    public void ShouldAcceptMaximumPaginationWindow()
     {
         // Arrange
         var validator = new GetTorznabRssFeedCommandValidator();
@@ -214,7 +214,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
             Categories = [],
             IncludeMovies = true,
             IncludeEpisodes = false,
-            Limit = 1000,
+            Limit = 10_000,
             Offset = 0,
             TorznabApiKey = "rss-key",
             Attributes = [],
@@ -227,6 +227,32 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         // Assert
         result.IsValid.ShouldBeTrue();
         result.Errors.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void ShouldRejectPaginationWindowBeyondMaximum()
+    {
+        // Arrange
+        var validator = new GetTorznabRssFeedCommandValidator();
+        var command = new GetTorznabRssFeedCommand
+        {
+            Integration = new IntegrationIdentity(IntegrationType.Radarr, Guid.NewGuid()),
+            Categories = [],
+            IncludeMovies = true,
+            IncludeEpisodes = false,
+            Limit = 1,
+            Offset = 10_000,
+            TorznabApiKey = "rss-key",
+            Attributes = [],
+            IncludeAllAttributes = true,
+        };
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldNotBeEmpty();
     }
 
     [Test]
@@ -387,6 +413,48 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         result.IsSuccess.ShouldBeTrue();
         result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
         result.Value.Channel.Items.Count.ShouldBe(Math.Min(1, Math.Max(0, expectedTotal - 1)));
+    }
+
+    [Test]
+    public async Task ShouldReturnEmptyPage_WhenOffsetExceedsFilteredTotal()
+    {
+        // Arrange
+        await SetupDatabase(
+            7640,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 4;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
+        var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var category = GetMovieQualityCategory(await IDbContext.PlexMovieData.FirstAsync(CancellationToken));
+        var expectedTotal = (await IDbContext.PlexMovieData.ToListAsync(CancellationToken)).Count(x =>
+            GetMovieQualityCategory(x) == category
+        );
+        var command = new GetTorznabRssFeedCommand
+        {
+            Integration = integration,
+            Categories = [category],
+            IncludeMovies = true,
+            IncludeEpisodes = false,
+            Limit = 1,
+            Offset = expectedTotal + 1,
+            TorznabApiKey = "rss-key",
+            Attributes = [],
+            IncludeAllAttributes = true,
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Channel.Items.ShouldBeEmpty();
+        result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
     }
 
     [Test]

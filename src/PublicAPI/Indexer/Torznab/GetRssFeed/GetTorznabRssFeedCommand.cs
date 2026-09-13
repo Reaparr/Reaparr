@@ -23,6 +23,9 @@ public class GetTorznabRssFeedCommandValidator : AbstractValidator<GetTorznabRss
         RuleFor(x => x.Categories).NotNull();
         RuleFor(x => x.Limit).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Offset).GreaterThanOrEqualTo(0);
+        RuleFor(x => x)
+            .Must(x => TorznabSearchHelpers.IsPaginationWithinLimit(x.Offset, x.Limit))
+            .WithMessage($"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}.");
         RuleFor(x => x.Attributes).NotNull();
     }
 }

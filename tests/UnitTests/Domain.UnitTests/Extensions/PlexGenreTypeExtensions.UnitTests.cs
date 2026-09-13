@@ -17,8 +17,8 @@ public class PlexGenreTypeExtensionsUnitTests
     [Arguments("Sport", PlexGenreType.Sport)]
     [Arguments("sports", PlexGenreType.Sport)]
     [Arguments("Sportcommentaar", PlexGenreType.Sport)]
-    [Arguments("Asia", PlexGenreType.Unknown)]
-    [Arguments("Indie", PlexGenreType.Unknown)]
+    [Arguments("Asia", PlexGenreType.Foreign)]
+    [Arguments("Indie", PlexGenreType.Independent)]
     public void ShouldMapExactNormalizedAlias_WhenGenreIsClassified(string genre, PlexGenreType expected)
     {
         // Arrange

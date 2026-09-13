@@ -101,4 +101,27 @@ public class TorznabRequestUnitTests
         mixed.IncludesMovies.ShouldBeTrue();
         mixed.IncludesEpisodes.ShouldBeTrue();
     }
+
+    [Test]
+    [Arguments(10_000, 0, true)]
+    [Arguments(10_000, 1, false)]
+    [Arguments(int.MaxValue, int.MaxValue, false)]
+    public void ShouldValidatePaginationWindowWithoutIntegerOverflow(int limit, int offset, bool expectedValid)
+    {
+        // Arrange
+        var endpointRequest = new TorznabEndpointRequest
+        {
+            Type = "search",
+            ApiKey = "key",
+            Limit = limit,
+            Offset = offset,
+        };
+        var validator = new TorznabEndpointRequestValidator();
+
+        // Act
+        var result = validator.Validate(endpointRequest);
+
+        // Assert
+        result.IsValid.ShouldBe(expectedValid);
+    }
 }

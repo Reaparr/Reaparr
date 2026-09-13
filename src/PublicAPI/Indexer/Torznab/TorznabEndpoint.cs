@@ -11,6 +11,9 @@ public class TorznabEndpointRequestValidator : Validator<TorznabEndpointRequest>
         RuleFor(x => x.ApiKey).NotEmpty();
         RuleFor(x => x.Offset).GreaterThanOrEqualTo(0).When(x => x.Offset.HasValue);
         RuleFor(x => x.Limit).GreaterThanOrEqualTo(0).When(x => x.Limit.HasValue);
+        RuleFor(x => x)
+            .Must(x => TorznabSearchHelpers.IsPaginationWithinLimit(x.Offset ?? 0, x.Limit ?? 50))
+            .WithMessage($"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}.");
         RuleFor(x => x.Season).GreaterThanOrEqualTo(0).When(x => x.Season.HasValue);
         RuleFor(x => x.Episode).GreaterThanOrEqualTo(0).When(x => x.Episode.HasValue);
         RuleFor(x => x.TvdbId).GreaterThanOrEqualTo(0).When(x => x.TvdbId.HasValue);
@@ -209,6 +212,11 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
         var failures = new List<IError>();
         var successfulSearches = 0;
         var total = 0;
+        if (!TorznabSearchHelpers.IsPaginationWithinLimit(request.Offset, request.Limit))
+            return Result.Fail<TorznabMediaSearchResponseDTO>(
+                $"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}."
+            );
+
         var branchRequest = request with { Offset = 0, Limit = request.Offset + request.Limit };
 
         if (request.IncludesEpisodes)

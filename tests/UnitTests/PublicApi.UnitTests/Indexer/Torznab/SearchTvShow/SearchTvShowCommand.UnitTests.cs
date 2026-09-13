@@ -904,7 +904,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     }
 
     [Test]
-    public void ShouldPassValidation_WhenLimitExceedsPreviousMax()
+    public void ShouldPassValidation_WhenLimitIsAtMaximum()
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
@@ -913,7 +913,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             Query = string.Empty,
             Season = 0,
             Episode = 0,
-            Limit = 501,
+            Limit = 10_000,
             Offset = 0,
             IMDB_ID = string.Empty,
             TMDB_ID = 0,
@@ -926,6 +926,31 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
         // Assert
         result.IsValid.ShouldBeTrue();
         result.Errors.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void ShouldFailValidation_WhenPaginationWindowExceedsMaximum()
+    {
+        // Arrange
+        var validator = new SearchTvShowCommandValidator();
+        var cmd = new SearchTvShowCommand
+        {
+            Query = string.Empty,
+            Season = 0,
+            Episode = 0,
+            Limit = 1,
+            Offset = 10_000,
+            IMDB_ID = string.Empty,
+            TMDB_ID = 0,
+            TVDB_ID = 0,
+        };
+
+        // Act
+        var result = validator.Validate(cmd);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldNotBeEmpty();
     }
 
     [Test]

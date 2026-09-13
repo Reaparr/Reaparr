@@ -29,6 +29,7 @@ public class GetCapabilitiesCommandUnitTests : BaseCommandUnitTest<GetCapabiliti
                 .SupportedTorznabCategories.Select(x => new TorznabCategory((int)x.Id, x.Name))
                 .ToList()
         );
+        result.Value.Limits.Max.ShouldBe(10_000);
         xml.ShouldNotContain("<torznab:attributes");
         xml.ShouldNotContain("<attributes");
     }

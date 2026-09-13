@@ -33,6 +33,9 @@ public class SearchMovieCommandValidator : AbstractValidator<SearchMovieCommand>
     {
         RuleFor(x => x.Limit).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Offset).GreaterThanOrEqualTo(0);
+        RuleFor(x => x)
+            .Must(x => TorznabSearchHelpers.IsPaginationWithinLimit(x.Offset, x.Limit))
+            .WithMessage($"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}.");
         RuleFor(x => x.TMDB_ID).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Categories).NotNull();
         RuleFor(x => x.Attributes).NotNull();

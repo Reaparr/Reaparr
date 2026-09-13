@@ -392,6 +392,8 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
         };
 
         var expectedTotal = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
+        var movieCount = await IDbContext.PlexMovies.CountAsync(CancellationToken);
+        expectedTotal.ShouldBeGreaterThan(movieCount);
 
         // Act
         var result = await Sut.ExecuteAsync(cmd, CancellationToken);
@@ -480,14 +482,14 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
     }
 
     [Test]
-    public void ShouldPassValidation_WhenLimitExceedsPreviousMax()
+    public void ShouldPassValidation_WhenLimitIsAtMaximum()
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
         var cmd = new SearchMovieCommand
         {
             Query = string.Empty,
-            Limit = 501,
+            Limit = 10_000,
             Offset = 0,
             IMDB_ID = string.Empty,
             TMDB_ID = 0,
@@ -499,6 +501,28 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
         // Assert
         result.IsValid.ShouldBeTrue();
         result.Errors.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void ShouldFailValidation_WhenPaginationWindowExceedsMaximum()
+    {
+        // Arrange
+        var validator = new SearchMovieCommandValidator();
+        var cmd = new SearchMovieCommand
+        {
+            Query = string.Empty,
+            Limit = 1,
+            Offset = 10_000,
+            IMDB_ID = string.Empty,
+            TMDB_ID = 0,
+        };
+
+        // Act
+        var result = validator.Validate(cmd);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldNotBeEmpty();
     }
 
     [Test]
