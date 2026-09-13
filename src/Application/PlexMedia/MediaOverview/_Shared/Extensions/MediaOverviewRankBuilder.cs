@@ -8,82 +8,28 @@ public static class MediaOverviewRankBuilder
 
     public static List<MediaOverviewMovieSnapshot> AssignRanks(this List<MediaOverviewMovieSnapshot> snapshots)
     {
-        AssignRanks(
-            snapshots,
-            static x => x.PlexMovieId,
-            static x => x.SearchTitle,
-            static x => x.Year,
-            static x => x.AddedAt,
-            static x => x.UpdatedAt,
-            static x => x.Duration,
-            static x => x.MediaSize,
-            static x => x.Quality,
-            static (x, rank) => x.TitleRank = rank,
-            static (x, rank) => x.YearRank = rank,
-            static (x, rank) => x.AddedAtRank = rank,
-            static (x, rank) => x.UpdatedAtRank = rank,
-            static (x, rank) => x.DurationRank = rank,
-            static (x, rank) => x.MediaSizeRank = rank,
-            static (x, rank) => x.QualityRank = rank
-        );
+        var permutation = Enumerable.Range(0, snapshots.Count).ToArray();
+        AssignRank(snapshots, permutation, CompareMovieTitle, static (x, rank) => x.TitleRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Year, right.Year, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.YearRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.AddedAt, right.AddedAt, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.AddedAtRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.UpdatedAt, right.UpdatedAt, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.UpdatedAtRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Duration, right.Duration, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.DurationRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.MediaSize, right.MediaSize, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.MediaSizeRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Quality, right.Quality, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.QualityRank = rank);
         return snapshots;
     }
 
     public static List<MediaOverviewTvShowSnapshot> AssignRanks(this List<MediaOverviewTvShowSnapshot> snapshots)
     {
-        AssignRanks(
-            snapshots,
-            static x => x.PlexTvShowId,
-            static x => x.SearchTitle,
-            static x => x.Year,
-            static x => x.AddedAt,
-            static x => x.UpdatedAt,
-            static x => x.Duration,
-            static x => x.MediaSize,
-            static x => x.Quality,
-            static (x, rank) => x.TitleRank = rank,
-            static (x, rank) => x.YearRank = rank,
-            static (x, rank) => x.AddedAtRank = rank,
-            static (x, rank) => x.UpdatedAtRank = rank,
-            static (x, rank) => x.DurationRank = rank,
-            static (x, rank) => x.MediaSizeRank = rank,
-            static (x, rank) => x.QualityRank = rank
-        );
-        return snapshots;
-    }
-
-    private static void AssignRanks<TSnapshot>(
-        List<TSnapshot> snapshots,
-        Func<TSnapshot, int> id,
-        Func<TSnapshot, string> title,
-        Func<TSnapshot, int> year,
-        Func<TSnapshot, DateTime> addedAt,
-        Func<TSnapshot, DateTime?> updatedAt,
-        Func<TSnapshot, int> duration,
-        Func<TSnapshot, long> mediaSize,
-        Func<TSnapshot, VideoQuality> quality,
-        Action<TSnapshot, int> setTitleRank,
-        Action<TSnapshot, int> setYearRank,
-        Action<TSnapshot, int> setAddedAtRank,
-        Action<TSnapshot, int> setUpdatedAtRank,
-        Action<TSnapshot, int> setDurationRank,
-        Action<TSnapshot, int> setMediaSizeRank,
-        Action<TSnapshot, int> setQualityRank
-    )
-    {
         var permutation = Enumerable.Range(0, snapshots.Count).ToArray();
-        AssignRank(
-            snapshots,
-            permutation,
-            (left, right) => Compare(title(left), title(right), id(left), id(right), _titleComparer),
-            setTitleRank
-        );
-        AssignRank(snapshots, permutation, (left, right) => Compare(year(left), year(right), id(left), id(right)), setYearRank);
-        AssignRank(snapshots, permutation, (left, right) => Compare(addedAt(left), addedAt(right), id(left), id(right)), setAddedAtRank);
-        AssignRank(snapshots, permutation, (left, right) => Compare(updatedAt(left), updatedAt(right), id(left), id(right)), setUpdatedAtRank);
-        AssignRank(snapshots, permutation, (left, right) => Compare(duration(left), duration(right), id(left), id(right)), setDurationRank);
-        AssignRank(snapshots, permutation, (left, right) => Compare(mediaSize(left), mediaSize(right), id(left), id(right)), setMediaSizeRank);
-        AssignRank(snapshots, permutation, (left, right) => Compare(quality(left), quality(right), id(left), id(right)), setQualityRank);
+        AssignRank(snapshots, permutation, CompareTvShowTitle, static (x, rank) => x.TitleRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Year, right.Year, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.YearRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.AddedAt, right.AddedAt, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.AddedAtRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.UpdatedAt, right.UpdatedAt, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.UpdatedAtRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Duration, right.Duration, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.DurationRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.MediaSize, right.MediaSize, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.MediaSizeRank = rank);
+        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Quality, right.Quality, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.QualityRank = rank);
+        return snapshots;
     }
 
     private static void AssignRank<TSnapshot>(
@@ -97,6 +43,12 @@ public static class MediaOverviewRankBuilder
         for (var rank = 0; rank < permutation.Length; rank++)
             setRank(snapshots[permutation[rank]], rank);
     }
+
+    private static int CompareMovieTitle(MediaOverviewMovieSnapshot left, MediaOverviewMovieSnapshot right) =>
+        Compare(left.SearchTitle, right.SearchTitle, left.PlexMovieId, right.PlexMovieId, _titleComparer);
+
+    private static int CompareTvShowTitle(MediaOverviewTvShowSnapshot left, MediaOverviewTvShowSnapshot right) =>
+        Compare(left.SearchTitle, right.SearchTitle, left.PlexTvShowId, right.PlexTvShowId, _titleComparer);
 
     private static int Compare<T>(T left, T right, int leftId, int rightId, IComparer<T>? comparer = null)
     {

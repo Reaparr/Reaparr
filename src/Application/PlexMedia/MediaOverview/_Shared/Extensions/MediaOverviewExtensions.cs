@@ -44,22 +44,16 @@ internal static class MediaOverviewExtensions
                 .ToListAsync(cancellationToken);
         }
 
-        var libraries = context.PlexLibraries.Where(x => x.Type == filter.MediaType);
-        if (await context.PlexAccounts.AnyAsync(cancellationToken))
-            libraries = libraries.Where(x => x.PlexServer!.PlexAccountServers.Any() && x.PlexAccountLibraries.Any());
+        var libraries = context.PlexLibraries.Where(x =>
+            x.Type == filter.MediaType
+            && (!context.PlexAccounts.Any() || (x.PlexServer!.PlexAccountServers.Any() && x.PlexAccountLibraries.Any()))
+        );
 
         if (filter.FilterOwnedMedia)
             libraries = libraries.WhereIsNotOwned();
 
         if (filter.FilterOfflineMedia)
-        {
-            var onlineServerIds = await context
-                .PlexServerStatuses.Where(x => x.IsSuccessful)
-                .Select(x => x.PlexServerId)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-            libraries = libraries.Where(x => onlineServerIds.Contains(x.PlexServerId));
-        }
+            libraries = libraries.Where(x => context.PlexServerStatuses.Any(status => status.PlexServerId == x.PlexServerId && status.IsSuccessful));
 
         return await libraries.Select(x => x.Id).ToListAsync(cancellationToken);
     }
@@ -86,6 +80,13 @@ internal static class MediaOverviewExtensions
     {
         var libraries = await context
             .PlexLibraries.Where(x => allowedLibraryIds.Contains(x.Id))
+            .Select(x => new
+            {
+                x.MovieCount,
+                x.TvShowCount,
+                x.SeasonCount,
+                x.EpisodeCount,
+            })
             .ToListAsync(cancellationToken);
         var hasUserFilters = options.Filter is not null || filter.ComparisonState.HasValue;
         var totalSeasonCount = libraries.Sum(x => x.SeasonCount);

@@ -80,13 +80,18 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             .Take(filter.PageSize)
             .Select(x => x.PlexTvShowId)
             .ToListAsync(cancellationToken);
-        var totalCount = await snapshots.CountAsync(cancellationToken);
-        var mediaSize =
-            await context
-                .PlexTvShows.Where(x => snapshots.Select(snapshot => snapshot.PlexTvShowId).Contains(x.Id))
-                .Select(x => (long?)x.MediaSize)
-                .SumAsync(cancellationToken)
-            ?? 0;
+        var aggregate = await snapshots
+            .Join(
+                context.PlexTvShows,
+                snapshot => snapshot.PlexTvShowId,
+                tvShow => tvShow.Id,
+                (_, tvShow) => tvShow.MediaSize
+            )
+            .GroupBy(_ => 1)
+            .Select(group => new { Count = group.Count(), MediaSize = group.Sum() })
+            .FirstOrDefaultAsync(cancellationToken);
+        var totalCount = aggregate?.Count ?? 0;
+        var mediaSize = aggregate?.MediaSize ?? 0;
         var items = await context
             .PlexTvShows.Where(x => ids.Contains(x.Id))
             .Select(x => new PlexMediaSlimDTO
@@ -131,25 +136,28 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             mediaSize,
             cancellationToken
         );
-        var pageIds = items.Select(x => x.Id).ToArray();
-        result.Roles = await context
-            .PlexTvShowActors.Where(x => pageIds.AsEnumerable().Contains(x.PlexTvShowId))
-            .Select(x => x.PlexActorId)
-            .Distinct()
-            .OrderBy(x => x)
-            .ToListAsync(cancellationToken);
-        result.Countries = await context
-            .PlexTvShowCountries.Where(x => pageIds.AsEnumerable().Contains(x.PlexTvShowId))
-            .Select(x => x.CountryId)
-            .Distinct()
-            .OrderBy(x => x)
-            .ToListAsync(cancellationToken);
-        result.Genres = await context
-            .PlexTvShowGenres.Where(x => pageIds.AsEnumerable().Contains(x.PlexTvShowId))
-            .Select(x => x.GenresId)
-            .Distinct()
-            .OrderBy(x => x)
-            .ToListAsync(cancellationToken);
+        if (items.Count > 0)
+        {
+            var pageIds = items.Select(x => x.Id).AsEnumerable();
+            var metadata = await context
+                .PlexTvShowActors.Where(x => pageIds.Contains(x.PlexTvShowId))
+                .Select(x => new { Type = 0, Id = x.PlexActorId })
+                .Concat(
+                    context
+                        .PlexTvShowCountries.Where(x => pageIds.Contains(x.PlexTvShowId))
+                        .Select(x => new { Type = 1, Id = x.CountryId })
+                )
+                .Concat(
+                    context
+                        .PlexTvShowGenres.Where(x => pageIds.Contains(x.PlexTvShowId))
+                        .Select(x => new { Type = 2, Id = x.GenresId })
+                )
+                .Distinct()
+                .ToListAsync(cancellationToken);
+            result.Roles = metadata.Where(x => x.Type == 0).Select(x => x.Id).OrderBy(x => x).ToList();
+            result.Countries = metadata.Where(x => x.Type == 1).Select(x => x.Id).OrderBy(x => x).ToList();
+            result.Genres = metadata.Where(x => x.Type == 2).Select(x => x.Id).OrderBy(x => x).ToList();
+        }
         result.Qualities = items
             .SelectMany(x => x.Qualities)
             .Select(x => x.Quality.ToId())
