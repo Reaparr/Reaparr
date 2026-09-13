@@ -79,6 +79,22 @@
 					</QRow>
 				</template>
 				<!-- No Media Overview - Error Messages -->
+				<template v-else-if="mediaOverviewStore.mediaLoadError">
+					<QRow
+						class="q-mt-md"
+						justify="center">
+						<QCol cols="auto">
+							<QAlert type="negative">
+								<div>{{ t('components.media-overview.media-load-failed') }}</div>
+								<BaseButton
+									class="q-mt-sm"
+									color="primary"
+									:label="t('components.media-overview.retry-media-load')"
+									@click="retryMediaLoad" />
+							</QAlert>
+						</QCol>
+					</QRow>
+				</template>
 				<template v-else>
 					<QRow
 						class="q-mt-md"
@@ -240,6 +256,7 @@ function onAction(event: IMediaOverviewBarActions) {
 			break;
 		case 'selection-dialog':
 			dialogStore.openDialog(DialogType.MediaSelectionDialog);
+
 			break;
 		case 'refresh-library':
 			dialogStore.openDialog(DialogType.RefreshMediaDialog);
@@ -251,6 +268,10 @@ function onAction(event: IMediaOverviewBarActions) {
 			Log.error('Unknown action event', event);
 			break;
 	}
+}
+
+function retryMediaLoad() {
+	useSubscription(mediaOverviewStore.refreshMediaData().subscribe());
 }
 
 function onOptionsClosed(hasChanged: boolean) {

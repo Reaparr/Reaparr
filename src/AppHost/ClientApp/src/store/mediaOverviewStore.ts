@@ -41,7 +41,7 @@ interface IMediaOverviewStoreState {
 	lastMediaItemViewed: PlexMediaSlimDTO | null;
 	pendingMediaHighlightId: number | null;
 	pendingMediaHighlightLibraryId: number | null;
-	loading: boolean;
+	mediaLoadError: boolean;
 	navLoading: boolean;
 	filterMetadataLoading: boolean;
 	isDetailView: boolean;
@@ -77,7 +77,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		lastMediaItemViewed: null,
 		pendingMediaHighlightId: null,
 		pendingMediaHighlightLibraryId: null,
-		loading: false,
+		mediaLoadError: false,
 		navLoading: false,
 		filterMetadataLoading: false,
 		isDetailView: false,
@@ -267,18 +267,25 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		},
 		refreshMediaData(): Observable<PlexMediaStatisticsDTO | null> {
 			state.loading = true;
+			state.mediaLoadError = false;
 			mediaPages.clear();
 			pendingPages.clear();
 			state.itemsLength = 0;
 			Log.debug('Starting media request', { libraryId: state.libraryId, mediaType: get(getters.getMediaType) });
 			return actions.requestMediaPage(1, state.pageSize).pipe(
 				tap({
-					next: () => {
+					next: (data) => {
 						state.loading = false;
+						if (!data) {
+							state.mediaLoadError = true;
+							Log.warn('Media request returned no data');
+							return;
+						}
 						Log.debug('Media request completed successfully');
 					},
 					error: (err) => {
 						state.loading = false;
+						state.mediaLoadError = true;
 						Log.error('Media request failed', err);
 					},
 					complete: () => {

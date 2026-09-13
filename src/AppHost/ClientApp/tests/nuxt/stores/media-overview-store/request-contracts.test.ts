@@ -165,6 +165,46 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		expect(lastMediaRequest().params.sort).toBe('year:desc');
 	});
 
+	test('Should preserve load failure state when media response fails', async () => {
+		// Arrange
+		const store = useMediaOverviewStore();
+		mock.onGet(new RegExp('/api/PlexMedia')).reply(200, {
+			isSuccess: false,
+			statusCode: 500,
+			errors: [{ message: 'failure', reasons: [], metadata: {} }],
+			successes: [],
+			value: null,
+		});
+
+		// Act
+		const result = subscribeSpyTo(store.refreshMediaData());
+		await result.onComplete();
+
+		// Assert
+		expect(result.getLastValue()).toBeNull();
+		expect(store.mediaLoadError).toBe(true);
+	});
+
+	test('Should clear media load failure after a successful retry', async () => {
+		// Arrange
+		const store = useMediaOverviewStore();
+		const success = createMediaStatistics(1);
+		mock.onGet(new RegExp('/api/PlexMedia'))
+			.replyOnce(200, { isSuccess: false, statusCode: 500, errors: [], successes: [], value: null })
+			.onGet(new RegExp('/api/PlexMedia'))
+			.reply(200, generateResultDTO(success));
+
+		// Act
+		const first = subscribeSpyTo(store.refreshMediaData());
+		await first.onComplete();
+		const second = subscribeSpyTo(store.retryMediaLoad());
+		await second.onComplete();
+
+		// Assert
+		expect(store.mediaLoadError).toBe(false);
+		expect(store.getMediaItems).toEqual(success.mediaList);
+	});
+
 	test('Should map failed media responses to null without caching a page', async () => {
 		// Arrange
 		const store = useMediaOverviewStore();
