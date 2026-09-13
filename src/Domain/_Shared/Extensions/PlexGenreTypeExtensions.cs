@@ -217,7 +217,7 @@ public static class PlexGenreTypeExtensions
             return type;
 
         var types = normalizedGenre
-            .Split([',', '/', ';'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Split([',', '/', ';', '&'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Select(Map)
             .Where(x => x != PlexGenreType.Unknown)
             .Distinct()

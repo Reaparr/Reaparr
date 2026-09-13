@@ -135,7 +135,13 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(SearchResult("tv-result-1", "tv-result-2", "tv-result-3"))
+            .ReturnsAsync(
+                SearchResultWithPublicationDates(
+                    ("tv-result-1", DateTimeOffset.UnixEpoch.AddMinutes(4)),
+                    ("tv-result-2", DateTimeOffset.UnixEpoch.AddMinutes(1)),
+                    ("tv-result-3", DateTimeOffset.UnixEpoch.AddMinutes(-2))
+                )
+            )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -150,7 +156,13 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(SearchResult("movie-result-1", "movie-result-2", "movie-result-3"))
+            .ReturnsAsync(
+                SearchResultWithPublicationDates(
+                    ("movie-result-1", DateTimeOffset.UnixEpoch.AddMinutes(3)),
+                    ("movie-result-2", DateTimeOffset.UnixEpoch),
+                    ("movie-result-3", DateTimeOffset.UnixEpoch.AddMinutes(-3))
+                )
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -162,10 +174,13 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
         responseBody.Position = 0;
         using var reader = new StreamReader(responseBody, leaveOpen: true);
         var xml = await reader.ReadToEndAsync();
+        xml.ShouldContain("movie-result-1");
         xml.ShouldContain("tv-result-2");
-        xml.ShouldContain("tv-result-3");
         xml.ShouldNotContain("tv-result-1");
-        xml.ShouldNotContain("movie-result-1");
+        xml.ShouldNotContain("movie-result-2");
+        xml.IndexOf("movie-result-1", StringComparison.Ordinal).ShouldBeLessThan(
+            xml.IndexOf("tv-result-2", StringComparison.Ordinal)
+        );
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -307,6 +322,26 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                         }),
                     ],
                     Response = new TorznabResponseMetadata { Total = titles.Length },
+                },
+            }
+        );
+    private static Result<TorznabMediaSearchResponseDTO> SearchResultWithPublicationDates(
+        params (string Title, DateTimeOffset PubDate)[] items
+    ) =>
+        Result.Ok(
+            new TorznabMediaSearchResponseDTO
+            {
+                Channel = new TorznabChannel
+                {
+                    Items =
+                    [
+                        .. items.Select(item => new TorznabItem
+                        {
+                            Title = item.Title,
+                            PubDate = item.PubDate.ToString("R"),
+                        }),
+                    ],
+                    Response = new TorznabResponseMetadata { Total = items.Length },
                 },
             }
         );

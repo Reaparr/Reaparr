@@ -1,3 +1,4 @@
+using System.Globalization;
 using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
@@ -249,7 +250,14 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                 {
                     Title = "Reaparr Indexer",
                     Description = $"Search results for {request.Query}",
-                    Items = items.Skip(request.Offset).Take(request.Limit).ToList(),
+                    Items = items
+                        .OrderByDescending(item =>
+                            DateTimeOffset.Parse(item.PubDate, CultureInfo.InvariantCulture)
+                        )
+                        .ThenBy(item => item.Guid.Value, StringComparer.Ordinal)
+                        .Skip(request.Offset)
+                        .Take(request.Limit)
+                        .ToList(),
                     Response = new TorznabResponseMetadata { Offset = request.Offset, Total = total },
                 },
             }

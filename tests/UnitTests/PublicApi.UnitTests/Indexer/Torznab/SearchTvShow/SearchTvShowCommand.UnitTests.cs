@@ -524,7 +524,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             Episode = episodeNumber,
             Limit = 100,
             Offset = 0,
-            IMDB_ID = imdb.Replace("tt", ""),
+            IMDB_ID = imdb,
             TMDB_ID = 0,
             TVDB_ID = 0,
         };

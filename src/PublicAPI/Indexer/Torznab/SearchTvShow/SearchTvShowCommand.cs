@@ -109,7 +109,12 @@ public class SearchTvShowCommandHandler : ICommandHandler<SearchTvShowCommand, R
         }
 
         if (!string.IsNullOrWhiteSpace(command.IMDB_ID))
-            query = query.Where(x => x.PlexTvShowEpisode!.TvShow!.Guid_IMDB == "tt" + command.IMDB_ID);
+        {
+            var imdbId = command.IMDB_ID.StartsWith("tt", StringComparison.OrdinalIgnoreCase)
+                ? command.IMDB_ID
+                : $"tt{command.IMDB_ID}";
+            query = query.Where(x => x.PlexTvShowEpisode!.TvShow!.Guid_IMDB == imdbId);
+        }
         if (command.TMDB_ID > 0)
             query = query.Where(x => x.PlexTvShowEpisode!.TvShow!.Guid_TMDB == command.TMDB_ID);
         if (command.TVDB_ID > 0)
