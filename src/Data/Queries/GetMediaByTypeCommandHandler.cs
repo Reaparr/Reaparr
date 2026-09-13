@@ -190,6 +190,10 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 }
                 else
                 {
+                    response.TotalCount = await movieQuery.CountAsync(ct);
+                    response.MediaSize = await movieQuery.SumAsync(x => x.MediaSize, ct);
+                    response.TotalMediaSize = response.MediaSize;
+
                     await SetNavigationIndexes(
                         response,
                         movieQuery.Select(x => new MediaNavigationIndexRow(
@@ -204,10 +208,6 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         options,
                         ct
                     );
-
-                    response.TotalCount = await movieQuery.CountAsync(ct);
-                    response.MediaSize = await movieQuery.SumAsync(x => x.MediaSize, ct);
-                    response.TotalMediaSize = response.MediaSize;
 
                     var movies = await movieQuery.ApplyPaging(options).ToListAsync(ct);
 
@@ -309,6 +309,10 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 }
                 else
                 {
+                    response.TotalCount = await tvShowQuery.CountAsync(ct);
+                    response.MediaSize = await tvShowQuery.SumAsync(x => x.MediaSize, ct);
+                    response.TotalMediaSize = response.MediaSize;
+
                     await SetNavigationIndexes(
                         response,
                         tvShowQuery.Select(x => new MediaNavigationIndexRow(
@@ -323,10 +327,6 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         options,
                         ct
                     );
-
-                    response.TotalCount = await tvShowQuery.CountAsync(ct);
-                    response.MediaSize = await tvShowQuery.SumAsync(x => x.MediaSize, ct);
-                    response.TotalMediaSize = response.MediaSize;
 
                     var tvShows = await tvShowQuery.ApplyPaging(options).ToListAsync(ct);
 
