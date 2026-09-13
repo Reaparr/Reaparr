@@ -32,11 +32,11 @@ public sealed class GetMediaOverviewCommandHandler
         var result = command.Filter.MediaType switch
         {
             PlexMediaType.Movie => await _commandExecutor.Send(
-                new GetMovieMediaOverviewCommand(command.Filter),
+                new GetMediaOverviewMovieCommand(command.Filter),
                 cancellationToken
             ),
             PlexMediaType.TvShow => await _commandExecutor.Send(
-                new GetTvShowMediaOverviewCommand(command.Filter),
+                new GetMediaOverviewTvShowCommand(command.Filter),
                 cancellationToken
             ),
             _ => Result.Fail("Media type {FilterMediaType} is not supported", command.Filter.MediaType),

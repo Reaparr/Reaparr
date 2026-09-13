@@ -2,7 +2,7 @@ using FlexQuery.NET.Models;
 
 namespace Reaparr.Application.UnitTests;
 
-public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovieMediaOverviewCommand>
+public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOverviewMovieCommand>
 {
     [Test]
     public async Task ShouldReturnOrderedBoundedMoviePageFromSnapshotRows()
@@ -23,7 +23,7 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovi
             .Select(x => x.PlexLibraryId)
             .SingleAsync(CancellationToken);
         var setupContext = IDbContext;
-        await setupContext.MovieMediaOverviewSnapshots.AddRangeAsync(
+        await setupContext.MediaOverviewMovieSnapshots.AddRangeAsync(
             movieIds.Select((id, index) => CreateMovieSnapshot(id, movieIds.Count - index - 1, libraryId)),
             CancellationToken
         );
@@ -31,7 +31,7 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovi
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
-            new GetMovieMediaOverviewCommand(
+            new GetMediaOverviewMovieCommand(
                 new MediaQueryFilter
                 {
                     MediaType = PlexMediaType.Movie,
@@ -55,14 +55,21 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovi
         result.Value.Items[0].Id.ShouldBe(movieIds[1]);
         result.Value.Items[0].SortIndex.ShouldBe(2);
         result.Errors.Count.ShouldBe(0);
-        result.Value.QueryHash.ShouldBe(new MediaQueryFilter
-        {
-            MediaType = PlexMediaType.Movie,
-            PlexLibraryId = libraryId,
-            FilterOfflineMedia = false,
-            FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters { Page = 2, PageSize = 1, Sort = "year:desc" },
-        }.QueryHash);
+        result.Value.QueryHash.ShouldBe(
+            new MediaQueryFilter
+            {
+                MediaType = PlexMediaType.Movie,
+                PlexLibraryId = libraryId,
+                FilterOfflineMedia = false,
+                FilterOwnedMedia = false,
+                Parameters = new FlexQueryParameters
+                {
+                    Page = 2,
+                    PageSize = 1,
+                    Sort = "year:desc",
+                },
+            }.QueryHash
+        );
         result.Value.Page.ShouldBe(2);
         result.Value.PageSize.ShouldBe(1);
         result.Value.Items[0].Type.ShouldBe(PlexMediaType.Movie);
@@ -85,7 +92,7 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovi
         var movies = await IDbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = movies[0].PlexLibraryId;
         var setupContext = IDbContext;
-        await setupContext.MovieMediaOverviewSnapshots.AddRangeAsync(
+        await setupContext.MediaOverviewMovieSnapshots.AddRangeAsync(
             movies.Select((movie, index) => CreateMovieSnapshot(movie.Id, index, libraryId)),
             CancellationToken
         );
@@ -106,7 +113,7 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovi
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
-            new GetMovieMediaOverviewCommand(
+            new GetMediaOverviewMovieCommand(
                 new MediaQueryFilter
                 {
                     MediaType = PlexMediaType.Movie,
@@ -137,7 +144,7 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovi
     public async Task ShouldRejectPageSizeAboveHardMaximumBeforeDatabaseWork()
     {
         // Arrange
-        var command = new GetMovieMediaOverviewCommand(
+        var command = new GetMediaOverviewMovieCommand(
             new MediaQueryFilter
             {
                 MediaType = PlexMediaType.Movie,
@@ -169,15 +176,20 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovi
             ComparisonState = PlexMediaComparisonState.Missing,
             Parameters = new FlexQueryParameters { Page = 1, PageSize = 25 },
         };
-        var expected = new PagedMediaQueryResult { QueryHash = filter.QueryHash, Page = 1, PageSize = 25 };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(
-                command => command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
+        var expected = new PagedMediaQueryResult
+        {
+            QueryHash = filter.QueryHash,
+            Page = 1,
+            PageSize = 25,
+        };
+        Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
+                command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMovieMediaOverviewCommand(filter));
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMovieCommand(filter));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -191,7 +203,7 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMovi
     public async Task ShouldRejectTvShowFilter_WithoutDatabaseAccess()
     {
         // Arrange
-        var command = new GetMovieMediaOverviewCommand(
+        var command = new GetMediaOverviewMovieCommand(
             new MediaQueryFilter
             {
                 MediaType = PlexMediaType.TvShow,

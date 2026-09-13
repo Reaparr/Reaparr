@@ -9,9 +9,15 @@ public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOver
     {
         // Arrange
         var filter = CreateFilter(PlexMediaType.Movie);
-        var expected = new PagedMediaQueryResult { QueryHash = filter.QueryHash, Page = 2, PageSize = 25, TotalCount = 7 };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(
-                command => command is GetMovieMediaOverviewCommand && ((GetMovieMediaOverviewCommand)command).Filter == filter
+        var expected = new PagedMediaQueryResult
+        {
+            QueryHash = filter.QueryHash,
+            Page = 2,
+            PageSize = 25,
+            TotalCount = 7,
+        };
+        Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
+                command is GetMediaOverviewMovieCommand && ((GetMediaOverviewMovieCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());
@@ -24,10 +30,8 @@ public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOver
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBeSameAs(expected);
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GetTvShowMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<GetMediaOverviewTvShowCommand>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -35,9 +39,15 @@ public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOver
     {
         // Arrange
         var filter = CreateFilter(PlexMediaType.TvShow);
-        var expected = new PagedMediaQueryResult { QueryHash = filter.QueryHash, Page = 2, PageSize = 25, TotalCount = 9 };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(
-                command => command is GetTvShowMediaOverviewCommand && ((GetTvShowMediaOverviewCommand)command).Filter == filter
+        var expected = new PagedMediaQueryResult
+        {
+            QueryHash = filter.QueryHash,
+            Page = 2,
+            PageSize = 25,
+            TotalCount = 9,
+        };
+        Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
+                command is GetMediaOverviewTvShowCommand && ((GetMediaOverviewTvShowCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());
@@ -50,10 +60,8 @@ public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOver
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBeSameAs(expected);
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GetMovieMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<GetMediaOverviewMovieCommand>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -68,14 +76,10 @@ public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOver
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBeGreaterThan(0);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GetMovieMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GetTvShowMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<GetMediaOverviewMovieCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<GetMediaOverviewTvShowCommand>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -93,10 +97,8 @@ public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOver
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(2);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GetMovieMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<GetMediaOverviewMovieCommand>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static MediaQueryFilter CreateFilter(PlexMediaType mediaType) =>
@@ -106,6 +108,11 @@ public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOver
             PlexLibraryId = 0,
             FilterOfflineMedia = false,
             FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters { Page = 2, PageSize = 25, Sort = "year:desc" },
+            Parameters = new FlexQueryParameters
+            {
+                Page = 2,
+                PageSize = 25,
+                Sort = "year:desc",
+            },
         };
 }

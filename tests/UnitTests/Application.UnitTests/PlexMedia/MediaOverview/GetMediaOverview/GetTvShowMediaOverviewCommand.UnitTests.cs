@@ -2,7 +2,7 @@ using FlexQuery.NET.Models;
 
 namespace Reaparr.Application.UnitTests;
 
-public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetTvShowMediaOverviewCommand>
+public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOverviewTvShowCommand>
 {
     [Test]
     public async Task ShouldReturnBoundedOrderedTvShowPage_WithNestedQualitiesAndMetadata()
@@ -18,9 +18,12 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetTvS
             }
         );
         var dbContext = IDbContext;
-        var tvShows = await dbContext.PlexTvShows.Include(x => x.Qualities).OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var tvShows = await dbContext
+            .PlexTvShows.Include(x => x.Qualities)
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         var libraryId = tvShows[0].PlexLibraryId;
-        await dbContext.TvShowMediaOverviewSnapshots.AddRangeAsync(
+        await dbContext.MediaOverviewTvShowSnapshots.AddRangeAsync(
             tvShows.Select((show, index) => CreateSnapshot(show.Id, tvShows.Count - index - 1, libraryId)),
             CancellationToken
         );
@@ -28,7 +31,7 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetTvS
         var filter = CreateFilter(libraryId, page: 2, pageSize: 1, sort: "year:desc");
 
         // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetTvShowMediaOverviewCommand(filter));
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -42,8 +45,13 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetTvS
         result.Value.Items[0].Type.ShouldBe(PlexMediaType.TvShow);
         result.Value.Items[0].SortIndex.ShouldBe(2);
         result.Value.Items[0].GrandChildCount.ShouldBe(tvShows[1].GrandChildCount);
-        result.Value.Items[0].Qualities.Select(x => x.Quality).ShouldBe(tvShows[1].Qualities.OrderBy(x => x.Quality).Select(x => x.Quality));
-        result.Value.Qualities.ShouldBe(result.Value.Items[0].Qualities.Select(x => x.Quality.ToId()).Distinct().OrderBy(x => x));
+        result
+            .Value.Items[0]
+            .Qualities.Select(x => x.Quality)
+            .ShouldBe(tvShows[1].Qualities.OrderBy(x => x.Quality).Select(x => x.Quality));
+        result.Value.Qualities.ShouldBe(
+            result.Value.Items[0].Qualities.Select(x => x.Quality.ToId()).Distinct().OrderBy(x => x)
+        );
     }
 
     [Test]
@@ -61,15 +69,21 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetTvS
         );
         var libraryId = await IDbContext.PlexTvShows.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
         var filter = CreateFilter(libraryId);
-        var expected = new PagedMediaQueryResult { QueryHash = filter.QueryHash, Page = 1, PageSize = 25, TotalCount = 1 };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(
-                command => command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
+        var expected = new PagedMediaQueryResult
+        {
+            QueryHash = filter.QueryHash,
+            Page = 1,
+            PageSize = 25,
+            TotalCount = 1,
+        };
+        Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
+                command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetTvShowMediaOverviewCommand(filter));
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -82,16 +96,24 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetTvS
     public async Task ShouldFallbackOnce_WhenComparisonFilterRequested()
     {
         // Arrange
-        var filter = CreateFilter(0) with { ComparisonState = PlexMediaComparisonState.Missing };
-        var expected = new PagedMediaQueryResult { QueryHash = filter.QueryHash, Page = 1, PageSize = 25 };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(
-                command => command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
+        var filter = CreateFilter(0) with
+        {
+            ComparisonState = PlexMediaComparisonState.Missing,
+        };
+        var expected = new PagedMediaQueryResult
+        {
+            QueryHash = filter.QueryHash,
+            Page = 1,
+            PageSize = 25,
+        };
+        Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
+                command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetTvShowMediaOverviewCommand(filter));
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewTvShowCommand(filter));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -104,7 +126,7 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetTvS
     public async Task ShouldRejectMovieFilter_WithoutDatabaseAccess()
     {
         // Arrange
-        var command = new GetTvShowMediaOverviewCommand(CreateFilter(0) with { MediaType = PlexMediaType.Movie });
+        var command = new GetMediaOverviewTvShowCommand(CreateFilter(0) with { MediaType = PlexMediaType.Movie });
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(command);
@@ -122,7 +144,12 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetTvS
             PlexLibraryId = libraryId,
             FilterOfflineMedia = false,
             FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters { Page = page, PageSize = pageSize, Sort = sort },
+            Parameters = new FlexQueryParameters
+            {
+                Page = page,
+                PageSize = pageSize,
+                Sort = sort,
+            },
         };
 
     private static MediaOverviewTvShowSnapshot CreateSnapshot(int tvShowId, int rank, int libraryId) =>

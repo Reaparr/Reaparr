@@ -3,20 +3,20 @@ using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application;
 
-public sealed record GetMovieMediaOverviewCommand(MediaQueryFilter Filter) : ICommand<Result<PagedMediaQueryResult>>;
+public sealed record GetMediaOverviewMovieCommand(MediaQueryFilter Filter) : ICommand<Result<PagedMediaQueryResult>>;
 
-public sealed class GetMovieMediaOverviewCommandValidator : AbstractValidator<GetMovieMediaOverviewCommand>
+public sealed class GetMediaOverviewMovieCommandValidator : AbstractValidator<GetMediaOverviewMovieCommand>
 {
-    public GetMovieMediaOverviewCommandValidator() => RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.Movie);
+    public GetMediaOverviewMovieCommandValidator() => RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.Movie);
 }
 
-public sealed class GetMovieMediaOverviewCommandHandler
-    : ICommandHandler<GetMovieMediaOverviewCommand, Result<PagedMediaQueryResult>>
+public sealed class GetMediaOverviewMovieCommandHandler
+    : ICommandHandler<GetMediaOverviewMovieCommand, Result<PagedMediaQueryResult>>
 {
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly ICommandExecutor _commandExecutor;
 
-    public GetMovieMediaOverviewCommandHandler(
+    public GetMediaOverviewMovieCommandHandler(
         IReaparrDbContextFactory dbContextFactory,
         ICommandExecutor commandExecutor
     )
@@ -26,7 +26,7 @@ public sealed class GetMovieMediaOverviewCommandHandler
     }
 
     public async Task<Result<PagedMediaQueryResult>> ExecuteAsync(
-        GetMovieMediaOverviewCommand command,
+        GetMediaOverviewMovieCommand command,
         CancellationToken cancellationToken
     )
     {
@@ -57,7 +57,7 @@ public sealed class GetMovieMediaOverviewCommandHandler
         }
 
         if (
-            !await context.MovieMediaOverviewSnapshots.AnyAsync(
+            !await context.MediaOverviewMovieSnapshots.AnyAsync(
                 x => allowedLibraryIds.Contains(x.PlexLibraryId),
                 cancellationToken
             )
@@ -71,7 +71,7 @@ public sealed class GetMovieMediaOverviewCommandHandler
         }
 
         var candidates = context.PlexMovies.ApplyFilter(options);
-        var snapshots = context.MovieMediaOverviewSnapshots.Where(snapshot =>
+        var snapshots = context.MediaOverviewMovieSnapshots.Where(snapshot =>
             allowedLibraryIds.Contains(snapshot.PlexLibraryId)
             && candidates.Any(movie => movie.Id == snapshot.PlexMovieId)
         );

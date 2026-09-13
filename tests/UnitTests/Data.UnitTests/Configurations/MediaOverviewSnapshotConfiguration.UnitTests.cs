@@ -69,7 +69,7 @@ public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
         );
         await using var context = (ReaparrDbContext)IDbContext;
         var movieIds = await context.PlexMovies.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
-        context.MovieMediaOverviewSnapshots.AddRange(
+        context.MediaOverviewMovieSnapshots.AddRange(
             movieIds.Select(
                 (movieId, index) =>
                     new MediaOverviewMovieSnapshot
@@ -92,8 +92,8 @@ public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
         await context.PlexMovies.Where(x => x.Id == movieIds[0]).ExecuteDeleteAsync(CancellationToken);
 
         // Assert
-        (await context.MovieMediaOverviewSnapshots.CountAsync(CancellationToken)).ShouldBe(1);
-        (await context.MovieMediaOverviewSnapshots.SingleAsync(CancellationToken)).PlexMovieId.ShouldBe(movieIds[1]);
+        (await context.MediaOverviewMovieSnapshots.CountAsync(CancellationToken)).ShouldBe(1);
+        (await context.MediaOverviewMovieSnapshots.SingleAsync(CancellationToken)).PlexMovieId.ShouldBe(movieIds[1]);
     }
 
     [Test]
@@ -111,7 +111,7 @@ public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
         );
         await using var context = (ReaparrDbContext)IDbContext;
         var tvShowIds = await context.PlexTvShows.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
-        context.TvShowMediaOverviewSnapshots.AddRange(
+        context.MediaOverviewTvShowSnapshots.AddRange(
             tvShowIds.Select(
                 (tvShowId, index) =>
                     new MediaOverviewTvShowSnapshot
@@ -134,7 +134,7 @@ public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
         await context.PlexTvShows.Where(x => x.Id == tvShowIds[0]).ExecuteDeleteAsync(CancellationToken);
 
         // Assert
-        (await context.TvShowMediaOverviewSnapshots.CountAsync(CancellationToken)).ShouldBe(1);
-        (await context.TvShowMediaOverviewSnapshots.SingleAsync(CancellationToken)).PlexTvShowId.ShouldBe(tvShowIds[1]);
+        (await context.MediaOverviewTvShowSnapshots.CountAsync(CancellationToken)).ShouldBe(1);
+        (await context.MediaOverviewTvShowSnapshots.SingleAsync(CancellationToken)).PlexTvShowId.ShouldBe(tvShowIds[1]);
     }
 }

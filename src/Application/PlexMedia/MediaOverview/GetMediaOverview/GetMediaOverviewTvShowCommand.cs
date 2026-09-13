@@ -3,20 +3,20 @@ using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application;
 
-public sealed record GetTvShowMediaOverviewCommand(MediaQueryFilter Filter) : ICommand<Result<PagedMediaQueryResult>>;
+public sealed record GetMediaOverviewTvShowCommand(MediaQueryFilter Filter) : ICommand<Result<PagedMediaQueryResult>>;
 
-public sealed class GetTvShowMediaOverviewCommandValidator : AbstractValidator<GetTvShowMediaOverviewCommand>
+public sealed class GetMediaOverviewTvShowCommandValidator : AbstractValidator<GetMediaOverviewTvShowCommand>
 {
-    public GetTvShowMediaOverviewCommandValidator() => RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.TvShow);
+    public GetMediaOverviewTvShowCommandValidator() => RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.TvShow);
 }
 
-public sealed class GetTvShowMediaOverviewCommandHandler
-    : ICommandHandler<GetTvShowMediaOverviewCommand, Result<PagedMediaQueryResult>>
+public sealed class GetMediaOverviewTvShowCommandHandler
+    : ICommandHandler<GetMediaOverviewTvShowCommand, Result<PagedMediaQueryResult>>
 {
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly ICommandExecutor _commandExecutor;
 
-    public GetTvShowMediaOverviewCommandHandler(
+    public GetMediaOverviewTvShowCommandHandler(
         IReaparrDbContextFactory dbContextFactory,
         ICommandExecutor commandExecutor
     )
@@ -26,7 +26,7 @@ public sealed class GetTvShowMediaOverviewCommandHandler
     }
 
     public async Task<Result<PagedMediaQueryResult>> ExecuteAsync(
-        GetTvShowMediaOverviewCommand command,
+        GetMediaOverviewTvShowCommand command,
         CancellationToken cancellationToken
     )
     {
@@ -57,7 +57,7 @@ public sealed class GetTvShowMediaOverviewCommandHandler
         }
 
         if (
-            !await context.TvShowMediaOverviewSnapshots.AnyAsync(
+            !await context.MediaOverviewTvShowSnapshots.AnyAsync(
                 x => allowedLibraryIds.Contains(x.PlexLibraryId),
                 cancellationToken
             )
@@ -71,7 +71,7 @@ public sealed class GetTvShowMediaOverviewCommandHandler
         }
 
         var candidates = context.PlexTvShows.ApplyFilter(options);
-        var snapshots = context.TvShowMediaOverviewSnapshots.Where(snapshot =>
+        var snapshots = context.MediaOverviewTvShowSnapshots.Where(snapshot =>
             allowedLibraryIds.Contains(snapshot.PlexLibraryId)
             && candidates.Any(tvShow => tvShow.Id == snapshot.PlexTvShowId)
         );

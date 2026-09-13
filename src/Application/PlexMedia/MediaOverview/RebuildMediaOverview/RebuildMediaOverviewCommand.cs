@@ -65,7 +65,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                     .ToListAsync(cancellationToken);
                 return await ReplaceAsync(
                     snapshots.AssignRanks(),
-                    static dbContext => dbContext.MovieMediaOverviewSnapshots,
+                    static dbContext => dbContext.MediaOverviewMovieSnapshots,
                     cancellationToken
                 );
             }
@@ -94,7 +94,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                     .ToListAsync(cancellationToken);
                 return await ReplaceAsync(
                     snapshots.AssignRanks(),
-                    static dbContext => dbContext.TvShowMediaOverviewSnapshots,
+                    static dbContext => dbContext.MediaOverviewTvShowSnapshots,
                     cancellationToken
                 );
             }
