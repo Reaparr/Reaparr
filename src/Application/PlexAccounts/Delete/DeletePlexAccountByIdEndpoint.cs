@@ -15,19 +15,19 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly INotificationHubService _notificationHubService;
-    private readonly IMediaQueryCache _mediaQueryCache;
+    private readonly IMediaOverviewReadStore _mediaOverviewReadStore;
 
     public DeletePlexAccountByIdEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,
         INotificationHubService notificationHubService,
-        IMediaQueryCache mediaQueryCache
+        IMediaOverviewReadStore mediaOverviewReadStore
     )
     {
         _log = log.ForContext<DeletePlexAccountByIdEndpoint>();
         _dbContext = dbContext;
         _notificationHubService = notificationHubService;
-        _mediaQueryCache = mediaQueryCache;
+        _mediaOverviewReadStore = mediaOverviewReadStore;
     }
 
     public override void Configure()
@@ -99,8 +99,6 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
             affectedLibraryIds.AddRange(serverLibraryIds);
         }
 
-        _mediaQueryCache.InvalidateLibraries(affectedLibraryIds.Distinct().ToList(), "Plex account access deleted");
-
         _log.Here()
             .Debug(
                 "Deleted {PlexAccount} with Id: {CommandId} from the database, and cleaned up {DeletedServersCount} PlexServers and {DeletedLibrariesCount} PlexLibraries",
@@ -117,6 +115,9 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
             RefreshDataType.PlexLibrary,
         ]);
 
-        await Send.FluentResult(Result.Ok(), ct);
+        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(affectedLibraryIds.Distinct().ToList(), ct);
+        rebuildResult.LogIfFailed();
+
+        await Send.FluentResult(rebuildResult, ct);
     }
 }

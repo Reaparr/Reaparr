@@ -16,6 +16,7 @@ public static partial class EnumMapperExtensions
         ["CheckPlexLibrariesForUpdatesJob"] = JobTypes.CheckPlexLibrariesForUpdatesJob,
         ["RefreshPlexAccountAccessJob"] = JobTypes.RefreshPlexAccountAccessJob,
         ["LibraryComparisonJob"] = JobTypes.LibraryComparisonJob,
+        ["MediaOverviewSnapshotJob"] = JobTypes.MediaOverviewSnapshotJob,
     };
 
     /// <summary>

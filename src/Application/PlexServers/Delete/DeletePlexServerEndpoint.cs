@@ -18,13 +18,17 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaQueryCache _mediaQueryCache;
+    private readonly IMediaOverviewReadStore _mediaOverviewReadStore;
 
-    public DeletePlexServerEndpoint(ILogger log, IReaparrDbContext dbContext, IMediaQueryCache mediaQueryCache)
+    public DeletePlexServerEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        IMediaOverviewReadStore mediaOverviewReadStore
+    )
     {
         _log = log.ForContext<DeletePlexServerEndpoint>();
         _dbContext = dbContext;
-        _mediaQueryCache = mediaQueryCache;
+        _mediaOverviewReadStore = mediaOverviewReadStore;
     }
 
     public override void Configure()
@@ -60,8 +64,9 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
             return;
         }
 
-        _mediaQueryCache.InvalidateLibraries(libraryIds, "Plex server deleted");
+        var rebuildResult = await _mediaOverviewReadStore.RebuildAsync(libraryIds, ct);
+        rebuildResult.LogIfFailed();
 
-        await Send.FluentResult(Result.Ok(), ct);
+        await Send.FluentResult(rebuildResult, ct);
     }
 }
