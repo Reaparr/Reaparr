@@ -1,4 +1,3 @@
-using System.Globalization;
 using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
@@ -155,8 +154,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
     private Task<Result<TorznabMediaSearchResponseDTO>> SearchTvAsync(
         TorznabRequest request,
         IntegrationIdentity integration,
-        CancellationToken ct,
-        bool disablePaging = false
+        CancellationToken ct
     ) =>
         _commandExecutor.Send(
             new SearchTvShowCommand
@@ -174,7 +172,6 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                 Categories = request.Categories,
                 Attributes = request.Attributes,
                 IncludeAllAttributes = request.IncludeAllAttributes,
-                DisablePaging = disablePaging,
             },
             ct
         );
@@ -182,8 +179,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
     private Task<Result<TorznabMediaSearchResponseDTO>> SearchMovieAsync(
         TorznabRequest request,
         IntegrationIdentity integration,
-        CancellationToken ct,
-        bool disablePaging = false
+        CancellationToken ct
     ) =>
         _commandExecutor.Send(
             new SearchMovieCommand
@@ -198,7 +194,6 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                 Categories = request.Categories,
                 Attributes = request.Attributes,
                 IncludeAllAttributes = request.IncludeAllAttributes,
-                DisablePaging = disablePaging,
             },
             ct
         );
@@ -224,12 +219,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
 
         if (request.IncludesEpisodes)
         {
-            var tvResult = await SearchTvAsync(
-                branchRequest with { Season = 0, Episode = 0 },
-                integration,
-                ct,
-                disablePaging: true
-            );
+            var tvResult = await SearchTvAsync(branchRequest with { Season = 0, Episode = 0 }, integration, ct);
             if (tvResult.IsFailed)
                 failures.AddRange(tvResult.Errors);
             else
@@ -242,7 +232,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
 
         if (request.IncludesMovies)
         {
-            var movieResult = await SearchMovieAsync(branchRequest, integration, ct, disablePaging: true);
+            var movieResult = await SearchMovieAsync(branchRequest, integration, ct);
             if (movieResult.IsFailed)
                 failures.AddRange(movieResult.Errors);
             else
@@ -267,9 +257,12 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                     Title = "Reaparr Indexer",
                     Description = $"Search results for {request.Query}",
                     Items = items
-                        .OrderByDescending(item =>
-                            DateTimeOffset.Parse(item.PubDate, CultureInfo.InvariantCulture)
-                        )
+                        .OrderByDescending(item => item.SortAddedAt)
+                        .ThenBy(item => item.SortMachineIdentifier, StringComparer.Ordinal)
+                        .ThenBy(item => item.SortRatingKey)
+                        .ThenBy(item => item.SortMediaId)
+                        .ThenBy(item => item.SortPartId)
+                        .ThenBy(item => item.SortMediaType)
                         .ThenBy(item => item.Guid.Value, StringComparer.Ordinal)
                         .Skip(request.Offset)
                         .Take(request.Limit)

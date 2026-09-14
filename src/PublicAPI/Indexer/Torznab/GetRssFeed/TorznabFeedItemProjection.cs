@@ -79,6 +79,12 @@ public sealed record TorznabFeedItemProjection
                 Length = Size,
                 Type = "application/x-bittorrent",
             },
+            SortAddedAt = AddedAt,
+            SortMachineIdentifier = PlexServerMachineIdentifier,
+            SortMediaType = MediaType,
+            SortRatingKey = PlexApiRatingKey,
+            SortMediaId = PlexApiMediaId,
+            SortPartId = PlexApiPartId,
         };
 
         item.Attributes.Add(new TorznabAttr("size", Size.ToString()));

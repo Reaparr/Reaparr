@@ -74,6 +74,24 @@ public record TorznabItem
 
     [XmlElement("enclosure")]
     public TorznabEnclosure Enclosure { get; set; } = new();
+
+    [XmlIgnore]
+    public DateTime SortAddedAt { get; set; }
+
+    [XmlIgnore]
+    public string SortMachineIdentifier { get; set; } = string.Empty;
+
+    [XmlIgnore]
+    public PlexMediaType SortMediaType { get; set; }
+
+    [XmlIgnore]
+    public int SortRatingKey { get; set; }
+
+    [XmlIgnore]
+    public int SortMediaId { get; set; }
+
+    [XmlIgnore]
+    public int SortPartId { get; set; }
 }
 
 public record TorznabGuid
