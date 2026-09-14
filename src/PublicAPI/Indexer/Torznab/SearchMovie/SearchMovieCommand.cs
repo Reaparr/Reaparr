@@ -25,6 +25,7 @@ public record SearchMovieCommand : ICommand<Result<TorznabMediaSearchResponseDTO
     public int[] Categories { get; init; } = [];
     public string[] Attributes { get; init; } = [];
     public bool IncludeAllAttributes { get; init; } = true;
+    public bool DisablePaging { get; init; }
 }
 
 public class SearchMovieCommandValidator : AbstractValidator<SearchMovieCommand>
@@ -112,14 +113,19 @@ public class SearchMovieCommandHandler : ICommandHandler<SearchMovieCommand, Res
 
         query = query.ApplyTorznabCategories(command.Categories);
         var total = await query.CountAsync(cancellationToken);
-        var rows = await query
-            .OrderBy(x => x.PlexMovieId)
+        var orderedQuery = query
+            .OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
             .ThenBy(x => x.PlexApiMediaId)
-            .ThenBy(x => x.PlexApiPartId)
-            .Skip(command.Offset)
-            .Take(command.Limit)
-            .ProjectToTorznabFeedItems()
-            .ToListAsync(cancellationToken);
+            .ThenBy(x => x.PlexApiPartId);
+        var rows = command.DisablePaging
+            ? await orderedQuery.ProjectToTorznabFeedItems().ToListAsync(cancellationToken)
+            : await orderedQuery
+                .Skip(command.Offset)
+                .Take(command.Limit)
+                .ProjectToTorznabFeedItems()
+                .ToListAsync(cancellationToken);
         var requestedAttributes = TorznabSearchHelpers.GetRequestedAttributes(
             command.IncludeAllAttributes,
             command.Attributes

@@ -78,6 +78,7 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                         && command.Offset == 0
                         && command.Integration == integration
                         && command.TorznabApiKey == request.ApiKey
+                        && command.DisablePaging
                     ),
                     It.IsAny<CancellationToken>()
                 )
@@ -131,6 +132,7 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                         && command.Offset == 0
                         && command.Integration == integration
                         && command.TorznabApiKey == request.ApiKey
+                        && command.DisablePaging
                     ),
                     It.IsAny<CancellationToken>()
                 )
@@ -152,6 +154,7 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                         && command.Offset == 0
                         && command.Integration == integration
                         && command.TorznabApiKey == request.ApiKey
+                        && command.DisablePaging
                     ),
                     It.IsAny<CancellationToken>()
                 )

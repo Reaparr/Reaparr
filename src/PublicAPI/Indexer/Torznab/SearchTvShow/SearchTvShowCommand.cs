@@ -28,6 +28,7 @@ public record SearchTvShowCommand : ICommand<Result<TorznabMediaSearchResponseDT
     public int[] Categories { get; init; } = [];
     public string[] Attributes { get; init; } = [];
     public bool IncludeAllAttributes { get; init; } = true;
+    public bool DisablePaging { get; init; }
 }
 
 public class SearchTvShowCommandValidator : AbstractValidator<SearchTvShowCommand>
@@ -129,15 +130,19 @@ public class SearchTvShowCommandHandler : ICommandHandler<SearchTvShowCommand, R
 
         query = query.ApplyTorznabCategories(command.Categories);
         var total = await query.CountAsync(cancellationToken);
-        var rows = await query
-            .OrderBy(x => x.PlexTvShowEpisodeId)
+        var orderedQuery = query
+            .OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexTvShowEpisode!.PlexApiRatingKey)
             .ThenBy(x => x.PlexApiMediaId)
-            .ThenBy(x => x.PlexApiPartId)
-            .Skip(command.Offset)
-            .Take(command.Limit)
-            .ProjectToTorznabFeedItems()
-            .ToListAsync(cancellationToken);
-
+            .ThenBy(x => x.PlexApiPartId);
+        var rows = command.DisablePaging
+            ? await orderedQuery.ProjectToTorznabFeedItems().ToListAsync(cancellationToken)
+            : await orderedQuery
+                .Skip(command.Offset)
+                .Take(command.Limit)
+                .ProjectToTorznabFeedItems()
+                .ToListAsync(cancellationToken);
         var requestedAttributes = TorznabSearchHelpers.GetRequestedAttributes(
             command.IncludeAllAttributes,
             command.Attributes

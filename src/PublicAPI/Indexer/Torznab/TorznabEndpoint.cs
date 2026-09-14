@@ -155,7 +155,8 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
     private Task<Result<TorznabMediaSearchResponseDTO>> SearchTvAsync(
         TorznabRequest request,
         IntegrationIdentity integration,
-        CancellationToken ct
+        CancellationToken ct,
+        bool disablePaging = false
     ) =>
         _commandExecutor.Send(
             new SearchTvShowCommand
@@ -173,6 +174,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                 Categories = request.Categories,
                 Attributes = request.Attributes,
                 IncludeAllAttributes = request.IncludeAllAttributes,
+                DisablePaging = disablePaging,
             },
             ct
         );
@@ -180,7 +182,8 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
     private Task<Result<TorznabMediaSearchResponseDTO>> SearchMovieAsync(
         TorznabRequest request,
         IntegrationIdentity integration,
-        CancellationToken ct
+        CancellationToken ct,
+        bool disablePaging = false
     ) =>
         _commandExecutor.Send(
             new SearchMovieCommand
@@ -195,10 +198,10 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                 Categories = request.Categories,
                 Attributes = request.Attributes,
                 IncludeAllAttributes = request.IncludeAllAttributes,
+                DisablePaging = disablePaging,
             },
             ct
         );
-
     /// <summary>
     /// Handles generic active searches by running the TV and movie searches requested by categories.
     /// </summary>
@@ -221,7 +224,12 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
 
         if (request.IncludesEpisodes)
         {
-            var tvResult = await SearchTvAsync(branchRequest with { Season = 0, Episode = 0 }, integration, ct);
+            var tvResult = await SearchTvAsync(
+                branchRequest with { Season = 0, Episode = 0 },
+                integration,
+                ct,
+                disablePaging: true
+            );
             if (tvResult.IsFailed)
                 failures.AddRange(tvResult.Errors);
             else
@@ -234,7 +242,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
 
         if (request.IncludesMovies)
         {
-            var movieResult = await SearchMovieAsync(branchRequest, integration, ct);
+            var movieResult = await SearchMovieAsync(branchRequest, integration, ct, disablePaging: true);
             if (movieResult.IsFailed)
                 failures.AddRange(movieResult.Errors);
             else

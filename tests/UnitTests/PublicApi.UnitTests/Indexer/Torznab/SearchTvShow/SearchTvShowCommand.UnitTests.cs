@@ -42,12 +42,14 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
         };
 
         var expectedEpisodeTitles = await IDbContext
-            .PlexTvShowEpisodes.AsNoTracking()
-            .Include(e => e.MediaDataList)
-            .OrderBy(e => e.Id)
+            .PlexTvShowEpisodeData.OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexTvShowEpisode!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
             .Skip(offset)
             .Take(limit)
-            .Select(e => e.MediaDataList.OrderBy(md => md.PlexApiPartId).Select(md => md.GetFileName).First())
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
 
         // Act
@@ -98,6 +100,62 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             item.Link.ShouldContain("LibraryId=");
             item.Link.ShouldContain("ServerId=");
         }
+    }
+
+    [Test]
+    public async Task ShouldPageByPublicationDate_WhenNewestEpisodeFallsAfterIdentifierPrefix()
+    {
+        // Arrange
+        await SetupDatabase(
+            1003,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 3;
+            }
+        );
+
+        var dbContext = IDbContext;
+        var episodes = await dbContext.PlexTvShowEpisodes.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var newestEpisode = episodes[^1];
+        await dbContext
+            .PlexTvShowEpisodes.Where(x => x.Id == episodes[0].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)), CancellationToken);
+        await dbContext
+            .PlexTvShowEpisodes.Where(x => x.Id == episodes[1].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc)), CancellationToken);
+        await dbContext
+            .PlexTvShowEpisodes.Where(x => x.Id == newestEpisode.Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 3, 0, 0, 0, DateTimeKind.Utc)), CancellationToken);
+
+        var newestTitle = await dbContext
+            .PlexTvShowEpisodeData.Where(x => x.PlexTvShowEpisodeId == newestEpisode.Id)
+            .OrderBy(x => x.PlexApiPartId)
+            .Select(x => x.GetFileName)
+            .FirstAsync(CancellationToken);
+        var command = new SearchTvShowCommand
+        {
+            Query = string.Empty,
+            Season = 0,
+            Episode = 0,
+            Limit = 2,
+            Offset = 0,
+            IMDB_ID = string.Empty,
+            TMDB_ID = 0,
+            TVDB_ID = 0,
+        };
+
+        // Act
+        var result = await Sut.ExecuteAsync(command, CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Channel.Items.Count.ShouldBe(2);
+        result.Value.Channel.Items[0].Title.ShouldBe(newestTitle);
     }
 
     [Test]
@@ -172,14 +230,15 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             .PlexAccountServers.Where(x => x.PlexServerId == revokedServerId)
             .ExecuteDeleteAsync(CancellationToken);
 
-        var expectedEpisodes = await dbContext
-            .PlexTvShowEpisodes.Where(x => x.PlexServerId != revokedServerId)
-            .Include(x => x.MediaDataList)
-            .OrderBy(x => x.Id)
+        var expectedTitles = await dbContext
+            .PlexTvShowEpisodeData.Where(x => x.PlexServerId != revokedServerId)
+            .OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexTvShowEpisode!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
-        var expectedTitles = expectedEpisodes
-            .SelectMany(x => x.MediaDataList.OrderBy(y => y.PlexApiPartId).Select(y => y.GetFileName))
-            .ToList();
         expectedTitles.ShouldNotBeEmpty();
 
         var command = new SearchTvShowCommand
@@ -229,14 +288,15 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             .PlexAccountLibraries.Where(x => x.PlexLibraryId == revokedLibraryId)
             .ExecuteDeleteAsync(CancellationToken);
 
-        var expectedEpisodes = await dbContext
-            .PlexTvShowEpisodes.Where(x => x.PlexLibraryId != revokedLibraryId)
-            .Include(x => x.MediaDataList)
-            .OrderBy(x => x.Id)
+        var expectedTitles = await dbContext
+            .PlexTvShowEpisodeData.Where(x => x.PlexLibraryId != revokedLibraryId)
+            .OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexTvShowEpisode!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
-        var expectedTitles = expectedEpisodes
-            .SelectMany(x => x.MediaDataList.OrderBy(y => y.PlexApiPartId).Select(y => y.GetFileName))
-            .ToList();
         expectedTitles.ShouldNotBeEmpty();
 
         var command = new SearchTvShowCommand

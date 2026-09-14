@@ -42,17 +42,16 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             TorznabApiKey = "integration-key",
         };
 
-        var movies = await IDbContext
-            .PlexMovies.AsNoTracking()
-            .Include(m => m.MediaDataList)
-            .OrderBy(m => m.Id)
+        var expectedMovieTitles = await IDbContext
+            .PlexMovieData.OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
             .Skip(offset)
             .Take(limit)
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
-
-        var expectedMovieTitles = movies
-            .SelectMany(m => m.MediaDataList.OrderBy(md => md.PlexApiPartId).Select(md => md.GetFileName))
-            .ToList();
 
         // Act
         var result = await Sut.ExecuteAsync(cmd, CancellationToken);
@@ -129,14 +128,15 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             .PlexAccountServers.Where(x => x.PlexServerId == revokedServerId)
             .ExecuteDeleteAsync(CancellationToken);
 
-        var expectedMovies = await dbContext
-            .PlexMovies.Where(x => x.PlexServerId != revokedServerId)
-            .Include(x => x.MediaDataList)
-            .OrderBy(x => x.Id)
+        var expectedTitles = await dbContext
+            .PlexMovieData.Where(x => x.PlexServerId != revokedServerId)
+            .OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
-        var expectedTitles = expectedMovies
-            .SelectMany(x => x.MediaDataList.OrderBy(y => y.PlexApiPartId).Select(y => y.GetFileName))
-            .ToList();
         expectedTitles.ShouldNotBeEmpty();
 
         var command = new SearchMovieCommand
@@ -182,14 +182,15 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             .PlexAccountLibraries.Where(x => x.PlexLibraryId == revokedLibraryId)
             .ExecuteDeleteAsync(CancellationToken);
 
-        var expectedMovies = await dbContext
-            .PlexMovies.Where(x => x.PlexLibraryId != revokedLibraryId)
-            .Include(x => x.MediaDataList)
-            .OrderBy(x => x.Id)
+        var expectedTitles = await dbContext
+            .PlexMovieData.Where(x => x.PlexLibraryId != revokedLibraryId)
+            .OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
-        var expectedTitles = expectedMovies
-            .SelectMany(x => x.MediaDataList.OrderBy(y => y.PlexApiPartId).Select(y => y.GetFileName))
-            .ToList();
         expectedTitles.ShouldNotBeEmpty();
 
         var command = new SearchMovieCommand
