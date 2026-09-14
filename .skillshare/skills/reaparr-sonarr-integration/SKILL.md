@@ -141,6 +141,7 @@ The RSS path must remain bounded:
 4. Project and globally order at most `offset + limit + 1` candidates.
 
 The parent index must cover those columns in the same sequence; SQLite can reverse-scan the existing ascending composite index for this all-descending query. `PlexServerId` plus `PlexApiRatingKey` is the unique Plex media identity, so a database `Id` tie-breaker is unnecessary. Predicates that force table lookups can still turn a 100-item validation feed into a multi-second scan, especially on Unraid `/mnt/user` storage and during media-overview warmup.
+Use exactly `AddedAt DESC`, `PlexServerId DESC`, and `PlexApiRatingKey DESC` in the parent query, media-data query, and final in-memory merge. Do not add database IDs, machine identifiers, media IDs, or part IDs as additional RSS sort keys.
 
 ### qBittorrent compatibility
 
