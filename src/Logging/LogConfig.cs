@@ -79,7 +79,7 @@ public class LogConfig : SlimLogConfig
         if (!string.IsNullOrEmpty(_appRuntimeInfo.SEQ_Url))
             config = config.WriteTo.Seq(
                 _appRuntimeInfo.SEQ_Url,
-                apiKey: _appRuntimeInfo.SEQ_ApiKey,
+                apiKey: !string.IsNullOrEmpty(_appRuntimeInfo.SEQ_ApiKey) ? _appRuntimeInfo.SEQ_ApiKey : null,
                 restrictedToMinimumLevel: minimumLogLevel
             );
 
