@@ -54,7 +54,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.Channel.Response.Offset.ShouldBe(1);
-        result.Value.Channel.Response.Total.ShouldBe(expected.Count);
+        result.Value.Channel.Response.Total.ShouldBe(command.Offset + command.Limit + 1);
         result.Value.Channel.Items.Select(x => x.Title).ShouldBe(expected.Skip(1).Take(3));
         result.Value.Channel.Items.Select(x => x.Guid.Value).Distinct().Count().ShouldBe(3);
         result.Value.Channel.Items.All(x => x.Guid.Value != x.Link).ShouldBeTrue();
@@ -374,7 +374,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldReturnFilteredTotalBeforePaging()
+    public async Task ShouldReturnLookaheadTotal_WhenMoreFilteredItemsExist()
     {
         // Arrange
         await SetupDatabase(
@@ -389,14 +389,10 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
             }
         );
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
-        var category = GetMovieQualityCategory(await IDbContext.PlexMovieData.FirstAsync(CancellationToken));
-        var expectedTotal = (await IDbContext.PlexMovieData.ToListAsync(CancellationToken)).Count(x =>
-            GetMovieQualityCategory(x) == category
-        );
         var command = new GetTorznabRssFeedCommand
         {
             Integration = integration,
-            Categories = [category],
+            Categories = [],
             IncludeMovies = true,
             IncludeEpisodes = false,
             Limit = 1,
@@ -411,8 +407,8 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
-        result.Value.Channel.Items.Count.ShouldBe(Math.Min(1, Math.Max(0, expectedTotal - 1)));
+        result.Value.Channel.Response.Total.ShouldBe(command.Offset + command.Limit + 1);
+        result.Value.Channel.Items.ShouldHaveSingleItem();
     }
 
     [Test]

@@ -101,12 +101,8 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
     private async Task SendMediaResultAsync(Result<TorznabMediaSearchResponseDTO> result, CancellationToken ct)
     {
         result.LogIfFailed();
-
         if (result.IsCancelled)
-        {
-            await Send.TorznabError(900, "Indexer request cancelled", ct);
             return;
-        }
 
         if (result.IsFailed)
         {
@@ -197,6 +193,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
             },
             ct
         );
+
     /// <summary>
     /// Handles generic active searches by running the TV and movie searches requested by categories.
     /// </summary>

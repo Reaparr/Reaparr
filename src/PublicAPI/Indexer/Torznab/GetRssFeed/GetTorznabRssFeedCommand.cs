@@ -53,18 +53,17 @@ public class GetTorznabRssFeedCommandHandler
         if (command.IncludeEpisodes)
             queries.Add(CreateEpisodeQuery(command.Categories));
 
-        var total = 0;
+        var fetchLimit = checked(command.Offset + command.Limit + 1);
         var rows = new List<TorznabFeedItemProjection>();
         foreach (var query in queries)
         {
-            total += await query.CountAsync(cancellationToken);
             rows.AddRange(
                 await query
                     .OrderByDescending(x => x.AddedAt)
                     .ThenByDescending(x => x.PlexServerMachineIdentifier)
                     .ThenByDescending(x => x.PlexApiMediaId)
                     .ThenByDescending(x => x.PlexApiPartId)
-                    .Take(command.Offset + command.Limit)
+                    .Take(fetchLimit)
                     .ToListAsync(cancellationToken)
             );
         }
@@ -73,16 +72,20 @@ public class GetTorznabRssFeedCommandHandler
             command.IncludeAllAttributes,
             command.Attributes
         );
-        var items = rows.OrderByDescending(x => x.AddedAt)
+        var orderedRows = rows.OrderByDescending(x => x.AddedAt)
             .ThenByDescending(x => x.PlexServerMachineIdentifier)
             .ThenByDescending(x => x.PlexApiMediaId)
             .ThenByDescending(x => x.PlexApiPartId)
+            .Take(fetchLimit)
+            .ToList();
+        var items = orderedRows
             .Skip(command.Offset)
             .Take(command.Limit)
             .Select(x =>
                 x.ToTorznabItem(command.Integration, command.TorznabApiKey, _networkSettings.Url, requestedAttributes)
             )
             .ToList();
+        var total = orderedRows.Count == fetchLimit ? fetchLimit : orderedRows.Count;
         return Result.Ok(CreateResponse(command.Offset, total, items));
     }
 
