@@ -41,6 +41,7 @@ interface IMediaOverviewStoreState {
 	lastMediaItemViewed: PlexMediaSlimDTO | null;
 	pendingMediaHighlightId: number | null;
 	pendingMediaHighlightLibraryId: number | null;
+	mediaLoadError: boolean;
 	loading: boolean;
 	navLoading: boolean;
 	filterMetadataLoading: boolean;
@@ -60,8 +61,6 @@ interface IMediaOverviewStoreState {
 	mediaPagesVersion: number;
 	currentScrollIndex: number;
 	scrollCommand: BehaviorSubject<{ index: number; highlight: boolean }>;
-	serverError: boolean;
-	cacheRetrySeconds: number;
 }
 
 export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, () => {
@@ -79,6 +78,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		lastMediaItemViewed: null,
 		pendingMediaHighlightId: null,
 		pendingMediaHighlightLibraryId: null,
+		mediaLoadError: false,
 		loading: false,
 		navLoading: false,
 		filterMetadataLoading: false,
@@ -113,8 +113,6 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		mediaPagesVersion: 0,
 		currentScrollIndex: 0,
 		scrollCommand: new BehaviorSubject<{ index: number; highlight: boolean }>({ index: 0, highlight: false }),
-		serverError: false,
-		cacheRetrySeconds: 0,
 	};
 
 	const state = reactive<IMediaOverviewStoreState>(cloneDeep(defaultState));
@@ -123,7 +121,6 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 	const mediaPages = new Map<number, readonly PlexMediaSlimDTO[]>();
 	const pendingPages = new Set<number>();
 	const comparisonRefreshKeysInFlight = new Set<string>();
-	let cacheRetryTimer: ReturnType<typeof setInterval> | null = null;
 
 	const searchQuery = useRouteQuery('q', '', { mode: 'replace' });
 	const countryIdQuery = useRouteQuery('countryId', 0, { mode: 'replace' });
@@ -146,7 +143,6 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		clearLibraryMediaData(libraryId: number): void {
 			Log.debug('Clearing media overview data for disabled library', { libraryId });
 			actions.cancelPendingRequests();
-			clearCacheRetryTimer();
 			mediaPages.clear();
 			pendingPages.clear();
 			state.libraryId = libraryId;
@@ -171,8 +167,6 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			state.availableGenreIds = [];
 			state.availableQualityIds = [];
 			state.mediaPagesVersion++;
-			state.serverError = false;
-			state.cacheRetrySeconds = 0;
 		},
 		refreshCurrentMediaDataWhenComparisonCompleted(notification: LibraryComparisonCompletedDTO): Observable<PlexMediaStatisticsDTO | null> {
 			const mediaType = get(getters.getMediaType);
@@ -275,24 +269,25 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		},
 		refreshMediaData(): Observable<PlexMediaStatisticsDTO | null> {
 			state.loading = true;
-			state.serverError = false;
-			state.cacheRetrySeconds = 0;
-			clearCacheRetryTimer();
-
+			state.mediaLoadError = false;
 			mediaPages.clear();
 			pendingPages.clear();
 			state.itemsLength = 0;
-
 			Log.debug('Starting media request', { libraryId: state.libraryId, mediaType: get(getters.getMediaType) });
-
 			return actions.requestMediaPage(1, state.pageSize).pipe(
 				tap({
-					next: () => {
+					next: (data) => {
 						state.loading = false;
+						if (!data) {
+							state.mediaLoadError = true;
+							Log.warn('Media request returned no data');
+							return;
+						}
 						Log.debug('Media request completed successfully');
 					},
 					error: (err) => {
 						state.loading = false;
+						state.mediaLoadError = true;
 						Log.error('Media request failed', err);
 					},
 					complete: () => {
@@ -304,6 +299,9 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 					},
 				}),
 			);
+		},
+		retryMediaLoad(): Observable<PlexMediaStatisticsDTO | null> {
+			return actions.refreshMediaData();
 		},
 		requestMediaPage(page: number, size: number = state.pageSize, forceRefresh: boolean = false): Observable<PlexMediaStatisticsDTO | null> {
 			if (pendingPages.has(page) || (!forceRefresh && mediaPages.has(page))) {
@@ -348,13 +346,9 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		// Adds the requested media page to the cache
 		addMediaPage(data: PlexMediaStatisticsDTO | null) {
 			if (!data) {
-				state.serverError = true;
-				startCacheRetry();
-				Log.error('Received null data for media page');
+				Log.warn('Media page request returned no data');
 				return;
 			}
-
-			state.serverError = false;
 
 			if (state.queryHash !== data.queryHash) {
 				if (state.queryHash) {
@@ -418,13 +412,15 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 
 			return of([]);
 		},
-		scrollToIndex(scrollIndex: number, highlight = true) {
+		scrollToIndex(scrollIndex: number, highlight = true): Observable<(PlexMediaStatisticsDTO | null)[]> {
 			if (scrollIndex < 0 || scrollIndex >= state.totalCount) {
 				Log.warn(`Scroll index ${scrollIndex} is out of bounds for total count ${state.totalCount}`);
-				return;
+				return of([]);
 			}
 
-			actions.requestRange(scrollIndex - 50, scrollIndex + 50).subscribe(() => state.scrollCommand.next({ index: scrollIndex, highlight }));
+			return actions.requestRange(scrollIndex - 50, scrollIndex + 51).pipe(
+				tap(() => state.scrollCommand.next({ index: scrollIndex, highlight })),
+			);
 		},
 		setCountryFilter(countryId?: number | null): Observable<PlexMediaStatisticsDTO | null> {
 			return of(countryId).pipe(
@@ -617,28 +613,6 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			state.loading = true;
 		},
 	};
-
-	// ── Cache retry helpers ────────────────────────────────
-
-	function startCacheRetry(): void {
-		if (cacheRetryTimer !== null) return;
-		state.cacheRetrySeconds = 5;
-		cacheRetryTimer = setInterval(() => {
-			state.cacheRetrySeconds--;
-			if (state.cacheRetrySeconds <= 0) {
-				clearCacheRetryTimer();
-				actions.refreshMediaData().subscribe();
-			}
-		}, 1000);
-	}
-
-	function clearCacheRetryTimer(): void {
-		if (cacheRetryTimer !== null) {
-			clearInterval(cacheRetryTimer);
-			cacheRetryTimer = null;
-		}
-		state.cacheRetrySeconds = 0;
-	}
 
 	const getters = {
 		hasSelectedMedia: computed((): boolean => {

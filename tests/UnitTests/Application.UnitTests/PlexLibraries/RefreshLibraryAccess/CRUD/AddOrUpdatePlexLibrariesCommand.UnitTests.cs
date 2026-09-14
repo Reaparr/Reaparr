@@ -214,6 +214,60 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     }
 
     [Test]
+    public async Task ShouldReportGrantedOnly_WhenExistingLibraryAccessIsRestored()
+    {
+        // Arrange
+        await SetupDatabase(
+            35,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.PlexAccountCount = 1;
+            }
+        );
+
+        var dbContext = IDbContext;
+        var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
+        var plexLibrary = await dbContext.PlexLibraries.AsTracking().SingleAsync(CancellationToken);
+        await dbContext
+            .PlexAccountLibraries.Where(x =>
+                x.PlexAccountId == plexAccount.Id && x.PlexLibraryId == plexLibrary.Id
+            )
+            .ExecuteDeleteAsync(CancellationToken);
+
+        var request = new AddOrUpdatePlexLibrariesCommand
+        {
+            PlexAccountId = plexAccount.Id,
+            PlexLibraries = new List<PlexLibrary> { plexLibrary }.ToApiLibraries(DateTime.UtcNow),
+        };
+
+        // Act
+        var result = await Sut.ExecuteAsync(request, CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var rapport = result.Value.Single();
+        rapport.GetGranted.Count.ShouldBe(1);
+        rapport.GetUpdated.Count.ShouldBe(0);
+        rapport.GetRevoked.Count.ShouldBe(0);
+        rapport.GetGranted.Single().PlexLibraryId.ShouldBe(plexLibrary.Id);
+
+        var accountLibraryAccess = await dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccount.Id)
+            .ToListAsync(CancellationToken);
+        accountLibraryAccess.Count.ShouldBe(1);
+        accountLibraryAccess.Single().PlexLibraryId.ShouldBe(plexLibrary.Id);
+
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once
+            );
+    }
+
+    [Test]
     public async Task ShouldUpdatePlexLibraries_WhenTheyExistInTheDatabase()
     {
         // Arrange

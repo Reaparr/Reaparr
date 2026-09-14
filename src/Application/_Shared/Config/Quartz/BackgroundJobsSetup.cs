@@ -70,6 +70,7 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
         await _scheduler.DeleteJob(CheckPlexLibrariesForUpdatesJob.GetJobKey(), cancellationToken);
         await _scheduler.DeleteJob(RefreshPlexAccountAccessJob.GetJobKey(), cancellationToken);
         await _scheduler.DeleteJob(CheckForUpdateJob.GetJobKey(), cancellationToken);
+        await _scheduler.DeleteJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken);
 
         {
             var jobKey = CheckAllConnectionsStatusByPlexServerJob.GetJobKey();
@@ -158,6 +159,29 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
 
             await _scheduler.ScheduleJob(job, trigger, cancellationToken);
         }
+        {
+            var jobKey = MediaOverviewSnapshotJob.GetJobKey();
+            var job = JobBuilder
+                .Create<MediaOverviewSnapshotJob>()
+                .WithIdentity(jobKey)
+                .DisallowConcurrentExecution()
+                .StoreDurably()
+                .RequestRecovery()
+                .Build();
+
+            var trigger = TriggerBuilder
+                .Create()
+                .WithIdentity(jobKey.Name, jobKey.Group)
+                .ForJob(jobKey)
+                .StartNow()
+                .WithCronSchedule(
+                    "0 0 * * * ?", // Every hour
+                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionDoNothing()
+                )
+                .Build();
+
+            await _scheduler.ScheduleJob(job, trigger, cancellationToken);
+        }
     }
 
     private async Task TriggerRecurringJobs(CancellationToken cancellationToken)
@@ -166,8 +190,8 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
         await _scheduler.TriggerJob(CheckPlexLibrariesForUpdatesJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(RefreshPlexAccountAccessJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(CheckForUpdateJob.GetJobKey(), cancellationToken);
+        await _scheduler.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken);
     }
-
     public async Task<Result> StopAsync(CancellationToken cancellationToken = default)
     {
         return await Result.Try(async Task () =>

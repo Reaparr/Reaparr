@@ -1,10 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using Flurl;
 using Reaparr.Application.Contracts;
 using Reaparr.Environment;
 
 // ReSharper disable InconsistentNaming
-// ReSharper disable ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
 
 namespace Reaparr.PublicAPI;
 
@@ -18,30 +16,29 @@ public record SearchMovieCommand : ICommand<Result<TorznabMediaSearchResponseDTO
     }
 
     public required string Query { get; init; }
-
     public required int Limit { get; init; }
-
     public required int Offset { get; init; }
-
     public string? IMDB_ID { get; init; }
-
     public required int TMDB_ID { get; init; }
-
     public required IntegrationIdentity Integration { get; init; }
-
     public string TorznabApiKey { get; init; } = string.Empty;
+    public int[] Categories { get; init; } = [];
+    public string[] Attributes { get; init; } = [];
+    public bool IncludeAllAttributes { get; init; } = true;
 }
 
 public class SearchMovieCommandValidator : AbstractValidator<SearchMovieCommand>
 {
     public SearchMovieCommandValidator()
     {
-        // Basic argument validation
-        RuleFor(x => x.Limit).GreaterThan(0).LessThanOrEqualTo(500);
-
+        RuleFor(x => x.Limit).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Offset).GreaterThanOrEqualTo(0);
-
+        RuleFor(x => x)
+            .Must(x => TorznabSearchHelpers.IsPaginationWithinLimit(x.Offset, x.Limit))
+            .WithMessage($"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}.");
         RuleFor(x => x.TMDB_ID).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Categories).NotNull();
+        RuleFor(x => x.Attributes).NotNull();
     }
 }
 
@@ -70,150 +67,84 @@ public class SearchMovieCommandHandler : ICommandHandler<SearchMovieCommand, Res
         CancellationToken cancellationToken
     )
     {
-        var movies = await LoadMoviesAsync(command, cancellationToken);
-
-        var items = new List<TorznabItem>();
-        foreach (var movie in movies)
-        {
-            items.AddRange(MapMovieToItems(movie, command));
-        }
-
-        return Result.Ok(
-            new TorznabMediaSearchResponseDTO
-            {
-                Channel = new TorznabChannel
-                {
-                    Title = "Reaparr Indexer",
-                    Description = $"Movie Search results for {command.Query}",
-                    Language = "en-us",
-                    Category = "search",
-                    Items = items,
-                },
-            }
-        );
-    }
-
-    private async Task<List<PlexMovie>> LoadMoviesAsync(SearchMovieCommand command, CancellationToken cancellationToken)
-    {
         var onlineServerIds = await _dbContext.GetDownloadableServerIds();
-        if (!onlineServerIds.Any())
+        if (onlineServerIds.Count == 0)
         {
-            _log.Here()
-                .Warning("No online Plex servers with downloads enabled were found, returning empty search results");
-            return [];
+            _log.Here().Warning("No online Plex servers with downloads enabled were found, returning empty search results");
+            return Result.Ok(
+                TorznabSearchHelpers.CreateResponse(
+                    $"Movie Search results for {command.Query}",
+                    command.Offset,
+                    0,
+                    []
+                )
+            );
         }
 
-        // Base query with required navigation properties for mapping
-        var baseQuery = _dbContext
-            .PlexMovies.Include(x => x.MediaDataList)
-            .Where(x => onlineServerIds.Contains(x.PlexServerId))
-            .WhereHasPlexAccountAccess()
-            .AsQueryable();
+        var query = _dbContext.PlexMovieData.Where(x =>
+            onlineServerIds.Contains(x.PlexServerId)
+            && x.PlexMovie!.PlexLibrary!.PlexAccountLibraries.Any(libraryAccess =>
+                x.PlexMovie.PlexServer!.PlexAccountServers.Any(serverAccess =>
+                    serverAccess.PlexAccountId == libraryAccess.PlexAccountId
+                )
+            )
+        );
 
-        // If no specific query or external IDs are provided, return a paged list
-        var noQueryProvided = string.IsNullOrWhiteSpace(command.Query);
-        var noExternalIdsProvided = string.IsNullOrWhiteSpace(command.IMDB_ID) && command.TMDB_ID <= 0;
-        if (noQueryProvided && noExternalIdsProvided)
-        {
-            return await baseQuery
-                .OrderBy(m => m.Id) // deterministic paging
-                .Skip(command.Offset)
-                .Take(command.Limit)
-                .ToListAsync(cancellationToken);
-        }
-
-        if (!noQueryProvided)
+        if (!string.IsNullOrWhiteSpace(command.Query))
         {
             var searchTitle = command.Query.ToSearchTitle();
             if (string.IsNullOrWhiteSpace(searchTitle))
-                return [];
-
-            var likeQuery = $"{searchTitle}%";
-            baseQuery = baseQuery.Where(m => EF.Functions.Like(m.SearchTitle, likeQuery));
+                return Result.Ok(
+                    TorznabSearchHelpers.CreateResponse(
+                        $"Movie Search results for {command.Query}",
+                        command.Offset,
+                        0,
+                        []
+                    )
+                );
+            query = query.Where(x => EF.Functions.Like(x.PlexMovie!.SearchTitle, $"{searchTitle}%"));
         }
 
-        // Otherwise apply filters only for the provided external IDs
         if (!string.IsNullOrWhiteSpace(command.IMDB_ID))
-            baseQuery = baseQuery.Where(m => m.Guid_IMDB == "tt" + command.IMDB_ID);
-
+            query = query.Where(x => x.PlexMovie!.Guid_IMDB == "tt" + command.IMDB_ID);
         if (command.TMDB_ID > 0)
-            baseQuery = baseQuery.Where(m => m.Guid_TMDB == command.TMDB_ID);
+            query = query.Where(x => x.PlexMovie!.Guid_TMDB == command.TMDB_ID);
 
-        return await baseQuery
-            .OrderBy(m => m.Id)
+        query = query.ApplyTorznabCategories(command.Categories);
+        var total = await query.CountAsync(cancellationToken);
+        var orderedQuery = query
+            .OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId);
+        var rows = await orderedQuery
             .Skip(command.Offset)
             .Take(command.Limit)
+            .ProjectToTorznabFeedItems()
             .ToListAsync(cancellationToken);
-    }
-
-    private IEnumerable<TorznabItem> MapMovieToItems(PlexMovie movie, SearchMovieCommand command)
-    {
-        foreach (var mediaData in movie.MediaDataList.OrderBy(md => md.PlexApiPartId))
-        {
-            var torrentMetadata = new TorrentMetadataDTO
-            {
-                Type = PlexMediaType.Movie,
-                MediaId = movie.Id,
-                DataId = mediaData.Id,
-                PartId = mediaData.Id, // TODO: Media and Parts are merged in the same DB table, PartId can be removed
-                PlexApiPartId = mediaData.PlexApiPartId,
-                Quality = mediaData.Quality,
-                LibraryId = mediaData.PlexLibraryId,
-                ServerId = mediaData.PlexServerId,
-            };
-
-            // FORCE this to be a string, and not an implicit URL type by Flurl
-            // ReSharper disable once SuggestVarOrType_BuiltInTypes
-            string torrentDownloadUrl = _networkSettings
-                .Url.AppendPathSegment(
-                    PublicApiRoutes.DownloadTorrent.Replace("{integrationId:guid}", command.Integration.Id.ToString())
+        var requestedAttributes = TorznabSearchHelpers.GetRequestedAttributes(
+            command.IncludeAllAttributes,
+            command.Attributes
+        );
+        var items = rows
+            .Select(x =>
+                x.ToTorznabItem(
+                    command.Integration,
+                    command.TorznabApiKey,
+                    _networkSettings.Url,
+                    requestedAttributes,
+                    _appRuntimeInfo.IsDevelopmentEnvironment
                 )
-                .SetQueryParams(torrentMetadata.Values)
-                .SetQueryParam(IntegrationDefinitions.INDEXER_API_KEY, command.TorznabApiKey, isEncoded: false);
-
-            var item = new TorznabItem
-            {
-                Title = mediaData.GetFileName,
-                PubDate = movie.AddedAt.ToString("R"),
-                Guid = new TorznabGuid { Value = torrentDownloadUrl },
-                Link = torrentDownloadUrl,
-                Size = mediaData.Size,
-                Enclosure = new TorznabEnclosure
-                {
-                    Url = torrentDownloadUrl,
-                    Length = mediaData.Size,
-                    Type = "application/x-bittorrent",
-                },
-            };
-
-            var count = MemeNumberGenerator.GetRandomMemeNumber().ToString();
-            item.Attributes.Add(new TorznabAttr("seeders", count));
-            item.Attributes.Add(new TorznabAttr("peers", count));
-            item.Attributes.Add(new TorznabAttr("type", "movie"));
-            item.Attributes.Add(new TorznabAttr("language", "English"));
-            item.Attributes.Add(new TorznabAttr("downloadvolumefactor", "0.0"));
-
-            item.Attributes.Add(new TorznabAttr("category", mediaData.ToTorznabMovieCategory().ToString()));
-            item.Attributes.Add(new TorznabAttr("resolution", mediaData.VideoResolution.ToResolutionLabel()));
-            item.Attributes.Add(new TorznabAttr("source", mediaData.Source.ToEnumMemberValue()));
-            item.Attributes.Add(new TorznabAttr("videoCodec", mediaData.VideoCodec));
-            item.Attributes.Add(new TorznabAttr("audioCodec", mediaData.AudioCodec));
-
-            if (_appRuntimeInfo.IsDevelopmentEnvironment)
-            {
-                item.Attributes.Add(new TorznabAttr("debug-plexServerId", mediaData.PlexServerId.ToString()));
-                item.Attributes.Add(new TorznabAttr("debug-plexLibraryId", mediaData.PlexLibraryId.ToString()));
-                item.Attributes.Add(new TorznabAttr("debug-plexApiMediaId", mediaData.PlexApiMediaId.ToString()));
-                item.Attributes.Add(new TorznabAttr("debug-ratingKey", mediaData.PlexApiRatingKey.ToString()));
-            }
-
-            if (movie.Guid_TMDB is not null)
-                item.Attributes.Add(new TorznabAttr("tmdbid", movie.Guid_TMDB.Value.ToString()));
-
-            if (!string.IsNullOrEmpty(movie.Guid_IMDB))
-                item.Attributes.Add(new TorznabAttr("imdb", movie.Guid_IMDB));
-
-            yield return item;
-        }
+            )
+            .ToList();
+        return Result.Ok(
+            TorznabSearchHelpers.CreateResponse(
+                $"Movie Search results for {command.Query}",
+                command.Offset,
+                total,
+                items
+            )
+        );
     }
 }

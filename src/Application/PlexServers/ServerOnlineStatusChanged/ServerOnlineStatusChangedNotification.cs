@@ -19,21 +19,18 @@ public class ServerOnlineStatusChangedHandler : IEventHandler<ServerOnlineStatus
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly IDownloadQueue _downloadQueue;
     private readonly ICommandExecutor _commandExecutor;
-    private readonly IMediaQueryCache _mediaQueryCache;
 
     public ServerOnlineStatusChangedHandler(
         ILogger log,
         IReaparrDbContextFactory dbContextFactory,
         IDownloadQueue downloadQueue,
-        ICommandExecutor commandExecutor,
-        IMediaQueryCache mediaQueryCache
+        ICommandExecutor commandExecutor
     )
     {
         _log = log.ForContext<ServerOnlineStatusChangedHandler>();
         _dbContextFactory = dbContextFactory;
         _downloadQueue = downloadQueue;
         _commandExecutor = commandExecutor;
-        _mediaQueryCache = mediaQueryCache;
     }
 
     public async Task HandleAsync(
@@ -41,14 +38,11 @@ public class ServerOnlineStatusChangedHandler : IEventHandler<ServerOnlineStatus
         CancellationToken cancellationToken
     )
     {
-        using (var dbContext = await _dbContextFactory.CreateAsync())
-        {
-            var libraryIds = await dbContext
-                .PlexLibraries.Where(x => x.PlexServerId == notification.PlexServerId)
-                .Select(x => x.Id)
-                .ToListAsync(cancellationToken);
-            _mediaQueryCache.InvalidateLibraries(libraryIds, "Plex server online status changed");
-        }
+        var rebuildResult = await _commandExecutor.Send(
+            new QueueMediaOverviewRebuildCommand(),
+            cancellationToken
+        );
+        rebuildResult.LogIfFailed();
 
         if (notification.IsOnline)
         {

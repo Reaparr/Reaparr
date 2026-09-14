@@ -23,10 +23,22 @@
         <ProjectReference Include="..\..\BaseTests\BaseTests.csproj" />
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="..\..\BaseTests\BaseContainer\**\*.cs" Link="_Shared\BaseContainer\%(RecursiveDir)%(Filename)%(Extension)" />
-        <Compile Include="..\..\BaseTests\_Shared\BaseIntegrationTest\BaseIntegrationTests.cs" Link="_Shared\BaseIntegrationTest\BaseIntegrationTests.cs" />
-        <Compile Include="..\..\BaseTests\_Shared\Config\Autofac\TestModule.cs" Link="_Shared\Config\Autofac\TestModule.cs" />
-        <Compile Include="..\..\BaseTests\_Shared\ReaparrWebApplicationFactory.cs" Link="_Shared\ReaparrWebApplicationFactory.cs" />
+        <Compile
+            Include="..\..\BaseTests\BaseContainer\**\*.cs"
+            Link="_Shared\BaseContainer\%(RecursiveDir)%(Filename)%(Extension)"
+        />
+        <Compile
+            Include="..\..\BaseTests\_Shared\BaseIntegrationTest\BaseIntegrationTests.cs"
+            Link="_Shared\BaseIntegrationTest\BaseIntegrationTests.cs"
+        />
+        <Compile
+            Include="..\..\BaseTests\_Shared\Config\Autofac\TestModule.cs"
+            Link="_Shared\Config\Autofac\TestModule.cs"
+        />
+        <Compile
+            Include="..\..\BaseTests\_Shared\ReaparrWebApplicationFactory.cs"
+            Link="_Shared\ReaparrWebApplicationFactory.cs"
+        />
     </ItemGroup>
     <ItemGroup>
         <Folder Include="Application\PlexAccounts\Create\" />

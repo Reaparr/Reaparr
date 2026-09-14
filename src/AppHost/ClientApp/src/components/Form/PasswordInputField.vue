@@ -2,8 +2,8 @@
 	<q-input
 		v-model="model"
 		lazy-rules
-		:rules="disableValidation ? [(v: string): boolean | string =>
-			!!v || t('components.password-input-field.validation.password-is-required')] : getPasswordRules"
+		:rules="props.rules ?? (disableValidation ? [(v: string): boolean | string =>
+			!!v || t('components.password-input-field.validation.password-is-required')] : getPasswordRules)"
 		color="red"
 		full-width
 		outlined
@@ -40,8 +40,11 @@ const hasFocus = defineModel<boolean>('hasFocus');
 
 const showPassword = ref(false);
 
+type ValidationRule = (value: string) => boolean | string;
+
 const props = withDefaults(defineProps<{
 	hideMaskButton?: boolean;
+	rules?: ValidationRule[];
 	cy?: string;
 	showStrength?: boolean;
 	minPasswordLength?: number;

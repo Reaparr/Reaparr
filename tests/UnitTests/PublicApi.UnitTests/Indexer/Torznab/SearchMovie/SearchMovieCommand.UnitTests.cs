@@ -42,17 +42,16 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             TorznabApiKey = "integration-key",
         };
 
-        var movies = await IDbContext
-            .PlexMovies.AsNoTracking()
-            .Include(m => m.MediaDataList)
-            .OrderBy(m => m.Id)
+        var expectedMovieTitles = await IDbContext
+            .PlexMovieData.OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
             .Skip(offset)
             .Take(limit)
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
-
-        var expectedMovieTitles = movies
-            .SelectMany(m => m.MediaDataList.OrderBy(md => md.PlexApiPartId).Select(md => md.GetFileName))
-            .ToList();
 
         // Act
         var result = await Sut.ExecuteAsync(cmd, CancellationToken);
@@ -73,7 +72,7 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
         {
             item.Guid.ShouldNotBeNull();
             item.Guid.IsPermaLink.ShouldBe("false");
-            item.Guid.Value.ShouldBe(item.Link);
+            item.Guid.Value.ShouldNotBe(item.Link);
 
             item.Enclosure.ShouldNotBeNull();
             item.Enclosure.Type.ShouldBe("application/x-bittorrent");
@@ -129,14 +128,15 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             .PlexAccountServers.Where(x => x.PlexServerId == revokedServerId)
             .ExecuteDeleteAsync(CancellationToken);
 
-        var expectedMovies = await dbContext
-            .PlexMovies.Where(x => x.PlexServerId != revokedServerId)
-            .Include(x => x.MediaDataList)
-            .OrderBy(x => x.Id)
+        var expectedTitles = await dbContext
+            .PlexMovieData.Where(x => x.PlexServerId != revokedServerId)
+            .OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
-        var expectedTitles = expectedMovies
-            .SelectMany(x => x.MediaDataList.OrderBy(y => y.PlexApiPartId).Select(y => y.GetFileName))
-            .ToList();
         expectedTitles.ShouldNotBeEmpty();
 
         var command = new SearchMovieCommand
@@ -182,14 +182,15 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             .PlexAccountLibraries.Where(x => x.PlexLibraryId == revokedLibraryId)
             .ExecuteDeleteAsync(CancellationToken);
 
-        var expectedMovies = await dbContext
-            .PlexMovies.Where(x => x.PlexLibraryId != revokedLibraryId)
-            .Include(x => x.MediaDataList)
-            .OrderBy(x => x.Id)
+        var expectedTitles = await dbContext
+            .PlexMovieData.Where(x => x.PlexLibraryId != revokedLibraryId)
+            .OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenBy(x => x.PlexServer!.MachineIdentifier)
+            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiMediaId)
+            .ThenBy(x => x.PlexApiPartId)
+            .Select(x => x.GetFileName)
             .ToListAsync(CancellationToken);
-        var expectedTitles = expectedMovies
-            .SelectMany(x => x.MediaDataList.OrderBy(y => y.PlexApiPartId).Select(y => y.GetFileName))
-            .ToList();
         expectedTitles.ShouldNotBeEmpty();
 
         var command = new SearchMovieCommand
@@ -391,20 +392,18 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             TMDB_ID = 0,
         };
 
-        var expectedPartCount = await IDbContext
-            .PlexMovies.Include(m => m.MediaDataList)
-            .OrderBy(m => m.Id)
-            .Skip(offset)
-            .Take(limit)
-            .Select(m => m.MediaDataList.Count)
-            .SumAsync(CancellationToken);
+        var expectedTotal = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
+        var movieCount = await IDbContext.PlexMovies.CountAsync(CancellationToken);
+        expectedTotal.ShouldBeGreaterThan(movieCount);
 
         // Act
         var result = await Sut.ExecuteAsync(cmd, CancellationToken);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Value.Channel.Items.Count.ShouldBe(expectedPartCount);
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Channel.Items.Count.ShouldBe(limit);
+        result.Value.Channel.Response.Offset.ShouldBe(offset);
+        result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
     }
 
     [Test]
@@ -462,7 +461,7 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
     }
 
     [Test]
-    public void ShouldFailValidation_WhenLimitIsZero()
+    public void ShouldPassValidation_WhenLimitIsZero()
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
@@ -479,20 +478,42 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
         var result = validator.Validate(cmd);
 
         // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldNotBeEmpty();
+        result.IsValid.ShouldBeTrue();
+        result.Errors.ShouldBeEmpty();
     }
 
     [Test]
-    public void ShouldFailValidation_WhenLimitExceedsMax()
+    public void ShouldPassValidation_WhenLimitIsAtMaximum()
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
         var cmd = new SearchMovieCommand
         {
             Query = string.Empty,
-            Limit = 501,
+            Limit = 10_000,
             Offset = 0,
+            IMDB_ID = string.Empty,
+            TMDB_ID = 0,
+        };
+
+        // Act
+        var result = validator.Validate(cmd);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        result.Errors.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void ShouldFailValidation_WhenPaginationWindowExceedsMaximum()
+    {
+        // Arrange
+        var validator = new SearchMovieCommandValidator();
+        var cmd = new SearchMovieCommand
+        {
+            Query = string.Empty,
+            Limit = 1,
+            Offset = 10_000,
             IMDB_ID = string.Empty,
             TMDB_ID = 0,
         };

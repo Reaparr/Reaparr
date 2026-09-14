@@ -2,7 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
 import { forkJoin, type Observable } from 'rxjs';
 import { of } from 'rxjs';
-import { map, switchMap, tap } from 'rxjs/operators';
+import { concatMap, map, switchMap, tap } from 'rxjs/operators';
 import { get } from '@vueuse/core';
 import {
 	type LibrarySyncProgressDTO,
@@ -45,8 +45,14 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			// Listen for refresh notifications
-			signalRStore.getRefreshNotification(RefreshDataType.PlexLibrary).pipe(switchMap(() => actions.refreshLibraries())).subscribe();
-			signalRStore.getRefreshNotification(RefreshDataType.PlexLibrarySyncStatus).pipe(switchMap(() => actions.refreshLibrarySyncStatus())).subscribe();
+			signalRStore
+				.getRefreshNotification(RefreshDataType.PlexLibrary)
+				.pipe(concatMap(() => actions.refreshLibraries()))
+				.subscribe();
+			signalRStore
+				.getRefreshNotification(RefreshDataType.PlexLibrarySyncStatus)
+				.pipe(concatMap(() => actions.refreshLibrarySyncStatus()))
+				.subscribe();
 
 			// Listen for library sync job status updates
 			backgroundJobsStore.getLibrarySyncJobUpdate().subscribe((update) => {

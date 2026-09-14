@@ -117,16 +117,12 @@
 						:label="$t('help.account-form.auth-token.label')"
 						:title="$t('help.account-form.auth-token.title')"
 						:text="$t('help.account-form.auth-token.text')">
-						<q-input
+						<PasswordInputField
 							v-model="accountDialogStore.customAuthenticationToken"
 							:rules="getAuthTokenRules"
-							color="red"
-							full-width
-							outlined
-							required
-							hide-bottom-space
-							type="password"
-							data-cy="account-form-auth-token-input" />
+							class="q-my-md"
+							name="plex-auth-token"
+							cy="account-form-auth-token-input" />
 					</HelpRow>
 				</HelpGroup>
 			</q-tab-panel>

@@ -16,17 +16,17 @@ public class AddOrUpdatePlexAccountServersCommandHandler
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaQueryCache _mediaQueryCache;
+    private readonly ICommandExecutor _commandExecutor;
 
     public AddOrUpdatePlexAccountServersCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
-        IMediaQueryCache mediaQueryCache
+        ICommandExecutor commandExecutor
     )
     {
         _log = log.ForContext<AddOrUpdatePlexAccountServersCommandHandler>();
         _dbContext = dbContext;
-        _mediaQueryCache = mediaQueryCache;
+        _commandExecutor = commandExecutor;
     }
 
     public async Task<Result<RefreshPlexServerAccessRapport>> ExecuteAsync(
@@ -181,7 +181,13 @@ public class AddOrUpdatePlexAccountServersCommandHandler
             .Where(x => changedPlexServerIds.Contains(x.PlexServerId))
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
-        _mediaQueryCache.InvalidateLibraries(affectedLibraryIds, "Plex account server access changed");
+
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        if (rebuildResult.IsFailed)
+        {
+            rebuildResult.LogIfFailed();
+            return rebuildResult;
+        }
 
         return Result.Ok(rapport);
     }

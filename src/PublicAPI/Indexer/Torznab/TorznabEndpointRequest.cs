@@ -9,6 +9,8 @@ public record TorznabEndpointRequest
     [QueryParam, BindFrom("t")]
     public string? Type { get; init; }
 
+    public TorznabQueryType ParsedType => TorznabRequestMappers.ParseType(Type);
+
     /// <summary>
     /// Free text search query.
     /// Used in search, tvsearch, and movie queries.
@@ -71,6 +73,12 @@ public record TorznabEndpointRequest
     /// </summary>
     [QueryParam, BindFrom("cat")]
     public int[]? Categories { get; init; }
+
+    /// <summary>
+    /// Comma-separated Torznab attribute names to include when extended output is disabled.
+    /// </summary>
+    [QueryParam, BindFrom("attrs")]
+    public string? Attributes { get; init; }
 
     /// <summary>
     /// Extended flag (0 = basic, 1 = include extended attributes).

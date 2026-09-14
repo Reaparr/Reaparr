@@ -21,6 +21,10 @@ public class QuartzModule : Module
         builder.RegisterType<LibrarySyncJobListener>().SingleInstance();
         builder.RegisterType<SchedulerListener>().SingleInstance();
         builder.RegisterType<BackgroundJobsSetup>().As<IBackgroundJobsSetup>().SingleInstance();
+        builder
+            .RegisterType<MediaOverviewRebuildCoordinator>()
+            .As<IMediaOverviewRebuildCoordinator>()
+            .SingleInstance();
 
         // Source: https://github.com/alphacloud/Autofac.Extras.Quartz
         builder.RegisterModule(new QuartzAutofacFactoryModule { ConfigurationProvider = ConfigurationProvider });

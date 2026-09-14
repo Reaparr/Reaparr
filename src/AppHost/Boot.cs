@@ -1,6 +1,5 @@
 using Quartz;
 using Reaparr.Application.Contracts;
-using Reaparr.Data.Contracts;
 
 namespace Reaparr.AppHost;
 
@@ -14,13 +13,9 @@ public class Boot : IHostedService
     private readonly Serilog.ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IAppRuntimeInfo _appRuntimeInfo;
-
     private readonly IHostApplicationLifetime _appLifetime;
-
     private readonly IScheduler _scheduler;
     private readonly IBackgroundJobsSetup _backgroundJobsSetup;
-    private readonly IMediaQueryCache _mediaQueryCache;
-
     private readonly IDownloadQueue _downloadQueue;
 
     #endregion
@@ -37,7 +32,6 @@ public class Boot : IHostedService
         IHostApplicationLifetime appLifetime,
         IScheduler scheduler,
         IBackgroundJobsSetup backgroundJobsSetup,
-        IMediaQueryCache mediaQueryCache,
         IDownloadQueue downloadQueue
     )
     {
@@ -47,7 +41,6 @@ public class Boot : IHostedService
         _appLifetime = appLifetime;
         _scheduler = scheduler;
         _backgroundJobsSetup = backgroundJobsSetup;
-        _mediaQueryCache = mediaQueryCache;
         _downloadQueue = downloadQueue;
 
         appLifetime.ApplicationStarted.Register(OnStarted);
@@ -71,6 +64,7 @@ public class Boot : IHostedService
         }
 
         var defaultUser = await _commandExecutor.Send(new CreateDefaultAppUserCommand(), cancellationToken);
+        defaultUser.LogIfFailed();
         if (defaultUser.IsFailed)
         {
             TerminateApplication();
@@ -78,6 +72,7 @@ public class Boot : IHostedService
         }
 
         var downloadQueueSetup = _downloadQueue.Setup(_appLifetime.ApplicationStopping);
+        downloadQueueSetup.LogIfFailed();
         if (downloadQueueSetup.IsFailed)
         {
             TerminateApplication();
@@ -87,23 +82,10 @@ public class Boot : IHostedService
         var recoverResult = await _commandExecutor.Send(new RecoverInterruptedDownloadsCommand(), cancellationToken);
         recoverResult.LogIfFailed();
 
-        _mediaQueryCache.SuppressInvalidation = true;
-        var cacheWarmupResult = await _mediaQueryCache.BuildCache(cancellationToken);
-        if (cacheWarmupResult.IsFailed)
-        {
-            _mediaQueryCache.SuppressInvalidation = false;
-            cacheWarmupResult.LogIfFailed();
-            if (!cacheWarmupResult.IsCancelled)
-                TerminateApplication();
-            return;
-        }
-
-        // Start Quartz only after the initial media query cache is ready.
         var setupResult = await _backgroundJobsSetup.SetupAsync(cancellationToken);
+        setupResult.LogIfFailed();
         if (setupResult.IsFailed)
         {
-            _mediaQueryCache.SuppressInvalidation = false;
-            setupResult.LogIfFailed();
             TerminateApplication();
             return;
         }
@@ -115,12 +97,6 @@ public class Boot : IHostedService
         }
 
         _log.Here().Information("Finished Initiating boot process");
-    }
-
-    private void TerminateApplication()
-    {
-        _log.Here().Fatal("An error occurred during the boot process, terminating application");
-        _appLifetime.StopApplication();
     }
 
     /// <inheritdoc/>
@@ -141,11 +117,11 @@ public class Boot : IHostedService
             cancellationToken
         );
         if (moveJobsResult.IsFailed)
-            moveJobsResult.LogIfFailed();
+            moveJobsResult.LogError();
 
         var autoPauseResult = await _commandExecutor.Send(new AutoPauseActiveDownloadsCommand(), cancellationToken);
         if (autoPauseResult.IsFailed)
-            autoPauseResult.LogIfFailed();
+            autoPauseResult.LogError();
 
         var stopResult = await _backgroundJobsSetup.StopAsync(cancellationToken);
         stopResult.LogIfFailed();
@@ -154,6 +130,12 @@ public class Boot : IHostedService
     #endregion
 
     #region Private Methods
+
+    private void TerminateApplication()
+    {
+        _log.Here().Fatal("An error occurred during the boot process, terminating application");
+        _appLifetime.StopApplication();
+    }
 
     // ReSharper disable once AsyncVoidMethod
     private async void OnStarted()
@@ -169,17 +151,17 @@ public class Boot : IHostedService
                 );
                 migrationResult.LogIfFailed();
 
+                var genreTypeRecalculationResult = await _commandExecutor.Send(
+                    new RecalculatePlexGenreTypesCommand(),
+                    _appLifetime.ApplicationStopping
+                );
+                genreTypeRecalculationResult.LogIfFailed();
+
                 var integrationCheckResult = await _commandExecutor.Send(
                     new NotifyArrAppsOnStartupCommand(),
                     _appLifetime.ApplicationStopping
                 );
                 integrationCheckResult.LogIfFailed();
-
-                var cacheWarmupResult = await _commandExecutor.Send(
-                    new WarmupMediaQueryCacheCommand(),
-                    _appLifetime.ApplicationStopping
-                );
-                cacheWarmupResult.LogIfFailed();
             },
             exception =>
             {

@@ -28,7 +28,9 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
 
-        Mock.Mock<IMediaQueryCache>().Setup(x => x.InvalidateLibrary(It.IsAny<int>(), It.IsAny<string>()));
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -75,7 +77,9 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
 
-        Mock.Mock<IMediaQueryCache>().Setup(x => x.InvalidateLibrary(It.IsAny<int>(), It.IsAny<string>()));
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         await Sut.ExecuteAsync(
@@ -113,8 +117,9 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
-
-        Mock.Mock<IMediaQueryCache>().Setup(x => x.InvalidateLibrary(It.IsAny<int>(), It.IsAny<string>()));
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -166,8 +171,9 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
-
-        Mock.Mock<IMediaQueryCache>().Setup(x => x.InvalidateLibrary(It.IsAny<int>(), It.IsAny<string>()));
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(

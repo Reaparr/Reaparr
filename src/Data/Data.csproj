@@ -33,10 +33,6 @@
         <ProjectReference Include="..\Settings.Contracts\Settings.Contracts.csproj" />
     </ItemGroup>
     <ItemGroup>
-        <Compile Remove="CQRS\PlexServers\Commands\AddOrUpdatePlexServersCommandHandler.cs" />
-        <Compile Remove="Cache\MediaQuerySnapshotKey.cs" />
-    </ItemGroup>
-    <ItemGroup>
         <Using Include="System.ComponentModel.DataAnnotations" />
         <Using Include="System.ComponentModel.DataAnnotations.Schema" />
         <Using Include="FastEndpoints" />

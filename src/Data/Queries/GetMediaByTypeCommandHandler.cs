@@ -36,7 +36,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
     {
         var filter = command.Filter;
         var page = Math.Max(filter.Parameters.Page ?? 1, 1);
-        var pageSize = Math.Max(filter.Parameters.PageSize ?? 0, 0);
+        var pageSize = filter.PageSize;
         var response = new PagedMediaQueryResult
         {
             QueryHash = filter.QueryHash,
@@ -106,6 +106,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
 
         var options = QueryOptionsParser.Parse(filter.Parameters);
         options.Paging.Disabled = pageSize == 0;
+        options.Paging.PageSize = pageSize;
 
         if (!allowedPlexLibraryIds.Any())
             return Result.Ok(response);
@@ -190,6 +191,10 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 }
                 else
                 {
+                    response.TotalCount = await movieQuery.CountAsync(ct);
+                    response.MediaSize = await movieQuery.SumAsync(x => x.MediaSize, ct);
+                    response.TotalMediaSize = response.MediaSize;
+
                     await SetNavigationIndexes(
                         response,
                         movieQuery.Select(x => new MediaNavigationIndexRow(
@@ -204,10 +209,6 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         options,
                         ct
                     );
-
-                    response.TotalCount = await movieQuery.CountAsync(ct);
-                    response.MediaSize = await movieQuery.SumAsync(x => x.MediaSize, ct);
-                    response.TotalMediaSize = response.MediaSize;
 
                     var movies = await movieQuery.ApplyPaging(options).ToListAsync(ct);
 
@@ -309,6 +310,10 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 }
                 else
                 {
+                    response.TotalCount = await tvShowQuery.CountAsync(ct);
+                    response.MediaSize = await tvShowQuery.SumAsync(x => x.MediaSize, ct);
+                    response.TotalMediaSize = response.MediaSize;
+
                     await SetNavigationIndexes(
                         response,
                         tvShowQuery.Select(x => new MediaNavigationIndexRow(
@@ -323,10 +328,6 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         options,
                         ct
                     );
-
-                    response.TotalCount = await tvShowQuery.CountAsync(ct);
-                    response.MediaSize = await tvShowQuery.SumAsync(x => x.MediaSize, ct);
-                    response.TotalMediaSize = response.MediaSize;
 
                     var tvShows = await tvShowQuery.ApplyPaging(options).ToListAsync(ct);
 

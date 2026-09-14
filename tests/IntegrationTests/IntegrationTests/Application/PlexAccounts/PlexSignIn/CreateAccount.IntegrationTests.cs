@@ -33,9 +33,13 @@ public class CreateAccountIntegrationTests : BaseIntegrationTests
                 config.OverrideServices = builder =>
                     builder
                         .Register(_ =>
-                            new FakeCommandExecutor().Intercept<QueueLibrarySyncJobCommand, Result>(
-                                (_, _) => Task.FromResult(Result.Ok())
-                            )
+                            new FakeCommandExecutor()
+                                .Intercept<QueueLibrarySyncJobCommand, Result>(
+                                    (_, _) => Task.FromResult(Result.Ok())
+                                )
+                                .Intercept<QueueMediaOverviewRebuildCommand, Result>(
+                                    (_, _) => Task.FromResult(Result.Ok())
+                                )
                         )
                         .As<ICommandExecutor>()
                         .InstancePerDependency();

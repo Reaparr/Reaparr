@@ -1,7 +1,7 @@
 import Log from 'consola';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, computed, toRefs } from 'vue';
-import { map, switchMap, tap } from 'rxjs/operators';
+import { concatMap, map, switchMap, tap } from 'rxjs/operators';
 import type { Observable } from 'rxjs';
 import { of } from 'rxjs';
 import { clone, cloneDeep, flatMapDeep, keyBy, merge, sum, values } from 'lodash-es';
@@ -45,7 +45,7 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 			// Listen for refresh notifications
 			signalRStore
 				.getRefreshNotification(RefreshDataType.DownloadTasks)
-				.pipe(switchMap(() => actions.fetchDownloadList()))
+				.pipe(concatMap(() => actions.fetchDownloadList()))
 				.subscribe();
 
 			return actions.fetchDownloadList().pipe(switchMap(() => of({

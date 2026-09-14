@@ -46,6 +46,9 @@ public class SetupSonarrIndexerPayloadUnitTests : BaseUnitTest<SetupSonarrIndexe
         capturedCommand.ForceSave.ShouldBeTrue();
         capturedCommand.Resource.Fields!.ShouldContain(x => x.Name == "apiKey" && Equals(x.Value, expectedApiKey));
         capturedCommand.Resource.Fields!.ShouldNotContain(x => x.Name == "apikey");
+        capturedCommand
+            .Resource.Fields!.Single(x => x.Name == "categories")
+            .Value.ShouldBe(IntegrationDefinitions.SupportedTorznabCategories.Select(x => (int)x.Id).ToList());
         result.Value.Resource.ShouldBeSameAs(capturedCommand.Resource);
         Mock.Mock<ICommandExecutor>().Verify();
     }

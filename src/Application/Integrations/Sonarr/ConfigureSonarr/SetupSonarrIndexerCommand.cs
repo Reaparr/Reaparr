@@ -137,49 +137,7 @@ public class SetupSonarrIndexerCommandHandler
                 new SonarrIndexerContractFieldDTO
                 {
                     Name = "categories",
-                    Value = new List<int>
-                    {
-                        2010,
-                        2020,
-                        2030,
-                        2040,
-                        2045,
-                        2050,
-                        2060,
-                        2070,
-                        5000,
-                        5030,
-                        5040,
-                        5050,
-                        5070,
-                        5080,
-                        5090,
-                        2000,
-                    },
-                },
-                new SonarrIndexerContractFieldDTO
-                {
-                    Name = "animeCategories",
-                    Value =
-                        (List<int>)
-                            [
-                                2010,
-                                2020,
-                                2030,
-                                2040,
-                                2045,
-                                2050,
-                                2060,
-                                2070,
-                                5000,
-                                5030,
-                                5040,
-                                5050,
-                                5070,
-                                5080,
-                                5090,
-                                2000,
-                            ],
+                    Value = IntegrationDefinitions.SupportedTorznabCategories.Select(x => (int)x.Id).ToList(),
                 },
                 new SonarrIndexerContractFieldDTO { Name = "animeStandardFormatSearch", Value = false },
                 new SonarrIndexerContractFieldDTO { Name = "additionalParameters", Value = null },

@@ -15,17 +15,23 @@ describe('Display media collection on the Library detail page', () => {
 				if (!movieLibrary) {
 					throw new Error('Movie library not found');
 				}
+				const movieList = mediaData.find((x) => x.libraryId === movieLibrary.id)?.media ?? [];
+				const lastPage = Math.ceil(movieList.length / 100);
+				cy.intercept('GET', '**/api/PlexMedia*', (req) => {
+					if (Number(req.query.plexLibraryId) === movieLibrary.id && Number(req.query.page) === lastPage) {
+						req.alias = 'lastMoviePage';
+					}
+				});
+
 				// Visit the page
 				cy.visit(route(`/movies/${movieLibrary.id}`));
 				cy.url({ timeout: 20000 }).should('include', `/movies/${movieLibrary.id}`);
 
-				cy.get('[data-cy="poster-table"]', { timeout: 20000 })
+				cy.get('[data-cy="poster-table"] #poster-table', { timeout: 20000 })
 					.should('exist')
-					.find('.q-scrollarea__container')
 					.scrollTo('bottom', { duration: 10000 });
-				const movieList = mediaData.find((x) => x.libraryId === movieLibrary.id)?.media ?? [];
+				cy.wait('@lastMoviePage', { timeout: 20000 });
 				cy.get(`[data-scroll-index="${movieList.length - 1}"]`, { timeout: 20000 })
-					.scrollIntoView()
 					.should('exist')
 					.and('be.visible');
 			});

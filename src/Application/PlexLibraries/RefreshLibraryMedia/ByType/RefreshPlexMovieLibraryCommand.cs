@@ -21,21 +21,18 @@ public class RefreshPlexMovieLibraryCommandHandler
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaQueryCache _mediaQueryCache;
     private readonly ILibrarySyncProgressStore _librarySyncProgressStore;
 
     public RefreshPlexMovieLibraryCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
         ILibrarySyncProgressStore librarySyncProgressStore,
-        ICommandExecutor commandExecutor,
-        IMediaQueryCache mediaQueryCache
+        ICommandExecutor commandExecutor
     )
     {
         _log = log.ForContext<RefreshPlexMovieLibraryCommandHandler>();
         _commandExecutor = commandExecutor;
         _dbContext = dbContext;
-        _mediaQueryCache = mediaQueryCache;
         _librarySyncProgressStore = librarySyncProgressStore;
     }
 
@@ -94,7 +91,8 @@ public class RefreshPlexMovieLibraryCommandHandler
             cancellationToken
         );
 
-        _mediaQueryCache.InvalidateLibrary(plexLibraryId, "Movie library media refresh completed");
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        rebuildResult.LogIfFailed();
 
         // Refresh the PlexLibrary from the database to ensure we have the latest data
         var plexLibraryDb = await _dbContext.PlexLibraries.GetAsync(plexLibraryId, cancellationToken);

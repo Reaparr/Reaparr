@@ -1,4 +1,4 @@
-﻿namespace Reaparr.Application.UnitTests;
+namespace Reaparr.Application.UnitTests;
 
 public class DeletePlexAccountByIdEndpointUnitTests
     : BaseEndpointUnitTest<DeletePlexAccountByIdEndpoint, DeletePlexAccountByIdRequest, BaseResultDTO>
@@ -26,7 +26,11 @@ public class DeletePlexAccountByIdEndpointUnitTests
         IDbContext.PlexMovies.ShouldNotBeEmpty();
         IDbContext.PlexTvShows.ShouldNotBeEmpty();
 
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
         Mock.SendRefreshNotification();
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(testAccount.Id));
@@ -136,6 +140,9 @@ public class DeletePlexAccountByIdEndpointUnitTests
         await dbContext.SaveChangesAsync(CancellationToken);
 
         Mock.SendRefreshNotification();
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var endpoint = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(deleteAccountId));

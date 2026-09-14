@@ -14,6 +14,6 @@ public class DataModule : Module
 
         builder.RegisterType<ReaparrDbContextFactory>().As<IReaparrDbContextFactory>().InstancePerDependency();
 
-        builder.RegisterType<MediaQueryCache>().As<IMediaQueryCache>().SingleInstance();
+
     }
 }

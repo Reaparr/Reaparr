@@ -28,21 +28,18 @@ public class RefreshPlexTvShowLibraryCommandHandler
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IReaparrDbContext _dbContext;
-    private readonly IMediaQueryCache _mediaQueryCache;
     private readonly ILibrarySyncProgressStore _librarySyncProgressStore;
 
     public RefreshPlexTvShowLibraryCommandHandler(
         ILogger log,
         ICommandExecutor commandExecutor,
         IReaparrDbContext dbContext,
-        ILibrarySyncProgressStore librarySyncProgressStore,
-        IMediaQueryCache mediaQueryCache
+        ILibrarySyncProgressStore librarySyncProgressStore
     )
     {
         _log = log.ForContext<RefreshPlexTvShowLibraryCommandHandler>();
         _commandExecutor = commandExecutor;
         _dbContext = dbContext;
-        _mediaQueryCache = mediaQueryCache;
         _librarySyncProgressStore = librarySyncProgressStore;
     }
 
@@ -176,7 +173,8 @@ public class RefreshPlexTvShowLibraryCommandHandler
                 plexLibrary.Id
             );
 
-        _mediaQueryCache.InvalidateLibrary(plexLibraryId, "TV show library media refresh completed");
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        rebuildResult.LogIfFailed();
 
         // Refresh the PlexLibrary from the database to ensure we have the latest data
         var plexLibraryDb = await _dbContext.PlexLibraries.GetAsync(plexLibraryId, cancellationToken);

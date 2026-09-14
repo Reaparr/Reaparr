@@ -1,4 +1,4 @@
-import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { HubConnectionState } from '@microsoft/signalr';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
@@ -39,10 +39,15 @@ describe('SignalrStore refresh notifications', () => {
 			value: [],
 		});
 		setActivePinia(createPinia());
+		vi.useFakeTimers();
 		hubConnections.clear();
 		hubConnections.set('progress', createHub());
 		hubConnections.set('download', createHub());
 		hubConnections.set('notifications', createHub());
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	test('Should request download list when RefreshNotification message is DownloadTasks', async () => {
@@ -81,9 +86,25 @@ describe('SignalrStore refresh notifications', () => {
 		// Act
 		await subscribeSpyTo(signalrStore.setup()).onComplete();
 		emitHubMessage('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
+		await vi.advanceTimersByTimeAsync(250);
 
 		// Assert
 		expect(refreshSpy.getFirstValue()).toEqual(RefreshDataType.DownloadTasks);
+	});
+
+	test('Should debounce duplicate refresh notifications', async () => {
+		// Arrange
+		const signalrStore = useSignalrStore();
+		const refreshSpy = subscribeSpyTo(signalrStore.getRefreshNotification(RefreshDataType.PlexLibrary));
+
+		// Act
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		emitHubMessage('notifications', MessageTypes.RefreshNotification, RefreshDataType.PlexLibrary);
+		emitHubMessage('notifications', MessageTypes.RefreshNotification, RefreshDataType.PlexLibrary);
+		await vi.advanceTimersByTimeAsync(250);
+
+		// Assert
+		expect(refreshSpy.getValues()).toEqual([RefreshDataType.PlexLibrary]);
 	});
 });
 

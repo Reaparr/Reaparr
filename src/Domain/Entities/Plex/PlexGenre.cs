@@ -14,4 +14,6 @@ public class PlexGenre : BaseEntity
     public ICollection<PlexMovie> PlexMovieGenres { get; set; } = [];
 
     public ICollection<PlexTvShow> PlexTvShowGenres { get; set; } = [];
+
+    public PlexGenreType Type { get; set; }
 }

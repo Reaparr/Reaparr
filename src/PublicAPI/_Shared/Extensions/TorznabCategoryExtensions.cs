@@ -2,61 +2,53 @@ namespace Reaparr.PublicAPI;
 
 public static class TorznabCategoryExtensions
 {
-    /// <summary>
-    /// Determine Torznab category for a movie release.
-    /// Torznab only distinguishes SD, HD, and UHD.
-    /// </summary>
-    public static int ToTorznabMovieCategory(this BasePlexMediaData part)
+    public static IReadOnlyList<TorznabCategoryId> ToTorznabCategories(this TorznabFeedItemProjection item)
     {
-        var isSd = IsSdResolution(part.VideoResolution);
-        var isUhd = IsUhdResolution(part.VideoResolution);
+        var isSd = item.Source == ReleaseSource.DVD || item.VideoResolution is VideoQuality.SD or VideoQuality.DVD;
+        var isUhd = !isSd && item.VideoResolution is VideoQuality.UHD_4K or VideoQuality.UHD_8K;
 
-        return part.Source switch
+        if (item.MediaType == PlexMediaType.Movie)
         {
-            ReleaseSource.DVD => (int)TorznabCategoryId.Movies_SD,
+            var categories = new List<TorznabCategoryId>
+            {
+                TorznabCategoryId.Movies,
+                isSd ? TorznabCategoryId.Movies_SD
+                : isUhd ? TorznabCategoryId.Movies_UHD
+                : TorznabCategoryId.Movies_HD,
+            };
 
-            _ when isUhd => (int)TorznabCategoryId.Movies_UHD,
+            if (item.GenreTypes.Contains(PlexGenreType.Foreign))
+                categories.Add(TorznabCategoryId.Movies_Foreign);
+            if (item.Source is ReleaseSource.BluRay or ReleaseSource.BluRayRemux)
+                categories.Add(TorznabCategoryId.Movies_BluRay);
+            if (item.Source is ReleaseSource.WebDl or ReleaseSource.WebRip)
+                categories.Add(TorznabCategoryId.Movies_WEBDL);
 
-            _ when isSd => (int)TorznabCategoryId.Movies_SD,
+            return categories;
+        }
 
-            _ => (int)TorznabCategoryId.Movies_HD,
-        };
+        if (item.MediaType == PlexMediaType.Episode)
+        {
+            var categories = new List<TorznabCategoryId>
+            {
+                TorznabCategoryId.TV,
+                isSd ? TorznabCategoryId.TV_SD
+                : isUhd ? TorznabCategoryId.TV_UHD
+                : TorznabCategoryId.TV_HD,
+            };
+
+            if (item.GenreTypes.Contains(PlexGenreType.Foreign))
+                categories.Add(TorznabCategoryId.TV_Foreign);
+            if (item.GenreTypes.Contains(PlexGenreType.Sport))
+                categories.Add(TorznabCategoryId.TV_Sport);
+            if (item.GenreTypes.Contains(PlexGenreType.Anime))
+                categories.Add(TorznabCategoryId.TV_Anime);
+            if (item.GenreTypes.Contains(PlexGenreType.Documentary))
+                categories.Add(TorznabCategoryId.TV_Documentary);
+
+            return categories;
+        }
+
+        return [];
     }
-
-    /// <summary>
-    /// Determine Torznab category for a TV episode release.
-    /// Torznab only distinguishes SD, HD, and UHD.
-    /// </summary>
-    public static int ToTorznabEpisodeCategory(this BasePlexMediaData part)
-    {
-        var isSd = IsSdResolution(part.VideoResolution);
-        var isUhd = IsUhdResolution(part.VideoResolution);
-
-        return part.Source switch
-        {
-            ReleaseSource.DVD => (int)TorznabCategoryId.TV_SD,
-
-            _ when isUhd => (int)TorznabCategoryId.TV_UHD,
-
-            _ when isSd => (int)TorznabCategoryId.TV_SD,
-
-            _ => (int)TorznabCategoryId.TV_HD,
-        };
-    }
-
-    private static bool IsUhdResolution(VideoQuality resolution) =>
-        resolution switch
-        {
-            VideoQuality.UHD_4K => true,
-            VideoQuality.UHD_8K => true,
-            _ => false,
-        };
-
-    private static bool IsSdResolution(VideoQuality resolution) =>
-        resolution switch
-        {
-            VideoQuality.SD => true,
-            VideoQuality.DVD => true,
-            _ => false,
-        };
 }

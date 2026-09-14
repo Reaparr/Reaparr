@@ -140,14 +140,6 @@ public class CheckConnectionStatusByIdCommandHandler
             cancellationToken
         );
 
-        if (upsertResult.IsFailed)
-        {
-            return upsertResult
-                .ToResult()
-                .WithError($"Failed to upsert {nameof(PlexServerStatus)} due to relational integrity changes.")
-                .LogError();
-        }
-
-        return upsertResult.Value;
+        return upsertResult.LogIfFailed();
     }
 }

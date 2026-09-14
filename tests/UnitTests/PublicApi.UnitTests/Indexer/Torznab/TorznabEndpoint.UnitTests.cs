@@ -5,6 +5,48 @@ namespace Reaparr.PublicAPI.UnitTests;
 public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, TorznabEndpointRequest>
 {
     [Test]
+    public async Task ShouldDispatchQuerylessGenericRssByRequestedCategories()
+    {
+        // Arrange
+        await SetupDatabase(6520, config => config.RadarrIntegrationCount = 1);
+        var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var request = new TorznabEndpointRequest
+        {
+            Type = "search",
+            Categories = [5030],
+            Limit = 10,
+            Offset = 2,
+            ApiKey = "generic-key",
+        };
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetTorznabRssFeedCommand>(command =>
+                        !command.IncludeMovies
+                        && command.IncludeEpisodes
+                        && command.Categories.SequenceEqual(request.Categories)
+                        && command.Integration == integration
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(SearchResult("tv-rss-result"))
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(request, integrationIdentity: integration);
+
+        // Assert
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var responseBody = endpointResult.Endpoint.HttpContext.Response.Body;
+        responseBody.Position = 0;
+        using var reader = new StreamReader(responseBody, leaveOpen: true);
+        var xml = await reader.ReadToEndAsync();
+        xml.ShouldContain("tv-rss-result");
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
     public async Task ShouldRunOnlyRequestedTvSearch_WhenGenericSearchCategoryIsTv()
     {
         // Arrange
@@ -23,7 +65,7 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
             Query = "Silo",
             Categories = [5030],
             Limit = 10,
-            Offset = 2,
+            Offset = 0,
             ApiKey = "generic-key",
         };
 
@@ -32,8 +74,8 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                 x.Send(
                     It.Is<SearchTvShowCommand>(command =>
                         command.Query == request.Query
-                        && command.Limit == request.Limit
-                        && command.Offset == request.Offset
+                        && command.Limit == request.Offset + request.Limit
+                        && command.Offset == 0
                         && command.Integration == integration
                         && command.TorznabApiKey == request.ApiKey
                     ),
@@ -85,30 +127,42 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                 x.Send(
                     It.Is<SearchTvShowCommand>(command =>
                         command.Query == request.Query
-                        && command.Limit == request.Limit
-                        && command.Offset == request.Offset
+                        && command.Limit == request.Offset + request.Limit
+                        && command.Offset == 0
                         && command.Integration == integration
                         && command.TorznabApiKey == request.ApiKey
                     ),
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(SearchResult("tv-result"))
+            .ReturnsAsync(
+                SearchResultWithPublicationDates(
+                    ("tv-result-1", DateTimeOffset.UnixEpoch.AddMinutes(4)),
+                    ("tv-result-2", DateTimeOffset.UnixEpoch.AddMinutes(1)),
+                    ("tv-result-3", DateTimeOffset.UnixEpoch.AddMinutes(-2))
+                )
+            )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
                     It.Is<SearchMovieCommand>(command =>
                         command.Query == request.Query
-                        && command.Limit == request.Limit
-                        && command.Offset == request.Offset
+                        && command.Limit == request.Offset + request.Limit
+                        && command.Offset == 0
                         && command.Integration == integration
                         && command.TorznabApiKey == request.ApiKey
                     ),
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(SearchResult("movie-result-1", "movie-result-2"))
+            .ReturnsAsync(
+                SearchResultWithPublicationDates(
+                    ("movie-result-1", DateTimeOffset.UnixEpoch.AddMinutes(3)),
+                    ("movie-result-2", DateTimeOffset.UnixEpoch),
+                    ("movie-result-3", DateTimeOffset.UnixEpoch.AddMinutes(-3))
+                )
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -120,11 +174,78 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
         responseBody.Position = 0;
         using var reader = new StreamReader(responseBody, leaveOpen: true);
         var xml = await reader.ReadToEndAsync();
-        xml.ShouldContain("tv-result");
         xml.ShouldContain("movie-result-1");
+        xml.ShouldContain("tv-result-2");
+        xml.ShouldNotContain("tv-result-1");
         xml.ShouldNotContain("movie-result-2");
+        xml.IndexOf("movie-result-1", StringComparison.Ordinal).ShouldBeLessThan(
+            xml.IndexOf("tv-result-2", StringComparison.Ordinal)
+        );
         Mock.Mock<ICommandExecutor>().Verify();
     }
+
+    [Test]
+    public async Task ShouldMergeBranchesUsingExactPublicationAndIdentityOrder_WhenBranchesAreBounded()
+    {
+        // Arrange
+        await SetupDatabase(6527, config => config.RadarrIntegrationCount = 1);
+        var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var request = new TorznabEndpointRequest
+        {
+            Type = "search",
+            Query = "Dune",
+            Limit = 2,
+            Offset = 0,
+            ApiKey = "generic-key",
+        };
+        var addedAt = new DateTime(2026, 9, 14, 8, 0, 0, DateTimeKind.Utc);
+        var tvItems = new[]
+        {
+            CreateSortableItem("tv-result-1", "guid-z", addedAt, PlexMediaType.Episode, "server", 1, 1, 1),
+            CreateSortableItem("tv-result-2", "guid-y", addedAt, PlexMediaType.Episode, "server", 2, 1, 1),
+            CreateSortableItem("tv-result-3", "guid-a", addedAt, PlexMediaType.Episode, "server", 3, 1, 1),
+        };
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(
+                It.Is<SearchTvShowCommand>(command =>
+                    command.Offset == 0
+                    && command.Limit == request.Offset + request.Limit
+                    && command.Query == request.Query
+                ),
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(Result.Ok(new TorznabMediaSearchResponseDTO
+            {
+                Channel = new TorznabChannel
+                {
+                    Items = tvItems.ToList(),
+                    Response = new TorznabResponseMetadata { Total = tvItems.Length },
+                },
+            }))
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<SearchMovieCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SearchResult())
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(request, integrationIdentity: integration);
+
+        // Assert
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var responseBody = endpointResult.Endpoint.HttpContext.Response.Body;
+        responseBody.Position = 0;
+        using var reader = new StreamReader(responseBody, leaveOpen: true);
+        var xml = await reader.ReadToEndAsync();
+        xml.IndexOf("tv-result-1", StringComparison.Ordinal).ShouldBeLessThan(
+            xml.IndexOf("tv-result-2", StringComparison.Ordinal)
+        );
+        xml.ShouldNotContain("tv-result-3");
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+
 
     [Test]
     public async Task ShouldReturnSuccess_WhenOneGenericSearchFailsAfterAnotherReturnsNoItems()
@@ -170,12 +291,147 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
         xml.ShouldNotContain("movie search failed");
         Mock.Mock<ICommandExecutor>().Verify();
     }
+    [Test]
+    public async Task ShouldReturnTorznabError_WhenRssCommandFails()
+    {
+        // Arrange
+        await SetupDatabase(6524, config => config.RadarrIntegrationCount = 1);
+        var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var request = new TorznabEndpointRequest { Type = "search", ApiKey = "key" };
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<GetTorznabRssFeedCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<TorznabMediaSearchResponseDTO>("failed"))
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(request, integrationIdentity: integration);
+
+        // Assert
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var response = endpointResult.Endpoint.HttpContext.Response.Body;
+        response.Position = 0;
+        using var reader = new StreamReader(response, leaveOpen: true);
+        var xml = await reader.ReadToEndAsync();
+        xml.ShouldContain("code=\"900\"");
+        xml.ShouldContain("Indexer request failed");
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldReturnTorznabError_WhenCapabilitiesCommandFails()
+    {
+        // Arrange
+        await SetupDatabase(6525, config => config.RadarrIntegrationCount = 1);
+        var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var request = new TorznabEndpointRequest { Type = "caps", ApiKey = "key" };
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<GetCapabilitiesCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<TorznabCapsResponseDTO>("failed"))
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(request, integrationIdentity: integration);
+
+        // Assert
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var response = endpointResult.Endpoint.HttpContext.Response.Body;
+        response.Position = 0;
+        using var reader = new StreamReader(response, leaveOpen: true);
+        var xml = await reader.ReadToEndAsync();
+        xml.ShouldContain("code=\"900\"");
+        xml.ShouldContain("Indexer request failed");
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+
+    [Test]
+    public async Task ShouldReturnTorznabError_WhenRssCommandIsCancelled()
+    {
+        // Arrange
+        await SetupDatabase(6526, config => config.RadarrIntegrationCount = 1);
+        var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var request = new TorznabEndpointRequest { Type = "search", ApiKey = "key" };
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<GetTorznabRssFeedCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ResultExtensions.TaskIsCancelled(nameof(GetTorznabRssFeedCommand)).ToResult<TorznabMediaSearchResponseDTO>())
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(request, integrationIdentity: integration);
+
+        // Assert
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var response = endpointResult.Endpoint.HttpContext.Response.Body;
+        response.Position = 0;
+        using var reader = new StreamReader(response, leaveOpen: true);
+        var xml = await reader.ReadToEndAsync();
+        xml.ShouldContain("code=\"900\"");
+        xml.ShouldContain("Indexer request cancelled");
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
 
     private static Result<TorznabMediaSearchResponseDTO> SearchResult(params string[] titles) =>
         Result.Ok(
             new TorznabMediaSearchResponseDTO
             {
-                Channel = new TorznabChannel { Items = [.. titles.Select(title => new TorznabItem { Title = title })] },
+                Channel = new TorznabChannel
+                {
+                    Items =
+                    [
+                        .. titles.Select((title, index) => new TorznabItem
+                        {
+                            Title = title,
+                            PubDate = DateTimeOffset.UnixEpoch.AddMinutes(titles.Length - index).ToString("R"),
+                            SortAddedAt = DateTimeOffset.UnixEpoch.AddMinutes(titles.Length - index).UtcDateTime,
+                        }),
+                    ],
+                    Response = new TorznabResponseMetadata { Total = titles.Length },
+                },
             }
         );
+    private static Result<TorznabMediaSearchResponseDTO> SearchResultWithPublicationDates(
+        params (string Title, DateTimeOffset PubDate)[] items
+    ) =>
+        Result.Ok(
+            new TorznabMediaSearchResponseDTO
+            {
+                Channel = new TorznabChannel
+                {
+                    Items =
+                    [
+                        .. items.Select(item => new TorznabItem
+                        {
+                            Title = item.Title,
+                            PubDate = item.PubDate.ToString("R"),
+                            SortAddedAt = item.PubDate.UtcDateTime,
+                        }),
+                    ],
+                    Response = new TorznabResponseMetadata { Total = items.Length },
+                },
+            }
+        );
+
+    private static TorznabItem CreateSortableItem(
+        string title,
+        string guid,
+        DateTime addedAt,
+        PlexMediaType mediaType,
+        string machineIdentifier,
+        int ratingKey,
+        int mediaId,
+        int partId
+    ) =>
+        new()
+        {
+            Title = title,
+            PubDate = addedAt.ToString("R"),
+            Guid = new TorznabGuid { Value = guid },
+            SortAddedAt = addedAt,
+            SortMachineIdentifier = machineIdentifier,
+            SortMediaType = mediaType,
+            SortRatingKey = ratingKey,
+            SortMediaId = mediaId,
+            SortPartId = partId,
+        };
+
 }

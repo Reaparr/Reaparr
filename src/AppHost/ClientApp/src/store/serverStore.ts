@@ -2,7 +2,7 @@ import { defineStore, acceptHMRUpdate } from 'pinia';
 import { reactive, computed, toRefs } from 'vue';
 import type { Observable } from 'rxjs';
 import { of } from 'rxjs';
-import { switchMap, tap, map, catchError } from 'rxjs/operators';
+import { catchError, concatMap, map, switchMap, tap } from 'rxjs/operators';
 import type { PlexServerDTO } from '@dto';
 import { StoreNames, type ISetupResult } from '@interfaces';
 import { plexServerApi } from '@api';
@@ -29,7 +29,10 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			// Listen for refresh notifications
-			signalRStore.getRefreshNotification(RefreshDataType.PlexServer).pipe(switchMap(() => actions.refreshPlexServers())).subscribe();
+			signalRStore
+				.getRefreshNotification(RefreshDataType.PlexServer)
+				.pipe(concatMap(() => actions.refreshPlexServers()))
+				.subscribe();
 
 			return fetchAndSetPlexServers().pipe(
 				map((result) => ({

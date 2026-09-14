@@ -168,9 +168,11 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
             using var response = await GetThumbnailResponseAsync(client, transcodeUrl, directUrl, ct);
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
+                var plexServerName = await _dbContext.GetPlexServerNameById(plexServerId);
                 _log.Here()
                     .Warning(
-                        "Plex rejected the access token while fetching a thumbnail for server {PlexServerId}. Refresh the Plex account's server access",
+                        "Plex rejected the access token while fetching a thumbnail for server {PlexServerName} ({PlexServerId}). Refresh the Plex account's server access",
+                        plexServerName,
                         plexServerId
                     );
                 HttpContext.Response.Headers.CacheControl = "no-store";
@@ -228,12 +230,13 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
                 ex.InnerException is SocketException socketEx
                 && (socketEx.ErrorCode == 111 || socketEx.ErrorCode == 10061);
 
+            var plexServerName = await _dbContext.GetPlexServerNameById(plexServerId);
             if (isConnectionRefused)
             {
                 _log.Here()
                     .Warning(
-                        "Connection refused while fetching Plex thumbnail for server {PlexServerId} (key {PlexKey}). Server appears to be offline",
-                        plexServerId,
+                        "Connection refused while fetching Plex thumbnail for server {PlexServerName} (key {PlexKey}). Server appears to be offline",
+                        plexServerName,
                         req.PlexKey
                     );
             }
@@ -242,8 +245,8 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
                 _log.Here()
                     .Warning(
                         ex,
-                        "HTTP request failed while fetching Plex thumbnail for server {PlexServerId} (key {PlexKey}). URL: {Url}",
-                        plexServerId,
+                        "HTTP request failed while fetching Plex thumbnail for server {PlexServerName} (key {PlexKey}). URL: {Url}",
+                        plexServerName,
                         req.PlexKey,
                         SanitizeUrl(transcodeUrl)
                     );
@@ -253,11 +256,14 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
         }
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
+            var plexServerName = await _dbContext.GetPlexServerNameById(plexServerId);
+
             // Timeout occurred (not user cancellation)
             _log.Here()
                 .Warning(
                     ex,
-                    "Timeout fetching Plex thumbnail for server {PlexServerId} (key {PlexKey}). URL: {Url}",
+                    "Timeout fetching Plex thumbnail for server {PlexServerName} ({PlexServerId}) (key {PlexKey}). URL: {Url}",
+                    plexServerName,
                     plexServerId,
                     req.PlexKey,
                     SanitizeUrl(transcodeUrl)
@@ -266,10 +272,13 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
         }
         catch (IOException ex)
         {
+            var plexServerName = await _dbContext.GetPlexServerNameById(plexServerId);
+
             // SSL handshake failures and other I/O errors - typically due to unreachable/misconfigured servers
             _log.Here()
                 .Warning(
-                    "I/O error while fetching Plex thumbnail for server {PlexServerId} (key {PlexKey}). {ErrorMessage}",
+                    "I/O error while fetching Plex thumbnail for server {PlexServerName} ({PlexServerId}) (key {PlexKey}). {ErrorMessage}",
+                    plexServerName,
                     plexServerId,
                     req.PlexKey,
                     ex.Message

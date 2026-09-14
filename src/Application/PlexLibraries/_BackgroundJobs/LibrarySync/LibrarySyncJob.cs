@@ -13,6 +13,7 @@ public class LibrarySyncJob : IJob
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
     private readonly IReaparrDbContext _dbContext;
+    private readonly IMediaOverviewRebuildCoordinator _mediaOverviewRebuildCoordinator;
     private int _serverId;
     private int _libraryId;
 
@@ -20,13 +21,15 @@ public class LibrarySyncJob : IJob
         ILogger log,
         ICommandExecutor commandExecutor,
         INotificationHubService notificationHubService,
-        IReaparrDbContext dbContext
+        IReaparrDbContext dbContext,
+        IMediaOverviewRebuildCoordinator mediaOverviewRebuildCoordinator
     )
     {
         _log = log.ForContext<LibrarySyncJob>();
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
         _dbContext = dbContext;
+        _mediaOverviewRebuildCoordinator = mediaOverviewRebuildCoordinator;
     }
 
     public static JobKey GetJobKey(int serverId, int libraryId) =>
@@ -69,6 +72,7 @@ public class LibrarySyncJob : IJob
         }
         else
         {
+            using var syncLease = await _mediaOverviewRebuildCoordinator.AcquireLibrarySyncLeaseAsync(cancellationToken);
             await UpdateQueueItemAsync(LibrarySyncJobStatus.Processing);
 
             var forceMediaRefresh = payloadResult.Value.ForceMediaRefresh;

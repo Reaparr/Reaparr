@@ -165,6 +165,46 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		expect(lastMediaRequest().params.sort).toBe('year:desc');
 	});
 
+	test('Should preserve load failure state when media response fails', async () => {
+		// Arrange
+		const store = useMediaOverviewStore();
+		mock.onGet(new RegExp('/api/PlexMedia')).reply(200, {
+			isSuccess: false,
+			statusCode: 500,
+			errors: [{ message: 'failure', reasons: [], metadata: {} }],
+			successes: [],
+			value: null,
+		});
+
+		// Act
+		const result = subscribeSpyTo(store.refreshMediaData());
+		await result.onComplete();
+
+		// Assert
+		expect(result.getLastValue()).toBeNull();
+		expect(store.mediaLoadError).toBe(true);
+	});
+
+	test('Should clear media load failure after a successful retry', async () => {
+		// Arrange
+		const store = useMediaOverviewStore();
+		const success = createMediaStatistics(1);
+		mock.onGet(new RegExp('/api/PlexMedia'))
+			.replyOnce(200, { isSuccess: false, statusCode: 500, errors: [], successes: [], value: null })
+			.onGet(new RegExp('/api/PlexMedia'))
+			.reply(200, generateResultDTO(success));
+
+		// Act
+		const first = subscribeSpyTo(store.refreshMediaData());
+		await first.onComplete();
+		const second = subscribeSpyTo(store.retryMediaLoad());
+		await second.onComplete();
+
+		// Assert
+		expect(store.mediaLoadError).toBe(false);
+		expect(store.getMediaItems).toEqual(success.mediaList);
+	});
+
 	test('Should map failed media responses to null without caching a page', async () => {
 		// Arrange
 		const store = useMediaOverviewStore();
@@ -308,7 +348,7 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		expect(lastMediaRequest().params.page).toBe(2);
 	});
 
-	test('Should not emit a scroll command for an out-of-bounds scroll index', () => {
+	test('Should not emit a scroll command for an out-of-bounds scroll index', async () => {
 		// Arrange
 		const store = useMediaOverviewStore();
 		store.totalCount = 10;
@@ -316,7 +356,8 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		const subscription = store.getScrollCommand().subscribe((value) => commands.push(value));
 
 		// Act
-		store.scrollToIndex(10);
+		const result = subscribeSpyTo(store.scrollToIndex(10));
+		await result.onComplete();
 
 		// Assert
 		expect(commands).toEqual([{ index: 0, highlight: false }]);
@@ -324,11 +365,42 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		subscription.unsubscribe();
 	});
 
+	test('Should load target pages before emitting a navigation scroll command', async () => {
+		// Arrange
+		const store = useMediaOverviewStore();
+		store.totalCount = 2000;
+		const targetPage = createMediaStatistics(100, 'year-query');
+		targetPage.page = 18;
+		targetPage.pageSize = 100;
+		mock.onGet(new RegExp('/api/PlexMedia')).reply(200, generateResultDTO(targetPage));
+		const commands: { index: number; highlight: boolean }[] = [];
+		const subscription = store.getScrollCommand().subscribe((value) => commands.push(value));
+
+		// Act
+		const result = subscribeSpyTo(store.scrollToIndex(1776));
+		expect(commands).toEqual([{ index: 0, highlight: false }]);
+		await result.onComplete();
+
+		// Assert
+		expect(mock.history.get.filter((x) => x.url === '/api/PlexMedia').map((x) => x.params.page)).toEqual([18, 19]);
+		expect(commands).toEqual([
+			{ index: 0, highlight: false },
+			{ index: 1776, highlight: true },
+		]);
+		subscription.unsubscribe();
+	});
+
 	test('Should reset metadata filters without clearing loaded media pages', () => {
 		// Arrange
 		const store = useMediaOverviewStore();
 		const statistics = createMediaStatistics(2);
-		store.metadata = { countryId: 21, roleId: 11, genreId: 31, qualityId: 41, comparisonState: PlexMediaComparisonState.Missing };
+		store.metadata = {
+			countryId: 21,
+			roleId: 11,
+			genreId: 31,
+			qualityId: 41,
+			comparisonState: PlexMediaComparisonState.Missing,
+		};
 		store.addMediaPage(statistics);
 
 		// Act
@@ -342,7 +414,13 @@ describe('MediaOverviewStore - Request Contracts', () => {
 	test('Should clear metadata filter query params and reset metadata values without refreshing media', () => {
 		// Arrange
 		const store = useMediaOverviewStore();
-		store.metadata = { countryId: 21, roleId: 11, genreId: 31, qualityId: 41, comparisonState: PlexMediaComparisonState.Missing };
+		store.metadata = {
+			countryId: 21,
+			roleId: 11,
+			genreId: 31,
+			qualityId: 41,
+			comparisonState: PlexMediaComparisonState.Missing,
+		};
 
 		// Act
 		store.clearMetaDataFilter();

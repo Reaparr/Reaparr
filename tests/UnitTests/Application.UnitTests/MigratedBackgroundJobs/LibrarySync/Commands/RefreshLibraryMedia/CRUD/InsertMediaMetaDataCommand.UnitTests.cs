@@ -58,6 +58,35 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     }
 
     [Test]
+    public async Task ShouldPersistGenreType_WhenGenreIsInserted()
+    {
+        // Arrange
+        await SetupDatabase(1224, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
+        var plexLibrary = await IDbContext.PlexLibraries.FirstAsync(CancellationToken);
+        var genre = new LibraryMediaItemGenreDTO
+        {
+            PlexId = 1,
+            Name = "Documentaire",
+            Filter = "documentaire",
+            Key = "documentaire",
+        };
+        var command = new InsertMediaMetaDataCommand(
+            new LibraryMetadata(plexLibrary) { Genres = [genre] }
+        );
+
+        // Act
+        var result = await TestHandlerExecuteAsync<InsertMediaMetaDataCommandResponse>(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        (await IDbContext.PlexGenres.SingleAsync(CancellationToken)).Type.ShouldBe(PlexGenreType.Documentary);
+    }
+
+    [Test]
     public async Task ShouldUpdateExistingActorsGenresCountries_WhenSomeExist()
     {
         // Arrange

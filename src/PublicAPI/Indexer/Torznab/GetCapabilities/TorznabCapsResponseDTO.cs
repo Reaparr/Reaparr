@@ -21,9 +21,6 @@ public record TorznabCapsResponseDTO
     [XmlArrayItem("category")]
     public List<TorznabCategory> Categories { get; set; } = new();
 
-    [XmlArray("attributes", Namespace = "http://torznab.com/schemas/2015/feed")]
-    [XmlArrayItem("attr", Namespace = "http://torznab.com/schemas/2015/feed")]
-    public List<TorznabCapsAttr> Attributes { get; set; } = new();
 }
 
 public record TorznabServer
@@ -82,11 +79,3 @@ public record TorznabCategory
     public string Name { get; set; } = string.Empty;
 }
 
-public record TorznabCapsAttr
-{
-    [XmlAttribute("name")]
-    public string Name { get; set; } = string.Empty;
-
-    [XmlAttribute("value")]
-    public string Value { get; set; } = string.Empty;
-}

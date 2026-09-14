@@ -2,7 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, computed, toRefs } from 'vue';
 import type { Observable } from 'rxjs';
 import { of } from 'rxjs';
-import { finalize, map, switchMap, tap } from 'rxjs/operators';
+import { concatMap, finalize, map, switchMap, tap } from 'rxjs/operators';
 import { get } from '@vueuse/core';
 import type {
 	CreatePlexServerConnectionEndpointRequest,
@@ -48,7 +48,7 @@ export const useServerConnectionStore = defineStore(StoreNames.ServerConnectionS
 			// Listen for refresh notifications
 			signalRStore
 				.getRefreshNotification(RefreshDataType.PlexServerConnection)
-				.pipe(switchMap(() => actions.refreshPlexServerConnections()))
+				.pipe(concatMap(() => actions.refreshPlexServerConnections()))
 				.subscribe();
 
 			return fetchAndSetPlexServerConnections().pipe(

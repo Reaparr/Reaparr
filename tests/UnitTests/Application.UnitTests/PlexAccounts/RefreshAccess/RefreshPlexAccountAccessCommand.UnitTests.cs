@@ -5,6 +5,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
     [Test]
     public async Task ShouldValidateAndRefreshServerAndLibraryAccess_WhenTokenIsValid()
     {
+        // Arrange
         await SetupDatabase(77601, config => config.PlexAccountCount = 1);
         var plexAccount = await IDbContext.PlexAccounts.FirstAsync(CancellationToken);
         var serverRapport = new RefreshPlexServerAccessRapport(plexAccount.Id, plexAccount.DisplayName);
@@ -34,9 +35,14 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
             .Returns(Task.CompletedTask);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
+        // Act
         var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(), CancellationToken);
 
+        // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.Count.ShouldBe(1);
         Mock.Mock<ICommandExecutor>()
@@ -53,6 +59,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
     [Test]
     public async Task ShouldRemoveLibraryAccessForRevokedServer_WhenOtherServerAccessRemains()
     {
+        // Arrange
         await SetupDatabase(
             77603,
             config =>
@@ -129,9 +136,14 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
             .Returns(Task.CompletedTask);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
+        // Act
         var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(plexAccount.Id), CancellationToken);
 
+        // Assert
         result.IsSuccess.ShouldBeTrue();
         (
             await IDbContext.PlexAccountLibraries.AnyAsync(
@@ -148,6 +160,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
     [Test]
     public async Task ShouldMarkAccountInvalidAndKeepEnabled_WhenTokenIsUnauthorized()
     {
+        // Arrange
         await SetupDatabase(77602, config => config.PlexAccountCount = 1);
         var plexAccount = await IDbContext.PlexAccounts.AsTracking().FirstAsync(CancellationToken);
         plexAccount.IsValidated = true;
@@ -159,9 +172,14 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
             .Returns(Task.CompletedTask);
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
+        // Act
         var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(), CancellationToken);
 
+        // Assert
         result.IsSuccess.ShouldBeTrue();
         IDbContext.ClearChangeTracker();
         var updatedAccount = await IDbContext.PlexAccounts.AsNoTracking().FirstAsync(CancellationToken);

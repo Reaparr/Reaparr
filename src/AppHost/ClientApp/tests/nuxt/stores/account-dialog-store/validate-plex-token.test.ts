@@ -23,6 +23,7 @@ describe('AccountDialogStore.validatePlexToken()', () => {
 		const openDialogSpy = vi.spyOn(dialogStore, 'openDialog');
 		const accountDialogStore = useAccountDialogStore();
 		accountDialogStore.displayName = 'Test User';
+		accountDialogStore.authenticationToken = 'existing-authentication-token';
 		accountDialogStore.customAuthenticationToken = 'valid-token';
 
 		mock.onPost(PlexAccountPaths.validatePlexTokenEndpoint()).reply(200, generateResultDTO({
@@ -50,6 +51,8 @@ describe('AccountDialogStore.validatePlexToken()', () => {
 		expect(accountDialogStore.plexId).toEqual(42);
 		expect(accountDialogStore.title).toEqual('User Title');
 		expect(accountDialogStore.email).toEqual('user@test.dev');
+		expect(accountDialogStore.authenticationToken).toEqual('existing-authentication-token');
+		expect(accountDialogStore.getAccountData.authenticationToken).toEqual('existing-authentication-token');
 		expect(mock.history.post[0]?.data).toContain('"plexAccountId":0');
 		expect(openDialogSpy).toHaveBeenCalledWith('account-token-validate-dialog');
 	});

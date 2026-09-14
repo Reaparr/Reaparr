@@ -79,6 +79,21 @@
 					</QRow>
 				</template>
 				<!-- No Media Overview - Error Messages -->
+				<template v-else-if="mediaOverviewStore.mediaLoadError">
+					<QRow
+						class="q-mt-md"
+						justify="center">
+						<QCol cols="auto">
+							<QAlert type="error">
+								<div>{{ t('components.media-overview.media-load-failed') }}</div>
+								<BaseButton
+									class="q-mt-sm"
+									:label="t('components.media-overview.retry-media-load')"
+									@click="retryMediaLoad" />
+							</QAlert>
+						</QCol>
+					</QRow>
+				</template>
 				<template v-else>
 					<QRow
 						class="q-mt-md"
@@ -87,15 +102,7 @@
 						<QCol cols="auto">
 							<QAlert
 								type="warning">
-								<template v-if="mediaOverviewStore.serverError">
-									{{ t('components.media-overview.failed-to-load-media') }}
-									<template v-if="mediaOverviewStore.cacheRetrySeconds > 0">
-										{{
-											t('components.media-overview.retrying-in-seconds', { seconds: mediaOverviewStore.cacheRetrySeconds })
-										}}
-									</template>
-								</template>
-								<template v-else-if="mediaOverviewStore.allMediaMode">
+								<template v-if="mediaOverviewStore.allMediaMode">
 									{{ t('components.media-overview.no-media-items-available') }}
 								</template>
 								<template v-else-if="mediaOverviewStore.hasNoSearchResults">
@@ -107,7 +114,8 @@
 								<template v-else-if="library?.syncedAt === null">
 									{{ t('components.media-overview.library-not-yet-synced') }}
 								</template>
-								<template v-else-if="!mediaOverviewStore.itemsLength && !mediaOverviewStore.filterQuery && !mediaOverviewStore.hasActiveFilter">
+								<template
+									v-else-if="!mediaOverviewStore.itemsLength && !mediaOverviewStore.filterQuery && !mediaOverviewStore.hasActiveFilter">
 									{{ t('components.media-overview.no-data') }}
 								</template>
 								<template v-else>
@@ -247,6 +255,7 @@ function onAction(event: IMediaOverviewBarActions) {
 			break;
 		case 'selection-dialog':
 			dialogStore.openDialog(DialogType.MediaSelectionDialog);
+
 			break;
 		case 'refresh-library':
 			dialogStore.openDialog(DialogType.RefreshMediaDialog);
@@ -258,6 +267,10 @@ function onAction(event: IMediaOverviewBarActions) {
 			Log.error('Unknown action event', event);
 			break;
 	}
+}
+
+function retryMediaLoad() {
+	useSubscription(mediaOverviewStore.retryMediaLoad().subscribe());
 }
 
 function onOptionsClosed(hasChanged: boolean) {
@@ -296,7 +309,7 @@ onMounted(() => {
 				const maxAttempts = 10;
 				for (let attempt = 0; attempt < maxAttempts; attempt++) {
 					await nextTick();
-					mediaOverviewStore.scrollToIndex(targetIndex, false);
+					useSubscription(mediaOverviewStore.scrollToIndex(targetIndex, false).subscribe());
 					await new Promise((resolve) => setTimeout(resolve, 100));
 
 					const container = document.querySelector<HTMLElement>('#poster-table');

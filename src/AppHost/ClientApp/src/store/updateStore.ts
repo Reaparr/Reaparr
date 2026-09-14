@@ -1,5 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { finalize, of, type Observable, switchMap, tap } from 'rxjs';
+import { concatMap, finalize, of, type Observable, switchMap, tap } from 'rxjs';
 import { updateApi } from '@api';
 import type { ReleaseNoteDTO } from '@api/generated/data-contracts';
 import { RefreshDataType } from '@api/generated/data-contracts';
@@ -33,7 +33,8 @@ export const useUpdateStore = defineStore(StoreNames.UpdateStore, () => {
 		setup(): Observable<ISetupResult> {
 			signalrStore
 				.getRefreshNotification(RefreshDataType.UpdateAvailable)
-				.subscribe(() => actions.checkForUpdate());
+				.pipe(concatMap(() => actions.checkForUpdate()))
+				.subscribe();
 
 			signalrStore.getAppUpdateDownloadProgress().subscribe((data) => {
 				state.downloadProgress = data.percentage;

@@ -37,6 +37,10 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
 
     public DbSet<PlexMovieMediaData> PlexMovieData { get; set; }
 
+    public DbSet<MediaOverviewMovieSnapshot> MediaOverviewMovieSnapshots { get; set; }
+
+    public DbSet<MediaOverviewTvShowSnapshot> MediaOverviewTvShowSnapshots { get; set; }
+
     public DbSet<PlexTvShow> PlexTvShows { get; set; }
 
     public DbSet<PlexTvShowMediaQuality> PlexTvShowMediaQualities { get; set; }

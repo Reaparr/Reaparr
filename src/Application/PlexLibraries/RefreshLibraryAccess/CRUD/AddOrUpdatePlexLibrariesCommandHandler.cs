@@ -106,14 +106,6 @@ public class AddOrUpdatePlexLibrariesCommandHandler
                     plexLibraryDb.Outdated |= contentChangedAfterLastSync;
                     if (contentChangedAfterLastSync)
                         changedPlexLibraryIds.Add(plexLibraryDb.Id);
-
-                    var rapport = FindOrCreate(
-                        rapportList,
-                        plexLibraryDb.PlexServerId,
-                        plexAccount.DisplayName,
-                        await _dbContext.GetPlexServerNameById(plexLibraryDb.PlexServerId)
-                    );
-                    rapport.AddUpdated(plexLibraryDb.Id, incomingPlexLibrary.Name);
                 }
             }
 
@@ -188,6 +180,8 @@ public class AddOrUpdatePlexLibrariesCommandHandler
                             incomingPlexLibrary.Name,
                             plexServerName
                         );
+
+                    rapport.AddUpdated(plexLibraryId, incomingPlexLibrary.Name);
                 }
             }
 

@@ -2,7 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
 import type { Observable } from 'rxjs';
 import { from, of, tap, Subject } from 'rxjs';
-import { catchError, distinctUntilChanged, filter, map, switchMap, take } from 'rxjs/operators';
+import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, take } from 'rxjs/operators';
 import Log from 'consola';
 import type { HubConnection, IHttpConnectionOptions } from '@microsoft/signalr';
 import { HttpTransportType, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
@@ -294,7 +294,11 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 			return getters.getAllServerConnectionProgress().pipe(map((x) => x?.filter((y) => y.plexServerId === plexServerId)), distinctUntilChanged(isEqual));
 		},
 		getRefreshNotification(filterOn: RefreshDataType): Observable<RefreshDataType> {
-			return state.refreshDataNotificationSubject.asObservable().pipe(filter((x) => x === filterOn), tap(() => Log.debug('Refreshing ' + filterOn)));
+			return state.refreshDataNotificationSubject.asObservable().pipe(
+				filter((x) => x === filterOn),
+				debounceTime(250),
+				tap(() => Log.debug('Refreshing ' + filterOn)),
+			);
 		},
 		getAppUpdateDownloadProgress(): Observable<AppUpdateDownloadProgressDTO> {
 			return state.appUpdateDownloadProgressSubject.asObservable();

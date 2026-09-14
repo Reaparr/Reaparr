@@ -15,7 +15,10 @@ public record TorznabMediaSearchResponseDTO
     // Declare namespaces so XmlSerializer knows about "torznab"
     [XmlNamespaceDeclarations]
     public XmlSerializerNamespaces Xmlns { get; set; } =
-        new([new XmlQualifiedName("torznab", "http://torznab.com/schemas/2015/feed")]);
+        new([
+            new XmlQualifiedName("torznab", "http://torznab.com/schemas/2015/feed"),
+            new XmlQualifiedName("newznab", "http://www.newznab.com/DTD/2010/feeds/attributes/"),
+        ]);
 }
 
 public record TorznabChannel
@@ -34,6 +37,18 @@ public record TorznabChannel
 
     [XmlElement("item")]
     public List<TorznabItem> Items { get; set; } = new();
+
+    [XmlElement("response", Namespace = "http://www.newznab.com/DTD/2010/feeds/attributes/")]
+    public TorznabResponseMetadata Response { get; set; } = new();
+}
+
+public record TorznabResponseMetadata
+{
+    [XmlAttribute("offset")]
+    public int Offset { get; set; }
+
+    [XmlAttribute("total")]
+    public int Total { get; set; }
 }
 
 public record TorznabItem
@@ -59,6 +74,24 @@ public record TorznabItem
 
     [XmlElement("enclosure")]
     public TorznabEnclosure Enclosure { get; set; } = new();
+
+    [XmlIgnore]
+    public DateTime SortAddedAt { get; set; }
+
+    [XmlIgnore]
+    public string SortMachineIdentifier { get; set; } = string.Empty;
+
+    [XmlIgnore]
+    public PlexMediaType SortMediaType { get; set; }
+
+    [XmlIgnore]
+    public int SortRatingKey { get; set; }
+
+    [XmlIgnore]
+    public int SortMediaId { get; set; }
+
+    [XmlIgnore]
+    public int SortPartId { get; set; }
 }
 
 public record TorznabGuid
@@ -97,4 +130,14 @@ public record TorznabEnclosure
 
     [XmlAttribute("type")]
     public string Type { get; set; } = "application/x-bittorrent";
+}
+
+[XmlRoot("error")]
+public record TorznabErrorResponseDTO
+{
+    [XmlAttribute("code")]
+    public int Code { get; set; }
+
+    [XmlAttribute("description")]
+    public string Description { get; set; } = string.Empty;
 }

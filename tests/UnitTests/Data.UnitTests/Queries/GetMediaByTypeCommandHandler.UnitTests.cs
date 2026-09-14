@@ -1090,7 +1090,7 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
     }
 
     [Test]
-    public async Task ShouldReturnFullResult_WhenPageSizeIsNotProvided()
+    public async Task ShouldUseDefaultPageSize_WhenPageSizeIsNotProvided()
     {
         // Arrange
         await SetupDatabase(
@@ -1127,10 +1127,10 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Items.Count.ShouldBe(expectedMovieCount);
+        result.Value.Items.Count.ShouldBe(expectedMovieCount - MediaQueryFilter.MaximumPageSize);
         result.Value.TotalCount.ShouldBe(expectedMovieCount);
         result.Value.Page.ShouldBe(2);
-        result.Value.PageSize.ShouldBe(0);
+        result.Value.PageSize.ShouldBe(MediaQueryFilter.MaximumPageSize);
     }
 
     [Test]
@@ -2469,7 +2469,7 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
         var countryOnlyMovie = movies[2];
         var actorOnlyMovie = movies[3];
 
-        var genre = new PlexGenre { Name = "Regression Genre", Key = "regression-genre" };
+        var genre = new PlexGenre { Name = "Regression Genre", Key = "regression-genre", Type = PlexGenreType.Unknown };
         var country = new PlexCountry { Name = "Regression Country", Key = "regression-country" };
         var actor = new PlexActor { Name = "Regression Actor", Key = "regression-actor" };
 

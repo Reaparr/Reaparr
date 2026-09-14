@@ -659,6 +659,122 @@ namespace Reaparr.Data.Migrations
                     b.ToTable("BackgroundJobLibrarySyncJobQueues");
                 });
 
+            modelBuilder.Entity("Reaparr.Domain.MediaOverviewMovieSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnOrder(0);
+
+                    b.Property<int>("AddedAtRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DurationRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MediaSizeRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PlexLibraryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PlexMovieId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("QualityRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TitleRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UpdatedAtRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("YearRank")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AddedAtRank");
+
+                    b.HasIndex("DurationRank");
+
+                    b.HasIndex("MediaSizeRank");
+
+                    b.HasIndex("PlexLibraryId");
+
+                    b.HasIndex("PlexMovieId")
+                        .IsUnique();
+
+                    b.HasIndex("QualityRank");
+
+                    b.HasIndex("TitleRank");
+
+                    b.HasIndex("UpdatedAtRank");
+
+                    b.HasIndex("YearRank");
+
+                    b.ToTable("MediaOverviewMovieSnapshots");
+                });
+
+            modelBuilder.Entity("Reaparr.Domain.MediaOverviewTvShowSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnOrder(0);
+
+                    b.Property<int>("AddedAtRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DurationRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MediaSizeRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PlexLibraryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PlexTvShowId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("QualityRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TitleRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UpdatedAtRank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("YearRank")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AddedAtRank");
+
+                    b.HasIndex("DurationRank");
+
+                    b.HasIndex("MediaSizeRank");
+
+                    b.HasIndex("PlexLibraryId");
+
+                    b.HasIndex("PlexTvShowId")
+                        .IsUnique();
+
+                    b.HasIndex("QualityRank");
+
+                    b.HasIndex("TitleRank");
+
+                    b.HasIndex("UpdatedAtRank");
+
+                    b.HasIndex("YearRank");
+
+                    b.ToTable("MediaOverviewTvShowSnapshots");
+                });
+
             modelBuilder.Entity("Reaparr.Domain.Notification", b =>
                 {
                     b.Property<int>("Id")
@@ -973,6 +1089,14 @@ namespace Reaparr.Data.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("\"Unknown\"");
 
                     b.HasKey("Id");
 
@@ -3057,6 +3181,44 @@ namespace Reaparr.Data.Migrations
                     b.Navigation("PlexLibrary");
 
                     b.Navigation("PlexServer");
+                });
+
+            modelBuilder.Entity("Reaparr.Domain.MediaOverviewMovieSnapshot", b =>
+                {
+                    b.HasOne("Reaparr.Domain.PlexLibrary", "PlexLibrary")
+                        .WithMany()
+                        .HasForeignKey("PlexLibraryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Reaparr.Domain.PlexMovie", "PlexMovie")
+                        .WithOne()
+                        .HasForeignKey("Reaparr.Domain.MediaOverviewMovieSnapshot", "PlexMovieId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlexLibrary");
+
+                    b.Navigation("PlexMovie");
+                });
+
+            modelBuilder.Entity("Reaparr.Domain.MediaOverviewTvShowSnapshot", b =>
+                {
+                    b.HasOne("Reaparr.Domain.PlexLibrary", "PlexLibrary")
+                        .WithMany()
+                        .HasForeignKey("PlexLibraryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Reaparr.Domain.PlexTvShow", "PlexTvShow")
+                        .WithOne()
+                        .HasForeignKey("Reaparr.Domain.MediaOverviewTvShowSnapshot", "PlexTvShowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlexLibrary");
+
+                    b.Navigation("PlexTvShow");
                 });
 
             modelBuilder.Entity("Reaparr.Domain.PlexAccountLibrary", b =>
