@@ -106,6 +106,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
 
         var options = QueryOptionsParser.Parse(filter.Parameters);
         options.Paging.Disabled = pageSize == 0;
+        options.Paging.PageSize = pageSize;
 
         if (!allowedPlexLibraryIds.Any())
             return Result.Ok(response);

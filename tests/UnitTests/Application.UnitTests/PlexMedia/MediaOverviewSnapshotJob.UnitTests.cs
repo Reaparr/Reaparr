@@ -130,7 +130,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
     }
 
     [Test]
-    public async Task ShouldNotTriggerFollowUpRebuild_WhenInvalidatedDuringSuccessfulRebuild()
+    public async Task ShouldTriggerFollowUpRebuild_WhenInvalidatedDuringSuccessfulRebuild()
     {
         // Arrange
         var context = CreateJobContext();
@@ -159,7 +159,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IScheduler>()
-            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Once());
     }
 
     private static Mock<IJobExecutionContext> CreateJobContext()
