@@ -77,7 +77,11 @@ public class LogConfig : SlimLogConfig
         var config = GetBaseConfiguration(minimumLogLevel).Enrich.WithProperty("AppRunId", _appRuntimeInfo.AppRunId);
 
         if (!string.IsNullOrEmpty(_appRuntimeInfo.SEQ_Url))
-            config = config.WriteTo.Seq(_appRuntimeInfo.SEQ_Url, restrictedToMinimumLevel: minimumLogLevel);
+            config = config.WriteTo.Seq(
+                _appRuntimeInfo.SEQ_Url,
+                apiKey: _appRuntimeInfo.SEQ_ApiKey,
+                restrictedToMinimumLevel: minimumLogLevel
+            );
 
         return config.WriteTo.File(
             FileTemplate, // This should always be plain file as not to log ASCII characters
