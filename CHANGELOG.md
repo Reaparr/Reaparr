@@ -1,5 +1,33 @@
 Reaparr Changelog
 
+# [0.40.0-dev.2](https://github.com/Reaparr/Reaparr/compare/v0.40.0-dev.1...v0.40.0-dev.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **WebAPI:** Align paging and rebuild expectations ([b2a3665](https://github.com/Reaparr/Reaparr/commit/b2a3665ea1ce016e95c994fb10e2c2154038b25d))
+* **WebAPI:** Align Torznab branch ordering ([ec02f3e](https://github.com/Reaparr/Reaparr/commit/ec02f3e92f57bcbbb01a82bc1fb129e7ecbce35f))
+* apply CodeRabbit auto-fixes ([9348147](https://github.com/Reaparr/Reaparr/commit/934814793c5c31672fb15efcada84e13102adc58))
+* **WebAPI:** Apply configured umask to Reaparr service ([5c4c1b3](https://github.com/Reaparr/Reaparr/commit/5c4c1b3a065ef7784fcd50257f8424dd9dfdf9ae))
+* **Web-UI:** Centralize refresh notification debounce ([705320b](https://github.com/Reaparr/Reaparr/commit/705320bfd99b1df57a14768bd65affcf5e588bda))
+* **WebAPI:** Order Torznab branches before paging ([ac23ce4](https://github.com/Reaparr/Reaparr/commit/ac23ce47752e9b8a8185a5f9ab625fa41fb078ec))
+* **WebAPI:** Prevent unnecessary rebuilds when not dirty ([db83746](https://github.com/Reaparr/Reaparr/commit/db83746c258b51ad86d0aaf2be08efbd87de6dcf))
+* **WebAPI:** Report restored library access as granted ([6622bb2](https://github.com/Reaparr/Reaparr/commit/6622bb287f8bf2169921ae564ac3185b1691873c))
+* **WebAPI:** Stabilize dispatcher sequence test ([5a97dd1](https://github.com/Reaparr/Reaparr/commit/5a97dd118e83688f81e8299c12ddc3e0b76f1d41))
+* **WebAPI:** Update authentication token handling in account dialog ([6075330](https://github.com/Reaparr/Reaparr/commit/607533087b5b7126f506fafc999cb521bee0f280))
+
+
+### Features
+
+* **Web-UI:** Add media load error handling and retry functionality ([598ebe0](https://github.com/Reaparr/Reaparr/commit/598ebe0e85048bf78e1635cfc7360e21d9fab605))
+* **WebAPI:** Implement genre type recalculation command and handler on startup ([b1223c8](https://github.com/Reaparr/Reaparr/commit/b1223c8167c414488e566404b658c0cc42523246))
+* **WebAPI:** Introduce PlexGenreType enum and extensions for genre mapping ([afdc67e](https://github.com/Reaparr/Reaparr/commit/afdc67ef11106dd28d91e90ea4c98388cf142e6b))
+
+
+### Performance Improvements
+
+* **WebAPI:** Optimize media overview commands for movies and TV shows ([f2ab88b](https://github.com/Reaparr/Reaparr/commit/f2ab88ba6c8f859cbd778f788168ff28322640e3))
+
 # [0.40.0-dev.1](https://github.com/Reaparr/Reaparr/compare/v0.39.0...v0.40.0-dev.1) (2026-09-11)
 
 
