@@ -16,6 +16,7 @@ services:
             - LOG_ENV_VARS=false            # Enable Log dump of all available ENV variables on Reaparr startup
             - UNMASKED=false                # Unmask sensitive data in logs if true
             - SEQ_URL=http://localhost:5341 # If you got a SEQ docker setup, Reaparr can log to it
+            - SEQ_API_KEY=                  # If you got a SEQ docker setup, Reaparr can log to it
         volumes:
             # The paths /mnt/TURBO/ReaparrDockerCache/ are examples, and you will need valid paths on your device with write permission.
             - /mnt/TURBO/ReaparrDockerCache/Config:/Config
