@@ -72,22 +72,6 @@ export function generateSettingsModel({
 			allowedProxyIps: [],
 			forwardedHostHeader: '',
 			forwardedPathHeader: '',
-			url: '',
-		},
-		integrationsSettings: {
-			downloadClientUsername: '',
-			downloadClientPassword: '',
-			reaparrApiKey: '',
-			sonarr: {
-				isConfigured: false,
-				sonarrApiKey: '',
-				sonarrBaseUrl: '',
-			},
-			radarr: {
-				isConfigured: false,
-				radarrApiKey: '',
-				radarrBaseUrl: '',
-			},
 		},
 		...partialData,
 	};
