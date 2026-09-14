@@ -14,7 +14,9 @@
     "reaparr-frontend-unit-tests": "symlink",
     "reaparr-git-commit": "symlink",
     "reaparr-media-comparison": "symlink",
-    "reaparr-pinia-store": "symlink"
+    "reaparr-pinia-store": "symlink",
+    "reaparr-radarr-integration": "symlink",
+    "reaparr-sonarr-integration": "symlink"
   },
-  "updated_at": "2026-08-18T14:13:25.29286766+02:00"
+  "updated_at": "2026-09-14T22:18:47.596268684+02:00"
 }
