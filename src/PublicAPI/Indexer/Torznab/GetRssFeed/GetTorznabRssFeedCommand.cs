@@ -83,9 +83,8 @@ public class GetTorznabRssFeedCommandHandler
             command.Attributes
         );
         var orderedRows = rows.OrderByDescending(x => x.AddedAt)
-            .ThenByDescending(x => x.PlexServerMachineIdentifier)
-            .ThenByDescending(x => x.PlexApiMediaId)
-            .ThenByDescending(x => x.PlexApiPartId)
+            .ThenByDescending(x => x.PlexServerId)
+            .ThenByDescending(x => x.PlexApiRatingKey)
             .Take(fetchLimit)
             .ToList();
         var items = orderedRows
@@ -135,9 +134,6 @@ public class GetTorznabRssFeedCommandHandler
                 .OrderByDescending(x => x.PlexMovie!.AddedAt)
                 .ThenByDescending(x => x.PlexMovie!.PlexServerId)
                 .ThenByDescending(x => x.PlexMovie!.PlexApiRatingKey)
-                .ThenByDescending(x => x.PlexMovieId)
-                .ThenByDescending(x => x.PlexApiMediaId)
-                .ThenByDescending(x => x.PlexApiPartId)
                 .ProjectToTorznabFeedItems()
                 .ToListAsync(cancellationToken);
             rows.AddRange(batchRows);
@@ -185,9 +181,6 @@ public class GetTorznabRssFeedCommandHandler
                 .OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
                 .ThenByDescending(x => x.PlexTvShowEpisode!.PlexServerId)
                 .ThenByDescending(x => x.PlexTvShowEpisode!.PlexApiRatingKey)
-                .ThenByDescending(x => x.PlexTvShowEpisodeId)
-                .ThenByDescending(x => x.PlexApiMediaId)
-                .ThenByDescending(x => x.PlexApiPartId)
                 .ProjectToTorznabFeedItems()
                 .ToListAsync(cancellationToken);
             rows.AddRange(batchRows);
