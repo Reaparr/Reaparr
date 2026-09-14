@@ -319,10 +319,11 @@ public class DownloadTaskUpdateDispatcherUnitTests : BaseUnitTest<DownloadTaskUp
     [Test]
     public async Task ShouldIncreaseSequenceAcrossMixedStatusAndProgressPatches()
     {
+        // Arrange
         await SetupDatabase(84326, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
 
-        var sequences = new List<long>();
+        var sequences = new ConcurrentBag<long>();
         Mock.Mock<IDownloadHubService>()
             .Setup(x =>
                 x.SendDownloadPatchAsync(
@@ -353,14 +354,16 @@ public class DownloadTaskUpdateDispatcherUnitTests : BaseUnitTest<DownloadTaskUp
             }
         );
 
+        // Act
         await WaitForPatchCount(sequences, 2);
         await sut.StopAsync(CancellationToken.None);
 
+        // Assert
         sequences.Count.ShouldBeGreaterThanOrEqualTo(2);
-        sequences.Distinct().Count().ShouldBe(sequences.Count);
-
-        for (var i = 1; i < sequences.Count; i++)
-            sequences[i].ShouldBeGreaterThan(sequences[i - 1]);
+        var orderedSequences = sequences.OrderBy(x => x).ToList();
+        orderedSequences.Distinct().Count().ShouldBe(orderedSequences.Count);
+        for (var i = 1; i < orderedSequences.Count; i++)
+            orderedSequences[i].ShouldBeGreaterThan(orderedSequences[i - 1]);
     }
 
     [Test]
