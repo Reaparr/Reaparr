@@ -31,6 +31,8 @@ public static partial class FakeData
             .Ignore(x => x.TvShowCount)
             .Ignore(x => x.SeasonCount)
             .Ignore(x => x.EpisodeCount)
+            .Ignore(x => x.MovieMediaDataCount)
+            .Ignore(x => x.EpisodeMediaDataCount)
             .Ignore(x => x.ActorsCount)
             .Ignore(x => x.GenresCount)
             .Ignore(x => x.CountriesCount)

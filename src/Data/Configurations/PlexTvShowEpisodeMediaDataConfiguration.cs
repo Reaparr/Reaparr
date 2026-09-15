@@ -7,6 +7,7 @@ public class PlexTvShowEpisodeMediaDataConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(x => x.Quality);
         builder.HasIndex(x => new { x.PlexTvShowEpisodeId, x.Quality });
         builder.HasIndex(x => x.PlexApiRatingKey);
+        builder.HasIndex(x => new { x.PlexServerId, x.PlexLibraryId });
 
         builder
             .HasOne(x => x.PlexTvShowEpisode)

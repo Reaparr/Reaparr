@@ -98,13 +98,16 @@ public static partial class DbContextExtensions
         this IReaparrDbContext dbContext,
         int plexLibraryId,
         int movieCount,
+        int movieMediaDataCount,
         long mediaSize
     )
     {
         await dbContext
             .PlexLibraries.Where(x => x.Id == plexLibraryId)
             .ExecuteUpdateAsync(p =>
-                p.SetProperty(x => x.MovieCount, movieCount).SetProperty(x => x.MediaSize, mediaSize)
+                p.SetProperty(x => x.MovieCount, movieCount)
+                    .SetProperty(x => x.MovieMediaDataCount, movieMediaDataCount)
+                    .SetProperty(x => x.MediaSize, mediaSize)
             );
     }
 
@@ -114,6 +117,7 @@ public static partial class DbContextExtensions
         int tvShowCount,
         int seasonCount,
         int episodeCount,
+        int episodeMediaDataCount,
         long mediaSize
     )
     {
@@ -123,6 +127,7 @@ public static partial class DbContextExtensions
                 p.SetProperty(x => x.TvShowCount, tvShowCount)
                     .SetProperty(x => x.SeasonCount, seasonCount)
                     .SetProperty(x => x.EpisodeCount, episodeCount)
+                    .SetProperty(x => x.EpisodeMediaDataCount, episodeMediaDataCount)
                     .SetProperty(x => x.MediaSize, mediaSize)
             );
     }
