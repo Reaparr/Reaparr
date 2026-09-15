@@ -345,7 +345,7 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
 
 
     [Test]
-    public async Task ShouldReturnTorznabError_WhenRssCommandIsCancelled()
+    public async Task ShouldStopWritingResponse_WhenRssCommandIsCancelled()
     {
         // Arrange
         await SetupDatabase(6526, config => config.RadarrIntegrationCount = 1);
@@ -353,7 +353,10 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
         var request = new TorznabEndpointRequest { Type = "search", ApiKey = "key" };
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<GetTorznabRssFeedCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ResultExtensions.TaskIsCancelled(nameof(GetTorznabRssFeedCommand)).ToResult<TorznabMediaSearchResponseDTO>())
+            .ReturnsAsync(
+                ResultExtensions.TaskIsCancelled(nameof(GetTorznabRssFeedCommand))
+                    .ToResult<TorznabMediaSearchResponseDTO>()
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -361,12 +364,7 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
 
         // Assert
         endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
-        var response = endpointResult.Endpoint.HttpContext.Response.Body;
-        response.Position = 0;
-        using var reader = new StreamReader(response, leaveOpen: true);
-        var xml = await reader.ReadToEndAsync();
-        xml.ShouldContain("code=\"900\"");
-        xml.ShouldContain("Indexer request cancelled");
+        endpointResult.Endpoint.HttpContext.Response.Body.Length.ShouldBe(0);
         Mock.Mock<ICommandExecutor>().Verify();
     }
 

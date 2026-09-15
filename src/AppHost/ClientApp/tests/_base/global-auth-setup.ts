@@ -85,13 +85,6 @@ mock.onGet(settingsMatcher).reply(200, ok({
 	},
 	downloadManagerSettings: { downloadSegments: 4, keepCompletedInDownloadFolder: false },
 	languageSettings: { language: 'en-US' },
-	integrationsSettings: {
-		downloadClientUsername: '',
-		downloadClientPassword: '',
-		reaparrApiKey: '',
-		sonarr: { isConfigured: false, sonarrApiKey: '', sonarrBaseUrl: '' },
-		radarr: { isConfigured: false, radarrApiKey: '', radarrBaseUrl: '' },
-	},
 	serverSettings: { data: [] },
 	networkSettings: {
 		reverseProxyUrl: '',
@@ -100,7 +93,6 @@ mock.onGet(settingsMatcher).reply(200, ok({
 		allowedProxyIps: [],
 		forwardedHostHeader: '',
 		forwardedPathHeader: '',
-		url: '',
 	},
 }));
 

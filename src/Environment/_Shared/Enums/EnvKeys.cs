@@ -18,6 +18,7 @@ public static class EnvKeys
     public const string AuthHeaderTokenName = "AUTH_HEADER_TOKEN";
     public const string GitHubToken = "GITHUB_TOKEN";
     public const string SeqUrl = "SEQ_URL";
+    public const string SeqApiKey = "SEQ_API_KEY";
     public const string DotNetEnvironment = "DOTNET_ENVIRONMENT";
     public const string DotNetHttpPorts = "DOTNET_HTTP_PORTS";
     public const string Puid = "PUID";

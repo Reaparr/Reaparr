@@ -47,36 +47,52 @@ public class GetTorznabRssFeedCommandHandler
         CancellationToken cancellationToken
     )
     {
-        var queries = new List<IQueryable<TorznabFeedItemProjection>>(2);
-        if (command.IncludeMovies)
-            queries.Add(CreateMovieQuery(command.Categories));
-        if (command.IncludeEpisodes)
-            queries.Add(CreateEpisodeQuery(command.Categories));
+        var fetchLimit = checked(command.Offset + command.Limit + 1);
+        var onlineServerIds = await _dbContext.GetDownloadableServerIds();
+        if (onlineServerIds.Count == 0)
+            return Result.Ok(CreateResponse(command.Offset, 0, []));
 
+        var accessibleLibraryIds = await _dbContext.GetAccessibleLibraryIds(onlineServerIds, cancellationToken);
+        if (accessibleLibraryIds.Count == 0)
+            return Result.Ok(CreateResponse(command.Offset, 0, []));
+
+        var rows = new List<TorznabFeedItemProjection>(fetchLimit * 2);
         var total = 0;
-        var rows = new List<TorznabFeedItemProjection>();
-        foreach (var query in queries)
+        if (command.IncludeMovies)
         {
-            total += await query.CountAsync(cancellationToken);
-            rows.AddRange(
-                await query
-                    .OrderByDescending(x => x.AddedAt)
-                    .ThenByDescending(x => x.PlexServerMachineIdentifier)
-                    .ThenByDescending(x => x.PlexApiMediaId)
-                    .ThenByDescending(x => x.PlexApiPartId)
-                    .Take(command.Offset + command.Limit)
-                    .ToListAsync(cancellationToken)
+            var (movieRows, movieTotal) = await LoadMovieRows(
+                onlineServerIds,
+                accessibleLibraryIds,
+                command.Categories,
+                fetchLimit,
+                cancellationToken
             );
+            rows.AddRange(movieRows);
+            total += movieTotal;
+        }
+        if (command.IncludeEpisodes)
+        {
+            var (episodeRows, episodeTotal) = await LoadEpisodeRows(
+                onlineServerIds,
+                accessibleLibraryIds,
+                command.Categories,
+                fetchLimit,
+                cancellationToken
+            );
+            rows.AddRange(episodeRows);
+            total += episodeTotal;
         }
 
         var requestedAttributes = TorznabSearchHelpers.GetRequestedAttributes(
             command.IncludeAllAttributes,
             command.Attributes
         );
-        var items = rows.OrderByDescending(x => x.AddedAt)
-            .ThenByDescending(x => x.PlexServerMachineIdentifier)
-            .ThenByDescending(x => x.PlexApiMediaId)
-            .ThenByDescending(x => x.PlexApiPartId)
+        var orderedRows = rows.OrderByDescending(x => x.AddedAt)
+            .ThenByDescending(x => x.PlexServerId)
+            .ThenByDescending(x => x.PlexApiRatingKey)
+            .Take(fetchLimit)
+            .ToList();
+        var items = orderedRows
             .Skip(command.Offset)
             .Take(command.Limit)
             .Select(x =>
@@ -86,38 +102,100 @@ public class GetTorznabRssFeedCommandHandler
         return Result.Ok(CreateResponse(command.Offset, total, items));
     }
 
-    private IQueryable<TorznabFeedItemProjection> CreateMovieQuery(int[] categories)
+    private async Task<(List<TorznabFeedItemProjection> Rows, int Total)> LoadMovieRows(
+        IReadOnlyCollection<int> onlineServerIds,
+        IReadOnlyCollection<int> accessibleLibraryIds,
+        int[] categories,
+        int fetchLimit,
+        CancellationToken cancellationToken
+    )
     {
-        var query = _dbContext
-            .PlexMovies.Where(movie =>
-                movie.PlexServer!.ServerStatus.Any(status => status.IsSuccessful)
-                && movie.PlexServer.IsEnabled
-                && !movie.PlexServer.IsDownloadsPausedByUser
-                && movie.PlexLibrary!.PlexAccountLibraries.Any(libraryAccess =>
-                    movie.PlexServer.PlexAccountServers.Any(serverAccess =>
-                        serverAccess.PlexAccountId == libraryAccess.PlexAccountId
-                    )
-                )
+        var movieQuery = _dbContext.PlexMovies;
+        var mediaDataQuery = _dbContext
+            .PlexMovieData.Where(x =>
+                onlineServerIds.Contains(x.PlexMovie!.PlexServerId)
+                && accessibleLibraryIds.Contains(x.PlexMovie.PlexLibraryId)
             )
-            .SelectMany(movie => movie.MediaDataList);
-        return query.ApplyTorznabCategories(categories).ProjectToTorznabFeedItems();
+            .ApplyTorznabCategories(categories);
+        var total = await mediaDataQuery.CountAsync(cancellationToken);
+        var parentBatchSize = Math.Max(fetchLimit, 256);
+        var parentOffset = 0;
+        var rows = new List<TorznabFeedItemProjection>(fetchLimit);
+        while (rows.Count < fetchLimit)
+        {
+            var movieIds = await movieQuery
+                .OrderByDescending(x => x.AddedAt)
+                .ThenByDescending(x => x.PlexServerId)
+                .ThenByDescending(x => x.PlexApiRatingKey)
+                .Skip(parentOffset)
+                .Take(parentBatchSize)
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+            if (movieIds.Count == 0)
+                break;
+
+            var batchRows = await mediaDataQuery
+                .Where(x => movieIds.Contains(x.PlexMovieId))
+                .OrderByDescending(x => x.PlexMovie!.AddedAt)
+                .ThenByDescending(x => x.PlexMovie!.PlexServerId)
+                .ThenByDescending(x => x.PlexMovie!.PlexApiRatingKey)
+                .ProjectToTorznabFeedItems()
+                .ToListAsync(cancellationToken);
+            rows.AddRange(batchRows);
+            parentOffset += movieIds.Count;
+            if (movieIds.Count < parentBatchSize)
+                break;
+        }
+
+        return (rows.Take(fetchLimit).ToList(), total);
     }
 
-    private IQueryable<TorznabFeedItemProjection> CreateEpisodeQuery(int[] categories)
+    private async Task<(List<TorznabFeedItemProjection> Rows, int Total)> LoadEpisodeRows(
+        IReadOnlyCollection<int> onlineServerIds,
+        IReadOnlyCollection<int> accessibleLibraryIds,
+        int[] categories,
+        int fetchLimit,
+        CancellationToken cancellationToken
+    )
     {
-        var query = _dbContext
-            .PlexTvShowEpisodes.Where(episode =>
-                episode.PlexServer!.ServerStatus.Any(status => status.IsSuccessful)
-                && episode.PlexServer.IsEnabled
-                && !episode.PlexServer.IsDownloadsPausedByUser
-                && episode.TvShow!.PlexLibrary!.PlexAccountLibraries.Any(libraryAccess =>
-                    episode.PlexServer.PlexAccountServers.Any(serverAccess =>
-                        serverAccess.PlexAccountId == libraryAccess.PlexAccountId
-                    )
-                )
+        var episodeQuery = _dbContext.PlexTvShowEpisodes;
+        var mediaDataQuery = _dbContext
+            .PlexTvShowEpisodeData.Where(x =>
+                onlineServerIds.Contains(x.PlexTvShowEpisode!.PlexServerId)
+                && accessibleLibraryIds.Contains(x.PlexTvShowEpisode.PlexLibraryId)
             )
-            .SelectMany(episode => episode.MediaDataList);
-        return query.ApplyTorznabCategories(categories).ProjectToTorznabFeedItems();
+            .ApplyTorznabCategories(categories);
+        var total = await mediaDataQuery.CountAsync(cancellationToken);
+        var parentBatchSize = Math.Max(fetchLimit, 256);
+        var parentOffset = 0;
+        var rows = new List<TorznabFeedItemProjection>(fetchLimit);
+        while (rows.Count < fetchLimit)
+        {
+            var episodeIds = await episodeQuery
+                .OrderByDescending(x => x.AddedAt)
+                .ThenByDescending(x => x.PlexServerId)
+                .ThenByDescending(x => x.PlexApiRatingKey)
+                .Skip(parentOffset)
+                .Take(parentBatchSize)
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+            if (episodeIds.Count == 0)
+                break;
+
+            var batchRows = await mediaDataQuery
+                .Where(x => episodeIds.Contains(x.PlexTvShowEpisodeId))
+                .OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
+                .ThenByDescending(x => x.PlexTvShowEpisode!.PlexServerId)
+                .ThenByDescending(x => x.PlexTvShowEpisode!.PlexApiRatingKey)
+                .ProjectToTorznabFeedItems()
+                .ToListAsync(cancellationToken);
+            rows.AddRange(batchRows);
+            parentOffset += episodeIds.Count;
+            if (episodeIds.Count < parentBatchSize)
+                break;
+        }
+
+        return (rows.Take(fetchLimit).ToList(), total);
     }
 
     private static TorznabMediaSearchResponseDTO CreateResponse(int offset, int total, List<TorznabItem> items) =>
@@ -133,5 +211,4 @@ public class GetTorznabRssFeedCommandHandler
                 Response = new TorznabResponseMetadata { Offset = offset, Total = total },
             },
         };
-
 }

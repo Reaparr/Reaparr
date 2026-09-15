@@ -87,4 +87,21 @@ public static partial class DbContextExtensions
             .Distinct()
             .ToListAsync(CancellationToken.None);
     }
+
+    public static Task<List<int>> GetAccessibleLibraryIds(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<int> allowedServerIds,
+        CancellationToken cancellationToken
+    ) =>
+        dbContext
+            .PlexLibraries.Where(x =>
+                allowedServerIds.Contains(x.PlexServerId)
+                && x.PlexAccountLibraries.Any(libraryAccess =>
+                    x.PlexServer!.PlexAccountServers.Any(serverAccess =>
+                        serverAccess.PlexAccountId == libraryAccess.PlexAccountId
+                    )
+                )
+            )
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
 }

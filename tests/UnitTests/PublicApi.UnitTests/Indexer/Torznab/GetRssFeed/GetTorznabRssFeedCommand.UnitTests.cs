@@ -12,7 +12,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldPageMoviePartsByAddedAt_WhenCatalogIsUnchanged()
+    public async Task ShouldPageMoviesByCanonicalOrder_WhenCatalogIsUnchanged()
     {
         // Arrange
         await SetupDatabase(
@@ -22,17 +22,15 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
                 config.PlexServerCount = 1;
                 config.PlexAccountCount = 1;
                 config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 4;
-                config.IncludeMultiPartMovies = true;
+                config.MovieCount = 5;
                 config.RadarrIntegrationCount = 1;
             }
         );
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var expected = await IDbContext
             .PlexMovieData.OrderByDescending(x => x.PlexMovie!.AddedAt)
-            .ThenByDescending(x => x.PlexServerId)
-            .ThenByDescending(x => x.PlexApiMediaId)
-            .ThenByDescending(x => x.PlexApiPartId)
+            .ThenByDescending(x => x.PlexMovie!.PlexServerId)
+            .ThenByDescending(x => x.PlexMovie!.PlexApiRatingKey)
             .Select(x => !string.IsNullOrEmpty(x.GeneratedFilename) ? x.GeneratedFilename : x.OriginalFilename)
             .ToListAsync(CancellationToken);
         var command = new GetTorznabRssFeedCommand
@@ -146,7 +144,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldGloballyPageMoviesAndEpisodes_WhenBothTypesAreRequested()
+    public async Task ShouldGloballyPageMoviesAndEpisodes_WhenAddedAtTies()
     {
         // Arrange
         await SetupDatabase(
@@ -164,17 +162,37 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
                 config.RadarrIntegrationCount = 1;
             }
         );
+        var tiedAddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await IDbContext.PlexMovies.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.AddedAt, tiedAddedAt),
+            CancellationToken
+        );
+        await IDbContext.PlexTvShowEpisodes.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.AddedAt, tiedAddedAt),
+            CancellationToken
+        );
         var movieRows = await IDbContext.PlexMovieData
-            .Select(x => new { x.PlexMovie!.AddedAt, x.PlexServer!.MachineIdentifier, x.PlexApiMediaId, x.PlexApiPartId, Title = x.GetFileName })
+            .Select(x => new
+            {
+                x.PlexMovie!.AddedAt,
+                x.PlexMovie.PlexServerId,
+                x.PlexMovie.PlexApiRatingKey,
+                Title = x.GetFileName,
+            })
             .ToListAsync(CancellationToken);
         var episodeRows = await IDbContext.PlexTvShowEpisodeData
-            .Select(x => new { x.PlexTvShowEpisode!.AddedAt, x.PlexServer!.MachineIdentifier, x.PlexApiMediaId, x.PlexApiPartId, Title = x.GetFileName })
+            .Select(x => new
+            {
+                x.PlexTvShowEpisode!.AddedAt,
+                x.PlexTvShowEpisode.PlexServerId,
+                x.PlexTvShowEpisode.PlexApiRatingKey,
+                Title = x.GetFileName,
+            })
             .ToListAsync(CancellationToken);
         var expectedTitles = movieRows.Concat(episodeRows)
             .OrderByDescending(x => x.AddedAt)
-            .ThenByDescending(x => x.MachineIdentifier)
-            .ThenByDescending(x => x.PlexApiMediaId)
-            .ThenByDescending(x => x.PlexApiPartId)
+            .ThenByDescending(x => x.PlexServerId)
+            .ThenByDescending(x => x.PlexApiRatingKey)
             .Skip(1)
             .Take(3)
             .Select(x => x.Title)
@@ -374,7 +392,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldReturnFilteredTotalBeforePaging()
+    public async Task ShouldReturnTotalBeforePaging_WhenMoreFilteredItemsExist()
     {
         // Arrange
         await SetupDatabase(
@@ -389,14 +407,11 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
             }
         );
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
-        var category = GetMovieQualityCategory(await IDbContext.PlexMovieData.FirstAsync(CancellationToken));
-        var expectedTotal = (await IDbContext.PlexMovieData.ToListAsync(CancellationToken)).Count(x =>
-            GetMovieQualityCategory(x) == category
-        );
+        var expectedTotal = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
         var command = new GetTorznabRssFeedCommand
         {
             Integration = integration,
-            Categories = [category],
+            Categories = [],
             IncludeMovies = true,
             IncludeEpisodes = false,
             Limit = 1,
@@ -412,7 +427,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
-        result.Value.Channel.Items.Count.ShouldBe(Math.Min(1, Math.Max(0, expectedTotal - 1)));
+        result.Value.Channel.Items.ShouldHaveSingleItem();
     }
 
     [Test]

@@ -18,6 +18,7 @@
             <env name="INFORMATIONAL_VERSION" value="0.36.0-dev.1" />
             <env name="PUID" value="1000" />
             <env name="SEQ_URL" value="http://localhost:5341" />
+            <env name="SEQ_API_KEY" value="" />
             <env name="UNMASKED" value="true" />
             <env name="DOTNET_HTTP_PORTS" value="5000" />
             <env name="LOG_ENV_VARS" value="false" />

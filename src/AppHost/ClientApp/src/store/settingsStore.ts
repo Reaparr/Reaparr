@@ -3,7 +3,7 @@ import { defineStore, acceptHMRUpdate } from 'pinia';
 import { of, Subject, type Observable, type Subscription } from 'rxjs';
 import { debounceTime, switchMap, tap, map, catchError } from 'rxjs/operators';
 import { reactive, computed, toRefs } from 'vue';
-import { type IntegrationsSettingsDTO, PlexMediaType, type SettingsModelDTO, ViewMode } from '@dto';
+import { PlexMediaType, type SettingsModelDTO, ViewMode } from '@dto';
 
 import { StoreNames, type ISetupResult } from '@interfaces';
 import { settingsApi } from '@api';
@@ -48,13 +48,6 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 			downloadSegments: 4, keepCompletedInDownloadFolder: false,
 		},
 		languageSettings: { language: 'en-US' },
-		integrationsSettings: {
-			downloadClientUsername: '', downloadClientPassword: '', reaparrApiKey: '', sonarr: {
-				isConfigured: false, sonarrApiKey: '', sonarrBaseUrl: '',
-			}, radarr: {
-				isConfigured: false, radarrApiKey: '', radarrBaseUrl: '',
-			},
-		},
 		serverSettings: {
 			data: [],
 		},
@@ -122,17 +115,6 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 				...settings.networkSettings.allowedProxyIps,
 			);
 
-			// Keep containers stable, then merge deeply
-			// Update nested objects first to preserve their references
-			Object.assign(state.integrationsSettings.sonarr, settings.integrationsSettings.sonarr);
-			Object.assign(state.integrationsSettings.radarr, settings.integrationsSettings.radarr);
-
-			// Then update top-level properties (excluding sonarr and radarr which are already updated)
-			Object.assign<IntegrationsSettingsDTO, Omit<IntegrationsSettingsDTO, 'radarr' | 'sonarr'>>(state.integrationsSettings, {
-				downloadClientUsername: settings.integrationsSettings.downloadClientUsername,
-				downloadClientPassword: settings.integrationsSettings.downloadClientPassword,
-				reaparrApiKey: settings.integrationsSettings.reaparrApiKey,
-			});
 			Object.assign(state.networkSettings, {
 				reverseProxyUrl: settings.networkSettings.reverseProxyUrl,
 				basePath: settings.networkSettings.basePath,
