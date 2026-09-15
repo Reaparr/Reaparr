@@ -52,7 +52,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.Channel.Response.Offset.ShouldBe(1);
-        result.Value.Channel.Response.Total.ShouldBe(command.Offset + command.Limit + 1);
+        result.Value.Channel.Response.Total.ShouldBe(expected.Count);
         result.Value.Channel.Items.Select(x => x.Title).ShouldBe(expected.Skip(1).Take(3));
         result.Value.Channel.Items.Select(x => x.Guid.Value).Distinct().Count().ShouldBe(3);
         result.Value.Channel.Items.All(x => x.Guid.Value != x.Link).ShouldBeTrue();
@@ -392,7 +392,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldReturnLookaheadTotal_WhenMoreFilteredItemsExist()
+    public async Task ShouldReturnTotalBeforePaging_WhenMoreFilteredItemsExist()
     {
         // Arrange
         await SetupDatabase(
@@ -407,6 +407,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
             }
         );
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var expectedTotal = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
         var command = new GetTorznabRssFeedCommand
         {
             Integration = integration,
@@ -425,7 +426,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Channel.Response.Total.ShouldBe(command.Offset + command.Limit + 1);
+        result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
         result.Value.Channel.Items.ShouldHaveSingleItem();
     }
 

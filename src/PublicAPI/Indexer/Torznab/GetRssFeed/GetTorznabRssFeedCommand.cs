@@ -57,26 +57,31 @@ public class GetTorznabRssFeedCommandHandler
             return Result.Ok(CreateResponse(command.Offset, 0, []));
 
         var rows = new List<TorznabFeedItemProjection>(fetchLimit * 2);
+        var total = 0;
         if (command.IncludeMovies)
-            rows.AddRange(
-                await LoadMovieRows(
-                    onlineServerIds,
-                    accessibleLibraryIds,
-                    command.Categories,
-                    fetchLimit,
-                    cancellationToken
-                )
+        {
+            var (movieRows, movieTotal) = await LoadMovieRows(
+                onlineServerIds,
+                accessibleLibraryIds,
+                command.Categories,
+                fetchLimit,
+                cancellationToken
             );
+            rows.AddRange(movieRows);
+            total += movieTotal;
+        }
         if (command.IncludeEpisodes)
-            rows.AddRange(
-                await LoadEpisodeRows(
-                    onlineServerIds,
-                    accessibleLibraryIds,
-                    command.Categories,
-                    fetchLimit,
-                    cancellationToken
-                )
+        {
+            var (episodeRows, episodeTotal) = await LoadEpisodeRows(
+                onlineServerIds,
+                accessibleLibraryIds,
+                command.Categories,
+                fetchLimit,
+                cancellationToken
             );
+            rows.AddRange(episodeRows);
+            total += episodeTotal;
+        }
 
         var requestedAttributes = TorznabSearchHelpers.GetRequestedAttributes(
             command.IncludeAllAttributes,
@@ -94,11 +99,10 @@ public class GetTorznabRssFeedCommandHandler
                 x.ToTorznabItem(command.Integration, command.TorznabApiKey, _networkSettings.Url, requestedAttributes)
             )
             .ToList();
-        var total = orderedRows.Count == fetchLimit ? fetchLimit : orderedRows.Count;
         return Result.Ok(CreateResponse(command.Offset, total, items));
     }
 
-    private async Task<List<TorznabFeedItemProjection>> LoadMovieRows(
+    private async Task<(List<TorznabFeedItemProjection> Rows, int Total)> LoadMovieRows(
         IReadOnlyCollection<int> onlineServerIds,
         IReadOnlyCollection<int> accessibleLibraryIds,
         int[] categories,
@@ -107,12 +111,13 @@ public class GetTorznabRssFeedCommandHandler
     )
     {
         var movieQuery = _dbContext.PlexMovies;
-        var mediaDataQuery = _dbContext.PlexMovieData
-            .Where(x =>
+        var mediaDataQuery = _dbContext
+            .PlexMovieData.Where(x =>
                 onlineServerIds.Contains(x.PlexMovie!.PlexServerId)
                 && accessibleLibraryIds.Contains(x.PlexMovie.PlexLibraryId)
             )
             .ApplyTorznabCategories(categories);
+        var total = await mediaDataQuery.CountAsync(cancellationToken);
         var parentBatchSize = Math.Max(fetchLimit, 256);
         var parentOffset = 0;
         var rows = new List<TorznabFeedItemProjection>(fetchLimit);
@@ -142,10 +147,10 @@ public class GetTorznabRssFeedCommandHandler
                 break;
         }
 
-        return rows.Take(fetchLimit).ToList();
+        return (rows.Take(fetchLimit).ToList(), total);
     }
 
-    private async Task<List<TorznabFeedItemProjection>> LoadEpisodeRows(
+    private async Task<(List<TorznabFeedItemProjection> Rows, int Total)> LoadEpisodeRows(
         IReadOnlyCollection<int> onlineServerIds,
         IReadOnlyCollection<int> accessibleLibraryIds,
         int[] categories,
@@ -154,12 +159,13 @@ public class GetTorznabRssFeedCommandHandler
     )
     {
         var episodeQuery = _dbContext.PlexTvShowEpisodes;
-        var mediaDataQuery = _dbContext.PlexTvShowEpisodeData
-            .Where(x =>
+        var mediaDataQuery = _dbContext
+            .PlexTvShowEpisodeData.Where(x =>
                 onlineServerIds.Contains(x.PlexTvShowEpisode!.PlexServerId)
                 && accessibleLibraryIds.Contains(x.PlexTvShowEpisode.PlexLibraryId)
             )
             .ApplyTorznabCategories(categories);
+        var total = await mediaDataQuery.CountAsync(cancellationToken);
         var parentBatchSize = Math.Max(fetchLimit, 256);
         var parentOffset = 0;
         var rows = new List<TorznabFeedItemProjection>(fetchLimit);
@@ -189,7 +195,7 @@ public class GetTorznabRssFeedCommandHandler
                 break;
         }
 
-        return rows.Take(fetchLimit).ToList();
+        return (rows.Take(fetchLimit).ToList(), total);
     }
 
     private static TorznabMediaSearchResponseDTO CreateResponse(int offset, int total, List<TorznabItem> items) =>
@@ -205,5 +211,4 @@ public class GetTorznabRssFeedCommandHandler
                 Response = new TorznabResponseMetadata { Offset = offset, Total = total },
             },
         };
-
 }
