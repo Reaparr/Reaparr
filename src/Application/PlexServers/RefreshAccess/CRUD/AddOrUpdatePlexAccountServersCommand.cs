@@ -84,10 +84,12 @@ public class AddOrUpdatePlexAccountServersCommandHandler
             accessiblePlexServers.Add(plexServer.Id);
 
             // Check if this PlexAccount has been associated with the plexServer already
-            var plexAccountServer = await _dbContext.PlexAccountServers.FirstOrDefaultAsync(
-                x => x.PlexAccountId == plexAccountId && x.PlexServerId == plexServer.Id,
-                cancellationToken
-            );
+            var plexAccountServer = await _dbContext
+                .PlexAccountServers.AsTracking()
+                .FirstOrDefaultAsync(
+                    x => x.PlexAccountId == plexAccountId && x.PlexServerId == plexServer.Id,
+                    cancellationToken
+                );
 
             if (plexAccountServer is null)
             {
