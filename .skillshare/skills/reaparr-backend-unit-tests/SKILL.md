@@ -1,545 +1,271 @@
 ---
 name: reaparr-backend-unit-tests
-description: Use when creating or updating C# backend unit tests in Reaparr, especially for handlers, services, endpoints, and jobs that must follow the project's TUnit, Shouldly, Moq, BaseUnitTest, naming, placement, and deterministic test-data conventions.
+description: Use whenever creating, changing, debugging, or auditing Reaparr C# backend unit tests under tests/UnitTests. Enforces TUnit execution, whole-class coverage audits, red-first regression proof, exact persisted-state assertions, strict mock contracts, and mutation-resistant tests.
 ---
 
 # Reaparr Backend Unit Tests
 
 ## Required First Skill
 
-Load `reaparr-backend` before this skill. It owns shared backend tooling, architecture, build/test commands, and verification gates.
+Load `reaparr-backend` before this skill. For command handlers also load `reaparr-command-handler-patterns`; for TUnit runner behavior load `tunit`.
 
-## Overview
+## Proof Standard
 
-Use this skill to write backend unit tests that match Reaparr conventions exactly.
+A unit test is executable proof of an observable contract. Green is insufficient: a test must fail for the plausible defect it claims to prevent.
 
-The goal is consistency and reliability:
-- Keep tests deterministic.
-- Match project structure and naming.
-- Reuse BaseTests helpers instead of ad-hoc setup.
-- Verify behavior and side effects (especially database state and mock calls).
+Every new or rewritten test must establish:
 
-## When to Use
+1. **Precondition** — the named target state exists before Act, with exact identities and relationships.
+2. **Stimulus** — the production entry point runs once through the project-standard harness.
+3. **Outcome** — result shape and exact error-count semantics are asserted.
+4. **Mutation** — exact target rows, relationships, statuses, files, or values after Act are asserted.
+5. **Interaction** — contract-bearing collaborator calls and plausible forbidden calls are verified with exact counts and arguments.
+6. **Counterfactual** — identify the plausible defect the test kills and confirm the assertions would fail if the operation were omitted, mis-scoped, duplicated, or applied to the wrong entity.
 
-Use this skill when:
-- You are writing or modifying C# unit tests under `tests/UnitTests/`.
-- The system under test is in backend projects (Application, BackgroundJobs, Data, Domain, External, FileSystem, FluentResultExtension, Logging, PlexApi, PublicApi, Settings).
-- You are testing handlers, services, jobs, endpoints, or command logic.
+There is no numeric assertion minimum. The observable contract determines the assertions.
 
-Do not use this skill for frontend tests (Vitest/Cypress).
+## Mandatory Creation Workflow
 
-## Required Frameworks and Style
+### 1. Map the system before writing tests
 
-- Test framework: `TUnit` with `[Test]`, `[Arguments]`, and `async Task` where needed.
-- Assertions: `Shouldly`.
-- Mocks: `Moq` with explicit verification (`Times.Once()` / `Times.Never()`).
-- Structure: Arrange -> Act -> Assert. Every test method **must** include the three comment markers `// Arrange`, `// Act`, and `// Assert` — no exceptions. Within Arrange, mock setups (`Mock.Mock<T>()`) must always be the **last step**, immediately before Act.
-- Determinism: no random behavior in tests.
-- Command-handler tests must derive from `BaseCommandUnitTest<TCommand>` and call `TestHandlerExecuteAsync(...)` in Act. Do **not** call `Sut.ExecuteAsync(...)` directly for command handlers; `TestHandlerExecuteAsync` runs the matching validator first and then executes the handler, so validator and handler behavior are tested together.
+Read the complete SUT method, validator, result models, persistence entities/configuration, and existing test class. Use symbol references for exported symbols when available.
 
-## Base Test Helpers
+Build a behavior matrix containing every:
 
-Prefer the shared `BaseUnitTest` helpers over manual container or SUT construction. For command handlers, prefer `BaseCommandUnitTest<TCommand>` over `BaseUnitTest<THandler>` so `TestHandlerExecuteAsync(...)` exercises validation automatically.
+- validator rejection;
+- success and early-return path;
+- add, update, delete, revoke, or no-op transition;
+- emitted result/rapport row;
+- database, filesystem, notification, event, scheduler, queue, or command side effect;
+- distinct cancellation, partial-success, and dependency-failure path.
 
-Before adding any test-local helper or custom setup method, inspect `tests/BaseTests/_Shared/BaseUnitTest/*` and existing `tests/BaseTests/*` utilities first. Reuse an existing helper when one already fits. Do not create ad-hoc test-class helpers for behavior already covered by `BaseUnitTest`, such as app build info setup, dependency overrides, filesystem setup, environment-variable scoping, or SUT creation.
+Test every distinct observable success, early-return, and mutation path. Risk-rank failure/cancellation paths; test every path capable of data loss, false success, wrong scope, inconsistent state, or incorrect downstream work. Record why any mapped failure path is omitted.
 
-- Use `SetupDatabase(...)` for database state.
-- Use `SetupFileSystem(...)` for filesystem state only.
-- Use `SetupDependencies(...)` when a test needs to replace a DI registration without overloading an unrelated helper.
-- Use `SetAppBuildInfo(...)` for build/version metadata instead of constructing custom handlers or endpoints manually.
+### 2. Audit the whole existing test class
 
-### Filesystem and dependency setup
+When a production behavior or its test class is touched, audit every test in that class against the behavior matrix.
 
-Keep filesystem setup and DI overrides separate:
+Each weak, stale, misleading, or duplicate test must be strengthened, split, renamed, or deleted. Do not leave weak legacy tests beside stronger replacements.
 
-```csharp
-SetupDependencies(builder => builder.RegisterInstance<IUserSettings>(new UserSettings()));
-SetupFileSystem(system =>
-{
-    system.AddDirectory(configDirectory);
-    system.AddFile(configPath, new MockFileData("{}"));
-});
+Use the existing `ShouldExpectedBehavior_WhenCondition` naming structure. The name must accurately describe what the assertions prove.
 
-var result = Sut.Setup();
-```
+### 3. Design deterministic target state
 
-Do not hide dependency overrides inside `SetupFileSystem(...)`. If a test needs a real service instance, register it explicitly with `SetupDependencies(...)`.
+Use stable seeds and existing `BaseTests` builders. For state-changing behavior:
 
-### Sandbox path rule
+- name the exact target rows;
+- capture exact target identities and relationships before Act;
+- add a similar non-target control row when scope is not otherwise obvious or a destructive filter is risky;
+- project post-state into deterministic records and assert exact set equality;
+- assert no missing, duplicate, or extra target rows.
 
-Do not hard-code config, database, or download paths in backend unit tests when the test uses `BaseUnitTest` helpers.
+Snapshot only rows relevant to the named scenario. Do not snapshot unrelated tables merely to inflate strictness.
 
-Prefer `IPathProvider` values resolved from the test container:
+### 4. Prove regression tests red first
 
-```csharp
-var configPath = Mock.Container.Resolve<IPathProvider>().ConfigFileLocation;
-var databasePath = Mock.Container.Resolve<IPathProvider>().DatabasePath;
-```
+For a reported bug, run the new focused regression against the pre-fix production behavior before accepting the fix.
 
-`BaseUnitTest` uses a sandboxed `MockPathProvider`, so assertions like `"/config/..."` or `"/Config/..."` are brittle and should be avoided.
+Prefer an isolated worktree or equivalent isolated copy. If that is unavailable, attempt another safe method that preserves current user changes. Record the exact failing assertion.
 
-### Real settings object rule
+If pre-fix execution is impossible, alert the user, state every attempted method and the exact blocker, and explicitly mark red proof unavailable. Green proof may proceed, but completion must carry that exception.
 
-When testing `ConfigManager.Setup()` or any path that can save settings, prefer a real `UserSettings` instance over a strict `IUserSettings` mock.
+### 5. Implement with project harnesses
 
-Reason:
-- `Setup()` can trigger config save and serialization.
-- A strict mock often forces a large amount of irrelevant property setup.
-- A real `UserSettings` is simpler, more realistic, and more maintainable.
+- TUnit: `[Test]`, `[Arguments]`, `async Task` as needed.
+- Assertions: Shouldly.
+- Mocks: Moq with strict, explicit contracts.
+- Every test contains `// Arrange`, `// Act`, and `// Assert`.
+- Data/context setup comes first; mock setups are the final Arrange step immediately before Act.
+- Command-handler tests inherit `BaseCommandUnitTest<TCommand>` and call `TestHandlerExecuteAsync(...)` so validator and handler execute together.
+- Endpoint tests use `BaseEndpointUnitTest<...>` or `BaseEndpointWithoutRequestUnitTest<...>` and call `TestEndpointHandleAsync(...)`.
+- Use `SetupDatabase`, `SetupFileSystem`, `SetupDependencies`, `SetAppBuildInfo`, and existing shared helpers before creating local infrastructure.
+- Keep scenario setup, mock contracts, and assertions visible in the test. Assertion helpers are not allowed.
 
-Use mocks for `IUserSettings` only when the test is explicitly asserting `Reset()`, `UpdateSettings(...)`, `SettingsUpdated`, or other interaction behavior.
+### 6. Verify narrowly
 
-### App build info rule
+Run native diagnostics for each changed test file, then run the changed test or class through `dotnet-test-mcp`. A targeted green run is sufficient unless the change affects shared test infrastructure or the user requests broader execution.
 
-If a test changes app version or release channel, call `SetAppBuildInfo(...)` before Act and prefer it over manual container rewiring.
+Never claim a test passed without completed execution output.
 
-`SetAppBuildInfo(...)` now updates both:
-- the current resolved `MockAppBuildInfo` instance for already-created SUTs
-- the registration used for future container rebuilds
+## Assertion Contract
 
-This avoids stale version metadata when a test resolves `Sut` before changing app build info.
+### Result assertions
 
-### Strong typing over stringly test helpers
+For every `Result` or `Result<T>`:
 
-Prefer domain types, enums, and value objects in test helper parameters and `[Arguments(...)]` data.
+- success: assert `IsSuccess == true` and `Errors.Count == 0`;
+- failure: assert `IsFailed == true` and the exact expected error count;
+- cancellation: assert cancellation distinctly from ordinary failure;
+- payload: assert every contract-bearing field or exact projected collection, not merely non-null/non-empty.
 
-Good:
+Assert concrete error details only when type, status, or metadata is the behavior under test. Human-readable wording is not pinned unless wording itself is a public contract.
 
-```csharp
-[Arguments(PlexMediaType.Movie)]
-[Arguments(PlexMediaType.TvShow)]
-private static string GetMediaDestinationFolder(PathProvider sut, PlexMediaType mediaType) => ...
-```
+### Persisted-state assertions
 
-Bad:
+For every named target aggregate or join table:
 
-```csharp
-[Arguments("Movies")]
-[Arguments("TvShows")]
-private static string GetMediaDestinationFolder(PathProvider sut, string mediaType) => ...
-```
+- prove the target rows exist before Act;
+- compare exact keys and relationships after Act;
+- compare mutable fields owned by the operation;
+- use exact collection equality after deterministic ordering or projection;
+- prove deleted rows are absent and retained rows remain when scope is risky;
+- distinguish deleting an access/join row from deleting the underlying entity.
 
-Rules:
-- Prefer `PlexMediaType`, `DownloadTaskType`, IDs, and other project types over string literals when the production API already has a typed representation.
-- Avoid stringly-typed switches in tests when an enum or typed model exists.
-- If the test data must model parsing raw strings, keep that explicit in the test name and assertions.
+`Any(...) == true`, `ShouldNotBeEmpty()`, or a count alone does not prove a collection mutation. Existential loops are not accepted for deterministic persisted collections.
 
-### Prefer `Sut` before custom construction
+### Mock interaction assertions
 
-If `BaseUnitTest<TSUT>` can construct the subject correctly, use `Sut` instead of adding a local `CreateSut(...)` helper.
+Every mock setup must end in `.Verifiable(Times.X())` with the exact count, followed by explicit verification in Assert.
 
-Only add a local SUT factory when one of these is true:
-- the test must pass constructor parameters that `AutoMock` cannot infer cleanly
-- the test intentionally bypasses container wiring to validate raw constructor behavior
-- there is no existing `BaseUnitTest` helper that covers the setup
+For contract-bearing arguments use `It.Is<T>(...)` and assert:
 
-If you think you need a local SUT helper, first check whether `SetAppBuildInfo(...)`, `SetupDependencies(...)`, `SetupFileSystem(...)`, or another `BaseUnitTest` helper already solves it.
+- exact entity/account/server/library IDs;
+- exact collection membership and ordering when order is contractual;
+- exact flags, statuses, DTO fields, and cancellation token semantics;
+- exact number of invocations.
 
-### Environment override ordering
+`It.IsAny<T>()` is allowed only for a parameter irrelevant to the test's contract. Broad setup does not excuse broad verification.
 
-When a test uses `WithEnvironmentVariablesAsync(...)` and `SetAppBuildInfo(...)`, complete both in Arrange before first reading `Sut` or any derived property.
+Explicitly verify `Times.Never()` for plausible alternate-branch collaborators whose execution would be a bug. `VerifyNoOtherCalls()` is not required.
 
-Good:
+Mocks return expected values; they do not secretly perform production database writes or other business side effects.
 
-```csharp
-using var _ = WithEnvironmentVariablesAsync(new Dictionary<string, string?>
-{
-    [EnvKeys.ReaparrDataPath] = "/custom/data",
-});
-SetAppBuildInfo(x => x.RuntimeMode = "desktop");
-var sut = Sut;
-```
+### Side-effect assertions
 
-Bad:
+If the SUT crosses a boundary, either observe the real effect or verify the exact delegated contract:
+
+- database rows and relationships;
+- files and directories;
+- command/event payloads;
+- scheduler/job requests;
+- hub/notification payloads;
+- external request method, route, query, headers, and body where relevant.
+
+A test whose name claims invalidation, deletion, notification, scheduling, or persistence must directly prove that effect.
+
+## Strict Template
 
 ```csharp
-var sut = Sut;
-SetAppBuildInfo(x => x.RuntimeMode = "desktop");
-```
-
-This keeps test setup deterministic and avoids reading stale container state.
-
-## Test Structure
-
-Follow this exact order within every test method:
-
-```
-// Arrange — data and context first
-var dbContext = IDbContext;
-await SetupDatabase(seed, config => { ... });
-// ... any other data setup ...
-
-// Arrange — mocks last (always immediately before Act)
-Mock.Mock<IFoo>()
-    .Setup(x => x.Bar())
-    .Returns(someValue)
-    .Verifiable(Times.Once());
-
-// Act
-var result = await Sut.Handle(command, CancellationToken);
-
-// Assert
-result.ShouldBeSuccess();
-// ... DB state checks ...
-Mock.Mock<IFoo>().Verify();
-```
-
-**Rules:**
-- Seed data, build commands/DTOs, and any other context setup come **before** mock setups.
-- `Mock.Mock<T>()` setup blocks are the **last thing in Arrange**, right before the Act line.
-- Never interleave mock setups with data setup.
-
-## BaseTests.csproj Utilities
-
-`tests/BaseTests/BaseTests.csproj` is the shared backend test toolkit. It is intentionally broad so unit test projects can reuse realistic helpers instead of re-implementing setup.
-
-Key package-backed utilities:
-- `Autofac` + `Autofac.Extras.Moq`: strict `AutoMock` container composition and dependency injection for SUT creation.
-- `Bogus` + `Bogus.Hollywood`: deterministic fake domain data via shared faker extensions and datasets.
-- `Moq` + `Moq.Contrib.HttpClient`: strict mocks plus concise `HttpMessageHandler` request/response setup.
-- `Shouldly`: readable assertions used across all test projects.
-- `TUnit` + Microsoft.Testing.Platform: project test runtime and discovery.
-- `TestableIO.System.IO.Abstractions.TestingHelpers`: `MockFileSystem` support through `SetupFileSystem`.
-- `FastEndpoints.Testing` + `Microsoft.AspNetCore.Mvc.Testing`: endpoint and application-host test helpers used by shared test infrastructure.
-
-Project reference utility:
-- `ProjectReference -> src/AppHost/AppHost.csproj` makes the full backend composition available to shared test helpers (endpoints, DI modules, contracts, defaults).
-
-Common reusable helpers exposed from `tests/BaseTests/`:
-- `BaseUnitTest` (`_Shared/BaseUnitTest/*`): strict mock container, logging setup, cancellation token, DB setup (`SetupDatabase`), and filesystem/http setup hooks.
-- `BaseCommandUnitTest<TCommand>`: executes command validator + inferred command handler via `TestHandlerExecuteAsync`, reducing boilerplate command tests.
-- `MockDatabase` (`MockDatabase/*`): in-memory SQLite contexts (`ReaparrDbContext` + `AuthDbContext`) and seeded graph setup from `FakeDataConfig`.
-- `FakeData` (`FakeData/*`): deterministic entity and download-task builders for domain/database seeding.
-- `FakePlexApiData` (`FakePlexApiData/*`): deterministic Plex API payload/response builders for HTTP-level testing.
-- `MockPlexApiServer` (`MockPlexServer/MockPlexApiServer.cs`): end-to-end mocked Plex server behavior over `HttpMessageHandler`.
-- `MoqExtensions` (`_Shared/Extensions/MoqExtensions.cs`): helper setup/verify extensions for commands, events, notifications, and HTTP request matching.
-- HTTP test helpers: `TestHttpClientExtensions` (sign-in helper) and `HttpResponseMessageExtensions` (typed DTO deserialization).
-- `Seed` + config objects (`Seed`, `FakeDataConfig`, `PlexApiDataConfig`) for repeatable, explicit test data generation.
-
-## Project Placement Rules
-
-- Place tests in the `*.UnitTests` project matching the SUT project.
-- Handler location controls test project placement (not command record location).
-- Folder layout should mirror the SUT file layout.
-- Namespace must be exactly `<SUTProjectNamespace>.UnitTests`.
-
-Examples:
-- SUT in `src/BackgroundJobs/...` -> test in `tests/UnitTests/BackgroundJobs.UnitTests/...`
-- SUT in `src/Application/...` -> test in `tests/UnitTests/Application.UnitTests/...`
-
-## Naming Rules
-
-- Test file: `<SutFileName>.UnitTests.cs`
-- Test class: `<SutFileName>UnitTests`
-- Test method: `ShouldExpectedBehavior_WhenCondition`
-
-## Base Test Infrastructure (Required)
-
-- Inherit from `BaseUnitTest<TSUT>`.
-- Use provided members: `Sut`, `IDbContext`, `Mock`, `CancellationToken`.
-- Reuse one DB context variable per test:
-  - `var dbContext = IDbContext;`
-- Seed data through:
-  - `await SetupDatabase(seed, config => { ... });`
-- Resolve mocks through:
-  - `Mock.Mock<IFoo>()`
-
-## Data and Builder Rules
-
-- Prefer existing builders/helpers from `tests/BaseTests`.
-- Do not instantiate Bogus/Faker directly inside tests unless done through BaseTests helpers.
-- If a new test-data pattern is needed, extend BaseTests helpers rather than adding local per-test random generators.
-
-## Mock Rules
-
-- **Mocks return the expected type only.** Never put real business logic, DB writes, or side effects inside mock callbacks. If a side effect needs to be verified, use `Verifiable` — do not secretly implement it in a `.Returns(...)` callback.
-- **Never simulate production state changes inside mocks.** If a mocked collaborator would normally update DB state, dispatch status transitions, queue work, or publish downstream side effects, do not reproduce that behavior in a callback/delegate. Return the expected `Result` only and verify the interaction contract instead.
-- **For mocked side-effecting collaborators, assert exact call contracts.** Prefer `It.Is<...>(...)` for important parameters and `Verifiable(Times.X())` and/or `Verify(..., Times.X())` for call counts rather than relying on mocked callbacks to make later assertions pass.
-- **Do not make database assertions that depend on mocked dependencies having executed real logic.** If the dependency is mocked, assert the SUT called it with the right values. Only assert persisted downstream state when the real implementation is part of the test.
-- **Mock setups must be inline per test.** Do not extract them into shared helper methods or place them in the test class constructor. Constructor-level mock configuration is an anti-pattern because it hides per-test expectations and makes tests harder to read and reason about. Each test must be self-contained and readable without jumping elsewhere to understand what is mocked.
-- **Every mock setup must end with `.Verifiable(Times.X())` using the exact expected invocation count.** Do not rely on broad shared setups or unstated defaults. Declare the precise number of calls on each mock inside the test that owns that expectation so unmet or extra invocations fail clearly.
-
-Bad:
-
-```csharp
-Mock.Mock<IDownloadTaskUpdateDispatcher>()
-    .Setup(x => x.OnStatusChangedAsync(...))
-    .Returns<DownloadTaskKey, DownloadStatus, CancellationToken>(async (key, _, _) =>
-    {
-        await dbContext.SetDownloadStatus(key, DownloadStatus.Completed);
-        return Result.Ok();
-    });
-```
-
-Good:
-
-```csharp
-Mock.Mock<IDownloadTaskUpdateDispatcher>()
-    .Setup(x =>
-        x.OnStatusChangedAsync(
-            It.Is<DownloadTaskKey>(k => k == expectedKey),
-            It.Is<DownloadStatus>(s => s == DownloadStatus.Completed),
-            It.IsAny<CancellationToken>()
-        )
-    )
-    .ReturnsAsync(Result.Ok())
-    .Verifiable(Times.Once());
-```
-
-## Assertion Requirements
-
-Always verify both:
-- Operation result (`Result`/`Result<T>` success or failure path).
-- Relevant side effects: DB state when the real dependency writes to it, or `Verify` on the mock when the SUT delegates the write to a mocked dependency.
-
-Also verify expected mock interactions explicitly; do not leave mocks unverified.
-
-When a dependency is mocked, prefer verifying exact interaction parameters and call counts over asserting downstream state that only the real dependency would have produced.
-
-### Critical-path strictness rules (mandatory)
-
-For critical workflows (download lifecycle, restart/stop/pause/start, queue progression), every test must include multiple assertions per case and must not rely on a single boolean assertion.
-
-Minimum strictness for command/handler tests on critical paths:
-- Assert outcome shape (`IsSuccess`/`IsFailed`) **and** error count semantics (`Errors.Count == 0` for success, `> 0` for failure).
-- Assert final persisted `DownloadStatus` for affected entities whenever the test wiring makes persistence observable.
-- Assert interaction contracts (`Times.Once`/`Times.Never`) for key collaborators (`ICommandExecutor`, dispatcher, event publisher).
-- Assert parent/child invariants where relevant (e.g., parent status transition + each child terminal status).
-
-If status transitions are delegated to `IDownloadTaskUpdateDispatcher`, and you need strict DB status assertions, use a deterministic callback in test Arrange:
-
-```csharp
-Mock.Mock<IDownloadTaskUpdateDispatcher>()
-    .Setup(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), It.IsAny<DownloadStatus>(), It.IsAny<CancellationToken>()))
-    .Returns(async (DownloadTaskKey key, DownloadStatus status, CancellationToken _) =>
-    {
-        await IDbContext.SetDownloadStatus(key, status);
-    });
-```
-
-This is allowed only when the explicit goal of the test is validating persisted status outcomes from dispatched transitions.
-
-### Mapping assertions for remap/refresh logic
-
-When a handler reconstructs/remaps entities (e.g., restart refresh for Movie/Episode tasks), tests must assert mapping correctness, not only success status.
-
-At minimum assert:
-- identity/link invariants preserved (Id, ParentId, media/part IDs, destination path IDs, hash IDs),
-- reset invariants applied (transfer counters/speeds/time remaining reset to zero, expected status),
-- directory metadata rules (expected roots/folders preserved or recomputed),
-- content/title invariants (e.g., file name non-empty, full title contains file name).
-
-Include at least one MovieData mapping test and one EpisodeData mapping test for restart-critical flows.
-
-## Special Constraints and Gotchas
-
-### BackgroundJobs.UnitTests references
-
-- `BackgroundJobs.UnitTests` can reference `BackgroundJobs` and `BaseTests` only.
-- Do not add direct references to `Application` or `Application.Contracts`.
-- `PlexApi.Contracts` types are available transitively.
-
-### File system tests
-
-- If SUT touches filesystem, use `SetupFileSystem` (MockFileSystem).
-- Do not manually mock `System.IO.Abstractions` interfaces in test files.
-
-### Endpoint unit tests
-
-Endpoint tests use endpoint-specific base classes from `tests/BaseTests/_Shared/BaseEndpointUnitTest/BaseEndpointUnitTest.cs`. Put the endpoint/request/response types on the test class once, then call `TestEndpointHandleAsync(...)` without method-level endpoint generics.
-
-- **Request endpoints:** inherit `BaseEndpointUnitTest<TEndpoint, TRequest, TResponse>`.
-- **No-request endpoints:** inherit `BaseEndpointWithoutRequestUnitTest<TEndpoint, TResponse>`.
-- **Do not** inherit plain `BaseUnitTest<TEndpoint>` for endpoint tests unless intentionally bypassing endpoint helper behavior.
-- **Do not** call endpoint `HandleAsync(...)` directly in normal endpoint unit tests; direct calls bypass validator execution.
-- `TestEndpointHandleAsync(TRequest request, Action<IServiceCollection>? extraServices = null)` validates request endpoints before execution and skips `HandleAsync(...)` when validation fails.
-- `TestEndpointHandleAsync(Action<IServiceCollection>? extraServices = null)` executes no-request endpoints.
-- The helper returns `EndpointUnitTestResult<TEndpoint, TResponse>` with `Endpoint`, nullable typed `Result`, `RequiredResult`, `ValidationResult`, `HasValidator`, and `IsValid`.
-- `Result` is nullable because invalid validation intentionally does not execute the endpoint. Use `RequiredResult` only after asserting/knowing the endpoint executed.
-- `TResponse` must match the actual runtime `endpoint.Response` type. Use `BaseResultDTO` for endpoints that send non-generic command results, even if OpenAPI documents `ResultDTO<T>` for success. Use `ResultDTO<T>` only when the endpoint actually sets that runtime response type.
-- `SetupEndpointUnitTest<T>()` remains the lower-level factory. Use it only when a test explicitly needs to bypass the validation-aware helper.
-- `SetupEndpointUnitTest<T>()` provides a real in-memory `IReaparrDbContext` and registers: `ILogger`, `IReaparrDbContext`, `IReaparrDbContextFactory`, `IAuthDbContext`, `IAuthDbContextFactory`, `ICommandExecutor`, `ISchedulerService`, `IProgressHubService`, `IDownloadHubService`, `INotificationHubService`, `IDownloadTaskScheduler`.
-- Avoid mocking `IReaparrDbContext` in endpoint tests unless intentionally re-registering a mock.
-- **Endpoints with non-standard dependencies** (e.g. `UpdateManager`, custom services not in the list above): pass `extraServices` to `TestEndpointHandleAsync(...)` — never call `Factory.Create<T>` directly. `ILogger` is always registered by `SetupEndpointUnitTest`, so only add what is missing.
-
-Request endpoint example:
-
-```csharp
-public class RefreshLibraryMediaEndpointUnitTests
-    : BaseEndpointUnitTest<RefreshLibraryMediaEndpoint, RefreshLibraryMediaEndpointRequest, BaseResultDTO>
+public class RevokeAccessCommandUnitTests : BaseCommandUnitTest<RevokeAccessCommand>
 {
     [Test]
-    public async Task ShouldReturnSuccess_WhenLibrarySyncJobQueued()
+    public async Task ShouldRemoveOnlyTargetLibraryAccess_WhenAccountLosesServerAccess()
     {
         // Arrange
-        var request = new RefreshLibraryMediaEndpointRequest(plexLibrary.Id);
+        await SetupDatabase(42001, config =>
+        {
+            config.PlexAccountCount = 2;
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
-        Mock.SetupCommand(It.IsAny<QueueLibrarySyncJobCommand>())
+        var dbContext = IDbContext;
+        var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var targetAccountId = accounts[0].Id;
+        var retainedAccountId = accounts[1].Id;
+        var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
+
+        var before = await dbContext.PlexAccountLibraries
+            .Where(x => x.PlexLibraryId == libraryId)
+            .OrderBy(x => x.PlexAccountId)
+            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.PlexLibraryId })
+            .ToListAsync(CancellationToken);
+        before.Select(x => x.PlexAccountId).ShouldBe([targetAccountId, retainedAccountId]);
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(
+                It.Is<InvalidateLibraryCommand>(c => c.PlexLibraryId == libraryId),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
         // Act
-        var endpointResult = await TestEndpointHandleAsync(request);
-        var result = endpointResult.RequiredResult;
+        var result = await TestHandlerExecuteAsync(new RevokeAccessCommand(targetAccountId, libraryId));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+
+        var after = await dbContext.PlexAccountLibraries
+            .Where(x => x.PlexLibraryId == libraryId)
+            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.PlexLibraryId })
+            .ToListAsync(CancellationToken);
+        after.ShouldBe([
+            new
+            {
+                PlexAccountId = retainedAccountId,
+                PlexServerId = before.Single(x => x.PlexAccountId == retainedAccountId).PlexServerId,
+                PlexLibraryId = libraryId,
+            },
+        ]);
+
+        Mock.Mock<ICommandExecutor>().Verify();
     }
 }
 ```
 
-No-request endpoint with extra services:
+The template is illustrative; use real project types and assert the actual contract.
+
+## Rejected Weak Pattern
 
 ```csharp
-public class ApplyUpdateEndpointUnitTests
-    : BaseEndpointWithoutRequestUnitTest<ApplyUpdateEndpoint, BaseResultDTO>
-{
-    [Test]
-    public async Task ShouldReturnFailure_WhenDockerMode()
-    {
-        // Arrange
-        SetAppBuildInfo(x => x.RuntimeMode = "docker");
-        var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
+var expectedLibraryIds = libraries.Select(x => x.Id).ToList();
 
-        // Act
-        var endpointResult = await TestEndpointHandleAsync(
-            extraServices: s => s.AddSingleton(_ => mockManager.Object)
-        );
-        var result = endpointResult.RequiredResult;
+Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+    .ReturnsAsync(Result.Ok());
 
-        // Assert
-        result.IsSuccess.ShouldBeFalse();
-    }
-}
-```
+var result = await Sut.ExecuteAsync(request, CancellationToken);
 
-Validation failure example:
-
-```csharp
-var endpointResult = await TestEndpointHandleAsync(new RefreshLibraryMediaEndpointRequest(0));
-
-endpointResult.IsValid.ShouldBeFalse();
-endpointResult.ValidationResult.ShouldNotBeNull();
-endpointResult.Result.ShouldBeNull();
+result.IsSuccess.ShouldBeTrue();
 Mock.Mock<ICommandExecutor>().Verify(
-    x => x.Send(It.IsAny<QueueLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()),
-    Times.Never
-);
+    x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+    Times.Once());
 ```
 
-### Static abstract settings interfaces
+Rejected because:
 
-- Interfaces like `ISonarrSettings`/`IRadarrSettings` cannot be mocked with Moq.
-- Inject concrete settings instances via Autofac `TypedParameter` when constructing SUT.
+- `expectedLibraryIds` is unused;
+- direct handler execution bypasses validator coverage;
+- success lacks exact error-count and payload assertions;
+- no pre-state or exact post-state is proven;
+- broad matchers do not prove the command contract;
+- the claimed library effect is unobserved;
+- no forbidden alternate call is checked;
+- omitting or mis-scoping the mutation may leave the test green.
 
-Example:
+## Project Placement and Infrastructure
 
-```csharp
-var sut = Mock.Create<MyHandler>(
-    new TypedParameter(typeof(ISonarrSettings), new SonarrSettings { ... }),
-    new TypedParameter(typeof(IIntegrationsSettings), IntegrationsSettings.Create())
-);
-```
+- Place tests in `tests/UnitTests/<OwningProject>.UnitTests/`, mirroring the SUT path.
+- Namespace is the owning project's root test namespace, not a folder-derived namespace.
+- Test file: `<SutFileName>.UnitTests.cs`; class: `<SutFileName>UnitTests`.
+- Use one `var dbContext = IDbContext;` per test after `SetupDatabase(...)`.
+- Resolve paths through `IPathProvider`; never hardcode sandbox paths.
+- Use `MockFileSystem` through `SetupFileSystem` for filesystem behavior.
+- Prefer a real `UserSettings` when setup may serialize settings.
+- Complete environment/build-info overrides before resolving `Sut`.
+- Prefer domain types/enums over stringly helpers.
+- Mock setups remain inline per test; constructor-level shared setup is prohibited.
 
-## Unit Test Workflow
+## Endpoint Requirements
 
-1. Identify SUT location under `src/`.
-2. Place the test in matching `tests/UnitTests/<Project>.UnitTests/` path.
-3. Name file/class/methods with project naming conventions.
-4. Inherit `BaseUnitTest<TSUT>` and prepare deterministic arrange step.
-5. Execute SUT method once in Act section.
-6. Assert result + database state + mock interactions.
-7. Run the specific test class first with `dotnet-test-mcp:run_all_tests_in_class`, then broaden to `dotnet-test-mcp:run_all_tests_for_project` if needed.
+- Request endpoint: `BaseEndpointUnitTest<TEndpoint, TRequest, TResponse>`.
+- No-request endpoint: `BaseEndpointWithoutRequestUnitTest<TEndpoint, TResponse>`.
+- Assert validation state before accessing `RequiredResult`.
+- On validation failure assert the endpoint did not execute and downstream commands were called `Times.Never()`.
+- Match the actual runtime response type, not only the OpenAPI type.
+- Register only missing non-standard services through the endpoint helper's `extraServices` parameter.
 
-## Unit Test Verification
+## Definition of Done
 
-All unit test execution goes through `dotnet-test-mcp` tools. Do not use terminal-style `dotnet run --project` or `dotnet test`.
+All conditions are mandatory:
 
-For unit test work:
-- Start with `dotnet-test-mcp:run_all_tests_in_class` for fast targeted iteration on a specific test class.
-- Use `dotnet-test-mcp:run_single_test` to run a single test method.
-- Use `dotnet-test-mcp:list_tests_summary` with `includeTests: true` to discover test names when unsure.
-- Broaden to `dotnet-test-mcp:run_all_tests_for_project` before claiming completion when behavior or shared test infrastructure changed.
-
-### Verification fallback when execution environment is constrained
-
-If test execution is blocked by environment constraints (for example, read-only obj writes), do not claim runtime pass. Instead:
-- run native diagnostics and ensure zero errors in changed test files,
-- state the exact execution blocker and raw error message,
-- keep assertions strict and deterministic so rerun is straightforward once the environment is fixed.
-
-Evidence-before-assertion rule:
-- fixed compile or symbol issues may be claimed only with zero native diagnostics,
-- tests pass may be claimed only with completed test execution output.
-
-## Test Quality Gate
-
-Do not write tests merely to reach a requested count. A number like "add 20 tests" is a budget or lower bound, not the success criterion. First map the code under test, identify high-risk behavior, and choose tests that would catch meaningful regressions. If the requested count would force low-value tests, stop and report the highest-value test plan instead of padding.
-
-Before adding tests, inspect existing tests for the same class and explicitly avoid duplicate coverage. Prefer behavior that crosses boundaries or encodes contracts:
-- API request parameter contracts and omitted/default parameters
-- edge cases that previously failed or could plausibly regress
-
-Reject weak tests such as:
-- default value assertions that do not protect a behavior contract
-- direct setter/getter tests with no observable consequence
-- duplicating existing tests with different wording
-- assertions that only prove mocks were configured
-- broad "kitchen sink" tests added to inflate count
-
-Every new test must earn its place by answering: "What bug would this fail for?" If the answer is unclear, replace it with a stronger test or do not add it.
-
-
-### Test discovery and execution via dotnet-test-mcp
-
-All test filtering maps to `dotnet-test-mcp` tools. Do not use `--treenode-filter` or `--list-tests` shell arguments.
-
-| Goal | `dotnet-test-mcp` tool | Key parameter |
-|------|------------------------|---------------|
-| List test projects | `list_test_projects` | `workingDirectory` |
-| Discover test/class names | `list_tests_summary` | `prefix`, `projectPath`, `includeTests: true` |
-| Run single test method | `run_single_test` | `testName: "Fully.Qualified.ClassName.MethodName"` |
-| Run all tests in a class | `run_all_tests_in_class` | `className: "Fully.Qualified.ClassName"` |
-| Run entire test project | `run_all_tests_for_project` | `projectPath: "tests/UnitTests/Application.UnitTests/Application.UnitTests.csproj"` |
-| Run all tests in solution | `run_all_tests` | `workingDirectory` |
-
-Examples:
-
-Run a single test class:
-```
-dotnet-test-mcp:run_all_tests_in_class
-  className: "Reaparr.Application.UnitTests.PlexDownloads.DownloadJobUnitTests"
-  projectPath: "tests/UnitTests/Application.UnitTests/Application.UnitTests.csproj"
-```
-
-Run a single test method:
-```
-dotnet-test-mcp:run_single_test
-  testName: "Reaparr.Application.UnitTests.PlexDownloads.DownloadJobUnitTests.ShouldSetDownloadClientErrorStatus_WhenClientStartFailsWithoutSpecificError"
-  projectPath: "tests/UnitTests/Application.UnitTests/Application.UnitTests.csproj"
-```
-
-Discover test names by namespace prefix:
-```
-dotnet-test-mcp:list_tests_summary
-  prefix: "Reaparr.Application.UnitTests.PlexDownloads"
-  projectPath: "tests/UnitTests/Application.UnitTests/Application.UnitTests.csproj"
-  includeTests: true
-```
-
-## Common Mistakes
-
-- Using `[ClassName*]` bracket syntax — this is a TUnit `--treenode-filter` shell-command antipattern that causes "Zero tests ran". Use `dotnet-test-mcp:run_all_tests_in_class` with the fully qualified class name instead.
-- Putting tests in the wrong `*.UnitTests` project because of command location instead of handler location.
-- Using folder-based namespaces instead of `<SUTProjectNamespace>.UnitTests`.
-- Asserting only return values and not checking database state or mock interactions.
-- Using unverified mocks or loose mock expectations.
-- Using random/non-deterministic test data.
-- Mocking settings interfaces with static abstract members.
-- Extracting mock setups into shared helper methods — keep all mock configuration inline per test.
-- Hiding real logic (DB writes, status updates) inside mock callbacks instead of returning the expected type and verifying with `Verify`.
-- Making post-Act DB assertions that only pass because a mocked dependency performed production logic in a callback.
-- Placing `Mock.Mock<T>()` setups before data setup or mixed in with DB seeding — mock setups must always be the last step of Arrange.
-- Using non-generic `BaseUnitTest` for endpoint tests — always use `BaseUnitTest<TEndpoint>` even when `Sut` is not directly referenced.
-- Direct-casting `endpoint.Response` to `ResultDTO<T>` — use `as ResultDTO<T>` (null-safe) and assert non-null, not `(ResultDTO<T>)endpoint.Response`.
-- Calling `Factory.Create<T>` directly for endpoint tests — always use `SetupEndpointUnitTest<T>()` instead. For non-standard dependencies, pass the `extraServices` parameter: `SetupEndpointUnitTest<MyEndpoint>(s => s.AddSingleton(_ => mockDep.Object))`. Never manually register `ILogger` — `SetupEndpointUnitTest` handles it.
+- complete behavior matrix produced;
+- whole existing test class audited;
+- each retained test has a clear counterfactual defect it kills;
+- every distinct observable success/early-return/mutation path covered;
+- risky failure paths covered and omissions justified;
+- reported regression demonstrated red against pre-fix behavior, or explicit unavailable-red exception reported;
+- exact result, target-state, collection, interaction, and non-interaction assertions present;
+- no unused expected values, broad contract matchers, stale names, assertion helpers, duplicate coverage, or success-only tests remain;
+- changed files have zero diagnostics;
+- targeted test/class execution passes.
