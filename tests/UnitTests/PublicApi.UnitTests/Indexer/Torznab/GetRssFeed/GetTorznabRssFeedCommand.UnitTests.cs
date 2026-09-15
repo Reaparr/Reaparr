@@ -106,6 +106,143 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
+    public async Task ShouldPageEpisodesGlobally_WhenMultipleLibrariesAreAccessible()
+    {
+        // Arrange
+        await SetupDatabase(
+            7652,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexTvShowLibraryCount = 2;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 2;
+                config.SonarrIntegrationCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var episodeIds = await dbContext
+            .PlexTvShowEpisodes.OrderBy(x => x.PlexLibraryId)
+            .ThenBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
+        episodeIds.Count.ShouldBe(4);
+        // Assign one deterministic timeline across both library branches so the expected page requires a global merge.
+        var baseAddedAt = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+        for (var i = 0; i < episodeIds.Count; i++)
+        {
+            var addedAt = baseAddedAt.AddMinutes(i);
+            await dbContext
+                .PlexTvShowEpisodes.Where(x => x.Id == episodeIds[i])
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.AddedAt, addedAt), CancellationToken);
+        }
+
+        var expectedTitles = await dbContext
+            .PlexTvShowEpisodeData.OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
+            .ThenByDescending(x => x.PlexTvShowEpisode!.PlexServerId)
+            .ThenByDescending(x => x.PlexTvShowEpisode!.PlexApiRatingKey)
+            .Select(x => !string.IsNullOrEmpty(x.GeneratedFilename) ? x.GeneratedFilename : x.OriginalFilename)
+            .Skip(1)
+            .Take(2)
+            .ToListAsync(CancellationToken);
+        var expectedTotal = await dbContext.PlexTvShowEpisodeData.CountAsync(CancellationToken);
+        var integration = (await dbContext.SonarrIntegrations.SingleAsync(CancellationToken)).Id.ToSonarrIdentity();
+        var command = new GetTorznabRssFeedCommand
+        {
+            Integration = integration,
+            Categories = [(int)TorznabCategoryId.TV],
+            IncludeMovies = false,
+            IncludeEpisodes = true,
+            Limit = 2,
+            Offset = 1,
+            TorznabApiKey = "rss-key",
+            Attributes = [],
+            IncludeAllAttributes = true,
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Offset.ShouldBe(1);
+        result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
+        result.Value.Channel.Items.Select(x => x.Title).ShouldBe(expectedTitles);
+    }
+
+    [Test]
+    public async Task ShouldContinueFromKeysetCursor_WhenFirstParentBatchHasNoMatchingMedia()
+    {
+        // Arrange
+        await SetupDatabase(
+            7653,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 257;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        // With 257 parents, the oldest movie is excluded from the first 256-row parent batch.
+        // Making only that movie UHD proves the second keyset batch is queried and projected.
+        var oldestMovieId = await dbContext
+            .PlexMovies.OrderBy(x => x.AddedAt)
+            .ThenBy(x => x.PlexServerId)
+            .ThenBy(x => x.PlexApiRatingKey)
+            .Select(x => x.Id)
+            .FirstAsync(CancellationToken);
+        await dbContext.PlexMovieData.ExecuteUpdateAsync(
+            setters =>
+                setters
+                    .SetProperty(x => x.Source, ReleaseSource.WebDl)
+                    .SetProperty(x => x.VideoResolution, VideoQuality.SD),
+            CancellationToken
+        );
+        await dbContext
+            .PlexMovieData.Where(x => x.PlexMovieId == oldestMovieId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(x => x.VideoResolution, VideoQuality.UHD_4K),
+                CancellationToken
+            );
+        var expectedTitles = await dbContext
+            .PlexMovieData.Where(x => x.PlexMovieId == oldestMovieId)
+            .OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenByDescending(x => x.PlexMovie!.PlexServerId)
+            .ThenByDescending(x => x.PlexMovie!.PlexApiRatingKey)
+            .Select(x => !string.IsNullOrEmpty(x.GeneratedFilename) ? x.GeneratedFilename : x.OriginalFilename)
+            .ToListAsync(CancellationToken);
+        var integration = (await dbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var command = new GetTorznabRssFeedCommand
+        {
+            Integration = integration,
+            Categories = [(int)TorznabCategoryId.Movies_UHD],
+            IncludeMovies = true,
+            IncludeEpisodes = false,
+            Limit = 50,
+            Offset = 0,
+            TorznabApiKey = "rss-key",
+            Attributes = [],
+            IncludeAllAttributes = true,
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Offset.ShouldBe(0);
+        result.Value.Channel.Response.Total.ShouldBe(expectedTitles.Count);
+        result.Value.Channel.Items.Select(x => x.Title).ShouldBe(expectedTitles);
+    }
+
+    [Test]
     public async Task ShouldReturnEmptyFeed_WhenOnlyUnknownCategoriesAreRequested()
     {
         // Arrange

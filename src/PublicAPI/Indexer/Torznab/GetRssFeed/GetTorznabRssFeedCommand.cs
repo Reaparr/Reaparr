@@ -33,6 +33,8 @@ public class GetTorznabRssFeedCommandValidator : AbstractValidator<GetTorznabRss
 public class GetTorznabRssFeedCommandHandler
     : ICommandHandler<GetTorznabRssFeedCommand, Result<TorznabMediaSearchResponseDTO>>
 {
+    private const int MinimumParentBatchSize = 256;
+
     private readonly IReaparrDbContext _dbContext;
     private readonly INetworkSettings _networkSettings;
 
@@ -52,8 +54,13 @@ public class GetTorznabRssFeedCommandHandler
         if (onlineServerIds.Count == 0)
             return Result.Ok(CreateResponse(command.Offset, 0, []));
 
-        var accessibleLibraryIds = await _dbContext.GetAccessibleLibraryIds(onlineServerIds, cancellationToken);
-        if (accessibleLibraryIds.Count == 0)
+        var accessibleMovieLibraryIds = command.IncludeMovies
+            ? await _dbContext.GetAccessibleLibraryIds(onlineServerIds, PlexMediaType.Movie, cancellationToken)
+            : [];
+        var accessibleTvLibraryIds = command.IncludeEpisodes
+            ? await _dbContext.GetAccessibleLibraryIds(onlineServerIds, PlexMediaType.TvShow, cancellationToken)
+            : [];
+        if (accessibleMovieLibraryIds.Count == 0 && accessibleTvLibraryIds.Count == 0)
             return Result.Ok(CreateResponse(command.Offset, 0, []));
 
         var rows = new List<TorznabFeedItemProjection>(fetchLimit * 2);
@@ -61,7 +68,7 @@ public class GetTorznabRssFeedCommandHandler
         if (command.IncludeMovies)
         {
             var (movieRows, movieTotal) = await LoadMovieRows(
-                accessibleLibraryIds,
+                accessibleMovieLibraryIds,
                 command.Categories,
                 fetchLimit,
                 cancellationToken
@@ -72,7 +79,7 @@ public class GetTorznabRssFeedCommandHandler
         if (command.IncludeEpisodes)
         {
             var (episodeRows, episodeTotal) = await LoadEpisodeRows(
-                accessibleLibraryIds,
+                accessibleTvLibraryIds,
                 command.Categories,
                 fetchLimit,
                 cancellationToken
@@ -107,7 +114,6 @@ public class GetTorznabRssFeedCommandHandler
         CancellationToken cancellationToken
     )
     {
-        var movieQuery = _dbContext.PlexMovies.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId));
         var mediaDataQuery = _dbContext
             .PlexMovieData.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId))
             .ApplyTorznabCategories(categories);
@@ -122,22 +128,22 @@ public class GetTorznabRssFeedCommandHandler
         else
             total = await mediaDataQuery.CountAsync(cancellationToken);
 
-        var parentBatchSize = Math.Max(fetchLimit, 256);
-        var parentOffset = 0;
+        var parentBatchSize = Math.Max(fetchLimit, MinimumParentBatchSize);
+        TorznabFeedParent? cursor = null;
         var rows = new List<TorznabFeedItemProjection>(fetchLimit);
         while (rows.Count < fetchLimit)
         {
-            var movieIds = await movieQuery
-                .OrderByDescending(x => x.AddedAt)
-                .ThenByDescending(x => x.PlexServerId)
-                .ThenByDescending(x => x.PlexApiRatingKey)
-                .Skip(parentOffset)
-                .Take(parentBatchSize)
-                .Select(x => x.Id)
-                .ToListAsync(cancellationToken);
-            if (movieIds.Count == 0)
+            var parents = await LoadParentBatch(
+                PlexMediaType.Movie,
+                accessibleLibraryIds,
+                parentBatchSize,
+                cursor,
+                cancellationToken
+            );
+            if (parents.Count == 0)
                 break;
 
+            var movieIds = parents.Select(x => x.Id).ToList();
             var batchRows = await mediaDataQuery
                 .Where(x => movieIds.Contains(x.PlexMovieId))
                 .OrderByDescending(x => x.PlexMovie!.AddedAt)
@@ -146,8 +152,8 @@ public class GetTorznabRssFeedCommandHandler
                 .ProjectToTorznabFeedItems()
                 .ToListAsync(cancellationToken);
             rows.AddRange(batchRows);
-            parentOffset += movieIds.Count;
-            if (movieIds.Count < parentBatchSize)
+            cursor = parents[^1];
+            if (parents.Count < parentBatchSize)
                 break;
         }
 
@@ -161,7 +167,6 @@ public class GetTorznabRssFeedCommandHandler
         CancellationToken cancellationToken
     )
     {
-        var episodeQuery = _dbContext.PlexTvShowEpisodes.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId));
         var mediaDataQuery = _dbContext
             .PlexTvShowEpisodeData.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId))
             .ApplyTorznabCategories(categories);
@@ -175,22 +180,22 @@ public class GetTorznabRssFeedCommandHandler
         else
             total = await mediaDataQuery.CountAsync(cancellationToken);
 
-        var parentBatchSize = Math.Max(fetchLimit, 256);
-        var parentOffset = 0;
+        var parentBatchSize = Math.Max(fetchLimit, MinimumParentBatchSize);
+        TorznabFeedParent? cursor = null;
         var rows = new List<TorznabFeedItemProjection>(fetchLimit);
         while (rows.Count < fetchLimit)
         {
-            var episodeIds = await episodeQuery
-                .OrderByDescending(x => x.AddedAt)
-                .ThenByDescending(x => x.PlexServerId)
-                .ThenByDescending(x => x.PlexApiRatingKey)
-                .Skip(parentOffset)
-                .Take(parentBatchSize)
-                .Select(x => x.Id)
-                .ToListAsync(cancellationToken);
-            if (episodeIds.Count == 0)
+            var parents = await LoadParentBatch(
+                PlexMediaType.Episode,
+                accessibleLibraryIds,
+                parentBatchSize,
+                cursor,
+                cancellationToken
+            );
+            if (parents.Count == 0)
                 break;
 
+            var episodeIds = parents.Select(x => x.Id).ToList();
             var batchRows = await mediaDataQuery
                 .Where(x => episodeIds.Contains(x.PlexTvShowEpisodeId))
                 .OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
@@ -199,13 +204,90 @@ public class GetTorznabRssFeedCommandHandler
                 .ProjectToTorznabFeedItems()
                 .ToListAsync(cancellationToken);
             rows.AddRange(batchRows);
-            parentOffset += episodeIds.Count;
-            if (episodeIds.Count < parentBatchSize)
+            cursor = parents[^1];
+            if (parents.Count < parentBatchSize)
                 break;
         }
 
         return (rows.Take(fetchLimit).ToList(), total);
     }
+
+    private Task<List<TorznabFeedParent>> LoadParentBatch(
+        PlexMediaType mediaType,
+        IReadOnlyCollection<int> accessibleLibraryIds,
+        int batchSize,
+        TorznabFeedParent? cursor,
+        CancellationToken cancellationToken
+    ) =>
+        mediaType switch
+        {
+            PlexMediaType.Movie => LoadParentBatch(
+                _dbContext.PlexMovies,
+                accessibleLibraryIds,
+                batchSize,
+                cursor,
+                cancellationToken
+            ),
+            PlexMediaType.Episode => LoadParentBatch(
+                _dbContext.PlexTvShowEpisodes,
+                accessibleLibraryIds,
+                batchSize,
+                cursor,
+                cancellationToken
+            ),
+            _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
+        };
+
+    private static async Task<List<TorznabFeedParent>> LoadParentBatch<T>(
+        IQueryable<T> query,
+        IReadOnlyCollection<int> accessibleLibraryIds,
+        int batchSize,
+        TorznabFeedParent? cursor,
+        CancellationToken cancellationToken
+    )
+        where T : BasePlexMedia
+    {
+        var candidates = new List<TorznabFeedParent>(checked(accessibleLibraryIds.Count * batchSize));
+        foreach (var libraryId in accessibleLibraryIds)
+        {
+            query = query.Where(x => x.PlexLibraryId == libraryId);
+            if (cursor is not null)
+            {
+                query = query.Where(x =>
+                    x.AddedAt < cursor.AddedAt
+                    || (
+                        x.AddedAt == cursor.AddedAt
+                        && (
+                            x.PlexServerId < cursor.PlexServerId
+                            || (x.PlexServerId == cursor.PlexServerId && x.PlexApiRatingKey < cursor.PlexApiRatingKey)
+                        )
+                    )
+                );
+            }
+
+            candidates.AddRange(
+                await query
+                    .OrderByDescending(x => x.AddedAt)
+                    .ThenByDescending(x => x.PlexServerId)
+                    .ThenByDescending(x => x.PlexApiRatingKey)
+                    .Take(batchSize)
+                    .Select(x => new TorznabFeedParent(x.Id, x.AddedAt, x.PlexServerId, x.PlexApiRatingKey))
+                    .ToListAsync(cancellationToken)
+            );
+        }
+
+        return candidates
+            .OrderByDescending(x => x.AddedAt)
+            .ThenByDescending(x => x.PlexServerId)
+            .ThenByDescending(x => x.PlexApiRatingKey)
+            .Take(batchSize)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Minimal parent projection carried between keyset batches and media-data projection.
+    /// </summary>
+    private sealed record TorznabFeedParent(int Id, DateTime AddedAt, int PlexServerId, int PlexApiRatingKey);
 
     private static TorznabMediaSearchResponseDTO CreateResponse(int offset, int total, List<TorznabItem> items) =>
         new()

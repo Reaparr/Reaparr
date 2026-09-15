@@ -91,11 +91,13 @@ public static partial class DbContextExtensions
     public static Task<List<int>> GetAccessibleLibraryIds(
         this IReaparrDbContext dbContext,
         IReadOnlyCollection<int> allowedServerIds,
+        PlexMediaType allowedLibraryType,
         CancellationToken cancellationToken
     ) =>
         dbContext
             .PlexLibraries.Where(x =>
                 allowedServerIds.Contains(x.PlexServerId)
+                && x.Type == allowedLibraryType
                 && x.PlexAccountLibraries.Any(libraryAccess =>
                     x.PlexServer!.PlexAccountServers.Any(serverAccess =>
                         serverAccess.PlexAccountId == libraryAccess.PlexAccountId

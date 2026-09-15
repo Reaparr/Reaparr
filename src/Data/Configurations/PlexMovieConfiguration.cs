@@ -11,14 +11,14 @@ public class PlexMovieConfiguration : IEntityTypeConfiguration<PlexMovie>
         builder.HasIndex(x => x.SearchTitle);
 
         builder.HasIndex(x => new { x.PlexApiRatingKey, x.PlexServerId });
-        // Torznab RSS scans this index in reverse for its global AddedAt/server/rating-key order.
-        // PlexLibraryId keeps the access filter covered without changing that required ordering.
+        // The leading library equality and trailing feed order let each bounded library query use the index
+        // directly instead of sorting every accessible movie.
         builder.HasIndex(x => new
         {
+            x.PlexLibraryId,
             x.AddedAt,
             x.PlexServerId,
             x.PlexApiRatingKey,
-            x.PlexLibraryId,
         });
 
         builder
