@@ -93,6 +93,45 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     }
 
     [Test]
+    public async Task ShouldReturnExactPagedRssTotal_WhenSonarrPollsQuerylessTvSearch()
+    {
+        // Arrange
+        using var container = await CreateContainer(
+            new Seed(8675),
+            config =>
+            {
+                config.DatabaseOptions = x =>
+                {
+                    x.PlexServerCount = 1;
+                    x.PlexAccountCount = 1;
+                    x.PlexTvShowLibraryCount = 1;
+                    x.TvShowCount = 1;
+                    x.TvShowSeasonCount = 1;
+                    x.TvShowEpisodeCount = 5;
+                    x.SonarrIntegrationCount = 1;
+                };
+            }
+        );
+        var integration = await container.DbContext.SonarrIntegrations.SingleAsync(CancellationToken);
+        var route = $"/api/public/integrations/{integration.Id}/indexer/api";
+        var url = $"{route}?t=tvsearch&cat=5000&limit=2&offset=1&apikey={integration.TorznabApiKey}";
+        var client = container.GetApiClient();
+
+        // Act
+        var response = await client.GetAsync(url, CancellationToken);
+        var xml = await response.Content.ReadAsStringAsync(CancellationToken);
+
+        // Assert
+        response.IsSuccessStatusCode.ShouldBeTrue();
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/xml");
+        var channel = XDocument.Parse(xml).Root!.Element("channel")!;
+        var metadata = channel.Elements().Single(x => x.Name.LocalName == "response");
+        metadata.Attribute("offset")!.Value.ShouldBe("1");
+        metadata.Attribute("total")!.Value.ShouldBe("5");
+        channel.Elements("item").Count().ShouldBe(2);
+    }
+
+    [Test]
     public async Task ShouldRemoveMovieFromRss_WhenSynchronizationDeletesIt()
     {
         // Arrange

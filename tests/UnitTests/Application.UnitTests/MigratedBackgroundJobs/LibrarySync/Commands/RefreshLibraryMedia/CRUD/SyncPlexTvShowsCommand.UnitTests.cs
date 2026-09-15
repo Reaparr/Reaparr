@@ -188,6 +188,7 @@ public class SyncPlexTvShowsCommandUnitTests : BaseUnitTest<SyncPlexTvShowsComma
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var dbPlexTvShows = IDbContext
             .PlexTvShows.Include(x => x.Seasons)
                 .ThenInclude(x => x.Episodes)
@@ -196,16 +197,18 @@ public class SyncPlexTvShowsCommandUnitTests : BaseUnitTest<SyncPlexTvShowsComma
 
         var dbSeasons = dbPlexTvShows.SelectMany(x => x.Seasons).ToList();
         var dbEpisodes = dbSeasons.SelectMany(x => x.Episodes).ToList();
+        var dbEpisodeMediaDataCount = IDbContext.PlexTvShowEpisodeData.Count(x => x.PlexLibraryId == library.Id);
 
         dbPlexTvShows.Count.ShouldBe(10);
         dbSeasons.Count.ShouldBe(20);
         dbEpisodes.Count.ShouldBe(100);
+        dbEpisodeMediaDataCount.ShouldBe(100);
 
         var dbLibrary = IDbContext.PlexLibraries.First(x => x.Id == library.Id);
         dbLibrary.TvShowCount.ShouldBe(dbPlexTvShows.Count);
         dbLibrary.SeasonCount.ShouldBe(dbSeasons.Count);
         dbLibrary.EpisodeCount.ShouldBe(dbEpisodes.Count);
-
+        dbLibrary.EpisodeMediaDataCount.ShouldBe(dbEpisodeMediaDataCount);
         VerifyKeys(newTvShows);
     }
 
@@ -357,6 +360,7 @@ public class SyncPlexTvShowsCommandUnitTests : BaseUnitTest<SyncPlexTvShowsComma
         var changed = episodes[1];
         var unchangedMediaIds = unchanged.MediaDataList.Select(x => x.Id).Order().ToList();
         var oldChangedMediaIds = changed.MediaDataList.Select(x => x.Id).ToHashSet();
+        unchanged.MediaDataList.Remove(unchanged.MediaDataList.First());
         changed.UpdatedAt = changed.UpdatedAt?.AddSeconds(1) ?? DateTime.UtcNow;
         SetIds(library, [show]);
         library.TvShows.Add(show);
@@ -379,6 +383,10 @@ public class SyncPlexTvShowsCommandUnitTests : BaseUnitTest<SyncPlexTvShowsComma
         persistedEpisodes
             .Single(x => x.PlexApiRatingKey == changed.PlexApiRatingKey)
             .MediaDataList.ShouldAllBe(x => !oldChangedMediaIds.Contains(x.Id));
+        var persistedMediaDataCount = persistedEpisodes.Sum(x => x.MediaDataList.Count);
+        IDbContext
+            .PlexLibraries.Single(x => x.Id == library.Id)
+            .EpisodeMediaDataCount.ShouldBe(persistedMediaDataCount);
     }
 
     [Test]

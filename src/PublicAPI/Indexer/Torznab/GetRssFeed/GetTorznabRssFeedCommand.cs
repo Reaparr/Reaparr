@@ -61,7 +61,6 @@ public class GetTorznabRssFeedCommandHandler
         if (command.IncludeMovies)
         {
             var (movieRows, movieTotal) = await LoadMovieRows(
-                onlineServerIds,
                 accessibleLibraryIds,
                 command.Categories,
                 fetchLimit,
@@ -73,7 +72,6 @@ public class GetTorznabRssFeedCommandHandler
         if (command.IncludeEpisodes)
         {
             var (episodeRows, episodeTotal) = await LoadEpisodeRows(
-                onlineServerIds,
                 accessibleLibraryIds,
                 command.Categories,
                 fetchLimit,
@@ -103,21 +101,27 @@ public class GetTorznabRssFeedCommandHandler
     }
 
     private async Task<(List<TorznabFeedItemProjection> Rows, int Total)> LoadMovieRows(
-        IReadOnlyCollection<int> onlineServerIds,
         IReadOnlyCollection<int> accessibleLibraryIds,
         int[] categories,
         int fetchLimit,
         CancellationToken cancellationToken
     )
     {
-        var movieQuery = _dbContext.PlexMovies;
+        var movieQuery = _dbContext.PlexMovies.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId));
         var mediaDataQuery = _dbContext
-            .PlexMovieData.Where(x =>
-                onlineServerIds.Contains(x.PlexMovie!.PlexServerId)
-                && accessibleLibraryIds.Contains(x.PlexMovie.PlexLibraryId)
-            )
+            .PlexMovieData.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId))
             .ApplyTorznabCategories(categories);
-        var total = await mediaDataQuery.CountAsync(cancellationToken);
+
+        int total;
+        if (categories.Length == 0 || categories.Contains((int)TorznabCategoryId.Movies))
+        {
+            total = await _dbContext
+                .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie && accessibleLibraryIds.Contains(x.Id))
+                .SumAsync(x => x.MovieMediaDataCount, cancellationToken);
+        }
+        else
+            total = await mediaDataQuery.CountAsync(cancellationToken);
+
         var parentBatchSize = Math.Max(fetchLimit, 256);
         var parentOffset = 0;
         var rows = new List<TorznabFeedItemProjection>(fetchLimit);
@@ -151,21 +155,26 @@ public class GetTorznabRssFeedCommandHandler
     }
 
     private async Task<(List<TorznabFeedItemProjection> Rows, int Total)> LoadEpisodeRows(
-        IReadOnlyCollection<int> onlineServerIds,
         IReadOnlyCollection<int> accessibleLibraryIds,
         int[] categories,
         int fetchLimit,
         CancellationToken cancellationToken
     )
     {
-        var episodeQuery = _dbContext.PlexTvShowEpisodes;
+        var episodeQuery = _dbContext.PlexTvShowEpisodes.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId));
         var mediaDataQuery = _dbContext
-            .PlexTvShowEpisodeData.Where(x =>
-                onlineServerIds.Contains(x.PlexTvShowEpisode!.PlexServerId)
-                && accessibleLibraryIds.Contains(x.PlexTvShowEpisode.PlexLibraryId)
-            )
+            .PlexTvShowEpisodeData.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId))
             .ApplyTorznabCategories(categories);
-        var total = await mediaDataQuery.CountAsync(cancellationToken);
+        int total;
+        if (categories.Length == 0 || categories.Contains((int)TorznabCategoryId.TV))
+        {
+            total = await _dbContext
+                .PlexLibraries.Where(x => x.Type == PlexMediaType.TvShow && accessibleLibraryIds.Contains(x.Id))
+                .SumAsync(x => x.EpisodeMediaDataCount, cancellationToken);
+        }
+        else
+            total = await mediaDataQuery.CountAsync(cancellationToken);
+
         var parentBatchSize = Math.Max(fetchLimit, 256);
         var parentOffset = 0;
         var rows = new List<TorznabFeedItemProjection>(fetchLimit);

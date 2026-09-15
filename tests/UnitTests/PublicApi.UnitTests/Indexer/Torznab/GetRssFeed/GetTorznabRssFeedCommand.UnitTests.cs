@@ -392,7 +392,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldReturnTotalBeforePaging_WhenMoreFilteredItemsExist()
+    public async Task ShouldReturnExactTotal_WhenMoreFilteredItemsExist()
     {
         // Arrange
         await SetupDatabase(
@@ -406,8 +406,8 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
                 config.RadarrIntegrationCount = 1;
             }
         );
-        var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var expectedTotal = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
+        var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
             Integration = integration,
@@ -426,6 +426,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
         result.Value.Channel.Items.ShouldHaveSingleItem();
     }
@@ -918,6 +919,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         result.IsSuccess.ShouldBeTrue();
         result.Value.Channel.Items.ShouldBeEmpty();
     }
+
 
     private static void ConfigureMovieFeed(FakeDataConfig config)
     {

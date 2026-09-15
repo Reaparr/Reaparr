@@ -90,9 +90,6 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
             return reconcileResult;
         }
 
-        var mediaSize = plexMovies.Sum(x => x.MediaSize);
-        await _dbContext.SetMovieMediaMetrics(plexLibraryId, plexMovies.Count, mediaSize);
-
         var syncCountriesResult = await SyncMovieCountries(
             plexMovies,
             command.LibraryMetadata.PlexCountries,
@@ -143,6 +140,7 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
         var currentMovies = await _dbContext
             .PlexMovies.AsNoTracking()
             .Where(x => x.PlexLibraryId == plexLibraryId)
+            .Select(x => new CurrentMovie(x.Id, x.PlexApiRatingKey, x.UpdatedAt, x.MediaSize, x.MediaDataList.Count))
             .ToListAsync(cancellationToken);
         _dbContext.PlexMovies.Local.Clear();
         var currentByKey = currentMovies.ToDictionary(x => x.PlexApiRatingKey);
@@ -173,6 +171,23 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
         report.UpdatedMovies = updated.Count;
         report.DeletedMovies = deleted.Count;
         report.UnchangedMovies = incomingMovies.Count - created.Count - updated.Count;
+
+        var changedMovieKeys = created.Concat(updated).Select(x => x.PlexApiRatingKey).ToHashSet();
+        var mediaSize = 0L;
+        var mediaDataCount = 0;
+        foreach (var movie in incomingMovies)
+        {
+            if (!forceMediaRefresh && !changedMovieKeys.Contains(movie.PlexApiRatingKey))
+            {
+                var current = currentByKey[movie.PlexApiRatingKey];
+                mediaSize += current.MediaSize;
+                mediaDataCount += current.MediaDataCount;
+                continue;
+            }
+
+            mediaSize += movie.MediaSize;
+            mediaDataCount += movie.MediaDataList.Count;
+        }
 
         return await _dbContext.ExecuteTransactionAsync(
             async (ctx, txCt) =>
@@ -219,6 +234,8 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
                     .ToList();
                 if (mediaData.Count > 0)
                     await ctx.BulkInsertAsync(mediaData, BulkConfigPreset.Default, txCt);
+
+                await ctx.SetMovieMediaMetrics(plexLibraryId, incomingMovies.Count, mediaDataCount, mediaSize);
             },
             cancellationToken
         );
@@ -385,6 +402,14 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
 
         return Result.Ok(list.Count);
     }
+
+    private sealed record CurrentMovie(
+        int Id,
+        int PlexApiRatingKey,
+        DateTime? UpdatedAt,
+        long MediaSize,
+        int MediaDataCount
+    );
 }
 
 public record CrudMoviesReport

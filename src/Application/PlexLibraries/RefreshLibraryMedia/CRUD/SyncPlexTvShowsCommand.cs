@@ -136,32 +136,6 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
             return reconcileResult.LogError();
         }
 
-        // Update counts in PlexLibrary from persisted rows so denormalized metrics cannot drift.
-        var metrics = await _dbContext
-            .PlexLibraries.Where(x => x.Id == plexLibraryId)
-            .Select(_ => new
-            {
-                TvShowCount = _dbContext.PlexTvShows.Count(x => x.PlexLibraryId == plexLibraryId),
-                SeasonCount = _dbContext.PlexTvShowSeason.Count(x => x.PlexLibraryId == plexLibraryId),
-                EpisodeCount = _dbContext.PlexTvShowEpisodes.Count(x => x.PlexLibraryId == plexLibraryId),
-                MediaSize = _dbContext
-                    .PlexTvShowEpisodes.Where(x => x.PlexLibraryId == plexLibraryId)
-                    .Sum(x => (long?)x.MediaSize)
-                    ?? 0,
-            })
-            .FirstOrDefaultAsync(CancellationToken.None);
-
-        if (metrics is null)
-            return ResultExtensions.EntityNotFound(nameof(PlexLibrary), plexLibraryId).LogError();
-
-        await _dbContext.SetTvShowMediaMetrics(
-            plexLibraryId,
-            metrics.TvShowCount,
-            metrics.SeasonCount,
-            metrics.EpisodeCount,
-            metrics.MediaSize
-        );
-
         // Sync metadata such as Countries, Roles and Genre using separate DbContext instances
         // to avoid EF Core DbContext thread-safety issues when running in parallel.
         var genreDict = command.LibraryMetadata.PlexGenres;
@@ -208,7 +182,14 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
         var currentEpisodes = await _dbContext
             .PlexTvShowEpisodes.AsNoTracking()
             .Where(x => x.PlexLibraryId == plexLibraryId)
-            .Select(x => new CurrentEpisode(x.Id, x.PlexApiRatingKey, x.UpdatedAt, x.ParentKey))
+            .Select(x => new CurrentEpisode(
+                x.Id,
+                x.PlexApiRatingKey,
+                x.UpdatedAt,
+                x.ParentKey,
+                x.MediaSize,
+                x.MediaDataList.Count
+            ))
             .ToListAsync(cancellationToken);
         var currentShowByKey = currentShows.ToDictionary(x => x.PlexApiRatingKey);
         var currentSeasonByKey = currentSeasons.ToDictionary(x => x.PlexApiRatingKey);
@@ -295,6 +276,23 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
         report.UpdatedEpisodes = updatedEpisodes.Count;
         report.DeletedEpisodes = deletedEpisodes.Count;
         report.UnchangedEpisodes = incomingEpisodes.Count - createdEpisodes.Count - updatedEpisodes.Count;
+
+        var changedEpisodeKeys = createdEpisodes.Concat(updatedEpisodes).Select(x => x.PlexApiRatingKey).ToHashSet();
+        var mediaSize = 0L;
+        var episodeMediaDataCount = 0;
+        foreach (var episode in incomingEpisodes)
+        {
+            if (!forceMediaRefresh && !changedEpisodeKeys.Contains(episode.PlexApiRatingKey))
+            {
+                var current = currentEpisodeByKey[episode.PlexApiRatingKey];
+                mediaSize += current.MediaSize;
+                episodeMediaDataCount += current.MediaDataCount;
+                continue;
+            }
+
+            mediaSize += episode.MediaSize;
+            episodeMediaDataCount += episode.MediaDataList.Count;
+        }
 
         return await _dbContext.ExecuteTransactionAsync(
             async (ctx, txCt) =>
@@ -434,6 +432,15 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
                     .ToList();
                 if (tvShowQualities.Count > 0)
                     await ctx.BulkInsertAsync(tvShowQualities, BulkConfigPreset.Default, txCt);
+
+                await ctx.SetTvShowMediaMetrics(
+                    plexLibraryId,
+                    incomingShows.Count,
+                    incomingSeasons.Count,
+                    incomingEpisodes.Count,
+                    episodeMediaDataCount,
+                    mediaSize
+                );
             },
             cancellationToken
         );
@@ -443,7 +450,14 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
 
     private sealed record CurrentSeason(int Id, int PlexApiRatingKey, DateTime? UpdatedAt, int ParentKey);
 
-    private sealed record CurrentEpisode(int Id, int PlexApiRatingKey, DateTime? UpdatedAt, int ParentKey);
+    private sealed record CurrentEpisode(
+        int Id,
+        int PlexApiRatingKey,
+        DateTime? UpdatedAt,
+        int ParentKey,
+        long MediaSize,
+        int MediaDataCount
+    );
 
     private async Task<Result> SyncTvShowGenres(
         List<PlexTvShow> plexTvShows,

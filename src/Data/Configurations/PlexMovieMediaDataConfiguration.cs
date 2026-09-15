@@ -1,4 +1,4 @@
-﻿namespace Reaparr.Data.Configurations;
+namespace Reaparr.Data.Configurations;
 
 public class PlexMovieMediaDataConfiguration : IEntityTypeConfiguration<PlexMovieMediaData>
 {
@@ -7,7 +7,6 @@ public class PlexMovieMediaDataConfiguration : IEntityTypeConfiguration<PlexMovi
         builder.HasIndex(x => x.Quality);
         builder.HasIndex(x => new { x.PlexMovieId, x.Quality });
         builder.HasIndex(x => x.PlexApiRatingKey);
-        builder.HasIndex(x => new { x.PlexServerId, x.PlexLibraryId });
 
         builder
             .HasOne(x => x.PlexMovie)
