@@ -150,6 +150,8 @@ COPY --from=gpac-builder /src/gpac/bin/gcc/MP4Box /usr/local/bin/MP4Box
 WORKDIR /app
 COPY --from=back-end /app/publish .
 COPY --from=client-build /tmp/ClientApp/.output/public /app/wwwroot
+## Static assets are served by the non-root abc user; normalize restrictive source modes.
+RUN chmod -R u=rwX,go=rX /app/wwwroot
 
 ## Copy the s6-overlay config files
 COPY docker/etc/ /etc/
