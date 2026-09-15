@@ -90,8 +90,11 @@ public sealed record TorznabFeedItemProjection
         item.Attributes.Add(new TorznabAttr("size", Size.ToString()));
         foreach (var category in categories.Distinct())
             item.Attributes.Add(new TorznabAttr("category", ((int)category).ToString()));
-        item.Attributes.Add(new TorznabAttr("seeders", "1"));
-        item.Attributes.Add(new TorznabAttr("peers", "1"));
+
+        var memeCount = MemeNumberGenerator.GetRandomMemeNumber().ToString();
+        item.Attributes.Add(new TorznabAttr("seeders", memeCount));
+        item.Attributes.Add(new TorznabAttr("peers", memeCount));
+
         item.Attributes.Add(new TorznabAttr("type", MediaType == PlexMediaType.Movie ? "movie" : "series"));
         // TODO: Derive language from Plex media stream metadata when language-specific stream data is available.
         item.Attributes.Add(new TorznabAttr("language", "English"));
@@ -119,8 +122,8 @@ public sealed record TorznabFeedItemProjection
         }
 
         if (requestedAttributes is not null)
-            item.Attributes = item.Attributes
-                .Where(x => x.Name is "size" or "category" || requestedAttributes.Contains(x.Name))
+            item.Attributes = item
+                .Attributes.Where(x => x.Name is "size" or "category" || requestedAttributes.Contains(x.Name))
                 .ToList();
 
         return item;
