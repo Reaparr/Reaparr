@@ -1,5 +1,3 @@
-using Reaparr.PublicAPI.Contracts;
-
 namespace Reaparr.Application.UnitTests;
 
 public class SetupRadarrIndexerPayloadUnitTests : BaseUnitTest<SetupRadarrIndexerCommandHandler>

@@ -24,8 +24,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
         // Remove all associations
         await IDbContext.PlexAccountServers.ExecuteDeleteAsync(CancellationToken);
 
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
-            .ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
 
         // Act
         var request = new AddOrUpdatePlexAccountServersCommand(plexAccount.Id, serverAccessTokens);
@@ -33,7 +32,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once()
+            );
         var plexAccountServers = IDbContext.PlexAccountServers.Include(x => x.PlexServer).ToList();
         plexAccountServers.Count.ShouldBe(serverAccessTokens.Count);
 
@@ -73,8 +76,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
         // Remove all associations
         await IDbContext.PlexAccountServers.ExecuteDeleteAsync(CancellationToken);
 
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
-            .ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
 
         // Act
         var request = new AddOrUpdatePlexAccountServersCommand(plexAccount.Id, serverAccessTokens);
@@ -82,7 +84,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once()
+            );
         var plexAccountServers = IDbContext
             .PlexAccountServers.Include(x => x.PlexServer)
             .Include(x => x.PlexAccount)
@@ -117,15 +123,8 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
         plexAccount.ShouldNotBeNull();
         var plexServers = IDbContext.PlexServers.IgnoreIsEnabledFilter().OrderBy(x => x.Id).ToList();
         var serverAccessTokens = FakeData.GetServerAccessTokenDTO(seed, plexAccount, plexServers);
-        var expectedLibraryIds = IDbContext
-            .PlexLibraries.IgnoreQueryFilters()
-            .Where(x => plexServers.Select(y => y.Id).Contains(x.PlexServerId))
-            .Select(x => x.Id)
-            .OrderBy(x => x)
-            .ToList();
 
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
-            .ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
 
         // Act
         var request = new AddOrUpdatePlexAccountServersCommand(plexAccount.Id, serverAccessTokens);
@@ -133,7 +132,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once()
+            );
     }
 
     [Test]
@@ -160,8 +163,7 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
         // Remove all associations
         await IDbContext.PlexAccountServers.ExecuteDeleteAsync(CancellationToken);
 
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
-            .ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
 
         // Act
         var request = new AddOrUpdatePlexAccountServersCommand(plexAccount.Id, serverAccessTokens);
@@ -169,7 +171,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once()
+            );
         var plexAccountServers = IDbContext.PlexAccountServers.Include(x => x.PlexServer).ToList();
         plexAccountServers.Count.ShouldBe(3);
 

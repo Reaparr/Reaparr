@@ -47,7 +47,8 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
         root.Name.LocalName.ShouldBe("rss");
         root.Attribute("version")!.Value.ShouldBe("2.0");
         root.GetNamespaceOfPrefix("torznab")!.NamespaceName.ShouldBe("http://torznab.com/schemas/2015/feed");
-        root.GetNamespaceOfPrefix("newznab")!.NamespaceName.ShouldBe("http://www.newznab.com/DTD/2010/feeds/attributes/");
+        root.GetNamespaceOfPrefix("newznab")!
+            .NamespaceName.ShouldBe("http://www.newznab.com/DTD/2010/feeds/attributes/");
 
         var channel = root.Element("channel");
         channel.ShouldNotBeNull();
@@ -60,7 +61,9 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
 
         var items = channel.Elements("item").ToList();
         items.Count.ShouldBe(3);
-        var publicationDates = items.Select(x => DateTimeOffset.ParseExact(x.Element("pubDate")!.Value, "R", null)).ToList();
+        var publicationDates = items
+            .Select(x => DateTimeOffset.ParseExact(x.Element("pubDate")!.Value, "R", null))
+            .ToList();
         publicationDates.ShouldBe(publicationDates.OrderByDescending(x => x));
         foreach (var item in items)
         {
@@ -74,7 +77,10 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
             guid.Attribute("isPermaLink")!.Value.ShouldBe("false");
             guid.Value.ShouldStartWith("reaparr-");
             guid.Value.ShouldNotBe(link);
-            attributes.Single(x => x.Attribute("name")!.Value == "size").Attribute("value")!.Value.ShouldBe(size.ToString());
+            attributes
+                .Single(x => x.Attribute("name")!.Value == "size")
+                .Attribute("value")!
+                .Value.ShouldBe(size.ToString());
             var categories = attributes.Where(x => x.Attribute("name")!.Value == "category").ToList();
             categories.Count.ShouldBeGreaterThanOrEqualTo(2);
             categories.All(x => int.TryParse(x.Attribute("value")!.Value, out _)).ShouldBeTrue();
@@ -151,12 +157,17 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
         var item = XDocument.Parse(rssXml).Root!.Element("channel")!.Elements("item").Single();
         var torrentResponse = await client.GetAsync(item.Element("link")!.Value, CancellationToken);
         var torrentBytes = await torrentResponse.Content.ReadAsByteArrayAsync(CancellationToken);
-        using var upload = new MultipartFormDataContent
-        {
-            { new ByteArrayContent(torrentBytes), "torrents", "rss-release.torrent" },
-        };
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", integration.QBittorrentApiKey);
-        var addResponse = await client.PostAsync($"{route}/download-client/api/v2/torrents/add", upload, CancellationToken);
+        using var upload = new MultipartFormDataContent();
+        upload.Add(new ByteArrayContent(torrentBytes), "torrents", "rss-release.torrent");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            integration.QBittorrentApiKey
+        );
+        var addResponse = await client.PostAsync(
+            $"{route}/download-client/api/v2/torrents/add",
+            upload,
+            CancellationToken
+        );
 
         // Assert
         rssResponse.IsSuccessStatusCode.ShouldBeTrue();
@@ -164,9 +175,7 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
         torrentResponse.Content.Headers.ContentType!.MediaType.ShouldBe("application/x-bittorrent");
         addResponse.IsSuccessStatusCode.ShouldBeTrue();
         (await addResponse.Content.ReadAsStringAsync(CancellationToken)).ShouldBe("Ok.");
-        var task = await container.DbContext
-            .DownloadTaskMovie.Include(x => x.Children)
-            .SingleAsync(CancellationToken);
+        var task = await container.DbContext.DownloadTaskMovie.Include(x => x.Children).SingleAsync(CancellationToken);
         task.RadarrIntegrationId.ShouldBe(integration.Id);
         task.SonarrIntegrationId.ShouldBeNull();
         task.Children.ShouldHaveSingleItem();
@@ -177,12 +186,10 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
         await AssertInvalidRequest("offset=-1", 8664);
 
     [Test]
-    public async Task ShouldReturnTorznabErrorXml_WhenLimitIsNegative() =>
-        await AssertInvalidRequest("limit=-1", 8665);
+    public async Task ShouldReturnTorznabErrorXml_WhenLimitIsNegative() => await AssertInvalidRequest("limit=-1", 8665);
 
     [Test]
-    public async Task ShouldReturnTorznabErrorXml_WhenTypeIsUnknown() =>
-        await AssertInvalidRequest("t=book", 8666);
+    public async Task ShouldReturnTorznabErrorXml_WhenTypeIsUnknown() => await AssertInvalidRequest("t=book", 8666);
 
     [Test]
     public async Task ShouldReturnTorznabErrorXml_WhenExtendedValueIsInvalid() =>
@@ -207,7 +214,6 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     [Test]
     public async Task ShouldReturnTorznabErrorXml_WhenTmdbIdIsNegative() =>
         await AssertInvalidRequest("t=movie&tmdbid=-1", 8673);
-
 
     private async Task<List<XElement>> GetRssItems(HttpClient client, string url)
     {

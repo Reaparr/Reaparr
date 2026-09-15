@@ -1,4 +1,5 @@
 using System.Xml.Serialization;
+using Reaparr.PublicAPI.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 
@@ -25,7 +26,7 @@ public class GetCapabilitiesCommandUnitTests : BaseCommandUnitTest<GetCapabiliti
         xml.ShouldContain("<searching>");
         xml.ShouldContain("<categories>");
         result.Value.Categories.ShouldBe(
-            Reaparr.PublicAPI.Contracts.IntegrationDefinitions
+            IntegrationDefinitions
                 .SupportedTorznabCategories.Select(x => new TorznabCategory((int)x.Id, x.Name))
                 .ToList()
         );

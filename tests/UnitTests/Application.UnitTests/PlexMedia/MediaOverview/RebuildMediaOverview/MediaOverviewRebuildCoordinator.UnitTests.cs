@@ -15,6 +15,7 @@ public class MediaOverviewRebuildCoordinatorUnitTests
 
         // Assert
         rebuildTask.IsCompleted.ShouldBeFalse();
+        // ReSharper disable once DisposeOnUsingVariable
         syncLease.Dispose();
         using var rebuildLease = await rebuildTask;
         rebuildLease.ShouldNotBeNull();
@@ -33,6 +34,7 @@ public class MediaOverviewRebuildCoordinatorUnitTests
 
         // Assert
         syncTask.IsCompleted.ShouldBeFalse();
+        // ReSharper disable once DisposeOnUsingVariable
         rebuildLease.Dispose();
         using var syncLease = await syncTask;
         syncLease.ShouldNotBeNull();
@@ -52,6 +54,7 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         await Should.ThrowAsync<OperationCanceledException>(async () => await rebuildTask);
 
         // Assert
+        // ReSharper disable once DisposeOnUsingVariable
         syncLease.Dispose();
         using var nextRebuildLease = await coordinator.AcquireRebuildLeaseAsync(CancellationToken.None);
         nextRebuildLease.ShouldNotBeNull();

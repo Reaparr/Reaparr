@@ -97,8 +97,8 @@ namespace Reaparr.FluentResults
                 }
 
                 var valueText = value is IFormattable formattable
-                    ? formattable.ToString(propertyToken.Format, CultureInfo.InvariantCulture) ?? string.Empty
-                    : value?.ToString() ?? string.Empty;
+                    ? formattable.ToString(propertyToken.Format, CultureInfo.InvariantCulture)
+                    : value.ToString() ?? string.Empty;
 
                 if (propertyToken.Alignment is { } alignment && valueText.Length < alignment.Width)
                 {

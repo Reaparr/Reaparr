@@ -144,8 +144,6 @@ public class AddOrUpdatePlexAccountServersCommandHandler
             .AsTracking()
             .ToListAsync(cancellationToken);
 
-        var changedPlexServerIds = accessiblePlexServers.Distinct().ToList();
-
         if (removalList.Any())
         {
             foreach (var plexAccountServer in removalList)
@@ -156,7 +154,6 @@ public class AddOrUpdatePlexAccountServersCommandHandler
                         plexAccountServer.PlexServer!.Name
                     );
             var removalIds = removalList.Select(x => x.PlexServerId).ToList();
-            changedPlexServerIds.AddRange(removalIds);
             await _dbContext
                 .PlexAccountServers.Where(x => removalIds.Contains(x.PlexServerId) && x.PlexAccountId == plexAccountId)
                 .ExecuteDeleteAsync(cancellationToken);
@@ -175,12 +172,6 @@ public class AddOrUpdatePlexAccountServersCommandHandler
                     plexAccount.DisplayName
                 );
         }
-
-        var affectedLibraryIds = await _dbContext
-            .PlexLibraries.IgnoreQueryFilters()
-            .Where(x => changedPlexServerIds.Contains(x.PlexServerId))
-            .Select(x => x.Id)
-            .ToListAsync(cancellationToken);
 
         var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
         if (rebuildResult.IsFailed)
