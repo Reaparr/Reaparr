@@ -135,7 +135,6 @@ docker buildx build \
     --build-arg TARGETPLATFORM=linux/amd64 \
     --build-arg "VERSION=${version}" \
     --build-arg "INFORMATIONAL_VERSION=${informational_version}" \
-    --provenance=false \
     --push \
     .
 
