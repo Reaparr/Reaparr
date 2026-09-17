@@ -1,3 +1,5 @@
+using Reaparr.Application.Contracts;
+
 namespace Reaparr.PublicAPI.UnitTests;
 
 public class TorznabRequestUnitTests
@@ -18,7 +20,7 @@ public class TorznabRequestUnitTests
         };
 
         // Act
-        var request = endpointRequest.ToTorznabRequest();
+        var request = endpointRequest.ToTorznabRequest(new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty));
 
         // Assert
         request.Type.ShouldBe(TorznabQueryType.TvSearch);
@@ -44,7 +46,7 @@ public class TorznabRequestUnitTests
         var endpointRequest = new TorznabEndpointRequest { Type = value, ApiKey = "key" };
 
         // Act
-        var request = endpointRequest.ToTorznabRequest();
+        var request = endpointRequest.ToTorznabRequest(new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty));
 
         // Assert
         request.Type.ShouldBe(expected);
@@ -88,9 +90,9 @@ public class TorznabRequestUnitTests
         var mixedEndpointRequest = new TorznabEndpointRequest { Type = "search", ApiKey = "key" };
 
         // Act
-        var movie = movieEndpointRequest.ToTorznabRequest();
-        var tv = tvEndpointRequest.ToTorznabRequest();
-        var mixed = mixedEndpointRequest.ToTorznabRequest();
+        var movie = movieEndpointRequest.ToTorznabRequest(new IntegrationIdentity(IntegrationType.Radarr, Guid.Empty));
+        var tv = tvEndpointRequest.ToTorznabRequest(new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty));
+        var mixed = mixedEndpointRequest.ToTorznabRequest(new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty));
 
         // Assert
         movie.Mode.ShouldBe(TorznabRequestMode.Rss);
@@ -103,8 +105,9 @@ public class TorznabRequestUnitTests
     }
 
     [Test]
-    [Arguments(10_000, 0, true)]
-    [Arguments(10_000, 1, false)]
+    [Arguments(100, 9_900, true)]
+    [Arguments(100, 9_901, false)]
+    [Arguments(101, 0, false)]
     [Arguments(int.MaxValue, int.MaxValue, false)]
     public void ShouldValidatePaginationWindowWithoutIntegerOverflow(int limit, int offset, bool expectedValid)
     {

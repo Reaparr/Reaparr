@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI;
 
 public class TorznabEndpointRequestValidator : Validator<TorznabEndpointRequest>
@@ -10,6 +8,7 @@ public class TorznabEndpointRequestValidator : Validator<TorznabEndpointRequest>
         RuleFor(x => x.ApiKey).NotEmpty();
         RuleFor(x => x.Offset).GreaterThanOrEqualTo(0).When(x => x.Offset.HasValue);
         RuleFor(x => x.Limit).GreaterThanOrEqualTo(0).When(x => x.Limit.HasValue);
+        RuleFor(x => x.Limit).LessThanOrEqualTo(TorznabSearchHelpers.MaxPageSize).When(x => x.Limit.HasValue);
         RuleFor(x => x)
             .Must(x => TorznabSearchHelpers.IsPaginationWithinLimit(x.Offset ?? 0, x.Limit ?? 50))
             .WithMessage($"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}.");
@@ -53,7 +52,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
     {
         _log.Here().DebugApiCall(HttpContext, endpointRequest);
         var integration = HttpContext.GetIntegrationIdentity();
-        var request = endpointRequest.ToTorznabRequest();
+        var request = endpointRequest.ToTorznabRequest(integration);
 
         if (ValidationFailed)
         {
@@ -67,10 +66,10 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                 await SendCapabilitiesAsync(ct);
                 break;
             case TorznabRequestMode.Rss:
-                await SendMediaResultAsync(await GetRssAsync(request, integration, ct), ct);
+                await SendMediaResultAsync(await GetRssAsync(request, ct), ct);
                 break;
             case TorznabRequestMode.ActiveSearch:
-                await SendMediaResultAsync(await SearchAsync(request, integration, ct), ct);
+                await SendMediaResultAsync(await SearchAsync(request, ct), ct);
                 break;
             default:
                 await Send.TorznabError(201, "Incorrect parameter", ct);
@@ -101,12 +100,8 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
     private async Task SendMediaResultAsync(Result<TorznabMediaSearchResponseDTO> result, CancellationToken ct)
     {
         result.LogIfFailed();
-
         if (result.IsCancelled)
-        {
-            await Send.TorznabError(900, "Indexer request cancelled", ct);
             return;
-        }
 
         if (result.IsFailed)
         {
@@ -117,15 +112,11 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
         await Send.XmlAsync(result.Value, cancellationToken: ct);
     }
 
-    private Task<Result<TorznabMediaSearchResponseDTO>> GetRssAsync(
-        TorznabRequest request,
-        IntegrationIdentity integration,
-        CancellationToken ct
-    ) =>
+    private Task<Result<TorznabMediaSearchResponseDTO>> GetRssAsync(TorznabRequest request, CancellationToken ct) =>
         _commandExecutor.Send(
             new GetTorznabRssFeedCommand
             {
-                Integration = integration,
+                Integration = request.Integration,
                 Categories = request.Categories,
                 IncludeMovies = request.IncludesMovies,
                 IncludeEpisodes = request.IncludesEpisodes,
@@ -138,138 +129,12 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
             ct
         );
 
-    private Task<Result<TorznabMediaSearchResponseDTO>> SearchAsync(
-        TorznabRequest request,
-        IntegrationIdentity integration,
-        CancellationToken ct
-    ) =>
+    private Task<Result<TorznabMediaSearchResponseDTO>> SearchAsync(TorznabRequest request, CancellationToken ct) =>
         request.Type switch
         {
-            TorznabQueryType.Search => GenericSearchAsync(request, integration, ct),
-            TorznabQueryType.TvSearch => SearchTvAsync(request, integration, ct),
-            TorznabQueryType.Movie => SearchMovieAsync(request, integration, ct),
+            TorznabQueryType.Search => _commandExecutor.Send(new SearchGenericCommand(request), ct),
+            TorznabQueryType.TvSearch => _commandExecutor.Send(new SearchTvShowCommand(request), ct),
+            TorznabQueryType.Movie => _commandExecutor.Send(new SearchMovieCommand(request), ct),
             _ => Task.FromResult(Result.Fail<TorznabMediaSearchResponseDTO>("Unsupported Torznab search type")),
         };
-
-    private Task<Result<TorznabMediaSearchResponseDTO>> SearchTvAsync(
-        TorznabRequest request,
-        IntegrationIdentity integration,
-        CancellationToken ct
-    ) =>
-        _commandExecutor.Send(
-            new SearchTvShowCommand
-            {
-                Query = request.Query,
-                Season = request.Season,
-                Episode = request.Episode,
-                TVDB_ID = request.TvdbId,
-                IMDB_ID = request.ImdbId,
-                TMDB_ID = request.TmdbId,
-                Limit = request.Limit,
-                Offset = request.Offset,
-                Integration = integration,
-                TorznabApiKey = request.ApiKey,
-                Categories = request.Categories,
-                Attributes = request.Attributes,
-                IncludeAllAttributes = request.IncludeAllAttributes,
-            },
-            ct
-        );
-
-    private Task<Result<TorznabMediaSearchResponseDTO>> SearchMovieAsync(
-        TorznabRequest request,
-        IntegrationIdentity integration,
-        CancellationToken ct
-    ) =>
-        _commandExecutor.Send(
-            new SearchMovieCommand
-            {
-                Query = request.Query,
-                IMDB_ID = request.ImdbId,
-                TMDB_ID = request.TmdbId,
-                Limit = request.Limit,
-                Offset = request.Offset,
-                Integration = integration,
-                TorznabApiKey = request.ApiKey,
-                Categories = request.Categories,
-                Attributes = request.Attributes,
-                IncludeAllAttributes = request.IncludeAllAttributes,
-            },
-            ct
-        );
-    /// <summary>
-    /// Handles generic active searches by running the TV and movie searches requested by categories.
-    /// </summary>
-    private async Task<Result<TorznabMediaSearchResponseDTO>> GenericSearchAsync(
-        TorznabRequest request,
-        IntegrationIdentity integration,
-        CancellationToken ct
-    )
-    {
-        var items = new List<TorznabItem>();
-        var failures = new List<IError>();
-        var successfulSearches = 0;
-        var total = 0;
-        if (!TorznabSearchHelpers.IsPaginationWithinLimit(request.Offset, request.Limit))
-            return Result.Fail<TorznabMediaSearchResponseDTO>(
-                $"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}."
-            );
-
-        var branchRequest = request with { Offset = 0, Limit = request.Offset + request.Limit };
-
-        if (request.IncludesEpisodes)
-        {
-            var tvResult = await SearchTvAsync(branchRequest with { Season = 0, Episode = 0 }, integration, ct);
-            if (tvResult.IsFailed)
-                failures.AddRange(tvResult.Errors);
-            else
-            {
-                successfulSearches++;
-                total += tvResult.Value.Channel.Response.Total;
-                items.AddRange(tvResult.Value.Channel.Items);
-            }
-        }
-
-        if (request.IncludesMovies)
-        {
-            var movieResult = await SearchMovieAsync(branchRequest, integration, ct);
-            if (movieResult.IsFailed)
-                failures.AddRange(movieResult.Errors);
-            else
-            {
-                successfulSearches++;
-                total += movieResult.Value.Channel.Response.Total;
-                items.AddRange(movieResult.Value.Channel.Items);
-            }
-        }
-
-        if (failures.Count > 0 && successfulSearches == 0)
-            return Result.Fail(failures);
-
-        if (failures.Count > 0)
-            _log.Here().Warning("Generic Torznab search partially failed: {Errors}", failures);
-
-        return Result.Ok(
-            new TorznabMediaSearchResponseDTO
-            {
-                Channel = new TorznabChannel
-                {
-                    Title = "Reaparr Indexer",
-                    Description = $"Search results for {request.Query}",
-                    Items = items
-                        .OrderByDescending(item => item.SortAddedAt)
-                        .ThenBy(item => item.SortMachineIdentifier, StringComparer.Ordinal)
-                        .ThenBy(item => item.SortRatingKey)
-                        .ThenBy(item => item.SortMediaId)
-                        .ThenBy(item => item.SortPartId)
-                        .ThenBy(item => item.SortMediaType)
-                        .ThenBy(item => item.Guid.Value, StringComparer.Ordinal)
-                        .Skip(request.Offset)
-                        .Take(request.Limit)
-                        .ToList(),
-                    Response = new TorznabResponseMetadata { Offset = request.Offset, Total = total },
-                },
-            }
-        );
-    }
 }

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Reaparr.Application.UnitTests;
 
 public class DeletePlexServerEndpointUnitTests

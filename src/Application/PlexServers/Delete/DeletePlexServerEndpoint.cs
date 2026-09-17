@@ -43,12 +43,6 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
     {
         _log.Here().DebugApiCall(HttpContext, req);
 
-        var libraryIds = await _dbContext
-            .PlexLibraries.IgnoreQueryFilters()
-            .Where(x => x.PlexServerId == req.PlexServerId)
-            .Select(x => x.Id)
-            .ToListAsync(ct);
-
         var deletedPlexServersCount = await _dbContext
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == req.PlexServerId)

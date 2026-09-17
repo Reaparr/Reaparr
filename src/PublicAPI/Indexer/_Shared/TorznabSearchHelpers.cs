@@ -3,6 +3,9 @@ namespace Reaparr.PublicAPI;
 public static class TorznabSearchHelpers
 {
     public const int MaxPaginationWindow = 10_000;
+    public const int MaxPageSize = 100;
+
+    public static bool IsPageSizeWithinLimit(int limit) => limit >= 0 && limit <= MaxPageSize;
 
     public static bool IsPaginationWithinLimit(int offset, int limit) =>
         offset >= 0 && limit >= 0 && (long)offset + limit <= MaxPaginationWindow;

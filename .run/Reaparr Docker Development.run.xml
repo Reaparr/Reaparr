@@ -24,6 +24,7 @@
             <env name="REAPARR_DATA_PATH" value="/mnt/DATA/ReaparrCache/" />
             <env name="REAPARR_PLATFORM" value="docker" />
             <env name="SEQ_URL" value="http://localhost:5341" />
+            <env name="SEQ_API_KEY" value="" />
             <env name="UNMASKED" value="true" />
             <env name="VERSION" value="0.36.0" />
         </envs>

@@ -7,7 +7,7 @@ ARG TARGETPLATFORM=linux/amd64
 ARG BUILDPLATFORM=linux/amd64
 
 # Stage 1 - Build the Nuxt front-end
-FROM --platform=$BUILDPLATFORM oven/bun:1.3-alpine AS client-build
+FROM --platform=$BUILDPLATFORM oven/bun:1.4.0-alpine AS client-build
 
 ARG PORT
 ARG VERSION
@@ -23,7 +23,7 @@ WORKDIR /tmp/ClientApp
 
 ## Copy the project files and install the dependencies
 COPY ./src/AppHost/ClientApp/ ./
-RUN bun install && bun run generate --fail-on-error
+RUN bun install --frozen-lockfile && bun run generate --fail-on-error
 
 # Stage 2 - Build the .NET back-end
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS back-end
@@ -150,6 +150,8 @@ COPY --from=gpac-builder /src/gpac/bin/gcc/MP4Box /usr/local/bin/MP4Box
 WORKDIR /app
 COPY --from=back-end /app/publish .
 COPY --from=client-build /tmp/ClientApp/.output/public /app/wwwroot
+## Static assets are served by the non-root abc user; normalize restrictive source modes.
+RUN chmod -R u=rwX,go=rX /app/wwwroot
 
 ## Copy the s6-overlay config files
 COPY docker/etc/ /etc/

@@ -42,8 +42,10 @@ public static partial class DbContextExtensions
         CancellationToken cancellationToken
     )
     {
-        var libraryExists = await dbContext
-            .PlexLibraries.AnyAsync(x => x.Id == libraryId && !x.Outdated, cancellationToken);
+        var libraryExists = await dbContext.PlexLibraries.AnyAsync(
+            x => x.Id == libraryId && !x.Outdated,
+            cancellationToken
+        );
         if (!libraryExists)
             return [];
 
@@ -87,10 +89,12 @@ public static partial class DbContextExtensions
     {
         await dbContext
             .PlexLibraries.Where(x => x.Id == plexLibraryId)
-            .ExecuteUpdateAsync(p =>
-                p.SetProperty(x => x.ActorsCount, actorsCount)
-                    .SetProperty(x => x.GenresCount, genreCount)
-                    .SetProperty(x => x.CountriesCount, countryCount)
+            .ExecuteUpdateAsync(
+                p =>
+                    p.SetProperty(x => x.ActorsCount, actorsCount)
+                        .SetProperty(x => x.GenresCount, genreCount)
+                        .SetProperty(x => x.CountriesCount, countryCount),
+                CancellationToken.None
             );
     }
 
@@ -98,13 +102,18 @@ public static partial class DbContextExtensions
         this IReaparrDbContext dbContext,
         int plexLibraryId,
         int movieCount,
+        int movieMediaDataCount,
         long mediaSize
     )
     {
         await dbContext
             .PlexLibraries.Where(x => x.Id == plexLibraryId)
-            .ExecuteUpdateAsync(p =>
-                p.SetProperty(x => x.MovieCount, movieCount).SetProperty(x => x.MediaSize, mediaSize)
+            .ExecuteUpdateAsync(
+                p =>
+                    p.SetProperty(x => x.MovieCount, movieCount)
+                        .SetProperty(x => x.MovieMediaDataCount, movieMediaDataCount)
+                        .SetProperty(x => x.MediaSize, mediaSize),
+                CancellationToken.None
             );
     }
 
@@ -114,16 +123,20 @@ public static partial class DbContextExtensions
         int tvShowCount,
         int seasonCount,
         int episodeCount,
+        int episodeMediaDataCount,
         long mediaSize
     )
     {
         await dbContext
             .PlexLibraries.Where(x => x.Id == plexLibraryId)
-            .ExecuteUpdateAsync(p =>
-                p.SetProperty(x => x.TvShowCount, tvShowCount)
-                    .SetProperty(x => x.SeasonCount, seasonCount)
-                    .SetProperty(x => x.EpisodeCount, episodeCount)
-                    .SetProperty(x => x.MediaSize, mediaSize)
+            .ExecuteUpdateAsync(
+                p =>
+                    p.SetProperty(x => x.TvShowCount, tvShowCount)
+                        .SetProperty(x => x.SeasonCount, seasonCount)
+                        .SetProperty(x => x.EpisodeCount, episodeCount)
+                        .SetProperty(x => x.EpisodeMediaDataCount, episodeMediaDataCount)
+                        .SetProperty(x => x.MediaSize, mediaSize),
+                CancellationToken.None
             );
     }
 }

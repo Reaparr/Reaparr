@@ -83,7 +83,10 @@ public class TorznabFeedItemProjectionUnitTests
     public void ShouldEmitNumericParentAndSubcategoryAttributes()
     {
         // Arrange
-        var projection = CreateProjection() with { GenreTypes = [PlexGenreType.Foreign] };
+        var projection = CreateProjection() with
+        {
+            GenreTypes = [PlexGenreType.Foreign],
+        };
 
         // Act
         var item = projection.ToTorznabItem(
@@ -93,7 +96,9 @@ public class TorznabFeedItemProjectionUnitTests
         );
 
         // Assert
-        item.Attributes.Where(x => x.Name == "category").Select(x => x.Value).ShouldBe(["2000", "2040", "2010", "2070"]);
+        item.Attributes.Where(x => x.Name == "category")
+            .Select(x => x.Value)
+            .ShouldBe(["2000", "2040", "2010", "2070"]);
     }
 
     [Test]
@@ -103,13 +108,7 @@ public class TorznabFeedItemProjectionUnitTests
         var projection = CreateProjection() with
         {
             MediaType = PlexMediaType.Episode,
-            GenreTypes =
-            [
-                PlexGenreType.Foreign,
-                PlexGenreType.Anime,
-                PlexGenreType.Documentary,
-                PlexGenreType.Sport,
-            ],
+            GenreTypes = [PlexGenreType.Foreign, PlexGenreType.Anime, PlexGenreType.Documentary, PlexGenreType.Sport],
         };
 
         // Act
@@ -120,9 +119,9 @@ public class TorznabFeedItemProjectionUnitTests
         );
 
         // Assert
-        item.Attributes.Where(x => x.Name == "category").Select(x => x.Value).ShouldBe([
-            "5000", "5040", "5020", "5060", "5070", "5080",
-        ]);
+        item.Attributes.Where(x => x.Name == "category")
+            .Select(x => x.Value)
+            .ShouldBe(["5000", "5040", "5020", "5060", "5070", "5080"]);
     }
 
     [Test]
@@ -180,7 +179,11 @@ public class TorznabFeedItemProjectionUnitTests
     )
     {
         // Arrange
-        var projection = CreateProjection() with { VideoResolution = resolution, Source = source };
+        var projection = CreateProjection() with
+        {
+            VideoResolution = resolution,
+            Source = source,
+        };
 
         // Act
         var item = projection.ToTorznabItem(
@@ -226,8 +229,16 @@ public class TorznabFeedItemProjectionUnitTests
         };
 
         // Act
-        var first = projection.ToTorznabItem(new IntegrationIdentity(IntegrationType.Radarr, Guid.NewGuid()), "key", "http://localhost");
-        var second = changed.ToTorznabItem(new IntegrationIdentity(IntegrationType.Radarr, Guid.NewGuid()), "key", "http://localhost");
+        var first = projection.ToTorznabItem(
+            new IntegrationIdentity(IntegrationType.Radarr, Guid.NewGuid()),
+            "key",
+            "http://localhost"
+        );
+        var second = changed.ToTorznabItem(
+            new IntegrationIdentity(IntegrationType.Radarr, Guid.NewGuid()),
+            "key",
+            "http://localhost"
+        );
 
         // Assert
         second.PubDate.ShouldBe(first.PubDate);
@@ -239,6 +250,7 @@ public class TorznabFeedItemProjectionUnitTests
         {
             MediaType = PlexMediaType.Movie,
             MediaId = 1,
+            GenreOwnerId = 1,
             DataId = 2,
             PlexServerId = 3,
             PlexServerMachineIdentifier = "333f1d4d82d020fa33821f80578c574f155cf14a",

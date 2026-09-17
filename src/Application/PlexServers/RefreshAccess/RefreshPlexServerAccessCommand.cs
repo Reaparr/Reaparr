@@ -48,7 +48,7 @@ public class RefreshPlexServerAccessCommandHandler
 
         var result = await _commandExecutor.Send(new GetAccessiblePlexServersCommand(plexAccountId), cancellationToken);
 
-        // If the Plex API returns a 401 Unauthorized error, remove the PlexAccount and PlexServerAccess
+        // If the Plex API returns a 401 Unauthorized error, remove the PlexServerAccess and PlexLibraryAccess
         if (result.HasPlex401UnauthorizedError())
         {
             _log.Here()
@@ -113,20 +113,13 @@ public class RefreshPlexServerAccessCommandHandler
     /// <summary>
     ///  Remove all PlexServerAccess and LibraryAccess for the given PlexAccount
     /// </summary>
-    /// <param name="plexAccountId"></param>
+    /// <param name="plexAccountId">The id of the PlexAccount to remove access for</param>
     private async Task<Result<RefreshPlexServerAccessRapport>> RemovePlexAccess(int plexAccountId)
     {
         var plexServers = await _dbContext
             .PlexAccountServers.Include(x => x.PlexServer)
             .Where(x => x.PlexAccountId == plexAccountId)
             .Select(x => new { x.PlexServerId, x.PlexServer!.Name })
-            .ToListAsync();
-
-        var affectedServerIds = plexServers.Select(x => x.PlexServerId).ToList();
-        var affectedLibraryIds = await _dbContext
-            .PlexLibraries.IgnoreQueryFilters()
-            .Where(x => affectedServerIds.Contains(x.PlexServerId))
-            .Select(x => x.Id)
             .ToListAsync();
 
         var plexAccountName = await _dbContext.GetPlexAccountDisplayName(plexAccountId, CancellationToken.None);
@@ -145,6 +138,11 @@ public class RefreshPlexServerAccessCommandHandler
         await _dbContext
             .PlexAccountServers.Where(x => x.PlexAccountId == plexAccountId)
             .ExecuteDeleteAsync(CancellationToken.None);
+        await _dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccountId)
+            .ExecuteDeleteAsync(CancellationToken.None);
+
+        // TODO should return a RefreshPlexLibraryAccessRapport because those get changed with this command as well
 
         var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), CancellationToken.None);
         rebuildResult.LogIfFailed();

@@ -554,7 +554,8 @@ public static partial class MockDatabase
             await context.BulkInsertPlexMoviesAsync(movies, plexLibrary.PlexServerId, plexLibrary.Id);
 
             var mediaSize = movies.Sum(x => x.MediaSize);
-            await context.SetMovieMediaMetrics(plexLibrary.Id, movies.Count, mediaSize);
+            var mediaDataCount = movies.Sum(x => x.MediaDataList.Count);
+            await context.SetMovieMediaMetrics(plexLibrary.Id, movies.Count, mediaDataCount, mediaSize);
         }
 
         _log.Here()
@@ -584,10 +585,16 @@ public static partial class MockDatabase
             var tvShows = FakeData.GetPlexTvShows(seed, options).Generate(config.TvShowCount);
             await context.BulkInsertPlexTvShowsAsync(tvShows, plexLibrary.PlexServerId, plexLibrary.Id);
 
-            var seasonCount = tvShows.Sum(x => x.Seasons.Count);
-            var episodeCount = tvShows.Sum(x => x.Seasons.Sum(y => y.Episodes.Count));
-            var mediaSize = tvShows.Sum(x => x.Seasons.Sum(y => y.Episodes.Sum(z => z.MediaSize)));
-            await context.SetTvShowMediaMetrics(plexLibrary.Id, tvShows.Count, seasonCount, episodeCount, mediaSize);
+            var seasons = tvShows.SelectMany(x => x.Seasons).ToList();
+            var episodes = seasons.SelectMany(x => x.Episodes).ToList();
+            await context.SetTvShowMediaMetrics(
+                plexLibrary.Id,
+                tvShows.Count,
+                seasons.Count,
+                episodes.Count,
+                episodes.Sum(x => x.MediaDataList.Count),
+                episodes.Sum(x => x.MediaSize)
+            );
         }
 
         _log.Here()

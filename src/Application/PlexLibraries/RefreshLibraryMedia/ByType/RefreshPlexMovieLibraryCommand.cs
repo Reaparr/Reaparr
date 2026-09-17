@@ -71,6 +71,16 @@ public class RefreshPlexMovieLibraryCommandHandler
             return syncResult.ToResult().LogError();
         }
 
+        var optimizationResult = await _commandExecutor.Send(
+            new ScheduleOptimizeDatabaseJobCommand
+            {
+                ChangedItemCount =
+                    syncResult.Value.CreatedMovies + syncResult.Value.UpdatedMovies + syncResult.Value.DeletedMovies,
+            },
+            cancellationToken
+        );
+        optimizationResult.LogIfFailed();
+
         _log.Here()
             .Information(
                 "Successfully refreshed library {PlexLibraryName} with id: {PlexLibraryId}",

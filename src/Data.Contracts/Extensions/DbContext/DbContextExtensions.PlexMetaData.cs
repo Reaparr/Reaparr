@@ -103,7 +103,7 @@ public static partial class DbContextExtensions
     /// <param name="dbContext">The database context to use for the operation.</param>
     /// <param name="entities">A read-only collection of <see cref="PlexCountry"/> entities to insert or ignore.</param>
     /// <param name="ct">A cancellation token to observe while performing the operation.</param>
-    /// <returns>A dictionary mapping each country's key to its corresponding ID in the database.</returns
+    /// <returns>A dictionary mapping each country's key to its corresponding ID in the database.</returns>
     public static async Task<Dictionary<string, int>> InsertOrIgnorePlexCountriesAsync(
         this IReaparrDbContext dbContext,
         IReadOnlyCollection<PlexCountry> entities,

@@ -49,6 +49,9 @@ public class AppRuntimeInfo : IAppRuntimeInfo
     public string SEQ_Url => GetEnvironmentVariable(EnvKeys.SeqUrl) ?? string.Empty;
 
     /// <inheritdoc/>
+    public string SEQ_ApiKey => GetEnvironmentVariable(EnvKeys.SeqApiKey) ?? string.Empty;
+
+    /// <inheritdoc/>
     public int PUID => int.TryParse(GetEnvironmentVariable(EnvKeys.Puid), out var puid) ? puid : -1;
 
     /// <inheritdoc/>

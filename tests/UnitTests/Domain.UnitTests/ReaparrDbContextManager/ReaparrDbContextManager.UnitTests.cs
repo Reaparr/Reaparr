@@ -45,6 +45,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(false).Verifiable(Times.Once);
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
 
         // Act
         var result = await Sut.SetupAsync();
@@ -83,6 +86,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
             .Returns(new Mock<IDirectoryInfo>().Object);
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CanConnect()).Returns(false);
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CloseConnection());
@@ -110,6 +116,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
             .Setup(x => x.GetPendingMigrations())
             .Returns(["Migration1", "Migration2"]);
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(false);
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns([]);
 
@@ -183,6 +192,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CloseConnection());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(false);
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns([]);
         Mock.Mock<IGeneralSettings>().SetupSet(x => x.FirstTimeSetup = true).Verifiable(Times.AtLeastOnce);
@@ -219,6 +231,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
             .SetupSequence(x => x.Migrate())
             .Returns(Result.Fail("Auth migration failed"))
             .Returns(Result.Ok()); // Second call during database reset
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
         Mock.Mock<IGeneralSettings>().SetupSet(x => x.FirstTimeSetup = true).Verifiable(Times.AtLeastOnce);
 
         // Act
@@ -250,6 +265,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CloseConnection());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.IsInMemory()).Returns(false);
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns([]);
         Mock.Mock<IGeneralSettings>().SetupSet(x => x.FirstTimeSetup = true).Verifiable(Times.Once);
@@ -297,6 +315,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
         Mock.Mock<IGeneralSettings>().SetupSet(x => x.FirstTimeSetup = true).Verifiable(Times.Once);
 
         // Act
@@ -392,6 +413,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
 
         var generalSettingsMock = Mock.Mock<IGeneralSettings>();
         generalSettingsMock.SetupProperty(x => x.FirstTimeSetup);
@@ -414,6 +438,9 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
+        Mock.Mock<IReaparrDbContextDatabase>()
+            .Setup(x => x.Optimize(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(0));
 
         // Act
         var result = await Sut.SetupAsync();

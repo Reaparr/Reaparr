@@ -533,10 +533,8 @@ export interface GeneratePlexTokenResponse {
   plexAuthToken: string;
 }
 
-/** Definition of an error */
 export interface IError {
-  /** Reasons of the error */
-  reasons?: IError[] | null;
+  reasons: IError[];
 }
 
 export interface InspectPlexServerJobUpdateDTO {
@@ -599,14 +597,6 @@ export enum IntegrationType {
   Radarr = "Radarr",
 }
 
-export interface IntegrationsSettingsDTO {
-  downloadClientPassword: string;
-  downloadClientUsername: string;
-  radarr: RadarrSettingsDTO;
-  reaparrApiKey: string;
-  sonarr: SonarrSettingsDTO;
-}
-
 export enum JobStatus {
   Started = "Started",
   Completed = "Completed",
@@ -636,6 +626,8 @@ export enum JobTypes {
   CheckPlexLibrariesForUpdatesJob = "CheckPlexLibrariesForUpdatesJob",
   LibraryComparisonJob = "LibraryComparisonJob",
   RefreshPlexAccountAccessJob = "RefreshPlexAccountAccessJob",
+  MediaOverviewSnapshotJob = "MediaOverviewSnapshotJob",
+  OptimizeDatabaseJob = "OptimizeDatabaseJob",
   Unknown = "Unknown",
 }
 
@@ -1295,12 +1287,6 @@ export interface RadarrIntegrationDTO {
   url: string;
 }
 
-export interface RadarrSettingsDTO {
-  isConfigured: boolean;
-  radarrApiKey: string;
-  radarrBaseUrl: string;
-}
-
 export enum RefreshDataType {
   PlexAccount = "PlexAccount",
   PlexServer = "PlexServer",
@@ -1832,7 +1818,6 @@ export interface SettingsModelDTO {
   displaySettings: DisplaySettingsDTO;
   downloadManagerSettings: DownloadManagerSettingsDTO;
   generalSettings: GeneralSettingsDTO;
-  integrationsSettings: IntegrationsSettingsDTO;
   languageSettings: LanguageSettingsDTO;
   networkSettings: NetworkSettingsDTO;
   serverSettings: ServerSettingsDTO;
@@ -1854,12 +1839,6 @@ export interface SonarrIntegrationDTO {
   name: string;
   provisioningState: IntegrationProvisioningState;
   url: string;
-}
-
-export interface SonarrSettingsDTO {
-  isConfigured: boolean;
-  sonarrApiKey: string;
-  sonarrBaseUrl: string;
 }
 
 export interface SuccessDTO {

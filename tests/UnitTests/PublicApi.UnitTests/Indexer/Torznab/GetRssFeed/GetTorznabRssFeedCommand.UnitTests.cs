@@ -12,7 +12,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldPageMoviePartsByAddedAt_WhenCatalogIsUnchanged()
+    public async Task ShouldPageMoviesByCanonicalOrder_WhenCatalogIsUnchanged()
     {
         // Arrange
         await SetupDatabase(
@@ -22,17 +22,15 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
                 config.PlexServerCount = 1;
                 config.PlexAccountCount = 1;
                 config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 4;
-                config.IncludeMultiPartMovies = true;
+                config.MovieCount = 5;
                 config.RadarrIntegrationCount = 1;
             }
         );
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var expected = await IDbContext
             .PlexMovieData.OrderByDescending(x => x.PlexMovie!.AddedAt)
-            .ThenByDescending(x => x.PlexServerId)
-            .ThenByDescending(x => x.PlexApiMediaId)
-            .ThenByDescending(x => x.PlexApiPartId)
+            .ThenByDescending(x => x.PlexMovie!.PlexServerId)
+            .ThenByDescending(x => x.PlexMovie!.PlexApiRatingKey)
             .Select(x => !string.IsNullOrEmpty(x.GeneratedFilename) ? x.GeneratedFilename : x.OriginalFilename)
             .ToListAsync(CancellationToken);
         var command = new GetTorznabRssFeedCommand
@@ -59,6 +57,54 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         result.Value.Channel.Items.Select(x => x.Guid.Value).Distinct().Count().ShouldBe(3);
         result.Value.Channel.Items.All(x => x.Guid.Value != x.Link).ShouldBeTrue();
         result.Value.Channel.Items.All(x => x.Attributes.Any(a => a.Name == "size")).ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldReturnFinalAvailableMovie_WhenPageBeginsAtFinalItem()
+    {
+        // Arrange
+        await SetupDatabase(
+            7654,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 4;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var expected = await dbContext
+            .PlexMovieData.OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenByDescending(x => x.PlexMovie!.PlexServerId)
+            .ThenByDescending(x => x.PlexMovie!.PlexApiRatingKey)
+            .Select(x => !string.IsNullOrEmpty(x.GeneratedFilename) ? x.GeneratedFilename : x.OriginalFilename)
+            .Skip(3)
+            .SingleAsync(CancellationToken);
+        var integration = (await dbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var command = new GetTorznabRssFeedCommand
+        {
+            Integration = integration,
+            Categories = [],
+            IncludeMovies = true,
+            IncludeEpisodes = false,
+            Limit = 1,
+            Offset = 3,
+            TorznabApiKey = "rss-key",
+            Attributes = [],
+            IncludeAllAttributes = true,
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Offset.ShouldBe(3);
+        result.Value.Channel.Response.Total.ShouldBe(4);
+        result.Value.Channel.Items.Select(x => x.Title).ShouldBe([expected]);
     }
 
     [Test]
@@ -108,6 +154,145 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
+    public async Task ShouldPageEpisodesGlobally_WhenMultipleLibrariesAreAccessible()
+    {
+        // Arrange
+        await SetupDatabase(
+            7652,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexTvShowLibraryCount = 2;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 2;
+                config.SonarrIntegrationCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var episodeIds = await dbContext
+            .PlexTvShowEpisodes.OrderBy(x => x.PlexLibraryId)
+            .ThenBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
+        episodeIds.Count.ShouldBe(4);
+
+        // Assign one deterministic timeline across both library branches so the expected page requires a global merge.
+        var baseAddedAt = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+        for (var i = 0; i < episodeIds.Count; i++)
+        {
+            var addedAt = baseAddedAt.AddMinutes(i);
+            await dbContext
+                .PlexTvShowEpisodes.Where(x => x.Id == episodeIds[i])
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.AddedAt, addedAt), CancellationToken);
+        }
+
+        var expectedTitles = await dbContext
+            .PlexTvShowEpisodeData.OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
+            .ThenByDescending(x => x.PlexTvShowEpisode!.PlexServerId)
+            .ThenByDescending(x => x.PlexTvShowEpisode!.PlexApiRatingKey)
+            .Select(x => !string.IsNullOrEmpty(x.GeneratedFilename) ? x.GeneratedFilename : x.OriginalFilename)
+            .Skip(1)
+            .Take(2)
+            .ToListAsync(CancellationToken);
+        var expectedTotal = await dbContext.PlexTvShowEpisodeData.CountAsync(CancellationToken);
+        var integration = (await dbContext.SonarrIntegrations.SingleAsync(CancellationToken)).Id.ToSonarrIdentity();
+        var command = new GetTorznabRssFeedCommand
+        {
+            Integration = integration,
+            Categories = [(int)TorznabCategoryId.TV],
+            IncludeMovies = false,
+            IncludeEpisodes = true,
+            Limit = 2,
+            Offset = 1,
+            TorznabApiKey = "rss-key",
+            Attributes = [],
+            IncludeAllAttributes = true,
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Offset.ShouldBe(1);
+        result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
+        result.Value.Channel.Items.Select(x => x.Title).ShouldBe(expectedTitles);
+    }
+
+    [Test]
+    public async Task ShouldContinueFromKeysetCursor_WhenFirstParentBatchHasNoMatchingMedia()
+    {
+        // Arrange
+        await SetupDatabase(
+            7653,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 257;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+
+        // With 257 parents, the oldest movie is excluded from the first 256-row parent batch.
+        // Making only that movie UHD proves the second keyset batch is queried and projected.
+        var oldestMovieId = await dbContext
+            .PlexMovies.OrderBy(x => x.AddedAt)
+            .ThenBy(x => x.PlexServerId)
+            .ThenBy(x => x.PlexApiRatingKey)
+            .Select(x => x.Id)
+            .FirstAsync(CancellationToken);
+        await dbContext.PlexMovieData.ExecuteUpdateAsync(
+            setters =>
+                setters
+                    .SetProperty(x => x.Source, ReleaseSource.WebDl)
+                    .SetProperty(x => x.VideoResolution, VideoQuality.SD),
+            CancellationToken
+        );
+        await dbContext
+            .PlexMovieData.Where(x => x.PlexMovieId == oldestMovieId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(x => x.VideoResolution, VideoQuality.UHD_4K),
+                CancellationToken
+            );
+        var expectedTitles = await dbContext
+            .PlexMovieData.Where(x => x.PlexMovieId == oldestMovieId)
+            .OrderByDescending(x => x.PlexMovie!.AddedAt)
+            .ThenByDescending(x => x.PlexMovie!.PlexServerId)
+            .ThenByDescending(x => x.PlexMovie!.PlexApiRatingKey)
+            .Select(x => !string.IsNullOrEmpty(x.GeneratedFilename) ? x.GeneratedFilename : x.OriginalFilename)
+            .ToListAsync(CancellationToken);
+        var integration = (await dbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
+        var command = new GetTorznabRssFeedCommand
+        {
+            Integration = integration,
+            Categories = [(int)TorznabCategoryId.Movies_UHD],
+            IncludeMovies = true,
+            IncludeEpisodes = false,
+            Limit = 50,
+            Offset = 0,
+            TorznabApiKey = "rss-key",
+            Attributes = [],
+            IncludeAllAttributes = true,
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Offset.ShouldBe(0);
+        result.Value.Channel.Response.Total.ShouldBe(expectedTitles.Count);
+        result.Value.Channel.Items.Select(x => x.Title).ShouldBe(expectedTitles);
+    }
+
+    [Test]
     public async Task ShouldReturnEmptyFeed_WhenOnlyUnknownCategoriesAreRequested()
     {
         // Arrange
@@ -146,7 +331,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldGloballyPageMoviesAndEpisodes_WhenBothTypesAreRequested()
+    public async Task ShouldGloballyPageMoviesAndEpisodes_WhenAddedAtTies()
     {
         // Arrange
         await SetupDatabase(
@@ -164,17 +349,41 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
                 config.RadarrIntegrationCount = 1;
             }
         );
-        var movieRows = await IDbContext.PlexMovieData
-            .Select(x => new { x.PlexMovie!.AddedAt, x.PlexServer!.MachineIdentifier, x.PlexApiMediaId, x.PlexApiPartId, Title = x.GetFileName })
+        var tiedAddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await IDbContext.PlexMovies.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.AddedAt, tiedAddedAt),
+            CancellationToken
+        );
+        await IDbContext.PlexTvShowEpisodes.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.AddedAt, tiedAddedAt),
+            CancellationToken
+        );
+        var movieRows = await IDbContext
+            .PlexMovieData.Select(x => new
+            {
+                x.PlexMovie!.AddedAt,
+                x.PlexMovie.PlexServerId,
+                x.PlexMovie.PlexApiRatingKey,
+                x.Id,
+                Title = x.GetFileName,
+            })
             .ToListAsync(CancellationToken);
-        var episodeRows = await IDbContext.PlexTvShowEpisodeData
-            .Select(x => new { x.PlexTvShowEpisode!.AddedAt, x.PlexServer!.MachineIdentifier, x.PlexApiMediaId, x.PlexApiPartId, Title = x.GetFileName })
+        var episodeRows = await IDbContext
+            .PlexTvShowEpisodeData.Select(x => new
+            {
+                x.PlexTvShowEpisode!.AddedAt,
+                x.PlexTvShowEpisode.PlexServerId,
+                x.PlexTvShowEpisode.PlexApiRatingKey,
+                x.Id,
+                Title = x.GetFileName,
+            })
             .ToListAsync(CancellationToken);
-        var expectedTitles = movieRows.Concat(episodeRows)
+        var expectedTitles = movieRows
+            .Concat(episodeRows)
             .OrderByDescending(x => x.AddedAt)
-            .ThenByDescending(x => x.MachineIdentifier)
-            .ThenByDescending(x => x.PlexApiMediaId)
-            .ThenByDescending(x => x.PlexApiPartId)
+            .ThenByDescending(x => x.PlexServerId)
+            .ThenByDescending(x => x.PlexApiRatingKey)
+            .ThenByDescending(x => x.Id)
             .Skip(1)
             .Take(3)
             .Select(x => x.Title)
@@ -214,8 +423,8 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
             Categories = [],
             IncludeMovies = true,
             IncludeEpisodes = false,
-            Limit = 10_000,
-            Offset = 0,
+            Limit = 100,
+            Offset = 9_900,
             TorznabApiKey = "rss-key",
             Attributes = [],
             IncludeAllAttributes = true,
@@ -227,6 +436,32 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         // Assert
         result.IsValid.ShouldBeTrue();
         result.Errors.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void ShouldRejectLimitAboveMaximumPageSize()
+    {
+        // Arrange
+        var validator = new GetTorznabRssFeedCommandValidator();
+        var command = new GetTorznabRssFeedCommand
+        {
+            Integration = new IntegrationIdentity(IntegrationType.Radarr, Guid.NewGuid()),
+            Categories = [],
+            IncludeMovies = true,
+            IncludeEpisodes = false,
+            Limit = TorznabSearchHelpers.MaxPageSize + 1,
+            Offset = 0,
+            TorznabApiKey = "rss-key",
+            Attributes = [],
+            IncludeAllAttributes = true,
+        };
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.Count.ShouldBe(1);
     }
 
     [Test]
@@ -374,7 +609,7 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     }
 
     [Test]
-    public async Task ShouldReturnFilteredTotalBeforePaging()
+    public async Task ShouldReturnExactTotal_WhenMoreFilteredItemsExist()
     {
         // Arrange
         await SetupDatabase(
@@ -388,15 +623,12 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
                 config.RadarrIntegrationCount = 1;
             }
         );
+        var expectedTotal = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
-        var category = GetMovieQualityCategory(await IDbContext.PlexMovieData.FirstAsync(CancellationToken));
-        var expectedTotal = (await IDbContext.PlexMovieData.ToListAsync(CancellationToken)).Count(x =>
-            GetMovieQualityCategory(x) == category
-        );
         var command = new GetTorznabRssFeedCommand
         {
             Integration = integration,
-            Categories = [category],
+            Categories = [],
             IncludeMovies = true,
             IncludeEpisodes = false,
             Limit = 1,
@@ -411,8 +643,9 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
-        result.Value.Channel.Items.Count.ShouldBe(Math.Min(1, Math.Max(0, expectedTotal - 1)));
+        result.Value.Channel.Items.ShouldHaveSingleItem();
     }
 
     [Test]
@@ -577,9 +810,22 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         result.IsSuccess.ShouldBeTrue();
         var names = result.Value.Channel.Items.Single().Attributes.Select(x => x.Name).ToList();
         names.ShouldBe([
-            "size", "category", "category", "category", "seeders", "peers", "type", "language",
-            "downloadvolumefactor", "uploadvolumefactor", "resolution", "source", "videoCodec", "audioCodec",
-            "tmdbid", "imdb",
+            "size",
+            "category",
+            "category",
+            "category",
+            "seeders",
+            "peers",
+            "type",
+            "language",
+            "downloadvolumefactor",
+            "uploadvolumefactor",
+            "resolution",
+            "source",
+            "videoCodec",
+            "audioCodec",
+            "tmdbid",
+            "imdb",
         ]);
     }
 
@@ -668,13 +914,39 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         using var dbContext = IDbContext;
         dbContext.ClearChangeTracker();
         var mediaIdsBefore = await dbContext.PlexMovieData.Select(x => x.Id).ToListAsync(CancellationToken);
-        var handler = new GetTorznabRssFeedCommandHandler(dbContext, Mock.Mock<INetworkSettings>().Object);
+        var handler = new GetTorznabRssFeedCommandHandler(
+            Serilog.Log.Logger,
+            dbContext,
+            Mock.Mock<INetworkSettings>().Object
+        );
 
         var result = await handler.ExecuteAsync(command, CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         (await dbContext.SaveChangesAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.PlexMovieData.Select(x => x.Id).ToListAsync(CancellationToken)).ShouldBe(mediaIdsBefore);
+    }
+
+    [Test]
+    public async Task ShouldReturnCancelledResult_WhenFeedReadIsCancelled()
+    {
+        // Arrange
+        await SetupDatabase(7655, ConfigureMovieFeed);
+        var command = await CreateMovieFeedCommand();
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+        var handler = new GetTorznabRssFeedCommandHandler(
+            Serilog.Log.Logger,
+            IDbContext,
+            Mock.Mock<INetworkSettings>().Object
+        );
+
+        // Act
+        var result = await handler.ExecuteAsync(command, cancellationTokenSource.Token);
+
+        // Assert
+        result.IsCancelled.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
     }
 
     [Test]
@@ -687,25 +959,34 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     )
     {
         // Arrange
-        await SetupDatabase(7647, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexAccountCount = 1;
-            config.PlexTvShowLibraryCount = 1;
-            config.TvShowCount = 1;
-            config.TvShowSeasonCount = 1;
-            config.TvShowEpisodeCount = 1;
-            config.SonarrIntegrationCount = 1;
-        });
+        await SetupDatabase(
+            7647,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 1;
+                config.SonarrIntegrationCount = 1;
+            }
+        );
         using (var dbContext = IDbContext)
         {
             var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
-            var genre = new PlexGenre { Name = genreType.ToString(), Key = $"torznab-{genreType}", Type = genreType };
+            var genre = new PlexGenre
+            {
+                Name = genreType.ToString(),
+                Key = $"torznab-{genreType}",
+                Type = genreType,
+            };
             dbContext.PlexGenres.Add(genre);
             await dbContext.SaveChangesAsync(CancellationToken);
             dbContext.PlexTvShowGenres.Add(new PlexTvShowGenres(genre.Id, tvShow.PlexLibraryId, tvShow.Id));
             await dbContext.SaveChangesAsync(CancellationToken);
         }
+
         var integration = (await IDbContext.SonarrIntegrations.SingleAsync(CancellationToken)).Id.ToSonarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -726,34 +1007,43 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.Channel.Items.ShouldHaveSingleItem();
-        result.Value.Channel.Items.Single().Attributes.ShouldContain(x =>
-            x.Name == "category" && x.Value == ((int)category).ToString()
-        );
+        result
+            .Value.Channel.Items.Single()
+            .Attributes.ShouldContain(x => x.Name == "category" && x.Value == ((int)category).ToString());
     }
 
     [Test]
     public async Task ShouldNotEmitSpecificTvGenreCategory_WhenGenreTypeIsGroup()
     {
         // Arrange
-        await SetupDatabase(7648, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexAccountCount = 1;
-            config.PlexTvShowLibraryCount = 1;
-            config.TvShowCount = 1;
-            config.TvShowSeasonCount = 1;
-            config.TvShowEpisodeCount = 1;
-            config.SonarrIntegrationCount = 1;
-        });
+        await SetupDatabase(
+            7648,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 1;
+                config.SonarrIntegrationCount = 1;
+            }
+        );
         using (var dbContext = IDbContext)
         {
             var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
-            var genre = new PlexGenre { Name = "Sport / Documentary", Key = "torznab-group", Type = PlexGenreType.Group };
+            var genre = new PlexGenre
+            {
+                Name = "Sport / Documentary",
+                Key = "torznab-group",
+                Type = PlexGenreType.Group,
+            };
             dbContext.PlexGenres.Add(genre);
             await dbContext.SaveChangesAsync(CancellationToken);
             dbContext.PlexTvShowGenres.Add(new PlexTvShowGenres(genre.Id, tvShow.PlexLibraryId, tvShow.Id));
             await dbContext.SaveChangesAsync(CancellationToken);
         }
+
         var integration = (await IDbContext.SonarrIntegrations.SingleAsync(CancellationToken)).Id.ToSonarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -780,30 +1070,44 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldKeepMovieAndEpisodeGenresSeparate_WhenMediaIdsOverlap()
     {
         // Arrange
-        await SetupDatabase(7649, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexAccountCount = 1;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieCount = 1;
-            config.PlexTvShowLibraryCount = 1;
-            config.TvShowCount = 1;
-            config.TvShowSeasonCount = 1;
-            config.TvShowEpisodeCount = 1;
-            config.RadarrIntegrationCount = 1;
-        });
+        await SetupDatabase(
+            7649,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 1;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
         using (var dbContext = IDbContext)
         {
             var movie = await dbContext.PlexMovies.SingleAsync(CancellationToken);
             var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
-            var foreign = new PlexGenre { Name = "Foreign", Key = "mixed-foreign", Type = PlexGenreType.Foreign };
-            var anime = new PlexGenre { Name = "Anime", Key = "mixed-anime", Type = PlexGenreType.Anime };
+            var foreign = new PlexGenre
+            {
+                Name = "Foreign",
+                Key = "mixed-foreign",
+                Type = PlexGenreType.Foreign,
+            };
+            var anime = new PlexGenre
+            {
+                Name = "Anime",
+                Key = "mixed-anime",
+                Type = PlexGenreType.Anime,
+            };
             dbContext.PlexGenres.AddRange(foreign, anime);
             await dbContext.SaveChangesAsync(CancellationToken);
             dbContext.PlexMovieGenres.Add(new PlexMovieGenres(foreign.Id, movie.PlexLibraryId, movie.Id));
             dbContext.PlexTvShowGenres.Add(new PlexTvShowGenres(anime.Id, tvShow.PlexLibraryId, tvShow.Id));
             await dbContext.SaveChangesAsync(CancellationToken);
         }
+
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -823,12 +1127,24 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        var movieItem = result.Value.Channel.Items.Single(x => x.Attributes.Any(a => a.Name == "type" && a.Value == "movie"));
-        var episodeItem = result.Value.Channel.Items.Single(x => x.Attributes.Any(a => a.Name == "type" && a.Value == "series"));
-        movieItem.Attributes.ShouldContain(x => x.Name == "category" && x.Value == ((int)TorznabCategoryId.Movies_Foreign).ToString());
-        movieItem.Attributes.ShouldNotContain(x => x.Name == "category" && x.Value == ((int)TorznabCategoryId.TV_Anime).ToString());
-        episodeItem.Attributes.ShouldContain(x => x.Name == "category" && x.Value == ((int)TorznabCategoryId.TV_Anime).ToString());
-        episodeItem.Attributes.ShouldNotContain(x => x.Name == "category" && x.Value == ((int)TorznabCategoryId.Movies_Foreign).ToString());
+        var movieItem = result.Value.Channel.Items.Single(x =>
+            x.Attributes.Any(a => a.Name == "type" && a.Value == "movie")
+        );
+        var episodeItem = result.Value.Channel.Items.Single(x =>
+            x.Attributes.Any(a => a.Name == "type" && a.Value == "series")
+        );
+        movieItem.Attributes.ShouldContain(x =>
+            x.Name == "category" && x.Value == ((int)TorznabCategoryId.Movies_Foreign).ToString()
+        );
+        movieItem.Attributes.ShouldNotContain(x =>
+            x.Name == "category" && x.Value == ((int)TorznabCategoryId.TV_Anime).ToString()
+        );
+        episodeItem.Attributes.ShouldContain(x =>
+            x.Name == "category" && x.Value == ((int)TorznabCategoryId.TV_Anime).ToString()
+        );
+        episodeItem.Attributes.ShouldNotContain(x =>
+            x.Name == "category" && x.Value == ((int)TorznabCategoryId.Movies_Foreign).ToString()
+        );
     }
 
     private static int GetMovieQualityCategory(PlexMovieMediaData mediaData)
@@ -851,10 +1167,9 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         var expected = first.Value.Channel.Items.Select(x => x.Guid.Value).ToList();
         using (var dbContext = IDbContext)
         {
-            await dbContext.PlexServers.IgnoreQueryFilters().ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.IsEnabled, false),
-                CancellationToken
-            );
+            await dbContext
+                .PlexServers.IgnoreQueryFilters()
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.IsEnabled, false), CancellationToken);
             ((DbContext)dbContext).ChangeTracker.Clear();
         }
 
@@ -862,12 +1177,12 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         var disabled = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
         using (var dbContext = IDbContext)
         {
-            await dbContext.PlexServers.IgnoreQueryFilters().ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.IsEnabled, true),
-                CancellationToken
-            );
+            await dbContext
+                .PlexServers.IgnoreQueryFilters()
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.IsEnabled, true), CancellationToken);
             ((DbContext)dbContext).ChangeTracker.Clear();
         }
+
         var restored = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
 
         // Assert
@@ -880,20 +1195,31 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldDenyAccess_WhenServerAndLibraryAccessBelongToDifferentAccounts()
     {
         // Arrange
-        await SetupDatabase(7651, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexAccountCount = 2;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieCount = 1;
-            config.RadarrIntegrationCount = 1;
-        });
+        await SetupDatabase(
+            7651,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 2;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 1;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
         using (var dbContext = IDbContext)
         {
-            var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
-            await dbContext.PlexAccountServers.Where(x => x.PlexAccountId == accounts[1]).ExecuteDeleteAsync(CancellationToken);
-            await dbContext.PlexAccountLibraries.Where(x => x.PlexAccountId == accounts[0]).ExecuteDeleteAsync(CancellationToken);
+            var accounts = await dbContext
+                .PlexAccounts.OrderBy(x => x.Id)
+                .Select(x => x.Id)
+                .ToListAsync(CancellationToken);
+            await dbContext
+                .PlexAccountServers.Where(x => x.PlexAccountId == accounts[1])
+                .ExecuteDeleteAsync(CancellationToken);
+            await dbContext
+                .PlexAccountLibraries.Where(x => x.PlexAccountId == accounts[0])
+                .ExecuteDeleteAsync(CancellationToken);
         }
+
         var command = await CreateMovieFeedCommand();
 
         // Act

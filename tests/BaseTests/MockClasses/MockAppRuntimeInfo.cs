@@ -40,6 +40,7 @@ public class MockAppRuntimeInfo : IAppRuntimeInfo
     public string? AppImage { get; set; }
     public bool ShouldLogEnvVars { get; set; }
     public string SEQ_Url { get; set; } = "http://localhost:5341";
+    public string SEQ_ApiKey { get; set; } = Guid.NewGuid().ToString("N");
 
     public string AppRunId { get; } = Guid.NewGuid().ToString("N");
 

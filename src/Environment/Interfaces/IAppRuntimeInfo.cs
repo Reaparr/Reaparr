@@ -101,6 +101,13 @@ public interface IAppRuntimeInfo
     string SEQ_Url { get; }
 
     /// <summary>
+    /// Sets the SEQ_API_KEY environment variable to the specified API key.
+    /// Note: This is used for development and testing purposes to redirect logs to a hosted Docker instance of Seq.
+    /// </summary>
+    // ReSharper disable once InconsistentNaming
+    string SEQ_ApiKey { get; }
+
+    /// <summary>
     /// Gets the unique identifier for this application process lifetime. It is attached to every
     /// structured log event so Seq queries can isolate the current or a specific application run.
     /// </summary>

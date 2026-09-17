@@ -1,44 +1,25 @@
-using System.Diagnostics.CodeAnalysis;
-using Reaparr.Application.Contracts;
 using Reaparr.Environment;
 
-// ReSharper disable InconsistentNaming
-
 namespace Reaparr.PublicAPI;
+ 
+public record SearchMovieCommand(TorznabRequest Request) : ICommand<Result<TorznabMediaSearchResponseDTO>>;
 
-public record SearchMovieCommand : ICommand<Result<TorznabMediaSearchResponseDTO>>
-{
-    [SetsRequiredMembers]
-    public SearchMovieCommand()
-    {
-        Query = string.Empty;
-        Integration = new IntegrationIdentity(IntegrationType.Radarr, Guid.Empty);
-    }
-
-    public required string Query { get; init; }
-    public required int Limit { get; init; }
-    public required int Offset { get; init; }
-    public string? IMDB_ID { get; init; }
-    public required int TMDB_ID { get; init; }
-    public required IntegrationIdentity Integration { get; init; }
-    public string TorznabApiKey { get; init; } = string.Empty;
-    public int[] Categories { get; init; } = [];
-    public string[] Attributes { get; init; } = [];
-    public bool IncludeAllAttributes { get; init; } = true;
-}
 
 public class SearchMovieCommandValidator : AbstractValidator<SearchMovieCommand>
 {
     public SearchMovieCommandValidator()
     {
-        RuleFor(x => x.Limit).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Offset).GreaterThanOrEqualTo(0);
-        RuleFor(x => x)
+        RuleFor(x => x.Request.Limit).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Request.Limit)
+            .Must(TorznabSearchHelpers.IsPageSizeWithinLimit)
+            .WithMessage($"The limit must not exceed {TorznabSearchHelpers.MaxPageSize}.");
+        RuleFor(x => x.Request.Offset).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Request)
             .Must(x => TorznabSearchHelpers.IsPaginationWithinLimit(x.Offset, x.Limit))
             .WithMessage($"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}.");
-        RuleFor(x => x.TMDB_ID).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Categories).NotNull();
-        RuleFor(x => x.Attributes).NotNull();
+        RuleFor(x => x.Request.TmdbId).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Request.Categories).NotNull();
+        RuleFor(x => x.Request.Attributes).NotNull();
     }
 }
 
@@ -67,81 +48,80 @@ public class SearchMovieCommandHandler : ICommandHandler<SearchMovieCommand, Res
         CancellationToken cancellationToken
     )
     {
+        var request = command.Request;
         var onlineServerIds = await _dbContext.GetDownloadableServerIds();
         if (onlineServerIds.Count == 0)
         {
-            _log.Here().Warning("No online Plex servers with downloads enabled were found, returning empty search results");
+            _log.Here()
+                .Warning("No online Plex servers with downloads enabled were found, returning empty search results");
             return Result.Ok(
-                TorznabSearchHelpers.CreateResponse(
-                    $"Movie Search results for {command.Query}",
-                    command.Offset,
-                    0,
-                    []
-                )
+                TorznabSearchHelpers.CreateResponse($"Movie Search results for {request.Query}", request.Offset, 0, [])
             );
         }
 
-        var query = _dbContext.PlexMovieData.Where(x =>
-            onlineServerIds.Contains(x.PlexServerId)
-            && x.PlexMovie!.PlexLibrary!.PlexAccountLibraries.Any(libraryAccess =>
-                x.PlexMovie.PlexServer!.PlexAccountServers.Any(serverAccess =>
-                    serverAccess.PlexAccountId == libraryAccess.PlexAccountId
-                )
-            )
-        );
+        var accessibleLibraryIds = await _dbContext.GetAccessibleLibraryIds(onlineServerIds, PlexMediaType.Movie);
+        var candidateMovieIds = _dbContext.PlexMovies.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId));
 
-        if (!string.IsNullOrWhiteSpace(command.Query))
+        if (!string.IsNullOrWhiteSpace(request.Query))
         {
-            var searchTitle = command.Query.ToSearchTitle();
+            var searchTitle = request.Query.ToSearchTitle();
             if (string.IsNullOrWhiteSpace(searchTitle))
                 return Result.Ok(
                     TorznabSearchHelpers.CreateResponse(
-                        $"Movie Search results for {command.Query}",
-                        command.Offset,
+                        $"Movie Search results for {request.Query}",
+                        request.Offset,
                         0,
                         []
                     )
                 );
-            query = query.Where(x => EF.Functions.Like(x.PlexMovie!.SearchTitle, $"{searchTitle}%"));
+
+            candidateMovieIds = candidateMovieIds.Where(x => EF.Functions.Like(x.SearchTitle, $"{searchTitle}%"));
         }
 
-        if (!string.IsNullOrWhiteSpace(command.IMDB_ID))
-            query = query.Where(x => x.PlexMovie!.Guid_IMDB == "tt" + command.IMDB_ID);
-        if (command.TMDB_ID > 0)
-            query = query.Where(x => x.PlexMovie!.Guid_TMDB == command.TMDB_ID);
+        if (!string.IsNullOrWhiteSpace(request.ImdbId))
+        {
+            var imdbId = TorznabImdbId.Normalize(request.ImdbId);
+            candidateMovieIds = imdbId is null
+                ? candidateMovieIds.Where(_ => false)
+                : candidateMovieIds.Where(x => x.Guid_IMDB == imdbId);
+        }
 
-        query = query.ApplyTorznabCategories(command.Categories);
-        var total = await query.CountAsync(cancellationToken);
-        var orderedQuery = query
-            .OrderByDescending(x => x.PlexMovie!.AddedAt)
-            .ThenBy(x => x.PlexServer!.MachineIdentifier)
-            .ThenBy(x => x.PlexMovie!.PlexApiRatingKey)
-            .ThenBy(x => x.PlexApiMediaId)
-            .ThenBy(x => x.PlexApiPartId);
-        var rows = await orderedQuery
-            .Skip(command.Offset)
-            .Take(command.Limit)
+        if (request.TmdbId > 0)
+            candidateMovieIds = candidateMovieIds.Where(x => x.Guid_TMDB == request.TmdbId);
+
+        var query = _dbContext
+            .PlexMovieData.Where(x => candidateMovieIds.Select(movie => movie.Id).Contains(x.PlexMovieId))
+            .ApplyTorznabCategories(request.Categories);
+
+        var total = await query.TagWith("Torznab/ActiveMovie/Count").CountAsync(cancellationToken);
+        var rows = await query
+            .TagWith("Torznab/ActiveMovie/Page")
             .ProjectToTorznabFeedItems()
+            .OrderForTorznab()
+            .Skip(request.Offset)
+            .Take(request.Limit)
             .ToListAsync(cancellationToken);
+        rows = await rows.EnrichGenresAsync(_dbContext, cancellationToken);
         var requestedAttributes = TorznabSearchHelpers.GetRequestedAttributes(
-            command.IncludeAllAttributes,
-            command.Attributes
+            request.IncludeAllAttributes,
+            request.Attributes
         );
-        var items = rows
-            .Select(x =>
+        var baseUrl = _networkSettings.Url;
+        var isDevelopmentEnvironment = _appRuntimeInfo.IsDevelopmentEnvironment;
+        var items = rows.Select(x =>
                 x.ToTorznabItem(
-                    command.Integration,
-                    command.TorznabApiKey,
-                    _networkSettings.Url,
+                    request.Integration,
+                    request.ApiKey,
+                    baseUrl,
                     requestedAttributes,
-                    _appRuntimeInfo.IsDevelopmentEnvironment
+                    isDevelopmentEnvironment
                 )
             )
             .ToList();
         return Result.Ok(
             TorznabSearchHelpers.CreateResponse(
-                $"Movie Search results for {command.Query}",
-                command.Offset,
+                $"Movie Search results for {request.Query}",
+                request.Offset,
                 total,
                 items
             )

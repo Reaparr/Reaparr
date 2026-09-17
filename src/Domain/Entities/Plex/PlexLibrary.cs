@@ -92,44 +92,58 @@ public class PlexLibrary : BaseEntity
     public int MovieCount { get; init; }
 
     /// <summary>
-    /// Gets the total <see cref="PlexTvShow"/> count.
+    /// Gets the total downloadable movie media-data rows in this library.
+    /// A logical movie can contribute multiple rows when Plex exposes multiple versions or file parts.
     /// </summary>
     [Column(Order = 15)]
+    public int MovieMediaDataCount { get; init; }
+
+    /// <summary>
+    /// Gets the total <see cref="PlexTvShow"/> count.
+    /// </summary>
+    [Column(Order = 16)]
     public int TvShowCount { get; init; }
 
     /// <summary>
     /// Gets the total <see cref="PlexTvShowSeason"/> count of all <see cref="PlexTvShow">PlexTvShows</see> in this library.
     /// </summary>
-    [Column(Order = 16)]
+    [Column(Order = 17)]
     public int SeasonCount { get; init; }
 
     /// <summary>
     /// Gets the total <see cref="PlexTvShowEpisode"/> count of all <see cref="PlexTvShow">PlexTvShows</see> in this library.
     /// </summary>
-    [Column(Order = 17)]
+    [Column(Order = 18)]
     public int EpisodeCount { get; init; }
 
-    [Column(Order = 18)]
-    public int ActorsCount { get; init; }
-
+    /// <summary>
+    /// Gets the total downloadable episode media-data rows in this library.
+    /// A logical episode can contribute multiple rows when Plex exposes multiple versions or file parts.
+    /// </summary>
     [Column(Order = 19)]
-    public int GenresCount { get; init; }
+    public int EpisodeMediaDataCount { get; init; }
 
     [Column(Order = 20)]
+    public int ActorsCount { get; init; }
+
+    [Column(Order = 21)]
+    public int GenresCount { get; init; }
+
+    [Column(Order = 22)]
     public int CountriesCount { get; init; }
 
     /// <summary>
     /// Gets a value indicating whether this <see cref="PlexLibrary"/> needs to be synced with Reaparr.
     /// This is dependent on <see cref="ContentChangedAt"/>, when a higher value is set from the Plex API, then its marked as outdated.
     /// </summary>
-    [Column(Order = 21)]
+    [Column(Order = 23)]
     public bool Outdated { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether this <see cref="PlexLibrary"/> is enabled.
     /// When disabled, the library is excluded from normal workflows and its synced media data is purged.
     /// </summary>
-    [Column(Order = 22)]
+    [Column(Order = 24)]
     public bool IsEnabled { get; set; } = true;
 
     /// <summary>

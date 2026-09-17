@@ -9,6 +9,12 @@ public sealed record TorznabFeedItemProjection
 {
     public required PlexMediaType MediaType { get; init; }
     public required int MediaId { get; init; }
+
+    /// <summary>
+    /// Database ID used to load genres: movie ID for movies, TV-show ID for episodes.
+    /// </summary>
+    public required int GenreOwnerId { get; init; }
+
     public required int DataId { get; init; }
     public required int PlexServerId { get; init; }
     public required string PlexServerMachineIdentifier { get; init; }
@@ -66,11 +72,12 @@ public sealed record TorznabFeedItemProjection
             .SetQueryParams(torrentMetadata.Values)
             .SetQueryParam(IntegrationDefinitions.INDEXER_API_KEY, torznabApiKey, isEncoded: false);
         var categories = this.ToTorznabCategories();
+        var stableId = CreateStableId();
         var item = new TorznabItem
         {
             Title = Title,
             PubDate = AddedAt.ToUniversalTime().ToString("R"),
-            Guid = new TorznabGuid { Value = CreateStableId() },
+            Guid = new TorznabGuid { Value = stableId },
             Link = downloadUrl,
             Size = Size,
             Enclosure = new TorznabEnclosure
@@ -90,8 +97,11 @@ public sealed record TorznabFeedItemProjection
         item.Attributes.Add(new TorznabAttr("size", Size.ToString()));
         foreach (var category in categories.Distinct())
             item.Attributes.Add(new TorznabAttr("category", ((int)category).ToString()));
-        item.Attributes.Add(new TorznabAttr("seeders", "1"));
-        item.Attributes.Add(new TorznabAttr("peers", "1"));
+
+        var memeCount = MemeNumberGenerator.GetMemeNumber(stableId).ToString();
+        item.Attributes.Add(new TorznabAttr("seeders", memeCount));
+        item.Attributes.Add(new TorznabAttr("peers", memeCount));
+
         item.Attributes.Add(new TorznabAttr("type", MediaType == PlexMediaType.Movie ? "movie" : "series"));
         // TODO: Derive language from Plex media stream metadata when language-specific stream data is available.
         item.Attributes.Add(new TorznabAttr("language", "English"));
@@ -119,8 +129,8 @@ public sealed record TorznabFeedItemProjection
         }
 
         if (requestedAttributes is not null)
-            item.Attributes = item.Attributes
-                .Where(x => x.Name is "size" or "category" || requestedAttributes.Contains(x.Name))
+            item.Attributes = item
+                .Attributes.Where(x => x.Name is "size" or "category" || requestedAttributes.Contains(x.Name))
                 .ToList();
 
         return item;

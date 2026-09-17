@@ -1,3 +1,5 @@
+using Reaparr.Application.Contracts;
+
 namespace Reaparr.PublicAPI;
 
 public sealed record TorznabRequest
@@ -15,6 +17,8 @@ public sealed record TorznabRequest
     public required int[] Categories { get; init; }
     public int? Extended { get; init; }
     public required string[] Attributes { get; init; }
+
+    public required IntegrationIdentity Integration { get; init; }
 
     public bool IncludeAllAttributes => Extended == 1 || Attributes.Length == 0;
 
@@ -45,4 +49,6 @@ public sealed record TorznabRequest
         && TvdbId <= 0
         && Season <= 0
         && Episode <= 0;
+
+    public bool HasAnyExternalId => !string.IsNullOrWhiteSpace(ImdbId) || TmdbId > 0 || TvdbId > 0;
 }

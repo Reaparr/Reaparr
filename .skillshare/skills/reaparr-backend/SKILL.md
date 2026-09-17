@@ -138,10 +138,11 @@ Prefer Reaparr-specific skills over generic skills when both apply.
 
 ### EF Core migrations
 
-- Never hand-author, manually create, or manually edit EF Core migration files or `*ModelSnapshot.cs` files.
-- Always generate migrations through MCP tooling with `dotnet-mcp:dotnet_ef` and `action: MigrationsAdd`.
+- Generate EF Core migration files and `*ModelSnapshot.cs` files through MCP tooling with `dotnet-mcp:dotnet_ef` and `action: MigrationsAdd`; do not hand-author schema migrations or snapshots.
+- A generated migration's `Up` or `Down` method may be manually extended with reviewed `migrationBuilder.Sql(...)` statements only for deterministic data backfills or transformations that EF Core cannot generate. Keep schema operations, designer files, and model snapshots generated-only.
 - If a migration needs to be removed or regenerated, use `dotnet-mcp:dotnet_ef` with the appropriate migration action instead of deleting or rewriting files by hand.
-- After MCP migration generation, inspect generated files and run native diagnostics on the changed model/configuration files before claiming completion.
+- After migration generation or an allowed SQL backfill edit, inspect the migration and run native diagnostics on every changed model, configuration, and migration file.
+- Verify data backfills against both an upgrade from the preceding schema and creation of a fresh database.
 
 ### Background Jobs
 

@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-
-namespace Reaparr.Data.Configurations;
+﻿namespace Reaparr.Data.Configurations;
 
 public class DownloadTaskFileBaseConfiguration : IEntityTypeConfiguration<DownloadTaskFileBase>
 {

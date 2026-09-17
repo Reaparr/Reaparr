@@ -1115,7 +1115,7 @@ namespace Reaparr.Data.Migrations
 
                     b.Property<int>("ActorsCount")
                         .HasColumnType("INTEGER")
-                        .HasColumnOrder(18);
+                        .HasColumnOrder(20);
 
                     b.Property<long>("ContentChangedAt")
                         .HasColumnType("INTEGER")
@@ -1123,7 +1123,7 @@ namespace Reaparr.Data.Migrations
 
                     b.Property<int>("CountriesCount")
                         .HasColumnType("INTEGER")
-                        .HasColumnOrder(20);
+                        .HasColumnOrder(22);
 
                     b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("TEXT")
@@ -1134,17 +1134,21 @@ namespace Reaparr.Data.Migrations
 
                     b.Property<int>("EpisodeCount")
                         .HasColumnType("INTEGER")
-                        .HasColumnOrder(17);
+                        .HasColumnOrder(18);
+
+                    b.Property<int>("EpisodeMediaDataCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnOrder(19);
 
                     b.Property<int>("GenresCount")
                         .HasColumnType("INTEGER")
-                        .HasColumnOrder(19);
+                        .HasColumnOrder(21);
 
                     b.Property<bool>("IsEnabled")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true)
-                        .HasColumnOrder(22);
+                        .HasColumnOrder(24);
 
                     b.Property<string>("Key")
                         .IsRequired()
@@ -1169,9 +1173,13 @@ namespace Reaparr.Data.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnOrder(14);
 
+                    b.Property<int>("MovieMediaDataCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnOrder(15);
+
                     b.Property<bool>("Outdated")
                         .HasColumnType("INTEGER")
-                        .HasColumnOrder(21);
+                        .HasColumnOrder(23);
 
                     b.Property<int>("PlexServerId")
                         .HasColumnType("INTEGER");
@@ -1182,7 +1190,7 @@ namespace Reaparr.Data.Migrations
 
                     b.Property<int>("SeasonCount")
                         .HasColumnType("INTEGER")
-                        .HasColumnOrder(16);
+                        .HasColumnOrder(17);
 
                     b.Property<DateTime?>("SyncedAt")
                         .HasColumnType("TEXT")
@@ -1200,7 +1208,7 @@ namespace Reaparr.Data.Migrations
 
                     b.Property<int>("TvShowCount")
                         .HasColumnType("INTEGER")
-                        .HasColumnOrder(15);
+                        .HasColumnOrder(16);
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -1417,7 +1425,8 @@ namespace Reaparr.Data.Migrations
                     b.Property<string>("SearchTitle")
                         .IsRequired()
                         .HasColumnType("TEXT")
-                        .HasColumnOrder(5);
+                        .HasColumnOrder(5)
+                        .UseCollation("NOCASE");
 
                     b.Property<int>("SortIndex")
                         .HasColumnType("INTEGER")
@@ -1458,9 +1467,17 @@ namespace Reaparr.Data.Migrations
 
                     b.HasIndex("PlexApiRatingKey", "PlexServerId");
 
+                    b.HasIndex("PlexLibraryId", "Guid_IMDB");
+
+                    b.HasIndex("PlexLibraryId", "Guid_TMDB");
+
                     b.HasIndex("PlexLibraryId", "Quality");
 
+                    b.HasIndex("PlexLibraryId", "SearchTitle");
+
                     b.HasIndex("PlexLibraryId", "SortIndex");
+
+                    b.HasIndex("PlexLibraryId", "AddedAt", "PlexServerId", "PlexApiRatingKey");
 
                     b.ToTable("PlexMovie");
                 });
@@ -2040,7 +2057,8 @@ namespace Reaparr.Data.Migrations
                     b.Property<string>("SearchTitle")
                         .IsRequired()
                         .HasColumnType("TEXT")
-                        .HasColumnOrder(5);
+                        .HasColumnOrder(5)
+                        .UseCollation("NOCASE");
 
                     b.Property<int>("SortIndex")
                         .HasColumnType("INTEGER")
@@ -2081,7 +2099,15 @@ namespace Reaparr.Data.Migrations
 
                     b.HasIndex("PlexApiRatingKey", "PlexServerId");
 
+                    b.HasIndex("PlexLibraryId", "Guid_IMDB");
+
+                    b.HasIndex("PlexLibraryId", "Guid_TMDB");
+
+                    b.HasIndex("PlexLibraryId", "Guid_TVDB");
+
                     b.HasIndex("PlexLibraryId", "Quality");
+
+                    b.HasIndex("PlexLibraryId", "SearchTitle");
 
                     b.HasIndex("PlexLibraryId", "SortIndex");
 
@@ -2313,8 +2339,6 @@ namespace Reaparr.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlexLibraryId");
-
                     b.HasIndex("PlexServerId");
 
                     b.HasIndex("SortIndex");
@@ -2323,7 +2347,11 @@ namespace Reaparr.Data.Migrations
 
                     b.HasIndex("TvShowId", "SortIndex");
 
+                    b.HasIndex("TvShowSeasonId", "EpisodeNumber");
+
                     b.HasIndex("TvShowSeasonId", "SortIndex");
+
+                    b.HasIndex("PlexLibraryId", "AddedAt", "PlexServerId", "PlexApiRatingKey");
 
                     b.ToTable("PlexTvShowEpisodes");
                 });
@@ -2612,6 +2640,8 @@ namespace Reaparr.Data.Migrations
                     b.HasIndex("PlexApiRatingKey", "PlexServerId");
 
                     b.HasIndex("PlexLibraryId", "SortIndex");
+
+                    b.HasIndex("TvShowId", "SeasonNumber");
 
                     b.ToTable("PlexTvShowSeason");
                 });

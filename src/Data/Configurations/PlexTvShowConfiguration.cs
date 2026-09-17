@@ -8,7 +8,26 @@ public class PlexTvShowConfiguration : IEntityTypeConfiguration<PlexTvShow>
         builder.HasIndex(x => x.Quality);
         builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
         builder.HasIndex(x => new { x.PlexLibraryId, x.Quality });
+        // SearchTvShowCommandHandler and SearchGenericCommandHandler use LIKE '<normalized-title>%';
+        // NOCASE lets SQLite turn that case-insensitive prefix predicate into an index range.
+        builder.Property(x => x.SearchTitle).UseCollation("NOCASE");
         builder.HasIndex(x => x.SearchTitle);
+
+        // SearchTvShowCommandHandler and SearchGenericCommandHandler first restrict shows by accessible library,
+        // then match Guid_TVDB; this index resolves show candidates before episode and media-data rows are read.
+        builder.HasIndex(x => new { x.PlexLibraryId, x.Guid_TVDB });
+
+        // SearchTvShowCommandHandler and SearchGenericCommandHandler first restrict shows by accessible library,
+        // then match Guid_TMDB; this index resolves show candidates before episode and media-data rows are read.
+        builder.HasIndex(x => new { x.PlexLibraryId, x.Guid_TMDB });
+
+        // SearchTvShowCommandHandler and SearchGenericCommandHandler first restrict shows by accessible library,
+        // then match Guid_IMDB; this index resolves show candidates before episode and media-data rows are read.
+        builder.HasIndex(x => new { x.PlexLibraryId, x.Guid_IMDB });
+
+        // SearchTvShowCommandHandler and SearchGenericCommandHandler first restrict shows by accessible library,
+        // then run a normalized SearchTitle prefix match; this index avoids scanning every show in those libraries.
+        builder.HasIndex(x => new { x.PlexLibraryId, x.SearchTitle });
 
         builder.HasIndex(x => new { x.PlexApiRatingKey, x.PlexServerId });
 

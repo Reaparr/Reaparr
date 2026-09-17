@@ -21,7 +21,7 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseUnitTest<SyncPlexMovies
         var library = IDbContext.PlexLibraries.First();
         library.ShouldNotBeNull();
 
-        var movies = FakeData.GetPlexMovies(seed).Generate(50);
+        var movies = FakeData.GetPlexMovies(seed, x => x.IncludeMultiPartMovies = true).Generate(50);
         SetIds(library, movies);
 
         library.Movies.AddRange(movies);
@@ -37,8 +37,14 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseUnitTest<SyncPlexMovies
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var plexMoviesDb = IDbContext.PlexMovies.ToList();
         plexMoviesDb.Count.ShouldBe(50);
+        var mediaDataCount = IDbContext.PlexMovieData.Count(x => x.PlexLibraryId == library.Id);
+        mediaDataCount.ShouldBe(100);
+        var persistedLibrary = IDbContext.PlexLibraries.Single(x => x.Id == library.Id);
+        persistedLibrary.MovieCount.ShouldBe(50);
+        persistedLibrary.MovieMediaDataCount.ShouldBe(mediaDataCount);
     }
 
     [Test]
@@ -132,6 +138,7 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseUnitTest<SyncPlexMovies
         var unchangedMediaIds = unchanged.MediaDataList.Select(x => x.Id).Order().ToList();
         var changedId = changedCurrent.Id;
         var oldChangedMediaIds = changedCurrent.MediaDataList.Select(x => x.Id).ToHashSet();
+        unchanged.MediaDataList.Remove(unchanged.MediaDataList.First());
         var changed = FakeData.GetPlexMovies(seed, x => x.IncludeMultiPartMovies = true).Generate();
         changed.PlexApiRatingKey = changedCurrent.PlexApiRatingKey;
         changed.UpdatedAt = changedCurrent.UpdatedAt?.AddSeconds(1) ?? DateTime.UtcNow;
@@ -159,6 +166,10 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseUnitTest<SyncPlexMovies
         persistedChanged.Id.ShouldBe(changedId);
         persistedChanged.MediaDataList.Count.ShouldBe(2);
         persistedChanged.MediaDataList.ShouldAllBe(x => !oldChangedMediaIds.Contains(x.Id));
+        var persistedMediaDataCount = persisted.Sum(x => x.MediaDataList.Count);
+        IDbContext
+            .PlexLibraries.Single(x => x.Id == library.Id)
+            .MovieMediaDataCount.ShouldBe(persistedMediaDataCount);
     }
 
     [Test]

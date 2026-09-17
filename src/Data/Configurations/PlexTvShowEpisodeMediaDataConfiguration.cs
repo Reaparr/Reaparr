@@ -1,4 +1,4 @@
-﻿namespace Reaparr.Data.Configurations;
+namespace Reaparr.Data.Configurations;
 
 public class PlexTvShowEpisodeMediaDataConfiguration : IEntityTypeConfiguration<PlexTvShowEpisodeMediaData>
 {

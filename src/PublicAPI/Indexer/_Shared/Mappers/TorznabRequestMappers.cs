@@ -1,10 +1,15 @@
+using Reaparr.Application.Contracts;
+
 namespace Reaparr.PublicAPI;
 
 public static class TorznabRequestMappers
 {
     private static readonly ILogger _log = LogFactory.Create(typeof(TorznabRequestMappers));
 
-    public static TorznabRequest ToTorznabRequest(this TorznabEndpointRequest request) =>
+    public static TorznabRequest ToTorznabRequest(
+        this TorznabEndpointRequest request,
+        IntegrationIdentity integration
+    ) =>
         new()
         {
             Type = ParseType(request.Type),
@@ -19,7 +24,10 @@ public static class TorznabRequestMappers
             Offset = request.Offset ?? 0,
             Categories = request.Categories ?? Array.Empty<int>(),
             Extended = request.Extended,
-            Attributes = request.Attributes?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [],
+            Attributes =
+                request.Attributes?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                ?? [],
+            Integration = integration,
         };
 
     public static TorznabQueryType ParseType(string? value)

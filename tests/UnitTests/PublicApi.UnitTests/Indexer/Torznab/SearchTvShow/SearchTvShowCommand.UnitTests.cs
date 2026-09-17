@@ -1,15 +1,11 @@
 using Reaparr.PublicAPI.Contracts;
-using Reaparr.Settings.Contracts;
+using Reaparr.Application.Contracts;
 
+using Reaparr.Settings.Contracts;
 namespace Reaparr.PublicAPI.UnitTests;
 
-public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHandler>
+public class SearchTvShowCommandUnitTests : BaseCommandUnitTest<SearchTvShowCommand>
 {
-    public SearchTvShowCommandUnitTests()
-    {
-        Mock.Mock<INetworkSettings>().SetupGet(x => x.Url).Returns("http://localhost");
-    }
-
     [Test]
     public async Task ShouldReturnPagedEpisodes_WhenNoFiltersProvided()
     {
@@ -29,17 +25,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
 
         var offset = 1;
         var limit = 3;
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = limit,
-            Offset = offset,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: limit, offset: offset);
 
         var expectedEpisodeTitles = await IDbContext
             .PlexTvShowEpisodeData.OrderByDescending(x => x.PlexTvShowEpisode!.AddedAt)
@@ -53,15 +39,14 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             .ToListAsync(CancellationToken);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
-        Mock.Mock<INetworkSettings>().VerifyGet(x => x.Url, Times.Exactly(result.Value.Channel.Items.Count));
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         // Response
         result.ShouldNotBeNull();
         result.Value.Channel.ShouldNotBeNull();
         result.Value.Channel.Title.ShouldBe("Reaparr Indexer");
-        result.Value.Channel.Description.ShouldBe($"TV Search results for {cmd.Query}");
+        result.Value.Channel.Description.ShouldBe($"TV Search results for {cmd.Request.Query}");
         result.Value.Channel.Language.ShouldBe("en-us");
         result.Value.Channel.Category.ShouldBe("search");
 
@@ -124,33 +109,32 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
         var newestEpisode = episodes[^1];
         await dbContext
             .PlexTvShowEpisodes.Where(x => x.Id == episodes[0].Id)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)), CancellationToken);
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
+                CancellationToken
+            );
         await dbContext
             .PlexTvShowEpisodes.Where(x => x.Id == episodes[1].Id)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc)), CancellationToken);
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 2, 0, 0, 0, DateTimeKind.Utc)),
+                CancellationToken
+            );
         await dbContext
             .PlexTvShowEpisodes.Where(x => x.Id == newestEpisode.Id)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 3, 0, 0, 0, DateTimeKind.Utc)), CancellationToken);
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.AddedAt, new DateTime(2020, 1, 3, 0, 0, 0, DateTimeKind.Utc)),
+                CancellationToken
+            );
 
         var newestTitle = await dbContext
             .PlexTvShowEpisodeData.Where(x => x.PlexTvShowEpisodeId == newestEpisode.Id)
             .OrderBy(x => x.PlexApiPartId)
             .Select(x => x.GetFileName)
             .FirstAsync(CancellationToken);
-        var command = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 2,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var command = CreateCommand(limit: 2);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await ExecuteCommandAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -162,45 +146,46 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     public async Task ShouldEmitGenreCategory_WhenActiveSearchLoadsTypedGenre()
     {
         // Arrange
-        await SetupDatabase(1002, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexAccountCount = 1;
-            config.PlexTvShowLibraryCount = 1;
-            config.TvShowCount = 1;
-            config.TvShowSeasonCount = 1;
-            config.TvShowEpisodeCount = 1;
-        });
+        await SetupDatabase(
+            1002,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 1;
+            }
+        );
         using (var dbContext = IDbContext)
         {
             var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
-            var genre = new PlexGenre { Name = "Anime", Key = "active-anime", Type = PlexGenreType.Anime };
+            var genre = new PlexGenre
+            {
+                Name = "Anime",
+                Key = "active-anime",
+                Type = PlexGenreType.Anime,
+            };
             dbContext.PlexGenres.Add(genre);
             await dbContext.SaveChangesAsync(CancellationToken);
             dbContext.PlexTvShowGenres.Add(new PlexTvShowGenres(genre.Id, tvShow.PlexLibraryId, tvShow.Id));
             await dbContext.SaveChangesAsync(CancellationToken);
         }
-        var command = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 1,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+
+        var command = CreateCommand(limit: 1);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await ExecuteCommandAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.Channel.Items.ShouldHaveSingleItem();
-        result.Value.Channel.Items.Single().Attributes.ShouldContain(x =>
-            x.Name == "category" && x.Value == ((int)TorznabCategoryId.TV_Anime).ToString()
-        );
+        result
+            .Value.Channel.Items.Single()
+            .Attributes.ShouldContain(x =>
+                x.Name == "category" && x.Value == ((int)TorznabCategoryId.TV_Anime).ToString()
+            );
     }
 
     [Test]
@@ -241,20 +226,10 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             .ToListAsync(CancellationToken);
         expectedTitles.ShouldNotBeEmpty();
 
-        var command = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var command = CreateCommand();
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await ExecuteCommandAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -299,20 +274,10 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             .ToListAsync(CancellationToken);
         expectedTitles.ShouldNotBeEmpty();
 
-        var command = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var command = CreateCommand();
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await ExecuteCommandAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -335,20 +300,10 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             }
         );
 
-        var command = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var command = CreateCommand();
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await ExecuteCommandAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -381,25 +336,13 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
         var seasonNumber = episode.TvShowSeason!.SeasonNumber;
         var tvdb = episode.TvShow!.Guid_TVDB!.Value;
         var expectedEpisodeCount = await IDbContext
-            .PlexTvShowEpisodes.Where(e =>
-                e.TvShowSeason!.SeasonNumber == seasonNumber && e.TvShow!.Guid_TVDB == tvdb
-            )
+            .PlexTvShowEpisodes.Where(e => e.TvShowSeason!.SeasonNumber == seasonNumber && e.TvShow!.Guid_TVDB == tvdb)
             .CountAsync(CancellationToken);
 
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = seasonNumber,
-            Episode = 0,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = tvdb,
-        };
+        var cmd = CreateCommand(season: seasonNumber, tvdbId: tvdb);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
@@ -444,20 +387,10 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             )
             .CountAsync(CancellationToken);
 
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = targetSeasonNumber,
-            Episode = 0,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = tvdb,
-        };
+        var cmd = CreateCommand(season: targetSeasonNumber, tvdbId: tvdb);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
@@ -479,24 +412,14 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 1,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 12345,
-        };
+        var cmd = CreateCommand(episode: 1, tvdbId: 12345);
 
         // Act
         var result = validator.Validate(cmd);
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.Errors.Any(error => error.PropertyName == nameof(SearchTvShowCommand.Season)).ShouldBeTrue();
+        result.Errors.Any(error => error.PropertyName.EndsWith(nameof(TorznabRequest.Season))).ShouldBeTrue();
     }
 
     [Test]
@@ -504,17 +427,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 1,
-            Episode = 0,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(season: 1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -529,17 +442,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 1,
-            Episode = 0,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 12345,
-        };
+        var cmd = CreateCommand(season: 1, tvdbId: 12345);
 
         // Act
         var result = validator.Validate(cmd);
@@ -577,24 +480,15 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
         var episodeNumber = episode.EpisodeNumber;
         var imdb = episode.TvShow!.Guid_IMDB!;
 
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = seasonNumber,
-            Episode = episodeNumber,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = imdb,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(season: seasonNumber, episode: episodeNumber, imdbId: imdb);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
         result.Value.Channel.Items.ShouldNotBeEmpty();
+
         // All returned items should correspond to the selected episode
         result
             .Value.Channel.Items.All(i =>
@@ -653,20 +547,10 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
         var episodeNumber = episode.EpisodeNumber;
         var tmdb = episode.TvShow!.Guid_TMDB!.Value;
 
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = seasonNumber,
-            Episode = episodeNumber,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = tmdb,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(season: seasonNumber, episode: episodeNumber, tmdbId: tmdb);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
@@ -713,20 +597,10 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
         var episodeNumber = episode.EpisodeNumber;
         var tvdb = episode.TvShow!.Guid_TVDB!.Value;
 
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = seasonNumber,
-            Episode = episodeNumber,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = tvdb,
-        };
+        var cmd = CreateCommand(season: seasonNumber, episode: episodeNumber, tvdbId: tvdb);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
@@ -763,20 +637,10 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             }
         );
 
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 50,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 50);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
@@ -803,28 +667,88 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
 
         var offset = 0;
         var limit = 2;
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = limit,
-            Offset = offset,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: limit, offset: offset);
 
         var expectedTotal = await IDbContext.PlexTvShowEpisodeData.CountAsync(CancellationToken);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.Channel.Items.Count.ShouldBe(limit);
         result.Value.Channel.Response.Offset.ShouldBe(offset);
         result.Value.Channel.Response.Total.ShouldBe(expectedTotal);
+    }
+
+    [Test]
+    public async Task ShouldReturnEmpty_WhenTvShowImdbIdIsMalformed()
+    {
+        // Arrange
+        await SetupDatabase(
+            3107,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 1;
+            }
+        );
+        var command = CreateCommand(imdbId: "ttnot-a-number");
+
+        // Act
+        var result = await ExecuteCommandAsync(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Total.ShouldBe(0);
+        result.Value.Channel.Items.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task ShouldReturnEmpty_WhenTvShowExternalIdsConflict()
+    {
+        // Arrange
+        await SetupDatabase(
+            3108,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 2;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 1;
+            }
+        );
+
+        var shows = await IDbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        await IDbContext
+            .PlexTvShows.Where(x => x.Id == shows[0].Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(show => show.Guid_IMDB, "tt111111").SetProperty(show => show.Guid_TMDB, 111111),
+                CancellationToken
+            );
+        await IDbContext
+            .PlexTvShows.Where(x => x.Id == shows[1].Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(show => show.Guid_IMDB, "tt222222").SetProperty(show => show.Guid_TMDB, 222222),
+                CancellationToken
+            );
+        var command = CreateCommand(imdbId: "tt111111", tmdbId: 222222);
+
+        // Act
+        var result = await ExecuteCommandAsync(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Total.ShouldBe(0);
+        result.Value.Channel.Items.ShouldBeEmpty();
     }
 
     [Test]
@@ -844,20 +768,10 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             }
         );
 
-        var cmd = new SearchTvShowCommand
-        {
-            Query = "anything",
-            Season = 0,
-            Episode = 0,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(query: "anything", limit: 10);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.Value.Channel.Items.ShouldBeEmpty();
@@ -868,17 +782,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 10);
 
         // Act
         var result = validator.Validate(cmd);
@@ -893,17 +797,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 1,
-            Episode = 1,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(season: 1, episode: 1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -918,17 +812,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 1,
-            Episode = 2,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = "imdb://tt12345",
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(season: 1, episode: 2, imdbId: "imdb://tt12345");
 
         // Act
         var result = validator.Validate(cmd);
@@ -943,17 +827,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 0,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 0);
 
         // Act
         var result = validator.Validate(cmd);
@@ -968,17 +842,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 10_000,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: TorznabSearchHelpers.MaxPageSize);
 
         // Act
         var result = validator.Validate(cmd);
@@ -989,21 +853,26 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     }
 
     [Test]
+    public void ShouldFailValidation_WhenLimitExceedsMaximum()
+    {
+        // Arrange
+        var validator = new SearchTvShowCommandValidator();
+        var command = CreateCommand(limit: TorznabSearchHelpers.MaxPageSize + 1);
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.Count.ShouldBe(1);
+    }
+
+    [Test]
     public void ShouldFailValidation_WhenPaginationWindowExceedsMaximum()
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 1,
-            Offset = 10_000,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 1, offset: 10_000);
 
         // Act
         var result = validator.Validate(cmd);
@@ -1018,17 +887,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 10,
-            Offset = -1,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 10, offset: -1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -1043,17 +902,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = -1,
-            Episode = 0,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(season: -1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -1068,17 +917,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = -1,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(episode: -1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -1093,17 +932,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = -1,
-            TVDB_ID = 0,
-        };
+        var cmd = CreateCommand(tmdbId: -1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -1118,17 +947,7 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = 0,
-            Episode = 0,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            TVDB_ID = -1,
-        };
+        var cmd = CreateCommand(tvdbId: -1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -1167,20 +986,16 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
         var tmdb = episode.TvShow!.Guid_TMDB!.Value;
         var tvdb = episode.TvShow!.Guid_TVDB!.Value;
 
-        var cmd = new SearchTvShowCommand
-        {
-            Query = string.Empty,
-            Season = seasonNumber,
-            Episode = episodeNumber,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = imdb.Replace("tt", ""),
-            TMDB_ID = tmdb,
-            TVDB_ID = tvdb,
-        };
+        var cmd = CreateCommand(
+            season: seasonNumber,
+            episode: episodeNumber,
+            imdbId: imdb.Replace("tt", string.Empty),
+            tmdbId: tmdb,
+            tvdbId: tvdb
+        );
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.Value.Channel.Items.ShouldNotBeEmpty();
@@ -1192,4 +1007,44 @@ public class SearchTvShowCommandUnitTests : BaseUnitTest<SearchTvShowCommandHand
             .Value.Channel.Items.All(i => i.Attributes.Any(a => a.Name == "tvdbid" && a.Value == tvdb.ToString()))
             .ShouldBeTrue();
     }
+    private async Task<Result<TorznabMediaSearchResponseDTO>> ExecuteCommandAsync(SearchTvShowCommand command)
+    {
+        var networkSettings = Mock.Mock<INetworkSettings>();
+        networkSettings.SetupGet(x => x.Url).Returns("http://localhost").Verifiable(Times.AtMostOnce());
+
+        var result = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
+
+        networkSettings.Verify();
+        return result;
+    }
+
+    private static SearchTvShowCommand CreateCommand(
+        int limit = 100,
+        int offset = 0,
+        string query = "",
+        int season = 0,
+        int episode = 0,
+        int tvdbId = 0,
+        int tmdbId = 0,
+        string imdbId = ""
+    ) =>
+        new(
+            new TorznabRequest
+            {
+                Type = TorznabQueryType.TvSearch,
+                Query = query,
+                Season = season,
+                Episode = episode,
+                TvdbId = tvdbId,
+                ImdbId = imdbId,
+                TmdbId = tmdbId,
+                ApiKey = "",
+                Limit = limit,
+                Offset = offset,
+                Categories = [],
+                Attributes = [],
+                Integration = new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty),
+            }
+        );
+
 }

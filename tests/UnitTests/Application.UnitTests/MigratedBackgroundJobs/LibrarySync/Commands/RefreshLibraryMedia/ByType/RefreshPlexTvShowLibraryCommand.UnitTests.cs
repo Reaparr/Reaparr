@@ -55,6 +55,9 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     {
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
     }
 
     private void SetupSyncCommandSuccess(BulkInsertTvShowsRapport? rapport = null)

@@ -57,16 +57,6 @@ public static partial class DbContextExtensions
             .FirstOrDefaultAsync(CancellationToken.None);
     }
 
-    public static async Task<List<int>> GetOnlineServerIds(this IReaparrDbContext dbContext)
-    {
-        return await dbContext
-            .PlexServerStatuses.AsNoTracking()
-            .Where(x => x.IsSuccessful)
-            .Select(x => x.PlexServerId)
-            .Distinct()
-            .ToListAsync(CancellationToken.None);
-    }
-
     /// <summary>
     /// Servers that are online AND whose downloads are not paused by the user.
     ///
@@ -77,14 +67,40 @@ public static partial class DbContextExtensions
     public static async Task<List<int>> GetDownloadableServerIds(this IReaparrDbContext dbContext)
     {
         return await dbContext
-            .PlexServerStatuses.AsNoTracking()
-            .Where(x =>
-                x.IsSuccessful
-                && x.PlexServer!.IsEnabled
-                && !x.PlexServer.IsDownloadsPausedByUser
+            .PlexServerStatuses.Where(x =>
+                x.IsSuccessful && x.PlexServer!.IsEnabled && !x.PlexServer.IsDownloadsPausedByUser
             )
             .Select(x => x.PlexServerId)
             .Distinct()
             .ToListAsync(CancellationToken.None);
     }
+
+    public static Task<List<int>> GetAccessibleLibraryIds(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<int> allowedServerIds
+    ) => dbContext.GetAccessibleLibraries(allowedServerIds).Select(x => x.Id).ToListAsync(CancellationToken.None);
+
+    public static Task<List<int>> GetAccessibleLibraryIds(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<int> allowedServerIds,
+        PlexMediaType? allowedLibraryType
+    ) =>
+        dbContext
+            .GetAccessibleLibraries(allowedServerIds)
+            .ApplyWhere(allowedLibraryType != null, x => x.Type == allowedLibraryType)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken.None);
+
+    private static IQueryable<PlexLibrary> GetAccessibleLibraries(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<int> allowedServerIds
+    ) =>
+        dbContext.PlexLibraries.Where(x =>
+            allowedServerIds.Contains(x.PlexServerId)
+            && x.PlexAccountLibraries.Any(libraryAccess =>
+                x.PlexServer!.PlexAccountServers.Any(serverAccess =>
+                    serverAccess.PlexAccountId == libraryAccess.PlexAccountId
+                )
+            )
+        );
 }

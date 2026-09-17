@@ -58,7 +58,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
                 _log.Here().Information("Database was successfully connected!");
                 _log.Here().Information("Database connected at: {DatabasePath}", DatabasePath);
 
-                var migrateResult = await MigrateDatabase();
+                var migrateResult = await MigrateDatabase(cancellationToken);
                 if (migrateResult.IsFailed)
                     return migrateResult;
 
@@ -75,7 +75,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
 
         _log.Here().Warning("Database does not exist, creating a new one now");
 
-        var createResult = CreateDatabase();
+        var createResult = await CreateDatabase(cancellationToken);
         if (createResult.IsFailed)
             return createResult;
 
@@ -106,7 +106,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
             if (deletedResult.Value)
                 _log.Here().Warning("Database was successfully deleted at: {DatabasePath}", DatabasePath);
 
-            var createdResult = CreateDatabase();
+            var createdResult = await CreateDatabase();
             if (createdResult.IsFailed)
             {
                 _log.Here().Error("Database could not be created at {DatabasePath}", DatabasePath);
@@ -126,7 +126,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
         }
     }
 
-    private Result CreateDatabase()
+    private async Task<Result> CreateDatabase(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -143,6 +143,9 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
                 return Result.Merge(reaparrMigrateResult, authMigrateResult).LogError();
             }
 
+            var optimize = await _reaparrDbContextDatabase.Optimize(cancellationToken);
+            optimize.LogIfFailed();
+
             _log.Here().Information("The new database was successfully created at: {DatabasePath}", DatabasePath);
             return Result.Ok();
         }
@@ -155,7 +158,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
         }
     }
 
-    private async Task<Result> MigrateDatabase()
+    private async Task<Result> MigrateDatabase(CancellationToken cancellationToken)
     {
         try
         {
@@ -176,6 +179,8 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
                 }
                 else
                 {
+                    var optimize = await _reaparrDbContextDatabase.Optimize(cancellationToken);
+                    optimize.LogIfFailed();
                     _log.Here().Information("Database migration successful!");
                 }
             }
