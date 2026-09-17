@@ -83,7 +83,7 @@ namespace Reaparr.FluentResults
                         continue;
                     }
 
-                    value = args[position];
+                    value = (object?)args[position];
                 }
                 else
                 {
@@ -93,12 +93,15 @@ namespace Reaparr.FluentResults
                         continue;
                     }
 
-                    value = args[nextArgument++];
+                    value = (object?)args[nextArgument++];
                 }
 
-                var valueText = value is IFormattable formattable
-                    ? formattable.ToString(propertyToken.Format, CultureInfo.InvariantCulture)
-                    : value.ToString() ?? string.Empty;
+                var valueText = value switch
+                {
+                    IFormattable formattable => formattable.ToString(propertyToken.Format, CultureInfo.InvariantCulture),
+                    null => string.Empty,
+                    _ => value.ToString() ?? string.Empty,
+                };
 
                 if (propertyToken.Alignment is { } alignment && valueText.Length < alignment.Width)
                 {

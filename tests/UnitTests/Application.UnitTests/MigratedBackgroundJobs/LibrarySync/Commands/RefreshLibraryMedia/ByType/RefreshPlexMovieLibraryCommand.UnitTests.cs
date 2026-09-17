@@ -31,6 +31,9 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -80,6 +83,9 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         await Sut.ExecuteAsync(
@@ -118,6 +124,9 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
@@ -172,6 +181,9 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 

@@ -54,7 +54,7 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         // Act
         var client = container.GetApiClient();
         await client.SignIn();
-        (await GetRssItemCount(client, rssUrl)).ShouldBe(0);
+        (await GetRssTotal(client, rssUrl)).ShouldBe(0);
 
         var testResult = await client.POSTAsync<
             RefreshLibraryMediaEndpoint,
@@ -102,7 +102,7 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
 
         var mediaList = movies.SelectMany(x => x.MediaDataList).ToList();
         mediaList.Count.ShouldBeGreaterThanOrEqualTo(movieCount);
-        (await GetRssItemCount(client, rssUrl)).ShouldBe(mediaList.Count);
+        (await GetRssTotal(client, rssUrl)).ShouldBe(mediaList.Count);
     }
 
     [Test]
@@ -153,12 +153,12 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         var plexLibrary = await container.DbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
         var sonarrIntegration = await container.DbContext.SonarrIntegrations.SingleAsync(CancellationToken);
-        var rssUrl = $"/api/public/integrations/{sonarrIntegration.Id}/indexer/api?t=tvsearch&cat=5000&limit=1000&offset=0&apikey={sonarrIntegration.TorznabApiKey}";
+        var rssUrl = $"/api/public/integrations/{sonarrIntegration.Id}/indexer/api?t=tvsearch&cat=5000&limit=100&offset=0&apikey={sonarrIntegration.TorznabApiKey}";
 
         // Act
         var client = container.GetApiClient();
         await client.SignIn();
-        (await GetRssItemCount(client, rssUrl)).ShouldBe(0);
+        (await GetRssTotal(client, rssUrl)).ShouldBe(0);
 
         var testResult = await client.POSTAsync<
             RefreshLibraryMediaEndpoint,
@@ -217,13 +217,15 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
 
         var mediaList = episodes.SelectMany(x => x.MediaDataList).ToList();
         mediaList.Count.ShouldBeGreaterThanOrEqualTo(totalEpisodeCount);
-        (await GetRssItemCount(client, rssUrl)).ShouldBe(mediaList.Count);
+        (await GetRssTotal(client, rssUrl)).ShouldBe(mediaList.Count);
     }
-    private async Task<int> GetRssItemCount(HttpClient client, string url)
+    private async Task<int> GetRssTotal(HttpClient client, string url)
     {
         var response = await client.GetAsync(url, CancellationToken);
         response.IsSuccessStatusCode.ShouldBeTrue();
         var xml = await response.Content.ReadAsStringAsync(CancellationToken);
-        return XDocument.Parse(xml).Root!.Element("channel")!.Elements("item").Count();
+        var channel = XDocument.Parse(xml).Root!.Element("channel")!;
+        var metadata = channel.Elements().Single(x => x.Name.LocalName == "response");
+        return int.Parse(metadata.Attribute("total")!.Value);
     }
 }

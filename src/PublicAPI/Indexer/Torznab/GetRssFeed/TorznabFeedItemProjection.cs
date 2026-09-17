@@ -72,11 +72,12 @@ public sealed record TorznabFeedItemProjection
             .SetQueryParams(torrentMetadata.Values)
             .SetQueryParam(IntegrationDefinitions.INDEXER_API_KEY, torznabApiKey, isEncoded: false);
         var categories = this.ToTorznabCategories();
+        var stableId = CreateStableId();
         var item = new TorznabItem
         {
             Title = Title,
             PubDate = AddedAt.ToUniversalTime().ToString("R"),
-            Guid = new TorznabGuid { Value = CreateStableId() },
+            Guid = new TorznabGuid { Value = stableId },
             Link = downloadUrl,
             Size = Size,
             Enclosure = new TorznabEnclosure

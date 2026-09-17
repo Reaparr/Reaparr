@@ -148,6 +148,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
                                 .SetProperty(y => y.Outdated, false)
                                 .SetProperty(y => y.MovieCount, 0)
                                 .SetProperty(y => y.MovieMediaDataCount, 0)
+                                .SetProperty(y => y.MediaSize, 0)
                                 .SetProperty(y => y.TvShowCount, 0)
                                 .SetProperty(y => y.SeasonCount, 0)
                                 .SetProperty(y => y.EpisodeCount, 0)

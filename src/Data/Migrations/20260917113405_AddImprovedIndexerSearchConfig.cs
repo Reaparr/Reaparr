@@ -183,7 +183,36 @@ namespace Reaparr.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_PlexMovie_PlexLibraryId_SearchTitle",
                 table: "PlexMovie",
-                columns: new[] { "PlexLibraryId", "SearchTitle" });
+                columns: new[] { "PlexLibraryId", "SearchTitle" });      
+            
+            migrationBuilder.Sql(
+                """
+                UPDATE "PlexLibraries"
+                SET "MovieMediaDataCount" =
+                    CASE
+                        WHEN "Type" = 'Movie' THEN (
+                            SELECT COUNT(*)
+                            FROM "PlexMovieData"
+                            WHERE "PlexMovieData"."PlexLibraryId" = "PlexLibraries"."Id"
+                        )
+                        ELSE 0
+                    END;
+                """
+            );
+            migrationBuilder.Sql(
+                """
+                UPDATE "PlexLibraries"
+                SET "EpisodeMediaDataCount" =
+                    CASE
+                        WHEN "Type" = 'TvShow' THEN (
+                            SELECT COUNT(*)
+                            FROM "PlexTvShowEpisodeData"
+                            WHERE "PlexTvShowEpisodeData"."PlexLibraryId" = "PlexLibraries"."Id"
+                        )
+                        ELSE 0
+                    END;
+                """
+            );
         }
 
         /// <inheritdoc />

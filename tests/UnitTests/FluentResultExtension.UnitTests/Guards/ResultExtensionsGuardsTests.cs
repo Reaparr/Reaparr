@@ -27,6 +27,19 @@ public class ResultExtensionsGuardsTests
         resultWithErrors.Errors.First().Reasons.Count.ShouldBe(5);
     }
 
+    [Test]
+    public void ShouldFormatEmptyValue_WhenErrorArgumentIsNull()
+    {
+        // Arrange
+        var result = Result.Fail("Value: {Value}", [null!]);
+
+        // Act
+        var errorMessage = result.Errors.Single().Message;
+
+        // Assert
+        errorMessage.ShouldBe("Value: ");
+    }
+
     #endregion
 
     [Test]
