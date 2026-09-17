@@ -23,7 +23,7 @@ public class GetCapabilitiesCommandHandler : ICommandHandler<GetCapabilitiesComm
                 new System.Xml.XmlQualifiedName("torznab", "http://torznab.com/schemas/2015/feed"),
             ]),
             Server = new TorznabServer { Version = "1.3", Title = "Reaparr Indexer" },
-            Limits = new TorznabLimits { Max = TorznabSearchHelpers.MaxPaginationWindow, Default = 50 },
+            Limits = new TorznabLimits { Max = TorznabSearchHelpers.MaxPageSize, Default = 50 },
             Searching = new TorznabSearching
             {
                 Search = new TorznabSearch { Available = "yes", SupportedParams = "q,cat,limit,offset,extended,attrs" },

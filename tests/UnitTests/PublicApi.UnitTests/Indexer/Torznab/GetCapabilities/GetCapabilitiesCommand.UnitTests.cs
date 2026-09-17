@@ -10,6 +10,7 @@ public class GetCapabilitiesCommandUnitTests : BaseCommandUnitTest<GetCapabiliti
     {
         // Arrange
         var command = new GetCapabilitiesCommand();
+
         // Act
         var result = await TestHandlerExecuteAsync<TorznabCapsResponseDTO>(command);
         var serializer = new XmlSerializer(typeof(TorznabCapsResponseDTO));
@@ -30,7 +31,7 @@ public class GetCapabilitiesCommandUnitTests : BaseCommandUnitTest<GetCapabiliti
                 .SupportedTorznabCategories.Select(x => new TorznabCategory((int)x.Id, x.Name))
                 .ToList()
         );
-        result.Value.Limits.Max.ShouldBe(10_000);
+        result.Value.Limits.Max.ShouldBe(100);
         xml.ShouldNotContain("<torznab:attributes");
         xml.ShouldNotContain("<attributes");
     }
