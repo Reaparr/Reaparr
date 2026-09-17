@@ -402,11 +402,8 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
         });
 
     /// <inheritdoc/>
-    public Result Optimize(CancellationToken cancellationToken = default) =>
-        Result.Try(() =>
-        {
-            Database.ExecuteSqlRaw("PRAGMA optimize;", cancellationToken);
-        });
+    public Result<int> Optimize(CancellationToken cancellationToken = default) =>
+        Result.Try(() => Database.ExecuteSqlRaw("PRAGMA optimize;", cancellationToken));
 
     /// <inheritdoc/>
     public IEnumerable<string> GetPendingMigrations() => Database.GetPendingMigrations();

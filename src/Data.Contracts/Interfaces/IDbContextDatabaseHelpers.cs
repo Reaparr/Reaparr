@@ -104,5 +104,5 @@ public interface IDbContextDatabaseHelpers
     /// <summary>
     /// Optimizes the database by performing maintenance tasks such as vacuuming, reindexing, and analyzing the database.
     /// </summary>
-    Result Optimize(CancellationToken cancellationToken = default);
+    Result<int> Optimize(CancellationToken cancellationToken = default);
 }
