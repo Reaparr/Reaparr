@@ -78,17 +78,17 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
             .Setup(x =>
                 x.Send(
                     It.Is<SearchGenericCommand>(command =>
-                        command.Query == request.Query
-                        && command.TVDB_ID == request.TvdbId
-                        && command.TMDB_ID == request.TmdbId
-                        && command.IMDB_ID == request.ImdbId
-                        && command.IncludeMovies == includeMovies
-                        && command.IncludeEpisodes == includeEpisodes
-                        && command.Categories.SequenceEqual(request.Categories)
-                        && command.Limit == request.Limit
-                        && command.Offset == request.Offset
-                        && command.Integration == integration
-                        && command.TorznabApiKey == request.ApiKey
+                        command.Request.Query == request.Query
+                        && command.Request.TvdbId == request.TvdbId
+                        && command.Request.TmdbId == request.TmdbId
+                        && command.Request.ImdbId == request.ImdbId
+                        && command.Request.IncludesMovies == includeMovies
+                        && command.Request.IncludesEpisodes == includeEpisodes
+                        && command.Request.Categories.SequenceEqual(request.Categories)
+                        && command.Request.Limit == request.Limit
+                        && command.Request.Offset == request.Offset
+                        && command.Request.Integration == integration
+                        && command.Request.ApiKey == request.ApiKey
                     ),
                     It.IsAny<CancellationToken>()
                 )

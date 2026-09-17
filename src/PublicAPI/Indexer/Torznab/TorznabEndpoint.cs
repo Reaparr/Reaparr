@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI;
 
 public class TorznabEndpointRequestValidator : Validator<TorznabEndpointRequest>
@@ -68,10 +66,10 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                 await SendCapabilitiesAsync(ct);
                 break;
             case TorznabRequestMode.Rss:
-                await SendMediaResultAsync(await GetRssAsync(request, integration, ct), ct);
+                await SendMediaResultAsync(await GetRssAsync(request, ct), ct);
                 break;
             case TorznabRequestMode.ActiveSearch:
-                await SendMediaResultAsync(await SearchAsync(request, integration, ct), ct);
+                await SendMediaResultAsync(await SearchAsync(request, ct), ct);
                 break;
             default:
                 await Send.TorznabError(201, "Incorrect parameter", ct);
@@ -114,15 +112,11 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
         await Send.XmlAsync(result.Value, cancellationToken: ct);
     }
 
-    private Task<Result<TorznabMediaSearchResponseDTO>> GetRssAsync(
-        TorznabRequest request,
-        IntegrationIdentity integration,
-        CancellationToken ct
-    ) =>
+    private Task<Result<TorznabMediaSearchResponseDTO>> GetRssAsync(TorznabRequest request, CancellationToken ct) =>
         _commandExecutor.Send(
             new GetTorznabRssFeedCommand
             {
-                Integration = integration,
+                Integration = request.Integration,
                 Categories = request.Categories,
                 IncludeMovies = request.IncludesMovies,
                 IncludeEpisodes = request.IncludesEpisodes,
@@ -135,67 +129,12 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
             ct
         );
 
-    private Task<Result<TorznabMediaSearchResponseDTO>> SearchAsync(
-        TorznabRequest request,
-        IntegrationIdentity integration,
-        CancellationToken ct
-    ) =>
+    private Task<Result<TorznabMediaSearchResponseDTO>> SearchAsync(TorznabRequest request, CancellationToken ct) =>
         request.Type switch
         {
-            TorznabQueryType.Search => _commandExecutor.Send(
-                new SearchGenericCommand
-                {
-                    Query = request.Query,
-                    TVDB_ID = request.TvdbId,
-                    IMDB_ID = request.ImdbId,
-                    TMDB_ID = request.TmdbId,
-                    IncludeMovies = request.IncludesMovies,
-                    IncludeEpisodes = request.IncludesEpisodes,
-                    Limit = request.Limit,
-                    Offset = request.Offset,
-                    Integration = integration,
-                    TorznabApiKey = request.ApiKey,
-                    Categories = request.Categories,
-                    Attributes = request.Attributes,
-                    IncludeAllAttributes = request.IncludeAllAttributes,
-                },
-                ct
-            ),
-            TorznabQueryType.TvSearch => _commandExecutor.Send(
-                new SearchTvShowCommand
-                {
-                    Query = request.Query,
-                    Season = request.Season,
-                    Episode = request.Episode,
-                    TVDB_ID = request.TvdbId,
-                    IMDB_ID = request.ImdbId,
-                    TMDB_ID = request.TmdbId,
-                    Limit = request.Limit,
-                    Offset = request.Offset,
-                    Integration = integration,
-                    TorznabApiKey = request.ApiKey,
-                    Categories = request.Categories,
-                    Attributes = request.Attributes,
-                    IncludeAllAttributes = request.IncludeAllAttributes,
-                },
-                ct
-            ),
-            TorznabQueryType.Movie => _commandExecutor.Send(
-                new SearchMovieCommand
-                {
-                    Query = request.Query,
-                    IMDB_ID = request.ImdbId,
-                    TMDB_ID = request.TmdbId,
-                    Limit = request.Limit,
-                    Offset = request.Offset,
-                    Integration = integration,
-                    TorznabApiKey = request.ApiKey,
-                    Categories = request.Categories,
-                    Attributes = request.Attributes,
-                    IncludeAllAttributes = request.IncludeAllAttributes,
-                },
-                ct
-            ),
+            TorznabQueryType.Search => _commandExecutor.Send(new SearchGenericCommand(request), ct),
+            TorznabQueryType.TvSearch => _commandExecutor.Send(new SearchTvShowCommand(request), ct),
+            TorznabQueryType.Movie => _commandExecutor.Send(new SearchMovieCommand(request), ct),
             _ => Task.FromResult(Result.Fail<TorznabMediaSearchResponseDTO>("Unsupported Torznab search type")),
         };
 }

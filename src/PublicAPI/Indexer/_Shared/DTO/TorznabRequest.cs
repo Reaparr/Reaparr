@@ -49,4 +49,6 @@ public sealed record TorznabRequest
         && TvdbId <= 0
         && Season <= 0
         && Episode <= 0;
+
+    public bool HasAnyExternalId => !string.IsNullOrWhiteSpace(ImdbId) || TmdbId > 0 || TvdbId > 0;
 }

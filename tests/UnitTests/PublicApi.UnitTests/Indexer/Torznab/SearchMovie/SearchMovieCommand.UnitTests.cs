@@ -1,15 +1,11 @@
 using Reaparr.Application.Contracts;
+using Reaparr.PublicAPI.Contracts;
 using Reaparr.Settings.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 
-public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandler>
+public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieCommand>
 {
-    public SearchMovieCommandUnitTests()
-    {
-        Mock.Mock<INetworkSettings>().SetupGet(x => x.Url).Returns("http://localhost");
-    }
-
     [Test]
     public async Task ShouldReturnPagedMovies_WhenNoFiltersProvided()
     {
@@ -28,19 +24,15 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
 
         var offset = 1;
         var limit = 3;
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = limit,
-            Offset = offset,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-            Integration = new IntegrationIdentity(
+        var cmd = CreateCommand(
+            limit: limit,
+            offset: offset,
+            apiKey: "integration-key",
+            integration: new IntegrationIdentity(
                 IntegrationType.Radarr,
                 Guid.Parse("62655300-0000-0000-0000-000000000001")
-            ),
-            TorznabApiKey = "integration-key",
-        };
+            )
+        );
 
         var expectedMovieTitles = await IDbContext
             .PlexMovieData.OrderByDescending(x => x.PlexMovie!.AddedAt)
@@ -54,13 +46,13 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             .ToListAsync(CancellationToken);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
         result.Value.Channel.ShouldNotBeNull();
         result.Value.Channel.Title.ShouldBe("Reaparr Indexer");
-        result.Value.Channel.Description.ShouldBe($"Movie Search results for {cmd.Query}");
+        result.Value.Channel.Description.ShouldBe($"Movie Search results for {cmd.Request.Query}");
         result.Value.Channel.Language.ShouldBe("en-us");
         result.Value.Channel.Category.ShouldBe("search");
 
@@ -139,17 +131,10 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             .ToListAsync(CancellationToken);
         expectedTitles.ShouldNotBeEmpty();
 
-        var command = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var command = CreateCommand();
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await ExecuteCommandAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -193,17 +178,10 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             .ToListAsync(CancellationToken);
         expectedTitles.ShouldNotBeEmpty();
 
-        var command = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var command = CreateCommand();
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await ExecuteCommandAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -224,17 +202,10 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             }
         );
 
-        var command = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var command = CreateCommand();
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await ExecuteCommandAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -264,17 +235,10 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
 
         var imdb = movie.Guid_IMDB!;
 
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = imdb.Replace("tt", string.Empty),
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(imdbId: imdb.Replace("tt", string.Empty));
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
@@ -313,17 +277,10 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
 
         var tmdb = movie.Guid_TMDB!.Value;
 
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 100,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = tmdb,
-        };
+        var cmd = CreateCommand(tmdbId: tmdb);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
@@ -348,17 +305,10 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             }
         );
 
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 50,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 50);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
@@ -383,21 +333,14 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
 
         var offset = 0;
         var limit = 2;
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = limit,
-            Offset = offset,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: limit, offset: offset);
 
         var expectedTotal = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
         var movieCount = await IDbContext.PlexMovies.CountAsync(CancellationToken);
         expectedTotal.ShouldBeGreaterThan(movieCount);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -421,20 +364,218 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
             }
         );
 
-        var cmd = new SearchMovieCommand
-        {
-            Query = "!!!",
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(query: "!!!", limit: 10);
 
         // Act
-        var result = await Sut.ExecuteAsync(cmd, CancellationToken);
+        var result = await ExecuteCommandAsync(cmd);
 
         // Assert
         result.ShouldNotBeNull();
+        result.Value.Channel.Items.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task ShouldReturnExactMovie_WhenNormalizedTitlePrefixMatches()
+    {
+        // Arrange
+        await SetupDatabase(
+            4510,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 2;
+                config.IncludeMultiPartMovies = false;
+            }
+        );
+        var dbContext = IDbContext;
+        var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        await dbContext
+            .PlexMovies.Where(x => x.Id == movies[0].Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(movie => movie.SearchTitle, "The Matching Movie".ToSearchTitle()),
+                CancellationToken
+            );
+        await dbContext
+            .PlexMovies.Where(x => x.Id == movies[1].Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(movie => movie.SearchTitle, "Different Movie".ToSearchTitle()),
+                CancellationToken
+            );
+        var expectedTitles = await dbContext
+            .PlexMovieData.Where(x => x.PlexMovieId == movies[0].Id)
+            .OrderBy(x => x.Id)
+            .Select(x => x.GetFileName)
+            .ToListAsync(CancellationToken);
+        var command = CreateCommand(query: "THE MATCHING");
+
+        // Act
+        var result = await ExecuteCommandAsync(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Total.ShouldBe(expectedTitles.Count);
+        result.Value.Channel.Items.Select(x => x.Title).ShouldBe(expectedTitles);
+    }
+
+    [Test]
+    [Arguments(TorznabCategoryId.Movies, 0, 2)]
+    [Arguments(TorznabCategoryId.Movies_UHD, 0, 1)]
+    [Arguments(TorznabCategoryId.Movies_UHD, 9_999, 1)]
+    [Arguments((TorznabCategoryId)9_999, 0, 0)]
+    public async Task ShouldApplyMovieCategorySemantics(
+        TorznabCategoryId firstCategory,
+        int secondCategory,
+        int expectedCount
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            4511 + secondCategory + (int)firstCategory,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 2;
+                config.IncludeMultiPartMovies = false;
+            }
+        );
+        var dbContext = IDbContext;
+        var rows = await dbContext.PlexMovieData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        await dbContext
+            .PlexMovieData.Where(x => x.Id == rows[0].Id)
+            .ExecuteUpdateAsync(
+                x =>
+                    x.SetProperty(data => data.VideoResolution, VideoQuality.UHD_4K)
+                        .SetProperty(data => data.GeneratedFilename, "uhd-movie.mkv"),
+                CancellationToken
+            );
+        await dbContext
+            .PlexMovieData.Where(x => x.Id == rows[1].Id)
+            .ExecuteUpdateAsync(
+                x =>
+                    x.SetProperty(data => data.VideoResolution, VideoQuality.SD)
+                        .SetProperty(data => data.GeneratedFilename, "sd-movie.mkv"),
+                CancellationToken
+            );
+        var categories =
+            secondCategory == 0 ? new[] { (int)firstCategory } : new[] { (int)firstCategory, secondCategory };
+        var command = CreateCommand(categories: categories);
+
+        // Act
+        var result = await ExecuteCommandAsync(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Total.ShouldBe(expectedCount);
+        var expectedTitles = expectedCount switch
+        {
+            0 => Array.Empty<string>(),
+            1 => ["uhd-movie.mkv"],
+            _ => ["uhd-movie.mkv", "sd-movie.mkv"],
+        };
+        result.Value.Channel.Items.Select(x => x.Title).Order().ShouldBe(expectedTitles.Order());
+    }
+
+    [Test]
+    public async Task ShouldReturnSpecificMovie_WhenImdbIdAlreadyHasPrefix()
+    {
+        // Arrange
+        await SetupDatabase(
+            4507,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 2;
+            }
+        );
+
+        var movie = await IDbContext
+            .PlexMovies.OrderBy(x => x.Id)
+            .FirstAsync(x => x.Guid_IMDB != null, CancellationToken);
+        var command = CreateCommand(imdbId: movie.Guid_IMDB);
+
+        // Act
+        var result = await ExecuteCommandAsync(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Items.ShouldNotBeEmpty();
+        result.Value.Channel.Items.ShouldAllBe(x =>
+            x.Attributes.Any(attribute => attribute.Name == "imdb" && attribute.Value == movie.Guid_IMDB)
+        );
+    }
+
+    [Test]
+    public async Task ShouldReturnEmpty_WhenImdbIdIsMalformed()
+    {
+        // Arrange
+        await SetupDatabase(
+            4508,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 1;
+            }
+        );
+        var command = CreateCommand(imdbId: "imdb://tt123");
+
+        // Act
+        var result = await ExecuteCommandAsync(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Total.ShouldBe(0);
+        result.Value.Channel.Items.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task ShouldReturnEmpty_WhenMovieExternalIdsConflict()
+    {
+        // Arrange
+        await SetupDatabase(
+            4509,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 2;
+            }
+        );
+
+        var movies = await IDbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        await IDbContext
+            .PlexMovies.Where(x => x.Id == movies[0].Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(movie => movie.Guid_IMDB, "tt111111").SetProperty(movie => movie.Guid_TMDB, 111111),
+                CancellationToken
+            );
+        await IDbContext
+            .PlexMovies.Where(x => x.Id == movies[1].Id)
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(movie => movie.Guid_IMDB, "tt222222").SetProperty(movie => movie.Guid_TMDB, 222222),
+                CancellationToken
+            );
+        var command = CreateCommand(imdbId: "tt111111", tmdbId: 222222);
+
+        // Act
+        var result = await ExecuteCommandAsync(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Channel.Response.Total.ShouldBe(0);
         result.Value.Channel.Items.ShouldBeEmpty();
     }
 
@@ -443,14 +584,7 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 10);
 
         // Act
         var result = validator.Validate(cmd);
@@ -465,14 +599,7 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 0,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 0);
 
         // Act
         var result = validator.Validate(cmd);
@@ -487,14 +614,7 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 10_000,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: TorznabSearchHelpers.MaxPageSize);
 
         // Act
         var result = validator.Validate(cmd);
@@ -505,18 +625,26 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
     }
 
     [Test]
+    public void ShouldFailValidation_WhenLimitExceedsMaximum()
+    {
+        // Arrange
+        var validator = new SearchMovieCommandValidator();
+        var command = CreateCommand(limit: TorznabSearchHelpers.MaxPageSize + 1);
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.Count.ShouldBe(1);
+    }
+
+    [Test]
     public void ShouldFailValidation_WhenPaginationWindowExceedsMaximum()
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 1,
-            Offset = 10_000,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 1, offset: 10_000);
 
         // Act
         var result = validator.Validate(cmd);
@@ -531,14 +659,7 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 10,
-            Offset = -1,
-            IMDB_ID = string.Empty,
-            TMDB_ID = 0,
-        };
+        var cmd = CreateCommand(limit: 10, offset: -1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -553,14 +674,7 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
     {
         // Arrange
         var validator = new SearchMovieCommandValidator();
-        var cmd = new SearchMovieCommand
-        {
-            Query = string.Empty,
-            Limit = 10,
-            Offset = 0,
-            IMDB_ID = string.Empty,
-            TMDB_ID = -1,
-        };
+        var cmd = CreateCommand(tmdbId: -1);
 
         // Act
         var result = validator.Validate(cmd);
@@ -569,4 +683,44 @@ public class SearchMovieCommandUnitTests : BaseUnitTest<SearchMovieCommandHandle
         result.IsValid.ShouldBeFalse();
         result.Errors.ShouldNotBeEmpty();
     }
+
+    private async Task<Result<TorznabMediaSearchResponseDTO>> ExecuteCommandAsync(SearchMovieCommand command)
+    {
+        var networkSettings = Mock.Mock<INetworkSettings>();
+        networkSettings.SetupGet(x => x.Url).Returns("http://localhost").Verifiable(Times.AtMostOnce());
+
+        var result = await TestHandlerExecuteAsync<TorznabMediaSearchResponseDTO>(command);
+
+        networkSettings.Verify();
+        return result;
+    }
+    private static SearchMovieCommand CreateCommand(
+        int limit = 100,
+        int offset = 0,
+        string query = "",
+        string? imdbId = null,
+        int tmdbId = 0,
+        int[]? categories = null,
+        string apiKey = "",
+        IntegrationIdentity? integration = null
+    ) =>
+        new(
+            new TorznabRequest
+            {
+                Type = TorznabQueryType.Movie,
+                Query = query,
+                Season = 0,
+                Episode = 0,
+                TvdbId = 0,
+                ImdbId = imdbId ?? string.Empty,
+                TmdbId = tmdbId,
+                ApiKey = apiKey,
+                Limit = limit,
+                Offset = offset,
+                Categories = categories ?? [],
+                Attributes = [],
+                Integration = integration ?? new IntegrationIdentity(IntegrationType.Radarr, Guid.Empty),
+            }
+        );
+
 }
