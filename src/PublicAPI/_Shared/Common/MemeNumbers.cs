@@ -42,5 +42,13 @@ public static class MemeNumberGenerator
         2077, // cyberpunk prophecy
     ];
 
-    public static int GetRandomMemeNumber() => _memeNumbers[Random.Shared.Next(_memeNumbers.Length)];
+    public static int GetMemeNumber(string stableId)
+    {
+        var hash = uint.Parse(
+            stableId.AsSpan("reaparr-".Length, 8),
+            System.Globalization.NumberStyles.HexNumber,
+            provider: null
+        );
+        return _memeNumbers[(int)(hash % (uint)_memeNumbers.Length)];
+    }
 }

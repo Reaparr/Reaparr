@@ -98,7 +98,7 @@ public sealed record TorznabFeedItemProjection
         foreach (var category in categories.Distinct())
             item.Attributes.Add(new TorznabAttr("category", ((int)category).ToString()));
 
-        var memeCount = MemeNumberGenerator.GetRandomMemeNumber().ToString();
+        var memeCount = MemeNumberGenerator.GetMemeNumber(stableId).ToString();
         item.Attributes.Add(new TorznabAttr("seeders", memeCount));
         item.Attributes.Add(new TorznabAttr("peers", memeCount));
 
