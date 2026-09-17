@@ -627,6 +627,7 @@ export enum JobTypes {
   LibraryComparisonJob = "LibraryComparisonJob",
   RefreshPlexAccountAccessJob = "RefreshPlexAccountAccessJob",
   MediaOverviewSnapshotJob = "MediaOverviewSnapshotJob",
+  OptimizeDatabaseJob = "OptimizeDatabaseJob",
   Unknown = "Unknown",
 }
 
