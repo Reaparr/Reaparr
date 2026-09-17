@@ -9,8 +9,12 @@ public class PlexTvShowEpisodeConfiguration : IEntityTypeConfiguration<PlexTvSho
         builder.HasIndex(x => x.SortIndex);
         builder.HasIndex(x => new { x.TvShowSeasonId, x.SortIndex });
         builder.HasIndex(x => new { x.TvShowId, x.SortIndex });
+        // SearchTvShowCommandHandler's season/episode branch narrows the matched season to one episode number;
+        // this index resolves that episode before PlexTvShowEpisodeData release rows are read.
+        builder.HasIndex(x => new { x.TvShowSeasonId, x.EpisodeNumber });
 
         builder.HasIndex(x => new { x.PlexApiRatingKey, x.PlexServerId });
+
         // The leading library equality and trailing feed order let each bounded library query use the index
         // directly instead of sorting every accessible episode.
         builder.HasIndex(x => new
