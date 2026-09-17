@@ -1,5 +1,29 @@
 Reaparr Changelog
 
+# [0.40.0-dev.3](https://github.com/Reaparr/Reaparr/compare/v0.40.0-dev.2...v0.40.0-dev.3) (2026-09-17)
+
+
+### Bug Fixes
+
+* **WebAPI:** Add JsonIgnore attribute to Url and Uri properties in NetworkSettingsModule.cs ([ad004fa](https://github.com/Reaparr/Reaparr/commit/ad004fab428a7994275ec3f131f8e4f4011967d9))
+* **WebAPI:** Correct total count calculation for paginated results ([#668](https://github.com/Reaparr/Reaparr/issues/668)) ([cc76dfc](https://github.com/Reaparr/Reaparr/commit/cc76dfcd49c4fb404fa8ed62652fcae7c8d8bd35))
+* **WebAPI:** Correct total count calculation for paginated results ([024800a](https://github.com/Reaparr/Reaparr/commit/024800a12e14791b6d924827d103f871aedac863))
+* **WebAPI:** Fixed huge perf drain on the queries needed for getting indexer results ([85b8dab](https://github.com/Reaparr/Reaparr/commit/85b8dab6e77ed6c1e5c6b54f70a187d0cce11cf6))
+* **WebAPI:** Handle null SEQ_ApiKey in logging configuration ([78bcebf](https://github.com/Reaparr/Reaparr/commit/78bcebf5972d84f93eab0ebf0a462dac15fe0afd))
+* **WebAPI:** Return exact Torznab feed totals ([cbce658](https://github.com/Reaparr/Reaparr/commit/cbce658b082d0fa8d95de5b24ec5c65d6897c144))
+* **WebAPI:** Stabilize Torznab RSS attributes ([0c73ad3](https://github.com/Reaparr/Reaparr/commit/0c73ad30c5c5f8a794f9efc81d30809f15ea22a5))
+
+
+### Features
+
+* **WebAPI:** Add SEQ_ApiKey support for Seq logging configuration ([67b912e](https://github.com/Reaparr/Reaparr/commit/67b912e44fd046bee47192f9e120116566268e98))
+
+
+### Performance Improvements
+
+* **WebAPI:** Add composite indexes for improved query performance ([2d95a0b](https://github.com/Reaparr/Reaparr/commit/2d95a0be81c99beaeb0ee77157f1f4b04011e18a))
+* **WebAPI:** Enhance indexing for search optimization in movie and TV show configurations ([e9ab255](https://github.com/Reaparr/Reaparr/commit/e9ab255f03edd2699d59cc5daed8b7d90d2cc528))
+
 # [0.40.0-dev.2](https://github.com/Reaparr/Reaparr/compare/v0.40.0-dev.1...v0.40.0-dev.2) (2026-09-14)
 
 
