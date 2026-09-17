@@ -13,21 +13,21 @@ public sealed class OptimizeDatabaseJob : IJob
 
     public static JobKey GetJobKey() => new(nameof(JobTypes.OptimizeDatabaseJob), nameof(JobTypes.OptimizeDatabaseJob));
 
-    public Task Execute(IJobExecutionContext context)
+    public async Task Execute(IJobExecutionContext context)
     {
-        var optimizeResult = _reaparrDbContextDatabase.Optimize();
+        var optimizeResult = await _reaparrDbContextDatabase.Optimize(context.CancellationToken);
         optimizeResult.LogIfFailed();
 
         if (optimizeResult.IsCancelled)
         {
             context.SetResult(JobStatus.Cancelled);
-            return Task.CompletedTask;
+            return;
         }
 
         if (optimizeResult.IsFailed)
         {
             context.SetResult(JobStatus.Failed);
-            return Task.CompletedTask;
+            return;
         }
 
         if (optimizeResult.IsSuccess)
@@ -35,7 +35,5 @@ public sealed class OptimizeDatabaseJob : IJob
             _log.Here().Information("Optimized SQLite query statistics after a large library change");
             context.SetResult(JobStatus.Completed);
         }
-
-        return Task.CompletedTask;
     }
 }

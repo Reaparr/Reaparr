@@ -102,6 +102,6 @@ public sealed class AuthDbContext : IdentityDbContext<AppUser>, IAuthDbContext, 
     public IEnumerable<string> GetPendingMigrations() => Database.GetPendingMigrations();
 
     /// <inheritdoc/>
-    public Result<int> Optimize(CancellationToken cancellationToken = default) =>
-        Result.Try(() => Database.ExecuteSqlRaw("PRAGMA optimize;", cancellationToken));
+    public Task<Result<int>> Optimize(CancellationToken cancellationToken = default) =>
+        Result.Try(async Task<int> () => await Database.ExecuteSqlRawAsync("PRAGMA optimize;", cancellationToken));
 }
