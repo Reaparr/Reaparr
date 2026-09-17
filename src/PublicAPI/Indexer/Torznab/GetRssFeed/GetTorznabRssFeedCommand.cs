@@ -376,49 +376,38 @@ public class GetTorznabRssFeedCommandHandler
     )
         where T : BasePlexMedia
     {
-        var candidates = new List<TorznabFeedParent>(checked(accessibleLibraryIds.Count * batchSize));
-        foreach (var libraryId in accessibleLibraryIds)
+        if (accessibleLibraryIds.Count == 0)
+            return [];
+
+        var libraryQuery = query.Where(x => accessibleLibraryIds.Contains(x.PlexLibraryId));
+        if (cursor is not null)
         {
-            var libraryQuery = query.Where(x => x.PlexLibraryId == libraryId);
-            if (cursor is not null)
-            {
-                libraryQuery = libraryQuery.Where(x =>
-                    x.AddedAt < cursor.AddedAt
-                    || (
-                        x.AddedAt == cursor.AddedAt
-                        && (
-                            x.PlexServerId < cursor.PlexServerId
-                            || (
-                                x.PlexServerId == cursor.PlexServerId
-                                && (
-                                    x.PlexApiRatingKey < cursor.PlexApiRatingKey
-                                    || (x.PlexApiRatingKey == cursor.PlexApiRatingKey && x.Id < cursor.Id)
-                                )
+            libraryQuery = libraryQuery.Where(x =>
+                x.AddedAt < cursor.AddedAt
+                || (
+                    x.AddedAt == cursor.AddedAt
+                    && (
+                        x.PlexServerId < cursor.PlexServerId
+                        || (
+                            x.PlexServerId == cursor.PlexServerId
+                            && (
+                                x.PlexApiRatingKey < cursor.PlexApiRatingKey
+                                || (x.PlexApiRatingKey == cursor.PlexApiRatingKey && x.Id < cursor.Id)
                             )
                         )
                     )
-                );
-            }
-
-            candidates.AddRange(
-                await libraryQuery
-                    .OrderByDescending(x => x.AddedAt)
-                    .ThenByDescending(x => x.PlexServerId)
-                    .ThenByDescending(x => x.PlexApiRatingKey)
-                    .ThenByDescending(x => x.Id)
-                    .Take(batchSize)
-                    .Select(x => new TorznabFeedParent(x.Id, x.AddedAt, x.PlexServerId, x.PlexApiRatingKey))
-                    .ToListAsync(cancellationToken)
+                )
             );
         }
 
-        return candidates
+        return await libraryQuery
             .OrderByDescending(x => x.AddedAt)
             .ThenByDescending(x => x.PlexServerId)
             .ThenByDescending(x => x.PlexApiRatingKey)
             .ThenByDescending(x => x.Id)
             .Take(batchSize)
-            .ToList();
+            .Select(x => new TorznabFeedParent(x.Id, x.AddedAt, x.PlexServerId, x.PlexApiRatingKey))
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>
