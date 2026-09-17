@@ -143,6 +143,8 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
                 return Result.Merge(reaparrMigrateResult, authMigrateResult).LogError();
             }
 
+            _reaparrDbContextDatabase.Optimize().LogIfFailed();
+
             _log.Here().Information("The new database was successfully created at: {DatabasePath}", DatabasePath);
             return Result.Ok();
         }
@@ -176,6 +178,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
                 }
                 else
                 {
+                    _reaparrDbContextDatabase.Optimize().LogIfFailed();
                     _log.Here().Information("Database migration successful!");
                 }
             }

@@ -46,5 +46,8 @@ public enum JobTypes
 
     [JsonStringEnumMemberName(nameof(MediaOverviewSnapshotJob))]
     MediaOverviewSnapshotJob = 11,
+
+    [JsonStringEnumMemberName(nameof(OptimizeDatabaseJob))]
+    OptimizeDatabaseJob = 12,
     // Ensure to also add in EnumMapperExtensions.JobType.cs
 }

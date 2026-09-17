@@ -121,6 +121,27 @@ public class RefreshPlexTvShowLibraryCommandHandler
             return syncResult.ToResult().LogError();
         }
 
+        var optimizationResult = await _commandExecutor.Send(
+            new ScheduleOptimizeDatabaseJobCommand
+            {
+                ChangedItemCount = new List<int>
+                {
+                    syncResult.Value.CreatedTvShows,
+                    syncResult.Value.UpdatedTvShows,
+                    syncResult.Value.DeletedTvShows,
+                    syncResult.Value.CreatedSeasons,
+                    syncResult.Value.UpdatedSeasons,
+                    syncResult.Value.DeletedSeasons,
+                    syncResult.Value.CreatedEpisodes,
+                    syncResult.Value.UpdatedEpisodes,
+                    syncResult.Value.DeletedEpisodes,
+                }.Sum(),
+            },
+            cancellationToken
+        );
+
+        optimizationResult.LogIfFailed();
+
         _log.Here()
             .Debug(
                 "Finished updating all media in the database for library {PlexLibraryName} in {Elapsed}",

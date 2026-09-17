@@ -100,4 +100,9 @@ public interface IDbContextDatabaseHelpers
     /// </remarks>
     /// <returns>The list of migrations.</returns>
     IEnumerable<string> GetPendingMigrations();
+
+    /// <summary>
+    /// Optimizes the database by performing maintenance tasks such as vacuuming, reindexing, and analyzing the database.
+    /// </summary>
+    Result Optimize(CancellationToken cancellationToken = default);
 }
