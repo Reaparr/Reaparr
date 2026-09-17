@@ -9,6 +9,12 @@ public sealed record TorznabFeedItemProjection
 {
     public required PlexMediaType MediaType { get; init; }
     public required int MediaId { get; init; }
+
+    /// <summary>
+    /// Database ID used to load genres: movie ID for movies, TV-show ID for episodes.
+    /// </summary>
+    public required int GenreOwnerId { get; init; }
+
     public required int DataId { get; init; }
     public required int PlexServerId { get; init; }
     public required string PlexServerMachineIdentifier { get; init; }

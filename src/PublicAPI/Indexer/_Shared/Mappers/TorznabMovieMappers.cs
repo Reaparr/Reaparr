@@ -9,6 +9,7 @@ public static class TorznabMovieMappers
         {
             MediaType = PlexMediaType.Movie,
             MediaId = x.PlexMovieId,
+            GenreOwnerId = x.PlexMovieId,
             DataId = x.Id,
             PlexServerId = x.PlexServerId,
             PlexServerMachineIdentifier = x.PlexServer!.MachineIdentifier,
@@ -29,6 +30,6 @@ public static class TorznabMovieMappers
             SeasonNumber = null,
             EpisodeNumber = null,
             TvdbId = null,
-            GenreTypes = x.PlexMovie.Genres.Select(genre => genre.Type).ToList(),
+            GenreTypes = Array.Empty<PlexGenreType>(),
         });
 }

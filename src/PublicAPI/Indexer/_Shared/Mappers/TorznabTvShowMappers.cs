@@ -9,6 +9,7 @@ public static class TorznabTvShowMappers
         {
             MediaType = PlexMediaType.Episode,
             MediaId = x.PlexTvShowEpisodeId,
+            GenreOwnerId = x.PlexTvShowEpisode!.TvShowId,
             DataId = x.Id,
             PlexServerId = x.PlexServerId,
             PlexServerMachineIdentifier = x.PlexServer!.MachineIdentifier,
@@ -29,6 +30,6 @@ public static class TorznabTvShowMappers
             TvdbId = x.PlexTvShowEpisode.TvShow!.Guid_TVDB,
             TmdbId = x.PlexTvShowEpisode.TvShow.Guid_TMDB,
             ImdbId = x.PlexTvShowEpisode.TvShow.Guid_IMDB,
-            GenreTypes = x.PlexTvShowEpisode.TvShow.Genres.Select(genre => genre.Type).ToList(),
+            GenreTypes = Array.Empty<PlexGenreType>(),
         });
 }
