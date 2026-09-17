@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Reaparr.Data;
 
@@ -10,9 +11,11 @@ using Reaparr.Data;
 namespace Reaparr.Data.Migrations
 {
     [DbContext(typeof(ReaparrDbContext))]
-    partial class ReaparrDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260917113405_AddImprovedIndexerSearchConfig")]
+    partial class AddImprovedIndexerSearchConfig
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
