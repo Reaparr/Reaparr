@@ -97,6 +97,70 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     }
 
     [Test]
+    public async Task ShouldAdd404NotFoundError_WhenInitialProbeReturnsNotFound()
+    {
+        // Arrange
+        await SetupDatabase(
+            90207,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.MovieDownloadTasksCount = 1;
+            }
+        );
+
+        var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        SetupHttpClientFactory(HttpStatusCode.NotFound, HttpStatusCode.NotFound);
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ExecuteAsync(
+            new GetDirectDownloadUrlCommand(downloadTask.PlexServerId, downloadTask.FileLocationUrl),
+            CancellationToken
+        );
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Has404NotFoundError().ShouldBeTrue();
+        result.ToResult().FindStatusCode().ShouldBe((int)HttpStatusCode.NotFound);
+    }
+
+    [Test]
+    public async Task ShouldAdd404NotFoundError_WhenFallbackProbeReturnsNotFound()
+    {
+        // Arrange
+        await SetupDatabase(
+            90208,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 1;
+                config.MovieDownloadTasksCount = 1;
+            }
+        );
+
+        var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        SetupHttpClientFactory(HttpStatusCode.Forbidden, HttpStatusCode.NotFound);
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ExecuteAsync(
+            new GetDirectDownloadUrlCommand(downloadTask.PlexServerId, downloadTask.FileLocationUrl),
+            CancellationToken
+        );
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Has404NotFoundError().ShouldBeTrue();
+        result.ToResult().FindStatusCode().ShouldBe((int)HttpStatusCode.NotFound);
+    }
+
+    [Test]
     public async Task ShouldRetryTransientProbeFailuresAndReturnUrl_WhenProbeEventuallySucceeds()
     {
         // Arrange
