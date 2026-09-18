@@ -56,6 +56,22 @@ public class LibrarySyncJob : IJob
                 _serverId,
                 _libraryId
             );
+        var queueStatus = await _dbContext
+            .LibrarySyncJobQueues.Where(x => x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId)
+            .Select(x => x.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (queueStatus != LibrarySyncJobStatus.Processing)
+        {
+            context.SetResult(JobStatus.Cancelled);
+            _log.Here()
+                .Information(
+                    "Skipping library sync job for server {ServerId}, library {LibraryId} because its queue status is {QueueStatus}",
+                    _serverId,
+                    _libraryId,
+                    queueStatus
+                );
+            return;
+        }
 
         // Check if the server is online before starting sync
         var isServerOnline = await _dbContext.IsServerOnline(_serverId);
@@ -72,7 +88,9 @@ public class LibrarySyncJob : IJob
         }
         else
         {
-            using var syncLease = await _mediaOverviewRebuildCoordinator.AcquireLibrarySyncLeaseAsync(cancellationToken);
+            using var syncLease = await _mediaOverviewRebuildCoordinator.AcquireLibrarySyncLeaseAsync(
+                cancellationToken
+            );
             await UpdateQueueItemAsync(LibrarySyncJobStatus.Processing);
 
             var forceMediaRefresh = payloadResult.Value.ForceMediaRefresh;
