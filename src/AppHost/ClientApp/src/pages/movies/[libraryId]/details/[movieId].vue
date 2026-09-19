@@ -10,7 +10,7 @@
 				@action="onAction" />
 			<QScroll class="page-content-minus-media-overview-bar">
 				<!--	Header	-->
-				<QRow>
+				<QRow class="media-detail-header">
 					<QCol
 						cols="auto">
 						<!--	Poster	-->
@@ -215,6 +215,65 @@ onBeforeUnmount(() => {
     min-width: 150px;
     text-align: left;
     white-space: pre-wrap;
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .media-detail-header {
+    flex-direction: column;
+    align-items: center;
+
+    > .col,
+    > .col-auto {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+  .page-content-minus-media-overview-bar,
+  .page-content-minus-media-overview-bar .q-scrollarea__content {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .media-detail-header > .col,
+  .media-detail-header > .col-auto {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .media-detail-header > .col-auto {
+    display: flex;
+    justify-content: center;
+  }
+
+  .media-info-container {
+    width: calc(100% - 1rem) !important;
+    max-width: calc(100% - 1rem) !important;
+
+    .q-markup-table,
+    .q-table__container,
+    .q-table {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed;
+    }
+  }
+
+  .media-info-container {
+    height: auto !important;
+    margin: 0 0.5rem 1rem;
+
+    .media-title {
+      font-size: clamp(1.35rem, 1.1rem + 1vw, 1.5rem);
+    }
+
+    .media-info-column {
+      min-width: 0;
+      padding: 0.5rem;
+      overflow-wrap: anywhere;
+    }
   }
 }
 </style>

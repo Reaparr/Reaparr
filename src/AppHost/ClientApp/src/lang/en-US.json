@@ -30,7 +30,9 @@
         "app-bar": {
             "no-accounts": "No Accounts available",
             "copy-version": "Copy Reaparr version - { version }",
-            "update-available": "Update available"
+            "update-available": "Update available",
+            "navigation-menu": "Navigation menu",
+            "more-actions": "More actions"
         },
         "update-available-dialog": {
             "title": "New Version Available",

@@ -333,6 +333,28 @@ describe('Responsive layout', () => {
 		cy.get('#poster-table').should(($table) => {
 			expect(($table[0] as HTMLElement).scrollTop).to.be.greaterThan(50);
 		});
+		cy.get('.alphabet-navigation').then(($navigation) => {
+			const rect = $navigation[0]!.getBoundingClientRect();
+			cy.wrap($navigation)
+				.trigger('pointerdown', {
+					pointerId: 1,
+					pointerType: 'touch',
+					clientY: rect.bottom - 10,
+				})
+				.trigger('pointermove', {
+					pointerId: 1,
+					pointerType: 'touch',
+					clientY: rect.top + 10,
+				})
+				.trigger('pointercancel', {
+					pointerId: 1,
+					pointerType: 'touch',
+					clientY: rect.top + 10,
+				});
+		});
+		cy.get('#poster-table').should(($table) => {
+			expect(($table[0] as HTMLElement).scrollTop, 'cancelled alphabet drag does not navigate').to.be.greaterThan(50);
+		});
 		cy.get('.alphabet-navigation .navigation-btn:visible').first().click();
 		cy.get('#poster-table').should(($table) => {
 			expect(($table[0] as HTMLElement).scrollTop, 'mobile alphabet tap scrolls').to.be.lessThan(50);
@@ -362,13 +384,12 @@ describe('Responsive layout', () => {
 			cy.visit(route(`/movies/${library.id}?scrollIndex=46`));
 		});
 		waitForPageLoad();
-		cy.get('.media-poster-card:visible').first()
-			.should('have.attr', 'role', 'button')
-			.and('have.attr', 'tabindex', '0');
-		cy.get('.media-poster-card:visible').first().should('have.attr', 'aria-label');
-		cy.get('.media-poster-card:visible').first()
+		cy.getCy('media-poster-menu-trigger').filter(':visible').first()
+			.should('have.attr', 'aria-label')
+			.and('not.be.empty');
+		cy.getCy('media-poster-menu-trigger').filter(':visible').first()
 			.focus()
-			.trigger('keydown', { key: 'Enter' });
+			.type('{enter}');
 		cy.getCy('media-poster-menu').should('be.visible');
 		cy.get('body').type('{esc}');
 		cy.get('#poster-table').should(($table) => {
@@ -446,6 +467,11 @@ describe('Responsive layout', () => {
 			cy.get('.p-treetable-table-container').should(($container) => {
 				const container = $container[0] as HTMLElement;
 				expect(container.scrollWidth, 'comparison options fit without horizontal scrolling').to.be.lte(container.clientWidth + 1);
+			});
+			cy.get('.media-comparison-details__row-content .q-text').each(($text) => {
+				const text = $text[0] as HTMLElement;
+				expect(text.scrollWidth, 'comparison text does not clip horizontally').to.be.lte(text.clientWidth + 1);
+				expect(text.scrollHeight, 'comparison text does not clip vertically').to.be.lte(text.clientHeight + 1);
 			});
 		});
 		cy.getCy('media-comparison-details-dialog-download-button').should(($button) => {
@@ -719,6 +745,10 @@ describe('Responsive layout', () => {
 					.should('be.visible');
 				cy.getCy(`column-status-${task.id}`).filter(':visible').should('be.visible');
 				cy.getCy(`column-percentage-${task.id}`).filter(':visible').should('be.visible');
+				cy.getCy(`column-dataReceived-${task.id}`).filter(':visible').should('be.visible');
+				cy.getCy(`column-dataTotal-${task.id}`).filter(':visible').should('be.visible');
+				cy.getCy(`column-downloadSpeed-${task.id}`).filter(':visible').should('be.visible');
+				cy.getCy(`column-timeRemaining-${task.id}`).filter(':visible').should('be.visible');
 				cy.intercept('GET', `/api/Download/logs/${task.id}*`, { body: { isSuccess: true, value: [] } });
 				cy.getCy(`column-actions-details-${task.id}`).filter(':visible').click();
 				cy.getCy('download-details-dialog-title').should('be.visible');

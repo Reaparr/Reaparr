@@ -30,7 +30,9 @@
         "app-bar": {
             "no-accounts": "Brak dostępnych kont",
             "copy-version": "Kopiuj wersję Reaparr - { version }",
-            "update-available": ""
+            "update-available": "",
+            "navigation-menu": "Menu nawigacji",
+            "more-actions": "Więcej działań"
         },
         "update-available-dialog": {
             "title": "Nowa wersja dostępna",
