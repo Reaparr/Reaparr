@@ -103,6 +103,21 @@ defineEmits<{
   }
 }
 
+@media (max-width: $breakpoint-xs-max) {
+  .media-table-header {
+    min-height: 48px;
+
+    &--column:not(:first-child):not(:last-child):not(.media-table-header--title) {
+      display: none;
+    }
+
+    &--title {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+  }
+}
+
 .body--dark {
   .media-table-header {
     border-bottom-color: $separator-dark-color;

@@ -78,8 +78,7 @@
 					:label="integrationHelp.displayName.label"
 					:title="integrationHelp.displayName.title"
 					:text="integrationHelp.displayName.text"
-					align="start"
-					disable-responsive>
+					align="start">
 					<QInput
 						v-model="store.draft.name"
 						data-cy="integration-name"
@@ -92,8 +91,7 @@
 					:label="integrationHelp.baseUrl.label"
 					:title="integrationHelp.baseUrl.title"
 					:text="integrationHelp.baseUrl.text"
-					align="start"
-					disable-responsive>
+					align="start">
 					<QInput
 						v-model="store.draft.url"
 						:hint="integrationHelp.baseUrl.hint"
@@ -106,8 +104,7 @@
 					:label="integrationHelp.apiKey.label"
 					:title="integrationHelp.apiKey.title"
 					:text="integrationHelp.apiKey.text"
-					align="start"
-					disable-responsive>
+					align="start">
 					<ApiKeyInputField
 						v-model="store.draft.apiKey"
 						cy="integration-arr-key"
@@ -119,8 +116,7 @@
 					:label="integrationHelp.category.label"
 					:title="integrationHelp.category.title"
 					:text="integrationHelp.category.text"
-					align="start"
-					disable-responsive>
+					align="start">
 					<QInput
 						v-model="store.draft.category"
 						data-cy="integration-category"
@@ -133,8 +129,7 @@
 					:label="integrationHelp.downloadFolder.label"
 					:title="integrationHelp.downloadFolder.title"
 					:text="integrationHelp.downloadFolder.text"
-					align="start"
-					disable-responsive>
+					align="start">
 					<QSelect
 						v-model="store.draft.downloadFolderId"
 						:options="downloadFolders"
@@ -166,14 +161,16 @@
 			<QRow
 				v-if="store.detail || stage === 2"
 				gutter="md">
-				<QCol v-if="isEditMode">
+				<QCol
+					v-if="isEditMode"
+					class="col-12 col-sm">
 					<DeleteButton
 						block
 						cy="integration-delete"
 						:loading="store.isDeleting"
 						@click="dialogStore.openDialog(DialogType.IntegrationDeleteConfirmationDialog)" />
 				</QCol>
-				<QCol>
+				<QCol class="col-12 col-sm">
 					<BaseButton
 						block
 						icon="mdi-cloud-search-outline"
@@ -183,7 +180,7 @@
 						data-cy="integration-test"
 						@click="test" />
 				</QCol>
-				<QCol>
+				<QCol class="col-12 col-sm">
 					<BaseButton
 						:label="setupLabel"
 						block
@@ -193,7 +190,7 @@
 						data-cy="integration-setup"
 						@click="setup" />
 				</QCol>
-				<QCol>
+				<QCol class="col-12 col-sm">
 					<SaveButton
 						block
 						label="Save"

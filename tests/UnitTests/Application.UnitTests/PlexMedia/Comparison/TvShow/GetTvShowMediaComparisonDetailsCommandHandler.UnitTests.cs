@@ -83,6 +83,75 @@ public class GetTvShowMediaComparisonDetailsCommandHandlerUnitTests
     }
 
     [Test]
+    public async Task ShouldLoadEpisodesThroughTheirSeasons_WhenEpisodeTvShowRelationshipIsStale()
+    {
+        // Arrange
+        await SetupDatabase(
+            63503,
+            config =>
+            {
+                config.PlexServerCount = 2;
+                config.PlexTvShowLibraryCount = 1;
+                config.PlexAccountCount = 1;
+                config.TvShowCount = 1;
+                config.TvShowSeasonCount = 1;
+                config.TvShowEpisodeCount = 2;
+            }
+        );
+
+        var dbContext = IDbContext;
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var remoteLibrary = libraries[0];
+        var ownedLibrary = libraries[1];
+        await SetOwnedOverrideAsync(remoteLibrary.PlexServerId, false);
+        await SetOwnedOverrideAsync(ownedLibrary.PlexServerId, true);
+        remoteLibrary = await GetLibraryAsync(remoteLibrary.Id);
+        ownedLibrary = await GetLibraryAsync(ownedLibrary.Id);
+
+        var remoteTvShow = await GetLibraryTvShowAsync(remoteLibrary.Id);
+        var ownedTvShow = await GetLibraryTvShowAsync(ownedLibrary.Id);
+        var remoteSeasonId = await dbContext
+            .PlexTvShowSeason.Where(x => x.PlexLibraryId == remoteLibrary.Id && x.TvShowId == remoteTvShow.Id)
+            .Select(x => x.Id)
+            .SingleAsync(CancellationToken);
+        var episodeIds = await dbContext
+            .PlexTvShowEpisodes.Where(x => x.PlexLibraryId == remoteLibrary.Id && x.TvShowId == remoteTvShow.Id)
+            .OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
+        episodeIds.Count.ShouldBe(2);
+
+        await dbContext
+            .PlexTvShowEpisodes.Where(x => episodeIds.Contains(x.Id))
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.TvShowId, ownedTvShow.Id), CancellationToken);
+        await AddCurrentScopeAsync(remoteLibrary, ownedLibrary, PlexMediaType.TvShow);
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        var staleEpisodeRelationships = await dbContext
+            .PlexTvShowEpisodes.Where(x => episodeIds.Contains(x.Id))
+            .Select(x => new { x.TvShowId, x.TvShowSeasonId })
+            .ToListAsync(CancellationToken);
+        staleEpisodeRelationships.ShouldAllBe(x => x.TvShowId == ownedTvShow.Id && x.TvShowSeasonId == remoteSeasonId);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PlexMediaComparisonDetailsDTO>(
+            new GetTvShowMediaComparisonDetailsCommand(remoteTvShow.Id)
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.ShouldBeEmpty();
+        result.Value.State.ShouldBe(PlexMediaComparisonState.Missing);
+        result.Value.Rows.Count.ShouldBe(1);
+        var seasonRow = result.Value.Rows.Single();
+        seasonRow.PlexMediaId.ShouldBe(remoteSeasonId);
+        seasonRow.Children.Count.ShouldBe(episodeIds.Count);
+        seasonRow.Children.Select(x => x.PlexMediaId).ShouldAllBe(x => episodeIds.Contains(x));
+        seasonRow.Children.Select(x => x.PlexMediaId).Distinct().Count().ShouldBe(episodeIds.Count);
+        seasonRow.Children.ShouldAllBe(x => x.State == PlexMediaComparisonState.Missing);
+    }
+
+    [Test]
     public async Task ShouldNotReturnMissingRows_WhenRemoteTvShowMatchesAnyCurrentOwnedLibrary()
     {
         // Arrange

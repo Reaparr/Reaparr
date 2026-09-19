@@ -10,10 +10,10 @@
 					:show-navigation-drawer-state="showNavigationDrawerState"
 					@show-navigation="toggleNavigationsDrawer"
 					@show-notifications="toggleNotificationsDrawer" />
-				<NavigationDrawer :show-drawer="showNavigationDrawerState" />
+				<NavigationDrawer
+					v-model:show-drawer="showNavigationDrawerState" />
 				<NotificationsDrawer
-					:show-drawer="showNotificationsDrawerState"
-					@cleared="toggleNotificationsDrawer" />
+					v-model:show-drawer="showNotificationsDrawerState" />
 			</template>
 			<!--	page-load-completed is only visible once the page is done loading. This is used for Cypress E2E	-->
 			<q-page-container data-cy="page-load-completed">
@@ -50,8 +50,6 @@ import {
 	useDialogStore,
 	useSettingsStore,
 	useAuthenticationStore,
-	useRoute,
-	nextTick,
 	useNuxtApp,
 } from '#imports';
 
@@ -67,7 +65,8 @@ const globalStore = useGlobalStore();
 const authStore = useAuthenticationStore();
 
 const alerts = ref<IAlert[]>([]);
-const showNavigationDrawerState = ref(true);
+const $q = useQuasar();
+const showNavigationDrawerState = ref($q.screen.gt.sm);
 const showNotificationsDrawerState = ref(false);
 
 const pageLoading = ref(true);
@@ -84,6 +83,18 @@ function toggleNavigationsDrawer() {
 function toggleNotificationsDrawer() {
 	set(showNotificationsDrawerState, !get(showNotificationsDrawerState));
 }
+
+watch(() => $q.screen.gt.sm, (isDesktop) => {
+	set(showNavigationDrawerState, isDesktop);
+	set(showNotificationsDrawerState, false);
+});
+
+watch(() => route.fullPath, () => {
+	if (!$q.screen.gt.sm) {
+		set(showNotificationsDrawerState, false);
+		set(showNavigationDrawerState, false);
+	}
+});
 
 nuxtApp.hook('page:start', () => {
 	Log.debug('page:start');
@@ -150,15 +161,12 @@ onMounted(() => {
 		}),
 	);
 
-	window.addEventListener('resize', () => {
+	useEventListener(window, 'resize', () => {
 		if (document.body.classList.contains('window-resizing')) {
 			return;
 		}
 		document.body.classList.add('window-resizing');
-
-		setTimeout(() => {
-			document.body.classList.remove('window-resizing');
-		}, 100);
+		setTimeout(() => document.body.classList.remove('window-resizing'), 100);
 	});
 });
 </script>

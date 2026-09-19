@@ -10,7 +10,8 @@
 				:title="$t('help.settings.advanced.reset-db.title')"
 				:text="$t('help.settings.advanced.reset-db.text')">
 				<WarningButton
-					:width="400"
+					class="settings-action-button"
+					cy="reset-database-button"
 					:label="$t('general.commands.reset-db')"
 					block
 					@click="dialogStore.openDialog(DialogType.ResetDatabaseConfirmationDialog)" />

@@ -1,9 +1,21 @@
 <template>
 	<q-card
 		class="media-poster-card"
-		flat>
+		flat
+		@click="openMobileActions"
+		@contextmenu="onContextMenu">
 		<q-card-section>
 			<div class="media-poster-image-wrapper">
+				<q-btn
+					v-if="$q.screen.lt.md"
+					class="media-poster-mobile-actions-trigger"
+					flat
+					round
+					dense
+					icon="mdi-dots-vertical"
+					:aria-label="`${mediaItem.title} — ${$t('general.commands.media-options')}`"
+					data-cy="media-poster-menu-trigger"
+					@click.stop="openMobileActionsMenu" />
 				<QGlowContainer>
 					<q-skeleton
 						v-if="thumbnailLoading"
@@ -16,7 +28,8 @@
 							v-if="imageUrl"
 							loading="lazy"
 							:src="imageUrl"
-							fit="fill"
+							fit="cover"
+							:ratio="2 / 3"
 							no-spinner
 							crossorigin="anonymous"
 							class="media-poster--image"
@@ -146,6 +159,39 @@
 				@download="onDownload" />
 		</q-card-section>
 		<QLoadingOverlay :loading="loading" />
+		<q-menu
+			v-if="$q.screen.lt.md"
+			v-model="mobileMenuVisible"
+			no-parent-event
+			anchor="bottom middle"
+			self="bottom middle"
+			data-cy="media-poster-menu">
+			<q-list class="media-poster-menu">
+				<q-item
+					v-if="hasDetailsAction"
+					v-close-popup
+					class="media-poster-menu__item"
+					clickable
+					data-cy="media-poster-menu-details"
+					@click="emit('open-media-details', mediaItem)">
+					<q-item-section avatar>
+						<q-icon name="mdi-magnify" />
+					</q-item-section>
+					<q-item-section>{{ $t('general.commands.view') }}</q-item-section>
+				</q-item>
+				<q-item
+					v-close-popup
+					class="media-poster-menu__item"
+					clickable
+					data-cy="media-poster-menu-download"
+					@click="onDownload([])">
+					<q-item-section avatar>
+						<q-icon name="mdi-download" />
+					</q-item-section>
+					<q-item-section>{{ $t('general.commands.download') }}</q-item-section>
+				</q-item>
+			</q-list>
+		</q-menu>
 	</q-card>
 </template>
 
@@ -171,6 +217,7 @@ const serverStore = useServerStore();
 const settingsStore = useSettingsStore();
 const libraryStore = useLibraryStore();
 const dialogStore = useDialogStore();
+const $q = useQuasar();
 const props = withDefaults(defineProps<{
 	mediaItem: PlexMediaSlimDTO;
 	active?: boolean;
@@ -189,6 +236,7 @@ const imageUrl = ref('');
 const thumbWidth = 200;
 const thumbHeight = 300;
 let currentSubscription: Subscription | null = null;
+const mobileMenuVisible = shallowRef(false);
 
 const mediaType = computed(() => props.mediaItem?.type ?? PlexMediaType.Unknown);
 
@@ -214,6 +262,7 @@ function onDownload(mediaQualities: PlexMediaQualityDTO[]) {
 	const downloadCommand: DownloadMediaDTO = {
 		type: get(mediaType),
 		mediaIds: [props.mediaItem.id],
+
 		plexLibraryId: props.mediaItem.plexLibraryId,
 		plexServerId: props.mediaItem.plexServerId,
 		qualities: mediaQualities,
@@ -221,6 +270,30 @@ function onDownload(mediaQualities: PlexMediaQualityDTO[]) {
 	};
 
 	emit('download', [downloadCommand]);
+}
+
+function openMobileActions(event: Event) {
+	if (!$q.screen.lt.md || isMobileMenuExcludedTarget(event.target))
+		return;
+
+	set(mobileMenuVisible, true);
+}
+
+function openMobileActionsMenu() {
+	if ($q.screen.lt.md)
+		set(mobileMenuVisible, true);
+}
+
+function onContextMenu(event: MouseEvent) {
+	if (!$q.screen.lt.md)
+		return;
+
+	event.preventDefault();
+	openMobileActions(event);
+}
+
+function isMobileMenuExcludedTarget(target: EventTarget | null): boolean {
+	return target instanceof Element && !!target.closest('button, a, .media-poster-quality-bar');
 }
 
 function openComparisonDetails() {
@@ -276,6 +349,10 @@ onUnmounted(() => {
 <style lang="scss">
 @use '@/assets/scss/_mixins.scss';
 
+.media-poster-menu__item {
+  min-height: 44px;
+}
+
 .q-img__content > div {
   padding: 0;
 }
@@ -289,37 +366,50 @@ onUnmounted(() => {
   max-width: calc(100% - 16px);
 }
 
+.media-poster-mobile-actions-trigger {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 9999;
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
 .media-poster-card {
-  flex: 0 0 232px !important;
-  width: 232px !important;
-  min-width: 232px !important;
-  max-width: 232px !important;
+  flex: 0 0 var(--poster-card-width, 232px) !important;
+  width: var(--poster-card-width, 232px) !important;
+  min-width: var(--poster-card-width, 232px) !important;
+  max-width: var(--poster-card-width, 232px) !important;
+}
+
+.media-poster-card .q-card__section {
+  padding: var(--poster-card-padding, 16px) var(--poster-card-padding, 16px) 0;
 }
 
 .media-poster-skeleton {
   @extend .background-sm;
-  width: 200px;
-  height: 300px;
+  width: var(--poster-image-width, 200px);
+  aspect-ratio: 2 / 3;
+  height: auto;
   padding: 0;
 }
 
 .media-poster {
   @extend .background-sm;
 
-  width: 200px;
+  width: var(--poster-image-width, 200px);
 
   &--image {
-    height: 300px;
+    aspect-ratio: 2 / 3;
+    height: auto;
     padding: 0;
   }
 
   &--overlay {
     @extend .background-xl;
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     opacity: 0;
     margin: 0;
     pointer-events: none;
@@ -328,8 +418,9 @@ onUnmounted(() => {
 
   &--content {
     overflow: hidden;
-    width: 200px;
-    height: 300px;
+    width: var(--poster-image-width, 200px);
+    aspect-ratio: 2 / 3;
+    height: auto;
   }
 
   &--section {
@@ -357,6 +448,7 @@ onUnmounted(() => {
     .q-text {
       display: -webkit-box;
       -webkit-line-clamp: 4;
+      line-clamp: 4;
       -webkit-box-orient: vertical;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -385,6 +477,9 @@ onUnmounted(() => {
     justify-content: space-around;
   }
 }
+.media-poster-image-wrapper .media-poster--image {
+  height: auto;
+}
 
 .media-poster-card:hover {
   .media-poster--fallback {
@@ -397,6 +492,68 @@ onUnmounted(() => {
 
     .q-btn {
       opacity: 1;
+    }
+  }
+}
+@media (max-width: $breakpoint-sm-max) {
+  .media-poster-card .media-poster--overlay,
+  .media-poster-card:hover .media-poster--overlay {
+    display: none;
+  }
+
+  .media-poster-card .media-poster--fallback,
+  .media-poster-card:hover .media-poster--fallback {
+    opacity: 1;
+  }
+
+}
+
+@media (max-width: 599px) {
+
+  .media-poster--section {
+    padding: 16px 8px 8px;
+  }
+
+  .media-poster--section-compact {
+    padding: 0 8px;
+  }
+
+  .media-poster--title .q-text {
+    font-size: clamp(0.7rem, 0.55rem + 0.8vw, 1.25rem);
+    line-height: 1.2;
+  }
+
+  .media-poster-quality-bar {
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+
+    > * {
+      min-width: 0;
+      max-width: 100%;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+
+    .q-chip {
+      min-width: 0;
+      max-width: 100%;
+      margin: 0;
+      padding-inline: 4px;
+      font-size: 12px !important;
+    }
+
+    .q-chip__content,
+    .q-text {
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .q-chip .q-text {
+      font-size: inherit !important;
     }
   }
 }

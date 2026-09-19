@@ -2,14 +2,16 @@
 	<QCol
 		align-self="stretch"
 		cols="12"
-		style="max-height: 76px;">
+		class="setup-footer">
 		<q-separator class="q-mb-md" />
 		<QRow
 			justify="between"
 			align="center"
-			class="q-my-md">
+			class="setup-footer__row q-my-md">
 			<!-- Language Selector + Background Toggle -->
-			<QCol cols="2">
+			<QCol
+				cols="2"
+				class="setup-footer__utilities">
 				<QRow no-wrap>
 					<LanguageSelect
 						class="q-ml-md"
@@ -18,14 +20,14 @@
 				</QRow>
 			</QCol>
 			<!-- Navigation buttons -->
-			<QCol>
+			<QCol class="setup-footer__navigation">
 				<QRow
 					justify="center"
 					align="center">
 					<!-- Back button -->
 					<QCol
 						v-if="!isBackDisabled"
-						class="q-mx-md"
+						class="setup-footer__button q-mx-md"
 						cols="3">
 						<NavigationPreviousButton
 							:disabled="isBackDisabled"
@@ -36,7 +38,7 @@
 					<QCol
 						v-if="!isNextDisabled"
 						:cols="isBackDisabled ? '9' : '3'"
-						class="q-mx-md">
+						class="setup-footer__button q-mx-md">
 						<ConfirmButton
 							v-if="model === 1"
 							cy="setup-disclaimer-accept-button"
@@ -55,7 +57,7 @@
 			</QCol>
 			<!--	Skip button	-->
 			<QCol
-				class="q-mx-md"
+				class="setup-footer__finish q-mx-md"
 				cols="auto">
 				<!--	Finish button	-->
 				<NavigationFinishSetupButton
@@ -129,7 +131,7 @@ const isFinishButtonVisible = computed(() => {
 });
 
 function next() {
-	if (model.value < props.maxPages) {
+	if (get(model) < props.maxPages) {
 		set(model, get(model) + 1);
 	}
 }
@@ -149,3 +151,43 @@ function onDisclaimerAgree() {
 	next();
 }
 </script>
+
+<style lang="scss">
+.setup-footer {
+  max-height: 76px;
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .setup-footer {
+    max-height: none;
+  }
+
+  .setup-footer__row {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding-inline: 0.5rem;
+  }
+
+  .setup-footer__utilities {
+    order: 2;
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .setup-footer__navigation {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .setup-footer__button {
+    min-width: 0;
+    margin-inline: 0.25rem;
+    flex: 1 1 0;
+  }
+
+  .setup-footer__button .q-btn,
+  .setup-footer__finish .q-btn {
+    min-height: 44px;
+  }
+}
+</style>

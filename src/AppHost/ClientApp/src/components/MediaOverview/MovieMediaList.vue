@@ -4,6 +4,8 @@
 			<QRow align="center">
 				<QCol cols="auto">
 					<q-checkbox
+						class="movie-media-list-root-checkbox"
+						:aria-label="`${t('general.commands.selection')} ${mediaItem.title}`"
 						data-cy="movie-media-list-root-checkbox"
 						:model-value="rootSelected"
 						@update:model-value="rootSetSelected($event)" />
@@ -144,3 +146,10 @@ useMediaOverviewBarDownloadCommandBus().on(() => {
 	sendMediaOverviewDownloadCommand(downloadMedia);
 });
 </script>
+
+<style lang="scss">
+.movie-media-list-root-checkbox {
+  min-width: 44px;
+  min-height: 44px;
+}
+</style>

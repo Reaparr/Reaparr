@@ -4,9 +4,11 @@ import { PlexMediaPaths } from '@api/api-paths';
 import { PlexMediaComparisonState, PlexMediaType, VideoQuality } from '@dto';
 import { getPlexMediaComparisonStateId } from '@composables';
 
+const getVisibleCy = (selector: string) => cy.getCy(selector).filter(':visible').first();
+
 function openComparisonFilterMenu() {
-	cy.getCy('media-overview-filter-btn').click();
-	cy.getCy('media-filter-menu-category-comparisonState').click();
+	getVisibleCy('media-overview-filter-btn').click();
+	getVisibleCy('media-filter-menu-category-comparisonState').click();
 }
 
 describe('Comparison poster status UX', () => {
@@ -25,10 +27,10 @@ describe('Comparison poster status UX', () => {
 				cy.visit(route('/'));
 				openComparisonFilterMenu();
 
-				cy.getCy(`comparison-filter-option-${PlexMediaComparisonState.NotCompared}`).should('be.visible');
-				cy.getCy(`comparison-filter-option-${PlexMediaComparisonState.Owned}`).should('be.visible');
-				cy.getCy(`comparison-filter-option-${PlexMediaComparisonState.HigherQuality}`).should('be.visible');
-				cy.getCy(`comparison-filter-option-${PlexMediaComparisonState.Missing}`).should('be.visible');
+				getVisibleCy(`comparison-filter-option-${PlexMediaComparisonState.NotCompared}`).should('be.visible');
+				getVisibleCy(`comparison-filter-option-${PlexMediaComparisonState.Owned}`).should('be.visible');
+				getVisibleCy(`comparison-filter-option-${PlexMediaComparisonState.HigherQuality}`).should('be.visible');
+				getVisibleCy(`comparison-filter-option-${PlexMediaComparisonState.Missing}`).should('be.visible');
 			});
 	});
 
@@ -104,7 +106,7 @@ describe('Comparison poster status UX', () => {
 				).as('comparisonDetails');
 
 				cy.visit(route('/'));
-				cy.get(`[data-cy="comparison-chip-${PlexMediaComparisonState.HigherQuality}"]`, { timeout: 20000 }).should('be.visible').click();
+				getVisibleCy(`comparison-chip-${PlexMediaComparisonState.HigherQuality}`).should('be.visible').click();
 				cy.wait('@comparisonDetails');
 				cy.getCy('media-comparison-details-dialog').should('be.visible');
 				cy.getCy('media-comparison-details-table').should('contain', movie.title);

@@ -1,10 +1,13 @@
 <template>
 	<q-header class="app-bar">
-		<q-toolbar class="app-bar">
+		<q-toolbar
+			v-if="$q.screen.gt.sm"
+			class="app-bar">
 			<q-toolbar-title>
 				<q-btn
 					flat
 					dense
+					:data-cy="'navigation-drawer-toggle'"
 					:icon="showNavigationDrawerState ? 'mdi-arrow-collapse-left' : 'mdi-arrow-collapse-right'"
 					class="q-mr-sm"
 					@click.stop="showNavigationDrawer" />
@@ -73,6 +76,92 @@
 			<!-- Notifications Selector -->
 			<NotificationButton @toggle="showNotificationsDrawer" />
 		</q-toolbar>
+
+		<q-toolbar
+			v-else
+			class="app-bar__toolbar">
+			<q-btn
+				flat
+				dense
+				round
+				data-cy="navigation-drawer-toggle"
+				:aria-label="$t('components.app-bar.navigation-menu')"
+				:aria-expanded="showNavigationDrawerState"
+				aria-controls="navigation-drawer"
+				:icon="showNavigationDrawerState ? 'mdi-arrow-collapse-left' : 'mdi-menu'"
+				@click.stop="showNavigationDrawer" />
+
+			<q-btn
+				to="/"
+				flat
+				class="app-bar__brand q-pa-xs"
+				aria-label="Reaparr">
+				<img
+					src="/img/logo/reaparr-full.svg"
+					alt=""
+					class="app-bar__logo">
+				<img
+					src="/img/logo/reaparr-title.svg"
+					alt="Reaparr"
+					class="app-bar__title-logo">
+			</q-btn>
+
+			<q-space />
+
+			<q-btn-dropdown
+				class="app-bar__overflow"
+				flat
+				round
+				dense
+				icon="mdi-dots-vertical"
+				:aria-label="$t('components.app-bar.more-actions')">
+				<q-list>
+					<q-item
+						v-close-popup
+						clickable
+						@click="copy(globalStore.version)">
+						<q-item-section avatar>
+							<q-icon name="mdi-alpha-v-circle-outline" />
+						</q-item-section>
+						<q-item-section>
+							{{ $t('components.app-bar.copy-version', { version: globalStore.version }) }}
+						</q-item-section>
+					</q-item>
+					<q-item
+						v-close-popup
+						clickable
+						@click="openUpdateDialog">
+						<q-item-section avatar>
+							<q-icon name="mdi-download-circle-outline" />
+						</q-item-section>
+						<q-item-section>{{ $t('components.app-bar.update-available') }}</q-item-section>
+					</q-item>
+					<q-item
+						clickable
+						tag="a"
+						href="https://github.com/Reaparr/Reaparr"
+						target="_blank">
+						<q-item-section avatar>
+							<q-icon name="mdi-github" />
+						</q-item-section>
+						<q-item-section>{{ githubLabel }}</q-item-section>
+					</q-item>
+					<q-item
+						v-close-popup
+						clickable
+						@click="dialogStore.openDialog(DialogType.DiscordServerInviteDialog)">
+						<q-item-section avatar>
+							<DiscordIcon />
+						</q-item-section>
+						<q-item-section>{{ discordLabel }}</q-item-section>
+					</q-item>
+				</q-list>
+			</q-btn-dropdown>
+
+			<BackgroundActivityToggleButton />
+			<AccountSelector />
+			<NotificationButton @toggle="showNotificationsDrawer" />
+		</q-toolbar>
 	</q-header>
 </template>
 
@@ -84,8 +173,11 @@ import { useClipboard } from '@vueuse/core';
 const globalStore = useGlobalStore();
 const dialogStore = useDialogStore();
 const updateStore = useUpdateStore();
+const $q = useQuasar();
 
 const { copy } = useClipboard({ legacy: true });
+const githubLabel = 'GitHub';
+const discordLabel = 'Discord';
 
 defineProps<{
 	showNavigationDrawerState?: boolean;
@@ -110,6 +202,56 @@ function openUpdateDialog(): void {
 
 <style lang="scss">
 @use '@/assets/scss/variables' as *;
+
+@media (max-width: $breakpoint-sm-max) {
+  .app-bar {
+    z-index: 4000;
+  }
+
+  .app-bar__toolbar {
+    min-width: 0;
+    gap: 0.25rem;
+  }
+
+  .app-bar__toolbar .q-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .app-bar__brand {
+    min-width: 0;
+  }
+
+  .app-bar__logo {
+    height: 2.5rem;
+    width: auto;
+  }
+
+  .app-bar__title-logo {
+    height: 2rem;
+    width: auto;
+    margin-left: 0.5rem;
+  }
+
+  .app-bar__overflow {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .app-bar__title-logo {
+    display: none;
+  }
+
+  .app-bar__logo {
+    height: 2rem;
+  }
+
+  .app-bar__toolbar {
+    padding-inline: 0.25rem;
+  }
+
+}
 
 body {
   &.body--dark {

@@ -57,7 +57,6 @@ $app-bar-height: 48px;
 $download-page-bar-height: 80px;
 $media-overview-bar-height: 85px + 4px; // bar
 $media-table-row-height: 42px;
-$navigation-drawer-width: 400px;
 
 $page-height-minus-app-bar: calc(100vh - #{$app-bar-height});
 $page-height-minus-app-bar-minus-media-overview-bar: calc($page-height-minus-app-bar - $media-overview-bar-height);

@@ -1,5 +1,5 @@
 <template>
-	<QPage>
+	<QPage class="settings-page">
 		<GeneralSection />
 		<LanguageSection />
 		<DateAndTimeSection />

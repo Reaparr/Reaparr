@@ -10,7 +10,8 @@
 				:title="$t('help.settings.advanced.setup-section.go-to-setup-page.title')"
 				:text="$t('help.settings.advanced.setup-section.go-to-setup-page.text')">
 				<GoToButton
-					:width="400"
+					class="settings-action-button"
+					cy="go-to-setup-button"
 					:label="$t('general.commands.go-to-setup-page')"
 					to="/setup"
 					block />

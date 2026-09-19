@@ -1,12 +1,13 @@
 <template>
 	<q-btn
 		icon="mdi-account"
+		aria-label="Account selector"
 		flat
 		rounded
 		data-cy="account-selector-btn"
 		style="padding: 0.5rem">
 		<q-menu>
-			<q-list>
+			<q-list class="account-selector-list">
 				<template v-if="accountsDisplay.length > 0">
 					<!--  Title  -->
 					<q-item-label header>
@@ -21,7 +22,7 @@
 						clickable
 						tabindex="0"
 						@click="updateActiveAccountId(account.id)">
-						<q-item-section>
+						<q-item-section class="account-selector-details">
 							<q-item-label>{{ account.displayName }}</q-item-label>
 							<q-item-label
 								v-if="account.username"
@@ -33,9 +34,11 @@
 							<q-btn
 								flat
 								icon="mdi-refresh"
+								class="account-selector-refresh"
 								:loading="account.loading"
 								:disabled="accountStore.accessSyncLoading"
 								:data-cy="`refresh-account-${account.id}-btn`"
+								:aria-label="`${t('components.account-selector.title')}: ${account.displayName}`"
 								@click.stop="runReSyncAccount(account.id)" />
 						</q-item-section>
 					</q-item>
@@ -118,3 +121,24 @@ function onLogOut(): void {
 	useSubscription(authStore.logout().subscribe());
 }
 </script>
+
+<style lang="scss">
+.account-selector-list {
+  max-width: min(100vw, 28rem);
+
+  .account-selector-details {
+    min-width: 0;
+
+    .q-item__label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .account-selector-refresh {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+</style>

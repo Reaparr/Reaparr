@@ -35,6 +35,7 @@
 							'media-table-row--title',
 							!disableHoverClick ? 'media-table-row--title--hover' : '',
 						]"
+						:data-label="column.label"
 						@click.stop="!disableHoverClick ? onRowAction({ command: 'open-details' }) : () => {}">
 						<QText :value="row[column.field]" />
 					</QCol>
@@ -42,7 +43,8 @@
 				<!-- Duration format -->
 				<template v-else-if="column['type'] === 'duration'">
 					<QCol
-						class="media-table-row--column"
+						class="media-table-row--column media-table-row--secondary"
+						:data-label="column.label"
 						cols="1">
 						<QDuration
 							align="center"
@@ -53,7 +55,8 @@
 				<!-- Date format -->
 				<template v-else-if="column['type'] === 'date'">
 					<QCol
-						class="media-table-row--column"
+						class="media-table-row--column media-table-row--secondary"
+						:data-label="column.label"
 						cols="1">
 						<QDateTime
 							align="center"
@@ -64,7 +67,8 @@
 				<!-- Media size -->
 				<template v-else-if="column['type'] === 'file-size'">
 					<QCol
-						class="media-table-row--column"
+						class="media-table-row--column media-table-row--secondary"
+						:data-label="column.label"
 						cols="1">
 						<QFileSize
 							align="center"
@@ -198,6 +202,39 @@ function onRowAction(action: IMediaOverviewCommands) {
 
       &:hover {
         color: $primary;
+      }
+    }
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .media-table-row {
+    min-height: 96px;
+    padding: 0.5rem;
+    align-content: center;
+    flex-wrap: wrap;
+
+    > .col-auto:first-child {
+      margin-left: 0;
+      padding-left: 0;
+    }
+
+    &--title {
+      min-width: 0;
+      flex: 1 1 calc(100% - 96px);
+      margin-inline: 0.25rem;
+    }
+
+    &--secondary {
+      display: none;
+    }
+
+    &--column:last-child {
+      margin-inline: 0;
+
+      .q-btn {
+        min-width: 44px;
+        min-height: 44px;
       }
     }
   }

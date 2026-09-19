@@ -1,5 +1,5 @@
 <template>
-	<QPage>
+	<QPage class="settings-page">
 		<QSection :header="$t('pages.settings.accounts.plex-accounts-header')">
 			<AccountOverview />
 		</QSection>

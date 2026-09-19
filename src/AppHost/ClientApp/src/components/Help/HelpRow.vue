@@ -1,19 +1,21 @@
 <template>
 	<QRow
-		no-wrap
+		:no-wrap="isDesktopLayout || disableResponsive"
+		:class="{ 'help-row--fixed': disableResponsive }"
 		:align="align">
 		<QCol
 			class="help-row-label"
-			:cols="colLabel"
-			:lg="!disableResponsive ? 4 : colLabel"
-			:xl="!disableResponsive ? 3 : colLabel"
+			:cols="disableResponsive ? colLabel : 12"
+			:md="!disableResponsive ? colLabel : 0"
+			:lg="!disableResponsive ? 4 : 0"
+			:xl="!disableResponsive ? 3 : 0"
 			align-self="center"
 			align-items="end">
 			<!-- Help Label -->
 			<QText
 				v-if="!allowLabelEdit"
 				full-width
-				align="right"
+				:align="isDesktopLayout || disableResponsive ? 'right' : 'left'"
 				:value="help.label">
 				<template #prepend>
 					<slot name="prepend" />
@@ -44,9 +46,10 @@
 
 		<!-- Default Form Slot -->
 		<QCol
-			:cols="colContent"
-			:lg="!disableResponsive ? 5 : colContent"
-			:xl="!disableResponsive ? 4 : colContent"
+			:cols="disableResponsive ? colContent : 12"
+			:md="!disableResponsive ? colContent : 0"
+			:lg="!disableResponsive ? 5 : 0"
+			:xl="!disableResponsive ? 4 : 0"
 			align-self="center"
 			class="help-row-default-slot q-pa-sm">
 			<slot />
@@ -62,6 +65,13 @@ import type { ColLevels } from '@props';
 
 const { t } = useI18n();
 const helpStore = useHelpStore();
+const breakpoints = useBreakpoints({
+	sm: 600,
+	md: 1024,
+	lg: 1440,
+	xl: 1920,
+});
+const isDesktopLayout = breakpoints.greaterOrEqual('md');
 
 const editModel = defineModel<string>('editModel');
 
@@ -130,5 +140,30 @@ const hasHelpPage = computed(() => {
   &-default-slot:has(.q-field__bottom) {
     align-self: flex-start;
   }
+}
+
+@media (max-width: $breakpoint-sm-max) {
+  .help-row:not(.help-row--fixed) .help-row-label {
+    align-self: stretch;
+    padding-inline: 0.5rem;
+
+    &:has(+ .help-row-default-slot .q-field__bottom) {
+      position: static;
+      top: auto;
+      transform: none;
+    }
+
+    :deep(.q-text) {
+      text-align: left;
+    }
+  }
+
+  .help-row:not(.help-row--fixed) .help-row-default-slot {
+    min-width: 0;
+  }
+}
+
+.help-row--fixed {
+  flex-wrap: nowrap;
 }
 </style>

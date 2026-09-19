@@ -1,5 +1,5 @@
 <template>
-	<QPage>
+	<QPage class="settings-page">
 		<FolderPathsOverview />
 	</QPage>
 </template>

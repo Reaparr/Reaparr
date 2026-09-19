@@ -11,6 +11,7 @@
 				<q-item-section avatar>
 					<IconSquareButton
 						icon="mdi-eye-check-outline"
+						:tooltip-text="$t('general.commands.enabled')"
 						@click="onServerEnable(server.id)" />
 				</q-item-section>
 

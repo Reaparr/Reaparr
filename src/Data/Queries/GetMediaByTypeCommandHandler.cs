@@ -461,28 +461,12 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
         if (items.Count == 0)
             return Result.Ok();
 
-        if (plexLibraryId > 0)
-        {
-            var result = await _commandExecutor.Send(
-                new ApplyComparisonStateCommand(items, plexLibraryId, mediaType),
-                ct
-            );
-            if (result.IsFailed)
-                return Result.Fail(result.Errors);
-
-            return Result.Ok();
-        }
-
-        foreach (var group in items.Where(x => x.PlexLibraryId > 0).GroupBy(x => x.PlexLibraryId))
-        {
-            var libraryItems = group.ToList();
-            var result = await _commandExecutor.Send(
-                new ApplyComparisonStateCommand(libraryItems, group.Key, mediaType),
-                ct
-            );
-            if (result.IsFailed)
-                return Result.Fail(result.Errors);
-        }
+        var result = await _commandExecutor.Send(
+            new ApplyComparisonStateCommand(items, mediaType, plexLibraryId > 0 ? plexLibraryId : null),
+            ct
+        );
+        if (result.IsFailed)
+            return Result.Fail(result.Errors);
 
         return Result.Ok();
     }

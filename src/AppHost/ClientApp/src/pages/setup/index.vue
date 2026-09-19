@@ -1,5 +1,5 @@
 <template>
-	<QPage>
+	<QPage class="setup-page">
 		<!-- Logo	-->
 		<QRow
 			justify="center"
@@ -12,7 +12,9 @@
 			</QCol>
 		</QRow>
 		<!--	Horizontal Container	-->
-		<QRow justify="center">
+		<QRow
+			justify="center"
+			class="setup-page-content">
 			<QCol
 				cols="12"
 				lg="8">
@@ -21,14 +23,20 @@
 					class="setup-card"
 					column>
 					<QCol align-self="stretch">
-						<QRow align="start">
+						<QRow
+							align="start"
+							class="setup-content-row">
 							<!-- Tabs -->
-							<QCol cols="2">
+							<QCol
+								cols="2"
+								class="setup-tabs-column">
 								<SetupTabs
 									v-model="stepIndex"
 									:headers="headers" />
 							</QCol>
-							<QCol align-self="stretch">
+							<QCol
+								align-self="stretch"
+								class="setup-panels-column">
 								<!-- Panels -->
 								<q-tab-panels
 									v-model="stepIndex"
@@ -104,6 +112,53 @@ function finishSetup() {
 .setup-card {
   @extend .default-border;
   @extend .default-border-radius;
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .setup-page {
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+.setup-content-row,
+.setup-panels-column {
+  min-width: 0;
+}
+  .setup-page-content {
+    padding-inline: 0.5rem;
+  }
+
+  .setup-content-row {
+    flex-direction: column;
+  }
+
+  .setup-tabs-column,
+  .setup-panels-column {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+
+  .setup-tabs-column :deep(.q-tabs) {
+    width: 100%;
+    flex-direction: row;
+  }
+
+  .setup-tabs-column :deep(.q-tabs__content) {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .setup-tabs-column :deep(.q-tab) {
+    min-width: 80px;
+    min-height: 48px;
+    height: auto;
+  }
+
+  .setup-panels-column :deep(.q-tab-panel) {
+    padding: 0.75rem;
+  }
 }
 
 .setup-tab {

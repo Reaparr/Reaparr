@@ -23,6 +23,7 @@
 			<q-btn
 				flat
 				:icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+				aria-label="Toggle password visibility"
 				@click="showPassword = !showPassword" />
 		</template>
 	</q-input>

@@ -8,7 +8,7 @@
 		<HelpRow
 			v-for="library in libraries"
 			:key="library.id"
-			disable-responsive
+			class="server-library-row"
 			col-label="3"
 			:label="library.title">
 			<template #append>
@@ -95,3 +95,19 @@ function removeUpdatingLibraryId(libraryId: number): void {
 	set(updatingLibraryIds, get(updatingLibraryIds).filter((id) => id !== libraryId));
 }
 </script>
+
+<style lang="scss">
+@media (min-width: $breakpoint-lg-min) {
+  .server-library-row {
+    > .help-row-label {
+      flex: 0 0 25%;
+      max-width: 25%;
+    }
+
+    > .help-row-default-slot {
+      flex: 0 0 50%;
+      max-width: 50%;
+    }
+  }
+}
+</style>

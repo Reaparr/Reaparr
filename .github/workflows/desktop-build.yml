@@ -163,15 +163,38 @@ jobs:
                     path: Releases/
                     retention-days: 1
 
+    verify-release:
+        name: Verify GitHub Release exists
+        needs: [ build ]
+        if: inputs.push
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        steps:
+            -   name: Verify release exists before parallel uploads
+                shell: bash
+                env:
+                    GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+                    RELEASE_TAG: v${{ inputs.version }}
+                run: |
+                    gh release view "$RELEASE_TAG" \
+                        --repo "$GITHUB_REPOSITORY" \
+                        --json tagName \
+                        --jq '.tagName'
+
     upload-release:
         name: Upload ${{ matrix.rid }} to GitHub Release
-        needs: [ build ]
+        needs: [ build, verify-release ]
         if: inputs.push
         runs-on: ubuntu-latest
         timeout-minutes: 30
         strategy:
             fail-fast: false
-            max-parallel: 1
+            # Release creation is verified above. Platform channels and asset names are
+            # disjoint, so non-publishing uploads can proceed two at a time. Keep
+            # publish-release serial because each invocation may finalize the release.
+            max-parallel: ${{ inputs.publish_release && 1 || 2 }}
             matrix:
                 include:
                     -   rid: win-x64
@@ -227,6 +250,8 @@ jobs:
                 run: |
                     upload_args=(
                         vpk upload github
+                        # Bound stalled GitHub asset requests; vpk retries failed uploads.
+                        --timeout "30"
                         --repoUrl "https://github.com/$GITHUB_REPOSITORY"
                         --merge
                         --channel "$VELOPACK_CHANNEL"

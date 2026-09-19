@@ -8,33 +8,26 @@
 		cy="media-comparison-details-dialog"
 		@opened="onOpen">
 		<template #title>
-			<QRow
-				justify="between"
-				align="center"
-				gutter="sm">
-				<QCol cols="auto">
-					<MediaComparisonStateButton
-						v-if="selectedMediaItem"
-						show-tooltip
-						:comparison-state="getPlexMediaComparisonState(selectedMediaItem)"
-						dense
-						cy="media-comparison-details-dialog-state" />
-				</QCol>
-				<QCol>
-					<QText size="h4">
-						{{ selectedMediaItem?.title ?? t('general.error.unknown') }}
-					</QText>
-				</QCol>
-				<QCol cols="auto">
-					<VerticalButton
-						class="q-mr-xl"
-						:label="t('components.media-overview.comparison.download-selected')"
-						icon="mdi-download"
-						:disabled="selectedDownloadRows.length === 0"
-						cy="media-comparison-details-dialog-download-button"
-						@click="downloadRows(selectedDownloadRows)" />
-				</QCol>
-			</QRow>
+			<div class="media-comparison-details__header">
+				<MediaComparisonStateButton
+					v-if="selectedMediaItem"
+					show-tooltip
+					:comparison-state="getPlexMediaComparisonState(selectedMediaItem)"
+					dense
+					cy="media-comparison-details-dialog-state" />
+				<QText
+					class="media-comparison-details__title"
+					size="h6"
+					:value="selectedMediaItem?.title ?? t('general.error.unknown')" />
+				<BaseButton
+					v-if="$q.screen.gt.sm"
+					class="media-comparison-details__download-button media-comparison-details__download-button--desktop"
+					:label="t('components.media-overview.comparison.download-selected')"
+					icon="mdi-download"
+					:disabled="selectedDownloadRows.length === 0"
+					cy="media-comparison-details-dialog-download-button"
+					@click="downloadRows(selectedDownloadRows)" />
+			</div>
 		</template>
 
 		<template #default>
@@ -46,25 +39,50 @@
 					data-cy="media-comparison-details-table"
 					:loading="loading"
 					:nodes="detailTreeRows"
-					:columns="comparisonColumns"
+					:columns="responsiveComparisonColumns"
 					:selection-keys="selectedRows"
 					@selected="onSelectionChange">
 					<template #cell-title="{ node, data }: { node: IComparisonDetailTreeNode; data: IComparisonDetailsRow }">
-						<QRow
-							align="center"
-							no-wrap>
-							<QCol cols="auto">
+						<div class="media-comparison-details__row-content">
+							<div class="media-comparison-details__row-title">
 								<MediaComparisonStateButton
 									:comparison-state="getComparisonState(data)"
 									show-tooltip
 									dense />
-							</QCol>
-							<QCol>
 								<QText
 									:cy="`media-comparison-details-title-${node.key}`"
 									:value="data.title" />
-							</QCol>
-						</QRow>
+							</div>
+							<div
+								v-if="$q.screen.lt.md"
+								class="media-comparison-details__metadata">
+								<div class="media-comparison-details__metadata-item">
+									<QText
+										class="media-comparison-details__metadata-label"
+										size="caption"
+										:value="t('components.media-overview.comparison.details-column-owned-quality')" />
+									<MediaVideoQuality :quality="data.ownedQuality ?? VideoQuality.None" />
+								</div>
+								<div class="media-comparison-details__metadata-item">
+									<QText
+										class="media-comparison-details__metadata-label"
+										size="caption"
+										:value="t('components.media-overview.comparison.details-column-remote-quality')" />
+									<MediaVideoQuality :quality="data.remoteQuality ?? VideoQuality.None" />
+								</div>
+								<div class="media-comparison-details__metadata-item media-comparison-details__metadata-location">
+									<QText
+										class="media-comparison-details__metadata-label"
+										size="caption"
+										:value="t('components.media-overview.comparison.details-column-location')" />
+									<div class="media-comparison-details__location">
+										<QText :value="serverStore.getServerName(data.plexServerId)" />
+										<QIcon name="mdi-arrow-right-thin" />
+										<QText :value="libraryStore.getLibraryName(data.plexLibraryId)" />
+									</div>
+								</div>
+							</div>
+						</div>
 					</template>
 					<template #cell-ownedQuality="{ data }: { data: IComparisonDetailsRow }">
 						<MediaVideoQuality :quality="data.ownedQuality ?? VideoQuality.None" />
@@ -109,6 +127,18 @@
 				</QTreeTable>
 			</div>
 		</template>
+		<template
+			v-if="$q.screen.lt.md"
+			#actions>
+			<BaseButton
+				class="media-comparison-details__download-button"
+				:label="t('components.media-overview.comparison.download-selected')"
+				icon="mdi-download"
+				block
+				:disabled="selectedDownloadRows.length === 0"
+				cy="media-comparison-details-dialog-download-button"
+				@click="downloadRows(selectedDownloadRows)" />
+		</template>
 	</QCardDialog>
 </template>
 
@@ -142,6 +172,7 @@ interface IComparisonDetailTreeNode extends TreeNode {
 }
 
 const { t } = useI18n();
+const $q = useQuasar();
 const mediaStore = useMediaStore();
 const dialogStore = useDialogStore();
 const settingsStore = useSettingsStore();
@@ -192,6 +223,16 @@ const comparisonColumns: QTreeTableColumn[] = [
 		sortable: false,
 	},
 ];
+
+const responsiveComparisonColumns = computed<QTreeTableColumn[]>(() => {
+	if (!$q.screen.lt.md)
+		return comparisonColumns;
+
+	return [{
+		header: t('components.media-overview.comparison.details-column-title'),
+		field: 'title',
+	}];
+});
 
 function mapToTreeNodes(rows: IComparisonDetailsRow[]): IComparisonDetailTreeNode[] {
 	return rows.map((row) => ({
@@ -275,8 +316,64 @@ function toDownloadMediaCommand(row: IComparisonDetailsRow): DownloadMediaDTO {
   min-height: 0;
 }
 
-.media-comparison-details__description {
+.media-comparison-details__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding-right: 2.5rem;
+}
+
+.media-comparison-details__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.media-comparison-details__row-content {
+  min-width: 0;
+}
+
+.media-comparison-details__row-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.media-comparison-details__metadata {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-left: 2.5rem;
+}
+
+.media-comparison-details__metadata-item {
+  min-width: 0;
+}
+
+.media-comparison-details__metadata-label {
+  opacity: 0.7;
+}
+
+.media-comparison-details__metadata-location {
+  grid-column: 1 / -1;
+}
+
+.media-comparison-details__location {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.media-comparison-details__download-button {
+  min-height: 44px;
+}
+
+.media-comparison-details__download-button--desktop {
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .media-comparison-details__table {
@@ -302,6 +399,61 @@ function toDownloadMediaCommand(row: IComparisonDetailsRow): DownloadMediaDTO {
     bottom: 0;
     z-index: 2;
     flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 1023px) {
+  .media-comparison-details__title .q-text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .media-comparison-details__table {
+    .p-treetable-table-container {
+      overflow-x: hidden;
+    }
+    .p-treetable-thead {
+      display: none;
+    }
+
+    .p-treetable-table {
+      width: 100%;
+      min-width: 0;
+      table-layout: fixed;
+    }
+
+    .p-treetable-header-cell,
+    .p-treetable-tbody > tr > td {
+      white-space: normal;
+    }
+
+    .q-tree-table-title-cell > .media-comparison-details__row-content {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+
+      .q-text {
+        overflow: visible;
+        text-overflow: clip;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+    }
+  }
+}
+
+@media (max-width: 599px) {
+  .media-comparison-details__header {
+    gap: 0.5rem;
+  }
+
+  .media-comparison-details__metadata {
+    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    padding-left: 0;
   }
 }
 </style>

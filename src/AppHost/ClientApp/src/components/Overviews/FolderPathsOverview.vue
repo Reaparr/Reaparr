@@ -6,11 +6,15 @@
 			active-color="primary"
 			align="justify"
 			indicator-color="primary"
+			mobile-arrows
+			outside-arrows
 			class="folder-path-tabs">
 			<q-tab
 				v-for="tab in folderPathTabs"
 				:key="tab.folderType"
 				:name="tab.folderType"
+				:no-caps="true"
+				:aria-label="tab.header"
 				:data-cy="`folder-path-tab-${kebabCase(tab.folderType)}`">
 				<q-icon
 					v-if="tab.folderType === FolderType.DownloadFolder"
@@ -20,7 +24,7 @@
 					v-else
 					:media-type="tab.mediaType"
 					class="q-mr-sm" />
-				<span>{{ tab.header }}</span>
+				<span class="folder-path-tab-label">{{ tab.header }}</span>
 			</q-tab>
 		</q-tabs>
 
@@ -28,7 +32,7 @@
 			<HelpRow
 				v-for="folderPath in visibleFolderPaths"
 				:key="folderPath.id"
-				disable-responsive
+				class="folder-path-row"
 				:col-label="3"
 				:col-content="8"
 				:edit-model="folderPath.displayName"
@@ -50,8 +54,10 @@
 							:data-cy="`${getFolderPathCyPrefix(folderPath)}-input`"
 							readonly>
 							<IconSquareButton
+								class="folder-path-browse-button"
 								:cy="`${getFolderPathCyPrefix(folderPath)}-edit-button`"
 								icon="mdi-folder-open-outline"
+								:aria-label="`Edit folder path: ${folderPath.displayName}`"
 								@click="dialogStore.openDirectoryBrowserDialog(folderPath)" />
 						</q-input>
 					</QCol>
@@ -65,10 +71,10 @@
 							:valid-text="$t('general.alerts.valid-directory')" />
 					</QCol>
 					<QCol
+						v-if="!onlyDefaults && activeFolderPathGroup?.isFolderDeletable && !folderPath.isDefault"
 						:width="56"
 						class="folder-path-action">
 						<DeleteIconButton
-							v-if="!onlyDefaults && activeFolderPathGroup?.isFolderDeletable && !folderPath.isDefault"
 							:cy="`${getFolderPathCyPrefix(folderPath)}-delete-button`"
 							@click="deleteFolderPath(folderPath)" />
 					</QCol>
@@ -82,6 +88,7 @@
 			justify="center">
 			<QCol cols="auto">
 				<AddIconButton
+					:aria-label="`Add ${activeFolderPathGroup.header}`"
 					:cy="`${kebabCase(activeFolderPathGroup.folderType)}-add-button`"
 					@click="addFolderPath(activeFolderPathGroup)" />
 			</QCol>
@@ -283,6 +290,66 @@ function saveDisplayName(id: number, value: string) {
   .q-field__control {
     // Ensures the folder button is outlined to the right border
     padding: 0 0 0 12px;
+  }
+}
+
+.folder-path-browse-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .folder-path-tabs {
+    min-height: 48px;
+
+    .q-tab {
+      min-width: 0;
+      min-height: 48px;
+      padding-inline: 0.75rem;
+    }
+
+    .folder-path-tab-label {
+      display: none;
+    }
+
+    .q-icon {
+      margin-right: 0;
+    }
+  }
+
+  .folder-path-row {
+    margin: 0.75rem 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid currentcolor;
+    border-radius: 8px;
+
+    .help-row-label,
+    .help-row-default-slot {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+
+    .help-row-label {
+      padding-inline: 0;
+    }
+
+    .editable-text-item {
+      padding-inline: 0;
+    }
+
+    .editable-text-display,
+    .editable-text-display .text-right {
+      text-align: left !important;
+    }
+
+    .help-row-default-slot {
+      padding: 0.25rem 0 0;
+    }
+
+    .folder-path-action {
+      flex: 0 0 44px !important;
+      max-width: 44px !important;
+    }
   }
 }
 </style>

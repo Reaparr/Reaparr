@@ -53,7 +53,7 @@
 		</HelpGroup>
 		<q-tabs
 			v-model="tab"
-			class="q-my-lg"
+			class="account-dialog-tabs q-my-lg"
 			align="justify">
 			<q-tab
 				data-cy="account-dialog-credentials-mode-button"
@@ -171,5 +171,24 @@ function setValidationState(state: boolean) {
 <style lang="scss">
 .account-dialog-panel {
   min-height: 11rem;
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .account-dialog-tabs {
+    .q-tab {
+      min-width: 0;
+      padding-inline: 0.5rem;
+      flex: 1 1 50%;
+    }
+
+    .q-tab__label {
+      white-space: normal;
+      line-height: 1.2;
+    }
+  }
+
+  .account-dialog-panel {
+    padding: 0.75rem 0;
+  }
 }
 </style>
