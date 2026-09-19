@@ -35,7 +35,7 @@
 						@update:model-value="requestDirectories" />
 				</QCol>
 			</QRow>
-			<q-markup-table class="q-pr-md">
+			<q-markup-table class="directory-browser-table q-pr-md">
 				<thead>
 					<tr>
 						<th
@@ -60,7 +60,7 @@
 								size="md"
 								:name="getIcon(returnRow.type)" />
 						</td>
-						<td class="text-left">
+						<td class="directory-browser-name-cell text-left">
 							{{ returnRow.name }}
 						</td>
 					</tr>
@@ -69,7 +69,9 @@
 		</template>
 		<template #default>
 			<!--	Directory Browser	-->
-			<q-markup-table data-cy="directory-browser-rows">
+			<q-markup-table
+				class="directory-browser-table"
+				data-cy="directory-browser-rows">
 				<tbody class="scroll">
 					<tr
 						v-for="(row, index) in items"
@@ -84,7 +86,7 @@
 								size="md"
 								:name="getIcon(row.type)" />
 						</td>
-						<td class="text-left">
+						<td class="directory-browser-name-cell text-left">
 							<q-icon
 								v-if="!row.hasReadPermission"
 								color="red"
@@ -261,3 +263,14 @@ function directoryNavigate(dataRow: FileSystemModelDTO): void {
 	}
 }
 </script>
+
+<style lang="scss">
+@media (max-width: $breakpoint-sm-max) {
+  .directory-browser-name-cell {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+}
+</style>

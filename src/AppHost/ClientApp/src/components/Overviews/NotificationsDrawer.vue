@@ -1,7 +1,8 @@
 <template>
 	<q-drawer
-		:model-value="showDrawer"
-		:width="450"
+		v-model="showDrawer"
+		:width="drawerWidth"
+		:breakpoint="1023"
 		side="right"
 		overlay
 		class="notification-drawer">
@@ -64,21 +65,28 @@
 
 <script setup lang="ts">
 import { useNotificationsStore } from '@store';
+import { set } from '@vueuse/core';
 
 const notificationsStore = useNotificationsStore();
 const { t } = useI18n();
 
-defineProps<{
-	showDrawer: boolean;
-}>();
+const showDrawer = defineModel<boolean>('showDrawer', { default: false });
+const $q = useQuasar();
+const drawerWidth = computed(() => {
+	if (!$q.screen.lt.md || !$q.screen.width)
+		return 450;
 
-const emit = defineEmits<{
-	(cleared: 'cleared'): void;
-}>();
+	return Math.min(450, $q.screen.width * 0.92);
+});
+
+useEventListener(document, 'keydown', (event) => {
+	if (event.key === 'Escape')
+		set(showDrawer, false);
+});
 
 function clearAllNotifications() {
 	notificationsStore.clearAllNotifications();
-	emit('cleared');
+	set(showDrawer, false);
 }
 </script>
 
@@ -86,15 +94,19 @@ function clearAllNotifications() {
 @use '@/assets/scss/variables.scss' as *;
 
 .notification-drawer {
-  height: $page-height-minus-app-bar;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  position: absolute;
+  top: calc($app-bar-height + 2px);
+  right: 0;
+  bottom: 0;
+  left: auto;
+  height: auto !important;
 
   .notification-container {
     overflow-y: auto;
     overflow-x: hidden;
-
     flex-grow: 3;
   }
 
@@ -105,5 +117,40 @@ function clearAllNotifications() {
 
 .q-drawer {
   background-color: transparent;
+}
+
+@media (max-width: 1023px) {
+  .notification-drawer {
+    width: min(450px, 92vw) !important;
+    max-width: 92vw;
+
+    .notification-container {
+      min-height: 0;
+      overflow: hidden;
+      flex: 1 1 auto;
+
+      .q-scrollarea__content,
+      .q-alert,
+      .q-list {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+      }
+    }
+
+    .clear-notifications-container {
+      flex: 0 0 auto;
+    }
+  }
+
+  .body--dark .notification-drawer {
+    background-color: var(--q-dark-page, #121212) !important;
+    color: #fff;
+  }
+
+  .body--light .notification-drawer {
+    background-color: var(--q-light-page, #fff) !important;
+    color: #000;
+  }
 }
 </style>

@@ -1,14 +1,82 @@
 <template>
-	<q-list class="no-background">
+	<q-list class="media-overview-bar-header no-background">
 		<q-item
 			v-ripple
+			class="media-overview-bar-header__item"
 			:clickable="mediaOverviewStore.allMediaMode">
 			<q-item-section avatar>
 				<QMediaTypeIcon
+					class="media-overview-bar-header__desktop-icon"
 					:media-type="mediaOverviewStore.getMediaType"
 					:size="36" />
+				<q-btn
+					class="media-overview-bar-header__mobile-trigger"
+					flat
+					round
+					dense
+					aria-label="Media overview details"
+					data-cy="media-overview-bar-header-mobile-trigger"
+					@click.stop>
+					<QMediaTypeIcon
+						:media-type="mediaOverviewStore.getMediaType"
+						:size="36" />
+					<q-menu
+						anchor="bottom left"
+						self="top left"
+						:offset="[0, 8]">
+						<q-list class="media-overview-bar-header__mobile-menu">
+							<q-item
+								class="media-overview-bar-header__mobile-summary"
+								dense>
+								<q-item-section>
+									<q-item-label>
+										<template v-if="server && library">
+											<span :class="{ 'inaccessible-item-text': !accountStore.getHasAccountServerAccess(server.id) }">
+												{{ serverStore.getServerName(server.id) }}
+											</span>
+											{{ $t('general.delimiter.dash') }}
+											<span :class="{ 'inaccessible-library-title': !hasLibraryAccess }">
+												{{ libraryStore.getLibraryName(library.id) }}
+											</span>
+										</template>
+										<template v-else>
+											{{ mediaTypeToAllText(mediaOverviewStore.getMediaType) }}
+										</template>
+									</q-item-label>
+									<q-item-label
+										v-if="!mediaOverviewStore.loading && hasMedia"
+										caption>
+										{{ formatted(mediaMetaData) }}
+									</q-item-label>
+								</q-item-section>
+							</q-item>
+							<template v-if="mediaOverviewStore.allMediaMode">
+								<q-separator />
+								<q-item
+									v-for="(type, i) in [PlexMediaType.Movie, PlexMediaType.TvShow].filter(x => x !== mediaOverviewStore.getMediaType)"
+									:key="i"
+									v-close-popup
+									v-ripple
+									clickable
+									@click="mediaOverviewStore.changeAllMediaOverviewType(type)">
+									<q-item-section avatar>
+										<QMediaTypeIcon
+											:media-type="type"
+											:size="36"
+											class="q-mr-md" />
+									</q-item-section>
+									<q-item-section>
+										<QText
+											size="h5"
+											:value="mediaTypeToAllText(type)" />
+									</q-item-section>
+								</q-item>
+							</template>
+						</q-list>
+					</q-menu>
+				</q-btn>
 			</q-item-section>
-			<q-item-section>
+			<q-item-section class="media-overview-bar-header__details">
 				<q-item-label v-if="server && library">
 					<span :class="{ 'inaccessible-item-text': !accountStore.getHasAccountServerAccess(server.id) }">
 						{{ serverStore.getServerName(server.id) }}
@@ -177,5 +245,63 @@ function mediaTypeToAllText(mediaType: PlexMediaType): string {
 
 .inaccessible-library-title {
   color: var(--q-grey-6);
+}
+
+.media-overview-bar-header__item {
+  align-items: center;
+
+  > .q-item__section--avatar {
+    align-self: center;
+    justify-content: center;
+  }
+}
+
+.media-overview-bar-header__mobile-trigger {
+  display: none;
+}
+
+.media-overview-bar-header__mobile-menu {
+  width: min(320px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+}
+
+.media-overview-bar-header__mobile-summary .q-item__label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: $breakpoint-sm-max) {
+  .media-overview-bar-header {
+    padding-inline: 4px;
+  }
+
+  .media-overview-bar-header__item {
+    padding: 0;
+    > .q-item__section--avatar {
+      width: 44px;
+      min-width: 44px;
+      max-width: 44px;
+      padding-right: 0;
+      flex: 0 0 44px;
+    }
+  }
+
+  .media-overview-bar-header__desktop-icon {
+    display: none;
+  }
+
+  .media-overview-bar-header__details {
+    display: none;
+  }
+
+  .media-overview-bar-header__mobile-trigger {
+    display: inline-flex;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 0;
+    align-self: center;
+    align-items: center;
+    justify-content: center;
+  }
 }
 </style>

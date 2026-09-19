@@ -4,6 +4,8 @@
 		round
 		flat
 		icon="mdi-bell"
+		aria-label="Notifications"
+		data-cy="notifications-button"
 		@click="toggleNotificationDrawer">
 		<QGlowBadge
 			v-if="notificationsStore.getVisibleNotifications.length > 0"

@@ -1,7 +1,8 @@
 <template>
-	<q-item>
+	<q-item class="server-connection-row">
 		<!-- Radio Button -->
 		<q-item-section
+			class="server-connection-row__radio"
 			avatar
 			tag="label">
 			<q-radio
@@ -11,27 +12,35 @@
 		</q-item-section>
 		<!-- Connection Icon -->
 		<q-item-section
+			class="server-connection-row__icon"
 			avatar
 			tag="label">
 			<QConnectionIcon :type="connection.type" />
 		</q-item-section>
 		<!-- Connection Status -->
-		<q-item-section side>
+		<q-item-section
+			class="server-connection-row__status"
+			side>
 			<QStatus :value="connection.latestConnectionStatus?.isSuccessful ?? false" />
 		</q-item-section>
 		<!-- Connection Url -->
-		<q-item-section tag="label">
-			<span class="ml-2">{{ connection.url }}</span>
+		<q-item-section
+			tag="label"
+			class="connection-url-section">
+			<span class="connection-url ml-2">{{ connection.url }}</span>
 		</q-item-section>
 		<q-space />
 		<q-item-section
 			v-if="connection.isCustom"
+			class="server-connection-row__edit"
 			side>
 			<EditIconButton
 				@click="dialogStore.openAddConnectionDialog({ plexServerId, plexServerConnectionId: connection.id })" />
 		</q-item-section>
 
-		<q-item-section side>
+		<q-item-section
+			class="server-connection-row__check"
+			side>
 			<CheckConnectionButton
 				:loading="loading"
 				:cy="`check-connection-btn-${connection.id}`"
@@ -86,3 +95,67 @@ onMounted(() => useSubscription(
 		}),
 ));
 </script>
+
+<style lang="scss">
+@media (max-width: $breakpoint-xs-max) {
+  .server-connection-row {
+    display: grid;
+    grid-template-columns: auto auto auto 1fr auto;
+    grid-template-areas:
+      "radio icon status spacer edit"
+      "url url url url check";
+    gap: 0.5rem;
+    padding-inline: 0;
+
+    > .q-space {
+      grid-area: spacer;
+    }
+
+    &__radio {
+      grid-area: radio;
+    }
+
+    &__icon {
+      grid-area: icon;
+    }
+
+    &__status {
+      grid-area: status;
+    }
+
+    &__edit {
+      grid-area: edit;
+    }
+
+    &__check {
+      grid-area: check;
+    }
+
+    &__radio,
+    &__icon {
+      width: 44px;
+      min-width: 44px;
+      max-width: 44px;
+      min-height: 44px;
+      padding-right: 0;
+    }
+
+    &__status,
+    &__edit,
+    &__check {
+      padding-left: 0;
+    }
+
+    .connection-url-section {
+      grid-area: url;
+      min-width: 0;
+    }
+
+    .connection-url {
+      margin-left: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+  }
+}
+</style>

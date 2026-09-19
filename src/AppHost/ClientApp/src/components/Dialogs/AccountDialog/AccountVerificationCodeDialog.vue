@@ -137,4 +137,17 @@ input::placeholder {
   text-align: center;
   font-weight: 600;
 }
+
+@media (max-width: $breakpoint-sm-max) {
+  .otp-input {
+    width: min(80px, calc((100vw - 64px) / 6));
+    height: min(80px, calc((100vw - 64px) / 6));
+    margin: clamp(1px, 0.4vw, 10px);
+    font-size: clamp(1.5rem, 1.15rem + 1.4vw, 2.5rem);
+  }
+
+  input::placeholder {
+    font-size: clamp(1.75rem, 1.35rem + 1.8vw, 2.1875rem);
+  }
+}
 </style>

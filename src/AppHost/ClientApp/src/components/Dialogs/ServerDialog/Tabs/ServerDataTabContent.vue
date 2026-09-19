@@ -1,6 +1,8 @@
 <template>
 	<!--	Server Data Tab Content	-->
-	<q-markup-table wrap-cells>
+	<q-markup-table
+		class="server-data-table"
+		wrap-cells>
 		<tbody v-if="plexServer">
 			<!-- Machine Identifier -->
 			<tr>
@@ -89,3 +91,37 @@ withDefaults(
 	},
 );
 </script>
+
+<style lang="scss">
+@media (max-width: $breakpoint-xs-max) {
+  .server-data-table {
+    box-shadow: none;
+    background: transparent;
+
+    table,
+    tbody,
+    tr,
+    td {
+      display: block;
+      width: 100% !important;
+    }
+
+    tr {
+      padding-block: 0.75rem;
+      border-bottom: 1px solid currentcolor;
+    }
+
+    td {
+      min-height: 0;
+      height: auto;
+      padding: 0.125rem 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    td:first-child {
+      font-weight: 600;
+    }
+  }
+}
+</style>

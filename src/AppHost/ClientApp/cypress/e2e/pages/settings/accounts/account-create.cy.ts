@@ -23,6 +23,7 @@ describe('Add Plex account to Reaparr', () => {
 	});
 
 	it('Should request a verification code, show invalid code error, and allow retry when 2FA is enabled', function () {
+		cy.viewport(375, 812);
 		const plexAccount: PlexAccountDTO = generatePlexAccount({
 			id: 99,
 			partialData: {
@@ -622,4 +623,60 @@ describe('Add Plex account to Reaparr', () => {
 			});
 		});
 	});
+
+	const accountViewports = [
+		{ width: 320, height: 568 },
+		{ width: 375, height: 812 },
+		{ width: 568, height: 320 },
+		{ width: 768, height: 1024 },
+	] as const;
+
+	for (const viewport of accountViewports) {
+		it(`keeps add and edit account controls usable at ${viewport.width}x${viewport.height}`, () => {
+			cy.viewport(viewport.width, viewport.height);
+			cy.getPageData();
+
+			const assertActionLayout = (buttonSelectors: string[]) => {
+				cy.get('.account-dialog-actions').then(($actions) => {
+					const actions = $actions[0]!;
+					const actionRect = actions.getBoundingClientRect();
+					expect(actions.scrollWidth, 'account actions overflow').to.be.lte(actions.clientWidth + 1);
+
+					for (const selector of buttonSelectors) {
+						cy.getCy(selector)
+							.should('be.visible')
+							.then(($button) => {
+								const buttonRect = $button[0]!.getBoundingClientRect();
+								expect(buttonRect.width, `${selector} width`).to.be.gte(44);
+								expect(buttonRect.height, `${selector} height`).to.be.gte(44);
+								expect(buttonRect.left, `${selector} left`).to.be.gte(actionRect.left);
+								expect(buttonRect.right, `${selector} right`).to.be.lte(actionRect.right + 1);
+							});
+					}
+				});
+			};
+
+			cy.getCy('account-overview-add-account').click();
+			cy.getCy('account-dialog-form').should('be.visible');
+			cy.get('.account-dialog-tabs').then(($tabs) => {
+				const tabs = $tabs[0]!;
+				expect(tabs.scrollWidth, 'account tab overflow').to.be.lte(tabs.clientWidth + 1);
+				cy.wrap($tabs).find('.q-tab').should('have.length', 2).each(($tab) => {
+					expect($tab[0]!.getBoundingClientRect().width, 'account tab width').to.be.gte(tabs.clientWidth / 2 - 1);
+				});
+			});
+			assertActionLayout(['account-dialog-validate-button', 'account-dialog-save-button']);
+			cy.getCy('dialog-close-button').click();
+
+			cy.get('[data-cy^="account-card-id-"]').first().click();
+			cy.getCy('account-dialog-form').should('be.visible');
+			assertActionLayout([
+				'account-dialog-delete-button',
+				'account-dialog-generate-token-button',
+				'account-dialog-validate-button',
+				'account-dialog-update-button',
+			]);
+			cy.getCy('dialog-close-button').click();
+		});
+	}
 });

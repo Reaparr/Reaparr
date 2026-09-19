@@ -12,7 +12,7 @@
 			ref="scrollAreaRef"
 			scroll-id="media-table-scroll"
 			:fit="false"
-			height="calc(100vh - 137px)"
+			:height="tableHeight"
 			width="100%"
 			:class="['media-table--content', isScrollable ? 'scroll' : '']"
 			data-cy="media-table-scroll">
@@ -105,8 +105,10 @@ defineEmits<{
 	(e: 'row-click', payload: PlexMediaSlimDTO): void;
 }>();
 
+const $q = useQuasar();
 // Row height matches $media-table-row-height in _variables.scss
-const ROW_HEIGHT = 42;
+const ROW_HEIGHT = computed(() => $q.screen.xs ? 96 : 42);
+const tableHeight = computed(() => $q.screen.lt.md ? '100%' : 'calc(100vh - 137px)');
 
 // Firefox and Chrome silently clamp CSS element heights at ~33.5M px, causing a blank render.
 // This guard ensures the spacer div never exceeds that limit regardless of item count.
@@ -116,7 +118,7 @@ const rowVirtualizer = useVirtualizer(
 	computed(() => ({
 		count: props.rows?.length ?? mediaOverviewStore.totalCount,
 		getScrollElement,
-		estimateSize: () => ROW_HEIGHT,
+		estimateSize: () => get(ROW_HEIGHT),
 		overscan: 10,
 		getItemKey: (index: number) => getRowItem(index)?.id ?? index,
 		onChange: (_instance: unknown, sync: boolean) => {
@@ -141,6 +143,9 @@ const rowVirtualizer = useVirtualizer(
 		},
 	})),
 );
+watch(ROW_HEIGHT, () => {
+	nextTick(() => rowVirtualizer.value.measure());
+});
 
 const safeTotalSize = computed(() => Math.min(rowVirtualizer.value.getTotalSize(), BROWSER_MAX_CSS_HEIGHT));
 
@@ -251,6 +256,21 @@ onMounted(() => {
 
   &--content {
     max-height: calc($page-height-minus-app-bar - $media-overview-bar-height - $media-table-row-height);
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .media-table--header {
+    height: 48px;
+  }
+
+  .media-table--intersection,
+  .media-table--intersection > div {
+    height: 96px;
+  }
+
+  .media-table--content {
+    padding-bottom: 44px;
   }
 }
 

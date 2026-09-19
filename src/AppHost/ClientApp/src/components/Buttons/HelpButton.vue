@@ -1,20 +1,21 @@
 <script lang="ts">
 import { defineComponent, h, mergeProps } from 'vue';
-import type { IBaseButtonProps } from '@props';
 import IconButton from './IconButton.vue';
 import { baseBtnPropsDefault } from '~/composables/baseBtnProps';
 
 export default defineComponent({
 	name: 'HelpButton',
+	inheritAttrs: false,
 	props: baseBtnPropsDefault(),
 	render() {
 		return h(
 			IconButton,
 			{
-				...mergeProps(this.$props, {
+				...mergeProps(this.$attrs, this.$props, {
 					icon: 'mdi-help-circle-outline',
 					size: 'md',
-				} as IBaseButtonProps),
+					'aria-label': String(this.$attrs['aria-label'] ?? 'Help'),
+				}),
 			},
 			this.$slots.default,
 		);

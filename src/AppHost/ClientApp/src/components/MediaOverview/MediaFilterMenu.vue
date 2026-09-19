@@ -2,7 +2,7 @@
 	<q-menu
 		:offset="[0, 12]"
 		@hide="menuIndex = MediaMetaDataTypes.None">
-		<q-list style="min-width: 400px">
+		<q-list class="media-filter-menu-list">
 			<!-- Categories -->
 			<template v-if="menuIndex === MediaMetaDataTypes.None">
 				<q-item
@@ -61,7 +61,7 @@
 				<QScroll
 					v-else
 					:fit="false"
-					width="400px"
+					width="100%"
 					:height="'260px'">
 					<!-- Show Genres Sub-Menu -->
 					<template v-if="menuIndex === MediaMetaDataTypes.Genres">
@@ -261,3 +261,18 @@ function clearMetadataFilter() {
 	useSubscription(mediaOverviewStore.refreshMediaData().subscribe());
 }
 </script>
+
+<style lang="scss">
+.media-filter-menu-list {
+  min-width: 400px;
+}
+
+@media (max-width: $breakpoint-sm-max) {
+  .media-filter-menu-list {
+    width: min(400px, calc(100vw - 32px));
+    min-width: min(400px, calc(100vw - 32px));
+    max-height: min(70dvh, 600px);
+    overflow-y: auto;
+  }
+}
+</style>

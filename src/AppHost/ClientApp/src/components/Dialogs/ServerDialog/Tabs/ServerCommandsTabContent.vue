@@ -1,34 +1,37 @@
 <template>
 	<HelpRow
-		disable-responsive
+		class="server-command-row"
 		:label="$t('help.server-dialog.server-commands.inspect-server.label')"
 		:title="$t('help.server-dialog.server-commands.inspect-server.title')"
 		:text="$t('help.server-dialog.server-commands.inspect-server.text')">
 		<BaseButton
 			:disabled="syncLoading || deleteLoading"
+			class="server-command-button"
 			:loading="inspectLoading"
 			:label="$t('general.commands.inspect-server')"
 			@click="inspectServer" />
 	</HelpRow>
 	<HelpRow
-		disable-responsive
+		class="server-command-row"
 		:label="$t('help.server-dialog.server-commands.sync-server-libraries.label')"
 		:title="$t('help.server-dialog.server-commands.sync-server-libraries.title')"
 		:text="$t('help.server-dialog.server-commands.sync-server-libraries.text')">
 		<BaseButton
 			:disabled="inspectLoading || deleteLoading"
+			class="server-command-button"
 			:loading="syncLoading"
 			:label="$t('general.commands.sync-server-libraries')"
 			@click="dialogStore.openDialog(DialogType.RefreshMediaDialog)" />
 	</HelpRow>
 	<HelpRow
-		disable-responsive
+		class="server-command-row"
 		:label="$t('help.server-dialog.server-commands.delete-server.label')"
 		:title="$t('help.server-dialog.server-commands.delete-server.title')"
 		:text="$t('help.server-dialog.server-commands.delete-server.text')">
 		<DeleteButton
 			:disabled="inspectLoading || syncLoading"
 			:loading="deleteLoading"
+			class="server-command-button"
 			:label="$t('general.commands.delete-server')"
 			@click="dialogStore.openDialog(DialogType.ServerDeleteConfirmationDialog)" />
 	</HelpRow>
@@ -132,3 +135,21 @@ onUnmounted(() => {
 	set(deleteLoading, false);
 });
 </script>
+
+<style lang="scss">
+@media (max-width: $breakpoint-sm-max) {
+  .server-command-button {
+    min-height: 44px;
+  }
+}
+
+@media (min-width: $breakpoint-lg-min) {
+  .server-command-row {
+    > .help-row-label,
+    > .help-row-default-slot {
+      flex: 0 0 50%;
+      max-width: 50%;
+    }
+  }
+}
+</style>

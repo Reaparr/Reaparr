@@ -19,7 +19,9 @@
 		<!--	Help text	-->
 		<template #default>
 			<div>
-				<QRow wrap>
+				<QRow
+					wrap
+					class="connection-url-row">
 					<QCol cols="auto">
 						<QConnectionIcon :type="type" />
 					</QCol>
@@ -36,7 +38,7 @@
 				</QRow>
 				<!-- Property Preview -->
 				<QRow
-					class="q-my-md"
+					class="connection-preview q-my-md"
 					gutter="md"
 					justify="around">
 					<QCol cols="3">
@@ -323,3 +325,20 @@ function onClose() {
 	set(response, null);
 }
 </script>
+
+<style lang="scss">
+@media (max-width: $breakpoint-xs-max) {
+  .connection-url-row,
+  .connection-preview {
+    flex-direction: column;
+    margin-inline: 0;
+
+    > .col,
+    > [class*='col-'] {
+      width: 100%;
+      max-width: 100%;
+      margin-inline: 0;
+    }
+  }
+}
+</style>

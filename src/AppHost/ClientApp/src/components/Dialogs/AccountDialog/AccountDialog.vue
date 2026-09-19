@@ -26,54 +26,39 @@
 		</template>
 		<!-- Dialog Actions	-->
 		<template #actions>
-			<QRow
-				justify="between"
-				gutter="md">
-				<QCol cols="5">
-					<QRow gutter="sm">
-						<!-- Delete account -->
-						<QCol v-if="!accountDialogStore.isNewAccount">
-							<DeleteButton
-								block
-								cy="account-dialog-delete-button"
-								@click="dialogStore.openDialog(DialogType.AccountConfirmationDialog)" />
-						</QCol>
-						<QCol v-if="!accountDialogStore.isNewAccount && !accountDialogStore.isAuthTokenMode">
-							<BaseButton
-								block
-								cy="account-dialog-generate-token-button"
-								:label="$t('components.account-dialog.generate-token-button')"
-								@click="dialogStore.openDialog(DialogType.AccountGenerateTokenDialog)" />
-						</QCol>
-					</QRow>
-				</QCol>
-				<QCol cols="5">
-					<QRow gutter="sm">
-						<!-- Validation button -->
-						<QCol>
-							<AccountValidationButton
-								:color="validationStyle.color"
-								:icon="validationStyle.icon"
-								:label="validationStyle.text"
-								:loading="accountDialogStore.validateLoading"
-								:disabled="accountDialogStore.validateLoading"
-								cy="account-dialog-validate-button"
-								block
-								@click="!accountDialogStore.isAuthTokenMode ? validatePlexAccount() : validatePlexToken()" />
-						</QCol>
-						<!-- Save account -->
-						<QCol>
-							<SaveButton
-								:disabled="!accountDialogStore.isAllowedToSave"
-								:label="accountDialogStore.isNewAccount ? $t('general.commands.save') : $t('general.commands.update')"
-								:cy="`account-dialog-${accountDialogStore.isNewAccount ? 'save' : 'update'}-button`"
-								:loading="accountDialogStore.savingLoading"
-								block
-								@click="saveAccount" />
-						</QCol>
-					</QRow>
-				</QCol>
-			</QRow>
+			<div class="account-dialog-actions">
+				<div class="account-dialog-actions__group">
+					<!-- Delete account -->
+					<DeleteButton
+						v-if="!accountDialogStore.isNewAccount"
+						cy="account-dialog-delete-button"
+						@click="dialogStore.openDialog(DialogType.AccountConfirmationDialog)" />
+					<BaseButton
+						v-if="!accountDialogStore.isNewAccount && !accountDialogStore.isAuthTokenMode"
+						cy="account-dialog-generate-token-button"
+						icon="mdi-key-plus"
+						:label="$t('components.account-dialog.generate-token-button')"
+						@click="dialogStore.openDialog(DialogType.AccountGenerateTokenDialog)" />
+				</div>
+				<div class="account-dialog-actions__group">
+					<!-- Validation button -->
+					<AccountValidationButton
+						:color="validationStyle.color"
+						:icon="validationStyle.icon"
+						:label="validationStyle.text"
+						:loading="accountDialogStore.validateLoading"
+						:disabled="accountDialogStore.validateLoading"
+						cy="account-dialog-validate-button"
+						@click="!accountDialogStore.isAuthTokenMode ? validatePlexAccount() : validatePlexToken()" />
+					<!-- Save account -->
+					<SaveButton
+						:disabled="!accountDialogStore.isAllowedToSave"
+						:label="accountDialogStore.isNewAccount ? $t('general.commands.save') : $t('general.commands.update')"
+						:cy="`account-dialog-${accountDialogStore.isNewAccount ? 'save' : 'update'}-button`"
+						:loading="accountDialogStore.savingLoading"
+						@click="saveAccount" />
+				</div>
+			</div>
 		</template>
 	</QCardDialog>
 
@@ -168,3 +153,55 @@ function saveAccount() {
 	useSubscription(accountDialogStore.saveAccount().subscribe());
 }
 </script>
+
+<style lang="scss">
+.account-dialog-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+
+  &__group {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .q-btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .account-dialog-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(44px, 1fr));
+
+    &__group {
+      display: contents;
+    }
+
+    &__group:last-child .q-btn:first-child {
+      grid-column: 3;
+    }
+
+    .q-btn {
+      width: 100%;
+      min-width: 44px;
+      min-height: 44px;
+      padding-inline: 0;
+    }
+
+    .q-btn__content > .block {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  }
+}
+</style>

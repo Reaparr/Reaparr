@@ -2,7 +2,7 @@
 	<HelpGroup v-if="plexServer">
 		<!-- Enabled -->
 		<HelpRow
-			disable-responsive
+			class="server-config-row"
 			label="Enabled"
 			title="Enable this Plex server"
 			text="Disabled servers are excluded from queries/syncs and hidden from normal views.">
@@ -14,7 +14,7 @@
 
 		<!-- Owned -->
 		<HelpRow
-			disable-responsive
+			class="server-config-row"
 			label="Owned"
 			title="Mark server as owned"
 			text="Owned servers are excluded from Sonarr/Radarr source candidate lists.">
@@ -26,7 +26,7 @@
 
 		<!-- Stream Downloader -->
 		<HelpRow
-			disable-responsive
+			class="server-config-row"
 			:label="$t('help.server-dialog.server-config.allow-stream-downloader.label')"
 			:title="$t('help.server-dialog.server-config.allow-stream-downloader.title')"
 			:text="$t('help.server-dialog.server-config.allow-stream-downloader.text')">
@@ -38,7 +38,7 @@
 
 		<!-- Download Speed Limit -->
 		<HelpRow
-			disable-responsive
+			class="server-config-row"
 			:label="$t('help.server-dialog.server-config.download-speed-limit.label')"
 			:title="$t('help.server-dialog.server-config.download-speed-limit.title')"
 			:text="$t('help.server-dialog.server-config.download-speed-limit.text')">
@@ -114,3 +114,15 @@ function onServerOwnedChanged(value: boolean) {
 	useSubscription(serverStore.setServerOwned(props.plexServer.id, value).subscribe());
 }
 </script>
+
+<style lang="scss">
+@media (min-width: $breakpoint-lg-min) {
+  .server-config-row {
+    > .help-row-label,
+    > .help-row-default-slot {
+      flex: 0 0 50%;
+      max-width: 50%;
+    }
+  }
+}
+</style>
