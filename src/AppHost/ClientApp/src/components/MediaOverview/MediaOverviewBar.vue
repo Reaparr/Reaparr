@@ -165,7 +165,7 @@
 				round
 				dense
 				icon="mdi-dots-vertical"
-				aria-label="More actions"
+				:aria-label="$t('components.app-bar.more-actions')"
 				data-cy="media-overview-bar-mobile-menu">
 				<q-menu
 					class="media-overview-bar__mobile-menu-panel"

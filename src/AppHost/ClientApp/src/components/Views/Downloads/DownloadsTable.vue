@@ -45,7 +45,7 @@
 							<IconButton
 								cy="toggle-download-table-button"
 								:icon="isExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down'"
-								:aria-label="`${isExpanded ? 'Collapse' : 'Expand'} ${serverStore.getServerName(plexServer.id)}`"
+								:aria-label="getToggleServerLabel(serverStore.getServerName(plexServer.id))"
 								@click.stop="toggleExpanded" />
 						</QCol>
 					</QRow>
@@ -503,6 +503,11 @@ function toButtonIcon(action: DownloadActions): string {
 
 function toggleExpanded() {
 	set(isExpanded, !get(isExpanded));
+}
+
+function getToggleServerLabel(serverName: string): string {
+	const action = get(isExpanded) ? t('components.downloads-table.collapse') : t('components.downloads-table.expand');
+	return t('components.downloads-table.toggle-server', { action, serverName });
 }
 
 function openClearCompletedDialog() {

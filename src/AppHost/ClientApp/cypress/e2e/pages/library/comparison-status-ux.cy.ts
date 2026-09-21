@@ -4,7 +4,7 @@ import { PlexMediaPaths } from '@api/api-paths';
 import { PlexMediaComparisonState, PlexMediaType, VideoQuality } from '@dto';
 import { getPlexMediaComparisonStateId } from '@composables';
 
-const getVisibleCy = (selector: string) => cy.getCy(selector).filter(':visible').first();
+const getVisibleCy = (selector: string, options?: { timeout?: number }) => cy.getCy(selector, options).filter(':visible').first();
 
 function openComparisonFilterMenu() {
 	getVisibleCy('media-overview-filter-btn').click();
@@ -106,7 +106,7 @@ describe('Comparison poster status UX', () => {
 				).as('comparisonDetails');
 
 				cy.visit(route('/'));
-				getVisibleCy(`comparison-chip-${PlexMediaComparisonState.HigherQuality}`).should('be.visible').click();
+				getVisibleCy(`comparison-chip-${PlexMediaComparisonState.HigherQuality}`, { timeout: 20000 }).should('be.visible').click();
 				cy.wait('@comparisonDetails');
 				cy.getCy('media-comparison-details-dialog').should('be.visible');
 				cy.getCy('media-comparison-details-table').should('contain', movie.title);

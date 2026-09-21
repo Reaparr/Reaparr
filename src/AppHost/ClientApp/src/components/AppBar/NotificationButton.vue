@@ -4,7 +4,7 @@
 		round
 		flat
 		icon="mdi-bell"
-		aria-label="Notifications"
+		:aria-label="$t('components.app-bar.notifications')"
 		data-cy="notifications-button"
 		@click="toggleNotificationDrawer">
 		<QGlowBadge

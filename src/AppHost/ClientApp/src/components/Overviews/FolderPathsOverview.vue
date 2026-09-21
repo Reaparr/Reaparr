@@ -57,7 +57,7 @@
 								class="folder-path-browse-button"
 								:cy="`${getFolderPathCyPrefix(folderPath)}-edit-button`"
 								icon="mdi-folder-open-outline"
-								:aria-label="`Edit folder path: ${folderPath.displayName}`"
+								:aria-label="$t('components.folder-paths-overview.edit-path', { displayName: folderPath.displayName })"
 								@click="dialogStore.openDirectoryBrowserDialog(folderPath)" />
 						</q-input>
 					</QCol>
@@ -88,7 +88,7 @@
 			justify="center">
 			<QCol cols="auto">
 				<AddIconButton
-					:aria-label="`Add ${activeFolderPathGroup.header}`"
+					:aria-label="$t('components.folder-paths-overview.add-path', { header: activeFolderPathGroup.header })"
 					:cy="`${kebabCase(activeFolderPathGroup.folderType)}-add-button`"
 					@click="addFolderPath(activeFolderPathGroup)" />
 			</QCol>

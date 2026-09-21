@@ -14,7 +14,7 @@
 					flat
 					round
 					dense
-					aria-label="Media overview details"
+					:aria-label="$t('components.media-overview-bar-header.details')"
 					data-cy="media-overview-bar-header-mobile-trigger"
 					@click.stop>
 					<QMediaTypeIcon

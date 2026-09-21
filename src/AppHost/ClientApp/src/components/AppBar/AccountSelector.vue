@@ -1,7 +1,7 @@
 <template>
 	<q-btn
 		icon="mdi-account"
-		aria-label="Account selector"
+		:aria-label="$t('components.account-selector.label')"
 		flat
 		rounded
 		data-cy="account-selector-btn"

@@ -4,14 +4,14 @@
 		:model-value="mediaOverviewStore.filterQuery"
 		:debounce="100"
 		outlined
-		aria-label="Search media"
+		:aria-label="$t('components.media-overview.search-label')"
 		input-style="font-size: 1.25rem"
 		rounded
 		@update:model-value="(value) => useSubscription(mediaOverviewStore.setFilterQuery(String(value ?? '')).subscribe())">
 		<template #prepend>
 			<IconButton
 				icon="mdi-magnify"
-				aria-label="Filter media"
+				:aria-label="$t('components.media-overview.filter-label')"
 				cy="media-overview-filter-btn">
 				<MediaFilterMenu :library-id="libraryId" />
 			</IconButton>
@@ -30,7 +30,7 @@
 				round
 				dense
 				icon="mdi-close"
-				aria-label="Clear media search"
+				:aria-label="$t('components.media-overview.clear-search-label')"
 				@click="useSubscription(mediaOverviewStore.clearFilter().subscribe())" />
 		</template>
 	</q-input>
@@ -43,7 +43,7 @@
 			:model-value="mediaOverviewStore.filterQuery"
 			:debounce="100"
 			outlined
-			aria-label="Search media"
+			:aria-label="$t('components.media-overview.search-label')"
 			input-style="font-size: 1.1rem"
 			rounded
 			@update:model-value="(value) => useSubscription(mediaOverviewStore.setFilterQuery(String(value ?? '')).subscribe())">
@@ -51,8 +51,8 @@
 				<IconButton
 					class="media-overview-search__filter"
 					icon="mdi-magnify"
-					aria-label="Filter media"
-					tooltip-text="Filter media"
+					:aria-label="$t('components.media-overview.filter-label')"
+					:tooltip-text="$t('components.media-overview.filter-label')"
 					cy="media-overview-filter-btn">
 					<MediaFilterMenu :library-id="libraryId" />
 				</IconButton>
@@ -64,7 +64,7 @@
 					round
 					dense
 					icon="mdi-close"
-					aria-label="Clear media search"
+					:aria-label="$t('components.media-overview.clear-search-label')"
 					@click="useSubscription(mediaOverviewStore.clearFilter().subscribe())" />
 			</template>
 		</q-input>
