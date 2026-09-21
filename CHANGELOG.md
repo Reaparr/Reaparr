@@ -1,5 +1,21 @@
 Reaparr Changelog
 
+# [0.40.0-dev.4](https://github.com/Reaparr/Reaparr/compare/v0.40.0-dev.3...v0.40.0-dev.4) (2026-09-21)
+
+
+### Bug Fixes
+
+* **WebAPI:** Add 404 Not Found error handling for direct download URL probes ([9cefb3f](https://github.com/Reaparr/Reaparr/commit/9cefb3f2d330acc2bfdf4673b2bf158394dd6c3c))
+* **WebAPI:** Consolidate all-library comparison projection ([58626bd](https://github.com/Reaparr/Reaparr/commit/58626bd47a144713c7896592ce7f70c0882c441e))
+* **WebAPI:** Update episode comparision loading logic to handle stale relationships ([80a0a49](https://github.com/Reaparr/Reaparr/commit/80a0a499b32b7e1fc0c0947358b6e54477686b8b))
+
+
+### Features
+
+* **Web-UI:** Enhance mobile responsiveness for media components ([011fcb1](https://github.com/Reaparr/Reaparr/commit/011fcb1d6946203e485d0bd7a61c1cf3178c105f))
+* **Web-UI:** Improve accessibility with localized aria-labels ([7dbda94](https://github.com/Reaparr/Reaparr/commit/7dbda94aaf6083591a8c332d8eac2b2e4c8f72f4))
+* **Web-UI:** Make Reaparr UI responsive on mobile viewports ([4642dc1](https://github.com/Reaparr/Reaparr/commit/4642dc130028c72a6e7b62f6539ce1494564b48d))
+
 # [0.40.0-dev.3](https://github.com/Reaparr/Reaparr/compare/v0.40.0-dev.2...v0.40.0-dev.3) (2026-09-17)
 
 
