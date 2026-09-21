@@ -16,6 +16,7 @@
 			:round="round"
 			:rounded="rounded"
 			:outline="outline"
+			:aria-label="translateMediaComparisonState(comparisonState)"
 			:tooltip-text="showTooltip ? translateMediaComparisonState(comparisonState) : ''"
 			:cy="cy"
 			@click="onClick" />
@@ -191,6 +192,15 @@ function onClick() {
   .q-btn {
     min-height: 2em;
     padding: 0.25em;
+  }
+}
+
+@media (max-width: $breakpoint-sm-max) {
+  .media-comparison-state-button--dense {
+    .q-btn {
+      min-width: 44px !important;
+      min-height: 44px !important;
+    }
   }
 }
 </style>

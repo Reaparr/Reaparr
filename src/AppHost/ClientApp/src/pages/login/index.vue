@@ -19,7 +19,9 @@
 							:value="$t('pages.login.header')" />
 					</QCol>
 				</QRow>
-				<QRow justify="between">
+				<QRow
+					class="login-options-row"
+					justify="between">
 					<QCol
 						v-if="invalidCredentials || lockedOut"
 						cols="12"
@@ -123,6 +125,25 @@ function onLogin() {
 
   .login-button {
     margin: 0 0.5rem 0.5rem;
+  }
+}
+@media (max-width: $breakpoint-sm-max) {
+  .login-card {
+    width: min(400px, calc(100% - 2rem));
+    margin-top: clamp(1rem, 10vh, 6rem);
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .login-card .row {
+    gap: 0.5rem;
+  }
+
+  .login-options-row .col-6,
+  .login-options-row .col-auto {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
   }
 }
 </style>

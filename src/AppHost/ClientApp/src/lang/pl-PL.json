@@ -28,9 +28,15 @@
             "title": "Wprowadź kod weryfikacyjny"
         },
         "app-bar": {
+            "notifications": "Powiadomienia",
             "no-accounts": "Brak dostępnych kont",
             "copy-version": "Kopiuj wersję Reaparr - { version }",
-            "update-available": ""
+            "update-available": "",
+            "navigation-menu": "Menu nawigacji",
+            "more-actions": "Więcej działań"
+        },
+        "help-button": {
+            "label": "Pomoc"
         },
         "update-available-dialog": {
             "title": "Nowa wersja dostępna",
@@ -105,6 +111,9 @@
             }
         },
         "media-overview": {
+            "search-label": "Wyszukaj multimedia",
+            "filter-label": "Filtruj multimedia",
+            "clear-search-label": "Wyczyść wyszukiwanie multimediów",
             "library-inaccessible-title": "Biblioteka niedostępna.",
             "library-inaccessible": "Żadne włączone konto Plex nie ma już dostępu do tej biblioteki.",
             "is-refreshing": "Odświeżanie danych biblioteki \"{library}\" z {server}",
@@ -146,6 +155,8 @@
             "no-notifications": "Brak dostępnych powiadomień"
         },
         "folder-paths-overview": {
+            "edit-path": "Edytuj ścieżkę folderu: {displayName}",
+            "add-path": "Dodaj {header}",
             "main": {
                 "header": "Ścieżki folderów"
             },
@@ -234,6 +245,7 @@
             "no-libraries": "Ten serwer Plex nie ma bibliotek, dla których można ustawić domyślną lokalizację docelową"
         },
         "account-selector": {
+            "label": "Wybór konta",
             "all-accounts": "Wszystkie konta Plex",
             "title": "Aktywne konta",
             "log-out-button": "Wyloguj"
@@ -260,6 +272,9 @@
             "title": "Walidacja tokena uwierzytelniającego Plex.tv"
         },
         "downloads-table": {
+            "toggle-server": "{action} {serverName}",
+            "expand": "Rozwiń",
+            "collapse": "Zwiń",
             "clear-completed": {
                 "button": "Wyczyść ukończone",
                 "confirmation": {
@@ -325,6 +340,7 @@
             "syncing-media": "Synchronizacja danych multimedialnych z serwera Plex"
         },
         "media-overview-bar-header": {
+            "details": "Szczegóły przeglądu multimediów",
             "movies-metadata": "{movieCount} Filmy - {fileSize} ",
             "tv-shows-metadata": "{tvShowCount} Programy telewizyjne - {seasonCount} Sezony - {episodeCount} Odcinki - {fileSize} "
         },
@@ -361,6 +377,7 @@
             }
         },
         "password-input-field": {
+            "toggle-password-visibility": "Przełącz widoczność hasła",
             "validation": {
                 "password-is-required": "Hasło jest wymagane",
                 "password-length": "Hasło musi mieć co najmniej {count} znaków",

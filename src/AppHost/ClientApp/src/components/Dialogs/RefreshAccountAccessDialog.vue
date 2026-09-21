@@ -48,10 +48,10 @@
 						default-expand-all>
 						<template #default-header="{ node }: { node: IAccessNode }">
 							<QRow
-								justify="between"
-								class="q-mr-lg"
+								class="access-dialog-node-row q-mr-lg"
 								:cy="`access-row-${node.id}`"
-								align="center">
+								align="center"
+								justify="between">
 								<QCol cols="auto">
 									<QIconTooltip
 										:value="node.state"
@@ -76,10 +76,10 @@
 									</template>
 								</QCol>
 								<!-- Row Title -->
-								<QCol>
+								<QCol class="access-dialog-title-col">
 									<QText
 										:bold="node.isServer? 'bold' : 'regular'"
-										class="q-ml-sm q-mt-auto"
+										class="access-dialog-title q-ml-sm q-mt-auto"
 										:value="node.name"
 										size="body2"
 										:cy="`access-dialog-title-${node.id}`" />
@@ -239,3 +239,17 @@ interface IPlexAccountAccessRapportNode {
 	servers: IAccessNode[];
 }
 </script>
+
+<style lang="scss">
+@media (max-width: $breakpoint-sm-max) {
+  .access-dialog-title-col {
+    min-width: 0;
+  }
+
+  .access-dialog-title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+</style>

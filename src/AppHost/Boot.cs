@@ -82,6 +82,12 @@ public class Boot : IHostedService
         var recoverResult = await _commandExecutor.Send(new RecoverInterruptedDownloadsCommand(), cancellationToken);
         recoverResult.LogIfFailed();
 
+        var cleanupLibrarySyncJobQueueResult = await _commandExecutor.Send(
+            new CleanupLibrarySyncJobQueueCommand(),
+            cancellationToken
+        );
+        cleanupLibrarySyncJobQueueResult.LogIfFailed();
+
         var setupResult = await _backgroundJobsSetup.SetupAsync(cancellationToken);
         setupResult.LogIfFailed();
         if (setupResult.IsFailed)
@@ -92,6 +98,12 @@ public class Boot : IHostedService
 
         if (!_appRuntimeInfo.IsIntegrationTestMode)
         {
+            var libraryQueueKickResult = await _commandExecutor.Send(
+                new CheckQueuedPlexLibraryToSyncCommand(),
+                cancellationToken
+            );
+            libraryQueueKickResult.LogIfFailed();
+
             var bootQueueKickResult = await _downloadQueue.CheckDownloadQueueForAllServers(cancellationToken);
             bootQueueKickResult.LogIfFailed();
         }

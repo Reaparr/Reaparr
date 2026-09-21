@@ -1,17 +1,27 @@
 <template>
-	<div class="alphabet-navigation-container">
-		<div class="alphabet-navigation">
+	<div
+		class="alphabet-navigation-container"
+		data-cy="alphabet-navigation-container">
+		<div
+			ref="navigation"
+			class="alphabet-navigation"
+			:class="{ 'alphabet-navigation--dragging': isDragging }"
+			data-cy="alphabet-navigation"
+			@pointerdown="onPointerDown"
+			@pointermove="onPointerMove"
+			@pointerup="onPointerUp"
+			@pointercancel="onPointerCancel">
 			<q-btn
-				v-for="[displayValue, scrollIndex] in mediaOverviewStore.scrollDict"
-				:key="displayValue"
+				v-for="entry in navigationEntries"
+				:key="entry.displayValue"
 				class="navigation-btn"
-				:label="getDisplayValue(displayValue)"
-				:loading="clickedLabel === displayValue && mediaOverviewStore.navLoading"
+				:label="entry.label"
+				:loading="clickedLabel === entry.displayValue && mediaOverviewStore.navLoading"
 				flat
 				square
 				no-wrap
-				:data-cy="`letter-${displayValue}-alphabet-navigation-btn`"
-				@click="onLetterClick(displayValue, scrollIndex)">
+				:data-cy="`letter-${entry.displayValue}-alphabet-navigation-btn`"
+				@click="onLetterClick(entry.displayValue, entry.scrollIndex)">
 				<template #loading>
 					<QSpinnerPuff
 						size="1em"
@@ -23,14 +33,34 @@
 </template>
 
 <script setup lang="ts">
-import { set } from '@vueuse/core';
+import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 import { useMediaOverviewStore } from '@store';
 import { MediaSortField } from '@enums';
 import { getVideoQualityFromValue, translateVideoQuality } from '@composables';
 
 const mediaOverviewStore = useMediaOverviewStore();
-const clickedLabel = ref<string | null>(null);
+const $q = useQuasar();
+
+type AlphabetNavigationEntry = {
+	displayValue: string;
+	scrollIndex: number;
+	label: string;
+};
+
+const navigationRef = useTemplateRef<HTMLElement>('navigation');
+const clickedLabel = shallowRef<string | null>(null);
+const isDragging = shallowRef(false);
+const dragStartY = shallowRef<number | null>(null);
+const draggedEntry = shallowRef<AlphabetNavigationEntry | null>(null);
+
+const navigationEntries = computed<AlphabetNavigationEntry[]>(() => {
+	return Array.from(mediaOverviewStore.scrollDict.entries()).map(([displayValue, scrollIndex]) => ({
+		displayValue,
+		scrollIndex,
+		label: getDisplayValue(displayValue),
+	}));
+});
 
 watch(() => mediaOverviewStore.navLoading, (isLoading) => {
 	if (!isLoading) {
@@ -38,10 +68,60 @@ watch(() => mediaOverviewStore.navLoading, (isLoading) => {
 	}
 });
 
-function onLetterClick(label: string, scrollIndex: number) {
+function onLetterClick(label: string, scrollIndex: number, highlight = true) {
 	set(clickedLabel, label);
 	mediaOverviewStore.clearPendingMediaHighlight();
-	useSubscription(mediaOverviewStore.scrollToIndex(scrollIndex).subscribe());
+	useSubscription(mediaOverviewStore.scrollToIndex(scrollIndex, highlight).subscribe());
+}
+
+function onPointerDown(event: PointerEvent) {
+	if (!$q.screen.lt.sm || (event.pointerType === 'mouse' && event.button !== 0)) {
+		return;
+	}
+
+	set(isDragging, false);
+	set(dragStartY, event.clientY);
+	set(draggedEntry, null);
+}
+
+function onPointerMove(event: PointerEvent) {
+	const startY = get(dragStartY);
+	if (startY === null || Math.abs(event.clientY - startY) < 8) {
+		return;
+	}
+
+	if (!get(isDragging)) {
+		set(isDragging, true);
+		get(navigationRef)?.setPointerCapture(event.pointerId);
+	}
+	event.preventDefault();
+
+	const entries = get(navigationEntries);
+	const element = get(navigationRef);
+	if (!element || entries.length === 0) return;
+
+	const rect = element.getBoundingClientRect();
+	if (rect.height <= 0 || element.scrollHeight <= 0) return;
+
+	const pointerOffset = event.clientY - rect.top + element.scrollTop;
+	const position = Math.min(0.999, Math.max(0, pointerOffset / element.scrollHeight));
+	set(draggedEntry, entries[Math.floor(position * entries.length)] ?? null);
+}
+
+function onPointerUp() {
+	const entry = get(draggedEntry);
+	if (get(isDragging) && entry) onLetterClick(entry.displayValue, entry.scrollIndex, false);
+	resetDragState();
+}
+
+function onPointerCancel() {
+	resetDragState();
+}
+
+function resetDragState() {
+	set(isDragging, false);
+	set(dragStartY, null);
+	set(draggedEntry, null);
 }
 
 function getDisplayValue(value: string): string {
@@ -96,6 +176,47 @@ function getDisplayValue(value: string): string {
         }
       }
     }
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .alphabet-navigation-container {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: 2;
+    width: 44px;
+    height: auto;
+    max-height: none;
+    flex-basis: 44px;
+    transform: none;
+    border-radius: 0.75rem 0 0 0.75rem;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(8px);
+  }
+
+  .alphabet-navigation-container .alphabet-navigation {
+    width: 100%;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+
+    &--dragging .navigation-btn {
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+  }
+
+  .alphabet-navigation-container .navigation-btn {
+    min-width: 44px;
+    min-height: 44px !important;
+    height: 44px;
+    flex: 0 0 44px;
+    padding: 0 !important;
+    font-size: 0.72rem;
+    line-height: 1;
   }
 }
 

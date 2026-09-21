@@ -26,10 +26,13 @@
 					default-expand-all>
 					<template #default-header="{ node }: { node: IPlexServerNode }">
 						<QRow
+							class="check-server-connections-dialog-node-row"
 							justify="between"
 							align="center">
 							<QCol
-								cols="8">
+								cols="12"
+								sm="8"
+								class="check-server-connections-dialog-title-col">
 								<div :class="{ 'text-weight-bold': isServer(node) }">
 									<!--	Plex Server Connection Icon -->
 									<q-icon
@@ -40,7 +43,7 @@
 										class="q-mr-sm" />
 									<QConnectionIcon
 										v-else
-										:cy="`check-server-connection-dialog-connection-icon-${node.id}`"
+										:cy="`check-server-connections-dialog-connection-icon-${node.id}`"
 										:type="node.connectionType" />
 									<!-- Plex Server Connection Url	-->
 									<span
@@ -48,6 +51,7 @@
 											isServer(node)
 												? 'check-server-connections-dialog-server-title'
 												: 'check-server-connections-dialog-connection-title',
+											'check-server-connections-dialog-node-title',
 											'q-ml-sm',
 										]"
 										:data-cy="
@@ -60,14 +64,19 @@
 								</div>
 							</QCol>
 							<QCol
-								cols="4"
+								cols="12"
+								sm="4"
+								class="check-server-connections-dialog-status-col"
 								:style="{ 'max-width': `600px !important` }">
 								<QRow
+									class="check-server-connections-dialog-status-row"
 									justify-end
 									no-wrap
 									justify="end">
 									<!--	Plex Server Progress Status Icon -->
-									<QCol cols="3">
+									<QCol
+										cols="3"
+										class="check-server-connections-dialog-status-indicator">
 										<QSpinnerRadio
 											v-if="!node.completed"
 											:data-cy="`check-server-connections-dialog-${node.id}`"
@@ -79,7 +88,9 @@
 											:value="node.connectionSuccessful" />
 									</QCol>
 									<!-- Plex Server Connection Progress	-->
-									<QCol cols="9">
+									<QCol
+										cols="9"
+										class="check-server-connections-dialog-status-text">
 										<template v-if="isServer(node) && (node.connectionSuccessful || node.completed)">
 											<!-- No Plex Server Connection -->
 											<span
@@ -311,6 +322,7 @@ interface IPlexServerNode {
 </script>
 
 <style lang="scss">
+@use '@/assets/scss/variables.scss' as *;
 .server-progress-list {
   .v-list-item__content {
     padding: 0;
@@ -320,6 +332,26 @@ interface IPlexServerNode {
     .server-title {
       color: white;
     }
+  }
+}
+
+@media (max-width: $breakpoint-sm-max) {
+.check-server-connections-dialog-title-col,
+.check-server-connections-dialog-status-col,
+.check-server-connections-dialog-status-row,
+.check-server-connections-dialog-status-text {
+  min-width: 0;
+}
+
+.check-server-connections-dialog-node-title,
+.check-server-connections-dialog-status-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+}
+@media (max-width: $breakpoint-xs-max) {
+  .check-server-connections-dialog-node-row {
+    row-gap: 0.5rem;
   }
 }
 </style>

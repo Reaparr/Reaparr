@@ -55,10 +55,13 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
         if (currentOwnedLibraryIds.Count == 0)
             return [];
 
+        var remoteSeasonIds = _dbContext
+            .PlexTvShowSeason.Where(x => x.PlexLibraryId == tvShow.PlexLibraryId && x.TvShowId == tvShow.Id)
+            .Select(x => x.Id);
         var episodes = await _dbContext
             .PlexTvShowEpisodes.Include(x => x.MediaDataList)
             .Include(x => x.TvShowSeason)
-            .Where(x => x.PlexLibraryId == tvShow.PlexLibraryId && x.TvShowId == tvShow.Id)
+            .Where(x => x.PlexLibraryId == tvShow.PlexLibraryId && remoteSeasonIds.Contains(x.TvShowSeasonId))
             .OrderBy(x => x.TvShowSeason == null ? 0 : x.TvShowSeason.SeasonNumber)
             .ThenBy(x => x.EpisodeNumber)
             .ToListAsync(ct);
@@ -107,10 +110,15 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
         if (remoteShowIds.Count == 0)
             return [];
 
+        var remoteSeasonIds = _dbContext
+            .PlexTvShowSeason.Where(x =>
+                currentRemoteLibraryIds.Contains(x.PlexLibraryId) && remoteShowIds.Contains(x.TvShowId)
+            )
+            .Select(x => x.Id);
         var remoteEpisodes = await _dbContext
             .PlexTvShowEpisodes.Include(x => x.MediaDataList)
             .Include(x => x.TvShowSeason)
-            .Where(x => remoteShowIds.Contains(x.TvShowId))
+            .Where(x => currentRemoteLibraryIds.Contains(x.PlexLibraryId) && remoteSeasonIds.Contains(x.TvShowSeasonId))
             .OrderBy(x => x.TvShowSeason == null ? 0 : x.TvShowSeason.SeasonNumber)
             .ThenBy(x => x.EpisodeNumber)
             .ToListAsync(ct);

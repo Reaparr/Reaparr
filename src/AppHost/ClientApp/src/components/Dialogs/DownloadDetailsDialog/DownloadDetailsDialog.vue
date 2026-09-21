@@ -3,6 +3,8 @@
 		:loading="loading"
 		:name="DialogType.DownloadDetailsDialog"
 		:type="'' as string"
+		:aria-label="downloadTask?.fullTitle"
+		close-button
 		full-height
 		@closed="onClose"
 		@opened="onOpen">
@@ -192,6 +194,31 @@ function handleLogsRefreshed(updated: DownloadTaskLogDTO[]) {
     .q-tab-panel {
       height: 100%;
       min-height: 0;
+    }
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .layout-container {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: min-content minmax(0, 1fr);
+
+    .tabs {
+      grid-column: 1;
+      min-width: 0;
+
+      .q-tabs {
+        flex-direction: row;
+      }
+    }
+
+    .panels {
+      grid-column: 1;
+      min-width: 0;
+
+      .q-tab-panel {
+        padding: 0.75rem;
+      }
     }
   }
 }

@@ -28,9 +28,15 @@
             "title": "Bestätigungscode eingeben"
         },
         "app-bar": {
+            "notifications": "Benachrichtigungen",
             "no-accounts": "Keine Konten verfügbar",
             "copy-version": "Reaparr-Version kopieren - { version }",
-            "update-available": ""
+            "update-available": "",
+            "navigation-menu": "Navigationsmenü",
+            "more-actions": "Weitere Aktionen"
+        },
+        "help-button": {
+            "label": "Hilfe"
         },
         "update-available-dialog": {
             "title": "Neue Version verfügbar",
@@ -105,6 +111,9 @@
             }
         },
         "media-overview": {
+            "search-label": "Medien durchsuchen",
+            "filter-label": "Medien filtern",
+            "clear-search-label": "Mediensuche löschen",
             "library-inaccessible-title": "Mediathek nicht zugänglich.",
             "library-inaccessible": "Kein aktiviertes Plex-Konto kann mehr auf diese Mediathek zugreifen.",
             "is-refreshing": "Mediathek \"{library}\" daten von {server} werden aktualisiert",
@@ -146,6 +155,8 @@
             "no-notifications": "keine Benachrichtigungen verfügbar"
         },
         "folder-paths-overview": {
+            "edit-path": "Ordnerpfad bearbeiten: {displayName}",
+            "add-path": "{header} hinzufügen",
             "main": {
                 "header": "Ordnerpfade"
             },
@@ -234,6 +245,7 @@
             "no-libraries": "Dieser Plex-Server verfügt über keine Bibliotheken, für die das Standardziel festgelegt werden kann"
         },
         "account-selector": {
+            "label": "Kontenauswahl",
             "all-accounts": "Alle Plex-Konten",
             "title": "Konten aktualisieren",
             "log-out-button": "Ausloggen"
@@ -260,6 +272,9 @@
             "title": "Validierung des Plex.tv-Authentifizierungstokens"
         },
         "downloads-table": {
+            "toggle-server": "{action} {serverName}",
+            "expand": "Erweitern",
+            "collapse": "Reduzieren",
             "clear-completed": {
                 "button": "Abgeschlossene löschen",
                 "confirmation": {
@@ -325,6 +340,7 @@
             "syncing-media": "Mediendaten vom Plex-Server synchronisieren"
         },
         "media-overview-bar-header": {
+            "details": "Details zur Medienübersicht",
             "movies-metadata": "{movieCount} Filme - {fileSize} ",
             "tv-shows-metadata": "{tvShowCount} TV-Sendungen - {seasonCount} Staffeln - {episodeCount} Folgen - {fileSize} "
         },
@@ -361,6 +377,7 @@
             }
         },
         "password-input-field": {
+            "toggle-password-visibility": "Passwortsichtbarkeit umschalten",
             "validation": {
                 "password-is-required": "Passwort wird benötigt",
                 "password-length": "Das Passwort muss mindestens {count} Zeichen lang sein",

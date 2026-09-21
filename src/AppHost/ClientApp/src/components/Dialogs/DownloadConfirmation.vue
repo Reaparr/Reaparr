@@ -6,7 +6,7 @@
 		full-height
 		@opened="openDialog">
 		<template #top-row>
-			<QRow class="q-pa-md">
+			<QRow class="download-confirmation-summary q-pa-md">
 				<QCol>
 					<QText size="h5">
 						{{ t('components.download-confirmation.description') }}
@@ -286,6 +286,55 @@ function reset() {
   min-width: 0;
 }
 
+@media (max-width: $breakpoint-xs-max) {
+  @media (min-height: 480px) {
+    .download-confirmation-summary {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .download-confirmation-actions {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  .download-confirmation-destination {
+    max-width: 100%;
+  }
+
+  .download-confirmation-actions .q-btn-dropdown {
+    min-height: 44px;
+  }
+
+  .download-confirmation-table-header {
+    display: none;
+  }
+
+  .download-confirmation-table-body {
+    overflow-x: auto;
+
+    .p-treetable-thead {
+      display: table-header-group;
+    }
+  }
+  .download-confirmation-destination-path {
+    min-width: 0;
+    max-width: 100%;
+
+    .col,
+    .q-text {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
 .download-confirmation-destination {
   min-width: 0;
   max-width: 320px;
@@ -314,6 +363,12 @@ function reset() {
 .download-confirmation-table-body {
   .p-treetable-thead {
     display: none;
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .download-confirmation-destination {
+    max-width: 100%;
   }
 }
 </style>

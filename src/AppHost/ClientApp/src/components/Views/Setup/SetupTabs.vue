@@ -3,7 +3,7 @@
 		v-model="model"
 		active-color="primary"
 		indicator-color="primary"
-		vertical>
+		:vertical="$q.screen.gt.xs">
 		<!-- Step headers	-->
 		<template
 			v-for="(header, index) in headers"
@@ -29,6 +29,7 @@ import { get } from '@vueuse/core';
 import { SetupPanelType } from '@enums';
 import { useFolderPathStore } from '@store';
 
+const $q = useQuasar();
 const settingsStore = useSettingsStore();
 const authStore = useAuthenticationStore();
 const folderPathStore = useFolderPathStore();

@@ -5,6 +5,8 @@
 			<QRow align="center">
 				<QCol cols="auto">
 					<q-checkbox
+						class="media-list-checkbox"
+						:aria-label="`${t('general.commands.selection')} ${mediaItem?.title ?? t('general.error.unknown')}`"
 						data-cy="media-list-root-checkbox"
 						:model-value="rootSelected"
 						@update:model-value="rootSetSelected($event)" />
@@ -42,6 +44,9 @@
 				<QRow align="center">
 					<QCol cols="auto">
 						<q-checkbox
+							class="media-list-checkbox"
+							:aria-label="`${t('general.commands.selection')} ${child.title}`"
+							:data-cy="`media-list-child-checkbox-${child.id}`"
 							:model-value="isSelected(child.id)"
 							@update:model-value="setSelected(child.id, child.children, $event)" />
 					</QCol>
@@ -294,3 +299,10 @@ defineExpose({
 	expandAll,
 });
 </script>
+
+<style lang="scss">
+.media-list-checkbox {
+	min-width: 44px;
+	min-height: 44px;
+}
+</style>

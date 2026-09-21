@@ -93,4 +93,38 @@ defineProps<{
 .download-url-action {
   flex-shrink: 0;
 }
+
+@media (max-width: $breakpoint-sm-max) {
+  .section-table {
+    table-layout: auto;
+    white-space: normal;
+
+    tbody,
+    tr,
+    td {
+      display: block;
+      width: 100%;
+    }
+
+    tr {
+      padding: 0.5rem 0;
+      height: auto !important;
+    }
+
+    td {
+      height: auto !important;
+      max-width: none;
+      padding: 0.25rem 0.75rem;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    td:first-child {
+      width: 100% !important;
+      font-weight: 600;
+      border-bottom: 0;
+    }
+  }
+}
 </style>

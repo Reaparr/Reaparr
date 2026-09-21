@@ -24,12 +24,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
             .InSequence(sequence)
-            .Setup(x =>
-                x.Send(
-                    It.IsAny<RecalculatePlexGenreTypesCommand>(),
-                    CancellationToken.None
-                )
-            )
+            .Setup(x => x.Send(It.IsAny<RecalculatePlexGenreTypesCommand>(), CancellationToken.None))
             .ReturnsAsync(Result.Ok(new PlexGenreTypeRecalculationResult(0, 0)))
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -52,7 +47,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
     }
 
     [Test]
-    public async Task ShouldStartBackgroundJobsAfterRecoveringInterruptedDownloads()
+    public async Task ShouldCleanUpInterruptedLibrarySyncsBeforeStartingBackgroundJobs()
     {
         // Arrange
         SetAppRuntimeInfo(x => x.IsIntegrationTestMode = true);
@@ -76,6 +71,11 @@ public class BootUnitTests : BaseUnitTest<Boot>
             .Setup(x => x.Send(It.IsAny<RecoverInterruptedDownloadsCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .InSequence(sequence)
+            .Setup(x => x.Send(It.IsAny<CleanupLibrarySyncJobQueueCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.Mock<IBackgroundJobsSetup>()
             .InSequence(sequence)
             .Setup(x => x.SetupAsync(It.IsAny<CancellationToken>()))
@@ -89,6 +89,58 @@ public class BootUnitTests : BaseUnitTest<Boot>
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IDownloadQueue>().Verify();
         Mock.Mock<IBackgroundJobsSetup>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldKickQueuedLibrarySyncsAfterStartingBackgroundJobs()
+    {
+        // Arrange
+        SetAppRuntimeInfo(x => x.IsIntegrationTestMode = false);
+        var sequence = new MockSequence();
+
+        Mock.Mock<IHostApplicationLifetime>().SetupGet(x => x.ApplicationStarted).Returns(CancellationToken.None);
+        Mock.Mock<IHostApplicationLifetime>().SetupGet(x => x.ApplicationStopping).Returns(CancellationToken.None);
+        Mock.Mock<IHostApplicationLifetime>().SetupGet(x => x.ApplicationStopped).Returns(CancellationToken.None);
+        Mock.Mock<ICommandExecutor>()
+            .InSequence(sequence)
+            .Setup(x => x.Send(It.IsAny<CreateDefaultAppUserCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<IDownloadQueue>()
+            .InSequence(sequence)
+            .Setup(x => x.Setup(CancellationToken.None))
+            .Returns(Result.Ok());
+        Mock.Mock<ICommandExecutor>()
+            .InSequence(sequence)
+            .Setup(x => x.Send(It.IsAny<RecoverInterruptedDownloadsCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<ICommandExecutor>()
+            .InSequence(sequence)
+            .Setup(x => x.Send(It.IsAny<CleanupLibrarySyncJobQueueCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<IBackgroundJobsSetup>()
+            .InSequence(sequence)
+            .Setup(x => x.SetupAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<ICommandExecutor>()
+            .InSequence(sequence)
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<IDownloadQueue>()
+            .InSequence(sequence)
+            .Setup(x => x.CheckDownloadQueueForAllServers(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
+        // Act
+        await Sut.StartAsync(CancellationToken);
+
+        // Assert
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once
+            );
+        Mock.Mock<IDownloadQueue>()
+            .Verify(x => x.CheckDownloadQueueForAllServers(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -107,6 +159,10 @@ public class BootUnitTests : BaseUnitTest<Boot>
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<RecoverInterruptedDownloadsCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<CleanupLibrarySyncJobQueueCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.Mock<IDownloadQueue>()

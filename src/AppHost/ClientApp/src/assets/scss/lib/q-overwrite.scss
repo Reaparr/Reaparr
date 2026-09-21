@@ -136,6 +136,22 @@ body {
   overflow-x: hidden;
 }
 
+@media (max-width: 1023px) {
+  .q-page {
+    min-width: 0;
+    min-height: calc(100dvh - #{$app-bar-height}) !important;
+    overflow-x: clip;
+  }
+
+  // Settings pages own their vertical scroll so long forms remain usable on mobile.
+  .q-page.settings-page {
+    height: calc(100dvh - #{$app-bar-height});
+    min-height: calc(100dvh - #{$app-bar-height}) !important;
+    overflow-x: clip;
+    overflow-y: auto;
+  }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // * QField
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

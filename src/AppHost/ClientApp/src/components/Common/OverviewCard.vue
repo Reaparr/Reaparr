@@ -89,8 +89,8 @@ function activate(): void {
 <style lang="scss">
 .overview-card {
   border: 2px solid red;
-  max-height: 140px;
   min-height: 140px;
+  max-height: 140px;
 
   &:focus-visible {
     outline: 2px solid white;
@@ -127,6 +127,23 @@ function activate(): void {
 
   &__chips {
     min-width: 0;
+  }
+
+  @media (max-width: $breakpoint-xs-max) {
+    max-height: none;
+
+    &__content {
+      min-width: 0;
+    }
+
+    &__chips {
+      gap: 0.25rem;
+
+      .q-chip {
+        max-width: 100%;
+        margin: 0;
+      }
+    }
   }
 }
 </style>

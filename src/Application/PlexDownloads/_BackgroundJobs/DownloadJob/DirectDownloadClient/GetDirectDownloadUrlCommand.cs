@@ -73,6 +73,7 @@ public class GetDirectDownloadUrlCommandHandler : ICommandHandler<GetDirectDownl
                     (int)statusCode,
                     statusCode
                 )
+                .AddStatusCode(statusCode)
                 .LogError();
         }
 
@@ -91,6 +92,7 @@ public class GetDirectDownloadUrlCommandHandler : ICommandHandler<GetDirectDownl
                 (int)fallbackProbeResult.Value.StatusCode,
                 fallbackProbeResult.Value.StatusCode
             )
+            .AddStatusCode(fallbackProbeResult.Value.StatusCode)
             .LogError();
     }
 

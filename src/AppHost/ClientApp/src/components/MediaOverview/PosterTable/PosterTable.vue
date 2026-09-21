@@ -15,6 +15,9 @@
 				<div
 					v-for="virtualRow in rowVirtualizer.getVirtualItems()"
 					:key="virtualRow.index"
+					:ref="measureVirtualRow"
+					:data-index="virtualRow.index"
+					class="poster-table-item"
 					:style="{
 						position: 'absolute',
 						top: 0,
@@ -51,7 +54,7 @@
 import Log from 'consola';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 
-import { get, set, useElementBounding } from '@vueuse/core';
+import { get, set, useCssVar, useElementBounding } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 import { PlexMediaType } from '@dto';
 import type { PlexMediaSlimDTO } from '@dto';
@@ -68,9 +71,13 @@ type QScrollInstance = {
 
 const scrollAreaRef = ref<QScrollInstance | null>(null);
 const scrollContainerRef = ref<HTMLElement | null>(null);
-const posterCardWidth = ref(200 + 32);
-const posterCardHeight = ref(340 + 32);
+const posterCardWidthCss = useCssVar('--poster-card-width', scrollContainerRef);
+const posterImageWidthCss = useCssVar('--poster-image-width', scrollContainerRef);
+const posterCardPaddingCss = useCssVar('--poster-card-padding', scrollContainerRef);
+const posterCardWidth = ref(232);
+const posterCardHeight = ref(372);
 const gridItems = ref(10);
+const gridRowGap = ref(20);
 const gridPaddingLeft = ref(0);
 const hasRunInitialPageReady = ref(false);
 const router = useRouter();
@@ -88,7 +95,8 @@ const rowVirtualizer = useVirtualizer(
 	computed(() => ({
 		count: get(rowCount),
 		getScrollElement,
-		estimateSize: () => get(posterCardHeight),
+		estimateSize: () => get(posterCardHeight) - get(gridRowGap),
+		gap: get(gridRowGap),
 		// Render extra rows above and below viewport for smoother jumps
 		overscan: 10,
 		// Stable row keys: use the first item id in each row
@@ -105,6 +113,11 @@ const rowVirtualizer = useVirtualizer(
 		},
 	})),
 );
+
+function measureVirtualRow(element: unknown) {
+	if (element instanceof Element)
+		get(rowVirtualizer).measureElement(element);
+}
 
 // Firefox and Chrome silently clamp CSS element heights at ~33.5M px, causing a blank render.
 // This guard ensures the spacer div never exceeds that limit regardless of item count or column count.
@@ -195,12 +208,32 @@ function persistScrollIndex() {
 // causes rowCount = ceil(N/1) = N rows and getTotalSize() to exceed browser CSS height limits.
 const { width: containerWidth } = useElementBounding(scrollContainerRef);
 
-// Recalculate columns and padding whenever container width changes
 watch(containerWidth, (width) => {
-	const cols = Math.max(1, Math.floor(width / get(posterCardWidth)));
-	set(gridItems, cols);
-	set(gridPaddingLeft, (width - cols * get(posterCardWidth)) / 2);
+	if (width <= 0)
+		return;
 
+	const isMobile = width < 600;
+	const columns = isMobile
+		? Math.min(3, Math.max(1, Math.floor(width / 144)))
+		: Math.max(1, Math.floor(width / 232));
+	const cardPadding = isMobile ? 8 : 16;
+	const rowGap = isMobile ? 4 : 20;
+	const cardWidth = isMobile ? width / columns : 232;
+	const imageWidth = cardWidth - (cardPadding * 2);
+	const cardHeight = isMobile
+		? imageWidth * 1.5 + cardPadding + 36
+		: 372;
+
+	set(posterCardWidth, cardWidth);
+	set(posterCardHeight, cardHeight);
+	set(gridRowGap, rowGap);
+	set(gridItems, columns);
+	set(gridPaddingLeft, Math.max(0, (width - columns * cardWidth) / 2));
+
+	set(posterCardWidthCss, `${cardWidth}px`);
+	set(posterImageWidthCss, `${imageWidth}px`);
+	set(posterCardPaddingCss, `${cardPadding}px`);
+	rowVirtualizer.value.measure();
 	if (!get(hasRunInitialPageReady)) {
 		set(hasRunInitialPageReady, true);
 		nextTick(() => onPageReady());
@@ -348,23 +381,23 @@ onMounted(() => {
 .media-poster-placeholder {
   display: flex;
   flex-direction: column;
-  flex: 0 0 232px;
-  width: 232px;
-  min-width: 232px;
-  max-width: 232px;
+  flex: 0 0 var(--poster-card-width, 232px);
+  width: var(--poster-card-width, 232px);
+  min-width: var(--poster-card-width, 232px);
+  max-width: var(--poster-card-width, 232px);
   margin: 0;
-  padding: 16px 16px 0;
+  padding: var(--poster-card-padding, 16px) var(--poster-card-padding, 16px) 0;
   box-sizing: border-box;
 
   &__image {
-    width: 200px;
-    height: 300px;
+    width: var(--poster-image-width, 200px);
+    aspect-ratio: 2 / 3;
     border-radius: 2px;
     background: rgba(0, 0, 0, 0.45);
   }
 
   &__quality {
-    width: 200px;
+    width: var(--poster-image-width, 200px);
     height: 28px;
     margin-top: 0;
     background: rgba(0, 0, 0, 0.6);

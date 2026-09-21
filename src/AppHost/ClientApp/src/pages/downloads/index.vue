@@ -1,7 +1,9 @@
 <template>
 	<QPage>
 		<template v-if="downloadStore.getServersWithDownloads.length > 0">
-			<QScroll class="page-content-minus-download-bar">
+			<QScroll
+				class="max-height-page-height-minus-app-bar"
+				data-cy="downloads-scroll">
 				<!--	The Download Table	-->
 				<QRow
 					justify="center"

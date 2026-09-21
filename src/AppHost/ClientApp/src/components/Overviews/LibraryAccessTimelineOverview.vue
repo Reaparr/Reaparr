@@ -231,6 +231,8 @@ function applyZoomPreset(zoomPreset: LibraryAccessTimelineZoomPreset) {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 1rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .library-access-timeline-filters {
@@ -239,15 +241,41 @@ function applyZoomPreset(zoomPreset: LibraryAccessTimelineZoomPreset) {
   z-index: 1;
   background: $dark-lg-background-color;
   backdrop-filter: blur(6px);
+  min-width: 0;
+  width: 100%;
 }
 
 .library-access-timeline-scroll-region {
   min-height: 0;
   overflow: hidden auto;
   padding-right: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .library-access-timeline-scroll-card {
   min-height: 18rem;
+}
+@media (max-width: $breakpoint-sm-max) {
+  .library-access-timeline-page-scroll {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .library-access-timeline-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .library-access-timeline-scroll-region {
+    min-height: 18rem;
+    overflow: auto;
+  }
+
+  .library-access-timeline-filters .q-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 </style>

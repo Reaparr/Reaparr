@@ -28,9 +28,15 @@
             "title": "Input Verification Code"
         },
         "app-bar": {
+            "notifications": "Notifications",
             "no-accounts": "No Accounts available",
             "copy-version": "Copy Reaparr version - { version }",
-            "update-available": "Update available"
+            "update-available": "Update available",
+            "navigation-menu": "Navigation menu",
+            "more-actions": "More actions"
+        },
+        "help-button": {
+            "label": "Help"
         },
         "update-available-dialog": {
             "title": "New Version Available",
@@ -105,6 +111,9 @@
             }
         },
         "media-overview": {
+            "search-label": "Search media",
+            "filter-label": "Filter media",
+            "clear-search-label": "Clear media search",
             "library-inaccessible-title": "Library inaccessible.",
             "library-inaccessible": "No enabled Plex accounts have access to this library anymore.",
             "is-refreshing": "Refreshing library \"{library}\" data from {server}",
@@ -146,6 +155,8 @@
             "no-notifications": "No notifications available"
         },
         "folder-paths-overview": {
+            "edit-path": "Edit folder path: {displayName}",
+            "add-path": "Add {header}",
             "main": {
                 "header": "Folder Paths"
             },
@@ -234,6 +245,7 @@
             "no-libraries": "This Plex server has no libraries to set the default destination for"
         },
         "account-selector": {
+            "label": "Account selector",
             "all-accounts": "All Plex Accounts",
             "title": "Refresh Accounts",
             "log-out-button": "Logout"
@@ -260,6 +272,9 @@
             "title": "Plex.tv Authentication Token Validation"
         },
         "downloads-table": {
+            "toggle-server": "{action} {serverName}",
+            "expand": "Expand",
+            "collapse": "Collapse",
             "clear-completed": {
                 "button": "Clear Completed",
                 "confirmation": {
@@ -325,6 +340,7 @@
             "syncing-media": "Syncing media data from Plex server"
         },
         "media-overview-bar-header": {
+            "details": "Media overview details",
             "movies-metadata": "{movieCount} Movies - {fileSize} ",
             "tv-shows-metadata": "{tvShowCount} TV Shows - {seasonCount} Seasons - {episodeCount} Episodes - {fileSize} "
         },
@@ -361,6 +377,7 @@
             }
         },
         "password-input-field": {
+            "toggle-password-visibility": "Toggle password visibility",
             "validation": {
                 "password-is-required": "Password is required",
                 "password-length": "Password must be at least {count} characters",

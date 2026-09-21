@@ -145,4 +145,10 @@ const alertIcon = computed((): string => {
     cursor: pointer;
   }
 }
+
+@media (max-width: 1023px) {
+  .q-alert {
+    font-size: clamp(0.875rem, 0.82rem + 0.2vw, 1rem);
+  }
+}
 </style>

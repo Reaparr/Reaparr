@@ -40,4 +40,17 @@ defineEmits<IMediaActionEmits>();
   gap: 0.4rem;
   justify-content: center;
 }
+
+@media (max-width: $breakpoint-sm-max) {
+  .media-quality-container {
+    min-width: 0;
+    max-width: 100%;
+    gap: clamp(0.2rem, 0.8vw, 0.4rem);
+  }
+
+  .media-quality-container > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
 </style>

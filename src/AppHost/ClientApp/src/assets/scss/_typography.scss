@@ -1,82 +1,125 @@
 body {
-	&.body--dark {
-		h1,
-		h2,
-		h3,
-		h4,
-		h5,
-		h6,
-		p,
-		ul,
-		li,
-		input, select, textarea,
-		strong {
-			color: white;
-		}
-	}
+  &.body--dark {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    ul,
+    li,
+    input, select, textarea,
+    strong {
+      color: white;
+    }
+  }
 
-	&.body--light {
-		h1,
-		h2,
-		h3,
-		h4,
-		h5,
-		h6,
-		p,
-		ul,
-		li,
-		input, select, textarea,
-		strong {
-			color: black;
-		}
-	}
+  &.body--light {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    ul,
+    li,
+    input, select, textarea,
+    strong {
+      color: black;
+    }
+  }
 }
 
 h1 {
-	text-align: center;
-	padding: 10px 0;
-	font-size: 3em;
+  text-align: center;
+  padding: 10px 0;
+  font-size: 3em;
 }
 
 h2 {
-	font-size: 2em;
-	text-align: center;
-	font-weight: bold;
-	line-height: 1.5;
-	padding: 0;
+  font-size: 2em;
+  text-align: center;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 0;
 }
 
 h3 {
-	font-size: 1.5em;
-	text-align: center;
-	font-weight: bold;
-	line-height: 1.5;
-	padding: 0;
+  font-size: 1.5em;
+  text-align: center;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 0;
 }
 
 h4 {
-	margin: 8px 0;
-	font-size: 17px;
-	font-weight: bold;
+  margin: 8px 0;
+  font-size: 17px;
+  font-weight: bold;
 }
 
-p {
-	font-size: 16px;
+p, ul li {
+  font-size: 16px;
 }
 
 ul li {
-	font-size: 16px;
-	margin: 10px 0;
+  margin: 10px 0;
 }
 
 span.title {
-	font-size: 1.5em;
-	font-weight: bold;
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --app-font-size: clamp(0.9375rem, 0.9rem + 0.15vw, 1rem);
+    --app-line-height: 1.45;
+  }
+
+  html {
+    font-size: clamp(15px, calc(14px + 0.2vw), 17px);
+  }
+
+  body {
+    font-size: var(--app-font-size);
+    line-height: var(--app-line-height);
+  }
+
+  h1 {
+    font-size: clamp(1.75rem, 1.3rem + 1.8vw, 3rem);
+    line-height: 1.15;
+  }
+
+  h2 {
+    font-size: clamp(1.35rem, 1.1rem + 1vw, 2rem);
+    line-height: 1.25;
+  }
+
+  h3 {
+    font-size: clamp(1.2rem, 1rem + 0.7vw, 1.5rem);
+    line-height: 1.3;
+  }
+
+  h4 {
+    font-size: clamp(1rem, 0.95rem + 0.2vw, 1.0625rem);
+  }
+
+  p,
+  ul li {
+    font-size: var(--app-font-size);
+  }
+
+  span.title {
+    font-size: clamp(1.1rem, 1rem + 0.5vw, 1.5rem);
+  }
 }
 
 /*
 Nuxt-i18n
 */
 .i18n-formatting {
-	white-space: pre-line;
+  white-space: pre-line;
 }

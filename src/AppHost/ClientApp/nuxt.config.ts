@@ -175,6 +175,9 @@ export default defineNuxtConfig({
 		iconSet: 'mdi-v7',
 		config: {
 			dark: true,
+			screen: {
+				bodyClasses: true,
+			},
 		},
 		plugins: ['Notify'],
 		extras: {

@@ -1,5 +1,6 @@
 @use '../mixins';
 @use "../variables";
+@use "quasar/src/css/variables.sass" as quasar;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // * Notification Drawer
@@ -54,6 +55,16 @@ body {
 
 .q-card-subtitle {
   font-size: 14px;
+}
+
+@media (max-width: 1023px) {
+  .q-card-title {
+    font-size: clamp(1.15rem, 1rem + 0.5vw, 1.5rem);
+  }
+
+  .q-card-subtitle {
+    font-size: clamp(0.8rem, 0.76rem + 0.2vw, 0.875rem);
+  }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -126,6 +137,21 @@ body {
           height: 30px;
           font-size: 1.0rem;
         }
+      }
+    }
+  }
+
+  @media (max-width: quasar.$breakpoint-xs-max) {
+    .settings-action-button {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      min-height: 44px;
+      white-space: normal;
+
+      .q-btn__content {
+        min-width: 0;
+        white-space: normal;
       }
     }
   }

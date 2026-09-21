@@ -2,7 +2,7 @@
 	<div
 		class="live-log-viewer q-pa-md"
 		data-cy="live-log-viewer">
-		<QToolbar class="q-pa-none">
+		<QToolbar class="live-log-viewer__toolbar q-pa-none">
 			<QToolbarTitle>
 				{{ t('pages.settings.logs.title') }}
 
@@ -17,6 +17,7 @@
 					})" />
 			</QToolbarTitle>
 			<q-checkbox
+				class="live-log-viewer__pause"
 				:model-value="pauseScroll"
 				dense
 				size="sm"
@@ -25,18 +26,21 @@
 
 			<!-- Sort Logs -->
 			<IconButton
+				class="live-log-viewer__toolbar-action"
 				:icon="logsStore.sortDirection === SortDirection.Asc ? 'mdi-sort-ascending' : 'mdi-sort-descending'"
 				:title="logsStore.sortDirection === SortDirection.Asc ? t('pages.settings.logs.sort.oldest-first') : t('pages.settings.logs.sort.newest-first')"
 				@click="onSortDirectionToggled" />
 
 			<!-- Clear Logs -->
 			<IconButton
+				class="live-log-viewer__toolbar-action"
 				icon="mdi-delete-sweep"
 				:title="t('pages.settings.logs.clear')"
 				@click="logsStore.clearLogs()" />
 
 			<!-- Refresh Logs -->
 			<IconButton
+				class="live-log-viewer__toolbar-action"
 				icon="mdi-refresh"
 				:title="t('pages.settings.logs.refresh')"
 				@click="useSubscription(logsStore.refreshLogs().subscribe())" />
@@ -124,6 +128,8 @@
 								<!-- Selection Checkbox -->
 								<div class="col-auto">
 									<q-checkbox
+										class="live-log-viewer__entry-checkbox"
+										:aria-label="`${t('general.commands.selection')} ${item.sequence}`"
 										:model-value="selectedEntries.has(item.sequence)"
 										dense
 										size="sm"
@@ -152,6 +158,8 @@
 								</div>
 								<div class="col-auto">
 									<QBtn
+										class="live-log-viewer__copy-action"
+										:aria-label="t('pages.settings.logs.copy')"
 										flat
 										round
 										dense
@@ -505,6 +513,36 @@ onUnmounted(() => logsStore.$reset());
 
   &__bottom-bar {
     padding-top: 8px;
+  }
+}
+@media (max-width: $breakpoint-sm-max) {
+  .live-log-viewer {
+    height: auto;
+    min-height: 100%;
+
+    &__toolbar {
+      flex-wrap: wrap;
+      gap: 0.25rem;
+
+      .q-toolbar__title {
+        flex: 1 1 100%;
+        min-width: 0;
+        padding: 0;
+      }
+    }
+
+    &__pause,
+    &__toolbar-action,
+    &__entry-checkbox,
+    &__copy-action {
+      min-width: 44px;
+      min-height: 44px;
+    }
+
+    &__copy-action {
+      width: 44px;
+      height: 44px;
+    }
   }
 }
 </style>

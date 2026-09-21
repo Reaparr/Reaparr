@@ -21,57 +21,65 @@
 		<template #default>
 			<QRow
 				align="start"
+				class="server-dialog-layout"
 				full-height>
 				<QCol
 					cols="auto"
+					class="server-dialog-tabs"
 					align-self="stretch">
 					<!-- Tab Index -->
 					<q-tabs
 						v-model="tabIndex"
-						vertical
+						:vertical="$q.screen.gt.xs"
 						active-color="red">
 						<!--	Server Data	Tab Header -->
 						<q-tab
 							name="server-data"
 							icon="mdi-server"
 							data-cy="server-dialog-tab-1"
+							:aria-label="$t('components.server-dialog.tabs.server-data.header')"
 							:label="$t('components.server-dialog.tabs.server-data.header')" />
 						<!--	Server Connections Tab Header	-->
 						<q-tab
 							name="server-connection"
 							icon="mdi-connection"
 							data-cy="server-dialog-tab-2"
+							:aria-label="$t('components.server-dialog.tabs.server-connections.header')"
 							:label="$t('components.server-dialog.tabs.server-connections.header')" />
 						<!--	Server Configuration Tab Header	-->
 						<q-tab
 							name="server-config"
 							icon="mdi-cog-box"
 							data-cy="server-dialog-tab-3"
+							:aria-label="$t('components.server-dialog.tabs.server-config.header')"
 							:label="$t('components.server-dialog.tabs.server-config.header')" />
 						<!--	Server Libraries Tab Header	-->
 						<q-tab
 							name="server-libraries"
 							icon="mdi-bookshelf"
 							data-cy="server-dialog-tab-4"
+							:aria-label="$t('components.server-dialog.tabs.server-libraries.header')"
 							:label="$t('components.server-dialog.tabs.server-libraries.header')" />
 						<!--	Server Commands Tab Header	-->
 						<q-tab
 							name="server-commands"
 							icon="mdi-console"
 							data-cy="server-dialog-tab-5"
+							:aria-label="$t('components.server-dialog.tabs.server-commands.header')"
 							:label="$t('components.server-dialog.tabs.server-commands.header')" />
 					</q-tabs>
 				</QCol>
 				<QCol
+					ref="tabContent"
 					align-self="stretch"
 					class="tab-content inherit-all-height scroll">
 					<!-- Tab Content -->
 					<q-tab-panels
 						v-model="tabIndex"
 						animated
-						vertical
-						transition-prev="slide-down"
-						transition-next="slide-up">
+						:vertical="$q.screen.gt.xs"
+						:transition-prev="$q.screen.gt.xs ? 'slide-down' : 'slide-right'"
+						:transition-next="$q.screen.gt.xs ? 'slide-up' : 'slide-left'">
 						<!-- Server Data Tab Content -->
 						<q-tab-panel
 							name="server-data"
@@ -134,21 +142,32 @@
 </template>
 
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue';
 import { get, set } from '@vueuse/core';
 import type { PlexServerDTO } from '@dto';
 import { DialogType } from '@enums';
 import { useServerStore, useLibraryStore, useDialogStore } from '@store';
 
 const serverStore = useServerStore();
+const $q = useQuasar();
 const libraryStore = useLibraryStore();
 const dialogStore = useDialogStore();
 
 const loading = ref(false);
+const tabContent = ref<ComponentPublicInstance | null>(null);
 const tabIndex = ref<string>('server-data');
 const plexServer = ref<PlexServerDTO | null>(null);
 const plexServerId = ref<number>(0);
 
 const isVisible = computed((): boolean => plexServerId.value > 0);
+
+watch(tabIndex, async () => {
+	await nextTick();
+	const element = tabContent.value?.$el;
+	if (element instanceof HTMLElement) {
+		element.scrollTop = 0;
+	}
+});
 
 function open(event: unknown): void {
 	const newPlexServerId = event as number;
@@ -181,6 +200,74 @@ function onServerAliasSave(serverAlias: string): void {
   &-item {
     padding-top: 0;
     padding-bottom: 0;
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .server-dialog-layout {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .server-dialog-tabs {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 0 48px;
+    overflow: hidden;
+
+    .q-tabs {
+      width: 100%;
+      height: 48px;
+    }
+
+    .q-tabs__content {
+      flex-wrap: nowrap;
+    }
+
+    .q-tab {
+      width: auto;
+      min-width: 44px;
+      min-height: 48px;
+      padding: 0;
+      flex: 1 1 20%;
+    }
+
+    .q-tab__label {
+      display: none;
+    }
+
+    .q-tab__icon {
+      margin: 0;
+    }
+  }
+
+  .tab-content {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: calc(100% - 48px);
+    max-height: calc(100% - 48px) !important;
+    flex: 1 1 auto;
+    overflow: auto !important;
+
+    .q-tab-panels,
+    .q-panel,
+    .q-tab-panel,
+    .q-list {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .q-tab-panel {
+      width: auto;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      padding: 0.75rem;
+    }
   }
 }
 </style>

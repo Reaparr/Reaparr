@@ -73,6 +73,7 @@ import { useDialogStore } from '@store';
 import { useSubscription } from '@vueuse/rxjs';
 
 const dialogStore = useDialogStore();
+const $q = useQuasar();
 
 const showDialog = ref(false);
 const dataValue = ref<T>();
@@ -136,9 +137,15 @@ function closeDialog(id?: number) {
 	}
 	set(showDialog, false);
 }
-
 const styles = computed(() => {
-	return { width: `clamp(200px, 100%, ${props.width})` };
+	if (!$q.screen.lt.md) {
+		return { width: `clamp(200px, 100%, ${props.width})` };
+	}
+
+	return {
+		width: `min(${props.width}, calc(100vw - 32px))`,
+		height: props.fullHeight ? 'calc(100dvh - 32px)' : undefined,
+	};
 });
 
 onMounted(() => {
@@ -196,13 +203,11 @@ body {
         right: 0.5rem;
         top: 0.5rem;
       }
-
     }
 
     &-top-row {
       grid-area: top-row;
       padding: 0 1rem;
-
     }
 
     &-content {
@@ -210,36 +215,13 @@ body {
       overflow-y: scroll;
       margin: 0 1rem;
 
-      &-20 {
-        min-height: calc(20vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        height: calc(20vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        max-height: calc(20vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
+      @each $size in 20, 40, 60, 80, 100 {
+        &-#{$size} {
+          min-height: calc(#{$size}vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
+          height: calc(#{$size}vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
+          max-height: calc(#{$size}vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
+        }
       }
-
-      &-40 {
-        min-height: calc(40vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        height: calc(40vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        max-height: calc(40vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-      }
-
-      &-60 {
-        min-height: calc(60vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        height: calc(60vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        max-height: calc(60vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-      }
-
-      &-80 {
-        min-height: calc(80vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        height: calc(80vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        max-height: calc(80vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-      }
-
-      &-100 {
-        min-height: calc(100vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        height: calc(100vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-        max-height: calc(100vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
-      }
-
     }
 
     &-actions {
@@ -247,6 +229,77 @@ body {
       max-height: $q-card-dialog-actions-height;
       margin: 1rem;
       display: flex;
+    }
+  }
+}
+
+@media (max-width: 1023px) {
+  body .dialog-container {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: min-content min-content minmax(0, 1fr) min-content;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100dvh - 32px);
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+
+    &-title {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    &-top-row {
+      min-width: 0;
+    }
+
+    &-content {
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+
+      @each $size in 20, 40, 60, 80, 100 {
+        &-#{$size} {
+          min-height: 0 !important;
+          height: calc(#{$size}dvh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
+          max-height: calc(100dvh - 32px - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
+        }
+      }
+    }
+
+    &-actions {
+      min-width: 0;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      max-height: none;
+
+      > .row {
+        min-width: 0;
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+    }
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  body .dialog-container {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 8px;
+
+    &-content {
+      margin-inline: 0.75rem;
+    }
+
+    &-actions {
+      margin: 0.75rem;
+
+      .q-btn {
+        min-height: 44px;
+      }
     }
   }
 }

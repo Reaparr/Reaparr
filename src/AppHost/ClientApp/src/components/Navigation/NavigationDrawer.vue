@@ -1,12 +1,14 @@
 <template>
 	<q-drawer
+		id="navigation-drawer"
+		v-model="showDrawer"
 		class="navigation-drawer"
-		:model-value="showDrawer"
-		:width="400"
+		:width="drawerWidth"
+		:breakpoint="1023"
+		:behavior="$q.screen.gt.sm ? 'desktop' : 'mobile'"
+		show-if-above
 		bordered
-		style="overflow-x: hidden"
-		@before-show="onShow"
-		@before-hide="onHide">
+		style="overflow-x: hidden">
 		<QCol class="server-drawer-container">
 			<q-scroll>
 				<!-- Server drawer -->
@@ -24,16 +26,18 @@
 <script setup lang="ts">
 import type { QExpansionListProps } from '@interfaces/components/QExpansionListProps';
 import { useSettingsStore, useDownloadStore } from '@store';
-import { useI18n } from 'vue-i18n';
 
-withDefaults(defineProps<{ showDrawer?: boolean }>(), {
-	showDrawer: false,
-});
+const showDrawer = defineModel<boolean>('showDrawer', { default: false });
 const settingsStore = useSettingsStore();
 const downloadStore = useDownloadStore();
-const items = ref<object[]>([]);
-
 const { t } = useI18n();
+const $q = useQuasar();
+const drawerWidth = computed(() => {
+	if (!$q.screen.lt.md || !$q.screen.width)
+		return 400;
+
+	return Math.min(400, $q.screen.width * 0.92);
+});
 
 const getNavItems = computed((): QExpansionListProps[] => {
 	const mainItems: QExpansionListProps[] = [
@@ -108,21 +112,6 @@ const getNavItems = computed((): QExpansionListProps[] => {
 	}
 	return mainItems;
 });
-
-function onShow() {
-	document.body.classList.remove('navigation-drawer-closed');
-	document.body.classList.add('navigation-drawer-opened');
-}
-
-function onHide() {
-	document.body.classList.remove('navigation-drawer-opened');
-	document.body.classList.add('navigation-drawer-closed');
-}
-
-onMounted(() => {
-	items.value = getNavItems.value;
-	document.body.classList.add('navigation-drawer-opened');
-});
 </script>
 
 <style lang="scss">
@@ -142,6 +131,64 @@ onMounted(() => {
 
   .menu-items {
     flex-grow: 0;
+  }
+}
+
+@media (max-width: 1023px) {
+  .navigation-drawer {
+    width: min(400px, 92vw) !important;
+    max-width: 92vw;
+    background-color: variables.$dark-lg-background-color;
+    backdrop-filter: blur(10px);
+    overflow-x: hidden;
+
+    .server-drawer-container {
+      min-height: 0;
+      overflow: hidden;
+      flex: 1 1 auto;
+    }
+
+    .q-scrollarea__content {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .q-expansion-item,
+    .q-list {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .menu-items {
+      flex: 0 0 auto;
+    }
+  }
+
+  body.body--light .navigation-drawer {
+    background-color: variables.$light-lg-background-color !important;
+  }
+
+  // Keep the app bar above mobile drawers so the toggle remains reachable.
+  .q-drawer:has(> .navigation-drawer) {
+    top: variables.$app-bar-height !important;
+    height: calc(100dvh - #{variables.$app-bar-height}) !important;
+  }
+
+  .q-drawer-container:has(> .q-drawer > .navigation-drawer) > .q-drawer__backdrop {
+    top: variables.$app-bar-height !important;
+    height: calc(100dvh - #{variables.$app-bar-height}) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .navigation-drawer {
+    border-right: 1px solid variables.$separator-dark-color;
+  }
+
+  body.body--light .navigation-drawer {
+    border-right-color: variables.$separator-color;
   }
 }
 </style>

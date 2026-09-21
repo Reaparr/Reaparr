@@ -1,10 +1,12 @@
 <template>
-	<QRow no-gutters>
+	<QRow
+		no-gutters
+		class="q-section">
 		<QCol :cols="12">
 			<!-- Header	-->
 			<QCol
 				v-if="$slots['header'] || header"
-				class="q-mx-md">
+				class="q-section__header q-mx-md">
 				<QText
 					size="h5"
 					full-width
@@ -18,7 +20,7 @@
 				<q-separator />
 			</QCol>
 			<!--	Section Content	-->
-			<QCol class="q-pa-md">
+			<QCol class="q-section__content q-pa-md">
 				<slot />
 			</QCol>
 		</QCol>
@@ -34,3 +36,16 @@ withDefaults(defineProps<{
 	align: 'left',
 });
 </script>
+
+<style lang="scss">
+@media (max-width: $breakpoint-xs-max) {
+  .q-section__header {
+    margin-inline: 0.5rem;
+  }
+
+  .q-section__content {
+    min-width: 0;
+    padding: 0.5rem;
+  }
+}
+</style>

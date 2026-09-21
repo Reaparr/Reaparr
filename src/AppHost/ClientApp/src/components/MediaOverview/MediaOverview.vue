@@ -355,6 +355,12 @@ onMounted(() => {
   }
 }
 
+@media (max-width: $breakpoint-xs-max) {
+  .media-overview-results {
+    padding-inline-end: 44px;
+  }
+}
+
 #media-container,
 .media-table-container,
 .detail-view-container {

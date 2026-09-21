@@ -128,7 +128,7 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
     }
 
     [Test]
-    public async Task ShouldRequeueProcessingItems_WhenProcessingItemsExist()
+    public async Task ShouldCancelProcessingItems_WhenProcessingItemsExist()
     {
         // Arrange
         await SetupDatabase(
@@ -144,6 +144,7 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.First();
         var library = dbContext.PlexLibraries.First();
+        var startedAt = DateTime.UtcNow.AddMinutes(-5);
 
         var processingItem = new LibrarySyncJobQueue
         {
@@ -152,7 +153,7 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
             Priority = 1,
             Status = LibrarySyncJobStatus.Processing,
             CreatedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow,
+            StartedAt = startedAt,
         };
 
         await dbContext.LibrarySyncJobQueues.AddAsync(processingItem, CancellationToken);
@@ -180,13 +181,15 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
         var updatedItem = await dbContext
             .LibrarySyncJobQueues.AsNoTracking()
             .FirstAsync(x => x.PlexLibraryId == library.Id, CancellationToken);
-        updatedItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
-        updatedItem.StartedAt.ShouldBeNull();
+        updatedItem.Status.ShouldBe(LibrarySyncJobStatus.Cancelled);
+        updatedItem.StartedAt.ShouldBe(startedAt);
+        updatedItem.CompletedAt.ShouldNotBeNull();
         updatedItem.ErrorMessage.ShouldBeNull();
+        updatedItem.IsServerOffline.ShouldBeFalse();
     }
 
     [Test]
-    public async Task ShouldClearStartedAtAndErrorMessage_WhenRequeuingItems()
+    public async Task ShouldRequeueFailedAndCancelProcessingItems_WhenRecoveringQueue()
     {
         // Arrange
         await SetupDatabase(
@@ -202,6 +205,8 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.First();
         var libraries = dbContext.PlexLibraries.ToList();
+        var failedStartedAt = DateTime.UtcNow.AddHours(-1);
+        var processingStartedAt = DateTime.UtcNow.AddHours(-2);
 
         var failedItem = new LibrarySyncJobQueue
         {
@@ -210,7 +215,7 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
             Priority = 1,
             Status = LibrarySyncJobStatus.Failed,
             CreatedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow.AddHours(-1),
+            StartedAt = failedStartedAt,
             CompletedAt = DateTime.UtcNow,
             ErrorMessage = "Failed error message",
         };
@@ -222,7 +227,7 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
             Priority = 1,
             Status = LibrarySyncJobStatus.Processing,
             CreatedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow.AddHours(-2),
+            StartedAt = processingStartedAt,
         };
 
         await dbContext.LibrarySyncJobQueues.AddRangeAsync([failedItem, processingItem], CancellationToken);
@@ -241,12 +246,19 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
         // Use AsNoTracking to see ExecuteUpdateAsync changes
         var updatedItems = await dbContext.LibrarySyncJobQueues.AsNoTracking().ToListAsync(CancellationToken);
         updatedItems.Count.ShouldBe(2);
-        foreach (var item in updatedItems)
-        {
-            item.Status.ShouldBe(LibrarySyncJobStatus.Queued);
-            item.StartedAt.ShouldBeNull();
-            item.ErrorMessage.ShouldBeNull();
-        }
+
+        var updatedFailedItem = updatedItems.Single(x => x.PlexLibraryId == libraries[0].Id);
+        updatedFailedItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
+        updatedFailedItem.StartedAt.ShouldBeNull();
+        updatedFailedItem.CompletedAt.ShouldBeNull();
+        updatedFailedItem.ErrorMessage.ShouldBeNull();
+
+        var updatedProcessingItem = updatedItems.Single(x => x.PlexLibraryId == libraries[1].Id);
+        updatedProcessingItem.Status.ShouldBe(LibrarySyncJobStatus.Cancelled);
+        updatedProcessingItem.StartedAt.ShouldBe(processingStartedAt);
+        updatedProcessingItem.CompletedAt.ShouldNotBeNull();
+        updatedProcessingItem.ErrorMessage.ShouldBeNull();
+        updatedProcessingItem.IsServerOffline.ShouldBeFalse();
     }
 
     [Test]
@@ -350,17 +362,24 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseUnitTest<Cl
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-
-        // Use AsNoTracking to see ExecuteDeleteAsync and ExecuteUpdateAsync changes
         var remainingItems = await dbContext.LibrarySyncJobQueues.AsNoTracking().ToListAsync(CancellationToken);
 
-        // Completed item should be deleted, failed and processing should be requeued, queued should remain
+        // Completed item should be deleted, failed should be requeued, processing should be cancelled, queued should remain
         remainingItems.Count.ShouldBe(3);
-        var allQueued = remainingItems.All(x => x.Status == LibrarySyncJobStatus.Queued);
-        allQueued.ShouldBeTrue();
-        remainingItems.Any(x => x.PlexLibraryId == libraries[0].Id).ShouldBeFalse(); // Completed item deleted
-        remainingItems.Any(x => x.PlexLibraryId == libraries[1].Id).ShouldBeTrue(); // Failed item requeued
-        remainingItems.Any(x => x.PlexLibraryId == libraries[2].Id).ShouldBeTrue(); // Processing item requeued
-        remainingItems.Any(x => x.PlexLibraryId == libraries[3].Id).ShouldBeTrue(); // Queued item remains
+        remainingItems.Any(x => x.PlexLibraryId == libraries[0].Id).ShouldBeFalse();
+
+        var updatedFailedItem = remainingItems.Single(x => x.PlexLibraryId == libraries[1].Id);
+        updatedFailedItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
+        updatedFailedItem.StartedAt.ShouldBeNull();
+        updatedFailedItem.CompletedAt.ShouldBeNull();
+        updatedFailedItem.ErrorMessage.ShouldBeNull();
+
+        var updatedProcessingItem = remainingItems.Single(x => x.PlexLibraryId == libraries[2].Id);
+        updatedProcessingItem.Status.ShouldBe(LibrarySyncJobStatus.Cancelled);
+        updatedProcessingItem.CompletedAt.ShouldNotBeNull();
+        updatedProcessingItem.ErrorMessage.ShouldBeNull();
+
+        var remainingQueuedItem = remainingItems.Single(x => x.PlexLibraryId == libraries[3].Id);
+        remainingQueuedItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
     }
 }

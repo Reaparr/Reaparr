@@ -5,7 +5,7 @@ import Log from 'consola';
 
 Cypress.Commands.add('visitEmptyPage', () => cy.visit(route('/empty')).as('emptyPage'));
 
-Cypress.Commands.add('getCy', (selector: string) => cy.get(`[data-cy="${selector}"]`));
+Cypress.Commands.add('getCy', (selector: string, options = {}) => cy.get(`[data-cy="${selector}"]`, options));
 
 Cypress.Commands.add('basePageSetup', (config: Partial<MockConfig> = {}) => basePageSetup(config).as('pageData'));
 

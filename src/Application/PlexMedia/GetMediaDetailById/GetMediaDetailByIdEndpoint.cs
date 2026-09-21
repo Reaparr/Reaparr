@@ -127,7 +127,7 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
             items.Add(episode.ToSlimDTO());
 
         var result = await _commandExecutor.Send(
-            new ApplyComparisonStateCommand(items, plexTvShow.PlexLibraryId, PlexMediaType.TvShow),
+            new ApplyComparisonStateCommand(items, PlexMediaType.TvShow, plexTvShow.PlexLibraryId),
             ct
         );
 
@@ -147,7 +147,7 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
     {
         var items = new List<PlexMediaSlimDTO> { plexMovie.ToSlimDTO() };
         var result = await _commandExecutor.Send(
-            new ApplyComparisonStateCommand(items, plexMovie.PlexLibraryId, PlexMediaType.Movie),
+            new ApplyComparisonStateCommand(items, PlexMediaType.Movie, plexMovie.PlexLibraryId),
             ct
         );
 

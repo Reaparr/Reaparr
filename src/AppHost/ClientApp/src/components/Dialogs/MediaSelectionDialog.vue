@@ -15,7 +15,7 @@
 		</template>
 		<!--	Help text	-->
 		<template #default>
-			<div>
+			<div class="media-selection-content">
 				<QRow
 					justify="center"
 					align="center"
@@ -35,12 +35,14 @@
 							color="red" />
 					</QCol>
 				</QRow>
-				<QRow justify="between">
+				<QRow
+					justify="between"
+					class="media-selection-adjustments">
 					<QCol
 						v-for="column in ['min', 'max']"
 						:key="column"
 						cols="auto"
-						class="q-mx-xs">
+						class="media-selection-adjustment q-mx-xs">
 						<table>
 							<tbody>
 								<tr>
@@ -144,3 +146,35 @@ function onOpen(): void {
 	});
 }
 </script>
+
+<style lang="scss">
+@media (max-width: $breakpoint-xs-max) {
+  .media-selection-adjustments {
+    gap: 0.5rem;
+  }
+
+  .media-selection-adjustment table {
+    width: 100%;
+  }
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .media-selection-adjustments {
+    flex-direction: column;
+  }
+
+  .media-selection-adjustment {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+
+    .q-field {
+      max-width: none !important;
+    }
+
+    .q-btn {
+      min-height: 44px;
+    }
+  }
+}
+</style>

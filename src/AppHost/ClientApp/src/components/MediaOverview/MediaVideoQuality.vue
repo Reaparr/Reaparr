@@ -3,6 +3,7 @@
 		<template #default="{ }">
 			<QGlowChip
 				class="hover-expand-chip"
+				:class="{ 'hover-expand-chip--compact': count > minCount }"
 				:clickable="clickable"
 				:color="getQualityDisplay(quality).color"
 				size="md"
@@ -123,3 +124,31 @@ const getQualityDisplay = (quality: VideoQuality): {
 	}
 };
 </script>
+
+<style lang="scss">
+@use 'quasar/src/css/variables.sass' as quasar;
+@use '@/assets/scss/variables' as *;
+
+@media (max-width: quasar.$breakpoint-sm-max) {
+  .hover-expand-chip {
+    margin: 2px;
+    min-height: 32px;
+    padding-inline: 0.3rem;
+    font-size: clamp(0.65rem, calc(0.5rem + 0.75vw), 0.875rem) !important;
+  }
+
+  .hover-expand-chip--compact {
+    width: 32px;
+    min-width: 32px;
+    max-width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .hover-expand-chip .q-text {
+    font-size: inherit !important;
+    line-height: 1.1;
+  }
+}
+</style>

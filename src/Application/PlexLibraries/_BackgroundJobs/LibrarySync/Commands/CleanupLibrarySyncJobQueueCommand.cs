@@ -1,8 +1,8 @@
 namespace Reaparr.Application;
 
 /// <summary>
-/// This is a command to clean up the library sync job queue by removing completed or failed jobs.
-/// NOTE: This should only be run once on startup to ensure the queue is clean.
+/// This command removes completed queue items, re-queues failed queue items, and cancels processing items left over from an interrupted application instance.
+/// It should only be run once during startup, before Quartz background jobs are started.
 /// </summary>
 public record CleanupLibrarySyncJobQueueCommand : ICommand<Result>;
 
@@ -36,21 +36,34 @@ public class CleanupLibrarySyncJobQueueCommandHandler : ICommandHandler<CleanupL
         CancellationToken cancellationToken
     )
     {
-        // Cleanup completed queue items
-        await _dbContext
+        var deletedCompletedCount = await _dbContext
             .LibrarySyncJobQueues.Where(x => x.Status == LibrarySyncJobStatus.Completed)
             .ExecuteDeleteAsync(cancellationToken: cancellationToken);
 
-        // Re-queue failed or processing items
-        await _dbContext
-            .LibrarySyncJobQueues.Where(x =>
-                x.Status == LibrarySyncJobStatus.Failed || x.Status == LibrarySyncJobStatus.Processing
-            )
+        var requeuedFailedCount = await _dbContext
+            .LibrarySyncJobQueues.Where(x => x.Status == LibrarySyncJobStatus.Failed)
             .ResetJobsToQueuedAsync(cancellationToken);
+
+        var cancelledProcessingCount = await _dbContext
+            .LibrarySyncJobQueues.Where(x => x.Status == LibrarySyncJobStatus.Processing)
+            .ExecuteUpdateAsync(
+                s =>
+                    s.SetProperty(x => x.Status, LibrarySyncJobStatus.Cancelled)
+                        .SetProperty(x => x.CompletedAt, DateTime.UtcNow)
+                        .SetProperty(x => x.ErrorMessage, (string?)null)
+                        .SetProperty(x => x.IsServerOffline, false),
+                cancellationToken
+            );
 
         await _notificationHubService.SendRefreshNotificationAsync([RefreshDataType.PlexLibrarySyncStatus]);
 
-        _log.Here().Debug("Cleaned up library sync job queue");
+        _log.Here()
+            .Debug(
+                "Cleaned up library sync job queue: deleted {DeletedCompletedCount} completed items, re-queued {RequeuedFailedCount} failed items, and cancelled {CancelledProcessingCount} processing items",
+                deletedCompletedCount,
+                requeuedFailedCount,
+                cancelledProcessingCount
+            );
 
         return Result.Ok();
     }
