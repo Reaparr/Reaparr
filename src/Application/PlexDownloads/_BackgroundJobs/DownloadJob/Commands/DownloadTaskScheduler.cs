@@ -22,7 +22,7 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
         return await Result.Try(async Task<Result> () =>
         {
             var jobKey = DownloadJob.GetJobKey(downloadTaskKey.Id);
-            if (await _scheduler.IsActive(jobKey, cancellationToken))
+            if (await _scheduler.IsJobScheduledOrExecuting(jobKey, cancellationToken))
             {
                 _log.Here().Debug("{DownloadJobName} with {JobKey} is already scheduled", nameof(DownloadJob), jobKey);
                 return Result.Ok();
@@ -51,73 +51,17 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
         if (!downloadTaskKey.IsValid)
             return ResultExtensions.IsInvalidId(nameof(DownloadTaskKey), downloadTaskKey.Id).LogWarning();
 
-        return (
-            await Result.Try(async Task<Result> () =>
-            {
-                _log.Here().Information("Stopping DownloadClient for DownloadTaskId {DownloadTaskId}", downloadTaskKey);
+        var jobKey = DownloadJob.GetJobKey(downloadTaskKey.Id);
+        _log.Here().Information("Stopping DownloadClient for DownloadTaskId {DownloadTaskId}", downloadTaskKey);
 
-                var jobKey = DownloadJob.GetJobKey(downloadTaskKey.Id);
-                var isRunning = await _scheduler.IsJobRunning(jobKey, cancellationToken);
-                var isCancellable = await _scheduler.IsCancellable(jobKey, cancellationToken);
-                if (!isRunning && !isCancellable)
-                {
-                    return Result
-                        .Fail(
-                            "{DownloadJobName} with {JobKey} cannot be stopped because it is not scheduled",
-                            nameof(DownloadJob),
-                            jobKey
-                        )
-                        .LogWarning();
-                }
+        var cancelResult = await _scheduler.CancelJob(jobKey, cancellationToken, waitForCompletion);
+        if (cancelResult.IsCancelled)
+            return ResultExtensions.TaskIsCancelled(nameof(StopDownloadTaskJob)).LogWarning();
 
-                if (isCancellable)
-                {
-                    var deleted = await _scheduler.DeleteJob(jobKey, cancellationToken);
-                    if (!deleted && await _scheduler.IsCancellable(jobKey, cancellationToken))
-                    {
-                        return Result
-                            .Fail(
-                                "Failed to cancel queued {DownloadJobName} with {JobKey}",
-                                nameof(DownloadJob),
-                                jobKey
-                            )
-                            .LogError();
-                    }
-                }
+        if (cancelResult.IsFailed)
+            return cancelResult.LogIfFailed();
 
-                if (!isRunning)
-                    isRunning = await _scheduler.IsJobRunning(jobKey, cancellationToken);
-
-                if (!isRunning)
-                    return Result.Ok();
-
-                var interrupted = await _scheduler.Interrupt(jobKey, cancellationToken);
-                if (!interrupted)
-                {
-                    if (await _scheduler.IsJobRunning(jobKey, cancellationToken))
-                    {
-                        return Result
-                            .Fail(
-                                "Failed to stop {DownloadTaskGenericName} with id {DownloadTaskKey}",
-                                nameof(DownloadTaskGeneric),
-                                downloadTaskKey
-                            )
-                            .LogError();
-                    }
-
-                    return Result.Ok();
-                }
-
-                if (!waitForCompletion)
-                    return Result.Ok();
-
-                var completionResult = await _scheduler.AwaitJobCompletion(jobKey, cancellationToken);
-                if (completionResult.IsCancelled || cancellationToken.IsCancellationRequested)
-                    return ResultExtensions.TaskIsCancelled(nameof(StopDownloadTaskJob));
-
-                return completionResult.IsSuccess ? Result.Ok() : completionResult;
-            })
-        ).LogIfFailed();
+        return Result.Ok();
     }
 
 
@@ -126,7 +70,7 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
         CancellationToken cancellationToken = default)
     {
         var jobKey = DownloadJob.GetJobKey(downloadTaskKey.Id);
-        return await _scheduler.IsActive(jobKey, cancellationToken);
+        return await _scheduler.IsJobScheduledOrExecuting(jobKey, cancellationToken);
     }
 
     public async Task<List<DownloadTaskKey>> GetCurrentlyDownloadingKeysByServer(int plexServerId)
@@ -143,7 +87,7 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
         var jobKeys = await _scheduler.GetJobKeys(JobTypes.DownloadJob, CancellationToken.None);
         foreach (var jobKey in jobKeys)
         {
-            if (!await _scheduler.IsActive(jobKey, CancellationToken.None))
+            if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
                 continue;
 
             var key = (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))?.JobDataMap
