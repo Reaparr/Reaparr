@@ -419,4 +419,31 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
                 Times.Once()
             );
     }
+
+    [Test]
+    public async Task ShouldNotInvokeMoveCommand_WhenQueuedMoveReachesStoppedTask()
+    {
+        // Arrange
+        await SetupDatabase(11007, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        await dbContext.SetDownloadStatus(downloadTask.ToKey(), DownloadStatus.Stopped);
+        var context = SetupJobContext(downloadTask.ToKey());
+        Mock.Mock<IMoveDownloadFileQueue>()
+            .Setup(x => x.CheckMoveDownloadFileJobQueue(CancellationToken.None))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.Execute(context);
+
+        // Assert
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<MoveDownloadFileFromFileTaskCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<IMoveDownloadFileQueue>()
+            .Verify(x => x.CheckMoveDownloadFileJobQueue(It.IsAny<CancellationToken>()), Times.Once());
+    }
 }

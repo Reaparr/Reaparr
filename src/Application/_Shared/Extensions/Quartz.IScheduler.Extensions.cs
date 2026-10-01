@@ -100,6 +100,28 @@ public static partial class QuartzExtensions
         CancellationToken cancellationToken = default
     ) => scheduler.IsQueuedInternal(key, cancellationToken);
 
+    public static async Task<bool> IsCancellable(
+        this IScheduler scheduler,
+        JobKey key,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (!await scheduler.CheckExists(key, cancellationToken))
+            return false;
+
+        foreach (var trigger in await scheduler.GetTriggersOfJob(key, cancellationToken))
+        {
+            if (trigger is ICronTrigger)
+                continue;
+
+            var state = await scheduler.GetTriggerState(trigger.Key, cancellationToken);
+            if (state is TriggerState.Normal or TriggerState.Blocked or TriggerState.Paused)
+                return true;
+        }
+
+        return false;
+    }
+
     public static async Task<bool> IsJobExecuting(
         this IScheduler scheduler,
         JobKey key,
@@ -254,7 +276,7 @@ public static partial class QuartzExtensions
                 continue;
 
             var state = await scheduler.GetTriggerState(trigger.Key, cancellationToken);
-            if (state is TriggerState.Normal or TriggerState.Blocked or TriggerState.Paused)
+            if (state is TriggerState.Normal or TriggerState.Blocked)
                 return true;
         }
 

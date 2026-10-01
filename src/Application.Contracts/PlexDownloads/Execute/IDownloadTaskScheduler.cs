@@ -14,7 +14,6 @@ public interface IDownloadTaskScheduler
 
     Task<bool> IsServerDownloading(int plexServerId);
 
-    Task AwaitDownloadTaskJob(Guid downloadTaskId, CancellationToken cancellationToken = default);
 
     Task<List<DownloadTaskKey>> GetCurrentlyDownloadingKeysByServer(int plexServerId);
 }

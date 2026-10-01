@@ -494,4 +494,94 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         );
         downloadClientMock.Verify(x => x.DisposeAsync(), Times.Once());
     }
+
+    [Test]
+    public async Task ShouldNotStartClient_WhenQueuedJobReachesPausedTask()
+    {
+        // Arrange
+        await SetupDatabase(39401, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        await dbContext.SetDownloadStatus(downloadTask.ToKey(), DownloadStatus.Paused);
+        var context = SetupJobContext(downloadTask.ToKey());
+
+        // Act
+        await Sut.Execute(context);
+
+        // Assert
+        var result = context.Result.ShouldBeOfType<BackgroundJobResult>();
+        result.Status.ShouldBe(JobStatus.Failed);
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<DeterminePlexDownloadClientCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+    }
+
+    [Test]
+    public async Task ShouldNotStartClient_WhenQueuedJobReachesStoppedTask()
+    {
+        // Arrange
+        await SetupDatabase(39402, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        await dbContext.SetDownloadStatus(downloadTask.ToKey(), DownloadStatus.Stopped);
+        var context = SetupJobContext(downloadTask.ToKey());
+
+        // Act
+        await Sut.Execute(context);
+
+        // Assert
+        var result = context.Result.ShouldBeOfType<BackgroundJobResult>();
+        result.Status.ShouldBe(JobStatus.Failed);
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<DeterminePlexDownloadClientCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+    }
+
+    [Test]
+    public async Task ShouldNotStartClient_WhenTaskIsPausedDuringClientResolution()
+    {
+        // Arrange
+        await SetupDatabase(39403, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        var context = SetupJobContext(downloadTask.ToKey());
+        var clientResolutionStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resumeClientResolution = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<DeterminePlexDownloadClientCommand>(), CancellationToken.None))
+            .Returns(async () =>
+            {
+                clientResolutionStarted.TrySetResult(true);
+                await resumeClientResolution.Task;
+                return Result.Ok(PlexDownloadClientType.Direct);
+            })
+            .Verifiable(Times.Once());
+        var downloadClientMock = new Mock<IPlexDownloadClient>();
+        downloadClientMock
+            .Setup(x => x.Start(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
+        var downloadClientIndexMock = new Mock<IIndex<PlexDownloadClientType, IPlexDownloadClient>>();
+        downloadClientIndexMock.Setup(x => x[PlexDownloadClientType.Direct]).Returns(downloadClientMock.Object);
+        var sut = Mock.Create<DownloadJob>(
+            new NamedParameter("plexDownloadClientFactory", downloadClientIndexMock.Object)
+        );
+
+        // Act
+        var executeTask = sut.Execute(context);
+        await clientResolutionStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await dbContext.SetDownloadStatus(downloadTask.ToKey(), DownloadStatus.Paused);
+        resumeClientResolution.TrySetResult(true);
+        await executeTask;
+
+        // Assert
+        context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
+        Mock.Mock<ICommandExecutor>().Verify();
+        downloadClientMock.Verify();
+    }
 }

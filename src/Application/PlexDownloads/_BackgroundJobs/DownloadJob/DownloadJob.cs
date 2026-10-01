@@ -48,7 +48,6 @@ public class DownloadJob : IJob
 
         // Jobs should swallow exceptions as otherwise Quartz will keep re-executing it
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
-        var downloadResult = Result.Ok();
         var executionResult = await Result.Try(async Task () =>
         {
             _log.Here()
@@ -67,13 +66,15 @@ public class DownloadJob : IJob
                 return;
             }
 
-            if (!downloadTask.IsDownloadable)
+            if (!downloadTask.IsDownloadable || !CanStartDownload(downloadTask.DownloadStatus))
             {
-                _log.Here()
-                    .Warning(
-                        "DownloadTask {DownloadTaskId} is not downloadable, aborting DownloadJob",
-                        downloadTaskKey
-                    );
+                Result
+                    .Fail(
+                        "DownloadTask {DownloadTaskId} is not authorized to start from status {DownloadStatus}",
+                        downloadTaskKey,
+                        downloadTask.DownloadStatus
+                    )
+                    .LogWarning();
                 return;
             }
 
@@ -126,6 +127,19 @@ public class DownloadJob : IJob
                     downloadTask.FullTitle
                 );
 
+            var currentStatus = await _dbContext.GetDownloadTaskStatusAsync(downloadTaskKey, token);
+            if (!CanStartDownload(currentStatus))
+            {
+                Result
+                    .Fail(
+                        "DownloadTask {DownloadTaskId} is not authorized to start from status {DownloadStatus}",
+                        downloadTaskKey,
+                        currentStatus
+                    )
+                    .LogWarning();
+                return;
+            }
+
             await using var plexDownloadClient = _plexDownloadClientFactory[clientType];
 
             var startResult = await plexDownloadClient.Start(downloadTask.ToKey(), token);
@@ -149,7 +163,6 @@ public class DownloadJob : IJob
             }
             else if (startResult.IsFailed)
             {
-                downloadResult = startResult;
                 var failedStatus =
                     startResult.HasPlex401UnauthorizedError() ? DownloadStatus.AuthError
                     : startResult.Has404NotFoundError() ? DownloadStatus.SourceUnavailable
@@ -175,16 +188,15 @@ public class DownloadJob : IJob
             }
         });
 
-        var terminalResult = executionResult.IsSuccess ? downloadResult : executionResult;
-        if (terminalResult.IsCancelled)
+        if (executionResult.IsCancelled)
         {
-            context.SetResult(JobStatus.Cancelled, terminalResult);
-            terminalResult.LogWarning();
+            context.SetResult(JobStatus.Cancelled, executionResult);
+            executionResult.LogWarning();
         }
-        else if (terminalResult.IsFailed)
+        else if (executionResult.IsFailed)
         {
-            context.SetResult(JobStatus.Failed, terminalResult);
-            terminalResult.LogError();
+            context.SetResult(JobStatus.Failed, executionResult);
+            executionResult.LogError();
         }
 
         _log.Here()
@@ -195,6 +207,19 @@ public class DownloadJob : IJob
                 downloadTaskKey
             );
     }
+
+    private static bool CanStartDownload(DownloadStatus status) =>
+        status
+            is DownloadStatus.Queued
+                or DownloadStatus.AutoPaused
+                or DownloadStatus.Restarting
+                or DownloadStatus.Error
+                or DownloadStatus.ServerUnreachable
+                or DownloadStatus.AuthError
+                or DownloadStatus.StorageError
+                or DownloadStatus.SourceUnavailable
+                or DownloadStatus.DownloadClientError
+                or DownloadStatus.IntegrityError;
 
     private async Task<Result<DownloadTaskFileBase>> SetDownloadAndDestination(
         DownloadTaskFileBase downloadTask,
