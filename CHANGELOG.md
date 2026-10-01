@@ -1,5 +1,89 @@
 Reaparr Changelog
 
+# [0.40.0](https://github.com/Reaparr/Reaparr/compare/v0.39.0...v0.40.0) (2026-10-01)
+
+
+### Bug Fixes
+
+* **WebAPI:** Add 404 Not Found error handling for direct download URL probes ([9cefb3f](https://github.com/Reaparr/Reaparr/commit/9cefb3f2d330acc2bfdf4673b2bf158394dd6c3c))
+* **WebAPI:** Add JsonIgnore attribute to Url and Uri properties in NetworkSettingsModule.cs ([ad004fa](https://github.com/Reaparr/Reaparr/commit/ad004fab428a7994275ec3f131f8e4f4011967d9))
+* **Web-UI:** Add validation messages for unique category and base URL in integration setup ([efef224](https://github.com/Reaparr/Reaparr/commit/efef22450d6f3a5a5562d7c7947684db4518759b))
+* **WebAPI:** Align paging and rebuild expectations ([b2a3665](https://github.com/Reaparr/Reaparr/commit/b2a3665ea1ce016e95c994fb10e2c2154038b25d))
+* **WebAPI:** Align Torznab branch ordering ([ec02f3e](https://github.com/Reaparr/Reaparr/commit/ec02f3e92f57bcbbb01a82bc1fb129e7ecbce35f))
+* apply CodeRabbit auto-fixes ([9348147](https://github.com/Reaparr/Reaparr/commit/934814793c5c31672fb15efcada84e13102adc58))
+* **WebAPI:** Apply configured umask to Reaparr service ([5c4c1b3](https://github.com/Reaparr/Reaparr/commit/5c4c1b3a065ef7784fcd50257f8424dd9dfdf9ae))
+* **Web-UI:** Center align help row components and enhance integration dialog layout ([166809e](https://github.com/Reaparr/Reaparr/commit/166809e6292e8207e5691e5befc6a7994f7f99f2))
+* **Web-UI:** Centralize refresh notification debounce ([705320b](https://github.com/Reaparr/Reaparr/commit/705320bfd99b1df57a14768bd65affcf5e588bda))
+* **WebAPI:** Consolidate all-library comparison projection ([58626bd](https://github.com/Reaparr/Reaparr/commit/58626bd47a144713c7896592ce7f70c0882c441e))
+* **WebAPI:** Correct integration ownership filtering ([5e857cb](https://github.com/Reaparr/Reaparr/commit/5e857cb3e757c3f5b22ccb66bf3c1344fade4d51))
+* **WebAPI:** Correct total count calculation for paginated results ([#668](https://github.com/Reaparr/Reaparr/issues/668)) ([cc76dfc](https://github.com/Reaparr/Reaparr/commit/cc76dfcd49c4fb404fa8ed62652fcae7c8d8bd35))
+* **WebAPI:** Correct total count calculation for paginated results ([024800a](https://github.com/Reaparr/Reaparr/commit/024800a12e14791b6d924827d103f871aedac863))
+* **Web-UI:** Enable individual notification dismissal ([fc84f63](https://github.com/Reaparr/Reaparr/commit/fc84f6306aeb43a8b52ef99312ddd5749a40d36e))
+* **WebAPI:** Exclude servers with paused downloads from indexer results ([#653](https://github.com/Reaparr/Reaparr/issues/653)) ([410fec0](https://github.com/Reaparr/Reaparr/commit/410fec098623e0dce06b9fe48efa475322270a32))
+* **WebAPI:** Exclude servers with paused downloads from indexer results ([9b007a5](https://github.com/Reaparr/Reaparr/commit/9b007a537efd5270cc578180150f482f8d9faa5b))
+* **WebAPI:** Fixed huge perf drain on the queries needed for getting indexer results ([85b8dab](https://github.com/Reaparr/Reaparr/commit/85b8dab6e77ed6c1e5c6b54f70a187d0cce11cf6))
+* **Web-UI:** Fixed missing strikethrough effect on Plex servers whose access has been lost ([fa36cc4](https://github.com/Reaparr/Reaparr/commit/fa36cc47409fba8f84e2ad828e376a26321de7df))
+* **WebAPI:** Fixed Radarr/Sonarr returning media results from Plex servers your dont have access to anymore ([fb9a614](https://github.com/Reaparr/Reaparr/commit/fb9a6145b72219e116593109b03dde1ed480e006))
+* **WebAPI:** Fixed the integration check connection always using what is stored instead of what the user is currently trying ([236966a](https://github.com/Reaparr/Reaparr/commit/236966a73455460ba1a647ad594f85f0f8722c10))
+* **WebAPI:** Format named result messages ([53b7a0a](https://github.com/Reaparr/Reaparr/commit/53b7a0af55c6904fa47412930328fe9874e7df38))
+* **Web-UI:** Handle 204 responses and null data in API pipes ([4fc0a4a](https://github.com/Reaparr/Reaparr/commit/4fc0a4acfec8dc6234d3abbcbc1d2877ffd5b058))
+* **WebAPI:** Handle null SEQ_ApiKey in logging configuration ([78bcebf](https://github.com/Reaparr/Reaparr/commit/78bcebf5972d84f93eab0ebf0a462dac15fe0afd))
+* **WebAPI:** Handle raw background job payloads ([c1b5989](https://github.com/Reaparr/Reaparr/commit/c1b5989f68b1e97b0356657d959dec9b7c3332dc))
+* **WebAPI:** Harden CI test artifacts and release workflows ([6862256](https://github.com/Reaparr/Reaparr/commit/6862256815bc5de13d169c75b864dab7121dcd60))
+* **WebAPI:** Implement the generic Torznab search query type ([#652](https://github.com/Reaparr/Reaparr/issues/652)) ([44879c2](https://github.com/Reaparr/Reaparr/commit/44879c2b593f49fd548aa6c6249a05e26e9c79bd))
+* **WebAPI:** Implement the generic Torznab search query type ([25ba0ab](https://github.com/Reaparr/Reaparr/commit/25ba0ab076ed0a7604aecc626de69b0482bbad46)), closes [#650](https://github.com/Reaparr/Reaparr/issues/650)
+* **Web-UI:** Improve error handling for integration save and setup processes ([cd2b922](https://github.com/Reaparr/Reaparr/commit/cd2b92232d14fe09fe094114ee56fbae58a01af4))
+* **WebAPI:** Order Torznab branches before paging ([ac23ce4](https://github.com/Reaparr/Reaparr/commit/ac23ce47752e9b8a8185a5f9ab625fa41fb078ec))
+* **WebAPI:** Preserve custom download categories ([48a49c2](https://github.com/Reaparr/Reaparr/commit/48a49c280cf510da8af4b9d2e4f6b998cf24489e))
+* **WebAPI:** Prevent unnecessary rebuilds when not dirty ([db83746](https://github.com/Reaparr/Reaparr/commit/db83746c258b51ad86d0aaf2be08efbd87de6dcf))
+* **WebAPI:** Rename reserved desktop workflow token secret ([134228b](https://github.com/Reaparr/Reaparr/commit/134228bf7815a788839fce68d951afdc98ba069c))
+* **WebAPI:** Report restored library access as granted ([6622bb2](https://github.com/Reaparr/Reaparr/commit/6622bb287f8bf2169921ae564ac3185b1691873c))
+* **WebAPI:** Restrict reusable build workflow permissions ([eb7aa60](https://github.com/Reaparr/Reaparr/commit/eb7aa601d606d5604efde70d03d3e386afffadee))
+* **WebAPI:** Return exact Torznab feed totals ([cbce658](https://github.com/Reaparr/Reaparr/commit/cbce658b082d0fa8d95de5b24ec5c65d6897c144))
+* **WebAPI:** Run semantic release from repository root ([9fc0b93](https://github.com/Reaparr/Reaparr/commit/9fc0b93916e59befd95b5417e3fe149a3452a13e))
+* **WebAPI:** Serialize database test setup ([e3b6560](https://github.com/Reaparr/Reaparr/commit/e3b6560b120f6adbb62b8af6082b59696419252b))
+* **WebAPI:** Stabilize dispatcher sequence test ([5a97dd1](https://github.com/Reaparr/Reaparr/commit/5a97dd118e83688f81e8299c12ddc3e0b76f1d41))
+* **WebAPI:** Stabilize Torznab RSS attributes ([0c73ad3](https://github.com/Reaparr/Reaparr/commit/0c73ad30c5c5f8a794f9efc81d30809f15ea22a5))
+* **WebAPI:** Support Sonarr season-only searches ([#551](https://github.com/Reaparr/Reaparr/issues/551)) ([df263d4](https://github.com/Reaparr/Reaparr/commit/df263d418fe54b55f551ae6915f68795f364887b))
+* **WebAPI:** Update authentication token handling in account dialog ([6075330](https://github.com/Reaparr/Reaparr/commit/607533087b5b7126f506fafc999cb521bee0f280))
+* **WebAPI:** Update episode comparision loading logic to handle stale relationships ([80a0a49](https://github.com/Reaparr/Reaparr/commit/80a0a499b32b7e1fc0c0947358b6e54477686b8b))
+* **WebAPI:** Update integration status after successful connection test ([2d034d4](https://github.com/Reaparr/Reaparr/commit/2d034d4137d6a4bdbfa7bec95f75265319ed6376))
+* **Web-UI:** Update integration test dialog messages and UI alerts ([efc6eef](https://github.com/Reaparr/Reaparr/commit/efc6eef768d9fd1b3b649acaaacbe3425e18208f))
+* **Web-UI:** Update validation messages for integration setup ([6d0ebf9](https://github.com/Reaparr/Reaparr/commit/6d0ebf903b79285cf7f3a3a5afc5b7b3a856fd2c))
+* **WebAPI:** Use enabled SSL option in Downloadclient when setting up Radarr/Sonarr configuration ([71ee4b0](https://github.com/Reaparr/Reaparr/commit/71ee4b0f10e110a239267058dce2e65ac735aae5))
+* **WebAPI:** Use published Cypress action tag ([cd8862e](https://github.com/Reaparr/Reaparr/commit/cd8862e9e4cb18f23607569d37a8c44c940dba13))
+
+
+### Features
+
+* **WebAPI:** Add auto migration for Sonarr/Radarr new api key system ([02d46ca](https://github.com/Reaparr/Reaparr/commit/02d46cab30bcbdf62b23e6361668a3174cb266f1))
+* **Web-UI:** Add connection status indicators for integrations cards ([b1bd4c2](https://github.com/Reaparr/Reaparr/commit/b1bd4c21011ecddceed62455cf1600e8abc9cfa5))
+* **WebAPI:** Add connection test functionality for Radarr and Sonarr integrations on Reaparr start-up ([1ae10ab](https://github.com/Reaparr/Reaparr/commit/1ae10abb9f97e37aa58d2af2e1ced38e1668a77b))
+* **Web-UI:** Add delete integration confirmation dialog ([5fc05f6](https://github.com/Reaparr/Reaparr/commit/5fc05f62d9a9ab6c4d6a23516aac1384e277ba95))
+* **Web-UI:** Add media load error handling and retry functionality ([598ebe0](https://github.com/Reaparr/Reaparr/commit/598ebe0e85048bf78e1635cfc7360e21d9fab605))
+* **WebAPI:** Add multi-integration support for Radarr and Sonarr ([4663459](https://github.com/Reaparr/Reaparr/commit/466345962b1ba724129b2f3d0932dfa41c5b4ff1))
+* **Web-UI:** Add save and setup button to integration dialogs ([dd1aaa9](https://github.com/Reaparr/Reaparr/commit/dd1aaa901219d3ad351e3610268ed0d484346ed3))
+* **WebAPI:** Add SEQ_ApiKey support for Seq logging configuration ([67b912e](https://github.com/Reaparr/Reaparr/commit/67b912e44fd046bee47192f9e120116566268e98))
+* **Web-UI:** Add validation step to integration setup process ([c66f860](https://github.com/Reaparr/Reaparr/commit/c66f860480dd1a0fe4d6f77bad2b490a30b72018))
+* **Web-UI:** Enhance folder path management with new tab UI elements and allow adding custom download paths ([4c18be7](https://github.com/Reaparr/Reaparr/commit/4c18be78e761e41d1af094064af2156b9280543b))
+* **Web-UI:** Enhance mobile responsiveness for media components ([011fcb1](https://github.com/Reaparr/Reaparr/commit/011fcb1d6946203e485d0bd7a61c1cf3178c105f))
+* **WebAPI:** Implement genre type recalculation command and handler on startup ([b1223c8](https://github.com/Reaparr/Reaparr/commit/b1223c8167c414488e566404b658c0cc42523246))
+* **Web-UI:** Implement integration management UI with overview and setup dialogs ([1f72f65](https://github.com/Reaparr/Reaparr/commit/1f72f65192c1b9c7844903b66d3f2311cf725bab))
+* **WebAPI:** Implement integration setup progress tracking for Radarr and Sonarr ([c3cc659](https://github.com/Reaparr/Reaparr/commit/c3cc659bf5e11b6ff61b347af2f19566dff378a4))
+* **Web-UI:** Improve accessibility with localized aria-labels ([7dbda94](https://github.com/Reaparr/Reaparr/commit/7dbda94aaf6083591a8c332d8eac2b2e4c8f72f4))
+* **WebAPI:** Introduce PlexGenreType enum and extensions for genre mapping ([afdc67e](https://github.com/Reaparr/Reaparr/commit/afdc67ef11106dd28d91e90ea4c98388cf142e6b))
+* **Web-UI:** Make Reaparr UI responsive on mobile viewports ([4642dc1](https://github.com/Reaparr/Reaparr/commit/4642dc130028c72a6e7b62f6539ce1494564b48d))
+
+
+### Performance Improvements
+
+* **WebAPI:** Add composite indexes for improved query performance ([2d95a0b](https://github.com/Reaparr/Reaparr/commit/2d95a0be81c99beaeb0ee77157f1f4b04011e18a))
+* **WebAPI:** Discover backend tests dynamically ([c516282](https://github.com/Reaparr/Reaparr/commit/c5162822b17d50728c4c9e5b0109e888228c065d))
+* **WebAPI:** Enhance comparison logic for TV shows, seasons, and episodes ([4f5d467](https://github.com/Reaparr/Reaparr/commit/4f5d4671111f1f5f64b09d976eb8ec566afb2f0d))
+* **WebAPI:** Enhance indexing for search optimization in movie and TV show configurations ([e9ab255](https://github.com/Reaparr/Reaparr/commit/e9ab255f03edd2699d59cc5daed8b7d90d2cc528))
+* **WebAPI:** Optimize media overview commands for movies and TV shows ([f2ab88b](https://github.com/Reaparr/Reaparr/commit/f2ab88ba6c8f859cbd778f788168ff28322640e3))
+* **WebAPI:** Update project references and improve database setup handling during testing ([f223944](https://github.com/Reaparr/Reaparr/commit/f2239449469bae8e0677e5ef99bd4d5cd8a6359e))
+
 # [0.40.0-dev.4](https://github.com/Reaparr/Reaparr/compare/v0.40.0-dev.3...v0.40.0-dev.4) (2026-09-21)
 
 
