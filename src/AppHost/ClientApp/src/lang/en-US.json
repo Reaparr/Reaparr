@@ -176,6 +176,24 @@
         "server-dialog": {
             "header": "{serverName} configuration",
             "tabs": {
+                "server-stats": {
+                    "header": "Server Stats",
+                    "summary": "Summary",
+                    "detailed": "Detailed",
+                    "collection": "Media collection",
+                    "total-size": "Total indexed media",
+                    "movies": "Movies",
+                    "tv-shows": "TV shows",
+                    "seasons": "Seasons",
+                    "episodes": "Episodes",
+                    "media-count": "{type}: {count}",
+                    "not-indexed": "Not indexed",
+                    "partial": "Incomplete stats · Some enabled libraries are not indexed",
+                    "no-enabled-libraries": "No enabled movie or TV libraries",
+                    "disabled": "Disabled",
+                    "export-image": "Export image",
+                    "export-error": "Could not export the complete server stats. The image may exceed your browser's rendering limits."
+                },
                 "server-commands": {
                     "header": "Server Commands"
                 },

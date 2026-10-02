@@ -14,3 +14,4 @@ export * from './IDownloadsSelection';
 export * from './IMetaDataMediaFilter';
 export * from './IMediaPosterEmits';
 export * from './IMessagePackTuples';
+export * from './IServerStats';
