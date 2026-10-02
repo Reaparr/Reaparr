@@ -15,8 +15,9 @@
 		<div
 			v-if="mode === 'summary'"
 			class="server-stats-artwork__hero">
-			<strong data-cy="server-stats-total-size">{{ formattedSize }}</strong>
-			<span>{{ t('components.server-dialog.tabs.server-stats.total-size') }}</span>
+			<strong
+				data-cy="server-stats-total-size"
+				:aria-label="t('components.server-dialog.tabs.server-stats.total-size')">{{ formattedSize }}</strong>
 		</div>
 		<div
 			class="server-stats-artwork__metrics"
@@ -31,7 +32,7 @@
 				:key="metric.mediaType"
 				:media-type="metric.mediaType"
 				:count="metric.count"
-				:icon-size="mode === 'summary' ? 32 : 28" />
+				:icon-size="mode === 'summary' ? 40 : 28" />
 		</div>
 		<div
 			v-if="mode === 'detailed' && stats.libraries.length"
@@ -197,12 +198,6 @@ const metrics = computed(() => [
 			text-shadow: 0 2px 0 rgb(255 255 255 / 15%), 0 0 60px color-mix(in srgb, var(--server-stats-accent) 30%, transparent);
 			overflow-wrap: anywhere;
 		}
-
-		span {
-			color: var(--server-stats-muted);
-			font-size: clamp(12px, 2cqi, 22px);
-			letter-spacing: 0.04em;
-		}
 	}
 
 	&__metrics {
@@ -339,7 +334,7 @@ const metrics = computed(() => [
 
 @container server-stats (max-width: 340px) {
 	.server-stats-artwork__metrics--summary :deep(.q-media-type-icon) {
-		font-size: 20px !important;
+		font-size: 24px !important;
 	}
 }
 </style>
