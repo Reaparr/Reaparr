@@ -687,7 +687,7 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
             120,
             VideoQuality.HD,
             tmdbGuid: expectedMatchType == PlexMediaComparisonMatchType.TmdbGuid ? 111 : null,
-            imdbGuid: expectedMatchType == PlexMediaComparisonMatchType.ImdbGuid ? "tt-tv-priority" : null,
+            imdbGuid: expectedMatchType == PlexMediaComparisonMatchType.ImdbGuid ? "TT-TV-PRIORITY" : null,
             tvdbGuid: expectedMatchType == PlexMediaComparisonMatchType.TvdbGuid ? 333 : null
         );
         var remoteSeason = (await GetLibrarySeasonsAsync(remoteLibrary.Id))

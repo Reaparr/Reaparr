@@ -302,7 +302,10 @@ public class CompareTvShowPlexLibraryCommandHandler : ICommandHandler<CompareTvS
                 x.PlexLibraryId == libraryId
                 && (
                     (x.Guid_TMDB.HasValue && tmdbGuids.Contains(x.Guid_TMDB.Value))
-                    || (!string.IsNullOrEmpty(x.Guid_IMDB) && imdbGuids.Contains(x.Guid_IMDB!))
+                    || (
+                        !string.IsNullOrEmpty(x.Guid_IMDB)
+                        && imdbGuids.Contains(EF.Functions.Collate(x.Guid_IMDB!, "NOCASE"))
+                    )
                     || (x.Guid_TVDB.HasValue && tvdbGuids.Contains(x.Guid_TVDB.Value))
                     || (years.Contains(x.Year) && searchTitles.Contains(x.SearchTitle))
                 )
