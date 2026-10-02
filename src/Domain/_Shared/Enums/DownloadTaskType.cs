@@ -41,4 +41,37 @@ public enum DownloadTaskType
 
     [JsonStringEnumMemberName(nameof(EpisodePart))]
     EpisodePart = 8,
+
+    [JsonStringEnumMemberName(nameof(Artist))]
+    Artist = 9,
+
+    [JsonStringEnumMemberName(nameof(Album))]
+    Album = 10,
+
+    [JsonStringEnumMemberName(nameof(Track))]
+    Track = 11,
+
+    [JsonStringEnumMemberName(nameof(TrackData))]
+    TrackData = 12,
+
+    [JsonStringEnumMemberName(nameof(TrackPart))]
+    TrackPart = 13,
+
+    [JsonStringEnumMemberName(nameof(Photo))]
+    Photo = 14,
+
+    [JsonStringEnumMemberName(nameof(PhotoData))]
+    PhotoData = 15,
+
+    [JsonStringEnumMemberName(nameof(PhotoPart))]
+    PhotoPart = 16,
+
+    [JsonStringEnumMemberName(nameof(OtherVideo))]
+    OtherVideo = 17,
+
+    [JsonStringEnumMemberName(nameof(OtherVideoData))]
+    OtherVideoData = 18,
+
+    [JsonStringEnumMemberName(nameof(OtherVideoPart))]
+    OtherVideoPart = 19,
 }
