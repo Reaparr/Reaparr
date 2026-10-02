@@ -27,6 +27,64 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
     }
 
     [Test]
+    [Arguments(PlexMediaType.Music, PlexMediaType.Artist, PlexMediaType.Album, PlexMediaType.Song)]
+    [Arguments(PlexMediaType.Photos, PlexMediaType.PhotoAlbum, PlexMediaType.Photos, PlexMediaType.None)]
+    [Arguments(PlexMediaType.OtherVideos, PlexMediaType.OtherVideos, PlexMediaType.None, PlexMediaType.None)]
+    public async Task ShouldInitializeFamilyProgressItems_AndCompleteOnlyAfterConfirmedEmptyTotals(
+        PlexMediaType libraryType,
+        PlexMediaType first,
+        PlexMediaType second,
+        PlexMediaType third
+    )
+    {
+        // Arrange
+        LibrarySyncProgressDTO? capturedDto = null;
+        Mock.Mock<IProgressHubService>()
+            .Setup(x => x.SendLibraryProgressUpdateAsync(It.IsAny<LibrarySyncProgressDTO>()))
+            .Callback<LibrarySyncProgressDTO>(dto => capturedDto = dto)
+            .Returns(Task.CompletedTask);
+        var expectedTypes = new[] { first, second, third }.Where(x => x != PlexMediaType.None).ToList();
+
+        // Act
+        await Sut.StartAsync(10, libraryType, CancellationToken);
+
+        // Assert
+        capturedDto.ShouldNotBeNull();
+        capturedDto.PlexLibraryId.ShouldBe(10);
+        capturedDto.Items.Select(x => x.MediaType).ShouldBe(expectedTypes);
+        capturedDto.Items.ShouldAllBe(x => x.Received == 0 && x.Total == -1);
+        capturedDto.IsComplete.ShouldBeFalse();
+        capturedDto.Total.ShouldBe(0);
+        capturedDto.Percentage.ShouldBe(0);
+        Sut.Get(10).ShouldNotBeNull().IsComplete.ShouldBeFalse();
+
+        foreach (var mediaType in expectedTypes)
+        {
+            await Sut.UpdateItemAsync(
+                10,
+                new LibraryProgressItem
+                {
+                    MediaType = mediaType,
+                    Received = 0,
+                    Total = 0,
+                    TimeRemaining = TimeSpan.Zero,
+                },
+                CancellationToken
+            );
+        }
+
+        capturedDto.IsComplete.ShouldBeTrue();
+        capturedDto.Percentage.ShouldBe(100);
+        Sut.Get(10).ShouldNotBeNull().IsComplete.ShouldBeTrue();
+        Sut.Get(10).ShouldNotBeNull().Percentage.ShouldBe(100);
+        Mock.Mock<IProgressHubService>()
+            .Verify(
+                x => x.SendLibraryProgressUpdateAsync(It.IsAny<LibrarySyncProgressDTO>()),
+                Times.Exactly(expectedTypes.Count + 1)
+            );
+    }
+
+    [Test]
     public async Task ShouldSendProgressUpdate_WhenUpdateItemAsyncIsCalled()
     {
         // Arrange

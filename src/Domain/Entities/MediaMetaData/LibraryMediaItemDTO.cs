@@ -10,6 +10,22 @@ public record LibraryMediaItemDTO
 
     public required PlexMediaType Type { get; init; }
 
+    public required string RawType { get; init; } = string.Empty;
+
+    public required string? Subtype { get; init; }
+
+    public required string? GrandparentRatingKey { get; init; }
+
+    public required int? SourceYear { get; init; }
+
+    public required int? SourceDuration { get; init; }
+
+    public required int? SourceIndex { get; init; }
+
+    public required int? SourceParentIndex { get; init; }
+
+    public required int? SourceChildCount { get; init; }
+
     public required string Title { get; init; }
 
     public required string Summary { get; init; }
@@ -58,7 +74,7 @@ public record LibraryMediaItemDTO
 
     public required DateTime AddedAt { get; init; }
 
-    public required DateTime UpdatedAt { get; init; }
+    public required DateTime? UpdatedAt { get; init; }
 
     public required string OriginallyAvailableAt { get; init; }
 
@@ -164,6 +180,8 @@ public record LibraryMediaItemMediaDTO
     /// Duration of the media in milliseconds.
     /// </summary>
     public required int Duration { get; init; }
+
+    public required int? SourceDuration { get; init; }
 
     /// <summary>
     /// Bitrate in bits per second.

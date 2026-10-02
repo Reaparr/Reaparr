@@ -677,7 +677,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
     }
 
     [Test]
-    public async Task ShouldOnlyQueueSupportedLibraries_WhenCommandContainsUnsupportedTypes()
+    public async Task ShouldQueueAllSupportedFamilies_AndSkipUnsupportedTypes()
     {
         // Arrange
         await SetupDatabase(
@@ -690,37 +690,63 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         );
 
         var dbContext = IDbContext;
-        var movieLibrary = dbContext.PlexLibraries.Select(x => new { x.Id, x.PlexServerId }).First();
-        await dbContext
-            .PlexLibraries.Where(x => x.Id == movieLibrary.Id)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SyncedAt, (DateTime?)null), CancellationToken);
+        var movieLibrary = dbContext.PlexLibraries.Single();
+        var supportedTypes = new[]
+        {
+            PlexMediaType.Music,
+            PlexMediaType.Photos,
+            PlexMediaType.OtherVideos,
+        };
+        var addedLibraries = supportedTypes
+            .Append(PlexMediaType.Games)
+            .Select((type, index) => FakeData.GetPlexLibrary(new Seed(3017 + index), type).Generate())
+            .ToList();
+        foreach (var library in addedLibraries)
+        {
+            library.PlexServerId = movieLibrary.PlexServerId;
+            library.SyncedAt = null;
+        }
 
-        var unsupportedLibrary = FakeData.GetPlexLibrary(new Seed(3017), PlexMediaType.Music).Generate();
-        unsupportedLibrary.PlexServerId = movieLibrary.PlexServerId;
-
-        await dbContext.PlexLibraries.AddAsync(unsupportedLibrary, CancellationToken);
+        movieLibrary.SyncedAt = null;
+        await dbContext.PlexLibraries.AddRangeAsync(addedLibraries, CancellationToken);
         await dbContext.SaveChangesAsync(CancellationToken);
-
-        var command = new QueueLibrarySyncJobCommand([movieLibrary.Id, unsupportedLibrary.Id]);
+        await dbContext.PlexLibraries.Where(x => x.Id == movieLibrary.Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SyncedAt, (DateTime?)null), CancellationToken);
+        var expectedLibraryIds = new[] { movieLibrary.Id }
+            .Concat(addedLibraries.Where(x => supportedTypes.Contains(x.Type)).Select(x => x.Id))
+            .OrderBy(x => x)
+            .ToList();
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok());
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await Sut.ExecuteAsync(
+            new QueueLibrarySyncJobCommand([movieLibrary.Id, .. addedLibraries.Select(x => x.Id)]),
+            CancellationToken
+        );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        var queueItems = await IDbContext.LibrarySyncJobQueues.IgnoreQueryFilters().ToListAsync(CancellationToken);
-        queueItems.Count.ShouldBe(1);
-        queueItems[0].PlexLibraryId.ShouldBe(movieLibrary.Id);
-        queueItems[0].Priority.ShouldBe(1);
-        Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
+        result.Errors.Count.ShouldBe(0);
+        var queueItems = await dbContext
+            .LibrarySyncJobQueues.AsNoTracking()
+            .OrderBy(x => x.PlexLibraryId)
+            .Select(x => new { x.PlexLibraryId, x.Priority, x.Status })
+            .ToListAsync(CancellationToken);
+        queueItems.ShouldBe(
+            expectedLibraryIds
+                .Select(id => new
+                {
+                    PlexLibraryId = id,
+                    Priority = id == movieLibrary.Id ? 1 : 3,
+                    Status = LibrarySyncJobStatus.Queued,
+                })
+                .ToList()
+        );
+        Mock.Mock<ICommandExecutor>().Verify();
     }
 
     [Test]
@@ -1166,24 +1192,25 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
 
         var dbContext = IDbContext;
         var serverId = dbContext.PlexServers.Select(x => x.Id).First();
-        var unsupportedLibrary = FakeData.GetPlexLibrary(new Seed(3021), PlexMediaType.Music).Generate();
-        unsupportedLibrary.PlexServerId = serverId;
+        var unsupportedLibraries = new[] { PlexMediaType.Music, PlexMediaType.Unknown, PlexMediaType.Games }
+            .Select((type, index) => FakeData.GetPlexLibrary(new Seed(3021 + index), type).Generate())
+            .ToList();
+        unsupportedLibraries[0].UpdateInitProperty(nameof(PlexLibrary.Type), PlexMediaType.None);
+        foreach (var library in unsupportedLibraries)
+            library.PlexServerId = serverId;
 
-        await dbContext.PlexLibraries.AddAsync(unsupportedLibrary, CancellationToken);
+        await dbContext.PlexLibraries.AddRangeAsync(unsupportedLibraries, CancellationToken);
         await dbContext.SaveChangesAsync(CancellationToken);
 
-        var command = new QueueLibrarySyncJobCommand([unsupportedLibrary.Id]);
-
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await Sut.ExecuteAsync(
+            new QueueLibrarySyncJobCommand(unsupportedLibraries.Select(x => x.Id).ToList()),
+            CancellationToken
+        );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        var savedLibrary = await dbContext
-            .PlexLibraries.AsNoTracking()
-            .FirstAsync(x => x.Id == unsupportedLibrary.Id, CancellationToken);
-        savedLibrary.Type.ShouldBe(PlexMediaType.Music);
         var queueItems = await dbContext.LibrarySyncJobQueues.AsNoTracking().ToListAsync(CancellationToken);
         queueItems.ShouldBeEmpty();
         Mock.Mock<ICommandExecutor>()

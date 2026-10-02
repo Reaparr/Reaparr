@@ -61,6 +61,42 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
                 },
             ];
         }
+        else if (type == PlexMediaType.Music)
+        {
+            items = new[] { PlexMediaType.Artist, PlexMediaType.Album, PlexMediaType.Song }
+                .Select(mediaType => new LibraryProgressItem
+                {
+                    MediaType = mediaType,
+                    Received = 0,
+                    Total = -1,
+                    TimeRemaining = TimeSpan.Zero,
+                })
+                .ToList();
+        }
+        else if (type == PlexMediaType.Photos)
+        {
+            items = new[] { PlexMediaType.PhotoAlbum, PlexMediaType.Photos }
+                .Select(mediaType => new LibraryProgressItem
+                {
+                    MediaType = mediaType,
+                    Received = 0,
+                    Total = -1,
+                    TimeRemaining = TimeSpan.Zero,
+                })
+                .ToList();
+        }
+        else if (type == PlexMediaType.OtherVideos)
+        {
+            items = new[] { PlexMediaType.OtherVideos }
+                .Select(mediaType => new LibraryProgressItem
+                {
+                    MediaType = mediaType,
+                    Received = 0,
+                    Total = -1,
+                    TimeRemaining = TimeSpan.Zero,
+                })
+                .ToList();
+        }
         else
         {
             _log.Here()

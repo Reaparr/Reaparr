@@ -79,10 +79,12 @@ public static class PlexMediaTypeToApiTypeExtensions
             PlexMediaType.TvShow => MediaTypeString.TvShow,
             PlexMediaType.Season => MediaTypeString.Season,
             PlexMediaType.Episode => MediaTypeString.Episode,
+            PlexMediaType.Music => MediaTypeString.Artist,
             PlexMediaType.Artist => MediaTypeString.Artist,
             PlexMediaType.Album => MediaTypeString.Album,
             PlexMediaType.Song => MediaTypeString.Track,
             PlexMediaType.PhotoAlbum => MediaTypeString.PhotoAlbum,
+            PlexMediaType.OtherVideos => MediaTypeString.Movie,
             PlexMediaType.Photos => MediaTypeString.Photo,
             _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };

@@ -99,7 +99,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         // Queue a fresh sync
         var queueResult = await _commandExecutor.Send(new QueueLibrarySyncJobCommand([plexLibrary.Id]), ct);
         if (queueResult.IsFailed)
-            return queueResult.LogError();
+            return queueResult.LogIfFailed();
 
         var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
         rebuildResult.LogIfFailed();
@@ -121,7 +121,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         // Cancel queued/processing sync job for this library
         var cancelResult = await _commandExecutor.Send(new CancelLibrarySyncJobCommand(plexLibrary.Id), ct);
         if (cancelResult.IsFailed)
-            return cancelResult.LogError();
+            return cancelResult.LogIfFailed();
 
         // Purge synced media and reset metadata atomically.
         var deleteResult = await _dbContext.ExecuteTransactionAsync(
@@ -135,6 +135,15 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
                     PlexMediaType.TvShow => await dbContext
                         .PlexTvShows.Where(x => x.PlexLibraryId == plexLibrary.Id)
                         .ExecuteDeleteAsync(txCt),
+                    PlexMediaType.Music => await dbContext
+                        .PlexArtists.Where(x => x.PlexLibraryId == plexLibrary.Id)
+                        .ExecuteDeleteAsync(txCt),
+                    PlexMediaType.Photos => await dbContext
+                        .PlexPhotoAlbums.Where(x => x.PlexLibraryId == plexLibrary.Id)
+                        .ExecuteDeleteAsync(txCt),
+                    PlexMediaType.OtherVideos => await dbContext
+                        .PlexOtherVideos.Where(x => x.PlexLibraryId == plexLibrary.Id)
+                        .ExecuteDeleteAsync(txCt),
                     _ => throw new ArgumentOutOfRangeException(nameof(plexLibrary.Type), plexLibrary.Type, null),
                 };
 
@@ -145,6 +154,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
                         x =>
                             x.SetProperty(y => y.IsEnabled, false)
                                 .SetProperty(y => y.SyncedAt, (DateTime?)null)
+                                .SetProperty(y => y.SyncedContentChangedAt, (long?)null)
                                 .SetProperty(y => y.Outdated, false)
                                 .SetProperty(y => y.MovieCount, 0)
                                 .SetProperty(y => y.MovieMediaDataCount, 0)
@@ -152,7 +162,20 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
                                 .SetProperty(y => y.TvShowCount, 0)
                                 .SetProperty(y => y.SeasonCount, 0)
                                 .SetProperty(y => y.EpisodeCount, 0)
-                                .SetProperty(y => y.EpisodeMediaDataCount, 0),
+                                .SetProperty(y => y.EpisodeMediaDataCount, 0)
+                                .SetProperty(y => y.ArtistCount, 0)
+                                .SetProperty(y => y.AlbumCount, 0)
+                                .SetProperty(y => y.TrackCount, 0)
+                                .SetProperty(y => y.TrackMediaVersionCount, 0)
+                                .SetProperty(y => y.TrackFilePartCount, 0)
+                                .SetProperty(y => y.PhotoAlbumCount, 0)
+                                .SetProperty(y => y.PhotoCount, 0)
+                                .SetProperty(y => y.PhotoClipCount, 0)
+                                .SetProperty(y => y.PhotoMediaVersionCount, 0)
+                                .SetProperty(y => y.PhotoFilePartCount, 0)
+                                .SetProperty(y => y.OtherVideoCount, 0)
+                                .SetProperty(y => y.OtherVideoMediaVersionCount, 0)
+                                .SetProperty(y => y.OtherVideoFilePartCount, 0),
                         txCt
                     );
 
@@ -161,7 +184,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
             ct
         );
         if (deleteResult.IsFailed)
-            return deleteResult.ToResult().LogError();
+            return deleteResult.ToResult().LogIfFailed();
 
         _log.Here()
             .Information("Purged {Count} media items from library {PlexLibraryId}", deleteResult.Value, plexLibrary.Id);

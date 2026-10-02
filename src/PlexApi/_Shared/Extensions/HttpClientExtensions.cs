@@ -28,7 +28,7 @@ public static class HttpClientExtensions
             if (cancellationToken.IsCancellationRequested)
                 return ResultExtensions.TaskIsCancelled(nameof(ToResponse)).LogWarning();
 
-            var response = await operation;
+            var response = await operation.WaitAsync(cancellationToken);
 
             var httpResponseMessage = response.GetHttpResponseMessage();
 

@@ -87,7 +87,13 @@ public class CheckPlexLibrariesForUpdatesJob : IJob
         var outdatedLibraryIds = await _dbContext
             .PlexLibraries.AsNoTracking()
             .Where(x => serversWithTokenMappings.Contains(x.PlexServerId))
-            .Where(x => x.Type == PlexMediaType.Movie || x.Type == PlexMediaType.TvShow)
+            .Where(x =>
+                x.Type == PlexMediaType.Movie
+                || x.Type == PlexMediaType.TvShow
+                || x.Type == PlexMediaType.Music
+                || x.Type == PlexMediaType.Photos
+                || x.Type == PlexMediaType.OtherVideos
+            )
             .Where(x => x.Outdated)
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
