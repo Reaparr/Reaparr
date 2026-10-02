@@ -60,7 +60,7 @@ public class QueueInspectPlexServerJobCommandHandler : ICommandHandler<QueueInsp
         var queuedServerIds = new List<int>();
         foreach (var serverId in enabledServerIds)
         {
-            if (await _scheduler.IsJobRunning(InspectPlexServerJob.GetJobKey(serverId), cancellationToken))
+            if (await _scheduler.IsJobScheduledOrExecuting(InspectPlexServerJob.GetJobKey(serverId), cancellationToken))
             {
                 var plexServerName = await _dbContext.GetPlexServerNameById(serverId);
                 _log.Here()

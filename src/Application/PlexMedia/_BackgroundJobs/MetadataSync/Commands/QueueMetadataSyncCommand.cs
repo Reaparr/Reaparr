@@ -24,7 +24,7 @@ public class QueueMetadataSyncCommandHandler : ICommandHandler<QueueMetadataSync
     public async Task<Result> ExecuteAsync(QueueMetadataSyncCommand command, CancellationToken cancellationToken)
     {
         var jobKey = MetadataSyncJob.GetJobKey(command.ServerId);
-        if (await _scheduler.IsJobRunning(jobKey, cancellationToken))
+        if (await _scheduler.IsJobScheduledOrExecuting(jobKey, cancellationToken))
         {
             _log.Here().Debug("MetadataSyncJob already scheduled for server {ServerId}", command.ServerId);
             return Result.Ok();

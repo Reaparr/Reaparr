@@ -75,14 +75,17 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
             $"Start requested for download task {nextDownloadTaskKey.Id} ({nextDownloadTask.FileName})"
         );
 
+        var queuedWaitingTasks = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
+
         if (key.Type is DownloadTaskType.TvShow or DownloadTaskType.Season)
         {
-            var statusesToQueue = nextDownloadTask.DownloadStatus switch
+            DownloadStatus[] statusesToQueue = nextDownloadTask.DownloadStatus switch
             {
-                DownloadStatus.Paused
-                or DownloadStatus.AutoPaused
-                or DownloadStatus.MovePaused
-                or DownloadStatus.AutoMovePaused => _resumablePausedStatuses,
+                DownloadStatus.Paused or DownloadStatus.AutoPaused =>
+                [
+                    DownloadStatus.Paused,
+                    DownloadStatus.AutoPaused,
+                ],
                 DownloadStatus.Stopped => [DownloadStatus.Stopped],
                 _ => [],
             };
@@ -93,6 +96,7 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
                 )
             )
             {
+                queuedWaitingTasks.Add((waitingTask.ToKey(), waitingTask.DownloadStatus));
                 await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
                     waitingTask.ToKey(),
                     DownloadStatus.Queued,
@@ -101,11 +105,22 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
             }
         }
 
-        // Start the download task depending on the phase
+        // Start the download task depending on the phase.
         switch (nextDownloadTask.DownloadTaskPhase)
         {
             case DownloadTaskPhase.None:
             case DownloadTaskPhase.Downloading:
+                var downloadPreviousStatus = nextDownloadTask.DownloadStatus;
+                var wasPaused = downloadPreviousStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused or DownloadStatus.Stopped;
+                if (wasPaused)
+                {
+                    await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
+                        nextDownloadTaskKey,
+                        DownloadStatus.Queued,
+                        cancellationToken
+                    );
+                }
+
                 if (!await _downloadTaskScheduler.IsDownloading(nextDownloadTaskKey, cancellationToken))
                 {
                     var startResult = await _downloadTaskScheduler.StartDownloadTaskJob(
@@ -113,13 +128,33 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
                         cancellationToken
                     );
                     if (startResult.IsFailed)
+                    {
+                        foreach (var (waitingTaskKey, waitingTaskStatus) in queuedWaitingTasks)
+                        {
+                            await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
+                                waitingTaskKey,
+                                waitingTaskStatus,
+                                CancellationToken.None
+                            );
+                        }
+
+                        if (wasPaused)
+                        {
+                            await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
+                                nextDownloadTaskKey,
+                                downloadPreviousStatus,
+                                CancellationToken.None
+                            );
+                        }
+
                         return startResult.LogIfFailed();
+                    }
 
                     var activeDownloadKeys = await _downloadTaskScheduler.GetCurrentlyDownloadingKeysByServer(
                         key.PlexServerId
                     );
 
-                    // Avoid pausing the download task that just started
+                    // Avoid pausing the download task that just started.
                     foreach (var downloadKey in activeDownloadKeys.Where(x => x != nextDownloadTaskKey))
                     {
                         var pauseResult = await _commandExecutor.Send(
@@ -134,7 +169,18 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
                 break;
 
             case DownloadTaskPhase.FileTransfer:
-                // Multiple merging tasks can be processing at the same time
+                var previousStatus = nextDownloadTask.DownloadStatus;
+                var wasMovePaused = previousStatus is DownloadStatus.MovePaused or DownloadStatus.AutoMovePaused;
+                if (wasMovePaused)
+                {
+                    await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
+                        nextDownloadTaskKey,
+                        DownloadStatus.DownloadFinished,
+                        cancellationToken
+                    );
+                }
+
+                // Multiple merging tasks can be processing at the same time.
                 if (!(await _moveDownloadFileScheduler.IsDownloadFileMoving(nextDownloadTaskKey, cancellationToken)))
                 {
                     var moveResult = await _moveDownloadFileScheduler.StartMoveDownloadFileJob(
@@ -142,7 +188,18 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
                         cancellationToken
                     );
                     if (moveResult.IsFailed)
+                    {
+                        if (wasMovePaused)
+                        {
+                            await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
+                                nextDownloadTaskKey,
+                                previousStatus,
+                                CancellationToken.None
+                            );
+                        }
+
                         return moveResult.LogIfFailed();
+                    }
                 }
 
                 break;
@@ -152,6 +209,7 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
 
             case DownloadTaskPhase.Unknown:
                 return Result.Fail("Download task is in an unknown phase and cannot be started").LogError();
+
             default:
                 throw new ArgumentOutOfRangeException(
                     $"{nextDownloadTask.DownloadTaskPhase} is not a valid DownloadTaskPhase enum value"

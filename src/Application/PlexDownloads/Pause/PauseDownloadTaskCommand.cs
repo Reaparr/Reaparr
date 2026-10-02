@@ -62,13 +62,22 @@ public class PauseDownloadTaskCommandHandler : ICommandHandler<PauseDownloadTask
             if (downloadTask.DownloadStatus == DownloadStatus.MoveFinished)
                 continue;
 
-            // DownloadFinished means the file is ready to move but the move job has not started yet.
-            // It still needs to be marked paused so it is not picked up as runnable.
+            // DownloadFinished is already in the file-transfer phase. Cancel a queued or running move before preserving it as paused.
             if (downloadTask.DownloadStatus == DownloadStatus.DownloadFinished)
             {
+                if (await _moveDownloadFileScheduler.IsDownloadFileMoving(downloadTaskKey, cancellationToken))
+                {
+                    var stopMoveResult = await _moveDownloadFileScheduler.StopMoveDownloadFileJob(
+                        downloadTaskKey,
+                        cancellationToken
+                    );
+                    if (stopMoveResult.IsFailed)
+                        return stopMoveResult.LogIfFailed();
+                }
+
                 await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
                     downloadTaskKey,
-                    command.AutoPause ? DownloadStatus.AutoPaused : DownloadStatus.Paused,
+                    command.AutoPause ? DownloadStatus.AutoMovePaused : DownloadStatus.MovePaused,
                     cancellationToken
                 );
                 continue;

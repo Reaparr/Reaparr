@@ -171,6 +171,12 @@ The exact final ordering joins the season row and has a null conditional, so val
 - The metadata query no longer shows a large temporary distinct/group B-tree.
 - The comparison query has a seek on both `PlexLibraryId` and `TvShowId`.
 
+#### TV-show comparison candidate collation — PR #674
+
+IMDb candidate filtering uses `Guid_IMDB COLLATE NOCASE` so case-variant ASCII identifiers reach the `OrdinalIgnoreCase` matcher. Filtering remains scoped to the owned library and the identifiers from each remote batch; matching priority is unchanged.
+
+The existing IMDb index uses case-sensitive collation, so this predicate can use its library prefix but cannot seek its IMDb component. The fix does not change the schema or other queries' collation.
+
 ---
 
 ### 3. Introduce media retention / bounded catalog policy — **highest product-level priority**

@@ -3,6 +3,8 @@
         <TargetFramework>net10.0</TargetFramework>
         <LangVersion>14</LangVersion>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <!-- Keep initial IDE restores consistent with the pruned .NET lock files. -->
+        <RestoreEnablePackagePruning>true</RestoreEnablePackagePruning>
         <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>

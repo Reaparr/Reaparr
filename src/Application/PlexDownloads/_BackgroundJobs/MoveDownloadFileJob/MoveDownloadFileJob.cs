@@ -66,6 +66,28 @@ public class MoveDownloadFileJob : IJob
                     downloadTaskKey.Id
                 );
 
+            var currentTask = await _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, ct);
+            if (currentTask is null)
+            {
+                ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogWarning();
+                return;
+            }
+
+            if (
+                currentTask.DownloadStatus
+                is not (DownloadStatus.DownloadFinished or DownloadStatus.MoveError or DownloadStatus.MoveFinished)
+            )
+            {
+                _log.Here()
+                    .Warning(
+                        "Skipping move job for {DownloadTaskKey} because status {DownloadStatus} is not authorized to move",
+                        downloadTaskKey,
+                        currentTask.DownloadStatus
+                    );
+                await QueueNextAsync();
+                return;
+            }
+
             var moveResult = await Result.Try(() =>
                 _commandExecutor.Send(new MoveDownloadFileFromFileTaskCommand(downloadTaskKey), ct)
             );

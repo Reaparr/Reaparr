@@ -5,12 +5,12 @@ early_access: false
 reviews:
     profile: assertive
     request_changes_workflow: false
-    high_level_summary: true
+    high_level_summary: false
     review_status: false
     collapse_walkthrough: true
     changed_files_summary: false
     sequence_diagrams: false
-    enable_prompt_for_ai_agents: false
+    enable_prompt_for_ai_agents: true
 
     path_filters:
         # Source code

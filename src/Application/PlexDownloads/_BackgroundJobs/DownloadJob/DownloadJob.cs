@@ -46,10 +46,9 @@ public class DownloadJob : IJob
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
         var token = context.CancellationToken;
 
-        // Jobs should swallow exceptions as otherwise Quartz will keep re-executing it
+        // Preserve handled outcomes for Quartz listeners while containing unexpected exceptions.
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
-        var downloadResult = Result.Ok();
-        var executionResult = await Result.Try(async Task () =>
+        var executionResult = await Result.Try(async Task<Result> () =>
         {
             _log.Here()
                 .Debug(
@@ -63,31 +62,31 @@ public class DownloadJob : IJob
             var downloadTask = await _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, token);
             if (downloadTask is null)
             {
-                ResultExtensions.EntityNotFound(nameof(DownloadTaskFileBase), downloadTaskKey.Id).LogError();
-                return;
+                return ResultExtensions.EntityNotFound(nameof(DownloadTaskFileBase), downloadTaskKey.Id).LogError();
             }
 
-            if (!downloadTask.IsDownloadable)
+            if (!downloadTask.IsDownloadable || !CanStartDownload(downloadTask.DownloadStatus))
             {
-                _log.Here()
-                    .Warning(
-                        "DownloadTask {DownloadTaskId} is not downloadable, aborting DownloadJob",
-                        downloadTaskKey
-                    );
-                return;
+                return Result
+                    .Fail(
+                        "DownloadTask {DownloadTaskId} is not authorized to start from status {DownloadStatus}",
+                        downloadTaskKey,
+                        downloadTask.DownloadStatus
+                    )
+                    .LogWarning();
             }
 
             var result = await SetDownloadAndDestination(downloadTask, token);
             if (result.IsCancelled)
             {
                 result.LogWarning();
-                return;
+                return result.ToResult();
             }
 
             if (result.IsFailed)
             {
                 result.LogError();
-                return;
+                return result.ToResult();
             }
 
             downloadTask = result.Value;
@@ -103,7 +102,7 @@ public class DownloadJob : IJob
             if (clientTypeResult.IsCancelled)
             {
                 clientTypeResult.LogWarning();
-                return;
+                return clientTypeResult.ToResult();
             }
 
             if (clientTypeResult.IsFailed)
@@ -115,7 +114,7 @@ public class DownloadJob : IJob
                     token
                 );
                 await _eventPublisher.PublishAsync(new SendNotificationResult(clientTypeResult.ToResult()), token);
-                return;
+                return clientTypeResult.ToResult();
             }
 
             var clientType = clientTypeResult.Value;
@@ -125,6 +124,18 @@ public class DownloadJob : IJob
                     clientType,
                     downloadTask.FullTitle
                 );
+
+            var currentStatus = await _dbContext.GetDownloadTaskStatusAsync(downloadTaskKey, token);
+            if (!CanStartDownload(currentStatus))
+            {
+                return Result
+                    .Fail(
+                        "DownloadTask {DownloadTaskId} is not authorized to start from status {DownloadStatus}",
+                        downloadTaskKey,
+                        currentStatus
+                    )
+                    .LogWarning();
+            }
 
             await using var plexDownloadClient = _plexDownloadClientFactory[clientType];
 
@@ -149,7 +160,6 @@ public class DownloadJob : IJob
             }
             else if (startResult.IsFailed)
             {
-                downloadResult = startResult;
                 var failedStatus =
                     startResult.HasPlex401UnauthorizedError() ? DownloadStatus.AuthError
                     : startResult.Has404NotFoundError() ? DownloadStatus.SourceUnavailable
@@ -173,18 +183,19 @@ public class DownloadJob : IJob
 
                 await _eventPublisher.PublishAsync(new SendNotificationResult(startResult), token);
             }
+
+            return startResult;
         });
 
-        var terminalResult = executionResult.IsSuccess ? downloadResult : executionResult;
-        if (terminalResult.IsCancelled)
+        if (executionResult.IsCancelled)
         {
-            context.SetResult(JobStatus.Cancelled, terminalResult);
-            terminalResult.LogWarning();
+            context.SetResult(JobStatus.Cancelled, executionResult);
+            executionResult.LogWarning();
         }
-        else if (terminalResult.IsFailed)
+        else if (executionResult.IsFailed)
         {
-            context.SetResult(JobStatus.Failed, terminalResult);
-            terminalResult.LogError();
+            context.SetResult(JobStatus.Failed, executionResult);
+            executionResult.LogError();
         }
 
         _log.Here()
@@ -195,6 +206,19 @@ public class DownloadJob : IJob
                 downloadTaskKey
             );
     }
+
+    private static bool CanStartDownload(DownloadStatus status) =>
+        status
+            is DownloadStatus.Queued
+                or DownloadStatus.AutoPaused
+                or DownloadStatus.Restarting
+                or DownloadStatus.Error
+                or DownloadStatus.ServerUnreachable
+                or DownloadStatus.AuthError
+                or DownloadStatus.StorageError
+                or DownloadStatus.SourceUnavailable
+                or DownloadStatus.DownloadClientError
+                or DownloadStatus.IntegrityError;
 
     private async Task<Result<DownloadTaskFileBase>> SetDownloadAndDestination(
         DownloadTaskFileBase downloadTask,
