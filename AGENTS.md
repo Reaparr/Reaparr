@@ -56,7 +56,7 @@ On Linux, `trash` resolves to `gio trash` or `trash-cli`.
 ---
 ### Backend (`src/`)
 
-If working on the backend, then load `reaparr-backend` skill for project-specific backend conventions and `dotnet-devtools` for .NET development best practices. Use native repository tools (`read`, `edit`, `write`, `glob`, `lsp`, and short `bash` commands) for backend file reads, edits, searches, refactors, and diagnostics.
+If working on the backend, load the relevant available skills for project-specific conventions and .NET development best practices, prioritizing Reaparr-specific guidance. Use native repository tools (`read`, `edit`, `write`, `glob`, `lsp`, and short `bash` commands) for backend file reads, edits, searches, refactors, and diagnostics.
 
 Backend tests should use the repository's native test tooling, preferably `dotnet-test-mcp` when available. Do not use IDE run configurations for test execution:
 
