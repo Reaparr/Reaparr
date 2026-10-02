@@ -1,5 +1,6 @@
 <template>
 	<QCardDialog
+		class="server-dialog"
 		:name="DialogType.ServerSettingsDialog"
 		content-height="80"
 		:loading="loading"
@@ -67,12 +68,17 @@
 							data-cy="server-dialog-tab-5"
 							:aria-label="$t('components.server-dialog.tabs.server-commands.header')"
 							:label="$t('components.server-dialog.tabs.server-commands.header')" />
+						<q-tab
+							name="server-stats"
+							icon="mdi-filmstrip"
+							data-cy="server-dialog-tab-6"
+							:aria-label="$t('components.server-dialog.tabs.server-stats.header')"
+							:label="$t('components.server-dialog.tabs.server-stats.header')" />
 					</q-tabs>
 				</QCol>
 				<QCol
-					ref="tabContent"
 					align-self="stretch"
-					class="tab-content inherit-all-height scroll">
+					class="tab-content">
 					<!-- Tab Content -->
 					<q-tab-panels
 						v-model="tabIndex"
@@ -122,13 +128,31 @@
 								:plex-server-id="plexServerId"
 								:is-visible="isVisible" />
 						</q-tab-panel>
+
+						<q-tab-panel
+							name="server-stats"
+							class="server-stats-tab-panel"
+							data-cy="server-dialog-tab-content-6">
+							<ServerStatsTabContent
+								:plex-server-id="plexServerId"
+								:actions-target="statsActions" />
+						</q-tab-panel>
 					</q-tab-panels>
 				</QCol>
 			</QRow>
 		</template>
 		<template #actions>
-			<QRow justify="end">
-				<QCol cols="auto">
+			<QRow
+				justify="between"
+				class="server-dialog-actions">
+				<QCol
+					v-show="tabIndex === 'server-stats'"
+					cols="auto">
+					<div ref="statsActions" />
+				</QCol>
+				<QCol
+					cols="auto"
+					class="q-ml-auto">
 					<BaseButton
 						cy="server-dialog-close-btn"
 						flat
@@ -142,7 +166,6 @@
 </template>
 
 <script setup lang="ts">
-import type { ComponentPublicInstance } from 'vue';
 import { get, set } from '@vueuse/core';
 import type { PlexServerDTO } from '@dto';
 import { DialogType } from '@enums';
@@ -154,20 +177,12 @@ const libraryStore = useLibraryStore();
 const dialogStore = useDialogStore();
 
 const loading = ref(false);
-const tabContent = ref<ComponentPublicInstance | null>(null);
 const tabIndex = ref<string>('server-data');
+const statsActions = useTemplateRef<HTMLElement>('statsActions');
 const plexServer = ref<PlexServerDTO | null>(null);
 const plexServerId = ref<number>(0);
 
 const isVisible = computed((): boolean => plexServerId.value > 0);
-
-watch(tabIndex, async () => {
-	await nextTick();
-	const element = tabContent.value?.$el;
-	if (element instanceof HTMLElement) {
-		element.scrollTop = 0;
-	}
-});
 
 function open(event: unknown): void {
 	const newPlexServerId = event as number;
@@ -192,8 +207,49 @@ function onServerAliasSave(serverAlias: string): void {
 <style lang="scss">
 @use '@/assets/scss/variables.scss' as *;
 
-.tab-content {
-  max-height: calc(80vh - $q-card-dialog-title-height - $q-card-dialog-actions-height) !important;
+.server-dialog {
+  .dialog-container-content {
+    overflow: hidden;
+  }
+
+  .server-dialog-layout {
+    flex-wrap: nowrap;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .tab-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+
+    .q-tab-panels {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+    }
+
+    .q-panel {
+      overflow: hidden;
+    }
+
+    .q-tab-panel {
+      height: 100%;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .server-stats-tab-panel {
+      overflow: hidden;
+    }
+  }
+
+  .server-dialog-actions {
+    flex: 1 1 auto;
+  }
 }
 
 .editable-text {
@@ -251,7 +307,7 @@ function onServerAliasSave(serverAlias: string): void {
     height: calc(100% - 48px);
     max-height: calc(100% - 48px) !important;
     flex: 1 1 auto;
-    overflow: auto !important;
+    overflow: hidden !important;
 
     .q-tab-panels,
     .q-panel,

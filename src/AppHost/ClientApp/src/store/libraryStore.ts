@@ -9,9 +9,10 @@ import {
 	type LibrarySyncJobQueueDTO,
 	LibrarySyncJobStatus,
 	type PlexLibraryDTO,
+	PlexMediaType,
 	type PlexServerDTO,
 } from '@dto';
-import { StoreNames, type ISetupResult } from '@interfaces';
+import { StoreNames, type IServerStats, type ISetupResult } from '@interfaces';
 import { plexLibraryApi } from '@api';
 import { RefreshDataType } from '@dto';
 import {
@@ -21,7 +22,7 @@ import {
 	useSettingsStore,
 	useSignalrStore,
 } from '@store';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, orderBy } from 'lodash-es';
 import Log from 'consola';
 
 interface ILibraryStoreState {
@@ -189,6 +190,56 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
      */
 		getAllLibrariesByServerId: (plexServerId: number) =>
 			state.libraries.filter((y) => y.plexServerId === plexServerId),
+		getServerStats: (plexServerId: number): IServerStats => {
+			const libraries = orderBy(
+				state.libraries.filter((library) =>
+					library.plexServerId === plexServerId
+					&& (library.type === PlexMediaType.Movie || library.type === PlexMediaType.TvShow)),
+				[(library) => library.type === PlexMediaType.Movie ? 0 : 1, (library) => getters.getLibraryName(library.id).toLocaleLowerCase()],
+				['asc', 'asc'],
+			);
+			let mediaSize = 0;
+			let movieCount = 0;
+			let tvShowCount = 0;
+			let seasonCount = 0;
+			let episodeCount = 0;
+			let enabledLibraryCount = 0;
+			let hasIndexedData = false;
+			let hasUnindexedEnabledLibraries = false;
+
+			// Negative metadata sentinels must not subtract from known inventory totals.
+			for (const library of libraries) {
+				mediaSize += Math.max(0, library.mediaSize);
+				hasIndexedData ||= !!library.syncedAt;
+				if (library.isEnabled) {
+					enabledLibraryCount++;
+					hasUnindexedEnabledLibraries ||= !library.syncedAt;
+				}
+
+				if (library.type === PlexMediaType.Movie) {
+					movieCount += Math.max(0, library.count);
+				} else {
+					tvShowCount += Math.max(0, library.count);
+					seasonCount += Math.max(0, library.seasonCount);
+					episodeCount += Math.max(0, library.episodeCount);
+				}
+			}
+
+			return {
+				libraries,
+				mediaSize,
+				movieCount,
+				tvShowCount,
+				seasonCount,
+				episodeCount,
+				hasIndexedData,
+				status: enabledLibraryCount === 0
+					? 'no-enabled-libraries'
+					: hasUnindexedEnabledLibraries
+						? hasIndexedData ? 'partial' : 'not-indexed'
+						: 'complete',
+			};
+		},
 		getLibrary: (libraryId: number): PlexLibraryDTO | null => state.libraries.find((x) => x.id === libraryId) ?? null,
 		getLibraries: (libraryIds: number[] = []): PlexLibraryDTO[] => {
 			if (libraryIds.length === 0) {

@@ -13,13 +13,34 @@ describe('Reaparr Server Dialog', () => {
 	it('Should navigate the server dialog tabs when the navigation tabs are used and then close again', () => {
 		cy.getCy('server-dialog-2').filter(':visible').first().click();
 
-		for (let i = 1; i <= 5; i++) {
+		for (let i = 1; i <= 6; i++) {
 			cy.getCy('server-dialog-tab-' + i).click();
 			cy.getCy('server-dialog-tab-content-' + i)
 				.should('exist')
 				.and('be.visible');
 		}
 
+		cy.getCy('server-stats-export-image').should('be.visible');
+		cy.getCy('server-stats-summary-tab').then(($tab) => {
+			const top = $tab[0]!.getBoundingClientRect().top;
+			cy.getCy('server-stats-content').scrollTo('bottom');
+			cy.getCy('server-stats-summary-tab').should(($scrolledTab) => {
+				expect($scrolledTab[0]!.getBoundingClientRect().top, 'stats tabs stay fixed').to.equal(top);
+			});
+		});
+		cy.getCy('server-dialog-tab-6').should('be.visible');
+		cy.getCy('server-stats-export-image').should('be.visible');
+		cy.getCy('server-dialog-tab-1').click();
+		cy.getCy('server-stats-export-image').should('not.exist');
+		cy.getCy('server-dialog-tab-6').click();
+		cy.getCy('server-stats-export-image').should('be.visible');
+
+		cy.getCy('server-dialog-close-btn').click();
+		cy.getCy('server-dialog-cy').should('not.exist');
+
+		cy.getCy('server-dialog-2').filter(':visible').first().click();
+		cy.getCy('server-dialog-tab-6').click();
+		cy.getCy('server-stats-export-image').should('be.visible');
 		cy.getCy('server-dialog-close-btn').click();
 		cy.getCy('server-dialog-cy').should('not.exist');
 	});
@@ -61,7 +82,7 @@ describe('Reaparr Server Dialog', () => {
 				});
 			});
 
-			for (let i = 1; i <= 5; i++) {
+			for (let i = 1; i <= 6; i++) {
 				cy.getCy('server-dialog-tab-' + i)
 					.should('have.attr', 'aria-label');
 				cy.getCy('server-dialog-tab-' + i).click();

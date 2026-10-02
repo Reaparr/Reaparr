@@ -176,6 +176,24 @@
         "server-dialog": {
             "header": "Konfiguracja {serverName}",
             "tabs": {
+                "server-stats": {
+                    "header": "Statystyki serwera",
+                    "summary": "Podsumowanie",
+                    "detailed": "Szczegóły",
+                    "collection": "Kolekcja mediów",
+                    "total-size": "Łączny rozmiar zindeksowanych mediów",
+                    "movies": "Filmy",
+                    "tv-shows": "Seriale",
+                    "seasons": "Sezony",
+                    "episodes": "Odcinki",
+                    "media-count": "{type}: {count}",
+                    "not-indexed": "Nie zindeksowano",
+                    "partial": "Niepełne statystyki · Niektóre włączone biblioteki nie są zindeksowane",
+                    "no-enabled-libraries": "Brak włączonych bibliotek filmów lub seriali",
+                    "disabled": "Wyłączona",
+                    "export-image": "Eksportuj obraz",
+                    "export-error": "Nie udało się wyeksportować wszystkich statystyk serwera. Obraz może przekraczać limity renderowania przeglądarki."
+                },
                 "server-commands": {
                     "header": "Komendy serwera"
                 },
