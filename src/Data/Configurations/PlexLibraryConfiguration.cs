@@ -51,7 +51,11 @@ public class PlexLibraryConfiguration : IEntityTypeConfiguration<PlexLibrary>
         builder
             .Property(c => c.MediaCount)
             .HasComputedColumnSql(
-                $"CASE WHEN Type = '{PlexMediaType.Movie.ToPlexMediaTypeString()}' THEN {nameof(PlexLibrary.MovieCount)} WHEN Type = '{PlexMediaType.TvShow.ToPlexMediaTypeString()}' THEN {nameof(PlexLibrary.TvShowCount)} ELSE -1 END"
+                $"CASE WHEN Type = '{PlexMediaType.Movie.ToPlexMediaTypeString()}' THEN {nameof(PlexLibrary.MovieCount)} "
+                    + $"WHEN Type = '{PlexMediaType.TvShow.ToPlexMediaTypeString()}' THEN {nameof(PlexLibrary.TvShowCount)} "
+                    + $"WHEN Type = '{PlexMediaType.Music.ToPlexMediaTypeString()}' THEN {nameof(PlexLibrary.ArtistCount)} "
+                    + $"WHEN Type = '{PlexMediaType.Photos.ToPlexMediaTypeString()}' THEN {nameof(PlexLibrary.PhotoAlbumCount)} "
+                    + $"WHEN Type = '{PlexMediaType.OtherVideos.ToPlexMediaTypeString()}' THEN {nameof(PlexLibrary.OtherVideoCount)} ELSE -1 END"
             );
 
         builder

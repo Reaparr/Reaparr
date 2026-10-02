@@ -146,6 +146,20 @@ public class PlexLibrary : BaseEntity
     [Column(Order = 24)]
     public bool IsEnabled { get; set; } = true;
 
+    public int ArtistCount { get; init; }
+    public int AlbumCount { get; init; }
+    public int TrackCount { get; init; }
+    public int TrackMediaVersionCount { get; init; }
+    public int TrackFilePartCount { get; init; }
+    public int PhotoAlbumCount { get; init; }
+    public int PhotoCount { get; init; }
+    public int PhotoClipCount { get; init; }
+    public int PhotoMediaVersionCount { get; init; }
+    public int PhotoFilePartCount { get; init; }
+    public int OtherVideoCount { get; init; }
+    public int OtherVideoMediaVersionCount { get; init; }
+    public int OtherVideoFilePartCount { get; init; }
+
     /// <summary>
     /// DB-computed column that holds the total count of media items associated with this <see cref="PlexLibrary"/>.
     /// </summary>
@@ -181,6 +195,18 @@ public class PlexLibrary : BaseEntity
     public ICollection<PlexMovie> Movies { get; private set; } = [];
 
     public ICollection<PlexTvShow> TvShows { get; private set; } = [];
+
+    public ICollection<PlexMusicArtist> Artists { get; private set; } = [];
+
+    public ICollection<PlexMusicAlbum> Albums { get; private set; } = [];
+
+    public ICollection<PlexMusicTrack> Tracks { get; private set; } = [];
+
+    public ICollection<PlexPhotoAlbum> PhotoAlbums { get; private set; } = [];
+
+    public ICollection<PlexPhoto> Photos { get; private set; } = [];
+
+    public ICollection<PlexOtherVideo> OtherVideos { get; private set; } = [];
 
     public ICollection<PlexAccountLibrary> PlexAccountLibraries { get; private set; } = [];
 

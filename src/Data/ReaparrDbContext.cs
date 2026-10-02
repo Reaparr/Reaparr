@@ -25,6 +25,34 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
 
     public DbSet<PlexLibrary> PlexLibraries { get; set; }
 
+    public DbSet<PlexMusicArtist> PlexArtists { get; set; }
+    public DbSet<PlexMusicAlbum> PlexAlbums { get; set; }
+    public DbSet<PlexMusicTrack> PlexTracks { get; set; }
+    public DbSet<PlexMusicTrackMediaData> PlexTrackData { get; set; }
+
+    public DbSet<PlexPhotoAlbum> PlexPhotoAlbums { get; set; }
+    public DbSet<PlexPhoto> PlexPhotos { get; set; }
+
+    public DbSet<PlexPhotoMediaData> PlexPhotoData { get; set; }
+
+    public DbSet<MediaOverviewPhotoAlbumSnapshot> MediaOverviewPhotoAlbumSnapshots { get; set; }
+
+    public DbSet<PlexOtherVideo> PlexOtherVideos { get; set; }
+    public DbSet<PlexOtherVideoMediaData> PlexOtherVideoData { get; set; }
+    public DbSet<MediaOverviewOtherVideoSnapshot> MediaOverviewOtherVideoSnapshots { get; set; }
+
+    public DbSet<DownloadTaskArtist> DownloadTaskArtists { get; set; }
+    public DbSet<DownloadTaskAlbum> DownloadTaskAlbums { get; set; }
+    public DbSet<DownloadTaskTrack> DownloadTaskTracks { get; set; }
+    public DbSet<DownloadTaskTrackFile> DownloadTaskTrackFiles { get; set; }
+    public DbSet<DownloadTaskTrackFileLog> DownloadTaskTrackFileLogs { get; set; }
+    public DbSet<DownloadTaskPhoto> DownloadTaskPhotos { get; set; }
+    public DbSet<DownloadTaskPhotoFile> DownloadTaskPhotoFiles { get; set; }
+    public DbSet<DownloadTaskPhotoFileLog> DownloadTaskPhotoFileLogs { get; set; }
+    public DbSet<DownloadTaskOtherVideo> DownloadTaskOtherVideos { get; set; }
+    public DbSet<DownloadTaskOtherVideoFile> DownloadTaskOtherVideoFiles { get; set; }
+    public DbSet<DownloadTaskOtherVideoFileLog> DownloadTaskOtherVideoFileLogs { get; set; }
+
     public DbSet<PlexLibraryAccessHistoryEvent> PlexLibraryAccessHistoryEvents { get; set; }
 
     public DbSet<PlexActor> PlexActors { get; set; }

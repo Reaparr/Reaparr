@@ -21,6 +21,27 @@ public interface IReaparrDbContext : IDisposable
 
     DbSet<PlexLibrary> PlexLibraries { get; }
 
+    DbSet<PlexPhotoAlbum> PlexPhotoAlbums { get; }
+    DbSet<PlexPhoto> PlexPhotos { get; }
+    DbSet<PlexPhotoMediaData> PlexPhotoData { get; }
+    DbSet<MediaOverviewPhotoAlbumSnapshot> MediaOverviewPhotoAlbumSnapshots { get; }
+
+    DbSet<PlexOtherVideo> PlexOtherVideos { get; }
+    DbSet<PlexOtherVideoMediaData> PlexOtherVideoData { get; }
+    DbSet<MediaOverviewOtherVideoSnapshot> MediaOverviewOtherVideoSnapshots { get; }
+
+    DbSet<DownloadTaskArtist> DownloadTaskArtists { get; }
+    DbSet<DownloadTaskAlbum> DownloadTaskAlbums { get; }
+    DbSet<DownloadTaskTrack> DownloadTaskTracks { get; }
+    DbSet<DownloadTaskTrackFile> DownloadTaskTrackFiles { get; }
+    DbSet<DownloadTaskTrackFileLog> DownloadTaskTrackFileLogs { get; }
+    DbSet<DownloadTaskPhoto> DownloadTaskPhotos { get; }
+    DbSet<DownloadTaskPhotoFile> DownloadTaskPhotoFiles { get; }
+    DbSet<DownloadTaskPhotoFileLog> DownloadTaskPhotoFileLogs { get; }
+    DbSet<DownloadTaskOtherVideo> DownloadTaskOtherVideos { get; }
+    DbSet<DownloadTaskOtherVideoFile> DownloadTaskOtherVideoFiles { get; }
+    DbSet<DownloadTaskOtherVideoFileLog> DownloadTaskOtherVideoFileLogs { get; }
+
     DbSet<PlexLibraryAccessHistoryEvent> PlexLibraryAccessHistoryEvents { get; }
 
     #region PlexMedia
@@ -56,7 +77,20 @@ public interface IReaparrDbContext : IDisposable
     DbSet<PlexTvShowEpisode> PlexTvShowEpisodes { get; }
 
     DbSet<PlexTvShowEpisodeMediaData> PlexTvShowEpisodeData { get; }
+
     DbSet<MediaOverviewTvShowSnapshot> MediaOverviewTvShowSnapshots { get; }
+
+    #endregion
+
+    #region PlexMusic
+
+    DbSet<PlexMusicArtist> PlexArtists { get; }
+
+    DbSet<PlexMusicAlbum> PlexAlbums { get; }
+
+    DbSet<PlexMusicTrack> PlexTracks { get; }
+
+    DbSet<PlexMusicTrackMediaData> PlexTrackData { get; }
 
     #endregion
 
