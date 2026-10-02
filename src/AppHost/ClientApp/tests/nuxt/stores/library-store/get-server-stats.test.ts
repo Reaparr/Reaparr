@@ -44,6 +44,7 @@ describe('LibraryStore.getServerStats()', () => {
 		const libraryStore = useLibraryStore();
 		libraryStore.libraries = [
 			library({ type: PlexMediaType.Movie, count: 4, mediaSize: 400 }),
+			library({ type: PlexMediaType.Movie, count: -1, mediaSize: -1 }),
 			library({ type: PlexMediaType.TvShow, count: 3, seasonCount: 6, episodeCount: 24, mediaSize: 600 }),
 			library({ type: PlexMediaType.TvShow, count: -1, seasonCount: -1, episodeCount: -1, mediaSize: -1 }),
 			library({ type: PlexMediaType.Music, count: 999, seasonCount: 999, episodeCount: 999, mediaSize: 999 }),
@@ -54,7 +55,7 @@ describe('LibraryStore.getServerStats()', () => {
 		const result = libraryStore.getServerStats(1);
 
 		// Assert
-		expect(result.libraries).toHaveLength(3);
+		expect(result.libraries).toHaveLength(4);
 		expect(result.libraries.every(({ plexServerId }) => plexServerId === 1)).toBe(true);
 		expect(result.libraries.map(({ type }) => type)).not.toContain(PlexMediaType.Music);
 		expect(result).toMatchObject({

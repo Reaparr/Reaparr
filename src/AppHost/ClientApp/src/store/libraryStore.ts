@@ -207,8 +207,9 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			let hasIndexedData = false;
 			let hasUnindexedEnabledLibraries = false;
 
+			// Negative metadata sentinels must not subtract from known inventory totals.
 			for (const library of libraries) {
-				mediaSize += library.mediaSize;
+				mediaSize += Math.max(0, library.mediaSize);
 				hasIndexedData ||= !!library.syncedAt;
 				if (library.isEnabled) {
 					enabledLibraryCount++;
@@ -216,11 +217,11 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 				}
 
 				if (library.type === PlexMediaType.Movie) {
-					movieCount += library.count;
+					movieCount += Math.max(0, library.count);
 				} else {
-					tvShowCount += library.count;
-					seasonCount += library.seasonCount;
-					episodeCount += library.episodeCount;
+					tvShowCount += Math.max(0, library.count);
+					seasonCount += Math.max(0, library.seasonCount);
+					episodeCount += Math.max(0, library.episodeCount);
 				}
 			}
 
