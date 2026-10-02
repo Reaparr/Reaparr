@@ -149,13 +149,14 @@ public class MoveDownloadFileSchedulerIntegrationTests : BaseIntegrationTests
             }
         );
 
-        var downloadTasks = container.DbContext.DownloadTaskMovie.AsTracking().Include(x => x.Children).ToList();
+        using var setupDbContext = container.DbContext;
+        var downloadTasks = setupDbContext.DownloadTaskMovie.AsTracking().Include(x => x.Children).ToList();
         downloadTasks.ShouldNotBeNull();
 
         downloadTasks.SetDownloadStatus(DownloadStatus.DownloadFinished);
-        await container.DbContext.SaveChangesAsync(CancellationToken);
+        await setupDbContext.SaveChangesAsync(CancellationToken);
 
-        var downloadTask = container.DbContext.DownloadTaskMovieFile.First();
+        var downloadTask = setupDbContext.DownloadTaskMovieFile.First();
         var sourcePath = downloadTask.DownloadFilePath;
         var destinationPath = downloadTask.DestinationFilePath;
 
