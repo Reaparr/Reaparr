@@ -46,9 +46,9 @@ public class DownloadJob : IJob
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
         var token = context.CancellationToken;
 
-        // Jobs should swallow exceptions as otherwise Quartz will keep re-executing it
+        // Preserve handled outcomes for Quartz listeners while containing unexpected exceptions.
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
-        var executionResult = await Result.Try(async Task () =>
+        var executionResult = await Result.Try(async Task<Result> () =>
         {
             _log.Here()
                 .Debug(
@@ -62,33 +62,31 @@ public class DownloadJob : IJob
             var downloadTask = await _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, token);
             if (downloadTask is null)
             {
-                ResultExtensions.EntityNotFound(nameof(DownloadTaskFileBase), downloadTaskKey.Id).LogError();
-                return;
+                return ResultExtensions.EntityNotFound(nameof(DownloadTaskFileBase), downloadTaskKey.Id).LogError();
             }
 
             if (!downloadTask.IsDownloadable || !CanStartDownload(downloadTask.DownloadStatus))
             {
-                Result
+                return Result
                     .Fail(
                         "DownloadTask {DownloadTaskId} is not authorized to start from status {DownloadStatus}",
                         downloadTaskKey,
                         downloadTask.DownloadStatus
                     )
                     .LogWarning();
-                return;
             }
 
             var result = await SetDownloadAndDestination(downloadTask, token);
             if (result.IsCancelled)
             {
                 result.LogWarning();
-                return;
+                return result.ToResult();
             }
 
             if (result.IsFailed)
             {
                 result.LogError();
-                return;
+                return result.ToResult();
             }
 
             downloadTask = result.Value;
@@ -104,7 +102,7 @@ public class DownloadJob : IJob
             if (clientTypeResult.IsCancelled)
             {
                 clientTypeResult.LogWarning();
-                return;
+                return clientTypeResult.ToResult();
             }
 
             if (clientTypeResult.IsFailed)
@@ -116,7 +114,7 @@ public class DownloadJob : IJob
                     token
                 );
                 await _eventPublisher.PublishAsync(new SendNotificationResult(clientTypeResult.ToResult()), token);
-                return;
+                return clientTypeResult.ToResult();
             }
 
             var clientType = clientTypeResult.Value;
@@ -130,14 +128,13 @@ public class DownloadJob : IJob
             var currentStatus = await _dbContext.GetDownloadTaskStatusAsync(downloadTaskKey, token);
             if (!CanStartDownload(currentStatus))
             {
-                Result
+                return Result
                     .Fail(
                         "DownloadTask {DownloadTaskId} is not authorized to start from status {DownloadStatus}",
                         downloadTaskKey,
                         currentStatus
                     )
                     .LogWarning();
-                return;
             }
 
             await using var plexDownloadClient = _plexDownloadClientFactory[clientType];
@@ -186,6 +183,8 @@ public class DownloadJob : IJob
 
                 await _eventPublisher.PublishAsync(new SendNotificationResult(startResult), token);
             }
+
+            return startResult;
         });
 
         if (executionResult.IsCancelled)
