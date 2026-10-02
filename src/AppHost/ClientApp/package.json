@@ -1,6 +1,6 @@
 {
   "name": "reaparr-web-ui",
-  "version": "0.40.0",
+  "version": "0.41.0-dev.1",
   "description": "The best cross-platform Plex media downloader there is! In active development and feedback is very welcome!",
   "author": "JasonLandbridge",
   "private": true,

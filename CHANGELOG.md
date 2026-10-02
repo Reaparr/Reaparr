@@ -1,5 +1,24 @@
 Reaparr Changelog
 
+# [0.41.0-dev.1](https://github.com/Reaparr/Reaparr/compare/v0.40.0...v0.41.0-dev.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **Web-UI:** Ignore negative metadata in server statistics ([0fdaaca](https://github.com/Reaparr/Reaparr/commit/0fdaaca349e602c28f3529c46280e10dfd17ba38))
+* **WebAPI:** Preserve case-insensitive IMDb comparison candidates ([b36031b](https://github.com/Reaparr/Reaparr/commit/b36031b633c36c0dd988189abfc3083de7a8c02f))
+* **WebAPI:** Preserve handled download job outcomes ([aa75efc](https://github.com/Reaparr/Reaparr/commit/aa75efc7d817433d6534a04fcd574a46ea897396))
+
+
+### Features
+
+* **Web-UI:** Add Server Stats views and PNG export ([986f613](https://github.com/Reaparr/Reaparr/commit/986f613abea5ba5be373c496ad80e5d1605ac575))
+
+
+### Performance Improvements
+
+* **WebAPI:** Batch TV comparisons and select one owned show ([a47b25f](https://github.com/Reaparr/Reaparr/commit/a47b25fa1dc75a89ba862786aca0d52f488aced9)), closes [#627](https://github.com/Reaparr/Reaparr/issues/627)
+
 # [0.40.0](https://github.com/Reaparr/Reaparr/compare/v0.39.0...v0.40.0) (2026-10-01)
 
 
