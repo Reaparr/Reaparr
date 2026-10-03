@@ -1,5 +1,5 @@
 ﻿using System.IO.Abstractions;
-using System.Reactive.Subjects;
+using System.Reactive.Linq;
 using Autofac;
 using Reaparr.Environment;
 using Reaparr.Settings.Contracts;
@@ -9,31 +9,78 @@ namespace Reaparr.Settings.UnitTests;
 public class ConfigManagerSaveConfigUnitTests : BaseUnitTest<ConfigManager>
 {
     [Test]
-    public void ShouldLoadConfigDuringSetup_WhenConfigFileAlreadyExists()
+    public void ShouldPublishSavedConfiguration_AfterTheConfigurationWriteSucceeds()
     {
         // Arrange
-        Mock.Mock<IUserSettings>().SetupGet(x => x.SettingsUpdated).Returns(new Subject<UserSettings>());
-        Mock.Mock<IFile>().Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>())).Verifiable(Times.Once);
-        Mock.Mock<IFile>().Setup(x => x.Move(It.IsAny<string>(), It.IsAny<string>(), true)).Verifiable(Times.Once);
-
-        // Were mocking other methods from ConfigManager, that's why we need to mock it manually here
-        var sut = new Mock<ConfigManager>(
-            MockBehavior.Strict,
-            Mock.Container.Resolve<ILogger>(),
-            Mock.Container.Resolve<IPathProvider>(),
-            Mock.Container.Resolve<IUserSettings>(),
-            Mock.Container.Resolve<IFile>(),
-            Mock.Container.Resolve<IPath>(),
-            Mock.Container.Resolve<IDirectory>()
+        SetupFileSystem();
+        var settings = new UserSettings
+        {
+            DateTimeSettings = { TimeZone = "Asia/Kathmandu" },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new()
+                    {
+                        ["monday"] = new() { ["09:30"] = 123, ["17:00"] = null },
+                    },
+                },
+            },
+        };
+        settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
+        SetupDependencies(builder => builder.RegisterInstance(settings).As<IUserSettings>());
+        var path = Mock.Container.Resolve<IPathProvider>().ConfigFileLocation;
+        var observed = new List<UserSettings>();
+        var file = Mock.Container.Resolve<IFile>();
+        var sut = Sut;
+        using var subscription = sut.SettingsSaved.Subscribe(_ =>
+            observed.Add(UserSettingsSerializer.Deserialize(file.ReadAllText(path)))
         );
-        sut.Setup(x => x.SaveConfig()).CallBase();
-        sut.Setup(x => x.ConfigFileExists()).Returns(true);
-        sut.Setup(x => x.LoadConfig()).Returns(Result.Ok);
 
         // Act
-        var resetResult = sut.Object.SaveConfig();
+        var result = sut.SaveConfig();
 
         // Assert
-        resetResult.IsSuccess.ShouldBeTrue();
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        observed.Count.ShouldBe(1);
+        var saved = observed[0];
+        saved.DateTimeSettings.TimeZone.ShouldBe("Asia/Kathmandu");
+        saved.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
+        saved.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["monday"]);
+        saved
+            .DownloadManagerSettings.DownloadSchedule.Days["monday"]
+            .ShouldBe(new Dictionary<string, int?> { ["09:30"] = 123, ["17:00"] = null }, ignoreOrder: true);
+        saved.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
+    }
+
+    [Test]
+    public void ShouldNotPublishSettingsSaved_WhenTheConfigurationWriteFails()
+    {
+        // Arrange
+        var settings = new UserSettings { DateTimeSettings = { TimeZone = "Asia/Kathmandu" } };
+        var file = new Mock<IFile>(MockBehavior.Strict);
+        SetupDependencies(builder =>
+        {
+            builder.RegisterInstance(settings).As<IUserSettings>();
+            builder.RegisterInstance(file.Object).As<IFile>();
+        });
+        var path = Mock.Container.Resolve<IPathProvider>().ConfigFileLocation;
+        var notifications = 0;
+        var sut = Sut;
+        using var subscription = sut.SettingsSaved.Subscribe(_ => notifications++);
+        file.Setup(x => x.WriteAllText(path, It.IsAny<string>()))
+            .Throws(new IOException("write failed"))
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = sut.SaveConfig();
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(2);
+        notifications.ShouldBe(0);
+        file.Verify();
     }
 }

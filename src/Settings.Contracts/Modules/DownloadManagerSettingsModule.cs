@@ -19,4 +19,10 @@ public record DownloadManagerSettingsModule
         get;
         set => SetProperty(ref field, value);
     }
+
+    public DownloadSchedule DownloadSchedule
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = new();
 }

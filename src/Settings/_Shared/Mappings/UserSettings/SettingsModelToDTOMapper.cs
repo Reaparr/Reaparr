@@ -64,6 +64,11 @@ public static class SettingsModelToDTOMapper
         {
             DownloadSegments = dto.DownloadSegments,
             KeepCompletedInDownloadFolder = dto.KeepCompletedInDownloadFolder,
+            DownloadSchedule = new DownloadSchedule
+            {
+                Enabled = dto.DownloadSchedule.Enabled,
+                Days = dto.DownloadSchedule.Days,
+            },
         };
 
     public static PlexServerSettingsModule ToModel(this ServerSettingsDTO dto) => new() { Data = dto.Data };
@@ -153,6 +158,11 @@ public static class SettingsModelToDTOMapper
         {
             DownloadSegments = module.DownloadSegments,
             KeepCompletedInDownloadFolder = module.KeepCompletedInDownloadFolder,
+            DownloadSchedule = new DownloadScheduleDTO
+            {
+                Enabled = module.DownloadSchedule.Enabled,
+                Days = module.DownloadSchedule.Days,
+            },
         };
 
     public static ServerSettingsDTO ToDTO(this PlexServerSettingsModule module) => new() { Data = module.Data };

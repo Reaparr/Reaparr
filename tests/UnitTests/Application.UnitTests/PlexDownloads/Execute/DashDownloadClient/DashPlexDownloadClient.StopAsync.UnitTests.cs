@@ -41,11 +41,9 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
 
     private void SetupSpeedLimit(string serverMachineIdentifier)
     {
-        Mock.Mock<IServerSettingsModule>().Setup(x => x.GetDownloadSpeedLimit(serverMachineIdentifier)).Returns(0);
-
-        Mock.Mock<IServerSettingsModule>()
-            .Setup(x => x.GetDownloadSpeedLimitObservable(serverMachineIdentifier))
-            .Returns(Observable.Return(0));
+        Mock.Mock<IDownloadSpeedLimitProvider>()
+            .Setup(x => x.GetEffectiveDownloadSpeedLimit(serverMachineIdentifier))
+            .Returns(0);
     }
 
     [Test]

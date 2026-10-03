@@ -139,13 +139,9 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         // IDownloadManagerSettings.DownloadSegments is read in the SUT constructor
         Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(1);
 
-        Mock.Mock<IServerSettingsModule>()
-            .Setup(x => x.GetDownloadSpeedLimit(serverMachineIdentifier))
-            .Returns(speedLimit);
-
-        Mock.Mock<IServerSettingsModule>()
-            .Setup(x => x.GetDownloadSpeedLimitObservable(serverMachineIdentifier))
-            .Returns(Observable.Return(speedLimit));
+        Mock.Mock<IDownloadSpeedLimitProvider>()
+            .Setup(x => x.GetEffectiveDownloadSpeedLimitObservable(serverMachineIdentifier))
+            .Returns(Observable.Return(checked((long)speedLimit * 1024)));
     }
 
     // -------------------------------------------------------------------------

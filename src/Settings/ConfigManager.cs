@@ -1,5 +1,7 @@
 ﻿using System.IO.Abstractions;
 using Reaparr.Environment;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 
 namespace Reaparr.Settings;
 
@@ -14,6 +16,9 @@ public class ConfigManager : IConfigManager
     private readonly IFile _file;
     private readonly IPath _path;
     private readonly IDirectory _directory;
+    private readonly Subject<System.Reactive.Unit> _settingsSaved = new();
+
+    public IObservable<System.Reactive.Unit> SettingsSaved => _settingsSaved.AsObservable();
 
     #endregion
 
@@ -153,6 +158,8 @@ public class ConfigManager : IConfigManager
 
         if (writeResult.IsFailed)
             return writeResult;
+
+        _settingsSaved.OnNext(System.Reactive.Unit.Default);
 
         _log.Here().Debug("UserSettings were saved successfully!");
 

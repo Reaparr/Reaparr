@@ -13,6 +13,7 @@ public class ApplicationModule : Module
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)
     {
+        builder.RegisterInstance(TimeProvider.System).As<TimeProvider>();
         builder.RegisterType<DownloadQueue>().As<IDownloadQueue>().SingleInstance();
         builder.RegisterType<DownloadTaskScheduler>().As<IDownloadTaskScheduler>().SingleInstance();
         builder.RegisterType<MoveDownloadFileJobScheduler>().As<IMoveDownloadFileScheduler>().SingleInstance();
@@ -53,5 +54,6 @@ public class ApplicationModule : Module
             .SingleInstance();
 
         builder.RegisterType<LibrarySyncProgressStore>().As<ILibrarySyncProgressStore>().SingleInstance();
+        builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
     }
 }

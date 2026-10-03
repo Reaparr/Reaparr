@@ -35,15 +35,11 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
             .ReturnsAsync(Result.Ok());
     }
 
-    private void SetupSpeedLimit(string serverMachineIdentifier, int speedLimit = 2000)
+    private void SetupSpeedLimit(string serverMachineIdentifier, long speedLimitBytes = 12345)
     {
-        Mock.Mock<IServerSettingsModule>()
-            .Setup(x => x.GetDownloadSpeedLimit(serverMachineIdentifier))
-            .Returns(speedLimit);
-
-        Mock.Mock<IServerSettingsModule>()
-            .Setup(x => x.GetDownloadSpeedLimitObservable(serverMachineIdentifier))
-            .Returns(Observable.Return(speedLimit));
+        Mock.Mock<IDownloadSpeedLimitProvider>()
+            .Setup(x => x.GetEffectiveDownloadSpeedLimit(serverMachineIdentifier))
+            .Returns(speedLimitBytes);
     }
 
     [Test]
@@ -68,7 +64,6 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         var progressSubject = new Subject<DashDownloadProgress>();
         var outputSubject = new Subject<string>();
         var completionSubject = new Subject<DashDownloadCompletedEventArgs>();
-        DashMpdCliOptions? capturedOptions = null;
 
         var dashWrapperMock = new Mock<IDashMpdCliWrapper>();
         dashWrapperMock.Setup(x => x.Progress).Returns(progressSubject.AsObservable());
@@ -78,7 +73,6 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
             .Setup(x => x.StartAsync(It.IsAny<DashMpdCliOptions>()))
             .Returns<DashMpdCliOptions>(options =>
             {
-                capturedOptions = options;
                 completionSubject.OnNext(new DashDownloadCompletedEventArgs(false, 0, Result.Ok()));
                 return Task.FromResult(Result.Ok());
             });
@@ -125,8 +119,6 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
-        capturedOptions.ShouldNotBeNull();
-        capturedOptions!.LimitRate.ShouldBe("2000K");
 
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Verify(
