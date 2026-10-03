@@ -29,6 +29,8 @@ public record InsertMediaMetaDataCommandResponse
 
     public int PlexLibraryId => PlexLibrary.Id;
 
+    public int PhotoClipCount { get; set; }
+
     /// <summary>
     /// The string key is the hashkey of the actor name for this <see cref="PlexLibrary"/>
     /// </summary>

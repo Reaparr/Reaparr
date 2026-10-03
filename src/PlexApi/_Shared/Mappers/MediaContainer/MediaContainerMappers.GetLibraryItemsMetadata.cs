@@ -10,7 +10,7 @@ public static class MediaContainerMappers
         {
             RatingKey = int.TryParse(data.RatingKey!, out var ratingKey) ? ratingKey : -1,
             Key = data.Key,
-            Type = data.Type.ToPlexMediaType(),
+            Type = data.Type == "clip" ? PlexMediaType.OtherVideos : data.Type.ToPlexMediaType(),
             Title = data.Title,
             Summary = data.Summary ?? string.Empty,
             Year = data.Year ?? 0,
@@ -19,7 +19,9 @@ public static class MediaContainerMappers
             SearchTitle = data.Title.ToSearchTitle(),
             OriginalTitle = data.OriginalTitle ?? string.Empty,
             ChildCount = data.ChildCount ?? 0,
-            Media = data.Media?.Select(x => x.ToItemMediaDTO()).ToList() ?? [],
+            Media = data.Media?.Select(x => x.ToItemMediaDTO(
+                data.Type is "movie" or "episode" && data.Subtype != "photo"
+            )).ToList() ?? [],
             Genre = data.Genre?.Select(x => x.ToGenreDTO()).ToList() ?? [],
             Country = data.Country?.Select(x => x.ToCountryDTO()).ToList() ?? [],
             Role = data.Role?.Select(x => x.ToRoleDTO()).ToList() ?? [],
@@ -32,9 +34,9 @@ public static class MediaContainerMappers
             Thumb = data.Thumb!,
             Art = data.Art!,
             Theme = data.Theme!,
-            Guid = data.Guid!,
+            Guid = data.Guid ?? string.Empty,
             AddedAt = DateTimeExtensions.FromUnixTime(data.AddedAt),
-            UpdatedAt = DateTimeExtensions.FromUnixTime(data.UpdatedAt ?? 0),
+            UpdatedAt = data.UpdatedAt is { } updatedAt ? DateTimeExtensions.FromUnixTime(updatedAt) : null,
             OriginallyAvailableAt = data.OriginallyAvailableAt?.ToString() ?? string.Empty,
             Ratings = [],
             Guids = data.Guids?.Select(x => new MetaDataGuidsDTO(x.Id)).ToList() ?? [],
@@ -76,7 +78,7 @@ public static class MediaContainerMappers
             Key = x.TagValue.ToMd5Hash(),
         };
 
-    public static LibraryMediaItemMediaDTO ToItemMediaDTO(this Media media) =>
+    public static LibraryMediaItemMediaDTO ToItemMediaDTO(this Media media, bool inferVideoQuality = true) =>
         new()
         {
             Id = Convert.ToInt32(media.Id),
@@ -88,9 +90,10 @@ public static class MediaContainerMappers
             AudioChannels = media.AudioChannels ?? 0,
             AudioCodec = media.AudioCodec ?? string.Empty,
             VideoCodec = media.VideoCodec ?? string.Empty,
-            VideoResolution = (
-                media.VideoResolution ?? media.Part?.FirstOrDefault()?.File.ParseQualityFromFileName() ?? string.Empty
-            ).ToVideoQuality(),
+            VideoResolution = inferVideoQuality
+                ? (media.VideoResolution ?? media.Part?.FirstOrDefault()?.File.ParseQualityFromFileName()
+                    ?? string.Empty).ToVideoQuality()
+                : VideoQuality.Unknown,
             Container = media.Container ?? string.Empty,
             VideoFrameRate = media.VideoFrameRate ?? string.Empty,
             VideoProfile = media.VideoProfile ?? string.Empty,

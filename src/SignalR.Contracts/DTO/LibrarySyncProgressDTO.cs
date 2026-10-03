@@ -10,9 +10,9 @@ public record LibrarySyncProgressDTO
 
     public int Received => Items.Sum(i => i.Received);
 
-    public int Total => Items.Sum(i => i.Total);
+    public int Total => Items.Sum(i => Math.Max(i.Total, 0));
 
-    public decimal Percentage => DataFormat.GetPercentage(Received, Total);
+    public decimal Percentage => IsComplete ? 100 : Total == 0 ? 0 : DataFormat.GetPercentage(Received, Total);
 
     public DateTime TimeStamp { get; } = DateTime.UtcNow;
 
@@ -35,7 +35,8 @@ public record LibrarySyncProgressItemDTO
 
     public required TimeSpan TimeRemaining { get; init; }
 
-    public decimal Percentage => DataFormat.GetPercentage(Received, Total);
+    public decimal Percentage =>
+        Total < 0 ? 0 : Total == 0 ? 100 : Math.Min(Math.Max(DataFormat.GetPercentage(Received, Total), 0), 100);
 
-    public bool IsComplete => Total > 0 && Received >= Total;
+    public bool IsComplete => Total >= 0 && Received >= Total;
 }

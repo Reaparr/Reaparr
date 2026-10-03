@@ -29,7 +29,7 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
                 {
                     MediaType = PlexMediaType.Movie,
                     Received = 0,
-                    Total = 0,
+                    Total = -1,
                     TimeRemaining = TimeSpan.Zero,
                 },
             ];
@@ -42,21 +42,21 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
                 {
                     MediaType = PlexMediaType.TvShow,
                     Received = 0,
-                    Total = 0,
+                    Total = -1,
                     TimeRemaining = TimeSpan.Zero,
                 },
                 new LibraryProgressItem
                 {
                     MediaType = PlexMediaType.Season,
                     Received = 0,
-                    Total = 0,
+                    Total = -1,
                     TimeRemaining = TimeSpan.Zero,
                 },
                 new LibraryProgressItem
                 {
                     MediaType = PlexMediaType.Episode,
                     Received = 0,
-                    Total = 0,
+                    Total = -1,
                     TimeRemaining = TimeSpan.Zero,
                 },
             ];
