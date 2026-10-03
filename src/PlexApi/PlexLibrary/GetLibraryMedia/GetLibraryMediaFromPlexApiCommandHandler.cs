@@ -32,26 +32,40 @@ public class GetLibraryMediaFromPlexApiCommandHandler
 
         var result = await Result.Try(async Task<Result<LibraryMetadata>> () =>
         {
-            await _librarySyncProgressStore.StartAsync(plexLibrary.Id, plexLibrary.Type, ct);
+            var library = plexLibrary;
+            if (command.MediaType is null)
+            {
+                await _librarySyncProgressStore.StartAsync(plexLibrary.Id, plexLibrary.Type, ct);
 
-            // Retrieve an updated version of the PlexLibrary
-            var sectionsResult = await _commandExecutor.Send(
-                new GetLibrarySectionsCommand(plexLibrary.PlexServerId),
-                ct
-            );
-            if (sectionsResult.IsFailed)
-                return sectionsResult.ToResult();
+                // Retrieve an updated version of the PlexLibrary
+                var sectionsResult = await _commandExecutor.Send(
+                    new GetLibrarySectionsCommand(plexLibrary.PlexServerId),
+                    ct
+                );
+                if (sectionsResult.IsFailed)
+                    return sectionsResult.ToResult();
 
-            var library = sectionsResult.Value.Find(x => x.Key == plexLibrary.Key);
-            if (library is null)
-                return ResultExtensions.EntityNotFound(nameof(PlexLibrary), plexLibrary.Id);
+                library = sectionsResult.Value.Find(x => x.Key == plexLibrary.Key);
+                if (library is null)
+                    return ResultExtensions.EntityNotFound(nameof(PlexLibrary), plexLibrary.Id);
 
-            library.Id = plexLibrary.Id;
-            library.PlexServerId = plexLibrary.PlexServerId;
-            library.DefaultDestinationId = library.Type.ToDefaultDestinationFolderId();
+                library.Id = plexLibrary.Id;
+                library.PlexServerId = plexLibrary.PlexServerId;
+                library.DefaultDestinationId = library.Type.ToDefaultDestinationFolderId();
+            }
 
+            var mediaType =
+                command.MediaType
+                ?? (
+                    library.Type switch
+                    {
+                        PlexMediaType.Music => PlexMediaType.Artist,
+                        PlexMediaType.Photos => PlexMediaType.PhotoAlbum,
+                        _ => library.Type,
+                    }
+                );
             var mediaResult = await _commandExecutor.Send(
-                new GetAllMediaByTypeFromPlexApiCommand(library, library.Type),
+                new GetAllMediaByTypeFromPlexApiCommand(library, mediaType),
                 ct
             );
             if (mediaResult.IsFailed)
@@ -60,11 +74,16 @@ public class GetLibraryMediaFromPlexApiCommandHandler
             // Pre-sort the media list
             var media = mediaResult.Value.OrderByNatural(x => x.SortTitle).ToList();
 
-            // Set Sort index based on OrderByNatural(x => x.TitleSort)
-            for (var i = 0; i < media.Count; i++)
-                media[i].SortIndex = i + 1;
+            // Set Sort index based on OrderByNatural(x => x.SortTitle), per parent for descendants
+            var sortIndices = new Dictionary<string, int>();
+            foreach (var item in media)
+            {
+                var parentKey = command.MediaType is null ? string.Empty : item.ParentRatingKey;
+                sortIndices.TryGetValue(parentKey, out var index);
+                item.SortIndex = sortIndices[parentKey] = index + 1;
+            }
 
-            switch (library.Type)
+            switch (mediaType)
             {
                 case PlexMediaType.Movie:
                     library.Movies.AddRange(media.ToPlexMovies());
@@ -73,9 +92,9 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                     library.TvShows.AddRange(media.ToPlexTvShows());
                     break;
                 case PlexMediaType.Music:
-                    library.Artists.AddRange(media.Select(x => x.ToPlexMusicArtist(library)));
+                    library.Music.AddRange(media.Select(x => x.ToPlexMusicArtist(library)));
                     break;
-                case PlexMediaType.Photos:
+                case PlexMediaType.PhotoAlbum:
                     library.PhotoAlbums.AddRange(media.Select(x => x.ToPlexPhotoAlbum(library)));
                     break;
                 case PlexMediaType.OtherVideos:
@@ -86,16 +105,20 @@ public class GetLibraryMediaFromPlexApiCommandHandler
             return Result.Ok(
                 new LibraryMetadata(library)
                 {
-                    Countries = media.SelectMany(x => x.Country).ToList(),
-                    Genres = media.SelectMany(x => x.Genre).ToList(),
-                    Actors = media.SelectMany(x => x.Role).ToList(),
+                    Countries = media.SelectMany(x => x.Country).ToPlexCountry(),
+                    Genres = media.SelectMany(x => x.Genre).ToPlexGenre(),
+                    Actors = media.SelectMany(x => x.Role).ToPlexActor(),
+                    PhotoClipCount =
+                        mediaType == PlexMediaType.Photos
+                            ? media.Count(x => x.Type is PlexMediaType.OtherVideos or PlexMediaType.Movie)
+                            : 0,
                 }
             );
         });
 
         result.LogIfFailed();
 
-        if (result.IsFailed)
+        if (result.IsFailed && command.MediaType is null)
             await _librarySyncProgressStore.UpdateErrorAsync(plexLibrary.Id, result.ToResult(), ct);
 
         return result;

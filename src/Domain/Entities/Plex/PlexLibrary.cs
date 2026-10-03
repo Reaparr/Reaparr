@@ -190,7 +190,7 @@ public class PlexLibrary : BaseEntity
 
     public ICollection<PlexTvShow> TvShows { get; private set; } = [];
 
-    public ICollection<PlexMusicArtist> Artists { get; private set; } = [];
+    public ICollection<PlexMusicArtist> Music { get; private set; } = [];
 
     public ICollection<PlexMusicAlbum> Albums { get; private set; } = [];
 

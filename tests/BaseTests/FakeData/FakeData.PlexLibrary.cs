@@ -45,7 +45,7 @@ public static partial class FakeData
             .Ignore(x => x.CountriesCount)
             .Ignore(x => x.Movies)
             .Ignore(x => x.TvShows)
-            .Ignore(x => x.Artists)
+            .Ignore(x => x.Music)
             .Ignore(x => x.Albums)
             .Ignore(x => x.Tracks)
             .Ignore(x => x.PhotoAlbums)

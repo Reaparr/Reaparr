@@ -10,7 +10,7 @@ public class PlexMusicArtistConfiguration : IEntityTypeConfiguration<PlexMusicAr
         builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
         builder
             .HasOne(x => x.PlexLibrary)
-            .WithMany(x => x.Artists)
+            .WithMany(x => x.Music)
             .HasForeignKey(x => x.PlexLibraryId)
             .OnDelete(DeleteBehavior.Cascade);
         builder

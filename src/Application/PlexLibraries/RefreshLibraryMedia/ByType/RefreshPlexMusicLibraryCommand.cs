@@ -107,8 +107,8 @@ public class RefreshPlexMusicLibraryCommandHandler
             new LibraryProgressItem
             {
                 MediaType = PlexMediaType.Artist,
-                Received = plexLibrary.Artists.Count,
-                Total = plexLibrary.Artists.Count,
+                Received = plexLibrary.Music.Count,
+                Total = plexLibrary.Music.Count,
                 TimeRemaining = TimeSpan.Zero,
             },
             cancellationToken
@@ -162,7 +162,7 @@ public class RefreshPlexMusicLibraryCommandHandler
             .GroupBy(x => x.PlexAlbum!.PlexApiRatingKey)
             .ToDictionary(x => x.Key, x => x.ToList());
 
-        foreach (var artist in library.Artists)
+        foreach (var artist in library.Music)
         {
             artist.Albums.Clear();
             if (albumsByArtist.TryGetValue(artist.PlexApiRatingKey, out var artistAlbums))
