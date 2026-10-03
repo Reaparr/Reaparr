@@ -1,3 +1,5 @@
+using Reaparr.PlexApi.Contracts;
+
 namespace Reaparr.PlexApi.UnitTests;
 
 public class MediaFileNameExtensionsUnitTests : BaseUnitTest
