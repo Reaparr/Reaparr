@@ -16,6 +16,7 @@ public sealed class DownloadSpeedLimitProvider : IDownloadSpeedLimitProvider
         _userSettings = userSettings;
     }
 
+    /// <inheritdoc />
     public void SetScheduledDownloadSpeedLimits(IReadOnlyDictionary<string, long> limits)
     {
         foreach (var limit in limits.Values)
@@ -24,9 +25,11 @@ public sealed class DownloadSpeedLimitProvider : IDownloadSpeedLimitProvider
         _scheduledLimits.OnNext(new Dictionary<string, long>(limits, StringComparer.Ordinal));
     }
 
+    /// <inheritdoc />
     public long GetEffectiveDownloadSpeedLimit(string machineIdentifier) =>
         GetEffectiveLimit(machineIdentifier, _scheduledLimits.Value);
 
+    /// <inheritdoc />
     public IObservable<long> GetEffectiveDownloadSpeedLimitObservable(string machineIdentifier) =>
         _userSettings
             .ServerSettings.HasChanged.CombineLatest(
@@ -49,5 +52,6 @@ public sealed class DownloadSpeedLimitProvider : IDownloadSpeedLimitProvider
         return manualBytes == 0 ? scheduledBytes : Math.Min(manualBytes, scheduledBytes);
     }
 
+    /// <inheritdoc />
     public void Dispose() => _scheduledLimits.Dispose();
 }

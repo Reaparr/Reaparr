@@ -23,7 +23,7 @@ public class ConfigManagerSaveConfigUnitTests : BaseUnitTest<ConfigManager>
                     Enabled = true,
                     Days = new()
                     {
-                        ["monday"] = new() { ["09:30"] = 123, ["17:00"] = null },
+                        ["Monday"] = new() { ["09:30"] = 123, ["17:00"] = null },
                     },
                 },
             },
@@ -48,9 +48,9 @@ public class ConfigManagerSaveConfigUnitTests : BaseUnitTest<ConfigManager>
         var saved = observed[0];
         saved.DateTimeSettings.TimeZone.ShouldBe("Asia/Kathmandu");
         saved.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
-        saved.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["monday"]);
+        saved.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["Monday"]);
         saved
-            .DownloadManagerSettings.DownloadSchedule.Days["monday"]
+            .DownloadManagerSettings.DownloadSchedule.Days["Monday"]
             .ShouldBe(new Dictionary<string, int?> { ["09:30"] = 123, ["17:00"] = null }, ignoreOrder: true);
         saved.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
     }

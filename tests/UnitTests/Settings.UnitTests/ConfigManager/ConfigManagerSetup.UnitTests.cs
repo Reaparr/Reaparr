@@ -18,7 +18,7 @@ public class ConfigManagerSetupUnitTests : BaseUnitTest<ConfigManager>
         persisted.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["monday"] = new() { ["09:30"] = 123 } },
+            Days = new() { ["Monday"] = new() { ["09:30"] = 123 } },
         };
         persisted.ServerSettings.SetDownloadSpeedLimit("retained", 200);
         SetupDependencies(builder => builder.RegisterInstance(settings).As<IUserSettings>());
@@ -35,9 +35,9 @@ public class ConfigManagerSetupUnitTests : BaseUnitTest<ConfigManager>
         result.IsSuccess.ShouldBeTrue();
         settings.DateTimeSettings.TimeZone.ShouldBe("Asia/Kathmandu");
         settings.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
-        settings.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["monday"]);
+        settings.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["Monday"]);
         settings
-            .DownloadManagerSettings.DownloadSchedule.Days["monday"]
+            .DownloadManagerSettings.DownloadSchedule.Days["Monday"]
             .ShouldBe(new Dictionary<string, int?> { ["09:30"] = 123 }, ignoreOrder: true);
         settings.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
         file.ReadAllText(paths.ConfigFileLocation).ShouldBe(json);
@@ -53,7 +53,7 @@ public class ConfigManagerSetupUnitTests : BaseUnitTest<ConfigManager>
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["sunday"] = new() { ["23:30"] = 321 } },
+            Days = new() { ["Sunday"] = new() { ["23:30"] = 321 } },
         };
         settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
         SetupDependencies(builder => builder.RegisterInstance(settings).As<IUserSettings>());
@@ -68,9 +68,9 @@ public class ConfigManagerSetupUnitTests : BaseUnitTest<ConfigManager>
         var saved = UserSettingsSerializer.Deserialize(file.ReadAllText(path));
         saved.DateTimeSettings.TimeZone.ShouldBe("America/New_York");
         saved.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
-        saved.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["sunday"]);
+        saved.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["Sunday"]);
         saved
-            .DownloadManagerSettings.DownloadSchedule.Days["sunday"]
+            .DownloadManagerSettings.DownloadSchedule.Days["Sunday"]
             .ShouldBe(new Dictionary<string, int?> { ["23:30"] = 321 }, ignoreOrder: true);
         saved.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
     }
