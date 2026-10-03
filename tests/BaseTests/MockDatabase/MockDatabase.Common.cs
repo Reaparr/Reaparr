@@ -105,6 +105,27 @@ public static partial class MockDatabase
                         .Generate(Math.Max(1, config.PlexTvShowLibraryCount))
                 );
 
+            if (config.ShouldHaveMusicPlexLibrary)
+                plexLibraries.AddRange(
+                    FakeData
+                        .GetPlexLibrary(seed, PlexMediaType.Music)
+                        .Generate(Math.Max(1, config.PlexMusicLibraryCount))
+                );
+
+            if (config.ShouldHavePhotoPlexLibrary)
+                plexLibraries.AddRange(
+                    FakeData
+                        .GetPlexLibrary(seed, PlexMediaType.Photos)
+                        .Generate(Math.Max(1, config.PlexPhotoLibraryCount))
+                );
+
+            if (config.ShouldHaveOtherVideoPlexLibrary)
+                plexLibraries.AddRange(
+                    FakeData
+                        .GetPlexLibrary(seed, PlexMediaType.OtherVideos)
+                        .Generate(Math.Max(1, config.PlexOtherVideoLibraryCount))
+                );
+
             foreach (var plexLibrary in plexLibraries)
                 plexLibrary.PlexServerId = plexServer.Id;
 
@@ -495,6 +516,15 @@ public static partial class MockDatabase
         if (config.TvShowCount > 0)
             reaparrContext = await reaparrContext.AddPlexTvShows(seed, options);
 
+        if (config.MusicArtistCount > 0)
+            reaparrContext = await reaparrContext.AddPlexMusic(seed, options);
+
+        if (config.PhotoAlbumCount > 0)
+            reaparrContext = await reaparrContext.AddPlexPhotos(seed, options);
+
+        if (config.OtherVideoCount > 0)
+            reaparrContext = await reaparrContext.AddPlexOtherVideos(seed, options);
+
         if (config.MovieDownloadTasksCount > 0)
             reaparrContext = await reaparrContext.AddDownloadTaskMovies(seed, pathProvider, appRuntimeInfo, options);
 
@@ -608,5 +638,146 @@ public static partial class MockDatabase
         return context;
     }
 
+    private static async Task<ReaparrDbContext> AddPlexMusic(
+        this ReaparrDbContext context,
+        Seed seed,
+        Action<FakeDataConfig>? options
+    )
+    {
+        var config = FakeDataConfig.FromOptions(options);
+        var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.Music).ToListAsync();
+        foreach (var library in libraries)
+        {
+            var artists = FakeData.GetPlexMusicArtists(seed, options).Generate(config.MusicArtistCount);
+            var albumCount = 0;
+            var trackCount = 0;
+            var partCount = 0;
+            long mediaSize = 0;
+            foreach (var artist in artists)
+            {
+                artist.PlexServerId = library.PlexServerId;
+                artist.PlexLibraryId = library.Id;
+                foreach (var album in artist.Albums)
+                {
+                    album.PlexServerId = library.PlexServerId;
+                    album.PlexLibraryId = library.Id;
+                    albumCount++;
+                    foreach (var track in album.Tracks)
+                    {
+                        track.PlexServerId = library.PlexServerId;
+                        track.PlexLibraryId = library.Id;
+                        trackCount++;
+                        foreach (var original in track.MediaDataList)
+                        {
+                            original.PlexServerId = library.PlexServerId;
+                            original.PlexLibraryId = library.Id;
+                            partCount++;
+                            mediaSize += original.Size;
+                        }
+                    }
+                }
+            }
+
+            context.PlexArtists.AddRange(artists);
+            await context.SaveChangesAsync();
+            await context.SetMusicMediaMetrics(
+                library.Id,
+                artists.Count,
+                albumCount,
+                trackCount,
+                trackCount,
+                partCount,
+                mediaSize
+            );
+        }
+
+        return context;
+    }
+
+    private static async Task<ReaparrDbContext> AddPlexPhotos(
+        this ReaparrDbContext context,
+        Seed seed,
+        Action<FakeDataConfig>? options
+    )
+    {
+        var config = FakeDataConfig.FromOptions(options);
+        var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.Photos).ToListAsync();
+        foreach (var library in libraries)
+        {
+            var albums = FakeData.GetPlexPhotoAlbums(seed, options).Generate(config.PhotoAlbumCount);
+            var photoCount = 0;
+            var partCount = 0;
+            long mediaSize = 0;
+            foreach (var album in albums)
+            {
+                album.PlexServerId = library.PlexServerId;
+                album.PlexLibraryId = library.Id;
+                foreach (var photo in album.Photos)
+                {
+                    photo.PlexServerId = library.PlexServerId;
+                    photo.PlexLibraryId = library.Id;
+                    photoCount++;
+                    foreach (var original in photo.MediaDataList)
+                    {
+                        original.PlexServerId = library.PlexServerId;
+                        original.PlexLibraryId = library.Id;
+                        partCount++;
+                        mediaSize += original.Size;
+                    }
+                }
+            }
+
+            context.PlexPhotoAlbums.AddRange(albums);
+            await context.SaveChangesAsync();
+
+            // Photo clips share PlexPhoto storage; their separate count comes from the fixture configuration.
+            var clipCount = albums.Count * config.PhotoClipCount;
+            await context.SetPhotoMediaMetrics(
+                library.Id,
+                albums.Count,
+                photoCount - clipCount,
+                clipCount,
+                photoCount,
+                partCount,
+                mediaSize
+            );
+        }
+
+        return context;
+    }
+
+    private static async Task<ReaparrDbContext> AddPlexOtherVideos(
+        this ReaparrDbContext context,
+        Seed seed,
+        Action<FakeDataConfig>? options
+    )
+    {
+        var config = FakeDataConfig.FromOptions(options);
+        var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.OtherVideos).ToListAsync();
+        foreach (var library in libraries)
+        {
+            var videos = FakeData.GetPlexOtherVideos(seed, options).Generate(config.OtherVideoCount);
+            var partCount = 0;
+            long mediaSize = 0;
+            foreach (var video in videos)
+            {
+                video.PlexServerId = library.PlexServerId;
+                video.PlexLibraryId = library.Id;
+                foreach (var original in video.MediaDataList)
+                {
+                    original.PlexServerId = library.PlexServerId;
+                    original.PlexLibraryId = library.Id;
+                    partCount++;
+                    mediaSize += original.Size;
+                }
+            }
+
+            context.PlexOtherVideos.AddRange(videos);
+            await context.SaveChangesAsync();
+            await context.SetOtherVideoMediaMetrics(library.Id, videos.Count, videos.Count, partCount, mediaSize);
+        }
+
+        return context;
+    }
     #endregion
 }
