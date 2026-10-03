@@ -12,6 +12,7 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
     private readonly DownloadJobListener _downloadJobListener;
     private readonly LibrarySyncJobListener _librarySyncJobListener;
     private readonly SchedulerListener _schedulerListener;
+    private readonly IUserSettings _userSettings;
 
     public BackgroundJobsSetup(
         IScheduler scheduler,
@@ -19,7 +20,8 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
         AllJobListener allJobListener,
         DownloadJobListener downloadJobListener,
         LibrarySyncJobListener librarySyncJobListener,
-        SchedulerListener schedulerListener
+        SchedulerListener schedulerListener,
+        IUserSettings userSettings
     )
     {
         _scheduler = scheduler;
@@ -28,8 +30,10 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
         _downloadJobListener = downloadJobListener;
         _librarySyncJobListener = librarySyncJobListener;
         _schedulerListener = schedulerListener;
+        _userSettings = userSettings;
     }
 
+    /// <inheritdoc />
     public async Task<Result> SetupAsync(CancellationToken cancellationToken = default)
     {
         return await Result.Try(async Task () =>
@@ -39,6 +43,7 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
             if (_appRuntimeInfo.IsIntegrationTestMode)
             {
                 await _scheduler.Start(cancellationToken);
+                await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), cancellationToken);
                 return;
             }
 
@@ -71,6 +76,7 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
         await _scheduler.DeleteJob(RefreshPlexAccountAccessJob.GetJobKey(), cancellationToken);
         await _scheduler.DeleteJob(CheckForUpdateJob.GetJobKey(), cancellationToken);
         await _scheduler.DeleteJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken);
+        await _scheduler.DeleteJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), cancellationToken);
 
         {
             var jobKey = CheckAllConnectionsStatusByPlexServerJob.GetJobKey();
@@ -182,16 +188,28 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
 
             await _scheduler.ScheduleJob(job, trigger, cancellationToken);
         }
+        {
+            var jobKey = UpdateScheduledDownloadLimitsJob.GetJobKey();
+            var job = JobBuilder.Create<UpdateScheduledDownloadLimitsJob>().WithIdentity(jobKey).StoreDurably().Build();
+            await _scheduler.ScheduleJob(
+                job,
+                UpdateScheduledDownloadLimitsJob.CreateTrigger(_userSettings.DateTimeSettings.TimeZone),
+                cancellationToken
+            );
+        }
     }
 
     private async Task TriggerRecurringJobs(CancellationToken cancellationToken)
     {
+        await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(CheckAllConnectionsStatusByPlexServerJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(CheckPlexLibrariesForUpdatesJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(RefreshPlexAccountAccessJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(CheckForUpdateJob.GetJobKey(), cancellationToken);
         await _scheduler.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken);
     }
+
+    /// <inheritdoc />
     public async Task<Result> StopAsync(CancellationToken cancellationToken = default)
     {
         return await Result.Try(async Task () =>

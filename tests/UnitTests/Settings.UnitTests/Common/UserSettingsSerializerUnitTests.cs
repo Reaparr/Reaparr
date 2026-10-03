@@ -116,4 +116,52 @@ public class UserSettingsSerializerUnitTests : BaseUnitTest
         sut.ServerSettings.Data[2].MachineIdentifier.ShouldBe("f43caadf1346a7134e138ec89ed4e721c4033033");
         sut.ServerSettings.Data[2].DownloadSpeedLimit.ShouldBe(0);
     }
+
+    [Test]
+    public void ShouldKeepDailyChangePointsAndManualCaps_WhenSettingsAreReloaded()
+    {
+        // Arrange
+        var settings = new UserSettings();
+        settings.DateTimeSettings.TimeZone = "Asia/Kathmandu";
+        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        {
+            Enabled = true,
+            Days = new()
+            {
+                ["Monday"] = new() { ["09:00"] = 123, ["17:30"] = null },
+                ["Sunday"] = new() { ["23:30"] = int.MaxValue },
+            },
+        };
+        settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
+
+        // Act
+        var restored = UserSettingsSerializer.Deserialize(UserSettingsSerializer.Serialize(settings));
+
+        // Assert
+        restored.DateTimeSettings.TimeZone.ShouldBe("Asia/Kathmandu");
+        restored.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
+        var days = restored.DownloadManagerSettings.DownloadSchedule.Days;
+        days.Keys.ShouldBe(settings.DownloadManagerSettings.DownloadSchedule.Days.Keys, ignoreOrder: true);
+        foreach (var (day, points) in settings.DownloadManagerSettings.DownloadSchedule.Days)
+            days[day].ShouldBe(points, ignoreOrder: true);
+        restored.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
+    }
+
+    [Test]
+    public void ShouldKeepLegacyServerCapsWithoutIntroducingAWeeklyBudget_WhenScheduleDataIsAbsent()
+    {
+        // Arrange
+        var settings = new UserSettings();
+        settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
+        var document = System.Text.Json.Nodes.JsonNode.Parse(UserSettingsSerializer.Serialize(settings))!;
+        document["DownloadManagerSettings"]!.AsObject().Remove("DownloadSchedule");
+
+        // Act
+        var restored = UserSettingsSerializer.Deserialize(document.ToJsonString());
+
+        // Assert
+        restored.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeFalse();
+        restored.DownloadManagerSettings.DownloadSchedule.Days.ShouldBeEmpty();
+        restored.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
+    }
 }
