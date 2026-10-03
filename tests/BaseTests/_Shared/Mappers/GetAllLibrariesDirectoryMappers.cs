@@ -16,8 +16,21 @@ public static class LibrarySectionMappers
             Key = source.Key,
             Type = source.Type.ToMediaTypeString(),
             Title = source.Title,
-            Agent = string.Empty,
-            Scanner = string.Empty,
+            Agent = source.Type switch
+            {
+                PlexMediaType.Music => "tv.plex.agents.music",
+                PlexMediaType.Photos or PlexMediaType.OtherVideos => "com.plexapp.agents.none",
+                PlexMediaType.TvShow => "tv.plex.agents.series",
+                _ => "tv.plex.agents.movie",
+            },
+            Scanner = source.Type switch
+            {
+                PlexMediaType.Music => "Plex Music",
+                PlexMediaType.Photos => "Plex Photo Scanner",
+                PlexMediaType.OtherVideos => "Plex Video Files Scanner",
+                PlexMediaType.TvShow => "Plex TV Series",
+                _ => "Plex Movie",
+            },
             Language = source.Language,
             Uuid = source.Uuid,
             UpdatedAt = source.UpdatedAt.ToUnixLong(),
