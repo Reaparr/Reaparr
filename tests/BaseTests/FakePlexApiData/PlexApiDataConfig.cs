@@ -7,6 +7,11 @@ public class PlexApiDataConfig : BaseConfig<PlexApiDataConfig>
     public int MovieLibraryCount { get; set; } = 0;
 
     public int TvShowLibraryCount { get; set; } = 0;
+    public int MusicLibraryCount { get; set; } = 0;
+
+    public int PhotoLibraryCount { get; set; } = 0;
+
+    public int OtherVideoLibraryCount { get; set; } = 0;
 
     public int MoviesPerLibraryCount { get; set; } = 0;
 
@@ -15,6 +20,24 @@ public class PlexApiDataConfig : BaseConfig<PlexApiDataConfig>
     public int SeasonsPerTvShowCount { get; set; } = 0;
 
     public int EpisodesPerSeasonCount { get; set; } = 0;
+
+    public int ArtistsPerLibraryCount { get; set; } = 0;
+
+    public int AlbumsPerArtistCount { get; set; } = 0;
+
+    public int TracksPerAlbumCount { get; set; } = 0;
+
+    public int PhotoAlbumsPerLibraryCount { get; set; } = 0;
+
+    public int PhotosPerAlbumCount { get; set; } = 0;
+
+    public int PhotoClipsPerAlbumCount { get; set; } = 0;
+
+    public int OtherVideosPerLibraryCount { get; set; } = 0;
+
+    public PlexMediaType FailMediaType { get; set; } = PlexMediaType.None;
+
+    public PlexMediaType IncompleteMediaType { get; set; } = PlexMediaType.None;
 
     public int PlexServerAccessCount { get; set; } = 5;
 
@@ -25,6 +48,8 @@ public class PlexApiDataConfig : BaseConfig<PlexApiDataConfig>
     public int GenrePerMediaItemCount { get; set; } = 2;
 
     public int PlexServerAccessConnectionsCount { get; set; } = 5;
+
+    public HttpStatusCode SetLibrarySectionsResponse { get; set; } = HttpStatusCode.OK;
 
     public bool PlexServerAccessConnectionsIncludeHttps { get; set; } = false;
 
@@ -37,7 +62,17 @@ public class PlexApiDataConfig : BaseConfig<PlexApiDataConfig>
         {
             PlexMediaType.Movie => MovieLibraryCount,
             PlexMediaType.TvShow => TvShowLibraryCount,
-            _ => Math.Max(MovieLibraryCount, TvShowLibraryCount),
+            PlexMediaType.Music => MusicLibraryCount,
+            PlexMediaType.Photos => PhotoLibraryCount,
+            PlexMediaType.OtherVideos => OtherVideoLibraryCount,
+            _ => new[]
+            {
+                MovieLibraryCount,
+                TvShowLibraryCount,
+                MusicLibraryCount,
+                PhotoLibraryCount,
+                OtherVideoLibraryCount,
+            }.Max(),
         };
     }
 }
