@@ -20,4 +20,20 @@ public class PlexMediaTypeMappersToPlexApiMediaTypeUnitTests : BaseUnitTest
         // Act
         input.ToPlexApiMediaType().ShouldBe(expected);
     }
+
+    [Test]
+    [Arguments("1", PlexMediaType.Movie)]
+    [Arguments("2", PlexMediaType.TvShow)]
+    [Arguments("3", PlexMediaType.Season)]
+    [Arguments("4", PlexMediaType.Episode)]
+    [Arguments("8", PlexMediaType.Artist)]
+    [Arguments("9", PlexMediaType.Album)]
+    [Arguments("10", PlexMediaType.Song)]
+    [Arguments("13", PlexMediaType.Photos)]
+    [Arguments("14", PlexMediaType.PhotoAlbum)]
+    public void ShouldMapPlexMetadataTypeIdToDomainType(string input, PlexMediaType expected)
+    {
+        // Act
+        input.ToPlexMediaTypeFromTypeInt().ShouldBe(expected);
+    }
 }

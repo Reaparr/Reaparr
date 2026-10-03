@@ -50,8 +50,10 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
             return Result.Ok();
         }
 
+        var eligibleLibraryIds = libraries.Select(x => x.Id).ToHashSet();
+
         var existingQueues = await _dbContext
-            .LibrarySyncJobQueues.Where(x => command.PlexLibraryIds.Contains(x.PlexLibraryId))
+            .LibrarySyncJobQueues.Where(x => eligibleLibraryIds.Contains(x.PlexLibraryId))
             .ToListAsync(cancellationToken: cancellationToken);
 
         var syncBufferCutoff = DateTime.UtcNow.AddHours(-3);

@@ -24,11 +24,11 @@ public static class PlexMediaTypeMappers
             2 => PlexMediaType.TvShow,
             3 => PlexMediaType.Season,
             4 => PlexMediaType.Episode,
-            5 => PlexMediaType.Artist,
-            6 => PlexMediaType.Album,
-            7 => PlexMediaType.Song,
-            8 => PlexMediaType.PhotoAlbum,
-            9 => PlexMediaType.Photos,
+            8 => PlexMediaType.Artist,
+            9 => PlexMediaType.Album,
+            10 => PlexMediaType.Song,
+            13 => PlexMediaType.Photos,
+            14 => PlexMediaType.PhotoAlbum,
             _ => throw new ArgumentOutOfRangeException(nameof(apiType), $"Unknown media type value: {apiType}"),
         };
     }

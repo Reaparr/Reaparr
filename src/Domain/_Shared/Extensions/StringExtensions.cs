@@ -292,4 +292,12 @@ public static partial class StringExtensions
 
         static char GetHexChar(int val) => (char)(val < 10 ? '0' + val : 'a' + (val - 10));
     }
+
+    public static DateTime? ToDateTime(this string source)
+    {
+        if (DateTime.TryParse(source, out var dateTimeResult))
+            return dateTimeResult;
+
+        return null;
+    }
 }

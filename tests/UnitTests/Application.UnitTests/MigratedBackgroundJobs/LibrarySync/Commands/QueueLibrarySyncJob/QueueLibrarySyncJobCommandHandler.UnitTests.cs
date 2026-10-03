@@ -1202,17 +1202,38 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         await dbContext.PlexLibraries.AddRangeAsync(unsupportedLibraries, CancellationToken);
         await dbContext.SaveChangesAsync(CancellationToken);
 
+        var unsupportedQueue = new LibrarySyncJobQueue
+        {
+            PlexServerId = serverId,
+            PlexLibraryId = unsupportedLibraries[^1].Id,
+            Priority = 9,
+            Status = LibrarySyncJobStatus.Completed,
+            CreatedAt = DateTime.UtcNow.AddDays(-2),
+            CompletedAt = DateTime.UtcNow.AddDays(-1),
+            ForceMediaRefresh = false,
+        };
+        await dbContext.LibrarySyncJobQueues.AddAsync(unsupportedQueue, CancellationToken);
+        await dbContext.SaveChangesAsync(CancellationToken);
+
         // Act
         var result = await Sut.ExecuteAsync(
-            new QueueLibrarySyncJobCommand(unsupportedLibraries.Select(x => x.Id).ToList()),
+            new QueueLibrarySyncJobCommand(
+                unsupportedLibraries.Select(x => x.Id).ToList(),
+                ForceLibrarySync: true,
+                ForceMediaRefresh: true
+            ),
             CancellationToken
         );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        var queueItems = await dbContext.LibrarySyncJobQueues.AsNoTracking().ToListAsync(CancellationToken);
-        queueItems.ShouldBeEmpty();
+        var queueItem = await dbContext.LibrarySyncJobQueues.AsNoTracking().SingleAsync(CancellationToken);
+        queueItem.PlexLibraryId.ShouldBe(unsupportedLibraries[^1].Id);
+        queueItem.Priority.ShouldBe(9);
+        queueItem.Status.ShouldBe(LibrarySyncJobStatus.Completed);
+        queueItem.CompletedAt.ShouldNotBeNull();
+        queueItem.ForceMediaRefresh.ShouldBeFalse();
         Mock.Mock<ICommandExecutor>()
             .Verify(
                 x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()),
