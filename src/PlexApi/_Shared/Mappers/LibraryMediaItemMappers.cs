@@ -1,4 +1,4 @@
-namespace Reaparr.Domain;
+namespace Reaparr.PlexApi;
 
 public static class LibraryMediaItemMappers
 {
@@ -15,7 +15,12 @@ public static class LibraryMediaItemMappers
         source?.Select(x => x.ToPlexCountry()).ToList() ?? [];
 
     public static PlexGenre ToPlexGenre(this LibraryMediaItemGenreDTO source) =>
-        new() { Name = source.Name, Key = source.Key, Type = source.Name.ToPlexGenreType() };
+        new()
+        {
+            Name = source.Name,
+            Key = source.Key,
+            Type = source.Name.ToPlexGenreType(),
+        };
 
     public static List<PlexGenre> ToPlexGenre(this IEnumerable<LibraryMediaItemGenreDTO>? source) =>
         source?.Select(x => x.ToPlexGenre()).ToList() ?? [];
