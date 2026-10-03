@@ -58,6 +58,7 @@ public partial class FakePlexApiData
             .RuleFor(x => x.Roles, _ => [""])
             .RuleFor(x => x.ExperimentalFeatures, f => f.Random.Bool())
             .RuleFor(x => x.TwoFactorEnabled, f => f.Random.Bool())
+            .Ignore(x => x.AdditionalProperties)
             .RuleFor(x => x.BackupCodesCreated, f => f.Random.Bool());
     }
 

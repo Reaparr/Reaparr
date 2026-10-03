@@ -32,7 +32,10 @@ public static partial class PlexMediaDataMapper
             Type = PlexMediaType.Artist,
             PlexLibraryId = library.Id,
             PlexServerId = library.PlexServerId,
-            MusicBrainzArtistId = source.Guid.StartsWith("mbid://", StringComparison.Ordinal)
-                && System.Guid.TryParse(source.Guid.AsSpan(7), out var mbid) ? mbid.ToString() : null,
+            MusicBrainzArtistId =
+                source.Guid.StartsWith("mbid://", StringComparison.Ordinal)
+                && System.Guid.TryParse(source.Guid.AsSpan(7), out var mbid)
+                    ? mbid.ToString()
+                    : null,
         };
 }

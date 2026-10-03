@@ -6,6 +6,7 @@ public static partial class FakeData
         .StrictMode(true)
         .RuleFor(x => x.Id, _ => 0)
         .RuleFor(x => x.Name, f => f.Name.FullName())
+        .RuleFor(x => x.Key, f => f.Random.Hash(24))
         .RuleFor(x => x.Type, _ => PlexGenreType.Unknown)
         .Ignore(x => x.PlexLibraries)
         .Ignore(x => x.PlexMovieGenres)

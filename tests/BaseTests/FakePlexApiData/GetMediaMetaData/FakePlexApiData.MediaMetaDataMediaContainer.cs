@@ -127,6 +127,8 @@ public partial class FakePlexApiData
         )
         .RuleFor(l => l.Has64bitOffsets, f => f.Random.Bool())
         .RuleFor(l => l.Part, _ => []) // Generated in FinishWith
+        .Ignore(x => x.Selected)
+        .Ignore(x => x.Uuid)
         .Ignore(x => x.AdditionalProperties);
 
     private static readonly Faker<Part> _getMediaMetaDataPartFaker = new Faker<Part>()
@@ -145,6 +147,12 @@ public partial class FakePlexApiData
         .RuleFor(l => l.Indexes, _ => "sd")
         .RuleFor(l => l.VideoProfile, _ => "high")
         .RuleFor(l => l.Stream, _ => [])
+        .Ignore(x => x.DeepAnalysisVersion)
+        .Ignore(x => x.PacketLength)
+        .Ignore(x => x.Protocol)
+        .Ignore(x => x.RequiredBandwidths)
+        .Ignore(x => x.SyncItemId)
+        .Ignore(x => x.SyncState)
         .Ignore(x => x.AdditionalProperties);
 
     private static readonly Faker<Stream> _getMediaMetaDataStreamFaker = new Faker<Stream>()
@@ -201,5 +209,25 @@ public partial class FakePlexApiData
         .RuleFor(x => x.Dub, f => f.Random.Bool())
         .RuleFor(x => x.Title, f => f.Lorem.Word())
         .Ignore(x => x.StreamIdentifier)
+        .Ignore(x => x.AlbumGain)
+        .Ignore(x => x.AlbumPeak)
+        .Ignore(x => x.AlbumRange)
+        .Ignore(x => x.BitrateMode)
+        .Ignore(x => x.EndRamp)
+        .Ignore(x => x.Gain)
+        .Ignore(x => x.Loudness)
+        .Ignore(x => x.Lra)
+        .Ignore(x => x.MinLines)
+        .Ignore(x => x.Peak)
+        .Ignore(x => x.PerfectMatch)
+        .Ignore(x => x.Provider)
+        .Ignore(x => x.ProviderTitle)
+        .Ignore(x => x.Score)
+        .Ignore(x => x.SourceKey)
+        .Ignore(x => x.StartRamp)
+        .Ignore(x => x.Timed)
+        .Ignore(x => x.Transient)
+        .Ignore(x => x.UserID)
+        .Ignore(x => x.VisualImpaired)
         .Ignore(x => x.AdditionalProperties);
 }

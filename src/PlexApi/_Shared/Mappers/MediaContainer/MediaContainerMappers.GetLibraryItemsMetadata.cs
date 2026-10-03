@@ -99,7 +99,7 @@ public static class MediaContainerMappers
             VideoProfile = media.VideoProfile ?? string.Empty,
             AudioProfile = media.AudioProfile ?? string.Empty,
             Parts = media.Part?.Select(x => x.ToItemPartDTO()).ToList() ?? [],
-            OptimizedForStreaming = media.OptimizedForStreaming ?? false,
+            OptimizedForStreaming = media.OptimizedForStreaming == OptimizedForStreaming.One,
         };
 
     public static LibraryMediaItemPartDTO ToItemPartDTO(this Part part) =>

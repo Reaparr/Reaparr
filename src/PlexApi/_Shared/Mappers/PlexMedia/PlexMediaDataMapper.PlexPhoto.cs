@@ -2,11 +2,7 @@ namespace Reaparr.PlexApi;
 
 public static partial class PlexMediaDataMapper
 {
-    public static PlexPhoto ToPlexPhoto(
-        this LibraryMediaItemDTO source,
-        PlexPhotoAlbum album,
-        PlexLibrary library
-    )
+    public static PlexPhoto ToPlexPhoto(this LibraryMediaItemDTO source, PlexPhotoAlbum album, PlexLibrary library)
     {
         var photo = new PlexPhoto
         {
@@ -45,31 +41,35 @@ public static partial class PlexMediaDataMapper
         {
             foreach (var part in media.Parts)
             {
-                photo.MediaDataList.Add(new PlexPhotoMediaData
-                {
-                    PlexApiRatingKey = source.RatingKey,
-                    PlexApiMediaId = media.Id,
-                    PlexApiPartId = part.Id,
-                    PlexPhotoId = 0,
-                    PlexPhoto = photo,
-                    PlexLibraryId = library.Id,
-                    PlexServerId = library.PlexServerId,
-                    VideoResolution = VideoQuality.Unknown,
-                    Quality = VideoQuality.Unknown,
-                    Container = part.Container,
-                    VideoCodec = media.VideoCodec,
-                    AudioCodec = media.AudioCodec,
-                    Duration = part.Duration >= 0 ? part.Duration
-                        : media.Parts.Count == 1 && media.Duration > 0 ? media.Duration : -1,
-                    Size = part.Size,
-                    Key = part.Key,
-                    OriginalFilename = part.File.GetFileName(),
-                    Width = media.Width > 0 ? media.Width : null,
-                    Height = media.Height > 0 ? media.Height : null,
-                    Source = ReleaseSource.None,
-                    NeedsGeneratedName = false,
-                    GeneratedFilename = null,
-                });
+                photo.MediaDataList.Add(
+                    new PlexPhotoMediaData
+                    {
+                        PlexApiRatingKey = source.RatingKey,
+                        PlexApiMediaId = media.Id,
+                        PlexApiPartId = part.Id,
+                        PlexPhotoId = 0,
+                        PlexPhoto = photo,
+                        PlexLibraryId = library.Id,
+                        PlexServerId = library.PlexServerId,
+                        VideoResolution = VideoQuality.Unknown,
+                        Quality = VideoQuality.Unknown,
+                        Container = part.Container,
+                        VideoCodec = media.VideoCodec,
+                        AudioCodec = media.AudioCodec,
+                        Duration =
+                            part.Duration >= 0 ? part.Duration
+                            : media.Parts.Count == 1 && media.Duration > 0 ? media.Duration
+                            : -1,
+                        Size = part.Size,
+                        Key = part.Key,
+                        OriginalFilename = part.File.GetFileName(),
+                        Width = media.Width > 0 ? media.Width : null,
+                        Height = media.Height > 0 ? media.Height : null,
+                        Source = ReleaseSource.None,
+                        NeedsGeneratedName = false,
+                        GeneratedFilename = null,
+                    }
+                );
             }
         }
 

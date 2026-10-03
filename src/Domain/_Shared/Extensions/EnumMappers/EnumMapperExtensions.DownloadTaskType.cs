@@ -15,6 +15,17 @@ public static partial class EnumMapperExtensions
         ["Episode"] = DownloadTaskType.Episode,
         ["EpisodeData"] = DownloadTaskType.EpisodeData,
         ["EpisodePart"] = DownloadTaskType.EpisodePart,
+        ["Artist"] = DownloadTaskType.Artist,
+        ["Album"] = DownloadTaskType.Album,
+        ["Track"] = DownloadTaskType.Track,
+        ["TrackData"] = DownloadTaskType.TrackData,
+        ["TrackPart"] = DownloadTaskType.TrackPart,
+        ["Photo"] = DownloadTaskType.Photo,
+        ["PhotoData"] = DownloadTaskType.PhotoData,
+        ["PhotoPart"] = DownloadTaskType.PhotoPart,
+        ["OtherVideo"] = DownloadTaskType.OtherVideo,
+        ["OtherVideoData"] = DownloadTaskType.OtherVideoData,
+        ["OtherVideoPart"] = DownloadTaskType.OtherVideoPart,
     };
 
     /// <summary>
@@ -56,6 +67,17 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.Episode => "Episode",
             DownloadTaskType.EpisodeData => "EpisodeData",
             DownloadTaskType.EpisodePart => "EpisodePart",
+            DownloadTaskType.Artist => "Artist",
+            DownloadTaskType.Album => "Album",
+            DownloadTaskType.Track => "Track",
+            DownloadTaskType.TrackData => "TrackData",
+            DownloadTaskType.TrackPart => "TrackPart",
+            DownloadTaskType.Photo => "Photo",
+            DownloadTaskType.PhotoData => "PhotoData",
+            DownloadTaskType.PhotoPart => "PhotoPart",
+            DownloadTaskType.OtherVideo => "OtherVideo",
+            DownloadTaskType.OtherVideoData => "OtherVideoData",
+            DownloadTaskType.OtherVideoPart => "OtherVideoPart",
             _ => DefaultException(),
         };
 
@@ -78,11 +100,23 @@ public static partial class EnumMapperExtensions
             or DownloadTaskType.TvShow
             or DownloadTaskType.Season
             or DownloadTaskType.Episode
+            or DownloadTaskType.Artist
+            or DownloadTaskType.Album
+            or DownloadTaskType.Track
+            or DownloadTaskType.Photo
+            or DownloadTaskType.OtherVideo
             or DownloadTaskType.None => false,
+
             DownloadTaskType.MovieData
             or DownloadTaskType.MoviePart
             or DownloadTaskType.EpisodeData
-            or DownloadTaskType.EpisodePart => true,
+            or DownloadTaskType.EpisodePart
+            or DownloadTaskType.TrackData
+            or DownloadTaskType.TrackPart
+            or DownloadTaskType.PhotoData
+            or DownloadTaskType.PhotoPart
+            or DownloadTaskType.OtherVideoData
+            or DownloadTaskType.OtherVideoPart => true,
             var _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };
 
@@ -95,6 +129,12 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.Season => PlexMediaType.Season,
             DownloadTaskType.Episode or DownloadTaskType.EpisodeData or DownloadTaskType.EpisodePart =>
                 PlexMediaType.Episode,
+            DownloadTaskType.Artist => PlexMediaType.Artist,
+            DownloadTaskType.Album => PlexMediaType.Album,
+            DownloadTaskType.Track or DownloadTaskType.TrackData or DownloadTaskType.TrackPart => PlexMediaType.Song,
+            DownloadTaskType.Photo or DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart => PlexMediaType.Photos,
+            DownloadTaskType.OtherVideo or DownloadTaskType.OtherVideoData or DownloadTaskType.OtherVideoPart =>
+                PlexMediaType.OtherVideos,
             DownloadTaskType.None => PlexMediaType.None,
             _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };

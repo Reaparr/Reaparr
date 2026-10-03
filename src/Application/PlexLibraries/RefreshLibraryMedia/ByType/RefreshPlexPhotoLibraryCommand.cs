@@ -45,7 +45,10 @@ public class RefreshPlexPhotoLibraryCommandHandler
         var plexLibrary = command.LibraryMetadata.PlexLibrary;
         var plexLibraryId = command.LibraryMetadata.PlexLibraryId;
         var retrievalResult = await Result.Try(() =>
-            _commandExecutor.Send(new GetAllMediaByTypeFromPlexApiCommand(plexLibrary, PlexMediaType.Photos), cancellationToken)
+            _commandExecutor.Send(
+                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.Photos),
+                cancellationToken
+            )
         );
         if (retrievalResult.IsCancelled)
             return retrievalResult.ToResult().LogWarning();
@@ -59,30 +62,9 @@ public class RefreshPlexPhotoLibraryCommandHandler
             return retrievalResult.ToResult().LogError();
         }
 
-        var albumsByKey = plexLibrary.PhotoAlbums.ToDictionary(x => x.PlexApiRatingKey);
-        var photos = new List<PlexPhoto>(retrievalResult.Value.Count);
-        var clipCount = 0;
-        var sortIndices = new Dictionary<int, int>();
-        foreach (var source in retrievalResult.Value.OrderByNatural(x => x.SortTitle))
-        {
-            if (source.Type is not (PlexMediaType.Photos or PlexMediaType.OtherVideos or PlexMediaType.Movie)
-                || !int.TryParse(source.ParentRatingKey, out var parentKey)
-                || !albumsByKey.TryGetValue(parentKey, out var album))
-            {
-                var error = Result.Fail("Plex photo does not belong to a retrieved photo album");
-                await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, error, cancellationToken);
-                return error.LogError();
-            }
-
-            sortIndices.TryGetValue(parentKey, out var sortIndex);
-            source.SortIndex = sortIndices[parentKey] = sortIndex + 1;
-            photos.Add(source.ToPlexPhoto(album, plexLibrary));
-            if (source.Type is PlexMediaType.OtherVideos or PlexMediaType.Movie)
-                clipCount++;
-        }
-
+        var photos = retrievalResult.Value.Library.Photos;
         BuildPhotoTree(plexLibrary, photos);
-        command.LibraryMetadata.PhotoClipCount = clipCount;
+        command.LibraryMetadata.PhotoClipCount = retrievalResult.Value.PhotoClipCount;
 
         var syncResult = await Result.Try(() =>
             _commandExecutor.Send(
@@ -142,9 +124,8 @@ public class RefreshPlexPhotoLibraryCommandHandler
             : Result.Ok(plexLibraryDb);
     }
 
-    private static void BuildPhotoTree(PlexLibrary library, List<PlexPhoto> photos)
+    private static void BuildPhotoTree(PlexLibrary library, ICollection<PlexPhoto> photos)
     {
-        library.Photos.Clear();
         foreach (var album in library.PhotoAlbums)
         {
             album.Photos.Clear();
@@ -156,7 +137,6 @@ public class RefreshPlexPhotoLibraryCommandHandler
             var album = photo.PlexPhotoAlbum!;
             album.MediaSize += photo.MediaSize;
             album.Photos.Add(photo);
-            library.Photos.Add(photo);
         }
     }
 }

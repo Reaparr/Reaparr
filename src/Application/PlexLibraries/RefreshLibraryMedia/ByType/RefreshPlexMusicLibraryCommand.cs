@@ -46,7 +46,10 @@ public class RefreshPlexMusicLibraryCommandHandler
         var plexLibraryId = command.LibraryMetadata.PlexLibraryId;
 
         var albumsResult = await Result.Try(() =>
-            _commandExecutor.Send(new GetAllMediaByTypeFromPlexApiCommand(plexLibrary, PlexMediaType.Album), cancellationToken)
+            _commandExecutor.Send(
+                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.Album),
+                cancellationToken
+            )
         );
 
         if (albumsResult.IsCancelled)
@@ -54,39 +57,15 @@ public class RefreshPlexMusicLibraryCommandHandler
 
         if (albumsResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(
-                plexLibraryId,
-                albumsResult.ToResult(),
-                cancellationToken
-            );
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, albumsResult.ToResult(), cancellationToken);
             return albumsResult.ToResult().LogError();
         }
 
-        var artistsByKey = plexLibrary.Artists.ToDictionary(x => x.PlexApiRatingKey);
-        var albums = new List<PlexMusicAlbum>(albumsResult.Value.Count);
-        var albumSortIndices = new Dictionary<int, int>();
-        foreach (var source in albumsResult.Value.OrderByNatural(x => x.SortTitle))
-        {
-            if (source.Type != PlexMediaType.Album
-                || !int.TryParse(source.ParentRatingKey, out var parentKey)
-                || !artistsByKey.TryGetValue(parentKey, out var artist))
-            {
-                var error = Result.Fail("Plex album does not belong to a retrieved artist");
-                await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, error, cancellationToken);
-                return error.LogError();
-            }
-
-            albumSortIndices.TryGetValue(parentKey, out var sortIndex);
-            source.SortIndex = albumSortIndices[parentKey] = sortIndex + 1;
-            albums.Add(source.ToPlexMusicAlbum(artist, plexLibrary));
-        }
-
-        plexLibrary.Albums.Clear();
-        foreach (var album in albums)
-            plexLibrary.Albums.Add(album);
-
         var tracksResult = await Result.Try(() =>
-            _commandExecutor.Send(new GetAllMediaByTypeFromPlexApiCommand(plexLibrary, PlexMediaType.Song), cancellationToken)
+            _commandExecutor.Send(
+                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.Song),
+                cancellationToken
+            )
         );
 
         if (tracksResult.IsCancelled)
@@ -94,33 +73,12 @@ public class RefreshPlexMusicLibraryCommandHandler
 
         if (tracksResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(
-                plexLibraryId,
-                tracksResult.ToResult(),
-                cancellationToken
-            );
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, tracksResult.ToResult(), cancellationToken);
             return tracksResult.ToResult().LogError();
         }
 
-        var albumsByKey = albums.ToDictionary(x => x.PlexApiRatingKey);
-        var tracks = new List<PlexMusicTrack>(tracksResult.Value.Count);
-        var trackSortIndices = new Dictionary<int, int>();
-        foreach (var source in tracksResult.Value.OrderByNatural(x => x.SortTitle))
-        {
-            if (source.Type != PlexMediaType.Song
-                || !int.TryParse(source.ParentRatingKey, out var parentKey)
-                || !albumsByKey.TryGetValue(parentKey, out var album))
-            {
-                var error = Result.Fail("Plex track does not belong to a retrieved album");
-                await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, error, cancellationToken);
-                return error.LogError();
-            }
-
-            trackSortIndices.TryGetValue(parentKey, out var sortIndex);
-            source.SortIndex = trackSortIndices[parentKey] = sortIndex + 1;
-            tracks.Add(source.ToPlexMusicTrack(album, plexLibrary));
-        }
-
+        var albums = albumsResult.Value.Library.Albums;
+        var tracks = tracksResult.Value.Library.Tracks;
         BuildMusicTree(plexLibrary, albums, tracks);
 
         var syncResult = await Result.Try(() =>
@@ -197,9 +155,11 @@ public class RefreshPlexMusicLibraryCommandHandler
         ICollection<PlexMusicTrack> tracks
     )
     {
-        var albumsByArtist = albums.GroupBy(x => x.PlexArtist!.PlexApiRatingKey)
+        var albumsByArtist = albums
+            .GroupBy(x => x.PlexArtist!.PlexApiRatingKey)
             .ToDictionary(x => x.Key, x => x.ToList());
-        var tracksByAlbum = tracks.GroupBy(x => x.PlexAlbum!.PlexApiRatingKey)
+        var tracksByAlbum = tracks
+            .GroupBy(x => x.PlexAlbum!.PlexApiRatingKey)
             .ToDictionary(x => x.Key, x => x.ToList());
 
         foreach (var artist in library.Artists)
@@ -233,10 +193,5 @@ public class RefreshPlexMusicLibraryCommandHandler
             artist.Duration = artist.Albums.Sum(x => x.Duration);
             artist.MediaSize = artist.Albums.Sum(x => x.MediaSize);
         }
-
-        library.Tracks.Clear();
-        foreach (var track in tracks)
-            library.Tracks.Add(track);
     }
-
 }

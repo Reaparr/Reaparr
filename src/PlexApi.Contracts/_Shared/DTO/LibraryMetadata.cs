@@ -12,9 +12,11 @@ public record LibraryMetadata
 
     public PlexLibrary Library { get; private set; }
 
-    public required IReadOnlyCollection<LibraryMediaItemCountryDTO> Countries { get; init; } = [];
+    public required IReadOnlyCollection<PlexCountry> Countries { get; init; } = [];
 
-    public required IReadOnlyCollection<LibraryMediaItemGenreDTO> Genres { get; init; } = [];
+    public required IReadOnlyCollection<PlexGenre> Genres { get; init; } = [];
 
-    public required IReadOnlyCollection<LibraryMediaItemRoleDTO> Actors { get; init; } = [];
+    public required IReadOnlyCollection<PlexActor> Actors { get; init; } = [];
+
+    public int PhotoClipCount { get; init; }
 }

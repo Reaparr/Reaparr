@@ -41,38 +41,47 @@ public static partial class PlexMediaDataMapper
             for (var partIndex = 0; partIndex < media.Parts.Count; partIndex++)
             {
                 var part = media.Parts[partIndex];
-                video.MediaDataList.Add(new PlexOtherVideoMediaData
-                {
-                    PlexApiRatingKey = source.RatingKey,
-                    PlexApiMediaId = media.Id,
-                    PlexApiPartId = part.Id,
-                    PartIndex = partIndex,
-                    PlexOtherVideoId = 0,
-                    PlexOtherVideo = video,
-                    PlexLibraryId = library.Id,
-                    PlexServerId = library.PlexServerId,
-                    VideoResolution = media.VideoResolution,
-                    Quality = media.VideoResolution,
-                    Container = part.Container,
-                    VideoCodec = media.VideoCodec,
-                    AudioCodec = media.AudioCodec,
-                    Duration = part.Duration >= 0 ? part.Duration
-                        : media.Parts.Count == 1 && media.Duration > 0 ? media.Duration : -1,
-                    Size = part.Size,
-                    Key = part.Key,
-                    OriginalFilename = part.File.GetFileName(),
-                    OriginalFilePath = string.IsNullOrEmpty(part.File) ? null : part.File,
-                    SourceRelativePath = null,
-                    Width = media.Width > 0 ? media.Width : null,
-                    Height = media.Height > 0 ? media.Height : null,
-                    VideoProfile = string.IsNullOrEmpty(media.VideoProfile) ? null : media.VideoProfile,
-                    VideoFrameRate = decimal.TryParse(media.VideoFrameRate,
-                        System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture,
-                        out var frameRate) ? frameRate : null,
-                    Source = ReleaseSource.None,
-                    NeedsGeneratedName = false,
-                    GeneratedFilename = null,
-                });
+                video.MediaDataList.Add(
+                    new PlexOtherVideoMediaData
+                    {
+                        PlexApiRatingKey = source.RatingKey,
+                        PlexApiMediaId = media.Id,
+                        PlexApiPartId = part.Id,
+                        PartIndex = partIndex,
+                        PlexOtherVideoId = 0,
+                        PlexOtherVideo = video,
+                        PlexLibraryId = library.Id,
+                        PlexServerId = library.PlexServerId,
+                        VideoResolution = media.VideoResolution,
+                        Quality = media.VideoResolution,
+                        Container = part.Container,
+                        VideoCodec = media.VideoCodec,
+                        AudioCodec = media.AudioCodec,
+                        Duration =
+                            part.Duration >= 0 ? part.Duration
+                            : media.Parts.Count == 1 && media.Duration > 0 ? media.Duration
+                            : -1,
+                        Size = part.Size,
+                        Key = part.Key,
+                        OriginalFilename = part.File.GetFileName(),
+                        OriginalFilePath = string.IsNullOrEmpty(part.File) ? null : part.File,
+                        SourceRelativePath = null,
+                        Width = media.Width > 0 ? media.Width : null,
+                        Height = media.Height > 0 ? media.Height : null,
+                        VideoProfile = string.IsNullOrEmpty(media.VideoProfile) ? null : media.VideoProfile,
+                        VideoFrameRate = decimal.TryParse(
+                            media.VideoFrameRate,
+                            System.Globalization.NumberStyles.Number,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var frameRate
+                        )
+                            ? frameRate
+                            : null,
+                        Source = ReleaseSource.None,
+                        NeedsGeneratedName = false,
+                        GeneratedFilename = null,
+                    }
+                );
             }
         }
 
