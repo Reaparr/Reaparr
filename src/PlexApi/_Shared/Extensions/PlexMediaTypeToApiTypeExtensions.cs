@@ -37,6 +37,24 @@ public static class PlexMediaTypeToApiTypeExtensions
         return (T)Enum.ToObject(typeof(T), enumInt);
     }
 
+    /// <summary>
+    /// Converts media types to the numeric metadata IDs used by Plex content requests.
+    /// </summary>
+    public static int ToPlexMetadataTypeId(this PlexMediaType mediaType) =>
+        mediaType switch
+        {
+            PlexMediaType.Movie or PlexMediaType.OtherVideos => 1,
+            PlexMediaType.TvShow => 2,
+            PlexMediaType.Season => 3,
+            PlexMediaType.Episode => 4,
+            PlexMediaType.Artist => 8,
+            PlexMediaType.Album => 9,
+            PlexMediaType.Song => 10,
+            PlexMediaType.Photos => 13,
+            PlexMediaType.PhotoAlbum => 14,
+            _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
+        };
+
     public static PlexMediaType ToPlexMediaType(this MediaType value)
     {
         return value switch
@@ -89,6 +107,19 @@ public static class PlexMediaTypeToApiTypeExtensions
             _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };
     }
+
+    /// <summary>
+    /// Classifies library sections using their agent and scanner, independently of item type mapping.
+    /// </summary>
+    public static PlexMediaType ToPlexMediaType(this MediaTypeString value, string? agent, string? scanner) =>
+        value switch
+        {
+            MediaTypeString.Artist => PlexMediaType.Music,
+            MediaTypeString.Photo or MediaTypeString.PhotoAlbum => PlexMediaType.Photos,
+            MediaTypeString.Movie when agent is "com.plexapp.agents.none" or "tv.plex.agents.none"
+                && scanner is "Plex Video Files Scanner" or "Plex Video Files" => PlexMediaType.OtherVideos,
+            _ => value.ToPlexMediaType(),
+        };
 
     public static PlexMediaType ToPlexMediaType(this MediaTypeString value)
     {
