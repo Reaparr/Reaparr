@@ -49,16 +49,10 @@ public class SetLibraryEnabledEndpointUnitTests
                         .SetProperty(y => y.ArtistCount, 1)
                         .SetProperty(y => y.AlbumCount, 2)
                         .SetProperty(y => y.TrackCount, 3)
-                        .SetProperty(y => y.TrackMediaVersionCount, 4)
-                        .SetProperty(y => y.TrackFilePartCount, 5)
                         .SetProperty(y => y.PhotoAlbumCount, 6)
                         .SetProperty(y => y.PhotoCount, 7)
                         .SetProperty(y => y.PhotoClipCount, 8)
-                        .SetProperty(y => y.PhotoMediaVersionCount, 9)
-                        .SetProperty(y => y.PhotoFilePartCount, 10)
-                        .SetProperty(y => y.OtherVideoCount, 11)
-                        .SetProperty(y => y.OtherVideoMediaVersionCount, 12)
-                        .SetProperty(y => y.OtherVideoFilePartCount, 13),
+                        .SetProperty(y => y.OtherVideoCount, 11),
                 CancellationToken
             );
 
@@ -113,16 +107,10 @@ public class SetLibraryEnabledEndpointUnitTests
             updatedLibrary.ArtistCount,
             updatedLibrary.AlbumCount,
             updatedLibrary.TrackCount,
-            updatedLibrary.TrackMediaVersionCount,
-            updatedLibrary.TrackFilePartCount,
             updatedLibrary.PhotoAlbumCount,
             updatedLibrary.PhotoCount,
             updatedLibrary.PhotoClipCount,
-            updatedLibrary.PhotoMediaVersionCount,
-            updatedLibrary.PhotoFilePartCount,
             updatedLibrary.OtherVideoCount,
-            updatedLibrary.OtherVideoMediaVersionCount,
-            updatedLibrary.OtherVideoFilePartCount,
         }.ShouldAllBe(x => x == 0);
         updatedLibrary.MediaSize.ShouldBe(0);
         var retainedQueueHistory = await dbContext

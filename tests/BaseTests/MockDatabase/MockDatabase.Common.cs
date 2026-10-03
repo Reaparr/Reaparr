@@ -651,7 +651,6 @@ public static partial class MockDatabase
             var artists = FakeData.GetPlexMusicArtists(seed, options).Generate(config.MusicArtistCount);
             var albumCount = 0;
             var trackCount = 0;
-            var partCount = 0;
             long mediaSize = 0;
             foreach (var artist in artists)
             {
@@ -671,7 +670,6 @@ public static partial class MockDatabase
                         {
                             original.PlexServerId = library.PlexServerId;
                             original.PlexLibraryId = library.Id;
-                            partCount++;
                             mediaSize += original.Size;
                         }
                     }
@@ -685,8 +683,6 @@ public static partial class MockDatabase
                 artists.Count,
                 albumCount,
                 trackCount,
-                trackCount,
-                partCount,
                 mediaSize
             );
         }
@@ -706,7 +702,6 @@ public static partial class MockDatabase
         {
             var albums = FakeData.GetPlexPhotoAlbums(seed, options).Generate(config.PhotoAlbumCount);
             var photoCount = 0;
-            var partCount = 0;
             long mediaSize = 0;
             foreach (var album in albums)
             {
@@ -721,7 +716,6 @@ public static partial class MockDatabase
                     {
                         original.PlexServerId = library.PlexServerId;
                         original.PlexLibraryId = library.Id;
-                        partCount++;
                         mediaSize += original.Size;
                     }
                 }
@@ -737,8 +731,6 @@ public static partial class MockDatabase
                 albums.Count,
                 photoCount - clipCount,
                 clipCount,
-                photoCount,
-                partCount,
                 mediaSize
             );
         }
@@ -757,7 +749,6 @@ public static partial class MockDatabase
         foreach (var library in libraries)
         {
             var videos = FakeData.GetPlexOtherVideos(seed, options).Generate(config.OtherVideoCount);
-            var partCount = 0;
             long mediaSize = 0;
             foreach (var video in videos)
             {
@@ -767,14 +758,13 @@ public static partial class MockDatabase
                 {
                     original.PlexServerId = library.PlexServerId;
                     original.PlexLibraryId = library.Id;
-                    partCount++;
                     mediaSize += original.Size;
                 }
             }
 
             context.PlexOtherVideos.AddRange(videos);
             await context.SaveChangesAsync();
-            await context.SetOtherVideoMediaMetrics(library.Id, videos.Count, videos.Count, partCount, mediaSize);
+            await context.SetOtherVideoMediaMetrics(library.Id, videos.Count, mediaSize);
         }
 
         return context;

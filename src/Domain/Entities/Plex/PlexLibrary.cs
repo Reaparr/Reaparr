@@ -149,16 +149,10 @@ public class PlexLibrary : BaseEntity
     public int ArtistCount { get; init; }
     public int AlbumCount { get; init; }
     public int TrackCount { get; init; }
-    public int TrackMediaVersionCount { get; init; }
-    public int TrackFilePartCount { get; init; }
     public int PhotoAlbumCount { get; init; }
     public int PhotoCount { get; init; }
     public int PhotoClipCount { get; init; }
-    public int PhotoMediaVersionCount { get; init; }
-    public int PhotoFilePartCount { get; init; }
     public int OtherVideoCount { get; init; }
-    public int OtherVideoMediaVersionCount { get; init; }
-    public int OtherVideoFilePartCount { get; init; }
 
     /// <summary>
     /// DB-computed column that holds the total count of media items associated with this <see cref="PlexLibrary"/>.

@@ -166,16 +166,10 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
                                 .SetProperty(y => y.ArtistCount, 0)
                                 .SetProperty(y => y.AlbumCount, 0)
                                 .SetProperty(y => y.TrackCount, 0)
-                                .SetProperty(y => y.TrackMediaVersionCount, 0)
-                                .SetProperty(y => y.TrackFilePartCount, 0)
                                 .SetProperty(y => y.PhotoAlbumCount, 0)
                                 .SetProperty(y => y.PhotoCount, 0)
                                 .SetProperty(y => y.PhotoClipCount, 0)
-                                .SetProperty(y => y.PhotoMediaVersionCount, 0)
-                                .SetProperty(y => y.PhotoFilePartCount, 0)
-                                .SetProperty(y => y.OtherVideoCount, 0)
-                                .SetProperty(y => y.OtherVideoMediaVersionCount, 0)
-                                .SetProperty(y => y.OtherVideoFilePartCount, 0),
+                                .SetProperty(y => y.OtherVideoCount, 0),
                         txCt
                     );
 
