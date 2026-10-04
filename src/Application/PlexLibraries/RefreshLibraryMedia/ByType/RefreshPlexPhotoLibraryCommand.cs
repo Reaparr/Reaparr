@@ -131,14 +131,24 @@ public class RefreshPlexPhotoLibraryCommandHandler
         foreach (var album in library.PhotoAlbums)
         {
             album.Photos.Clear();
+            album.ChildCount = 0;
+            album.Duration = 0;
             album.MediaSize = 0;
+            album.Quality = VideoQuality.Unknown;
         }
 
         foreach (var photo in photos)
         {
             var album = photo.PlexPhotoAlbum!;
-            album.MediaSize += photo.MediaSize;
             album.Photos.Add(photo);
+        }
+
+        foreach (var album in library.PhotoAlbums)
+        {
+            album.ChildCount = album.Photos.Count;
+            album.Duration = album.Photos.Sum(x => x.Duration);
+            album.MediaSize = album.Photos.Sum(x => x.MediaSize);
+            album.Quality = album.Photos.Count == 0 ? VideoQuality.Unknown : album.Photos.Max(x => x.Quality);
         }
     }
 }

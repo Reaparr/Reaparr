@@ -2,165 +2,44 @@ using FlexQuery.NET.Models;
 
 namespace Reaparr.Application.UnitTests;
 
-public class GetMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMediaOverviewCommand>
+public class GetMediaOverviewCommandUnitTests
 {
     [Test]
-    public async Task ShouldDispatchMovieCommandOnly_WhenMovieRequested()
-    {
-        // Arrange
-        var filter = CreateFilter(PlexMediaType.Movie);
-        var expected = new PagedMediaQueryResult
-        {
-            QueryHash = filter.QueryHash,
-            Page = 2,
-            PageSize = 25,
-            TotalCount = 7,
-        };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
-                command is GetMediaOverviewMovieCommand && ((GetMediaOverviewMovieCommand)command).Filter == filter
-            )
-            .ReturnsAsync(Result.Ok(expected))
-            .Verifiable(Times.Once());
-
-        // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewCommand(filter));
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBeSameAs(expected);
-        Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaOverviewTvShowCommand>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Test]
-    public async Task ShouldDispatchTvShowCommandOnly_WhenTvShowRequested()
-    {
-        // Arrange
-        var filter = CreateFilter(PlexMediaType.TvShow);
-        var expected = new PagedMediaQueryResult
-        {
-            QueryHash = filter.QueryHash,
-            Page = 2,
-            PageSize = 25,
-            TotalCount = 9,
-        };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
-                command is GetMediaOverviewTvShowCommand && ((GetMediaOverviewTvShowCommand)command).Filter == filter
-            )
-            .ReturnsAsync(Result.Ok(expected))
-            .Verifiable(Times.Once());
-
-        // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewCommand(filter));
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBeSameAs(expected);
-        Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaOverviewMovieCommand>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Test]
-    [Arguments(PlexMediaType.Music)]
-    public async Task ShouldDispatchMusicOverview_WhenMusicRootRequested(PlexMediaType mediaType)
-    {
-        // Arrange
-        var filter = CreateFilter(mediaType);
-        var expected = new PagedMediaQueryResult { QueryHash = filter.QueryHash, Page = 2, PageSize = 25 };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(x =>
-                x is GetMediaOverviewMusicCommand && ((GetMediaOverviewMusicCommand)x).Filter == filter)
-            .ReturnsAsync(Result.Ok(expected)).Verifiable(Times.Once());
-
-        // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewCommand(filter));
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBeSameAs(expected);
-        Mock.Mock<ICommandExecutor>().Verify();
-    }
-
-    [Test]
-    [Arguments(PlexMediaType.Photos)]
-    public async Task ShouldDispatchPhotoOverview_WhenPhotoRootRequested(PlexMediaType mediaType)
-    {
-        // Arrange
-        var filter = CreateFilter(mediaType);
-        var expected = new PagedMediaQueryResult { QueryHash = filter.QueryHash, Page = 2, PageSize = 25 };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(x =>
-                x is GetMediaOverviewPhotoCommand && ((GetMediaOverviewPhotoCommand)x).Filter == filter)
-            .ReturnsAsync(Result.Ok(expected)).Verifiable(Times.Once());
-
-        // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewCommand(filter));
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBeSameAs(expected);
-        Mock.Mock<ICommandExecutor>().Verify();
-    }
-
-    [Test]
-    public async Task ShouldDispatchOtherVideoOverview_WhenOtherVideosRequested()
-    {
-        // Arrange
-        var filter = CreateFilter(PlexMediaType.OtherVideos);
-        var expected = new PagedMediaQueryResult { QueryHash = filter.QueryHash, Page = 2, PageSize = 25 };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(x =>
-                x is GetMediaOverviewOtherVideoCommand && ((GetMediaOverviewOtherVideoCommand)x).Filter == filter)
-            .ReturnsAsync(Result.Ok(expected)).Verifiable(Times.Once());
-
-        // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewCommand(filter));
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldBeSameAs(expected);
-        Mock.Mock<ICommandExecutor>().Verify();
-    }
-
-    [Test]
-    public async Task ShouldRejectUnsupportedMediaType_WithoutDispatching()
+    public void ShouldRejectUnsupportedMediaType_WhenValidatingRequest()
     {
         // Arrange
         var command = new GetMediaOverviewCommand(CreateFilter(PlexMediaType.Unknown));
 
         // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(command);
+        var result = new GetMediaOverviewCommandValidator().Validate(command);
 
         // Assert
-        result.IsFailed.ShouldBeTrue();
-        result.Errors.Count.ShouldBeGreaterThan(0);
-        Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaOverviewMovieCommand>(), It.IsAny<CancellationToken>()), Times.Never);
-        Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaOverviewTvShowCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        result.IsValid.ShouldBeFalse();
+        result.Errors.Select(x => x.PropertyName).ShouldBe(new[] { "Filter.MediaType" });
     }
 
     [Test]
-    public async Task ShouldRejectInvalidPaging_WithoutDispatching()
+    [Arguments(PlexMediaType.Movie)]
+    [Arguments(PlexMediaType.TvShow)]
+    [Arguments(PlexMediaType.Music)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.OtherVideos)]
+    public void ShouldRejectInvalidPaging_WhenValidatingRequest(PlexMediaType mediaType)
     {
         // Arrange
-        var filter = CreateFilter(PlexMediaType.Movie) with
+        var filter = CreateFilter(mediaType) with
         {
             Parameters = new FlexQueryParameters { Page = 0, PageSize = 101 },
         };
 
         // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewCommand(filter));
+        var result = new GetMediaOverviewCommandValidator().Validate(new GetMediaOverviewCommand(filter));
 
         // Assert
-        result.IsFailed.ShouldBeTrue();
-        result.Errors.Count.ShouldBeGreaterThanOrEqualTo(2);
-        Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaOverviewMovieCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        result.IsValid.ShouldBeFalse();
+        result.Errors.Select(x => x.PropertyName).ShouldBe(
+            new[] { "Filter.Parameters.Page", "Filter.Parameters.PageSize" }
+        );
     }
 
     private static MediaQueryFilter CreateFilter(PlexMediaType mediaType) =>

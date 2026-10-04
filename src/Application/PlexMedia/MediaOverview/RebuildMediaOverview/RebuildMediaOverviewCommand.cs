@@ -238,6 +238,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                         x.UpdatedAt,
                         x.Duration,
                         x.MediaSize,
+                        x.Quality,
                     })
                     .ToListAsync(cancellationToken);
                 var snapshots = source
@@ -248,6 +249,8 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                         TitleRank = 0,
                         YearRank = 0,
                         AddedAtRank = 0,
+                        Quality = x.Quality,
+                        QualityRank = 0,
                         UpdatedAtRank = 0,
                         DurationRank = 0,
                         MediaSizeRank = 0,

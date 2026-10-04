@@ -18,6 +18,9 @@ public class GetMediaByTypeCommandValidator : AbstractValidator<GetMediaByTypeCo
             .Must(mediaType => mediaType is not PlexMediaType.None and not PlexMediaType.Unknown)
             .When(x => x.Filter.PlexLibraryId == 0)
             .WithMessage("MediaType is required when PlexLibraryId is 0.");
+        RuleFor(x => x.Filter.ComparisonState)
+            .Null()
+            .When(x => x.Filter.MediaType is not PlexMediaType.Movie and not PlexMediaType.TvShow);
     }
 }
 
@@ -356,6 +359,92 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                     );
                 }
 
+                break;
+            }
+            case PlexMediaType.Music:
+            {
+                var artistQuery = _dbContext
+                    .PlexArtists.Include(x => x.Albums)
+                    .ApplyFilter(options)
+                    .ApplySort(options);
+                response.TotalCount = await artistQuery.CountAsync(ct);
+                response.MediaSize = await artistQuery.SumAsync(x => x.MediaSize, ct);
+                response.TotalMediaSize = response.MediaSize;
+                await SetNavigationIndexes(
+                    response,
+                    artistQuery.Select(x => new MediaNavigationIndexRow(
+                        x.SearchTitle,
+                        x.Year,
+                        null,
+                        x.Duration,
+                        x.AddedAt,
+                        x.UpdatedAt,
+                        x.MediaSize
+                    )),
+                    options,
+                    ct
+                );
+                var artists = await artistQuery.ApplyPaging(options).ToListAsync(ct);
+                response.Items = artists.Select(x => x.ToSlimDTOMapper()).ToList();
+                break;
+            }
+            case PlexMediaType.PhotoAlbum:
+            {
+                var albumQuery = _dbContext
+                    .PlexPhotoAlbums.ApplyFilter(options)
+                    .ApplySort(options);
+                response.TotalCount = await albumQuery.CountAsync(ct);
+                response.MediaSize = await albumQuery.SumAsync(x => x.MediaSize, ct);
+                response.TotalMediaSize = response.MediaSize;
+                await SetNavigationIndexes(
+                    response,
+                    albumQuery.Select(x => new MediaNavigationIndexRow(
+                        x.SearchTitle,
+                        x.Year,
+                        null,
+                        x.Duration,
+                        x.AddedAt,
+                        x.UpdatedAt,
+                        x.MediaSize
+                    )),
+                    options,
+                    ct
+                );
+                var albums = await albumQuery.ApplyPaging(options).ToListAsync(ct);
+                response.Items = albums.Select(x => x.ToSlimDTOMapper()).ToList();
+                break;
+            }
+            case PlexMediaType.OtherVideos:
+            {
+                var videoQuery = _dbContext
+                    .PlexOtherVideos.Include(x => x.MediaDataList)
+                    .ApplyFilter(options)
+                    .ApplySort(options);
+                response.TotalCount = await videoQuery.CountAsync(ct);
+                response.MediaSize = await videoQuery.SumAsync(x => x.MediaSize, ct);
+                response.TotalMediaSize = response.MediaSize;
+                await SetNavigationIndexes(
+                    response,
+                    videoQuery.Select(x => new MediaNavigationIndexRow(
+                        x.SearchTitle,
+                        x.Year,
+                        (int?)x.Quality,
+                        x.Duration,
+                        x.AddedAt,
+                        x.UpdatedAt,
+                        x.MediaSize
+                    )),
+                    options,
+                    ct
+                );
+                var videos = await videoQuery.ApplyPaging(options).ToListAsync(ct);
+                response.Items = videos.Select(x => x.ToSlimDTOMapper()).ToList();
+                response.Qualities = response.Items
+                    .SelectMany(x => x.Qualities)
+                    .Select(x => x.Quality.ToId())
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
                 break;
             }
             default:

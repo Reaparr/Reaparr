@@ -46,7 +46,8 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         var albums = library.PhotoAlbums.ToList();
         var photos = library.Photos.ToList();
         var currentAlbums = await _dbContext.PlexPhotoAlbums.Where(x => x.PlexLibraryId == library.Id)
-            .Select(x => new CurrentAlbum(x.Id, x.PlexApiRatingKey, x.UpdatedAt)).ToListAsync(ct);
+            .Select(x => new CurrentAlbum(x.Id, x.PlexApiRatingKey, x.UpdatedAt, x.ChildCount, x.Duration, x.MediaSize, x.Quality))
+            .ToListAsync(ct);
         var currentPhotos = await _dbContext.PlexPhotos.Where(x => x.PlexLibraryId == library.Id)
             .Select(x => new CurrentPhoto(x.Id, x.PlexApiRatingKey, x.UpdatedAt, x.PlexPhotoAlbum!.PlexApiRatingKey, x.MediaSize))
             .ToListAsync(ct);
@@ -66,7 +67,13 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
             else
             {
                 album.Id = existing.Id;
-                if (album.UpdatedAt != existing.UpdatedAt)
+                if (
+                    album.UpdatedAt != existing.UpdatedAt
+                    || album.ChildCount != existing.ChildCount
+                    || album.Duration != existing.Duration
+                    || album.MediaSize != existing.MediaSize
+                    || album.Quality != existing.Quality
+                )
                     updatedAlbums.Add(album);
             }
         }
@@ -169,7 +176,15 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         return Result.Ok(report);
     }
 
-    private sealed record CurrentAlbum(int Id, int PlexApiRatingKey, DateTime? UpdatedAt);
+    private sealed record CurrentAlbum(
+        int Id,
+        int PlexApiRatingKey,
+        DateTime? UpdatedAt,
+        int ChildCount,
+        int Duration,
+        long MediaSize,
+        VideoQuality Quality
+    );
     private sealed record CurrentPhoto(int Id, int PlexApiRatingKey, DateTime? UpdatedAt, int ParentKey, long MediaSize);
 }
 

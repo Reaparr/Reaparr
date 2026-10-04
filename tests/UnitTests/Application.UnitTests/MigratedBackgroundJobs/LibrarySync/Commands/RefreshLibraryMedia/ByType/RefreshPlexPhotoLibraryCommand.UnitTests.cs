@@ -258,6 +258,9 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         captured.PlexLibrary.Photos.ShouldBe(photos);
         album.Photos.ShouldBe(photos);
         album.MediaSize.ShouldBe(photos.Sum(x => x.MediaSize));
+        album.ChildCount.ShouldBe(photos.Count);
+        album.Duration.ShouldBe(photos.Sum(x => x.Duration));
+        album.Quality.ShouldBe(photos.Max(x => x.Quality));
         Mock.Mock<ILibrarySyncProgressStore>()
             .Verify(
                 x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),

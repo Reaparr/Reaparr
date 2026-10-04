@@ -6,6 +6,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
     [Arguments("initial")]
     [Arguments("unchanged")]
     [Arguments("update")]
+    [Arguments("children")]
     [Arguments("move")]
     [Arguments("force")]
     [Arguments("empty")]
@@ -54,15 +55,22 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             photos[0].MediaSize = 1;
             photos[0].MediaDataList.Single().UpdateInitProperty(nameof(BasePlexMediaData.Size), 1L);
         }
-        if (scenario == "update")
+        if (scenario is "update" or "children")
         {
             albums.RemoveAt(1);
             photos.RemoveRange(1, photos.Count - 1);
-            albums[0].UpdatedAt = albums[0].UpdatedAt?.AddDays(1) ?? DateTime.UnixEpoch;
-            photos[0].UpdatedAt = photos[0].UpdatedAt?.AddDays(1) ?? DateTime.UnixEpoch;
-            photos[0].Title = "Updated photo";
-            photos[0].MediaSize = 123;
-            photos[0].MediaDataList.Single().UpdateInitProperty(nameof(BasePlexMediaData.Size), 123L);
+            if (scenario == "update")
+            {
+                albums[0].UpdatedAt = albums[0].UpdatedAt?.AddDays(1) ?? DateTime.UnixEpoch;
+                photos[0].UpdatedAt = photos[0].UpdatedAt?.AddDays(1) ?? DateTime.UnixEpoch;
+                photos[0].Title = "Updated photo";
+                photos[0].MediaSize = 123;
+                photos[0].MediaDataList.Single().UpdateInitProperty(nameof(BasePlexMediaData.Size), 123L);
+            }
+            albums[0].ChildCount = 1;
+            albums[0].Duration = photos[0].Duration;
+            albums[0].MediaSize = photos[0].MediaSize;
+            albums[0].Quality = photos[0].Quality;
         }
         if (scenario == "move")
         {
@@ -77,7 +85,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
         }
         library.PhotoAlbums.AddRange(albums);
         library.Photos.AddRange(photos);
-        var metadata = new InsertMediaMetaDataCommandResponse(library) { PhotoClipCount = scenario is "empty" or "update" ? 0 : 2 };
+        var metadata = new InsertMediaMetaDataCommandResponse(library) { PhotoClipCount = scenario is "empty" or "update" or "children" ? 0 : 2 };
 
         // Act
         var result = await TestHandlerExecuteAsync<CrudPhotosReport>(new SyncPlexPhotosCommand(metadata, scenario == "force"));
@@ -90,6 +98,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             "initial" => new CrudPhotosReport { CreatedPhotoAlbums = 2, CreatedPhotos = 4 },
             "force" => new CrudPhotosReport { CreatedPhotoAlbums = 2, CreatedPhotos = 4, DeletedPhotoAlbums = 2, DeletedPhotos = 4 },
             "update" => new CrudPhotosReport { UpdatedPhotoAlbums = 1, DeletedPhotoAlbums = 1, UpdatedPhotos = 1, DeletedPhotos = 3 },
+            "children" => new CrudPhotosReport { UpdatedPhotoAlbums = 1, DeletedPhotoAlbums = 1, UnchangedPhotos = 1, DeletedPhotos = 3 },
             "move" => new CrudPhotosReport { DeletedPhotoAlbums = 1, UnchangedPhotoAlbums = 1, UpdatedPhotos = 2, UnchangedPhotos = 2 },
             "empty" => new CrudPhotosReport { DeletedPhotoAlbums = 2, DeletedPhotos = 4 },
             _ => new CrudPhotosReport { UnchangedPhotoAlbums = 2, UnchangedPhotos = 4 },
@@ -108,6 +117,18 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
         after.ShouldAllBe(x => x.PlexLibraryId == library.Id && x.PlexServerId == library.PlexServerId);
         (await db.PlexPhotoAlbums.Where(x => x.PlexLibraryId == library.Id).OrderBy(x => x.PlexApiRatingKey)
             .Select(x => x.PlexApiRatingKey).ToListAsync(CancellationToken)).ShouldBe(albums.Select(x => x.PlexApiRatingKey).Order());
+        var afterAlbums = await db.PlexPhotoAlbums.Where(x => x.PlexLibraryId == library.Id)
+            .OrderBy(x => x.PlexApiRatingKey)
+            .Select(x => new { x.PlexApiRatingKey, x.ChildCount, x.Duration, x.MediaSize, x.Quality })
+            .ToListAsync(CancellationToken);
+        afterAlbums.ShouldBe(albums.OrderBy(x => x.PlexApiRatingKey).Select(x => new
+        {
+            x.PlexApiRatingKey,
+            x.ChildCount,
+            x.Duration,
+            x.MediaSize,
+            x.Quality,
+        }));
         var afterData = await db.PlexPhotoData.Where(x => x.PlexLibraryId == library.Id).OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.PlexPhotoId, x.PlexApiPartId, x.Size, x.OriginalFilename }).ToListAsync(CancellationToken);
         if (scenario == "unchanged")
@@ -119,7 +140,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
         metrics.PhotoAlbumCount.ShouldBe(albums.Count);
         metrics.PhotoCount.ShouldBe(photos.Count - metadata.PhotoClipCount);
         metrics.PhotoClipCount.ShouldBe(metadata.PhotoClipCount);
-        metrics.MediaSize.ShouldBe(scenario switch { "empty" => 0, "update" => 123, _ => beforeData.Sum(x => x.Size) + addedSize });
+        metrics.MediaSize.ShouldBe(scenario switch { "empty" => 0, "update" => 123, "children" => photos[0].MediaSize, _ => beforeData.Sum(x => x.Size) + addedSize });
         (await db.PlexPhotos.Where(x => x.PlexLibraryId != library.Id).OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.PlexPhotoAlbumId, x.PlexApiRatingKey, x.PlexLibraryId, x.PlexServerId, x.MediaSize }).ToListAsync(CancellationToken)).ShouldBe(control);
         (await db.PlexPhotoData.Where(x => x.PlexLibraryId != library.Id).OrderBy(x => x.Id)

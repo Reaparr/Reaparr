@@ -14,8 +14,6 @@ public sealed class GetMediaOverviewCommandValidator : AbstractValidator<GetMedi
                     is PlexMediaType.Movie
                         or PlexMediaType.TvShow
                         or PlexMediaType.Music
-                        or PlexMediaType.Album
-                        or PlexMediaType.Track
                         or PlexMediaType.PhotoAlbum
                         or PlexMediaType.OtherVideos
             );
@@ -24,6 +22,9 @@ public sealed class GetMediaOverviewCommandValidator : AbstractValidator<GetMedi
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
             .When(x => x.Filter.Parameters.PageSize.HasValue);
+        RuleFor(x => x.Filter.ComparisonState)
+            .Null()
+            .When(x => x.Filter.MediaType is not PlexMediaType.Movie and not PlexMediaType.TvShow);
     }
 }
 

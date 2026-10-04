@@ -16,9 +16,9 @@ public class SetLibraryEnabledEndpointUnitTests
         );
         var dbContext = IDbContext;
         var serverId = await dbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
-        var targetLibrary = FakeData.GetPlexLibrary(new Seed(4601), PlexMediaType.PhotoAlbum).Generate();
+        var targetLibrary = FakeData.GetPlexLibrary(new Seed(4601), PlexMediaType.Photos).Generate();
         targetLibrary.PlexServerId = serverId;
-        var controlLibrary = FakeData.GetPlexLibrary(new Seed(4602), PlexMediaType.PhotoAlbum).Generate();
+        var controlLibrary = FakeData.GetPlexLibrary(new Seed(4602), PlexMediaType.Photos).Generate();
         controlLibrary.PlexServerId = serverId;
         dbContext.PlexLibraries.AddRange(targetLibrary, controlLibrary);
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -332,6 +332,24 @@ public class SetLibraryEnabledEndpointUnitTests
         {
             PlexApiRatingKey = ratingKey,
             Title = title,
+            Year = 2026,
+            Duration = 1,
+            PlexApiMetaDataKey = ratingKey,
+            Studio = string.Empty,
+            Summary = string.Empty,
+            ContentRating = string.Empty,
+            Rating = 0,
+            ChildCount = 0,
+            UpdatedAt = null,
+            OriginallyAvailableAt = null,
+            HasThumb = false,
+            HasArt = false,
+            HasTheme = false,
+            FullTitle = title,
+            Guid = string.Empty,
+            Guid_IMDB = null,
+            Guid_TMDB = null,
+            Guid_TVDB = null,
             SearchTitle = title.ToSearchTitle(),
             SortIndex = ratingKey,
             MediaSize = 1,
