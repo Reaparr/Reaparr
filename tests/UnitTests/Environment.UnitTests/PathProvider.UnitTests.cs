@@ -293,6 +293,77 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         resolvedMovieDirectory.ShouldBe(Path.Combine(dataDirectory, sut.DefaultMovieFolderName));
     }
 
+    [Test]
+    [Arguments("/custom/destination", null)]
+    [Arguments("", null)]
+    [Arguments("/custom/destination", "/custom/data")]
+    [Arguments("", "/custom/data")]
+    public void ShouldUseDestinationOverrides_WhenRuntimeModeIsUnsupported(string destination, string? dataPath)
+    {
+        // Arrange
+        SetAppRuntimeInfo(x =>
+        {
+            x.DataPath = dataPath;
+            x.DownloadsPath = destination;
+            x.MoviesPath = destination;
+            x.TvShowsPath = destination;
+            x.MusicPath = destination;
+            x.PhotosPath = destination;
+            x.OtherPath = destination;
+            x.GamesPath = destination;
+        });
+        SetAppBuildInfo(x =>
+        {
+            x.RuntimeMode = string.Empty;
+            x.CurrentOS = OperatingSystemPlatform.Unknown;
+        });
+        var sut = Sut;
+
+        // Act
+        string[] destinations =
+        [
+            sut.DefaultDownloadsDestinationFolder,
+            sut.DefaultMovieDestinationFolder,
+            sut.DefaultTvShowsDestinationFolder,
+            sut.DefaultMusicDestinationFolder,
+            sut.DefaultPhotosDestinationFolder,
+            sut.DefaultOtherDestinationFolder,
+            sut.DefaultGamesDestinationFolder,
+        ];
+
+        // Assert
+        destinations.ShouldBe([destination, destination, destination, destination, destination, destination, destination]);
+    }
+
+    [Test]
+    [Arguments("/custom/data")]
+    [Arguments("")]
+    public void ShouldUseDataPathOnlyForMediaDestinations_WhenDockerDataPathOverrideExists(string dataDirectory)
+    {
+        // Arrange
+        SetAppRuntimeInfo(x => x.DataPath = dataDirectory);
+        SetAppBuildInfo(x => x.RuntimeMode = "docker");
+        var sut = Sut;
+
+        // Act
+        var downloadsDirectory = sut.DefaultDownloadsDestinationFolder;
+        var movieDirectory = sut.DefaultMovieDestinationFolder;
+        var tvShowsDirectory = sut.DefaultTvShowsDestinationFolder;
+        var musicDirectory = sut.DefaultMusicDestinationFolder;
+        var photosDirectory = sut.DefaultPhotosDestinationFolder;
+        var otherDirectory = sut.DefaultOtherDestinationFolder;
+        var gamesDirectory = sut.DefaultGamesDestinationFolder;
+
+        // Assert
+        downloadsDirectory.ShouldBe(Path.Combine("/", "Downloads"));
+        movieDirectory.ShouldBe(Path.Combine(dataDirectory, "Movies"));
+        tvShowsDirectory.ShouldBe(Path.Combine(dataDirectory, "TvShows"));
+        musicDirectory.ShouldBe(Path.Combine(dataDirectory, "Music"));
+        photosDirectory.ShouldBe(Path.Combine(dataDirectory, "Photos"));
+        otherDirectory.ShouldBe(Path.Combine(dataDirectory, "Other"));
+        gamesDirectory.ShouldBe(Path.Combine(dataDirectory, "Games"));
+    }
+
     private static string GetMediaDestinationFolder(PathProvider sut, PlexMediaType mediaType) =>
         mediaType switch
         {
