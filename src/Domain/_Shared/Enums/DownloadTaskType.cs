@@ -42,36 +42,39 @@ public enum DownloadTaskType
     [JsonStringEnumMemberName(nameof(EpisodePart))]
     EpisodePart = 8,
 
-    [JsonStringEnumMemberName(nameof(Artist))]
-    Artist = 9,
+    [JsonStringEnumMemberName(nameof(MusicArtist))]
+    MusicArtist = 9,
 
-    [JsonStringEnumMemberName(nameof(Album))]
-    Album = 10,
+    [JsonStringEnumMemberName(nameof(MusicAlbum))]
+    MusicAlbum = 10,
 
-    [JsonStringEnumMemberName(nameof(Track))]
-    Track = 11,
+    [JsonStringEnumMemberName(nameof(MusicTrack))]
+    MusicTrack = 11,
 
-    [JsonStringEnumMemberName(nameof(TrackData))]
-    TrackData = 12,
+    [JsonStringEnumMemberName(nameof(MusicTrackData))]
+    MusicTrackData = 12,
 
-    [JsonStringEnumMemberName(nameof(TrackPart))]
-    TrackPart = 13,
+    [JsonStringEnumMemberName(nameof(MusicTrackPart))]
+    MusicTrackPart = 13,
 
-    [JsonStringEnumMemberName(nameof(Photo))]
-    Photo = 14,
+    [JsonStringEnumMemberName(nameof(PhotoAlbum))]
+    PhotoAlbum = 14,
+
+    [JsonStringEnumMemberName(nameof(PhotoImage))]
+    PhotoImage = 15,
 
     [JsonStringEnumMemberName(nameof(PhotoData))]
-    PhotoData = 15,
+    PhotoData = 16,
 
     [JsonStringEnumMemberName(nameof(PhotoPart))]
-    PhotoPart = 16,
+    PhotoPart = 17,
 
     [JsonStringEnumMemberName(nameof(OtherVideo))]
-    OtherVideo = 17,
+    OtherVideo = 18,
 
     [JsonStringEnumMemberName(nameof(OtherVideoData))]
-    OtherVideoData = 18,
+    OtherVideoData = 19,
 
     [JsonStringEnumMemberName(nameof(OtherVideoPart))]
-    OtherVideoPart = 19,
+    OtherVideoPart = 20,
 }

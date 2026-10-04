@@ -46,11 +46,11 @@ public class SetLibraryEnabledEndpointUnitTests
                 x =>
                     x.SetProperty(y => y.MediaSize, 999L)
                         .SetProperty(y => y.SyncedContentChangedAt, 123L)
-                        .SetProperty(y => y.ArtistCount, 1)
-                        .SetProperty(y => y.AlbumCount, 2)
-                        .SetProperty(y => y.TrackCount, 3)
+                        .SetProperty(y => y.MusicArtistCount, 1)
+                        .SetProperty(y => y.MusicAlbumCount, 2)
+                        .SetProperty(y => y.MusicTrackCount, 3)
                         .SetProperty(y => y.PhotoAlbumCount, 6)
-                        .SetProperty(y => y.PhotoCount, 7)
+                        .SetProperty(y => y.PhotoImageCount, 7)
                         .SetProperty(y => y.PhotoClipCount, 8)
                         .SetProperty(y => y.OtherVideoCount, 11),
                 CancellationToken
@@ -107,11 +107,11 @@ public class SetLibraryEnabledEndpointUnitTests
         updatedLibrary.Outdated.ShouldBeFalse();
         new[]
         {
-            updatedLibrary.ArtistCount,
-            updatedLibrary.AlbumCount,
-            updatedLibrary.TrackCount,
+            updatedLibrary.MusicArtistCount,
+            updatedLibrary.MusicAlbumCount,
+            updatedLibrary.MusicTrackCount,
             updatedLibrary.PhotoAlbumCount,
-            updatedLibrary.PhotoCount,
+            updatedLibrary.PhotoImageCount,
             updatedLibrary.PhotoClipCount,
             updatedLibrary.OtherVideoCount,
         }.ShouldAllBe(x => x == 0);

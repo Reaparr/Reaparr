@@ -255,9 +255,9 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
                         .OrderBy(x => x.PlexApiPartId)
                 );
         var metrics = await db.PlexLibraries.SingleAsync(x => x.Id == library.Id, CancellationToken);
-        metrics.ArtistCount.ShouldBe(artists.Count);
-        metrics.AlbumCount.ShouldBe(albums.Count);
-        metrics.TrackCount.ShouldBe(tracks.Count);
+        metrics.MusicArtistCount.ShouldBe(artists.Count);
+        metrics.MusicAlbumCount.ShouldBe(albums.Count);
+        metrics.MusicTrackCount.ShouldBe(tracks.Count);
         metrics.MediaSize.ShouldBe(
             scenario switch
             {
@@ -299,17 +299,22 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
     [Test]
     [Arguments(false)]
     [Arguments(true)]
-    public async Task ShouldReplaceOrClearArtistMetadataWithoutChangingOtherLibraries_WhenArtistsAreUnchanged(bool clearMetadata)
+    public async Task ShouldReplaceOrClearArtistMetadataWithoutChangingOtherLibraries_WhenArtistsAreUnchanged(
+        bool clearMetadata
+    )
     {
         // Arrange
-        var seed = await SetupDatabase(625111, x =>
-        {
-            x.PlexServerCount = 1;
-            x.PlexMusicLibraryCount = 2;
-            x.MusicArtistCount = 2;
-            x.MusicAlbumCount = 0;
-            x.MusicTrackCount = 0;
-        });
+        var seed = await SetupDatabase(
+            625111,
+            x =>
+            {
+                x.PlexServerCount = 1;
+                x.PlexMusicLibraryCount = 2;
+                x.MusicArtistCount = 2;
+                x.MusicAlbumCount = 0;
+                x.MusicTrackCount = 0;
+            }
+        );
         var db = IDbContext;
         var library = await db.PlexLibraries.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         var artists = await db.PlexArtists.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -324,7 +329,9 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
         foreach (var artist in artists)
         {
             db.PlexMusicArtistActors.Add(new PlexMusicArtistActors(actors[0].Id, artist.PlexLibraryId, artist.Id));
-            db.PlexMusicArtistCountries.Add(new PlexMusicArtistCountries(countries[0].Id, artist.PlexLibraryId, artist.Id));
+            db.PlexMusicArtistCountries.Add(
+                new PlexMusicArtistCountries(countries[0].Id, artist.PlexLibraryId, artist.Id)
+            );
             db.PlexMusicArtistGenres.Add(new PlexMusicArtistGenres(genres[0].Id, artist.PlexLibraryId, artist.Id));
             if (artist.PlexLibraryId == library.Id)
             {
@@ -355,12 +362,20 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
         var expectedArtists = artists.Where(x => !clearMetadata || x.PlexLibraryId != library.Id).ToList();
         (await db.PlexMusicArtistActors.OrderBy(x => x.PlexMusicArtistId).ToListAsync(CancellationToken))
             .Select(x => (x.PlexLibraryId, x.PlexMusicArtistId, x.PlexActorId))
-            .ShouldBe(expectedArtists.Select(x => (x.PlexLibraryId, x.Id, actors[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+            .ShouldBe(
+                expectedArtists.Select(x => (x.PlexLibraryId, x.Id, actors[x.PlexLibraryId == library.Id ? 1 : 0].Id))
+            );
         (await db.PlexMusicArtistCountries.OrderBy(x => x.PlexMusicArtistId).ToListAsync(CancellationToken))
             .Select(x => (x.PlexLibraryId, x.PlexMusicArtistId, x.CountryId))
-            .ShouldBe(expectedArtists.Select(x => (x.PlexLibraryId, x.Id, countries[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+            .ShouldBe(
+                expectedArtists.Select(x =>
+                    (x.PlexLibraryId, x.Id, countries[x.PlexLibraryId == library.Id ? 1 : 0].Id)
+                )
+            );
         (await db.PlexMusicArtistGenres.OrderBy(x => x.PlexMusicArtistId).ToListAsync(CancellationToken))
             .Select(x => (x.PlexLibraryId, x.PlexMusicArtistId, x.GenresId))
-            .ShouldBe(expectedArtists.Select(x => (x.PlexLibraryId, x.Id, genres[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+            .ShouldBe(
+                expectedArtists.Select(x => (x.PlexLibraryId, x.Id, genres[x.PlexLibraryId == library.Id ? 1 : 0].Id))
+            );
     }
 }

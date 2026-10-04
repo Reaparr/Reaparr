@@ -1,8 +1,8 @@
 namespace Reaparr.Data;
 
-public class DownloadTaskTrackConfiguration : IEntityTypeConfiguration<DownloadTaskTrack>
+public class DownloadTaskTrackConfiguration : IEntityTypeConfiguration<DownloadTaskMusicTrack>
 {
-    public void Configure(EntityTypeBuilder<DownloadTaskTrack> builder)
+    public void Configure(EntityTypeBuilder<DownloadTaskMusicTrack> builder)
     {
         builder.HasIndex(x => x.DownloadStatus);
         builder.HasIndex(x => new

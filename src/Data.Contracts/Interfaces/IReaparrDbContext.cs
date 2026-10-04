@@ -22,7 +22,7 @@ public interface IReaparrDbContext : IDisposable
     DbSet<PlexLibrary> PlexLibraries { get; }
 
     DbSet<PlexPhotoAlbum> PlexPhotoAlbums { get; }
-    DbSet<PlexPhoto> PlexPhotos { get; }
+    DbSet<PlexPhotoImage> PlexPhotoImages { get; }
     DbSet<PlexPhotoMediaData> PlexPhotoData { get; }
     DbSet<MediaOverviewPhotoAlbumSnapshot> MediaOverviewPhotoAlbumSnapshots { get; }
 
@@ -30,14 +30,14 @@ public interface IReaparrDbContext : IDisposable
     DbSet<PlexOtherVideoMediaData> PlexOtherVideoData { get; }
     DbSet<MediaOverviewOtherVideoSnapshot> MediaOverviewOtherVideoSnapshots { get; }
 
-    DbSet<DownloadTaskArtist> DownloadTaskArtists { get; }
-    DbSet<DownloadTaskAlbum> DownloadTaskAlbums { get; }
-    DbSet<DownloadTaskTrack> DownloadTaskTracks { get; }
-    DbSet<DownloadTaskTrackFile> DownloadTaskTrackFiles { get; }
+    DbSet<DownloadTaskMusicArtist> DownloadTaskArtists { get; }
+    DbSet<DownloadTaskMusicAlbum> DownloadTaskAlbums { get; }
+    DbSet<DownloadTaskMusicTrack> DownloadTaskTracks { get; }
+    DbSet<DownloadTaskMusicTrackFile> DownloadTaskTrackFiles { get; }
     DbSet<DownloadTaskTrackFileLog> DownloadTaskTrackFileLogs { get; }
-    DbSet<DownloadTaskPhoto> DownloadTaskPhotos { get; }
-    DbSet<DownloadTaskPhotoFile> DownloadTaskPhotoFiles { get; }
-    DbSet<DownloadTaskPhotoFileLog> DownloadTaskPhotoFileLogs { get; }
+    DbSet<DownloadTaskPhotoImage> DownloadTaskPhotos { get; }
+    DbSet<DownloadTaskPhotoImageFile> DownloadTaskPhotoFiles { get; }
+    DbSet<DownloadTaskPhotoImageFileLog> DownloadTaskPhotoFileLogs { get; }
     DbSet<DownloadTaskOtherVideo> DownloadTaskOtherVideos { get; }
     DbSet<DownloadTaskOtherVideoFile> DownloadTaskOtherVideoFiles { get; }
     DbSet<DownloadTaskOtherVideoFileLog> DownloadTaskOtherVideoFileLogs { get; }

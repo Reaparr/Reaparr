@@ -62,7 +62,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
             return retrievalResult.ToResult().LogError();
         }
 
-        var photos = retrievalResult.Value.Library.Photos;
+        var photos = retrievalResult.Value.Library.PhotoImages;
         var treeResult = BuildPhotoTree(plexLibrary, photos);
         if (treeResult.IsFailed)
         {
@@ -109,8 +109,8 @@ public class RefreshPlexPhotoLibraryCommandHandler
             new LibraryProgressItem
             {
                 MediaType = PlexMediaType.PhotoImage,
-                Received = plexLibrary.Photos.Count,
-                Total = plexLibrary.Photos.Count,
+                Received = plexLibrary.PhotoImages.Count,
+                Total = plexLibrary.PhotoImages.Count,
                 TimeRemaining = TimeSpan.Zero,
             },
             cancellationToken
@@ -131,7 +131,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
             : Result.Ok(plexLibraryDb);
     }
 
-    private static Result BuildPhotoTree(PlexLibrary library, ICollection<PlexPhoto> photos)
+    private static Result BuildPhotoTree(PlexLibrary library, ICollection<PlexPhotoImage> photos)
     {
         var albums = library.PhotoAlbums.ToDictionary(x => x.PlexApiRatingKey);
         var missingPhoto = photos.FirstOrDefault(x => !albums.ContainsKey(x.ParentKey));

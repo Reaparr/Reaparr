@@ -163,11 +163,11 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
                                 .SetProperty(y => y.SeasonCount, 0)
                                 .SetProperty(y => y.EpisodeCount, 0)
                                 .SetProperty(y => y.EpisodeMediaDataCount, 0)
-                                .SetProperty(y => y.ArtistCount, 0)
-                                .SetProperty(y => y.AlbumCount, 0)
-                                .SetProperty(y => y.TrackCount, 0)
+                                .SetProperty(y => y.MusicArtistCount, 0)
+                                .SetProperty(y => y.MusicAlbumCount, 0)
+                                .SetProperty(y => y.MusicTrackCount, 0)
                                 .SetProperty(y => y.PhotoAlbumCount, 0)
-                                .SetProperty(y => y.PhotoCount, 0)
+                                .SetProperty(y => y.PhotoImageCount, 0)
                                 .SetProperty(y => y.PhotoClipCount, 0)
                                 .SetProperty(y => y.OtherVideoCount, 0),
                         txCt

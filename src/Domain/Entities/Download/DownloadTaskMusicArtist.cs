@@ -1,14 +1,14 @@
 namespace Reaparr.Domain;
 
-public class DownloadTaskArtist : DownloadTaskParentBase
+public class DownloadTaskMusicArtist : DownloadTaskParentBase
 {
-    public required ICollection<DownloadTaskAlbum> Children { get; set; } = [];
+    public required ICollection<DownloadTaskMusicAlbum> Children { get; set; } = [];
 
     [NotMapped]
     public override PlexMediaType MediaType => PlexMediaType.MusicArtist;
 
     [NotMapped]
-    public override DownloadTaskType DownloadTaskType => DownloadTaskType.Artist;
+    public override DownloadTaskType DownloadTaskType => DownloadTaskType.MusicArtist;
 
     [NotMapped]
     public override bool IsDownloadable => false;

@@ -1,8 +1,8 @@
 namespace Reaparr.Data;
 
-public class DownloadTaskPhotoFileConfiguration : IEntityTypeConfiguration<DownloadTaskPhotoFile>
+public class DownloadTaskPhotoFileConfiguration : IEntityTypeConfiguration<DownloadTaskPhotoImageFile>
 {
-    public void Configure(EntityTypeBuilder<DownloadTaskPhotoFile> builder)
+    public void Configure(EntityTypeBuilder<DownloadTaskPhotoImageFile> builder)
     {
         builder.HasIndex(x => x.DownloadStatus);
         builder.HasIndex(x => new

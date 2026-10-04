@@ -4,7 +4,7 @@ public class PlexPhotoMediaData : BasePlexMediaData
 {
     public required int PlexPhotoId { get; set; }
 
-    public PlexPhoto? PlexPhoto { get; set; }
+    public PlexPhotoImage? PlexPhoto { get; set; }
 
     public int? Width { get; set; }
 

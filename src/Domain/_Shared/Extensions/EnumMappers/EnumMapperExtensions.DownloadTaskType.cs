@@ -15,12 +15,12 @@ public static partial class EnumMapperExtensions
         ["Episode"] = DownloadTaskType.Episode,
         ["EpisodeData"] = DownloadTaskType.EpisodeData,
         ["EpisodePart"] = DownloadTaskType.EpisodePart,
-        ["Artist"] = DownloadTaskType.Artist,
-        ["Album"] = DownloadTaskType.Album,
-        ["Track"] = DownloadTaskType.Track,
-        ["TrackData"] = DownloadTaskType.TrackData,
-        ["TrackPart"] = DownloadTaskType.TrackPart,
-        ["Photo"] = DownloadTaskType.Photo,
+        ["Artist"] = DownloadTaskType.MusicArtist,
+        ["Album"] = DownloadTaskType.MusicAlbum,
+        ["Track"] = DownloadTaskType.MusicTrack,
+        ["TrackData"] = DownloadTaskType.MusicTrackData,
+        ["TrackPart"] = DownloadTaskType.MusicTrackPart,
+        ["Photo"] = DownloadTaskType.PhotoAlbum,
         ["PhotoData"] = DownloadTaskType.PhotoData,
         ["PhotoPart"] = DownloadTaskType.PhotoPart,
         ["OtherVideo"] = DownloadTaskType.OtherVideo,
@@ -67,12 +67,12 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.Episode => "Episode",
             DownloadTaskType.EpisodeData => "EpisodeData",
             DownloadTaskType.EpisodePart => "EpisodePart",
-            DownloadTaskType.Artist => "Artist",
-            DownloadTaskType.Album => "Album",
-            DownloadTaskType.Track => "Track",
-            DownloadTaskType.TrackData => "TrackData",
-            DownloadTaskType.TrackPart => "TrackPart",
-            DownloadTaskType.Photo => "Photo",
+            DownloadTaskType.MusicArtist => "Artist",
+            DownloadTaskType.MusicAlbum => "Album",
+            DownloadTaskType.MusicTrack => "Track",
+            DownloadTaskType.MusicTrackData => "TrackData",
+            DownloadTaskType.MusicTrackPart => "TrackPart",
+            DownloadTaskType.PhotoAlbum => "Photo",
             DownloadTaskType.PhotoData => "PhotoData",
             DownloadTaskType.PhotoPart => "PhotoPart",
             DownloadTaskType.OtherVideo => "OtherVideo",
@@ -100,10 +100,11 @@ public static partial class EnumMapperExtensions
             or DownloadTaskType.TvShow
             or DownloadTaskType.Season
             or DownloadTaskType.Episode
-            or DownloadTaskType.Artist
-            or DownloadTaskType.Album
-            or DownloadTaskType.Track
-            or DownloadTaskType.Photo
+            or DownloadTaskType.MusicArtist
+            or DownloadTaskType.MusicAlbum
+            or DownloadTaskType.MusicTrack
+            or DownloadTaskType.PhotoAlbum
+            or DownloadTaskType.PhotoImage
             or DownloadTaskType.OtherVideo
             or DownloadTaskType.None => false,
 
@@ -111,8 +112,8 @@ public static partial class EnumMapperExtensions
             or DownloadTaskType.MoviePart
             or DownloadTaskType.EpisodeData
             or DownloadTaskType.EpisodePart
-            or DownloadTaskType.TrackData
-            or DownloadTaskType.TrackPart
+            or DownloadTaskType.MusicTrackData
+            or DownloadTaskType.MusicTrackPart
             or DownloadTaskType.PhotoData
             or DownloadTaskType.PhotoPart
             or DownloadTaskType.OtherVideoData
@@ -129,11 +130,11 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.Season => PlexMediaType.Season,
             DownloadTaskType.Episode or DownloadTaskType.EpisodeData or DownloadTaskType.EpisodePart =>
                 PlexMediaType.Episode,
-            DownloadTaskType.Artist => PlexMediaType.MusicArtist,
-            DownloadTaskType.Album => PlexMediaType.MusicAlbum,
-            DownloadTaskType.Track or DownloadTaskType.TrackData or DownloadTaskType.TrackPart =>
+            DownloadTaskType.MusicArtist => PlexMediaType.MusicArtist,
+            DownloadTaskType.MusicAlbum => PlexMediaType.MusicAlbum,
+            DownloadTaskType.MusicTrack or DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart =>
                 PlexMediaType.MusicTrack,
-            DownloadTaskType.Photo or DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart =>
+            DownloadTaskType.PhotoAlbum or DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart =>
                 PlexMediaType.PhotoImage,
             DownloadTaskType.OtherVideo or DownloadTaskType.OtherVideoData or DownloadTaskType.OtherVideoPart =>
                 PlexMediaType.OtherVideos,

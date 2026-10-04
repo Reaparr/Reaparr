@@ -153,9 +153,9 @@ public static partial class DbContextExtensions
             .PlexLibraries.Where(x => x.Id == plexLibraryId)
             .ExecuteUpdateAsync(
                 p =>
-                    p.SetProperty(x => x.ArtistCount, artistCount)
-                        .SetProperty(x => x.AlbumCount, albumCount)
-                        .SetProperty(x => x.TrackCount, trackCount)
+                    p.SetProperty(x => x.MusicArtistCount, artistCount)
+                        .SetProperty(x => x.MusicAlbumCount, albumCount)
+                        .SetProperty(x => x.MusicTrackCount, trackCount)
                         .SetProperty(x => x.MediaSize, mediaSize),
                 ct
             );
@@ -174,7 +174,7 @@ public static partial class DbContextExtensions
             .ExecuteUpdateAsync(
                 p =>
                     p.SetProperty(x => x.PhotoAlbumCount, albumCount)
-                        .SetProperty(x => x.PhotoCount, photoCount)
+                        .SetProperty(x => x.PhotoImageCount, photoCount)
                         .SetProperty(x => x.PhotoClipCount, clipCount)
                         .SetProperty(x => x.MediaSize, mediaSize),
                 ct

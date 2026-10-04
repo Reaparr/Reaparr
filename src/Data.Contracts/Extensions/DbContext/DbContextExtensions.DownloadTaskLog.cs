@@ -67,7 +67,7 @@ public static partial class DbContextExtensions
                         .ApplyTake(take ?? 0)
                         .ToListAsync(ct)
             ),
-            DownloadTaskType.Artist => await Result.Try(async Task<List<DownloadTaskLogBase>> () =>
+            DownloadTaskType.MusicArtist => await Result.Try(async Task<List<DownloadTaskLogBase>> () =>
                 await dbContext
                     .DownloadTaskTrackFileLogs.Where(x => x.DownloadTaskArtistId == downloadTaskKey.Id)
                     .ApplyWhere(sinceId != null, x => x.Id > sinceId)
@@ -76,7 +76,7 @@ public static partial class DbContextExtensions
                     .ApplyTake(take ?? 0)
                     .ToListAsync(ct)
             ),
-            DownloadTaskType.Album => await Result.Try(async Task<List<DownloadTaskLogBase>> () =>
+            DownloadTaskType.MusicAlbum => await Result.Try(async Task<List<DownloadTaskLogBase>> () =>
                 await dbContext
                     .DownloadTaskTrackFileLogs.Where(x => x.DownloadTaskAlbumId == downloadTaskKey.Id)
                     .ApplyWhere(sinceId != null, x => x.Id > sinceId)
@@ -85,7 +85,7 @@ public static partial class DbContextExtensions
                     .ApplyTake(take ?? 0)
                     .ToListAsync(ct)
             ),
-            DownloadTaskType.Track => await Result.Try(async Task<List<DownloadTaskLogBase>> () =>
+            DownloadTaskType.MusicTrack => await Result.Try(async Task<List<DownloadTaskLogBase>> () =>
                 await dbContext
                     .DownloadTaskTrackFileLogs.Where(x => x.DownloadTaskTrackId == downloadTaskKey.Id)
                     .ApplyWhere(sinceId != null, x => x.Id > sinceId)
@@ -94,7 +94,7 @@ public static partial class DbContextExtensions
                     .ApplyTake(take ?? 0)
                     .ToListAsync(ct)
             ),
-            DownloadTaskType.TrackData or DownloadTaskType.TrackPart => await Result.Try(
+            DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart => await Result.Try(
                 async Task<List<DownloadTaskLogBase>> () =>
                     await dbContext
                         .DownloadTaskTrackFileLogs.Where(x => x.DownloadTaskFileId == downloadTaskKey.Id)
@@ -104,7 +104,7 @@ public static partial class DbContextExtensions
                         .ApplyTake(take ?? 0)
                         .ToListAsync(ct)
             ),
-            DownloadTaskType.Photo => await Result.Try(async Task<List<DownloadTaskLogBase>> () =>
+            DownloadTaskType.PhotoAlbum => await Result.Try(async Task<List<DownloadTaskLogBase>> () =>
                 await dbContext
                     .DownloadTaskPhotoFileLogs.Where(x => x.DownloadTaskPhotoId == downloadTaskKey.Id)
                     .ApplyWhere(sinceId != null, x => x.Id > sinceId)
@@ -184,27 +184,27 @@ public static partial class DbContextExtensions
                     .DownloadTaskTvShowEpisodeFileLogs.Where(x => x.DownloadTaskFileId == downloadTaskKey.Id)
                     .ExecuteDeleteAsync(ct)
             ),
-            DownloadTaskType.Artist => await Result.Try(() =>
+            DownloadTaskType.MusicArtist => await Result.Try(() =>
                 dbContext
                     .DownloadTaskTrackFileLogs.Where(x => x.DownloadTaskArtistId == downloadTaskKey.Id)
                     .ExecuteDeleteAsync(ct)
             ),
-            DownloadTaskType.Album => await Result.Try(() =>
+            DownloadTaskType.MusicAlbum => await Result.Try(() =>
                 dbContext
                     .DownloadTaskTrackFileLogs.Where(x => x.DownloadTaskAlbumId == downloadTaskKey.Id)
                     .ExecuteDeleteAsync(ct)
             ),
-            DownloadTaskType.Track => await Result.Try(() =>
+            DownloadTaskType.MusicTrack => await Result.Try(() =>
                 dbContext
                     .DownloadTaskTrackFileLogs.Where(x => x.DownloadTaskTrackId == downloadTaskKey.Id)
                     .ExecuteDeleteAsync(ct)
             ),
-            DownloadTaskType.TrackData or DownloadTaskType.TrackPart => await Result.Try(() =>
+            DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart => await Result.Try(() =>
                 dbContext
                     .DownloadTaskTrackFileLogs.Where(x => x.DownloadTaskFileId == downloadTaskKey.Id)
                     .ExecuteDeleteAsync(ct)
             ),
-            DownloadTaskType.Photo => await Result.Try(() =>
+            DownloadTaskType.PhotoAlbum => await Result.Try(() =>
                 dbContext
                     .DownloadTaskPhotoFileLogs.Where(x => x.DownloadTaskPhotoId == downloadTaskKey.Id)
                     .ExecuteDeleteAsync(ct)
@@ -283,7 +283,7 @@ public static partial class DbContextExtensions
             );
         }
 
-        if (downloadTaskKey.Type is DownloadTaskType.TrackData or DownloadTaskType.TrackPart)
+        if (downloadTaskKey.Type is DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart)
         {
             var ids = await dbContext
                 .DownloadTaskTrackFiles.Where(x => x.Id == downloadTaskKey.Id)
@@ -317,7 +317,7 @@ public static partial class DbContextExtensions
                 .Select(x => x.ParentId)
                 .FirstOrDefaultAsync(CancellationToken.None);
             dbContext.DownloadTaskPhotoFileLogs.Add(
-                new DownloadTaskPhotoFileLog
+                new DownloadTaskPhotoImageFileLog
                 {
                     Message = message,
                     LogLevel = logLevel,

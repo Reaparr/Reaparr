@@ -1,16 +1,18 @@
 namespace Reaparr.Domain;
 
-public class DownloadTaskPhoto : DownloadTaskParentBase
+public class DownloadTaskPhotoImage : DownloadTaskParentBase
 {
-    public required PhotoAssetKind Kind { get; init; }
+    public required Guid ParentId { get; init; }
 
-    public required ICollection<DownloadTaskPhotoFile> Children { get; set; } = [];
+    public DownloadTaskPhotoAlbum? Parent { get; init; }
+
+    public required ICollection<DownloadTaskPhotoImageFile> Children { get; set; } = [];
 
     [NotMapped]
     public override PlexMediaType MediaType => PlexMediaType.PhotoImage;
 
     [NotMapped]
-    public override DownloadTaskType DownloadTaskType => DownloadTaskType.Photo;
+    public override DownloadTaskType DownloadTaskType => DownloadTaskType.PhotoImage;
 
     [NotMapped]
     public override bool IsDownloadable => false;

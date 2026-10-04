@@ -2,44 +2,50 @@ namespace Reaparr.PlexApi;
 
 public static partial class PlexMediaDataMapper
 {
-    public static List<PlexPhoto> ToPlexPhotos(this List<LibraryMediaItemDTO> source) =>
+    public static List<PlexPhotoImage> ToPlexPhotos(this List<LibraryMediaItemDTO> source) =>
         source.Select(value => value.ToPlexPhoto()).ToList();
 
-    public static PlexPhoto ToPlexPhoto(this LibraryMediaItemDTO source)
+    public static PlexPhotoImage ToPlexPhoto(this LibraryMediaItemDTO source)
     {
-        var mediaDataList = source.Media.SelectMany(x => x.Parts.Select((part, partIndex) =>
-        {
-            var fileName = part.File.GetFileName();
-            return new PlexPhotoMediaData
-            {
-                PlexApiRatingKey = source.RatingKey,
-                PlexApiMediaId = x.Id,
-                PlexApiPartId = part.Id,
-                PlexPhotoId = 0,
-                PlexPhoto = default,
-                VideoResolution = x.VideoResolution,
-                Quality = x.VideoResolution,
-                Container = part.Container,
-                VideoCodec = x.VideoCodec,
-                AudioCodec = x.AudioCodec,
-                Duration =
-                    part.Duration >= 0 ? part.Duration
-                    : x.Parts.Count == 1 && x.Duration > 0 ? x.Duration
-                    : -1,
-                Size = part.Size,
-                Key = part.Key,
-                OriginalFilename = fileName,
-                Width = x.Width > 0 ? x.Width : null,
-                Height = x.Height > 0 ? x.Height : null,
-                Source = x.DetermineReleaseSource(),
-                NeedsGeneratedName = !fileName.IsValidMediaFileName(),
-                GeneratedFilename = null,
-                PlexLibraryId = 0,
-                PlexServerId = 0,
-            };
-        })).ToList();
+        var mediaDataList = source
+            .Media.SelectMany(x =>
+                x.Parts.Select(
+                    (part, partIndex) =>
+                    {
+                        var fileName = part.File.GetFileName();
+                        return new PlexPhotoMediaData
+                        {
+                            PlexApiRatingKey = source.RatingKey,
+                            PlexApiMediaId = x.Id,
+                            PlexApiPartId = part.Id,
+                            PlexPhotoId = 0,
+                            PlexPhoto = default,
+                            VideoResolution = x.VideoResolution,
+                            Quality = x.VideoResolution,
+                            Container = part.Container,
+                            VideoCodec = x.VideoCodec,
+                            AudioCodec = x.AudioCodec,
+                            Duration =
+                                part.Duration >= 0 ? part.Duration
+                                : x.Parts.Count == 1 && x.Duration > 0 ? x.Duration
+                                : -1,
+                            Size = part.Size,
+                            Key = part.Key,
+                            OriginalFilename = fileName,
+                            Width = x.Width > 0 ? x.Width : null,
+                            Height = x.Height > 0 ? x.Height : null,
+                            Source = x.DetermineReleaseSource(),
+                            NeedsGeneratedName = !fileName.IsValidMediaFileName(),
+                            GeneratedFilename = null,
+                            PlexLibraryId = 0,
+                            PlexServerId = 0,
+                        };
+                    }
+                )
+            )
+            .ToList();
 
-        var photo = new PlexPhoto
+        var photo = new PlexPhotoImage
         {
             Id = 0,
             Title = source.Title,
@@ -80,5 +86,4 @@ public static partial class PlexMediaDataMapper
 
         return photo;
     }
-
 }

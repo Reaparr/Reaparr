@@ -1,6 +1,6 @@
 namespace Reaparr.Domain;
 
-public class PlexPhoto : BasePlexMedia
+public class PlexPhotoImage : BasePlexMedia
 {
     public override PlexMediaType Type => PlexMediaType.PhotoImage;
 

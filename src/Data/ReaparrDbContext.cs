@@ -32,7 +32,7 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
     public DbSet<PlexMusicTrackMediaData> PlexTrackData { get; set; }
 
     public DbSet<PlexPhotoAlbum> PlexPhotoAlbums { get; set; }
-    public DbSet<PlexPhoto> PlexPhotos { get; set; }
+    public DbSet<PlexPhotoImage> PlexPhotoImages { get; set; }
 
     public DbSet<PlexPhotoMediaData> PlexPhotoData { get; set; }
 
@@ -42,14 +42,14 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
     public DbSet<PlexOtherVideoMediaData> PlexOtherVideoData { get; set; }
     public DbSet<MediaOverviewOtherVideoSnapshot> MediaOverviewOtherVideoSnapshots { get; set; }
 
-    public DbSet<DownloadTaskArtist> DownloadTaskArtists { get; set; }
-    public DbSet<DownloadTaskAlbum> DownloadTaskAlbums { get; set; }
-    public DbSet<DownloadTaskTrack> DownloadTaskTracks { get; set; }
-    public DbSet<DownloadTaskTrackFile> DownloadTaskTrackFiles { get; set; }
+    public DbSet<DownloadTaskMusicArtist> DownloadTaskArtists { get; set; }
+    public DbSet<DownloadTaskMusicAlbum> DownloadTaskAlbums { get; set; }
+    public DbSet<DownloadTaskMusicTrack> DownloadTaskTracks { get; set; }
+    public DbSet<DownloadTaskMusicTrackFile> DownloadTaskTrackFiles { get; set; }
     public DbSet<DownloadTaskTrackFileLog> DownloadTaskTrackFileLogs { get; set; }
-    public DbSet<DownloadTaskPhoto> DownloadTaskPhotos { get; set; }
-    public DbSet<DownloadTaskPhotoFile> DownloadTaskPhotoFiles { get; set; }
-    public DbSet<DownloadTaskPhotoFileLog> DownloadTaskPhotoFileLogs { get; set; }
+    public DbSet<DownloadTaskPhotoImage> DownloadTaskPhotos { get; set; }
+    public DbSet<DownloadTaskPhotoImageFile> DownloadTaskPhotoFiles { get; set; }
+    public DbSet<DownloadTaskPhotoImageFileLog> DownloadTaskPhotoFileLogs { get; set; }
     public DbSet<DownloadTaskOtherVideo> DownloadTaskOtherVideos { get; set; }
     public DbSet<DownloadTaskOtherVideoFile> DownloadTaskOtherVideoFiles { get; set; }
     public DbSet<DownloadTaskOtherVideoFileLog> DownloadTaskOtherVideoFileLogs { get; set; }

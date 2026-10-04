@@ -1,8 +1,8 @@
 namespace Reaparr.Data;
 
-public class DownloadTaskPhotoFileLogConfiguration : IEntityTypeConfiguration<DownloadTaskPhotoFileLog>
+public class DownloadTaskPhotoFileLogConfiguration : IEntityTypeConfiguration<DownloadTaskPhotoImageFileLog>
 {
-    public void Configure(EntityTypeBuilder<DownloadTaskPhotoFileLog> builder)
+    public void Configure(EntityTypeBuilder<DownloadTaskPhotoImageFileLog> builder)
     {
         builder
             .Property(x => x.LogLevel)

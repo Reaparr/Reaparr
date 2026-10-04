@@ -50,7 +50,7 @@ public static partial class FakeData
             .UseSeed(seed.Next());
     }
 
-    private static readonly Faker<PlexPhoto> _plexPhoto = new Faker<PlexPhoto>()
+    private static readonly Faker<PlexPhotoImage> _plexPhoto = new Faker<PlexPhotoImage>()
         .ApplyBasePlexMedia()
         .RuleFor(x => x.Title, f => f.Lorem.Sentence(3))
         .RuleFor(x => x.Guid, (_, x) => $"plex://photo/{x.PlexApiRatingKey}")
@@ -77,7 +77,11 @@ public static partial class FakeData
             }
         );
 
-    public static Faker<PlexPhoto> GetPlexPhotos(Seed seed, Action<FakeDataConfig>? options = null, bool isClip = false)
+    public static Faker<PlexPhotoImage> GetPlexPhotos(
+        Seed seed,
+        Action<FakeDataConfig>? options = null,
+        bool isClip = false
+    )
     {
         var mediaDataFaker = GetPlexPhotoMediaData(seed, options, isClip);
         return _plexPhoto.Clone().RuleFor(x => x.MediaDataList, _ => mediaDataFaker.Generate(1)).UseSeed(seed.Next());

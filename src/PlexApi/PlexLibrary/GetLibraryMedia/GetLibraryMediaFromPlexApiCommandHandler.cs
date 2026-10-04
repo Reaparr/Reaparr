@@ -103,7 +103,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                 case PlexMediaType.PhotoImage:
                 {
                     var photos = media.ToPlexPhotos();
-                    library.Photos.AddRange(photos);
+                    library.PhotoImages.AddRange(photos);
                     break;
                 }
                 case PlexMediaType.OtherVideos:

@@ -1,8 +1,8 @@
 namespace Reaparr.Data;
 
-public class PlexPhotoConfiguration : IEntityTypeConfiguration<PlexPhoto>
+public class PlexPhotoConfiguration : IEntityTypeConfiguration<PlexPhotoImage>
 {
-    public void Configure(EntityTypeBuilder<PlexPhoto> builder)
+    public void Configure(EntityTypeBuilder<PlexPhotoImage> builder)
     {
         builder.HasIndex(x => new { x.PlexLibraryId, x.PlexApiRatingKey }).IsUnique();
         builder.Property(x => x.SearchTitle).UseCollation("NOCASE");
@@ -14,9 +14,13 @@ public class PlexPhotoConfiguration : IEntityTypeConfiguration<PlexPhoto>
             .OnDelete(DeleteBehavior.Cascade);
         builder
             .HasOne(x => x.PlexLibrary)
-            .WithMany(x => x.Photos)
+            .WithMany(x => x.PhotoImages)
             .HasForeignKey(x => x.PlexLibraryId)
             .OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne(x => x.PlexServer).WithMany().HasForeignKey(x => x.PlexServerId).OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasOne(x => x.PlexServer)
+            .WithMany()
+            .HasForeignKey(x => x.PlexServerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

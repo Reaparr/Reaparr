@@ -1,18 +1,18 @@
 namespace Reaparr.Domain;
 
-public class DownloadTaskAlbum : DownloadTaskParentBase
+public class DownloadTaskMusicTrack : DownloadTaskParentBase
 {
-    public required ICollection<DownloadTaskTrack> Children { get; set; } = [];
+    public required ICollection<DownloadTaskMusicTrackFile> Children { get; init; } = [];
 
     public required Guid ParentId { get; init; }
 
-    public DownloadTaskArtist? Parent { get; init; }
+    public DownloadTaskMusicAlbum? Parent { get; init; }
 
     [NotMapped]
-    public override PlexMediaType MediaType => PlexMediaType.MusicAlbum;
+    public override PlexMediaType MediaType => PlexMediaType.MusicTrack;
 
     [NotMapped]
-    public override DownloadTaskType DownloadTaskType => DownloadTaskType.Album;
+    public override DownloadTaskType DownloadTaskType => DownloadTaskType.MusicTrack;
 
     [NotMapped]
     public override bool IsDownloadable => false;
@@ -23,7 +23,7 @@ public class DownloadTaskAlbum : DownloadTaskParentBase
     public override DownloadTaskKey ToParentKey() =>
         new()
         {
-            Type = DownloadTaskType.Artist,
+            Type = DownloadTaskType.MusicAlbum,
             Id = ParentId,
             PlexServerId = PlexServerId,
             PlexLibraryId = PlexLibraryId,

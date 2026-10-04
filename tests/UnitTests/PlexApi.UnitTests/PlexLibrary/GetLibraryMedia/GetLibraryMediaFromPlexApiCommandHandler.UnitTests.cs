@@ -233,7 +233,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         }
         library.Albums.ShouldBeEmpty();
         library.Tracks.ShouldBeEmpty();
-        library.Photos.ShouldBeEmpty();
+        library.PhotoImages.ShouldBeEmpty();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ICommandExecutor>()
@@ -297,7 +297,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         result.Value.Library.Albums.ShouldBeEmpty();
         result.Value.Library.Tracks.ShouldBeEmpty();
         result.Value.Library.PhotoAlbums.ShouldBeEmpty();
-        result.Value.Library.Photos.ShouldBeEmpty();
+        result.Value.Library.PhotoImages.ShouldBeEmpty();
         result.Value.Library.OtherVideos.ShouldBeEmpty();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
@@ -376,7 +376,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         {
             PlexMediaType.MusicAlbum => library.Albums.Select(x => (x.PlexApiRatingKey, x.SortIndex)),
             PlexMediaType.MusicTrack => library.Tracks.Select(x => (x.PlexApiRatingKey, x.SortIndex)),
-            _ => library.Photos.Select(x => (x.PlexApiRatingKey, x.SortIndex)),
+            _ => library.PhotoImages.Select(x => (x.PlexApiRatingKey, x.SortIndex)),
         };
         items.ShouldBe([(104, 1), (103, 2)]);
         if (mediaType == PlexMediaType.MusicAlbum)
@@ -397,7 +397,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         }
         else
         {
-            var photo = library.Photos.Single(x => x.PlexApiRatingKey == 103);
+            var photo = library.PhotoImages.Single(x => x.PlexApiRatingKey == 103);
             photo.PlexPhotoAlbum.ShouldBeNull();
             photo.ParentKey.ShouldBe(library.PhotoAlbums.Single().PlexApiRatingKey);
             (photo.Duration, photo.MediaSize).ShouldBe((17, 4200L));
@@ -436,7 +436,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         var orphan = valid with { RatingKey = 104, ParentRatingKey = "999", SortTitle = "Item 2" };
         var albums = library.Albums.ToArray();
         var tracks = library.Tracks.ToArray();
-        var photos = library.Photos.ToArray();
+        var photos = library.PhotoImages.ToArray();
         Mock.SetupCommand(() =>
                 It.Is<GetAllMediaByTypeFromPlexApiCommand>(x => x.PlexLibrary == library && x.MediaType == mediaType)
             )
@@ -456,7 +456,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         {
             PlexMediaType.MusicAlbum => library.Albums.Select(x => (x.PlexApiRatingKey, x.ParentKey)),
             PlexMediaType.MusicTrack => library.Tracks.Select(x => (x.PlexApiRatingKey, x.ParentKey)),
-            _ => library.Photos.Select(x => (x.PlexApiRatingKey, x.ParentKey)),
+            _ => library.PhotoImages.Select(x => (x.PlexApiRatingKey, x.ParentKey)),
         };
         mapped.ShouldBe([(103, int.Parse(valid.ParentRatingKey)), (104, 999)]);
         if (mediaType != PlexMediaType.MusicAlbum)
@@ -464,7 +464,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         if (mediaType != PlexMediaType.MusicTrack)
             library.Tracks.ShouldBe(tracks);
         if (mediaType != PlexMediaType.PhotoImage)
-            library.Photos.ShouldBe(photos);
+            library.PhotoImages.ShouldBe(photos);
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -485,7 +485,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         var library = CreateDescendantLibrary(mediaType, template);
         var albums = library.Albums.ToArray();
         var tracks = library.Tracks.ToArray();
-        var photos = library.Photos.ToArray();
+        var photos = library.PhotoImages.ToArray();
         var failure = cancelled ? ResultExtensions.TaskIsCancelled("descendants") : Result.Fail("incomplete page");
         Mock.SetupCommand(() =>
                 It.Is<GetAllMediaByTypeFromPlexApiCommand>(x => x.PlexLibrary == library && x.MediaType == mediaType)
@@ -505,7 +505,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         result.Errors.ShouldBe(failure.Errors);
         library.Albums.ShouldBe(albums);
         library.Tracks.ShouldBe(tracks);
-        library.Photos.ShouldBe(photos);
+        library.PhotoImages.ShouldBe(photos);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>()
             .Verify(
@@ -546,7 +546,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         library.PhotoAlbums.ShouldBe(photoAlbums);
         library.Albums.ShouldBe(mediaType == PlexMediaType.MusicAlbum ? [] : albums);
         library.Tracks.ShouldBe(mediaType == PlexMediaType.MusicTrack ? [] : tracks);
-        library.Photos.ShouldBeEmpty();
+        library.PhotoImages.ShouldBeEmpty();
         result.Value.PhotoClipCount.ShouldBe(0);
         Mock.Mock<ICommandExecutor>().Verify();
     }
@@ -563,7 +563,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
             var photo = (template with { RatingKey = 201, Type = PlexMediaType.PhotoImage }).ToPlexPhoto();
             photo.ParentKey = album.PlexApiRatingKey;
             photo.PlexPhotoAlbum = album;
-            library.Photos.Add(photo);
+            library.PhotoImages.Add(photo);
         }
         else
         {

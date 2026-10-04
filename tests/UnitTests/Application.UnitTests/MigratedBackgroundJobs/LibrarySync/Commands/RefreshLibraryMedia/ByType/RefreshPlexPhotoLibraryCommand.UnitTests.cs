@@ -10,7 +10,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var library = FakeData.GetPlexLibrary(seed, PlexMediaType.PhotoAlbum).Generate();
         library.Id = 17;
         library.PhotoAlbums.Clear();
-        library.Photos.Clear();
+        library.PhotoImages.Clear();
         var album = FakeData
             .GetPlexPhotoAlbums(
                 seed,
@@ -27,7 +27,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         photo.PlexPhotoAlbum = album;
         album.Photos.Add(photo);
         library.PhotoAlbums.Add(album);
-        library.Photos.Add(photo);
+        library.PhotoImages.Add(photo);
         var albumState = (album.ChildCount, album.Duration, album.MediaSize, album.Quality);
         var response = new InsertMediaMetaDataCommandResponse(library) { PhotoClipCount = 5 };
 
@@ -57,7 +57,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         result.IsCancelled.ShouldBeFalse();
         result.Errors.Count.ShouldBe(1);
         library.PhotoAlbums.ShouldBe([album]);
-        library.Photos.ShouldBe([photo]);
+        library.PhotoImages.ShouldBe([photo]);
         album.Photos.ShouldBe([photo]);
         photo.PlexPhotoAlbum.ShouldBeSameAs(album);
         (album.ChildCount, album.Duration, album.MediaSize, album.Quality).ShouldBe(albumState);
@@ -272,7 +272,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         {
             photo.PlexPhotoAlbum = null!;
             photo.ParentKey = album.PlexApiRatingKey;
-            library.Photos.Add(photo);
+            library.PhotoImages.Add(photo);
         }
         var response = new InsertMediaMetaDataCommandResponse(library);
         InsertMediaMetaDataCommandResponse? captured = null;
@@ -350,7 +350,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         captured.ShouldBeSameAs(response);
         captured.ShouldNotBeNull();
         captured.PhotoClipCount.ShouldBe(1);
-        captured.PlexLibrary.Photos.ShouldBe(photos);
+        captured.PlexLibrary.PhotoImages.ShouldBe(photos);
         album.Photos.ShouldBe(photos);
         photos.ShouldAllBe(x => x.PlexPhotoAlbum == album);
         album.MediaSize.ShouldBe(photos.Sum(x => x.MediaSize));

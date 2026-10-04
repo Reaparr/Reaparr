@@ -146,11 +146,11 @@ public class PlexLibrary : BaseEntity
     [Column(Order = 24)]
     public bool IsEnabled { get; set; } = true;
 
-    public int ArtistCount { get; init; }
-    public int AlbumCount { get; init; }
-    public int TrackCount { get; init; }
+    public int MusicArtistCount { get; init; }
+    public int MusicAlbumCount { get; init; }
+    public int MusicTrackCount { get; init; }
     public int PhotoAlbumCount { get; init; }
-    public int PhotoCount { get; init; }
+    public int PhotoImageCount { get; init; }
     public int PhotoClipCount { get; init; }
     public int OtherVideoCount { get; init; }
 
@@ -198,17 +198,17 @@ public class PlexLibrary : BaseEntity
 
     public ICollection<PlexPhotoAlbum> PhotoAlbums { get; private set; } = [];
 
-    public ICollection<PlexPhoto> Photos { get; private set; } = [];
+    public ICollection<PlexPhotoImage> PhotoImages { get; private set; } = [];
 
     public ICollection<PlexOtherVideo> OtherVideos { get; private set; } = [];
 
     public ICollection<PlexAccountLibrary> PlexAccountLibraries { get; private set; } = [];
 
-    public ICollection<PlexActor> Actors { get; set; } = [];
+    public ICollection<PlexActor> Actors { get; init; } = [];
 
-    public ICollection<PlexGenre> Genres { get; set; } = [];
+    public ICollection<PlexGenre> Genres { get; init; } = [];
 
-    public ICollection<PlexCountry> Countries { get; set; } = [];
+    public ICollection<PlexCountry> Countries { get; init; } = [];
 
     #endregion
 
