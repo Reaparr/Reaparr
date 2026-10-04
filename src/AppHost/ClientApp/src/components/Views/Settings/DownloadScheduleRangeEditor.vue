@@ -117,11 +117,13 @@
 <script setup lang="ts">
 import { get, set } from '@vueuse/core';
 import { isEqual, max } from 'lodash-es';
-import { formatDownloadScheduleTime, isDownloadScheduleLimit, type DownloadScheduleRange } from './downloadScheduleSelection';
+import type { DownloadScheduleRange } from '@composables/download-schedule';
 
 const props = defineProps<{
 	range: DownloadScheduleRange;
 	days: string[];
+	timeFormat: string;
+	locale: string;
 	selection: number[];
 	selectedLimits: (number | null)[];
 	defaultLimit?: number | null;
@@ -139,10 +141,7 @@ const previewLimit = computed(() => get(mode) === 'unlimited'
 	? null
 	: get(mode) === 'limited' && get(limit) !== null && isDownloadScheduleLimit(get(limit)) ? get(limit) : undefined);
 watch(previewLimit, (value) => emit('preview', value), { immediate: true });
-const times = Array.from({ length: 49 }, (_, value) => ({
-	label: formatDownloadScheduleTime(value),
-	value,
-}));
+const times = useDownloadScheduleTimes(() => props.timeFormat, () => props.locale);
 
 function onEdit() {
 	hasLocalEdits = true;

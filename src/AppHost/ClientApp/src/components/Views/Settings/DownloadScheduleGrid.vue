@@ -25,7 +25,7 @@
 						colspan="2"
 						scope="col"
 						class="text-center">
-						{{ String(hour - 1).padStart(2, '0') }}
+						{{ times[(hour - 1) * 2]!.label }}
 					</th>
 				</tr>
 			</thead>
@@ -88,7 +88,7 @@
 
 <script setup lang="ts">
 import { get, set, useEventListener } from '@vueuse/core';
-import { formatDownloadScheduleTime, type DownloadScheduleRange } from './downloadScheduleSelection';
+import type { DownloadScheduleRange } from '@composables/download-schedule';
 
 const props = defineProps<{
 	limits: (number | null)[];
@@ -98,6 +98,7 @@ const props = defineProps<{
 	label: string;
 	unlimitedLabel: string;
 	locale: string;
+	timeFormat: string;
 	timeZone: string;
 }>();
 const emit = defineEmits<{ select: [range: DownloadScheduleRange] }>();
@@ -108,6 +109,7 @@ const dragging = ref(false);
 let touchSelection = false;
 const selectedSlots = computed(() => new Set(props.selection));
 const numberFormat = computed(() => new Intl.NumberFormat(props.locale));
+const times = useDownloadScheduleTimes(() => props.timeFormat, () => props.locale);
 
 const bands = computed(() => props.days.map((_, day) => {
 	const result: { from: number; until: number; limit: number | null; selected: boolean }[] = [];
@@ -130,9 +132,9 @@ function slotLimit(slot: number): number | null {
 
 function cellLabel(day: string, slot: number): string {
 	const daySlot = slot % 48;
-	const until = daySlot === 47 ? '24:00' : formatDownloadScheduleTime(daySlot + 1);
+	const until = get(times)[daySlot + 1]!.label;
 	const limit = slotLimit(slot);
-	return `${day} ${formatDownloadScheduleTime(daySlot)}–${until}: ${limit === null ? props.unlimitedLabel : `${get(numberFormat).format(limit!)} kB/s`}`;
+	return `${day} ${get(times)[daySlot]!.label}–${until}: ${limit === null ? props.unlimitedLabel : `${get(numberFormat).format(limit!)} kB/s`}`;
 }
 
 function selectBetween(first: number, last: number) {

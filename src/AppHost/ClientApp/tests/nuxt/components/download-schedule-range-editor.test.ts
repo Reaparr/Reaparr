@@ -2,7 +2,7 @@ import { useNuxtApp } from '#app';
 import { fireEvent, getByRole, queryByRole } from '@testing-library/dom';
 import { defineComponent, h, nextTick, reactive, render, type AppContext } from 'vue';
 import { afterEach, describe, expect, test } from 'vitest';
-import type { DownloadScheduleRange } from '@components/Views/Settings/downloadScheduleSelection';
+import type { DownloadScheduleRange } from '@composables/download-schedule';
 import DownloadScheduleRangeEditor from '@components/Views/Settings/DownloadScheduleRangeEditor.vue';
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -10,6 +10,8 @@ const range = { days: [0], from: 18, until: 19 };
 interface EditorProps {
 	range: DownloadScheduleRange;
 	days: string[];
+	timeFormat: string;
+	locale: string;
 	selection: number[];
 	selectedLimits: (number | null)[];
 	defaultLimit?: number | null;
@@ -30,6 +32,8 @@ async function mountEditor(): Promise<EditorHarness> {
 	const props = reactive<EditorProps>({
 		range,
 		days,
+		timeFormat: 'HH:mm',
+		locale: 'en-US',
 		selection: [],
 		selectedLimits: [],
 		saving: false,

@@ -6,7 +6,7 @@ import {
 	isDownloadScheduleLimit,
 	MAX_DOWNLOAD_SCHEDULE_LIMIT,
 	type DownloadScheduleRange,
-} from '@components/Views/Settings/downloadScheduleSelection';
+} from '@composables/download-schedule';
 
 describe('Download schedule selection', () => {
 	test('Should use an exclusive Until boundary including 24:00', () => {
@@ -120,5 +120,4 @@ describe('Download schedule selection', () => {
 			Sunday: { '23:30': 3000 },
 		});
 	});
-
 });

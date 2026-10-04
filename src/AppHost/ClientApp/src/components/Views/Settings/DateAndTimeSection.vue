@@ -168,7 +168,7 @@ const longDateOptions = computed(() => {
 
 const timeFormatOptions = computed(() => {
 	const values: string[] = ['HH:mm:ss', 'pp'];
-	const date = Date.now();
+	const date = new TZDate(Date.now(), settingsStore.dateTimeSettings.timeZone);
 	return values.map((x) => {
 		return {
 			value: x,

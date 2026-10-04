@@ -1,7 +1,7 @@
 import { useNuxtApp } from '#app';
 import { fireEvent, getByRole, queryByRole, waitFor } from '@testing-library/dom';
 import { h, nextTick, render } from 'vue';
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateResultDTO, generateSettingsModel } from '@mock';
 import { SettingsPaths } from '@api-urls';
@@ -22,6 +22,7 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		store.$reset();
 		settings = generateSettingsModel({ config: { seed: 20261006 } });
 		settings.dateTimeSettings.timeZone = 'UTC';
+		settings.dateTimeSettings.timeFormat = 'HH:mm:ss';
 		mock.onGet(SettingsPaths.getUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
 		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).reply((request) => [200, generateResultDTO(JSON.parse(request.data))]);
 		await subscribeSpyTo(store.setup()).onComplete();
@@ -36,6 +37,7 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		render(null, container);
 		container.remove();
 		store.$reset();
+		vi.restoreAllMocks();
 	});
 
 	test('Should filter names and offsets without saving search text, then persist only the chosen timezone identifier', async () => {
@@ -66,5 +68,26 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		expect(saved.dateTimeSettings).toEqual({ ...settings.dateTimeSettings, timeZone: 'Asia/Tokyo' });
 		expect(saved.downloadManagerSettings).toEqual(settings.downloadManagerSettings);
 		expect(store.dateTimeSettings.timeZone).toBe('Asia/Tokyo');
+	});
+	test('Should update both time-format examples when the selected timezone crosses midnight', async () => {
+		// Arrange
+		const input = getByRole(container, 'combobox', { name: /time.?zone/i }) as HTMLInputElement;
+		const timeFormat = container.querySelector('[data-cy=time-format]')!;
+		vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-06T22:13:14Z'));
+
+		// Act
+		fireEvent.input(input, { target: { value: 'Tokyo' } });
+		const zone = await waitFor(() => getByRole(document.body, 'option', { name: '(UTC+09:00) Asia/Tokyo' }));
+		fireEvent.click(zone);
+		await waitFor(() => expect(timeFormat.textContent).toContain('07:13:14'));
+		fireEvent.click(timeFormat);
+		const twelveHour = await waitFor(() => getByRole(document.body, 'option', { name: '7:13:14 AM' }));
+		fireEvent.click(twelveHour);
+		await nextTick();
+
+		// Assert
+		expect(store.dateTimeSettings.timeFormat).toBe('pp');
+		expect(store.dateTimeSettings.timeZone).toBe('Asia/Tokyo');
+		expect(timeFormat.textContent).toContain('7:13:14 AM');
 	});
 });

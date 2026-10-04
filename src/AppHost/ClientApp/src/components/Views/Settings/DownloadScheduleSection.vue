@@ -36,6 +36,7 @@
 			:label="t('components.download-schedule.grid-label')"
 			:unlimited-label="t('components.download-schedule.unlimited')"
 			:locale="locale"
+			:time-format="settingsStore.dateTimeSettings.timeFormat"
 			:time-zone="settingsStore.dateTimeSettings.timeZone"
 			@select="range = $event" />
 		<DownloadScheduleRangeEditor
@@ -46,6 +47,8 @@
 			:selection="selection"
 			:selected-limits="selection.map((slot) => limits[slot]!)"
 			:default-limit="highestLimit"
+			:time-format="settingsStore.dateTimeSettings.timeFormat"
+			:locale="locale"
 			:saving="saveState === 'apply'"
 			:disabled="isSaving"
 			@change="range = $event"
@@ -80,7 +83,7 @@ import { cloneDeep, max } from 'lodash-es';
 import { useSettingsStore, useDialogStore } from '@store';
 import { DialogType } from '@enums';
 import type { DownloadScheduleDTO } from '@dto';
-import { decodeDownloadScheduleDays, encodeDownloadScheduleDays, getDownloadScheduleSlots, isDownloadScheduleLimit, type DownloadScheduleRange } from './downloadScheduleSelection';
+import type { DownloadScheduleRange } from '@composables/download-schedule';
 
 const settingsStore = useSettingsStore();
 const dialogStore = useDialogStore();

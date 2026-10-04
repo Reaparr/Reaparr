@@ -3,11 +3,11 @@ import { fireEvent, getByRole } from '@testing-library/dom';
 import { defineComponent, h, nextTick, reactive, render, type AppContext } from 'vue';
 import { afterEach, describe, expect, test } from 'vitest';
 import DownloadScheduleGrid from '@components/Views/Settings/DownloadScheduleGrid.vue';
-import { getDownloadScheduleSlots, type DownloadScheduleRange } from '@components/Views/Settings/downloadScheduleSelection';
+import { getDownloadScheduleSlots, type DownloadScheduleRange } from '@composables/download-schedule';
 
 interface GridHarness {
 	container: HTMLElement;
-	props: { limits: (number | null)[]; selection: number[]; previewLimit?: number | null };
+	props: { limits: (number | null)[]; selection: number[]; previewLimit?: number | null; timeFormat: string; timeZone: string };
 	unmount: () => void;
 }
 
@@ -22,6 +22,7 @@ async function mountGrid(): Promise<GridHarness> {
 		label: 'Download schedule',
 		unlimitedLabel: 'Unlimited',
 		locale: 'en-US',
+		timeFormat: 'HH:mm',
 		timeZone: 'UTC',
 	});
 	const Root = defineComponent({
@@ -56,7 +57,7 @@ describe('DownloadScheduleGrid selection gestures', () => {
 		await nextTick();
 
 		// Assert
-		expect([...harness.container.querySelectorAll('.schedule-band-label')].map(label => label.textContent?.trim())).toEqual(Array(7).fill('5,000 kB/s'));
+		expect([...harness.container.querySelectorAll('.schedule-band-label')].map((label) => label.textContent?.trim())).toEqual(Array(7).fill('5,000 kB/s'));
 
 		// Act
 		harness.props.selection = [18];
@@ -64,7 +65,7 @@ describe('DownloadScheduleGrid selection gestures', () => {
 		await nextTick();
 
 		// Assert
-		expect([...harness.container.querySelectorAll('.schedule-band-label')].map(label => label.textContent?.trim())).toEqual([
+		expect([...harness.container.querySelectorAll('.schedule-band-label')].map((label) => label.textContent?.trim())).toEqual([
 			'5,000 kB/s', '3,000 kB/s', '5,000 kB/s', ...Array(6).fill('5,000 kB/s'),
 		]);
 	});
@@ -138,5 +139,23 @@ describe('DownloadScheduleGrid selection gestures', () => {
 		expect(monday.getAttribute('aria-selected')).toBe('true');
 		expect(tuesday.getAttribute('aria-selected')).toBe('true');
 		expect(document.activeElement).toBe(tuesday);
+	});
+	test('Should react to the clock format while preserving local midnight and its exclusive day boundary', async () => {
+		// Arrange
+		harness = await mountGrid();
+		const lastCell = harness.container.querySelector('[data-cy=schedule-cell-0-47]')!;
+		fireEvent.click(lastCell);
+		await nextTick();
+
+		// Act
+		harness.props.timeFormat = 'pp';
+		harness.props.timeZone = 'Pacific/Honolulu';
+		await nextTick();
+
+		// Assert
+		expect(getByRole(harness.container, 'columnheader', { name: '12:00:00 AM' })).toBeTruthy();
+		expect(lastCell.getAttribute('aria-label')).toBe('Monday 11:30:00 PM–12:00:00 AM (+1): Unlimited');
+		expect(harness.props.selection).toEqual([47]);
+		expect(lastCell.getAttribute('aria-selected')).toBe('true');
 	});
 });
