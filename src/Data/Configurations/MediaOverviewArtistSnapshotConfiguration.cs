@@ -1,16 +1,16 @@
 namespace Reaparr.Data;
 
 public class MediaOverviewArtistSnapshotConfiguration
-    : MediaOverviewSnapshotConfigurationBase<MediaOverviewArtistSnapshot>
+    : MediaOverviewSnapshotConfigurationBase<MediaOverviewMusicArtistSnapshot>
 {
-    public override void Configure(EntityTypeBuilder<MediaOverviewArtistSnapshot> builder)
+    public override void Configure(EntityTypeBuilder<MediaOverviewMusicArtistSnapshot> builder)
     {
         base.Configure(builder);
 
         builder
             .HasOne(x => x.PlexArtist)
             .WithOne()
-            .HasForeignKey<MediaOverviewArtistSnapshot>(x => x.PlexArtistId)
+            .HasForeignKey<MediaOverviewMusicArtistSnapshot>(x => x.PlexArtistId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

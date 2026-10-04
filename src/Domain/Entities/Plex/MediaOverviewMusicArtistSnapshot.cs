@@ -1,6 +1,6 @@
 namespace Reaparr.Domain;
 
-public class MediaOverviewArtistSnapshot : BaseMediaOverviewSnapshot
+public class MediaOverviewMusicArtistSnapshot : BaseMediaOverviewSnapshot
 {
     public required int PlexArtistId { get; set; }
 
