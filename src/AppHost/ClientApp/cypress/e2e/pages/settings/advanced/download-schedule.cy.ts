@@ -58,7 +58,9 @@ describe('Half-hour download schedule', () => {
 			});
 			cy.getCy('schedule-apply').click();
 			cy.wait('@saveSchedule').its('response.statusCode').should('equal', 503);
-			cy.getCy('schedule-save-error').should('be.visible');
+			cy.getCy('schedule-save-error').should('be.visible').and('contain.text', 'Save failed.');
+			cy.getCy('schedule-apply').should('not.be.disabled');
+			cy.getCy('schedule-cell-0-19').should('have.attr', 'aria-label').and('include', '6,000 kB/s');
 			cy.get('[role="slider"] [tabindex="0"]').focus().type('{rightarrow}');
 			cy.wait('@saveSchedule').then((interception) => {
 				expect(interception.request.body.downloadManagerSettings.downloadSegments).to.equal(6);
@@ -75,6 +77,7 @@ describe('Half-hour download schedule', () => {
 			cy.getCy('schedule-apply').click();
 			cy.wait('@saveSchedule').then((interception) => {
 				const recovered = interception.request.body as SettingsModelDTO;
+				expect(interception.response?.statusCode).to.equal(200);
 				expect(recovered.downloadManagerSettings.downloadSchedule.days.Monday).to.deep.equal({
 					'09:00': 4000, '09:30': 6000, '10:00': 4000, '18:00': null,
 				});

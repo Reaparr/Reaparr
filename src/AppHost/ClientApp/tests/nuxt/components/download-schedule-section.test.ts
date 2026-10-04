@@ -245,14 +245,22 @@ describe('DownloadScheduleSection reset confirmation', () => {
 
 		// Act
 		fireEvent.click(getByRole(dialog, 'button', { name: 'Reset schedule' }));
-		await waitFor(() => getByRole(container, 'alert'));
+		await waitFor(() => expect(getByRole(container, 'alert').textContent).toContain('Save failed.'));
 
 		// Assert
 		expect(store.confirmedDownloadSchedule).toEqual(settings.downloadManagerSettings.downloadSchedule);
+		expect(store.downloadManagerSettings.downloadSchedule).toEqual(settings.downloadManagerSettings.downloadSchedule);
+		expect(container.querySelector('[data-cy=schedule-cell-0-18]')!.getAttribute('aria-label')).toContain('3,000 kB/s');
+		expect(container.querySelectorAll('[role=gridcell][aria-selected=true]')).toHaveLength(90);
 		expect(Number((getByRole(container, 'spinbutton') as HTMLInputElement).value.replace(/[^\d.-]/g, ''))).toBe(3000);
 		fireEvent.click(getByRole(container, 'button', { name: 'Apply to selection & save' }));
 		await waitFor(() => expect(store.confirmedDownloadSchedule.days.Monday?.['09:00']).toBe(3000));
 		expect(store.confirmedDownloadSchedule.days.Monday!['09:00']).toBe(3000);
 		expect(store.confirmedDownloadSchedule.days.Sunday!['23:30']).toBe(1000);
+		expect(container.querySelector('[data-cy=schedule-save-error]')).toBeNull();
+		expect(mock.history.put).toHaveLength(2);
+		const saved: SettingsModelDTO = JSON.parse(mock.history.put[1]!.data);
+		expect(saved.downloadManagerSettings.downloadSchedule).toEqual(store.confirmedDownloadSchedule);
+		expect(saved.serverSettings).toEqual(settings.serverSettings);
 	});
 });

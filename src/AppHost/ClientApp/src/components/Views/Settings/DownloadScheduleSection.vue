@@ -119,7 +119,12 @@ useSubscription(saveRequests.pipe(
 		set(pendingPolicy, cloneDeep(get(policy)));
 		settingsStore.downloadManagerSettings.downloadSchedule = candidate;
 		return settingsStore.saveSettings().pipe(
-			tap(() => {
+			tap((settings) => {
+				if (!settings) {
+					settingsStore.downloadManagerSettings.downloadSchedule = get(pendingPolicy)!;
+					set(saveState, 'error');
+					return;
+				}
 				if (action === 'reset') {
 					set(range, { ...get(range), days: [] });
 					set(previewLimit, undefined);
