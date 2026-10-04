@@ -8,9 +8,7 @@ public class GetDownloadPreviewQueryValidator : AbstractValidator<GetDownloadPre
     {
         RuleFor(x => x.DownloadMedias).NotNull().NotEmpty().WithMessage("Download media list cannot be empty");
 
-        RuleForEach(x => x.DownloadMedias)
-            .Must(x => x.MediaIds.Any())
-            .WithMessage("Each download media must have at least one media ID");
+        RuleForEach(x => x.DownloadMedias).NotNull().SetValidator(new DownloadMediaDTOValidator());
     }
 }
 

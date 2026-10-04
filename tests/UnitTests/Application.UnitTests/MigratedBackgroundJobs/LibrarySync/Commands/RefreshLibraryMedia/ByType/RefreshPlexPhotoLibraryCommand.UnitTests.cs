@@ -211,6 +211,9 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
                 x.UpdateItemAsync(

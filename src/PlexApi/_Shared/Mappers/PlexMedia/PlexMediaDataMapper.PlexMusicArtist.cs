@@ -29,13 +29,29 @@ public static partial class PlexMediaDataMapper
             Guid_IMDB = null,
             Guid_TMDB = null,
             Guid_TVDB = null,
-            Type = PlexMediaType.Artist,
             PlexLibraryId = library.Id,
             PlexServerId = library.PlexServerId,
-            MusicBrainzArtistId =
-                source.Guid.StartsWith("mbid://", StringComparison.Ordinal)
-                && System.Guid.TryParse(source.Guid.AsSpan(7), out var mbid)
-                    ? mbid.ToString()
-                    : null,
+            MusicBrainzArtistId = GetMusicBrainzArtistId(source)?.ToString(),
         };
+
+    private static Guid? GetMusicBrainzArtistId(LibraryMediaItemDTO source)
+    {
+        if (TryParseMusicBrainzId(source.Guid, out var musicBrainzId))
+            return musicBrainzId;
+
+        foreach (var guid in source.Guids)
+        {
+            if (TryParseMusicBrainzId(guid.Id, out musicBrainzId))
+                return musicBrainzId;
+        }
+
+        return null;
+    }
+
+    private static bool TryParseMusicBrainzId(string value, out Guid musicBrainzId)
+    {
+        musicBrainzId = default;
+        return value.StartsWith("mbid://", StringComparison.Ordinal)
+            && Guid.TryParse(value.AsSpan(7), out musicBrainzId);
+    }
 }

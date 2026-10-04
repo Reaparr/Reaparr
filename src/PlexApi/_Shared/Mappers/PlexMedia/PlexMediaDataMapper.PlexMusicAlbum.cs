@@ -33,7 +33,6 @@ public static partial class PlexMediaDataMapper
             Guid_IMDB = null,
             Guid_TMDB = null,
             Guid_TVDB = null,
-            Type = PlexMediaType.Album,
             PlexLibraryId = library.Id,
             PlexServerId = library.PlexServerId,
             PlexArtistId = artist.Id,

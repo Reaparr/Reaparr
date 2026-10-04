@@ -28,13 +28,19 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
     {
         using var lease = await _coordinator.AcquireRebuildLeaseAsync(cancellationToken);
 
+        // TODO allow rebuilding specific media types, or all of them
         var movieResult = await RebuildRootAsync(PlexMediaType.Movie, cancellationToken);
         movieResult.LogIfFailed();
-
         var tvShowResult = await RebuildRootAsync(PlexMediaType.TvShow, cancellationToken);
         tvShowResult.LogIfFailed();
+        var musicResult = await RebuildRootAsync(PlexMediaType.Music, cancellationToken);
+        musicResult.LogIfFailed();
+        var photoAlbumResult = await RebuildRootAsync(PlexMediaType.PhotoAlbum, cancellationToken);
+        photoAlbumResult.LogIfFailed();
+        var otherVideoResult = await RebuildRootAsync(PlexMediaType.OtherVideos, cancellationToken);
+        otherVideoResult.LogIfFailed();
 
-        return Result.Merge(movieResult, tvShowResult);
+        return Result.Merge(movieResult, tvShowResult, musicResult, photoAlbumResult, otherVideoResult);
     }
 
     private async Task<Result> RebuildRootAsync(PlexMediaType mediaType, CancellationToken cancellationToken)
@@ -122,6 +128,150 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                 );
                 LogPhase(mediaType, "Total", snapshots.Count, totalStopwatch.Elapsed);
                 return replaceResult;
+            }
+            case PlexMediaType.Music:
+            {
+                var source = await context
+                    .PlexArtists.Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        x.SearchTitle,
+                        x.Year,
+                        x.AddedAt,
+                        x.UpdatedAt,
+                        x.Duration,
+                        x.MediaSize,
+                    })
+                    .ToListAsync(cancellationToken);
+                var snapshots = source
+                    .Select(x => new MediaOverviewMusicArtistSnapshot
+                    {
+                        PlexArtistId = x.Id,
+                        PlexLibraryId = x.PlexLibraryId,
+                        TitleRank = 0,
+                        YearRank = 0,
+                        AddedAtRank = 0,
+                        UpdatedAtRank = 0,
+                        DurationRank = 0,
+                        MediaSizeRank = 0,
+                    })
+                    .ToList();
+                snapshots.AssignRanks(
+                    source.ToDictionary(
+                        x => x.Id,
+                        x => new MediaOverviewRankValue(
+                            x.SearchTitle,
+                            x.Year,
+                            x.AddedAt,
+                            x.UpdatedAt,
+                            x.Duration,
+                            x.MediaSize
+                        )
+                    )
+                );
+                return await ReplaceAsync(
+                    mediaType,
+                    snapshots,
+                    static x => x.MediaOverviewMusicArtistSnapshots,
+                    cancellationToken
+                );
+            }
+            case PlexMediaType.PhotoAlbum:
+            {
+                var source = await context
+                    .PlexPhotoAlbums.Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        x.SearchTitle,
+                        x.Year,
+                        x.AddedAt,
+                        x.UpdatedAt,
+                        x.Duration,
+                        x.MediaSize,
+                    })
+                    .ToListAsync(cancellationToken);
+                var snapshots = source
+                    .Select(x => new MediaOverviewPhotoAlbumSnapshot
+                    {
+                        PlexPhotoAlbumId = x.Id,
+                        PlexLibraryId = x.PlexLibraryId,
+                        TitleRank = 0,
+                        YearRank = 0,
+                        AddedAtRank = 0,
+                        UpdatedAtRank = 0,
+                        DurationRank = 0,
+                        MediaSizeRank = 0,
+                    })
+                    .ToList();
+                snapshots.AssignRanks(
+                    source.ToDictionary(
+                        x => x.Id,
+                        x => new MediaOverviewRankValue(
+                            x.SearchTitle,
+                            x.Year,
+                            x.AddedAt,
+                            x.UpdatedAt,
+                            x.Duration,
+                            x.MediaSize
+                        )
+                    )
+                );
+                return await ReplaceAsync(
+                    mediaType,
+                    snapshots,
+                    static x => x.MediaOverviewPhotoAlbumSnapshots,
+                    cancellationToken
+                );
+            }
+            case PlexMediaType.OtherVideos:
+            {
+                var source = await context
+                    .PlexOtherVideos.Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        x.SearchTitle,
+                        x.Year,
+                        x.AddedAt,
+                        x.UpdatedAt,
+                        x.Duration,
+                        x.MediaSize,
+                    })
+                    .ToListAsync(cancellationToken);
+                var snapshots = source
+                    .Select(x => new MediaOverviewOtherVideoSnapshot
+                    {
+                        PlexOtherVideoId = x.Id,
+                        PlexLibraryId = x.PlexLibraryId,
+                        TitleRank = 0,
+                        YearRank = 0,
+                        AddedAtRank = 0,
+                        UpdatedAtRank = 0,
+                        DurationRank = 0,
+                        MediaSizeRank = 0,
+                    })
+                    .ToList();
+                snapshots.AssignRanks(
+                    source.ToDictionary(
+                        x => x.Id,
+                        x => new MediaOverviewRankValue(
+                            x.SearchTitle,
+                            x.Year,
+                            x.AddedAt,
+                            x.UpdatedAt,
+                            x.Duration,
+                            x.MediaSize
+                        )
+                    )
+                );
+                return await ReplaceAsync(
+                    mediaType,
+                    snapshots,
+                    static x => x.MediaOverviewOtherVideoSnapshots,
+                    cancellationToken
+                );
             }
             default:
                 return Result.Fail(

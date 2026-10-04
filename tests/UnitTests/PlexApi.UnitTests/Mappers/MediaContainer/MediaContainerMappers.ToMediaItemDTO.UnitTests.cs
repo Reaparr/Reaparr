@@ -328,5 +328,45 @@ namespace Reaparr.PlexApi.UnitTests
             // Media list should be empty for TV show at show level
             result.Media.Count.ShouldBe(0);
         }
+
+        [Test]
+        public void ShouldInferFullHdQuality_WhenMetadataIsNonPhotoClip()
+        {
+            // Arrange
+            var sourceData = new Metadata
+            {
+                RatingKey = "789",
+                Type = "clip",
+                Subtype = "video",
+                Title = "Other video",
+                Media = [new Media { Id = 1, VideoResolution = "1080" }],
+            };
+
+            // Act
+            var result = sourceData.ToMediaItemDTO();
+
+            // Assert
+            result.Media.Single().VideoResolution.ShouldBe(VideoQuality.FullHD);
+        }
+
+        [Test]
+        public void ShouldKeepQualityUnknown_WhenMetadataIsPhotoClip()
+        {
+            // Arrange
+            var sourceData = new Metadata
+            {
+                RatingKey = "790",
+                Type = "clip",
+                Subtype = "photo",
+                Title = "Photo clip",
+                Media = [new Media { Id = 2, VideoResolution = "1080" }],
+            };
+
+            // Act
+            var result = sourceData.ToMediaItemDTO();
+
+            // Assert
+            result.Media.Single().VideoResolution.ShouldBe(VideoQuality.Unknown);
+        }
     }
 }

@@ -63,7 +63,7 @@ public class RefreshPlexMusicLibraryCommandHandler
 
         var tracksResult = await Result.Try(() =>
             _commandExecutor.Send(
-                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.Song),
+                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.Track),
                 cancellationToken
             )
         );
@@ -106,7 +106,7 @@ public class RefreshPlexMusicLibraryCommandHandler
             plexLibraryId,
             new LibraryProgressItem
             {
-                MediaType = PlexMediaType.Artist,
+                MediaType = PlexMediaType.Music,
                 Received = plexLibrary.Music.Count,
                 Total = plexLibrary.Music.Count,
                 TimeRemaining = TimeSpan.Zero,
@@ -128,13 +128,15 @@ public class RefreshPlexMusicLibraryCommandHandler
             plexLibraryId,
             new LibraryProgressItem
             {
-                MediaType = PlexMediaType.Song,
+                MediaType = PlexMediaType.Track,
                 Received = plexLibrary.Tracks.Count,
                 Total = plexLibrary.Tracks.Count,
                 TimeRemaining = TimeSpan.Zero,
             },
             cancellationToken
         );
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        rebuildResult.LogIfFailed();
 
         _log.Here()
             .Information(

@@ -29,7 +29,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
     [Test]
     [Arguments(PlexMediaType.Movie, PlexMediaType.Movie, PlexMediaType.None, PlexMediaType.None)]
     [Arguments(PlexMediaType.TvShow, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode)]
-    [Arguments(PlexMediaType.Music, PlexMediaType.Artist, PlexMediaType.Album, PlexMediaType.Song)]
+    [Arguments(PlexMediaType.Music, PlexMediaType.Music, PlexMediaType.Album, PlexMediaType.Track)]
     [Arguments(PlexMediaType.Photos, PlexMediaType.PhotoAlbum, PlexMediaType.Photos, PlexMediaType.None)]
     [Arguments(PlexMediaType.OtherVideos, PlexMediaType.OtherVideos, PlexMediaType.None, PlexMediaType.None)]
     public async Task ShouldInitializeFamilyProgressItems_AndCompleteOnlyAfterConfirmedEmptyTotals(
@@ -216,13 +216,13 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
         capturedDto.Total.ShouldBe(10);
         capturedDto.Percentage.ShouldBe(40);
         capturedDto.IsComplete.ShouldBeFalse();
-        capturedDto.Items.Select(x => (x.MediaType, x.Total, x.IsComplete)).ShouldBe(
-            [
+        capturedDto
+            .Items.Select(x => (x.MediaType, x.Total, x.IsComplete))
+            .ShouldBe([
                 (PlexMediaType.TvShow, 10, false),
                 (PlexMediaType.Season, -1, false),
                 (PlexMediaType.Episode, -1, false),
-            ]
-        );
+            ]);
         var stored = Sut.Get(20).ShouldNotBeNull();
         stored.Received.ShouldBe(capturedDto.Received);
         stored.Total.ShouldBe(capturedDto.Total);

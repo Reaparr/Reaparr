@@ -91,7 +91,7 @@ public static partial class FakeData
             PlexMediaType.Episode => "/TvShows",
             PlexMediaType.Music => "/Music",
             PlexMediaType.Album => "/Music",
-            PlexMediaType.Song => "/Music",
+            PlexMediaType.Track => "/Music",
             PlexMediaType.Photos => "/Photos",
             PlexMediaType.OtherVideos => "/Videos",
             PlexMediaType.Games => "/Games",

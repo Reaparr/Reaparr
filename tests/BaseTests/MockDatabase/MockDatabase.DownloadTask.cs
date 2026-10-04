@@ -30,7 +30,7 @@ public static partial class MockDatabase
                 PlexMediaType.Movie => pathProvider.DefaultMovieDestinationFolder,
                 PlexMediaType.TvShow or PlexMediaType.Season or PlexMediaType.Episode =>
                     pathProvider.DefaultTvShowsDestinationFolder,
-                PlexMediaType.Music or PlexMediaType.Album or PlexMediaType.Song =>
+                PlexMediaType.Music or PlexMediaType.Album or PlexMediaType.Track =>
                     pathProvider.DefaultMusicDestinationFolder,
                 PlexMediaType.Photos => pathProvider.DefaultPhotosDestinationFolder,
                 PlexMediaType.OtherVideos => pathProvider.DefaultOtherDestinationFolder,

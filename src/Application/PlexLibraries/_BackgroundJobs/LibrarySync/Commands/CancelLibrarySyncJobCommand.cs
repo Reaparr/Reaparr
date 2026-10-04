@@ -48,7 +48,12 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
             return Result.Ok();
         }
 
-        if (queueItem.Status is LibrarySyncJobStatus.Completed or LibrarySyncJobStatus.Cancelled)
+        if (
+            queueItem.Status
+            is LibrarySyncJobStatus.Completed
+                or LibrarySyncJobStatus.Cancelled
+                or LibrarySyncJobStatus.Failed
+        )
         {
             _log.Here()
                 .Warning(

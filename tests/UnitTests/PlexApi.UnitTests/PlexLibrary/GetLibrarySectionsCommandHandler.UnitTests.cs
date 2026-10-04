@@ -74,7 +74,7 @@ public class GetLibrarySectionsCommandHandlerUnitTests : BaseUnitTest<GetLibrary
             ("7", PlexMediaType.OtherVideos, serverId),
             ("8", PlexMediaType.Movie, serverId),
         ]);
-        MediaTypeString.Artist.ToPlexMediaType().ShouldBe(PlexMediaType.Artist);
+        MediaTypeString.Artist.ToPlexMediaType().ShouldBe(PlexMediaType.Music);
         MediaTypeString.Movie.ToPlexMediaType().ShouldBe(PlexMediaType.Movie);
         sdk.Verify();
         Mock.Mock<IPlexApiClientFactory>().Verify();

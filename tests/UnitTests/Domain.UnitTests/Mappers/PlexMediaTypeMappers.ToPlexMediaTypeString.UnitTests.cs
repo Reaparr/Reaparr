@@ -9,9 +9,8 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments(PlexMediaType.Season, "Season")]
     [Arguments(PlexMediaType.Episode, "Episode")]
     [Arguments(PlexMediaType.Music, "Music")]
-    [Arguments(PlexMediaType.Artist, "Artist")]
     [Arguments(PlexMediaType.Album, "Album")]
-    [Arguments(PlexMediaType.Song, "Song")]
+    [Arguments(PlexMediaType.Track, "Track")]
     [Arguments(PlexMediaType.PhotoAlbum, "PhotoAlbum")]
     [Arguments(PlexMediaType.Photos, "Photos")]
     [Arguments(PlexMediaType.OtherVideos, "OtherVideos")]
@@ -36,6 +35,7 @@ public partial class PlexMediaTypeMappersUnitTests
 
     public static IEnumerable<PlexMediaType> GetInvalidEnumValues()
     {
+        yield return (PlexMediaType)6;
         yield return (PlexMediaType)999;
         yield return (PlexMediaType)(-1);
         yield return (PlexMediaType)100;

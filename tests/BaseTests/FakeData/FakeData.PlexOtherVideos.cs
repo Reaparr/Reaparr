@@ -4,7 +4,6 @@ public static partial class FakeData
 {
     private static readonly Faker<PlexOtherVideo> _plexOtherVideo = new Faker<PlexOtherVideo>()
         .ApplyBasePlexMedia()
-        .RuleFor(x => x.Type, _ => PlexMediaType.OtherVideos)
         .RuleFor(x => x.Title, f => f.Lorem.Sentence(3))
         .RuleFor(x => x.Guid, (_, x) => $"com.plexapp.agents.none://{x.PlexApiRatingKey}")
         .RuleFor(x => x.Guid_IMDB, _ => null)

@@ -9,9 +9,8 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("Season", PlexMediaType.Season)]
     [Arguments("Episode", PlexMediaType.Episode)]
     [Arguments("Music", PlexMediaType.Music)]
-    [Arguments("Artist", PlexMediaType.Artist)]
     [Arguments("Album", PlexMediaType.Album)]
-    [Arguments("Song", PlexMediaType.Song)]
+    [Arguments("Track", PlexMediaType.Track)]
     [Arguments("PhotoAlbum", PlexMediaType.PhotoAlbum)]
     [Arguments("Photos", PlexMediaType.Photos)]
     [Arguments("OtherVideos", PlexMediaType.OtherVideos)]
@@ -31,9 +30,9 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("show", PlexMediaType.TvShow)]
     [Arguments("season", PlexMediaType.Season)]
     [Arguments("episode", PlexMediaType.Episode)]
-    [Arguments("artist", PlexMediaType.Artist)]
+    [Arguments("artist", PlexMediaType.Music)]
     [Arguments("album", PlexMediaType.Album)]
-    [Arguments("track", PlexMediaType.Song)]
+    [Arguments("track", PlexMediaType.Track)]
     [Arguments("photoalbum", PlexMediaType.PhotoAlbum)]
     [Arguments("photo", PlexMediaType.Photos)]
     public void ShouldConvertPlexApiStrings_WhenValidPlexApiStringProvided(string input, PlexMediaType expected)
@@ -53,6 +52,8 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("randomstring")]
     [Arguments("123")]
     [Arguments("null")]
+    [Arguments("Artist")]
+    [Arguments("Song")]
     public void ShouldThrowNotImplementedException_WhenInvalidStringProvided(string input)
     {
         // Act & Assert

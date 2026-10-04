@@ -26,6 +26,7 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
     public DbSet<PlexLibrary> PlexLibraries { get; set; }
 
     public DbSet<PlexMusicArtist> PlexArtists { get; set; }
+    public DbSet<MediaOverviewMusicArtistSnapshot> MediaOverviewMusicArtistSnapshots { get; set; }
     public DbSet<PlexMusicAlbum> PlexAlbums { get; set; }
     public DbSet<PlexMusicTrack> PlexTracks { get; set; }
     public DbSet<PlexMusicTrackMediaData> PlexTrackData { get; set; }

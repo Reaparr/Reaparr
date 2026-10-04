@@ -10,9 +10,9 @@ public class PlexMediaTypeMappersToPlexApiMediaTypeUnitTests : BaseUnitTest
     [Arguments(PlexMediaType.TvShow, MediaType.TvShow)]
     [Arguments(PlexMediaType.Season, MediaType.Season)]
     [Arguments(PlexMediaType.Episode, MediaType.Episode)]
-    [Arguments(PlexMediaType.Artist, MediaType.Artist)]
+    [Arguments(PlexMediaType.Music, MediaType.Artist)]
     [Arguments(PlexMediaType.Album, MediaType.Album)]
-    [Arguments(PlexMediaType.Song, MediaType.Track)]
+    [Arguments(PlexMediaType.Track, MediaType.Track)]
     [Arguments(PlexMediaType.PhotoAlbum, MediaType.PhotoAlbum)]
     [Arguments(PlexMediaType.Photos, MediaType.Photo)]
     public void ShouldMapPlexMediaTypeToMediaType(PlexMediaType input, MediaType expected)
@@ -26,9 +26,9 @@ public class PlexMediaTypeMappersToPlexApiMediaTypeUnitTests : BaseUnitTest
     [Arguments("2", PlexMediaType.TvShow)]
     [Arguments("3", PlexMediaType.Season)]
     [Arguments("4", PlexMediaType.Episode)]
-    [Arguments("8", PlexMediaType.Artist)]
+    [Arguments("8", PlexMediaType.Music)]
     [Arguments("9", PlexMediaType.Album)]
-    [Arguments("10", PlexMediaType.Song)]
+    [Arguments("10", PlexMediaType.Track)]
     [Arguments("13", PlexMediaType.Photos)]
     [Arguments("14", PlexMediaType.PhotoAlbum)]
     public void ShouldMapPlexMetadataTypeIdToDomainType(string input, PlexMediaType expected)

@@ -16,9 +16,9 @@ public class SetLibraryEnabledEndpointUnitTests
         );
         var dbContext = IDbContext;
         var serverId = await dbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
-        var targetLibrary = FakeData.GetPlexLibrary(new Seed(4601), PlexMediaType.Photos).Generate();
+        var targetLibrary = FakeData.GetPlexLibrary(new Seed(4601), PlexMediaType.PhotoAlbum).Generate();
         targetLibrary.PlexServerId = serverId;
-        var controlLibrary = FakeData.GetPlexLibrary(new Seed(4602), PlexMediaType.Photos).Generate();
+        var controlLibrary = FakeData.GetPlexLibrary(new Seed(4602), PlexMediaType.PhotoAlbum).Generate();
         controlLibrary.PlexServerId = serverId;
         dbContext.PlexLibraries.AddRange(targetLibrary, controlLibrary);
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -63,6 +63,9 @@ public class SetLibraryEnabledEndpointUnitTests
                     It.IsAny<CancellationToken>()
                 )
             )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
@@ -116,17 +119,17 @@ public class SetLibraryEnabledEndpointUnitTests
         var retainedQueueHistory = await dbContext
             .LibrarySyncJobQueues.AsNoTracking()
             .Where(x => x.PlexLibraryId == targetLibrary.Id)
-            .Select(x => new { x.PlexLibraryId, x.Status, x.CompletedAt })
+            .Select(x => new
+            {
+                x.PlexLibraryId,
+                x.Status,
+                x.CompletedAt,
+            })
             .SingleAsync(CancellationToken);
         retainedQueueHistory.PlexLibraryId.ShouldBe(targetLibrary.Id);
         retainedQueueHistory.Status.ShouldBe(LibrarySyncJobStatus.Cancelled);
         retainedQueueHistory.CompletedAt.ShouldNotBeNull();
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
         Mock.Mock<INotificationHubService>().Verify();
     }
 
@@ -167,6 +170,9 @@ public class SetLibraryEnabledEndpointUnitTests
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(2));
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
             .Returns(Task.CompletedTask)
@@ -195,11 +201,6 @@ public class SetLibraryEnabledEndpointUnitTests
             .ToListAsync(CancellationToken);
         remainingVideos.ShouldBe([new { PlexLibraryId = controlOtherVideos.Id, PlexApiRatingKey = 302 }]);
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
         Mock.Mock<INotificationHubService>().Verify();
     }
 
@@ -235,6 +236,9 @@ public class SetLibraryEnabledEndpointUnitTests
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
             .Returns(Task.CompletedTask)
@@ -258,11 +262,6 @@ public class SetLibraryEnabledEndpointUnitTests
             .SingleAsync(CancellationToken);
         isEnabled.ShouldBeTrue();
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
         Mock.Mock<INotificationHubService>().Verify();
     }
 

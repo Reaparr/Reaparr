@@ -101,11 +101,8 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         if (queueResult.IsFailed)
             return queueResult.LogIfFailed();
 
-        if (plexLibrary.Type is PlexMediaType.Movie or PlexMediaType.TvShow)
-        {
-            var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
-            rebuildResult.LogIfFailed();
-        }
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
+        rebuildResult.LogIfFailed();
 
         // Notify frontend
         await _notificationHubService.SendRefreshNotificationAsync([
@@ -186,11 +183,8 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         _log.Here()
             .Information("Purged {Count} media items from library {PlexLibraryId}", deleteResult.Value, plexLibrary.Id);
 
-        if (plexLibrary.Type is PlexMediaType.Movie or PlexMediaType.TvShow)
-        {
-            var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
-            rebuildResult.LogIfFailed();
-        }
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
+        rebuildResult.LogIfFailed();
 
         // Notify frontend
         await _notificationHubService.SendRefreshNotificationAsync([

@@ -9,7 +9,7 @@ public class DownloadTaskTrackFile : DownloadTaskFileBase
     public List<DownloadTaskTrackFileLog> Logs { get; init; } = [];
 
     [NotMapped]
-    public override PlexMediaType MediaType => PlexMediaType.Song;
+    public override PlexMediaType MediaType => PlexMediaType.Track;
 
     [NotMapped]
     public override DownloadTaskType DownloadTaskType => DownloadTaskType.TrackData;

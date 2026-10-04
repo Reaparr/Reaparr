@@ -58,7 +58,6 @@ public static partial class FakeData
 
     private static readonly Faker<PlexPhoto> _plexPhoto = new Faker<PlexPhoto>()
         .ApplyBasePlexMedia()
-        .RuleFor(x => x.Type, _ => PlexMediaType.Photos)
         .RuleFor(x => x.Title, f => f.Lorem.Sentence(3))
         .RuleFor(x => x.Guid, (_, x) => $"plex://photo/{x.PlexApiRatingKey}")
         .RuleFor(x => x.Guid_IMDB, _ => null)

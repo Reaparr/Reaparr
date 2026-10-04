@@ -214,19 +214,22 @@ public class MockPlexApiServer : IMockPlexApiServer
 
             if (_config.MusicLibraryCount > 0)
                 libraries.AddRange(
-                    FakePlexApiData.GetLibrariesResponseDirectory(_seed, PlexMediaType.Music)
+                    FakePlexApiData
+                        .GetLibrariesResponseDirectory(_seed, PlexMediaType.Music)
                         .Generate(_config.MusicLibraryCount)
                 );
 
             if (_config.PhotoLibraryCount > 0)
                 libraries.AddRange(
-                    FakePlexApiData.GetLibrariesResponseDirectory(_seed, PlexMediaType.Photos)
+                    FakePlexApiData
+                        .GetLibrariesResponseDirectory(_seed, PlexMediaType.Photos)
                         .Generate(_config.PhotoLibraryCount)
                 );
 
             if (_config.OtherVideoLibraryCount > 0)
                 libraries.AddRange(
-                    FakePlexApiData.GetLibrariesResponseDirectory(_seed, PlexMediaType.OtherVideos)
+                    FakePlexApiData
+                        .GetLibrariesResponseDirectory(_seed, PlexMediaType.OtherVideos)
                         .Generate(_config.OtherVideoLibraryCount)
                 );
 
@@ -245,8 +248,10 @@ public class MockPlexApiServer : IMockPlexApiServer
                         (HttpRequestMessage req, CancellationToken _) =>
                         {
                             if (_config.SetLibrarySectionsResponse != HttpStatusCode.OK)
-                                return new { Error = "Configured library sections failure" }
-                                    .ToJsonHttpResponse(req, _config.SetLibrarySectionsResponse);
+                                return new { Error = "Configured library sections failure" }.ToJsonHttpResponse(
+                                    req,
+                                    _config.SetLibrarySectionsResponse
+                                );
 
                             var response = FakePlexApiData.GetAllLibrariesResponse(
                                 HttpStatusCode.OK,
@@ -324,21 +329,24 @@ public class MockPlexApiServer : IMockPlexApiServer
                     continue;
                 }
 
-                if (type == PlexMediaType.Artist)
+                if (type == PlexMediaType.Music)
                 {
-                    var artistList = FakePlexApiData.GetMediaMetaDataMetadata(_seed, PlexMediaType.Artist, _options)
+                    var artistList = FakePlexApiData
+                        .GetMediaMetaDataMetadata(_seed, PlexMediaType.Music, _options)
                         .Generate(_config.ArtistsPerLibraryCount);
                     var albumList = new List<Metadata>();
                     var trackList = new List<Metadata>();
                     foreach (var artist in artistList)
                     {
-                        var artistAlbums = FakePlexApiData.GetMediaMetaDataMetadata(_seed, PlexMediaType.Album, _options)
+                        var artistAlbums = FakePlexApiData
+                            .GetMediaMetaDataMetadata(_seed, PlexMediaType.Album, _options)
                             .Generate(_config.AlbumsPerArtistCount);
                         artistAlbums.ForEach(x => x.SetParentValues(artist));
                         albumList.AddRange(artistAlbums);
                         foreach (var album in artistAlbums)
                         {
-                            var albumTracks = FakePlexApiData.GetMediaMetaDataMetadata(_seed, PlexMediaType.Song, _options)
+                            var albumTracks = FakePlexApiData
+                                .GetMediaMetaDataMetadata(_seed, PlexMediaType.Track, _options)
                                 .Generate(_config.TracksPerAlbumCount);
                             albumTracks.ForEach(x => x.SetParentValues(album));
                             albumTracks.ForEach(x => x.SetGrandparentValues(artist));
@@ -353,12 +361,14 @@ public class MockPlexApiServer : IMockPlexApiServer
 
                 if (type == PlexMediaType.Photos)
                 {
-                    var albumList = FakePlexApiData.GetMediaMetaDataMetadata(_seed, PlexMediaType.PhotoAlbum, _options)
+                    var albumList = FakePlexApiData
+                        .GetMediaMetaDataMetadata(_seed, PlexMediaType.PhotoAlbum, _options)
                         .Generate(_config.PhotoAlbumsPerLibraryCount);
                     var photoList = new List<Metadata>();
                     foreach (var album in albumList)
                     {
-                        var photos = FakePlexApiData.GetMediaMetaDataMetadata(_seed, PlexMediaType.Photos, _options)
+                        var photos = FakePlexApiData
+                            .GetMediaMetaDataMetadata(_seed, PlexMediaType.Photos, _options)
                             .Generate(_config.PhotosPerAlbumCount + _config.PhotoClipsPerAlbumCount);
                         photos.ForEach(x => x.SetParentValues(album));
                         for (var i = _config.PhotosPerAlbumCount; i < photos.Count; i++)
@@ -375,7 +385,8 @@ public class MockPlexApiServer : IMockPlexApiServer
 
                 if (type == PlexMediaType.OtherVideos)
                 {
-                    var videos = FakePlexApiData.GetMediaMetaDataMetadata(_seed, PlexMediaType.Movie, _options)
+                    var videos = FakePlexApiData
+                        .GetMediaMetaDataMetadata(_seed, PlexMediaType.Movie, _options)
                         .Generate(_config.OtherVideosPerLibraryCount);
                     _otherVideos.TryAdd(libraryKey, videos);
                     continue;
@@ -420,9 +431,11 @@ public class MockPlexApiServer : IMockPlexApiServer
                                 var libraryType = PlexMediaType.Unknown;
                                 if (queryDict.TryGetValue("type", out var type))
                                     libraryType = type.ToPlexMediaTypeFromTypeInt();
-                                if (library.Agent == "com.plexapp.agents.none"
+                                if (
+                                    library.Agent == "com.plexapp.agents.none"
                                     && library.Scanner == "Plex Video Files Scanner"
-                                    && libraryType == PlexMediaType.Movie)
+                                    && libraryType == PlexMediaType.Movie
+                                )
                                     libraryType = PlexMediaType.OtherVideos;
 
                                 var responseBody = FakePlexApiData.GetLibrarySectionsAllResponseBody(
@@ -438,7 +451,10 @@ public class MockPlexApiServer : IMockPlexApiServer
                                 {
                                     var take = containerSize;
                                     if (_config.IncompleteMediaType == libraryType && fullList.Count > containerStart)
-                                        take = Math.Max(0, Math.Min(containerSize, fullList.Count - containerStart) - 1);
+                                        take = Math.Max(
+                                            0,
+                                            Math.Min(containerSize, fullList.Count - containerStart) - 1
+                                        );
                                     responseBody.MediaContainer!.Metadata = fullList
                                         .Skip(containerStart)
                                         .Take(take)
@@ -567,9 +583,11 @@ public class MockPlexApiServer : IMockPlexApiServer
             PlexMediaType.TvShow => _tvShows.TryGetValue(libraryUuid, out var shows) ? shows : [],
             PlexMediaType.Season => _seasons.TryGetValue(libraryUuid, out var seasons) ? seasons : [],
             PlexMediaType.Episode => _episodes.TryGetValue(libraryUuid, out var episodes) ? episodes : [],
-            PlexMediaType.Artist or PlexMediaType.Music => _artists.TryGetValue(libraryUuid, out var artists) ? artists : [],
+            PlexMediaType.Music => _artists.TryGetValue(libraryUuid, out var artists)
+                ? artists
+                : [],
             PlexMediaType.Album => _albums.TryGetValue(libraryUuid, out var albums) ? albums : [],
-            PlexMediaType.Song => _tracks.TryGetValue(libraryUuid, out var tracks) ? tracks : [],
+            PlexMediaType.Track => _tracks.TryGetValue(libraryUuid, out var tracks) ? tracks : [],
             PlexMediaType.PhotoAlbum => _photoAlbums.TryGetValue(libraryUuid, out var photoAlbums) ? photoAlbums : [],
             PlexMediaType.Photos => _photos.TryGetValue(libraryUuid, out var photos) ? photos : [],
             PlexMediaType.OtherVideos => _otherVideos.TryGetValue(libraryUuid, out var videos) ? videos : [],

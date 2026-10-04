@@ -20,7 +20,7 @@ public static class MediaContainerMappers
             OriginalTitle = data.OriginalTitle ?? string.Empty,
             ChildCount = data.ChildCount ?? 0,
             Media = data.Media?.Select(x => x.ToItemMediaDTO(
-                data.Type is "movie" or "episode" && data.Subtype != "photo"
+                data.Type is "movie" or "episode" or "clip" && data.Subtype != "photo"
             )).ToList() ?? [],
             Genre = data.Genre?.Select(x => x.ToGenreDTO()).ToList() ?? [],
             Country = data.Country?.Select(x => x.ToCountryDTO()).ToList() ?? [],

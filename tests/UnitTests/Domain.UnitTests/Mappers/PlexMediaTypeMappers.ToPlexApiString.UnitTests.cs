@@ -7,9 +7,9 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments(PlexMediaType.TvShow, "show")]
     [Arguments(PlexMediaType.Season, "season")]
     [Arguments(PlexMediaType.Episode, "episode")]
-    [Arguments(PlexMediaType.Artist, "artist")]
+    [Arguments(PlexMediaType.Music, "artist")]
     [Arguments(PlexMediaType.Album, "album")]
-    [Arguments(PlexMediaType.Song, "track")]
+    [Arguments(PlexMediaType.Track, "track")]
     [Arguments(PlexMediaType.PhotoAlbum, "photoalbum")]
     [Arguments(PlexMediaType.Photos, "photo")]
     public void ShouldConvertEnumToPlexApiString_WhenValidEnumValueProvided(PlexMediaType input, string expected)
@@ -23,13 +23,13 @@ public partial class PlexMediaTypeMappersUnitTests
 
     [Test]
     [Arguments(PlexMediaType.None)]
-    [Arguments(PlexMediaType.Music)]
     [Arguments(PlexMediaType.OtherVideos)]
     [Arguments(PlexMediaType.Games)]
     [Arguments(PlexMediaType.Unknown)]
     [Arguments((PlexMediaType)999)]
     [Arguments((PlexMediaType)(-1))]
     [Arguments((PlexMediaType)100)]
+    [Arguments((PlexMediaType)6)]
     public void ShouldThrowNotImplementedException_WhenUnsupportedEnumValueProvided(PlexMediaType input)
     {
         // Act & Assert

@@ -30,7 +30,6 @@ public static partial class PlexMediaDataMapper
             Guid_IMDB = null,
             Guid_TMDB = null,
             Guid_TVDB = null,
-            Type = PlexMediaType.Photos,
             PlexLibraryId = library.Id,
             PlexServerId = library.PlexServerId,
             PlexPhotoAlbumId = album.Id,

@@ -5,7 +5,13 @@ public class CreateDownloadTasksCommandValidator : AbstractValidator<CreateDownl
     public CreateDownloadTasksCommandValidator()
     {
         RuleFor(x => x).NotNull();
-        RuleFor(x => x.Request).NotNull().DependentRules(() => RuleFor(x => x.Request.DownloadMedias).NotEmpty());
+        RuleFor(x => x.Request)
+            .NotNull()
+            .DependentRules(() =>
+            {
+                RuleFor(x => x.Request.DownloadMedias).NotEmpty();
+                RuleForEach(x => x.Request.DownloadMedias).NotNull().SetValidator(new DownloadMediaDTOValidator());
+            });
     }
 }
 

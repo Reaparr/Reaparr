@@ -36,6 +36,8 @@ public class RefreshPlexOtherVideoLibraryCommandUnitTests : BaseCommandUnitTest<
         result.Errors.ShouldBe(failure.Errors);
         Mock.Mock<ICommandExecutor>().Verify(x => x.Send(
             It.IsAny<ScheduleOptimizeDatabaseJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(
+            It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ILibrarySyncProgressStore>().Verify(x => x.UpdateItemAsync(
             It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();

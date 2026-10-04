@@ -5,7 +5,7 @@ namespace Reaparr.Application.UnitTests;
 public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnapshotJob>
 {
     [Test]
-    public async Task ShouldRebuildBothRootTypesAndMarkJobCompleted()
+    public async Task ShouldDispatchRebuildAndMarkJobCompleted()
     {
         // Arrange
         var context = CreateJobContext();

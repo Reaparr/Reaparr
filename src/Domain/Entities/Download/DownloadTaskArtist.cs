@@ -5,7 +5,7 @@ public class DownloadTaskArtist : DownloadTaskParentBase
     public required ICollection<DownloadTaskAlbum> Children { get; set; } = [];
 
     [NotMapped]
-    public override PlexMediaType MediaType => PlexMediaType.Artist;
+    public override PlexMediaType MediaType => PlexMediaType.Music;
 
     [NotMapped]
     public override DownloadTaskType DownloadTaskType => DownloadTaskType.Artist;

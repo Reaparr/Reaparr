@@ -34,6 +34,8 @@ public record PagedMediaQueryResult
 
     public List<PlexMediaSlimDTO> Items { get; set; } = [];
 
+    public List<PlexPhotoAlbumDTO> PhotoAlbums { get; set; } = [];
+
     public List<MediaNavigationIndexDTO> NavigationIndexes { get; set; } = [];
 
     #region Metadata

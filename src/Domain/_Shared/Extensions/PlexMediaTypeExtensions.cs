@@ -8,7 +8,7 @@ public static class PlexMediaTypeExtensions
         {
             PlexMediaType.Movie => 2,
             PlexMediaType.TvShow or PlexMediaType.Season or PlexMediaType.Episode => 3,
-            PlexMediaType.Music or PlexMediaType.Artist or PlexMediaType.Album or PlexMediaType.Song => 4,
+            PlexMediaType.Music or PlexMediaType.Album or PlexMediaType.Track => 4,
             PlexMediaType.Photos or PlexMediaType.PhotoAlbum => 5,
             PlexMediaType.OtherVideos => 6,
             PlexMediaType.Games => 7,

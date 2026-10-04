@@ -1,7 +1,7 @@
 namespace Reaparr.Application;
 
 /// <summary>
-/// Rebuilds both persisted root-media overview snapshots sequentially.
+/// Rebuilds all persisted root-media overview snapshots sequentially.
 /// </summary>
 [DisallowConcurrentExecution]
 public sealed class MediaOverviewSnapshotJob : IJob

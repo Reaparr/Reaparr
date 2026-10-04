@@ -31,7 +31,6 @@ public static partial class PlexMediaDataMapper
             Guid_IMDB = null,
             Guid_TMDB = null,
             Guid_TVDB = null,
-            Type = PlexMediaType.OtherVideos,
             PlexLibraryId = library.Id,
             PlexServerId = library.PlexServerId,
         };
@@ -69,14 +68,7 @@ public static partial class PlexMediaDataMapper
                         Width = media.Width > 0 ? media.Width : null,
                         Height = media.Height > 0 ? media.Height : null,
                         VideoProfile = string.IsNullOrEmpty(media.VideoProfile) ? null : media.VideoProfile,
-                        VideoFrameRate = decimal.TryParse(
-                            media.VideoFrameRate,
-                            System.Globalization.NumberStyles.Number,
-                            System.Globalization.CultureInfo.InvariantCulture,
-                            out var frameRate
-                        )
-                            ? frameRate
-                            : null,
+                        VideoFrameRate = GetVideoFrameRate(part, media.VideoFrameRate),
                         Source = ReleaseSource.None,
                         NeedsGeneratedName = false,
                         GeneratedFilename = null,
@@ -86,5 +78,29 @@ public static partial class PlexMediaDataMapper
         }
 
         return video;
+    }
+
+    private static decimal? GetVideoFrameRate(LibraryMediaItemPartDTO part, string mediaFrameRate)
+    {
+        foreach (var stream in part.Stream)
+        {
+            if (
+                stream.StreamType == StreamType.Video
+                && stream.FrameRate is float frameRate
+                && frameRate > 0
+                && float.IsFinite(frameRate)
+                && frameRate < (float)decimal.MaxValue
+            )
+                return (decimal)frameRate;
+        }
+
+        return decimal.TryParse(
+            mediaFrameRate,
+            System.Globalization.NumberStyles.Number,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var fallbackFrameRate
+        )
+            ? fallbackFrameRate
+            : null;
     }
 }

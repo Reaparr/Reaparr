@@ -63,7 +63,7 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
         }
         else if (type == PlexMediaType.Music)
         {
-            items = new[] { PlexMediaType.Artist, PlexMediaType.Album, PlexMediaType.Song }
+            items = new[] { PlexMediaType.Music, PlexMediaType.Album, PlexMediaType.Track }
                 .Select(mediaType => new LibraryProgressItem
                 {
                     MediaType = mediaType,

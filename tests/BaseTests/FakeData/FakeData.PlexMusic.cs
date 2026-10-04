@@ -4,7 +4,6 @@ public static partial class FakeData
 {
     private static readonly Faker<PlexMusicArtist> _plexMusicArtist = new Faker<PlexMusicArtist>()
         .ApplyBasePlexMedia()
-        .RuleFor(x => x.Type, _ => PlexMediaType.Artist)
         .RuleFor(x => x.Title, f => f.Name.FullName())
         .RuleFor(x => x.Guid, f => $"plex://artist/{f.Random.Guid():N}")
         .RuleFor(x => x.MusicBrainzArtistId, f => f.Random.Guid().ToString())
@@ -46,7 +45,6 @@ public static partial class FakeData
 
     private static readonly Faker<PlexMusicAlbum> _plexMusicAlbum = new Faker<PlexMusicAlbum>()
         .ApplyBasePlexMedia()
-        .RuleFor(x => x.Type, _ => PlexMediaType.Album)
         .Ignore(x => x.PlexArtistId)
         .Ignore(x => x.PlexArtist)
         .RuleFor(x => x.Title, f => f.Commerce.ProductName())
@@ -97,7 +95,6 @@ public static partial class FakeData
 
     private static readonly Faker<PlexMusicTrack> _plexMusicTrack = new Faker<PlexMusicTrack>()
         .ApplyBasePlexMedia()
-        .RuleFor(x => x.Type, _ => PlexMediaType.Song)
         .Ignore(x => x.PlexAlbumId)
         .Ignore(x => x.PlexAlbum)
         .RuleFor(x => x.Title, f => string.Join(" ", f.Lorem.Words(f.Random.Int(1, 4))))
