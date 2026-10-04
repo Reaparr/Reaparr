@@ -148,13 +148,21 @@ describe('DownloadScheduleGrid selection gestures', () => {
 		await nextTick();
 
 		// Act
+		harness.props.timeFormat = 'HH:mm:ss';
+		await nextTick();
+
+		// Assert
+		expect(getByRole(harness.container, 'columnheader', { name: '00:00' })).toBeTruthy();
+		expect(lastCell.getAttribute('aria-label')).toBe('Monday 23:30–00:00 (+1): Unlimited');
+
+		// Act
 		harness.props.timeFormat = 'pp';
 		harness.props.timeZone = 'Pacific/Honolulu';
 		await nextTick();
 
 		// Assert
-		expect(getByRole(harness.container, 'columnheader', { name: '12:00:00 AM' })).toBeTruthy();
-		expect(lastCell.getAttribute('aria-label')).toBe('Monday 11:30:00 PM–12:00:00 AM (+1): Unlimited');
+		expect(getByRole(harness.container, 'columnheader', { name: '12:00 AM' })).toBeTruthy();
+		expect(lastCell.getAttribute('aria-label')).toBe('Monday 11:30 PM–12:00 AM (+1): Unlimited');
 		expect(harness.props.selection).toEqual([47]);
 		expect(lastCell.getAttribute('aria-selected')).toBe('true');
 	});

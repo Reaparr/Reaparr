@@ -159,9 +159,9 @@ describe('DownloadScheduleSection reset confirmation', () => {
 		await nextTick();
 
 		// Assert
-		expect(cell.getAttribute('aria-label')).toBe('Tuesday 9:30:00 PM–10:00:00 PM: 5,000 kB/s');
-		expect(container.querySelector('[data-cy=schedule-from]')!.textContent).toContain('9:30:00 PM');
-		expect(container.querySelector('[data-cy=schedule-until]')!.textContent).toContain('10:00:00 PM');
+		expect(cell.getAttribute('aria-label')).toBe('Tuesday 9:30 PM–10:00 PM: 5,000 kB/s');
+		expect(container.querySelector('[data-cy=schedule-from]')!.textContent).toContain('9:30 PM');
+		expect(container.querySelector('[data-cy=schedule-until]')!.textContent).toContain('10:00 PM');
 
 		// Act
 		fireEvent.click(getByRole(container, 'button', { name: 'Apply to selection & save' }));
