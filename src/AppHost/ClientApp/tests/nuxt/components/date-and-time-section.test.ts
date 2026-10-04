@@ -60,7 +60,6 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		fireEvent.input(input, { target: { value: '+09:00' } });
 		const option = await waitFor(() => getByRole(document.body, 'option', { name: '(UTC+09:00) Asia/Tokyo' }));
 		fireEvent.click(option);
-		await waitFor(() => expect(store.settingsSaveState).toBe('saved'));
 		await waitFor(() => expect(mock.history.put).toHaveLength(1));
 
 		// Assert

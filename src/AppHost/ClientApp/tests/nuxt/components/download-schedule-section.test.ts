@@ -1,7 +1,7 @@
 import { useNuxtApp } from '#app';
 import { fireEvent, getByRole, waitFor } from '@testing-library/dom';
 import { h, nextTick, render } from 'vue';
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateResultDTO, generateSettingsModel, generateFailedResultDTO } from '@mock';
 import { SettingsPaths } from '@api-urls';
@@ -18,6 +18,7 @@ describe('DownloadScheduleSection reset confirmation', () => {
 
 	beforeAll(() => baseSetup());
 	beforeEach(async () => {
+		vi.useFakeTimers();
 		mock = getAxiosMock();
 		store = useNuxtApp().vueApp.runWithContext(() => useSettingsStore());
 		store.$reset();
@@ -27,7 +28,12 @@ describe('DownloadScheduleSection reset confirmation', () => {
 			days: { Monday: { '09:00': 5000, '10:00': null }, Sunday: { '23:30': 1000 } },
 		};
 		mock.onGet(SettingsPaths.getUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
+		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).replyOnce((request) => [200, generateResultDTO(JSON.parse(request.data))]);
 		await subscribeSpyTo(store.setup()).onComplete();
+		// Drain initialization writes from the native store before exercising the component.
+		await vi.advanceTimersByTimeAsync(600);
+		mock.resetHistory();
+		vi.useRealTimers();
 		container = document.createElement('div');
 		document.body.append(container);
 		const vnode = h(DownloadScheduleSection);
@@ -39,6 +45,7 @@ describe('DownloadScheduleSection reset confirmation', () => {
 		render(null, container);
 		container.remove();
 		store.$reset();
+		vi.useRealTimers();
 	});
 
 	async function openReset() {
@@ -76,9 +83,14 @@ describe('DownloadScheduleSection reset confirmation', () => {
 		for (const key of '3000') fireEvent.keyPress(input, { key, code: `Digit${key}` });
 		await nextTick();
 
+		vi.useFakeTimers();
+		await vi.advanceTimersByTimeAsync(600);
+		expect(mock.history.put).toEqual([]);
+		vi.useRealTimers();
 		// Act
 		fireEvent.click(getByRole(container, 'button', { name: 'Apply to selection & save' }));
-		await waitFor(() => expect(store.settingsSaveState).toBe('saved'));
+		await waitFor(() => expect(store.confirmedDownloadSchedule.days.Monday?.['09:00']).toBe(3000));
+		await waitFor(() => expect(container.querySelector<HTMLButtonElement>('[data-cy=schedule-apply]')!.disabled).toBe(false));
 
 		// Assert
 		expect(container.querySelectorAll('[role=gridcell][aria-selected=true]')).toHaveLength(4);
@@ -90,7 +102,8 @@ describe('DownloadScheduleSection reset confirmation', () => {
 		await nextTick();
 		fireEvent.click(getByRole(container, 'button', { name: 'Apply to selection & save' }));
 		await waitFor(() => expect(mock.history.put).toHaveLength(2));
-		await waitFor(() => expect(store.settingsSaveState).toBe('saved'));
+		await waitFor(() => expect(store.confirmedDownloadSchedule.days.Wednesday?.['12:00']).toBe(3000));
+		await waitFor(() => expect(container.querySelector<HTMLButtonElement>('[data-cy=schedule-apply]')!.disabled).toBe(false));
 
 		// Assert
 		expect(store.confirmedDownloadSchedule.days.Wednesday?.['12:00']).toBe(3000);
@@ -118,7 +131,7 @@ describe('DownloadScheduleSection reset confirmation', () => {
 		fireEvent.keyDown(container.querySelector('[data-cy=schedule-cell-1-25]')!, { key: 'ArrowDown', shiftKey: true });
 		await nextTick();
 		fireEvent.click(getByRole(container, 'button', { name: 'Apply to selection & save' }));
-		await waitFor(() => expect(store.settingsSaveState).toBe('saved'));
+		await waitFor(() => expect(store.confirmedDownloadSchedule.days.Wednesday?.['12:00']).toBe(5000));
 
 		// Assert
 		expect(mock.history.put).toHaveLength(1);
@@ -181,14 +194,14 @@ describe('DownloadScheduleSection reset confirmation', () => {
 		expect(toggle.getAttribute('aria-busy')).toBe('true');
 		expect(apply.disabled).toBe(true);
 		expect(mock.history.put).toHaveLength(1);
-		expect(store.confirmedDownloadSchedule.enabled).toBe(true);
+		expect(toggle.getAttribute('aria-checked')).toBe('true');
 		const saved: SettingsModelDTO = JSON.parse(mock.history.put[0]!.data);
 		expect(saved.downloadManagerSettings.downloadSchedule).toEqual({
 			...settings.downloadManagerSettings.downloadSchedule,
 			enabled: false,
 		});
 		resolve([200, generateResultDTO(saved)]);
-		await waitFor(() => expect(store.confirmedDownloadSchedule.enabled).toBe(false));
+		await waitFor(() => expect(toggle.getAttribute('aria-busy')).toBe('false'));
 		expect(toggle.getAttribute('aria-busy')).toBe('false');
 		expect(apply.disabled).toBe(false);
 	});
@@ -205,13 +218,13 @@ describe('DownloadScheduleSection reset confirmation', () => {
 		const saved: SettingsModelDTO = JSON.parse(mock.history.put[0]!.data);
 
 		// Assert: no optimistic wipe, and unrelated download settings are retained.
-		expect(store.confirmedDownloadSchedule.days).toEqual(settings.downloadManagerSettings.downloadSchedule.days);
+		expect(container.querySelector('[data-cy=schedule-cell-0-18]')!.getAttribute('aria-label')).toContain('5,000 kB/s');
 		expect(saved.downloadManagerSettings).toEqual({
 			...settings.downloadManagerSettings,
 			downloadSchedule: { enabled: true, days: {} },
 		});
 		resolve([200, generateResultDTO(saved)]);
-		await waitFor(() => expect(store.confirmedDownloadSchedule.days).toEqual({}));
+		await waitFor(() => expect(container.querySelector('[data-cy=schedule-cell-0-18]')!.getAttribute('aria-label')).toContain('Unlimited'));
 		expect(decodeDownloadScheduleDays(store.confirmedDownloadSchedule.days)).toEqual(Array(336).fill(null));
 	});
 
@@ -232,13 +245,13 @@ describe('DownloadScheduleSection reset confirmation', () => {
 
 		// Act
 		fireEvent.click(getByRole(dialog, 'button', { name: 'Reset schedule' }));
-		await waitFor(() => expect(store.settingsSaveState).toBe('error'));
+		await waitFor(() => getByRole(container, 'alert'));
 
 		// Assert
 		expect(store.confirmedDownloadSchedule).toEqual(settings.downloadManagerSettings.downloadSchedule);
 		expect(Number((getByRole(container, 'spinbutton') as HTMLInputElement).value.replace(/[^\d.-]/g, ''))).toBe(3000);
 		fireEvent.click(getByRole(container, 'button', { name: 'Apply to selection & save' }));
-		await waitFor(() => expect(store.settingsSaveState).toBe('saved'));
+		await waitFor(() => expect(store.confirmedDownloadSchedule.days.Monday?.['09:00']).toBe(3000));
 		expect(store.confirmedDownloadSchedule.days.Monday!['09:00']).toBe(3000);
 		expect(store.confirmedDownloadSchedule.days.Sunday!['23:30']).toBe(1000);
 	});

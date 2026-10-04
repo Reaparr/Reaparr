@@ -77,8 +77,8 @@
 <script setup lang="ts">
 import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
-import { Subject } from 'rxjs';
-import { concatMap, tap } from 'rxjs/operators';
+import { EMPTY, Subject } from 'rxjs';
+import { catchError, exhaustMap, finalize, tap } from 'rxjs/operators';
 import { cloneDeep, max } from 'lodash-es';
 import { useSettingsStore, useDialogStore } from '@store';
 import { DialogType } from '@enums';
@@ -88,9 +88,10 @@ import type { DownloadScheduleRange } from '@composables/download-schedule';
 const settingsStore = useSettingsStore();
 const dialogStore = useDialogStore();
 const { t, locale } = useI18n();
-const policy = computed(() => settingsStore.confirmedDownloadSchedule);
-const isSaving = computed(() => settingsStore.settingsSaveState === 'saving');
+const pendingPolicy = shallowRef<DownloadScheduleDTO | null>(null);
+const policy = computed(() => get(pendingPolicy) ?? settingsStore.confirmedDownloadSchedule);
 const saveState = ref<'idle' | 'toggle' | 'apply' | 'reset' | 'error'>('idle');
+const isSaving = computed(() => get(saveState) !== 'idle' && get(saveState) !== 'error');
 const saveError = ref<string | null>(null);
 const range = ref<DownloadScheduleRange>({ days: [], from: 18, until: 36 });
 const previewLimit = ref<number | null>();
@@ -112,18 +113,30 @@ const helpText = computed(() => [
 const saveRequests = new Subject<{ policy: DownloadScheduleDTO; action: 'toggle' | 'apply' | 'reset' }>();
 
 useSubscription(saveRequests.pipe(
-	concatMap(({ policy: candidate, action }) => {
+	exhaustMap(({ policy: candidate, action }) => {
 		set(saveState, action);
 		set(saveError, null);
-		return settingsStore.saveDownloadSchedule(candidate).pipe(tap((settings) => {
-			set(saveState, settings ? 'idle' : 'error');
-			set(saveError, settings ? null : settingsStore.settingsSaveError);
-			if (settings && action === 'reset') {
-				set(range, { ...get(range), days: [] });
-				set(previewLimit, undefined);
-				set(editorKey, get(editorKey) + 1);
-			}
-		}));
+		set(pendingPolicy, cloneDeep(get(policy)));
+		settingsStore.downloadManagerSettings.downloadSchedule = candidate;
+		return settingsStore.saveSettings().pipe(
+			tap(() => {
+				if (action === 'reset') {
+					set(range, { ...get(range), days: [] });
+					set(previewLimit, undefined);
+					set(editorKey, get(editorKey) + 1);
+				}
+			}),
+			catchError((error: unknown) => {
+				settingsStore.downloadManagerSettings.downloadSchedule = get(pendingPolicy)!;
+				set(saveState, 'error');
+				set(saveError, error instanceof Error ? error.message : String(error));
+				return EMPTY;
+			}),
+			finalize(() => {
+				set(pendingPolicy, null);
+				if (get(saveState) !== 'error') set(saveState, 'idle');
+			}),
+		);
 	}),
 ).subscribe());
 
