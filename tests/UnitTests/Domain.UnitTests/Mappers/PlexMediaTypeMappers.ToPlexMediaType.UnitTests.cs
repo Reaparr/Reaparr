@@ -8,11 +8,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("TvShow", PlexMediaType.TvShow)]
     [Arguments("Season", PlexMediaType.Season)]
     [Arguments("Episode", PlexMediaType.Episode)]
-    [Arguments("Music", PlexMediaType.Music)]
-    [Arguments("Album", PlexMediaType.Album)]
-    [Arguments("Track", PlexMediaType.Track)]
+    [Arguments("Music", PlexMediaType.MusicArtist)]
+    [Arguments("Album", PlexMediaType.MusicAlbum)]
+    [Arguments("Track", PlexMediaType.MusicTrack)]
     [Arguments("PhotoAlbum", PlexMediaType.PhotoAlbum)]
-    [Arguments("Photos", PlexMediaType.Photos)]
+    [Arguments("Photos", PlexMediaType.PhotoImage)]
     [Arguments("OtherVideos", PlexMediaType.OtherVideos)]
     [Arguments("Games", PlexMediaType.Games)]
     [Arguments("Unknown", PlexMediaType.Unknown)]
@@ -30,11 +30,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("show", PlexMediaType.TvShow)]
     [Arguments("season", PlexMediaType.Season)]
     [Arguments("episode", PlexMediaType.Episode)]
-    [Arguments("artist", PlexMediaType.Music)]
-    [Arguments("album", PlexMediaType.Album)]
-    [Arguments("track", PlexMediaType.Track)]
+    [Arguments("artist", PlexMediaType.MusicArtist)]
+    [Arguments("album", PlexMediaType.MusicAlbum)]
+    [Arguments("track", PlexMediaType.MusicTrack)]
     [Arguments("photoalbum", PlexMediaType.PhotoAlbum)]
-    [Arguments("photo", PlexMediaType.Photos)]
+    [Arguments("photo", PlexMediaType.PhotoImage)]
     public void ShouldConvertPlexApiStrings_WhenValidPlexApiStringProvided(string input, PlexMediaType expected)
     {
         // Act
@@ -100,11 +100,11 @@ public partial class PlexMediaTypeMappersUnitTests
             PlexMediaType.TvShow,
             PlexMediaType.Season,
             PlexMediaType.Episode,
-            PlexMediaType.Music,
-            PlexMediaType.Album,
-            PlexMediaType.Track,
+            PlexMediaType.MusicArtist,
+            PlexMediaType.MusicAlbum,
+            PlexMediaType.MusicTrack,
             PlexMediaType.PhotoAlbum,
-            PlexMediaType.Photos,
+            PlexMediaType.PhotoImage,
         };
 
         // Act & Assert

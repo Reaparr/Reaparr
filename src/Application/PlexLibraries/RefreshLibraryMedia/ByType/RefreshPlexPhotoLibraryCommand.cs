@@ -46,7 +46,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
         var plexLibraryId = command.LibraryMetadata.PlexLibraryId;
         var retrievalResult = await Result.Try(() =>
             _commandExecutor.Send(
-                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.Photos),
+                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.PhotoImage),
                 cancellationToken
             )
         );
@@ -108,7 +108,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
             plexLibraryId,
             new LibraryProgressItem
             {
-                MediaType = PlexMediaType.Photos,
+                MediaType = PlexMediaType.PhotoImage,
                 Received = plexLibrary.Photos.Count,
                 Total = plexLibrary.Photos.Count,
                 TimeRemaining = TimeSpan.Zero,
@@ -136,9 +136,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
         var albums = library.PhotoAlbums.ToDictionary(x => x.PlexApiRatingKey);
         var missingPhoto = photos.FirstOrDefault(x => !albums.ContainsKey(x.ParentKey));
         if (missingPhoto is not null)
-            return Result.Fail(
-                $"Photo {missingPhoto.PlexApiRatingKey} has an unknown album {missingPhoto.ParentKey}"
-            );
+            return Result.Fail($"Photo {missingPhoto.PlexApiRatingKey} has an unknown album {missingPhoto.ParentKey}");
 
         foreach (var album in library.PhotoAlbums)
         {

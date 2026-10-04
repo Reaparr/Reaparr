@@ -61,9 +61,9 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
                 },
             ];
         }
-        else if (type == PlexMediaType.Music)
+        else if (type == PlexMediaType.MusicArtist)
         {
-            items = new[] { PlexMediaType.Music, PlexMediaType.Album, PlexMediaType.Track }
+            items = new[] { PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack }
                 .Select(mediaType => new LibraryProgressItem
                 {
                     MediaType = mediaType,
@@ -75,7 +75,7 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
         }
         else if (type == PlexMediaType.PhotoAlbum)
         {
-            items = new[] { PlexMediaType.PhotoAlbum, PlexMediaType.Photos }
+            items = new[] { PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage }
                 .Select(mediaType => new LibraryProgressItem
                 {
                     MediaType = mediaType,

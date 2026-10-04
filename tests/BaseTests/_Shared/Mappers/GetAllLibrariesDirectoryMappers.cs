@@ -18,14 +18,14 @@ public static class LibrarySectionMappers
             Title = source.Title,
             Agent = source.Type switch
             {
-                PlexMediaType.Music => "tv.plex.agents.music",
+                PlexMediaType.MusicArtist => "tv.plex.agents.music",
                 PlexMediaType.PhotoAlbum or PlexMediaType.OtherVideos => "com.plexapp.agents.none",
                 PlexMediaType.TvShow => "tv.plex.agents.series",
                 _ => "tv.plex.agents.movie",
             },
             Scanner = source.Type switch
             {
-                PlexMediaType.Music => "Plex Music",
+                PlexMediaType.MusicArtist => "Plex Music",
                 PlexMediaType.PhotoAlbum => "Plex Photo Scanner",
                 PlexMediaType.OtherVideos => "Plex Video Files Scanner",
                 PlexMediaType.TvShow => "Plex TV Series",

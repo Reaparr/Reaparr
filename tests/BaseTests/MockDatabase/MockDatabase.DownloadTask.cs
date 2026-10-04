@@ -30,9 +30,9 @@ public static partial class MockDatabase
                 PlexMediaType.Movie => pathProvider.DefaultMovieDestinationFolder,
                 PlexMediaType.TvShow or PlexMediaType.Season or PlexMediaType.Episode =>
                     pathProvider.DefaultTvShowsDestinationFolder,
-                PlexMediaType.Music or PlexMediaType.Album or PlexMediaType.Track =>
+                PlexMediaType.MusicArtist or PlexMediaType.MusicAlbum or PlexMediaType.MusicTrack =>
                     pathProvider.DefaultMusicDestinationFolder,
-                PlexMediaType.Photos => pathProvider.DefaultPhotosDestinationFolder,
+                PlexMediaType.PhotoImage => pathProvider.DefaultPhotosDestinationFolder,
                 PlexMediaType.OtherVideos => pathProvider.DefaultOtherDestinationFolder,
                 PlexMediaType.Games => pathProvider.DefaultGamesDestinationFolder,
                 _ => throw new ArgumentOutOfRangeException(

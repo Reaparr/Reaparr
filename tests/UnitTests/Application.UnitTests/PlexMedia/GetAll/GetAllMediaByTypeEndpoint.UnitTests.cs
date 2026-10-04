@@ -7,19 +7,20 @@ public class GetAllMediaByTypeEndpointUnitTests
     public async Task ShouldRejectLeafPhotosWithoutDispatch_WhenRequestingRootOverview()
     {
         // Arrange
-        var request = new GetAllMediaByTypeRequest { MediaType = PlexMediaType.Photos };
+        var request = new GetAllMediaByTypeRequest { MediaType = PlexMediaType.PhotoImage };
 
         // Act
         var result = await TestEndpointHandleAsync(request);
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.ValidationResult.ShouldNotBeNull().Errors.Select(x => x.PropertyName)
+        result
+            .ValidationResult.ShouldNotBeNull()
+            .Errors.Select(x => x.PropertyName)
             .ShouldBe([nameof(GetAllMediaByTypeRequest.MediaType)]);
         result.Response.ShouldBeNull();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GetMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<GetMediaOverviewCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -27,26 +28,32 @@ public class GetAllMediaByTypeEndpointUnitTests
     {
         // Arrange
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<GetMediaOverviewCommand>(c =>
-                    c.Filter.MediaType == PlexMediaType.PhotoAlbum && c.Filter.PlexLibraryId == 17),
-                CancellationToken))
-            .ReturnsAsync(Result.Ok(new PagedMediaQueryResult
-            {
-                QueryHash = "photo-albums",
-                Page = 1,
-                PageSize = 20,
-                TotalCount = 2,
-                MediaCount = 2,
-            }))
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetMediaOverviewCommand>(c =>
+                        c.Filter.MediaType == PlexMediaType.PhotoAlbum && c.Filter.PlexLibraryId == 17
+                    ),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(
+                Result.Ok(
+                    new PagedMediaQueryResult
+                    {
+                        QueryHash = "photo-albums",
+                        Page = 1,
+                        PageSize = 20,
+                        TotalCount = 2,
+                        MediaCount = 2,
+                    }
+                )
+            )
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestEndpointHandleAsync(new GetAllMediaByTypeRequest
-        {
-            MediaType = PlexMediaType.PhotoAlbum,
-            PlexLibraryId = 17,
-        });
+        var result = await TestEndpointHandleAsync(
+            new GetAllMediaByTypeRequest { MediaType = PlexMediaType.PhotoAlbum, PlexLibraryId = 17 }
+        );
 
         // Assert
         result.IsValid.ShouldBeTrue();
@@ -55,12 +62,14 @@ public class GetAllMediaByTypeEndpointUnitTests
         var response = await JsonSerializer.DeserializeAsync<ResultDTO<PlexMediaStatisticsDTO>>(
             result.Endpoint.HttpContext.Response.Body,
             DefaultJsonSerializerOptions.ConfigStandard,
-            CancellationToken);
+            CancellationToken
+        );
         response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         var value = response.Value.ShouldNotBeNull();
-        (value.QueryHash, value.Page, value.PageSize, value.TotalCount, value.MediaCount)
-            .ShouldBe(("photo-albums", 1, 20, 2, 2));
+        (value.QueryHash, value.Page, value.PageSize, value.TotalCount, value.MediaCount).ShouldBe(
+            ("photo-albums", 1, 20, 2, 2)
+        );
         value.MediaList.ShouldBeEmpty();
         value.NavigationIndexes.ShouldBeEmpty();
         Mock.Mock<ICommandExecutor>().Verify();
@@ -82,19 +91,21 @@ public class GetAllMediaByTypeEndpointUnitTests
         };
         var result = validator.Validate(request);
         result.IsValid.ShouldBeFalse();
-        result.Errors.Select(x => x.PropertyName).ShouldBe(
-            new[]
-            {
-                nameof(GetAllMediaByTypeRequest.CountryId),
-                nameof(GetAllMediaByTypeRequest.GenreId),
-                nameof(GetAllMediaByTypeRequest.RoleId),
-                nameof(GetAllMediaByTypeRequest.QualityId),
-            }
-        );
+        result
+            .Errors.Select(x => x.PropertyName)
+            .ShouldBe(
+                new[]
+                {
+                    nameof(GetAllMediaByTypeRequest.CountryId),
+                    nameof(GetAllMediaByTypeRequest.GenreId),
+                    nameof(GetAllMediaByTypeRequest.RoleId),
+                    nameof(GetAllMediaByTypeRequest.QualityId),
+                }
+            );
     }
 
     [Test]
-    [Arguments(PlexMediaType.Music)]
+    [Arguments(PlexMediaType.MusicArtist)]
     [Arguments(PlexMediaType.PhotoAlbum)]
     [Arguments(PlexMediaType.OtherVideos)]
     public void ShouldRejectComparisonForNewRoots_WhenValidatingRequest(PlexMediaType mediaType)
@@ -109,8 +120,6 @@ public class GetAllMediaByTypeEndpointUnitTests
         var result = validator.Validate(request);
 
         result.IsValid.ShouldBeFalse();
-        result.Errors.Select(x => x.PropertyName).ShouldBe(
-            new[] { nameof(GetAllMediaByTypeRequest.ComparisonState) }
-        );
+        result.Errors.Select(x => x.PropertyName).ShouldBe(new[] { nameof(GetAllMediaByTypeRequest.ComparisonState) });
     }
 }

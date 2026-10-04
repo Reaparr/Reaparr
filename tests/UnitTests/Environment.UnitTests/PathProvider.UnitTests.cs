@@ -139,8 +139,8 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
     [Test]
     [Arguments(EnvKeys.ReaparrMoviesPath, "/custom/media/movies", PlexMediaType.Movie)]
     [Arguments(EnvKeys.ReaparrTvShowsPath, "/custom/media/tvshows", PlexMediaType.TvShow)]
-    [Arguments(EnvKeys.ReaparrMusicPath, "/custom/media/music", PlexMediaType.Music)]
-    [Arguments(EnvKeys.ReaparrPhotosPath, "/custom/media/photos", PlexMediaType.Photos)]
+    [Arguments(EnvKeys.ReaparrMusicPath, "/custom/media/music", PlexMediaType.MusicArtist)]
+    [Arguments(EnvKeys.ReaparrPhotosPath, "/custom/media/photos", PlexMediaType.PhotoImage)]
     [Arguments(EnvKeys.ReaparrOtherPath, "/custom/media/other", PlexMediaType.OtherVideos)]
     [Arguments(EnvKeys.ReaparrGamesPath, "/custom/media/games", PlexMediaType.Games)]
     public void ShouldReturnDedicatedMediaPath_WhenPerTypeOverrideExists(
@@ -190,8 +190,8 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
     [Test]
     [Arguments(PlexMediaType.Movie, "Movies")]
     [Arguments(PlexMediaType.TvShow, "TvShows")]
-    [Arguments(PlexMediaType.Music, "Music")]
-    [Arguments(PlexMediaType.Photos, "Photos")]
+    [Arguments(PlexMediaType.MusicArtist, "Music")]
+    [Arguments(PlexMediaType.PhotoImage, "Photos")]
     [Arguments(PlexMediaType.OtherVideos, "Other")]
     [Arguments(PlexMediaType.Games, "Games")]
     public void ShouldReturnMediaFolderInsideDataDirectory_WhenPerTypeOverrideIsMissing(
@@ -369,8 +369,8 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         {
             PlexMediaType.Movie => sut.DefaultMovieDestinationFolder,
             PlexMediaType.TvShow => sut.DefaultTvShowsDestinationFolder,
-            PlexMediaType.Music => sut.DefaultMusicDestinationFolder,
-            PlexMediaType.Photos => sut.DefaultPhotosDestinationFolder,
+            PlexMediaType.MusicArtist => sut.DefaultMusicDestinationFolder,
+            PlexMediaType.PhotoImage => sut.DefaultPhotosDestinationFolder,
             PlexMediaType.OtherVideos => sut.DefaultOtherDestinationFolder,
             PlexMediaType.Games => sut.DefaultGamesDestinationFolder,
             _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),

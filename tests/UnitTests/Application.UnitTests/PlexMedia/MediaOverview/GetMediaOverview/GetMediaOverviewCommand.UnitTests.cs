@@ -6,7 +6,7 @@ public class GetMediaOverviewCommandUnitTests
 {
     [Test]
     [Arguments(PlexMediaType.Unknown)]
-    [Arguments(PlexMediaType.Photos)]
+    [Arguments(PlexMediaType.PhotoImage)]
     public void ShouldRejectUnsupportedMediaType_WhenValidatingRequest(PlexMediaType mediaType)
     {
         // Arrange
@@ -23,7 +23,7 @@ public class GetMediaOverviewCommandUnitTests
     [Test]
     [Arguments(PlexMediaType.Movie)]
     [Arguments(PlexMediaType.TvShow)]
-    [Arguments(PlexMediaType.Music)]
+    [Arguments(PlexMediaType.MusicArtist)]
     [Arguments(PlexMediaType.PhotoAlbum)]
     [Arguments(PlexMediaType.OtherVideos)]
     public void ShouldRejectInvalidPaging_WhenValidatingRequest(PlexMediaType mediaType)
@@ -39,9 +39,9 @@ public class GetMediaOverviewCommandUnitTests
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.Errors.Select(x => x.PropertyName).ShouldBe(
-            new[] { "Filter.Parameters.Page", "Filter.Parameters.PageSize" }
-        );
+        result
+            .Errors.Select(x => x.PropertyName)
+            .ShouldBe(new[] { "Filter.Parameters.Page", "Filter.Parameters.PageSize" });
     }
 
     private static MediaQueryFilter CreateFilter(PlexMediaType mediaType) =>

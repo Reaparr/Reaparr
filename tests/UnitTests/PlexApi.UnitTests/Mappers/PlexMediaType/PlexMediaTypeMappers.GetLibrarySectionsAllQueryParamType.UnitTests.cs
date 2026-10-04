@@ -10,11 +10,11 @@ public class PlexMediaTypeMappersToPlexApiMediaTypeUnitTests : BaseUnitTest
     [Arguments(PlexMediaType.TvShow, MediaType.TvShow)]
     [Arguments(PlexMediaType.Season, MediaType.Season)]
     [Arguments(PlexMediaType.Episode, MediaType.Episode)]
-    [Arguments(PlexMediaType.Music, MediaType.Artist)]
-    [Arguments(PlexMediaType.Album, MediaType.Album)]
-    [Arguments(PlexMediaType.Track, MediaType.Track)]
+    [Arguments(PlexMediaType.MusicArtist, MediaType.Artist)]
+    [Arguments(PlexMediaType.MusicAlbum, MediaType.Album)]
+    [Arguments(PlexMediaType.MusicTrack, MediaType.Track)]
     [Arguments(PlexMediaType.PhotoAlbum, MediaType.PhotoAlbum)]
-    [Arguments(PlexMediaType.Photos, MediaType.Photo)]
+    [Arguments(PlexMediaType.PhotoImage, MediaType.Photo)]
     public void ShouldMapPlexMediaTypeToMediaType(PlexMediaType input, MediaType expected)
     {
         // Act
@@ -26,10 +26,10 @@ public class PlexMediaTypeMappersToPlexApiMediaTypeUnitTests : BaseUnitTest
     [Arguments("2", PlexMediaType.TvShow)]
     [Arguments("3", PlexMediaType.Season)]
     [Arguments("4", PlexMediaType.Episode)]
-    [Arguments("8", PlexMediaType.Music)]
-    [Arguments("9", PlexMediaType.Album)]
-    [Arguments("10", PlexMediaType.Track)]
-    [Arguments("13", PlexMediaType.Photos)]
+    [Arguments("8", PlexMediaType.MusicArtist)]
+    [Arguments("9", PlexMediaType.MusicAlbum)]
+    [Arguments("10", PlexMediaType.MusicTrack)]
+    [Arguments("13", PlexMediaType.PhotoImage)]
     [Arguments("14", PlexMediaType.PhotoAlbum)]
     public void ShouldMapPlexMetadataTypeIdToDomainType(string input, PlexMediaType expected)
     {

@@ -135,7 +135,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
                     PlexMediaType.TvShow => await dbContext
                         .PlexTvShows.Where(x => x.PlexLibraryId == plexLibrary.Id)
                         .ExecuteDeleteAsync(txCt),
-                    PlexMediaType.Music => await dbContext
+                    PlexMediaType.MusicArtist => await dbContext
                         .PlexArtists.Where(x => x.PlexLibraryId == plexLibrary.Id)
                         .ExecuteDeleteAsync(txCt),
                     PlexMediaType.PhotoAlbum => await dbContext

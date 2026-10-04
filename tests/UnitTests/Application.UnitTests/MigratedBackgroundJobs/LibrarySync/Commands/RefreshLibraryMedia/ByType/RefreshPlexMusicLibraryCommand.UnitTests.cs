@@ -3,15 +3,15 @@ namespace Reaparr.Application.UnitTests;
 public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<RefreshPlexMusicLibraryCommand>
 {
     [Test]
-    [Arguments(PlexMediaType.Album)]
-    [Arguments(PlexMediaType.Track)]
+    [Arguments(PlexMediaType.MusicAlbum)]
+    [Arguments(PlexMediaType.MusicTrack)]
     public async Task ShouldRejectOrphansBeforeChangingHierarchyOrSyncing_WhenDescendantParentIsMissing(
         PlexMediaType mediaType
     )
     {
         // Arrange
         var seed = new Seed(625630);
-        var library = FakeData.GetPlexLibrary(seed, PlexMediaType.Music).Generate();
+        var library = FakeData.GetPlexLibrary(seed, PlexMediaType.MusicArtist).Generate();
         library.Id = 17;
         library.Music.Clear();
         library.Albums.Clear();
@@ -20,10 +20,10 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         artist.PlexApiRatingKey = 100;
         var album = FakeData.GetPlexMusicAlbums(seed, x => x.MusicTrackCount = 0).Generate();
         album.PlexApiRatingKey = 101;
-        album.ParentKey = mediaType == PlexMediaType.Album ? 999 : artist.PlexApiRatingKey;
+        album.ParentKey = mediaType == PlexMediaType.MusicAlbum ? 999 : artist.PlexApiRatingKey;
         album.PlexArtist = artist;
         var track = FakeData.GetPlexMusicTracks(seed).Generate();
-        track.ParentKey = mediaType == PlexMediaType.Track ? 999 : album.PlexApiRatingKey;
+        track.ParentKey = mediaType == PlexMediaType.MusicTrack ? 999 : album.PlexApiRatingKey;
         track.PlexAlbum = album;
         artist.Albums.Add(album);
         album.Tracks.Add(track);
@@ -35,22 +35,31 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var response = new InsertMediaMetaDataCommandResponse(library);
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                    c.PlexLibrary == library && c.MediaType == PlexMediaType.Album),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.MusicAlbum
+                    ),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(new LibraryMetadata(library)))
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                    c.PlexLibrary == library && c.MediaType == PlexMediaType.Track),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.MusicTrack
+                    ),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(new LibraryMetadata(library)))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateErrorAsync(
-                library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken))
+            .Setup(x =>
+                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken)
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -70,8 +79,8 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         track.PlexAlbum.ShouldBeSameAs(album);
         (artist.ChildCount, artist.Duration, artist.MediaSize).ShouldBe(artistState);
         (album.ChildCount, album.TrackCount, album.Duration, album.MediaSize).ShouldBe(albumState);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
     }
@@ -90,7 +99,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         );
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
-            p => p.SetProperty(x => x.Type, PlexMediaType.Music),
+            p => p.SetProperty(x => x.Type, PlexMediaType.MusicArtist),
             CancellationToken
         );
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
@@ -101,7 +110,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Setup(x =>
                 x.Send(
                     It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                        c.PlexLibrary == library && c.MediaType == PlexMediaType.Album
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.MusicAlbum
                     ),
                     CancellationToken
                 )
@@ -112,7 +121,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Setup(x =>
                 x.Send(
                     It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                        c.PlexLibrary == library && c.MediaType == PlexMediaType.Track
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.MusicTrack
                     ),
                     CancellationToken
                 )
@@ -158,10 +167,10 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
     }
 
     [Test]
-    [Arguments(PlexMediaType.Album, false)]
-    [Arguments(PlexMediaType.Track, false)]
-    [Arguments(PlexMediaType.Album, true)]
-    [Arguments(PlexMediaType.Track, true)]
+    [Arguments(PlexMediaType.MusicAlbum, false)]
+    [Arguments(PlexMediaType.MusicTrack, false)]
+    [Arguments(PlexMediaType.MusicAlbum, true)]
+    [Arguments(PlexMediaType.MusicTrack, true)]
     public async Task ShouldSkipReconciliationAndPreserveCancellation_WhenDescendantRetrievalFailsWithEmptyRoots(
         PlexMediaType mediaType,
         bool cancelled
@@ -178,7 +187,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         );
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
-            p => p.SetProperty(x => x.Type, PlexMediaType.Music),
+            p => p.SetProperty(x => x.Type, PlexMediaType.MusicArtist),
             CancellationToken
         );
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
@@ -188,13 +197,13 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             ? ResultExtensions.TaskIsCancelled("descendants")
             : Result.Fail("incomplete descendants");
 
-        if (mediaType == PlexMediaType.Track)
+        if (mediaType == PlexMediaType.MusicTrack)
         {
             Mock.Mock<ICommandExecutor>()
                 .Setup(x =>
                     x.Send(
                         It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                            c.PlexLibrary == library && c.MediaType == PlexMediaType.Album
+                            c.PlexLibrary == library && c.MediaType == PlexMediaType.MusicAlbum
                         ),
                         CancellationToken
                     )
@@ -226,12 +235,12 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         result.IsCancelled.ShouldBe(cancelled);
         result.Errors.Count.ShouldBe(1);
         result.Errors.ShouldBe(failure.Errors);
-        if (mediaType == PlexMediaType.Album)
+        if (mediaType == PlexMediaType.MusicAlbum)
             Mock.Mock<ICommandExecutor>()
                 .Verify(
                     x =>
                         x.Send(
-                            It.Is<GetLibraryMediaFromPlexApiCommand>(c => c.MediaType == PlexMediaType.Track),
+                            It.Is<GetLibraryMediaFromPlexApiCommand>(c => c.MediaType == PlexMediaType.MusicTrack),
                             It.IsAny<CancellationToken>()
                         ),
                     Times.Never()
@@ -272,7 +281,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         );
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
-            p => p.SetProperty(x => x.Type, PlexMediaType.Music),
+            p => p.SetProperty(x => x.Type, PlexMediaType.MusicArtist),
             CancellationToken
         );
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
@@ -297,7 +306,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Setup(x =>
                 x.Send(
                     It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                        c.PlexLibrary == library && c.MediaType == PlexMediaType.Album
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.MusicAlbum
                     ),
                     CancellationToken
                 )
@@ -308,7 +317,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Setup(x =>
                 x.Send(
                     It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                        c.PlexLibrary == library && c.MediaType == PlexMediaType.Track
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.MusicTrack
                     ),
                     CancellationToken
                 )
@@ -341,7 +350,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 x.UpdateItemAsync(
                     library.Id,
                     It.Is<LibraryProgressItem>(p =>
-                        p.MediaType == PlexMediaType.Music
+                        p.MediaType == PlexMediaType.MusicArtist
                         && p.Received == 1
                         && p.Total == 1
                         && p.TimeRemaining == TimeSpan.Zero
@@ -356,7 +365,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 x.UpdateItemAsync(
                     library.Id,
                     It.Is<LibraryProgressItem>(p =>
-                        p.MediaType == PlexMediaType.Album
+                        p.MediaType == PlexMediaType.MusicAlbum
                         && p.Received == 2
                         && p.Total == 2
                         && p.TimeRemaining == TimeSpan.Zero
@@ -371,7 +380,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 x.UpdateItemAsync(
                     library.Id,
                     It.Is<LibraryProgressItem>(p =>
-                        p.MediaType == PlexMediaType.Track
+                        p.MediaType == PlexMediaType.MusicTrack
                         && p.Received == 1
                         && p.Total == 1
                         && p.TimeRemaining == TimeSpan.Zero
@@ -388,7 +397,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        (result.Value.Id, result.Value.Type).ShouldBe((library.Id, PlexMediaType.Music));
+        (result.Value.Id, result.Value.Type).ShouldBe((library.Id, PlexMediaType.MusicArtist));
         captured.ShouldBeSameAs(response);
         captured.ShouldNotBeNull();
         var capturedArtist = captured.PlexLibrary.Music.Single();

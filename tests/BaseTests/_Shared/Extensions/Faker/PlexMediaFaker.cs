@@ -23,9 +23,10 @@ public class PlexMediaDataSet : DataSet
     public string MediaTitle(PlexMediaType type) =>
         type switch
         {
-            PlexMediaType.Movie or PlexMediaType.OtherVideos =>
-                _faker.PickRandomFromDataset(PlexMovieShowTitlesDataset.PlexMovieTitles.Value),
-            PlexMediaType.Music => _faker.Name.FullName(),
+            PlexMediaType.Movie or PlexMediaType.OtherVideos => _faker.PickRandomFromDataset(
+                PlexMovieShowTitlesDataset.PlexMovieTitles.Value
+            ),
+            PlexMediaType.MusicArtist => _faker.Name.FullName(),
             PlexMediaType.TvShow => _faker.PickRandomFromDataset(PlexTvShowTitlesDataset.PlexTvShowTitles.Value),
             PlexMediaType.Episode => _faker.PickRandomFromDataset(PlexEpisodeShowTitlesDataset.PlexEpisodeTitles.Value),
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, "PlexMediaType not supported."),

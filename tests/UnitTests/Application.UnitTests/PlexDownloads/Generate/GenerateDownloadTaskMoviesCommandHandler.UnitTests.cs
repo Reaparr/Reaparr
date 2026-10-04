@@ -62,7 +62,11 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
         plexDownloadTaskMovies
             .OrderBy(x => x.PlexApiRatingKey)
             .Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId))
-            .ShouldBe(plexMovies.OrderBy(x => x.PlexApiRatingKey).Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId)));
+            .ShouldBe(
+                plexMovies
+                    .OrderBy(x => x.PlexApiRatingKey)
+                    .Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId))
+            );
 
         foreach (var downloadTaskMovie in plexDownloadTaskMovies)
         {
@@ -120,7 +124,11 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
         plexDownloadTaskMovies
             .OrderBy(x => x.PlexApiRatingKey)
             .Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId))
-            .ShouldBe(plexMovies.OrderBy(x => x.PlexApiRatingKey).Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId)));
+            .ShouldBe(
+                plexMovies
+                    .OrderBy(x => x.PlexApiRatingKey)
+                    .Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId))
+            );
 
         foreach (var downloadTaskMovie in plexDownloadTaskMovies)
         {
@@ -175,7 +183,11 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
         plexDownloadTaskMovies
             .OrderBy(x => x.PlexApiRatingKey)
             .Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId))
-            .ShouldBe(plexMovies.OrderBy(x => x.PlexApiRatingKey).Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId)));
+            .ShouldBe(
+                plexMovies
+                    .OrderBy(x => x.PlexApiRatingKey)
+                    .Select(x => (x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId))
+            );
 
         foreach (var downloadTaskMovie in plexDownloadTaskMovies)
         {
@@ -226,7 +238,9 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
             })
             .ToList();
         var selectedIds = movies.SelectMany(x => x.MediaIds).ToList();
-        var expectedMovies = await IDbContext.PlexMovies.Where(x => selectedIds.Contains(x.Id)).ToListAsync(CancellationToken);
+        var expectedMovies = await IDbContext
+            .PlexMovies.Where(x => selectedIds.Contains(x.Id))
+            .ToListAsync(CancellationToken);
 
         // Act
         var command = new GenerateDownloadTaskMoviesCommand(movies);
@@ -254,13 +268,16 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldRejectSelectionWithoutPersistingTasks_WhenMovieScopeIsInconsistent(string mismatch)
     {
         // Arrange
-        await SetupDatabase(64201, config =>
-        {
-            config.PlexServerCount = 2;
-            config.PlexMovieLibraryCount = 1;
-            config.PlexMusicLibraryCount = 1;
-            config.MovieCount = 1;
-        });
+        await SetupDatabase(
+            64201,
+            config =>
+            {
+                config.PlexServerCount = 2;
+                config.PlexMovieLibraryCount = 1;
+                config.PlexMusicLibraryCount = 1;
+                config.MovieCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var sourceMovies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         sourceMovies.Count.ShouldBe(2);
@@ -268,10 +285,10 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
         var foreign = sourceMovies[1];
         target.PlexServerId.ShouldNotBe(foreign.PlexServerId);
         target.PlexLibraryId.ShouldNotBe(foreign.PlexLibraryId);
-        var musicLibrary = await dbContext.PlexLibraries
-            .Where(x => x.Type == PlexMediaType.Music && x.PlexServerId == foreign.PlexServerId)
+        var musicLibrary = await dbContext
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.MusicArtist && x.PlexServerId == foreign.PlexServerId)
             .SingleAsync(CancellationToken);
-        musicLibrary.Type.ShouldBe(PlexMediaType.Music);
+        musicLibrary.Type.ShouldBe(PlexMediaType.MusicArtist);
         (await dbContext.DownloadTaskMovie.ToListAsync(CancellationToken)).ShouldBeEmpty();
         var selection = new DownloadMediaDTO
         {
@@ -285,14 +302,31 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
         {
             "server" => new List<DownloadMediaDTO> { selection with { PlexServerId = foreign.PlexServerId } },
             "family" => [selection with { PlexServerId = musicLibrary.PlexServerId, PlexLibraryId = musicLibrary.Id }],
-            "foreign" => [selection with { PlexServerId = foreign.PlexServerId, PlexLibraryId = foreign.PlexLibraryId }],
+            "foreign" =>
+            [
+                selection with
+                {
+                    PlexServerId = foreign.PlexServerId,
+                    PlexLibraryId = foreign.PlexLibraryId,
+                },
+            ],
             "mixed" => [selection with { MediaIds = [target.Id, foreign.Id] }],
-            "later-group" => [selection, selection with { PlexServerId = foreign.PlexServerId, PlexLibraryId = foreign.PlexLibraryId }],
+            "later-group" =>
+            [
+                selection,
+                selection with
+                {
+                    PlexServerId = foreign.PlexServerId,
+                    PlexLibraryId = foreign.PlexLibraryId,
+                },
+            ],
             _ => throw new ArgumentOutOfRangeException(nameof(mismatch)),
         };
 
         // Act
-        var result = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(new GenerateDownloadTaskMoviesCommand(selections));
+        var result = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(
+            new GenerateDownloadTaskMoviesCommand(selections)
+        );
 
         // Assert
         result.IsFailed.ShouldBeTrue();

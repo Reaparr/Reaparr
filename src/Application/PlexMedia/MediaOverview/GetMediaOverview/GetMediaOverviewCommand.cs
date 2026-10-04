@@ -13,7 +13,7 @@ public sealed class GetMediaOverviewCommandValidator : AbstractValidator<GetMedi
                 x
                     is PlexMediaType.Movie
                         or PlexMediaType.TvShow
-                        or PlexMediaType.Music
+                        or PlexMediaType.MusicArtist
                         or PlexMediaType.PhotoAlbum
                         or PlexMediaType.OtherVideos
             );
@@ -50,7 +50,7 @@ public sealed class GetMediaOverviewCommandHandler
                 new GetMediaOverviewTvShowCommand(command.Filter),
                 cancellationToken
             ),
-            PlexMediaType.Music => await _commandExecutor.Send(
+            PlexMediaType.MusicArtist => await _commandExecutor.Send(
                 new GetMediaOverviewMusicCommand(command.Filter),
                 cancellationToken
             ),

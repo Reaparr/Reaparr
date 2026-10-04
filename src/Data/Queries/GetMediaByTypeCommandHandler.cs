@@ -361,12 +361,9 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
 
                 break;
             }
-            case PlexMediaType.Music:
+            case PlexMediaType.MusicArtist:
             {
-                var artistQuery = _dbContext
-                    .PlexArtists.Include(x => x.Albums)
-                    .ApplyFilter(options)
-                    .ApplySort(options);
+                var artistQuery = _dbContext.PlexArtists.Include(x => x.Albums).ApplyFilter(options).ApplySort(options);
                 response.TotalCount = await artistQuery.CountAsync(ct);
                 response.MediaSize = await artistQuery.SumAsync(x => x.MediaSize, ct);
                 response.TotalMediaSize = response.MediaSize;
@@ -390,9 +387,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             }
             case PlexMediaType.PhotoAlbum:
             {
-                var albumQuery = _dbContext
-                    .PlexPhotoAlbums.ApplyFilter(options)
-                    .ApplySort(options);
+                var albumQuery = _dbContext.PlexPhotoAlbums.ApplyFilter(options).ApplySort(options);
                 response.TotalCount = await albumQuery.CountAsync(ct);
                 response.MediaSize = await albumQuery.SumAsync(x => x.MediaSize, ct);
                 response.TotalMediaSize = response.MediaSize;
@@ -439,8 +434,8 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 );
                 var videos = await videoQuery.ApplyPaging(options).ToListAsync(ct);
                 response.Items = videos.Select(x => x.ToSlimDTOMapper()).ToList();
-                response.Qualities = response.Items
-                    .SelectMany(x => x.Qualities)
+                response.Qualities = response
+                    .Items.SelectMany(x => x.Qualities)
                     .Select(x => x.Quality.ToId())
                     .Distinct()
                     .OrderBy(x => x)

@@ -8,7 +8,9 @@ public class PlexMediaDataMapperUnitTests : BaseUnitTest
         // Arrange
         var primaryId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var supplementaryId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-        var source = FakeData.GetLibraryMediaItemDTO(new Seed(9201), mediaType: PlexMediaType.Music).Generate() with
+        var source = FakeData
+            .GetLibraryMediaItemDTO(new Seed(9201), mediaType: PlexMediaType.MusicArtist)
+            .Generate() with
         {
             Guid = $"mbid://{primaryId}",
             Guids = [new MetaDataGuidsDTO($"mbid://{supplementaryId}")],
@@ -26,7 +28,9 @@ public class PlexMediaDataMapperUnitTests : BaseUnitTest
     {
         // Arrange
         var expectedId = Guid.Parse("33333333-3333-3333-3333-333333333333");
-        var source = FakeData.GetLibraryMediaItemDTO(new Seed(9203), mediaType: PlexMediaType.Music).Generate() with
+        var source = FakeData
+            .GetLibraryMediaItemDTO(new Seed(9203), mediaType: PlexMediaType.MusicArtist)
+            .Generate() with
         {
             Guid = "plex://artist/primary",
             Guids =
@@ -85,8 +89,9 @@ public class PlexMediaDataMapperUnitTests : BaseUnitTest
         var result = source.ToPlexOtherVideo();
 
         // Assert
-        result.MediaDataList.OrderBy(x => x.PartIndex).Select(x => (x.PlexApiPartId, x.VideoFrameRate)).ShouldBe(
-            [(101, (decimal?)23.976m), (102, (decimal?)25.5m)]
-        );
+        result
+            .MediaDataList.OrderBy(x => x.PartIndex)
+            .Select(x => (x.PlexApiPartId, x.VideoFrameRate))
+            .ShouldBe([(101, (decimal?)23.976m), (102, (decimal?)25.5m)]);
     }
 }

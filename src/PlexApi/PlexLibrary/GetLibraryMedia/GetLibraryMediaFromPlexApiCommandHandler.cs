@@ -82,16 +82,16 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                 case PlexMediaType.TvShow:
                     library.TvShows.AddRange(media.ToPlexTvShows());
                     break;
-                case PlexMediaType.Music:
+                case PlexMediaType.MusicArtist:
                     library.Music.AddRange(media.ToPlexMusicArtists());
                     break;
-                case PlexMediaType.Album:
+                case PlexMediaType.MusicAlbum:
                 {
                     var albums = media.ToPlexMusicAlbums();
                     library.Albums.AddRange(albums);
                     break;
                 }
-                case PlexMediaType.Track:
+                case PlexMediaType.MusicTrack:
                 {
                     var tracks = media.ToPlexMusicTracks();
                     library.Tracks.AddRange(tracks);
@@ -100,7 +100,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                 case PlexMediaType.PhotoAlbum:
                     library.PhotoAlbums.AddRange(media.ToPlexPhotoAlbums());
                     break;
-                case PlexMediaType.Photos:
+                case PlexMediaType.PhotoImage:
                 {
                     var photos = media.ToPlexPhotos();
                     library.Photos.AddRange(photos);
@@ -120,7 +120,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                     Genres = media.SelectMany(x => x.Genre).ToPlexGenre(),
                     Actors = media.SelectMany(x => x.Role).ToPlexActor(),
                     PhotoClipCount =
-                        mediaType == PlexMediaType.Photos
+                        mediaType == PlexMediaType.PhotoImage
                             ? media.Count(x => x.Type is PlexMediaType.OtherVideos or PlexMediaType.Movie)
                             : 0,
                 }

@@ -92,7 +92,7 @@ public class RefreshLibraryMediaCommandHandler : ICommandHandler<RefreshLibraryM
                 ),
                 ct
             ),
-            PlexMediaType.Music => await _commandExecutor.Send(
+            PlexMediaType.MusicArtist => await _commandExecutor.Send(
                 new RefreshPlexMusicLibraryCommand(
                     insertPlexLibraryMediaMetaDataResult.Value,
                     command.ForceMediaRefresh

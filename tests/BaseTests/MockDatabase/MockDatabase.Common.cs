@@ -108,7 +108,7 @@ public static partial class MockDatabase
             if (config.ShouldHaveMusicPlexLibrary)
                 plexLibraries.AddRange(
                     FakeData
-                        .GetPlexLibrary(seed, PlexMediaType.Music)
+                        .GetPlexLibrary(seed, PlexMediaType.MusicArtist)
                         .Generate(Math.Max(1, config.PlexMusicLibraryCount))
                 );
 
@@ -645,7 +645,7 @@ public static partial class MockDatabase
     )
     {
         var config = FakeDataConfig.FromOptions(options);
-        var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.Music).ToListAsync();
+        var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.MusicArtist).ToListAsync();
         foreach (var library in libraries)
         {
             var artists = FakeData.GetPlexMusicArtists(seed, options).Generate(config.MusicArtistCount);
@@ -678,13 +678,7 @@ public static partial class MockDatabase
 
             context.PlexArtists.AddRange(artists);
             await context.SaveChangesAsync();
-            await context.SetMusicMediaMetrics(
-                library.Id,
-                artists.Count,
-                albumCount,
-                trackCount,
-                mediaSize
-            );
+            await context.SetMusicMediaMetrics(library.Id, artists.Count, albumCount, trackCount, mediaSize);
         }
 
         return context;
@@ -726,13 +720,7 @@ public static partial class MockDatabase
 
             // Photo clips share PlexPhoto storage; their separate count comes from the fixture configuration.
             var clipCount = albums.Count * config.PhotoClipCount;
-            await context.SetPhotoMediaMetrics(
-                library.Id,
-                albums.Count,
-                photoCount - clipCount,
-                clipCount,
-                mediaSize
-            );
+            await context.SetPhotoMediaMetrics(library.Id, albums.Count, photoCount - clipCount, clipCount, mediaSize);
         }
 
         return context;

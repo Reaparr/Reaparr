@@ -62,7 +62,7 @@ public class PlexApiDataConfig : BaseConfig<PlexApiDataConfig>
         {
             PlexMediaType.Movie => MovieLibraryCount,
             PlexMediaType.TvShow => TvShowLibraryCount,
-            PlexMediaType.Music => MusicLibraryCount,
+            PlexMediaType.MusicArtist => MusicLibraryCount,
             PlexMediaType.PhotoAlbum => PhotoLibraryCount,
             PlexMediaType.OtherVideos => OtherVideoLibraryCount,
             _ => new[]

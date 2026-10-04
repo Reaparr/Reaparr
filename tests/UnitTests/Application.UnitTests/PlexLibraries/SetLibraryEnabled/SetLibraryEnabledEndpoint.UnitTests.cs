@@ -140,8 +140,8 @@ public class SetLibraryEnabledEndpointUnitTests
         await SetupDatabase(4604, config => config.PlexServerCount = 1);
         var dbContext = IDbContext;
         var serverId = await dbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
-        var targetMusic = FakeData.GetPlexLibrary(new Seed(4604), PlexMediaType.Music).Generate();
-        var controlMusic = FakeData.GetPlexLibrary(new Seed(4605), PlexMediaType.Music).Generate();
+        var targetMusic = FakeData.GetPlexLibrary(new Seed(4604), PlexMediaType.MusicArtist).Generate();
+        var controlMusic = FakeData.GetPlexLibrary(new Seed(4605), PlexMediaType.MusicArtist).Generate();
         var targetOtherVideos = FakeData.GetPlexLibrary(new Seed(4606), PlexMediaType.OtherVideos).Generate();
         var controlOtherVideos = FakeData.GetPlexLibrary(new Seed(4607), PlexMediaType.OtherVideos).Generate();
         var libraries = new[] { targetMusic, controlMusic, targetOtherVideos, controlOtherVideos };
@@ -205,7 +205,7 @@ public class SetLibraryEnabledEndpointUnitTests
     }
 
     [Test]
-    [Arguments(PlexMediaType.Music)]
+    [Arguments(PlexMediaType.MusicArtist)]
     [Arguments(PlexMediaType.PhotoAlbum)]
     public async Task ShouldQueueFreshSyncWithoutOverviewRebuild_WhenReEnablingLibrary(PlexMediaType libraryType)
     {

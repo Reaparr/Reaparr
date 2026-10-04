@@ -19,20 +19,20 @@ public enum PlexMediaType
     [JsonStringEnumMemberName(nameof(Episode))]
     Episode = 4,
 
-    [JsonStringEnumMemberName(nameof(Music))]
-    Music = 5,
+    [JsonStringEnumMemberName(nameof(MusicArtist))]
+    MusicArtist = 5,
 
-    [JsonStringEnumMemberName(nameof(Album))]
-    Album = 7,
+    [JsonStringEnumMemberName(nameof(MusicAlbum))]
+    MusicAlbum = 7,
 
-    [JsonStringEnumMemberName(nameof(Track))]
-    Track = 8,
+    [JsonStringEnumMemberName(nameof(MusicTrack))]
+    MusicTrack = 8,
 
     [JsonStringEnumMemberName(nameof(PhotoAlbum))]
     PhotoAlbum = 9,
 
-    [JsonStringEnumMemberName(nameof(Photos))]
-    Photos = 10,
+    [JsonStringEnumMemberName(nameof(PhotoImage))]
+    PhotoImage = 10,
 
     [JsonStringEnumMemberName(nameof(OtherVideos))]
     OtherVideos = 11,

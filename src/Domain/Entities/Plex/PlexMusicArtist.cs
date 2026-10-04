@@ -2,7 +2,7 @@ namespace Reaparr.Domain;
 
 public class PlexMusicArtist : BasePlexMedia
 {
-    public override PlexMediaType Type => PlexMediaType.Music;
+    public override PlexMediaType Type => PlexMediaType.MusicArtist;
 
     public string? MusicBrainzArtistId { get; set; }
 

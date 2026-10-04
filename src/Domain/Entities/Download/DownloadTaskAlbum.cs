@@ -9,7 +9,7 @@ public class DownloadTaskAlbum : DownloadTaskParentBase
     public DownloadTaskArtist? Parent { get; init; }
 
     [NotMapped]
-    public override PlexMediaType MediaType => PlexMediaType.Album;
+    public override PlexMediaType MediaType => PlexMediaType.MusicAlbum;
 
     [NotMapped]
     public override DownloadTaskType DownloadTaskType => DownloadTaskType.Album;

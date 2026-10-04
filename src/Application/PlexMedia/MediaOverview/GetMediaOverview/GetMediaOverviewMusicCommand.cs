@@ -9,7 +9,7 @@ public sealed class GetMediaOverviewMusicCommandValidator : AbstractValidator<Ge
 {
     public GetMediaOverviewMusicCommandValidator()
     {
-        RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.Music);
+        RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.MusicArtist);
         RuleFor(x => x.Filter.ComparisonState).Null();
         RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
         RuleFor(x => x.Filter.Parameters.PageSize)
@@ -56,7 +56,11 @@ public sealed class GetMediaOverviewMusicCommandHandler
         }
 
         using var context = await _dbContextFactory.CreateAsync();
-        var allowedLibraryIds = await context.ResolveAllowedLibraryIdsAsync(filter, PlexMediaType.Music, cancellationToken);
+        var allowedLibraryIds = await context.ResolveAllowedLibraryIdsAsync(
+            filter,
+            PlexMediaType.MusicArtist,
+            cancellationToken
+        );
         LogPhase(filter, "ResolveLibraries", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
         if (allowedLibraryIds.Count == 0)
@@ -133,7 +137,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
                 UpdatedAt = x.UpdatedAt,
                 PlexLibraryId = x.PlexLibraryId,
                 PlexServerId = x.PlexServerId,
-                Type = PlexMediaType.Music,
+                Type = PlexMediaType.MusicArtist,
                 HasThumb = x.HasThumb,
                 PlexApiRatingKey = x.PlexApiRatingKey,
                 PlexApiMetaDataKey = x.PlexApiMetaDataKey,

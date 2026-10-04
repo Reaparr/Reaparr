@@ -2,7 +2,7 @@ namespace Reaparr.Domain;
 
 public class PlexPhoto : BasePlexMedia
 {
-    public override PlexMediaType Type => PlexMediaType.Photos;
+    public override PlexMediaType Type => PlexMediaType.PhotoImage;
 
     /// <summary>
     /// The Plex key of the <see cref="PlexTvShow"/> this belongs too.

@@ -24,7 +24,10 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         );
 
         var dbContext = IDbContext;
-        var libraryIds = await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
+        var libraryIds = await dbContext
+            .PlexLibraries.OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
         libraryIds.Count.ShouldBe(2);
         var targetLibraryId = libraryIds[0];
         var controlLibraryId = libraryIds[1];
@@ -50,9 +53,12 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         await dbContext.SaveChangesAsync(CancellationToken);
         dbContext.ClearChangeTracker();
 
-        var albums = await dbContext.PlexAlbums.Where(x => x.PlexLibraryId == targetLibraryId)
-            .OrderBy(x => x.PlexArtistId).ThenBy(x => x.Id)
-            .Select(x => new { x.PlexArtistId, x.ChildCount }).ToListAsync(CancellationToken);
+        var albums = await dbContext
+            .PlexAlbums.Where(x => x.PlexLibraryId == targetLibraryId)
+            .OrderBy(x => x.PlexArtistId)
+            .ThenBy(x => x.Id)
+            .Select(x => new { x.PlexArtistId, x.ChildCount })
+            .ToListAsync(CancellationToken);
         albums.Select(x => x.PlexArtistId).ShouldBe(targetArtists.SelectMany(x => new[] { x.Id, x.Id }));
         albums.Select(x => x.ChildCount).ShouldBe(Enumerable.Repeat(3, 12));
 
@@ -61,7 +67,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         {
             Filter = new MediaQueryFilter
             {
-                MediaType = PlexMediaType.Music,
+                MediaType = PlexMediaType.MusicArtist,
                 PlexLibraryId = targetLibraryId,
                 FilterOfflineMedia = false,
                 FilterOwnedMedia = false,
@@ -99,41 +105,67 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         response.TotalEpisodeCount.ShouldBe(0);
         response.Items.Select(x => x.Id).ShouldBe(expectedArtists.Select(x => x.Id));
         response.Items.Select(x => x.SortIndex).ShouldBe([3, 4]);
-        response.Items.Select(x => new
-        {
-            x.Id, x.Title, x.SearchTitle, x.Year, x.Duration, x.MediaSize,
-            x.PlexApiRatingKey, x.PlexApiMetaDataKey, x.AddedAt, x.UpdatedAt,
-            x.PlexLibraryId, x.PlexServerId, x.Type, x.HasThumb,
-        }).ShouldBe(expectedArtists.Select(x => new
-        {
-            x.Id, x.Title, x.SearchTitle, x.Year, x.Duration, x.MediaSize,
-            x.PlexApiRatingKey, x.PlexApiMetaDataKey, x.AddedAt, x.UpdatedAt,
-            x.PlexLibraryId, x.PlexServerId, Type = PlexMediaType.Music, x.HasThumb,
-        }));
+        response
+            .Items.Select(x => new
+            {
+                x.Id,
+                x.Title,
+                x.SearchTitle,
+                x.Year,
+                x.Duration,
+                x.MediaSize,
+                x.PlexApiRatingKey,
+                x.PlexApiMetaDataKey,
+                x.AddedAt,
+                x.UpdatedAt,
+                x.PlexLibraryId,
+                x.PlexServerId,
+                x.Type,
+                x.HasThumb,
+            })
+            .ShouldBe(
+                expectedArtists.Select(x => new
+                {
+                    x.Id,
+                    x.Title,
+                    x.SearchTitle,
+                    x.Year,
+                    x.Duration,
+                    x.MediaSize,
+                    x.PlexApiRatingKey,
+                    x.PlexApiMetaDataKey,
+                    x.AddedAt,
+                    x.UpdatedAt,
+                    x.PlexLibraryId,
+                    x.PlexServerId,
+                    Type = PlexMediaType.MusicArtist,
+                    x.HasThumb,
+                })
+            );
         response.Items.Select(x => x.ParentId).ShouldBe(new int?[] { null, null });
         response.Items.Select(x => x.ChildCount).ShouldBe([2, 2]);
         response.Items.Select(x => x.GrandChildCount).ShouldBe([6, 6]);
         response.Items.Select(x => x.ComparisonId).ShouldBe([0, 0]);
         if (sortByQuality)
         {
-            response.NavigationIndexes.Select(x => new { x.Label, x.Index }).ShouldBe([
-                new { Label = "#", Index = 0 },
-            ]);
+            response.NavigationIndexes.Select(x => new { x.Label, x.Index }).ShouldBe([new { Label = "#", Index = 0 }]);
         }
         else
         {
-            response.NavigationIndexes.Select(x => new { x.Label, x.Index }).ShouldBe([
-                new { Label = "2000", Index = 0 },
-                new { Label = "2001", Index = 2 },
-                new { Label = "2002", Index = 4 },
-            ]);
+            response
+                .NavigationIndexes.Select(x => new { x.Label, x.Index })
+                .ShouldBe([
+                    new { Label = "2000", Index = 0 },
+                    new { Label = "2001", Index = 2 },
+                    new { Label = "2002", Index = 4 },
+                ]);
         }
         response.Items.SelectMany(x => x.Qualities).ShouldBeEmpty();
         response.Qualities.ShouldBeEmpty();
         response.Roles.ShouldBeEmpty();
         response.Countries.ShouldBeEmpty();
         response.Genres.ShouldBeEmpty();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 }

@@ -10,5 +10,5 @@ public class PlexPhotoMediaData : BasePlexMediaData
 
     public int? Height { get; set; }
 
-    public override PlexMediaType Type => PlexMediaType.Photos;
+    public override PlexMediaType Type => PlexMediaType.PhotoImage;
 }

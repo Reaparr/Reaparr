@@ -7,11 +7,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments(PlexMediaType.TvShow, "show")]
     [Arguments(PlexMediaType.Season, "season")]
     [Arguments(PlexMediaType.Episode, "episode")]
-    [Arguments(PlexMediaType.Music, "artist")]
-    [Arguments(PlexMediaType.Album, "album")]
-    [Arguments(PlexMediaType.Track, "track")]
+    [Arguments(PlexMediaType.MusicArtist, "artist")]
+    [Arguments(PlexMediaType.MusicAlbum, "album")]
+    [Arguments(PlexMediaType.MusicTrack, "track")]
     [Arguments(PlexMediaType.PhotoAlbum, "photoalbum")]
-    [Arguments(PlexMediaType.Photos, "photo")]
+    [Arguments(PlexMediaType.PhotoImage, "photo")]
     public void ShouldConvertEnumToPlexApiString_WhenValidEnumValueProvided(PlexMediaType input, string expected)
     {
         // Act
@@ -46,11 +46,11 @@ public partial class PlexMediaTypeMappersUnitTests
             { PlexMediaType.TvShow, "show" },
             { PlexMediaType.Season, "season" },
             { PlexMediaType.Episode, "episode" },
-            { PlexMediaType.Music, "artist" },
-            { PlexMediaType.Album, "album" },
-            { PlexMediaType.Track, "track" },
+            { PlexMediaType.MusicArtist, "artist" },
+            { PlexMediaType.MusicAlbum, "album" },
+            { PlexMediaType.MusicTrack, "track" },
             { PlexMediaType.PhotoAlbum, "photoalbum" },
-            { PlexMediaType.Photos, "photo" },
+            { PlexMediaType.PhotoImage, "photo" },
         };
 
         // Act & Assert
@@ -77,11 +77,11 @@ public partial class PlexMediaTypeMappersUnitTests
             PlexMediaType.TvShow,
             PlexMediaType.Season,
             PlexMediaType.Episode,
-            PlexMediaType.Music,
-            PlexMediaType.Album,
-            PlexMediaType.Track,
+            PlexMediaType.MusicArtist,
+            PlexMediaType.MusicAlbum,
+            PlexMediaType.MusicTrack,
             PlexMediaType.PhotoAlbum,
-            PlexMediaType.Photos,
+            PlexMediaType.PhotoImage,
         };
 
         // Act & Assert
@@ -109,11 +109,11 @@ public partial class PlexMediaTypeMappersUnitTests
         PlexMediaType.TvShow.ToPlexApiString().ShouldBe("show");
         PlexMediaType.Season.ToPlexApiString().ShouldBe("season");
         PlexMediaType.Episode.ToPlexApiString().ShouldBe("episode");
-        PlexMediaType.Music.ToPlexApiString().ShouldBe("artist");
-        PlexMediaType.Album.ToPlexApiString().ShouldBe("album");
-        PlexMediaType.Track.ToPlexApiString().ShouldBe("track");
+        PlexMediaType.MusicArtist.ToPlexApiString().ShouldBe("artist");
+        PlexMediaType.MusicAlbum.ToPlexApiString().ShouldBe("album");
+        PlexMediaType.MusicTrack.ToPlexApiString().ShouldBe("track");
         PlexMediaType.PhotoAlbum.ToPlexApiString().ShouldBe("photoalbum");
-        PlexMediaType.Photos.ToPlexApiString().ShouldBe("photo");
+        PlexMediaType.PhotoImage.ToPlexApiString().ShouldBe("photo");
     }
 
     [Test]

@@ -691,12 +691,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
 
         var dbContext = IDbContext;
         var movieLibrary = dbContext.PlexLibraries.Single();
-        var supportedTypes = new[]
-        {
-            PlexMediaType.Music,
-            PlexMediaType.PhotoAlbum,
-            PlexMediaType.OtherVideos,
-        };
+        var supportedTypes = new[] { PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos };
         var addedLibraries = supportedTypes
             .Append(PlexMediaType.Games)
             .Select((type, index) => FakeData.GetPlexLibrary(new Seed(3017 + index), type).Generate())
@@ -710,7 +705,8 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         movieLibrary.SyncedAt = null;
         await dbContext.PlexLibraries.AddRangeAsync(addedLibraries, CancellationToken);
         await dbContext.SaveChangesAsync(CancellationToken);
-        await dbContext.PlexLibraries.Where(x => x.Id == movieLibrary.Id)
+        await dbContext
+            .PlexLibraries.Where(x => x.Id == movieLibrary.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.SyncedAt, (DateTime?)null), CancellationToken);
         var expectedLibraryIds = new[] { movieLibrary.Id }
             .Concat(addedLibraries.Where(x => supportedTypes.Contains(x.Type)).Select(x => x.Id))
@@ -734,7 +730,12 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var queueItems = await dbContext
             .LibrarySyncJobQueues.AsNoTracking()
             .OrderBy(x => x.PlexLibraryId)
-            .Select(x => new { x.PlexLibraryId, x.Priority, x.Status })
+            .Select(x => new
+            {
+                x.PlexLibraryId,
+                x.Priority,
+                x.Status,
+            })
             .ToListAsync(CancellationToken);
         queueItems.ShouldBe(
             expectedLibraryIds
@@ -1192,7 +1193,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
 
         var dbContext = IDbContext;
         var serverId = dbContext.PlexServers.Select(x => x.Id).First();
-        var unsupportedLibraries = new[] { PlexMediaType.Music, PlexMediaType.Unknown, PlexMediaType.Games }
+        var unsupportedLibraries = new[] { PlexMediaType.MusicArtist, PlexMediaType.Unknown, PlexMediaType.Games }
             .Select((type, index) => FakeData.GetPlexLibrary(new Seed(3021 + index), type).Generate())
             .ToList();
         unsupportedLibraries[0].UpdateInitProperty(nameof(PlexLibrary.Type), PlexMediaType.None);

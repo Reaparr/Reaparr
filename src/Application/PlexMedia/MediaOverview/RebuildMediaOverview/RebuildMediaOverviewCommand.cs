@@ -33,7 +33,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
         movieResult.LogIfFailed();
         var tvShowResult = await RebuildRootAsync(PlexMediaType.TvShow, cancellationToken);
         tvShowResult.LogIfFailed();
-        var musicResult = await RebuildRootAsync(PlexMediaType.Music, cancellationToken);
+        var musicResult = await RebuildRootAsync(PlexMediaType.MusicArtist, cancellationToken);
         musicResult.LogIfFailed();
         var photoAlbumResult = await RebuildRootAsync(PlexMediaType.PhotoAlbum, cancellationToken);
         photoAlbumResult.LogIfFailed();
@@ -129,7 +129,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                 LogPhase(mediaType, "Total", snapshots.Count, totalStopwatch.Elapsed);
                 return replaceResult;
             }
-            case PlexMediaType.Music:
+            case PlexMediaType.MusicArtist:
             {
                 var source = await context
                     .PlexArtists.Select(x => new

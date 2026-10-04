@@ -12,7 +12,7 @@ public class RefreshPlexMusicLibraryCommandValidator : AbstractValidator<Refresh
         RuleFor(x => x.LibraryMetadata).NotNull();
         RuleFor(x => x.LibraryMetadata.PlexLibrary).NotNull();
         RuleFor(x => x.LibraryMetadata.PlexLibraryId).GreaterThan(0);
-        RuleFor(x => x.LibraryMetadata.PlexLibrary.Type).Equal(PlexMediaType.Music);
+        RuleFor(x => x.LibraryMetadata.PlexLibrary.Type).Equal(PlexMediaType.MusicArtist);
     }
 }
 
@@ -47,7 +47,7 @@ public class RefreshPlexMusicLibraryCommandHandler
 
         var albumsResult = await Result.Try(() =>
             _commandExecutor.Send(
-                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.Album),
+                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.MusicAlbum),
                 cancellationToken
             )
         );
@@ -63,7 +63,7 @@ public class RefreshPlexMusicLibraryCommandHandler
 
         var tracksResult = await Result.Try(() =>
             _commandExecutor.Send(
-                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.Track),
+                new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.MusicTrack),
                 cancellationToken
             )
         );
@@ -111,7 +111,7 @@ public class RefreshPlexMusicLibraryCommandHandler
             plexLibraryId,
             new LibraryProgressItem
             {
-                MediaType = PlexMediaType.Music,
+                MediaType = PlexMediaType.MusicArtist,
                 Received = plexLibrary.Music.Count,
                 Total = plexLibrary.Music.Count,
                 TimeRemaining = TimeSpan.Zero,
@@ -122,7 +122,7 @@ public class RefreshPlexMusicLibraryCommandHandler
             plexLibraryId,
             new LibraryProgressItem
             {
-                MediaType = PlexMediaType.Album,
+                MediaType = PlexMediaType.MusicAlbum,
                 Received = plexLibrary.Albums.Count,
                 Total = plexLibrary.Albums.Count,
                 TimeRemaining = TimeSpan.Zero,
@@ -133,7 +133,7 @@ public class RefreshPlexMusicLibraryCommandHandler
             plexLibraryId,
             new LibraryProgressItem
             {
-                MediaType = PlexMediaType.Track,
+                MediaType = PlexMediaType.MusicTrack,
                 Received = plexLibrary.Tracks.Count,
                 Total = plexLibrary.Tracks.Count,
                 TimeRemaining = TimeSpan.Zero,
@@ -165,16 +165,12 @@ public class RefreshPlexMusicLibraryCommandHandler
         var artistKeys = library.Music.Select(x => x.PlexApiRatingKey).ToHashSet();
         var missingAlbum = albums.FirstOrDefault(x => !artistKeys.Contains(x.ParentKey));
         if (missingAlbum is not null)
-            return Result.Fail(
-                $"Album {missingAlbum.PlexApiRatingKey} has an unknown artist {missingAlbum.ParentKey}"
-            );
+            return Result.Fail($"Album {missingAlbum.PlexApiRatingKey} has an unknown artist {missingAlbum.ParentKey}");
 
         var albumKeys = albums.Select(x => x.PlexApiRatingKey).ToHashSet();
         var missingTrack = tracks.FirstOrDefault(x => !albumKeys.Contains(x.ParentKey));
         if (missingTrack is not null)
-            return Result.Fail(
-                $"Track {missingTrack.PlexApiRatingKey} has an unknown album {missingTrack.ParentKey}"
-            );
+            return Result.Fail($"Track {missingTrack.PlexApiRatingKey} has an unknown album {missingTrack.ParentKey}");
 
         var albumsByArtist = albums.GroupBy(x => x.ParentKey).ToDictionary(x => x.Key, x => x.ToList());
         var tracksByAlbum = tracks.GroupBy(x => x.ParentKey).ToDictionary(x => x.Key, x => x.ToList());

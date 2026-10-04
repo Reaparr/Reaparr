@@ -78,7 +78,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
                 x.UpdateItemAsync(
                     library.Id,
                     It.Is<LibraryProgressItem>(p =>
-                        p.MediaType == PlexMediaType.Track && p.Received == 2 && p.Total == 3
+                        p.MediaType == PlexMediaType.MusicTrack && p.Received == 2 && p.Total == 3
                     ),
                     CancellationToken
                 )
@@ -90,7 +90,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
                 x.UpdateItemAsync(
                     library.Id,
                     It.Is<LibraryProgressItem>(p =>
-                        p.MediaType == PlexMediaType.Track && p.Received == 3 && p.Total == 3
+                        p.MediaType == PlexMediaType.MusicTrack && p.Received == 3 && p.Total == 3
                     ),
                     CancellationToken
                 )
@@ -100,7 +100,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
 
         // Act
         var result = await TestHandlerExecuteAsync<List<LibraryMediaItemDTO>>(
-            new GetAllMediaByTypeFromPlexApiCommand(library, PlexMediaType.Track, 2)
+            new GetAllMediaByTypeFromPlexApiCommand(library, PlexMediaType.MusicTrack, 2)
         );
 
         // Assert
@@ -109,9 +109,9 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
         result
             .Value.Select(x => (x.RatingKey, x.Type, x.Title, x.Index))
             .ShouldBe([
-                (1, PlexMediaType.Track, "Track 1", 1),
-                (2, PlexMediaType.Track, "Track 2", 2),
-                (3, PlexMediaType.Track, "Track 3", 3),
+                (1, PlexMediaType.MusicTrack, "Track 1", 1),
+                (2, PlexMediaType.MusicTrack, "Track 2", 2),
+                (3, PlexMediaType.MusicTrack, "Track 3", 3),
             ]);
         sdk.Verify();
         Mock.Mock<IPlexApiClientFactory>().Verify();

@@ -9,7 +9,7 @@ public class DownloadTaskPhotoFile : DownloadTaskFileBase
     public List<DownloadTaskPhotoFileLog> Logs { get; init; } = [];
 
     [NotMapped]
-    public override PlexMediaType MediaType => PlexMediaType.Photos;
+    public override PlexMediaType MediaType => PlexMediaType.PhotoImage;
 
     [NotMapped]
     public override DownloadTaskType DownloadTaskType => DownloadTaskType.PhotoData;

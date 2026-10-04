@@ -11,11 +11,16 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         library.Id = 17;
         library.PhotoAlbums.Clear();
         library.Photos.Clear();
-        var album = FakeData.GetPlexPhotoAlbums(seed, x =>
-        {
-            x.PhotoCount = 0;
-            x.PhotoClipCount = 0;
-        }).Generate();
+        var album = FakeData
+            .GetPlexPhotoAlbums(
+                seed,
+                x =>
+                {
+                    x.PhotoCount = 0;
+                    x.PhotoClipCount = 0;
+                }
+            )
+            .Generate();
         album.PlexApiRatingKey = 100;
         var photo = FakeData.GetPlexPhotos(seed).Generate();
         photo.ParentKey = 999;
@@ -27,15 +32,20 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var response = new InsertMediaMetaDataCommandResponse(library) { PhotoClipCount = 5 };
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                    c.PlexLibrary == library && c.MediaType == PlexMediaType.Photos),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.PhotoImage
+                    ),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(new LibraryMetadata(library) { PhotoClipCount = 1 }))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateErrorAsync(
-                library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken))
+            .Setup(x =>
+                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken)
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -52,8 +62,8 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         photo.PlexPhotoAlbum.ShouldBeSameAs(album);
         (album.ChildCount, album.Duration, album.MediaSize, album.Quality).ShouldBe(albumState);
         response.PhotoClipCount.ShouldBe(5);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<SyncPlexPhotosCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<SyncPlexPhotosCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
     }
@@ -62,7 +72,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
     public async Task ShouldRejectLeafPhotosLibraryWithoutDispatch_WhenRefreshingPhotoLibrary()
     {
         // Arrange
-        var library = FakeData.GetPlexLibrary(new Seed(625622), PlexMediaType.Photos).Generate();
+        var library = FakeData.GetPlexLibrary(new Seed(625622), PlexMediaType.PhotoImage).Generate();
         library.Id = 17;
         var response = new InsertMediaMetaDataCommandResponse(library);
 
@@ -72,12 +82,13 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(2);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GetLibraryMediaFromPlexApiCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never());
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<SyncPlexPhotosCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<GetLibraryMediaFromPlexApiCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<SyncPlexPhotosCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -105,7 +116,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Setup(x =>
                 x.Send(
                     It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                        c.PlexLibrary == library && c.MediaType == PlexMediaType.Photos
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.PhotoImage
                     ),
                     CancellationToken
                 )
@@ -182,7 +193,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Setup(x =>
                 x.Send(
                     It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                        c.PlexLibrary == library && c.MediaType == PlexMediaType.Photos
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.PhotoImage
                     ),
                     CancellationToken
                 )
@@ -245,11 +256,16 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         );
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var seed = new Seed(625626);
-        var album = FakeData.GetPlexPhotoAlbums(seed, x =>
-        {
-            x.PhotoCount = 0;
-            x.PhotoClipCount = 0;
-        }).Generate();
+        var album = FakeData
+            .GetPlexPhotoAlbums(
+                seed,
+                x =>
+                {
+                    x.PhotoCount = 0;
+                    x.PhotoClipCount = 0;
+                }
+            )
+            .Generate();
         library.PhotoAlbums.Add(album);
         var photos = FakeData.GetPlexPhotos(seed).Generate(2);
         foreach (var photo in photos)
@@ -265,7 +281,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Setup(x =>
                 x.Send(
                     It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
-                        c.PlexLibrary == library && c.MediaType == PlexMediaType.Photos
+                        c.PlexLibrary == library && c.MediaType == PlexMediaType.PhotoImage
                     ),
                     CancellationToken
                 )
@@ -313,7 +329,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 x.UpdateItemAsync(
                     library.Id,
                     It.Is<LibraryProgressItem>(p =>
-                        p.MediaType == PlexMediaType.Photos
+                        p.MediaType == PlexMediaType.PhotoImage
                         && p.Received == 2
                         && p.Total == 2
                         && p.TimeRemaining == TimeSpan.Zero

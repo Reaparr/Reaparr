@@ -260,7 +260,7 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
 
         var types = new[]
         {
-            PlexMediaType.Music,
+            PlexMediaType.MusicArtist,
             PlexMediaType.PhotoAlbum,
             PlexMediaType.OtherVideos,
             PlexMediaType.Games,
@@ -277,7 +277,7 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         dbContext.PlexLibraries.AddRange(libraries);
         await dbContext.SaveChangesAsync(CancellationToken);
         var expectedLibraryIds = libraries
-            .Where(x => x.Type is PlexMediaType.Music or PlexMediaType.PhotoAlbum or PlexMediaType.OtherVideos)
+            .Where(x => x.Type is PlexMediaType.MusicArtist or PlexMediaType.PhotoAlbum or PlexMediaType.OtherVideos)
             .Select(x => x.Id)
             .OrderBy(x => x)
             .ToList();

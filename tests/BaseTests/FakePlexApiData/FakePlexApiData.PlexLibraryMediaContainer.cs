@@ -18,22 +18,30 @@ public partial class FakePlexApiData
             .RuleFor(x => x.Thumb, _ => $"/:/resources/{type.ToString().ToLowerInvariant()}.png")
             .RuleFor(x => x.Type, _ => type.ToMediaTypeString())
             .RuleFor(x => x.Title, f => f.Company.CompanyName())
-            .RuleFor(x => x.Agent, _ => type switch
-            {
-                PlexMediaType.Music => "tv.plex.agents.music",
-                PlexMediaType.PhotoAlbum => "com.plexapp.agents.none",
-                PlexMediaType.OtherVideos => "com.plexapp.agents.none",
-                PlexMediaType.TvShow => "tv.plex.agents.series",
-                _ => "tv.plex.agents.movie",
-            })
-            .RuleFor(x => x.Scanner, _ => type switch
-            {
-                PlexMediaType.Music => "Plex Music",
-                PlexMediaType.PhotoAlbum => "Plex Photo Scanner",
-                PlexMediaType.OtherVideos => "Plex Video Files Scanner",
-                PlexMediaType.TvShow => "Plex TV Series",
-                _ => "Plex Movie",
-            })
+            .RuleFor(
+                x => x.Agent,
+                _ =>
+                    type switch
+                    {
+                        PlexMediaType.MusicArtist => "tv.plex.agents.music",
+                        PlexMediaType.PhotoAlbum => "com.plexapp.agents.none",
+                        PlexMediaType.OtherVideos => "com.plexapp.agents.none",
+                        PlexMediaType.TvShow => "tv.plex.agents.series",
+                        _ => "tv.plex.agents.movie",
+                    }
+            )
+            .RuleFor(
+                x => x.Scanner,
+                _ =>
+                    type switch
+                    {
+                        PlexMediaType.MusicArtist => "Plex Music",
+                        PlexMediaType.PhotoAlbum => "Plex Photo Scanner",
+                        PlexMediaType.OtherVideos => "Plex Video Files Scanner",
+                        PlexMediaType.TvShow => "Plex TV Series",
+                        _ => "Plex Movie",
+                    }
+            )
             .RuleFor(x => x.Language, _ => "en-US")
             .RuleFor(x => x.Uuid, f => f.PlexApi().ClientId)
             .RuleFor(x => x.UpdatedAt, f => f.Date.Recent().ToUnixLong())

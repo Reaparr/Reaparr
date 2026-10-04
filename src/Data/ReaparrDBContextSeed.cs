@@ -33,11 +33,11 @@ public static class ReaparrDBContextSeed
             },
             new()
             {
-                Id = PlexMediaType.Music.ToDefaultDestinationFolderId(),
+                Id = PlexMediaType.MusicArtist.ToDefaultDestinationFolderId(),
                 DisplayName = "Music Destination Path",
                 DirectoryPath = pathProvider.DefaultMusicDestinationFolder,
                 FolderType = FolderType.MusicFolder,
-                MediaType = PlexMediaType.Music,
+                MediaType = PlexMediaType.MusicArtist,
             },
             new()
             {

@@ -129,10 +129,12 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.Season => PlexMediaType.Season,
             DownloadTaskType.Episode or DownloadTaskType.EpisodeData or DownloadTaskType.EpisodePart =>
                 PlexMediaType.Episode,
-            DownloadTaskType.Artist => PlexMediaType.Music,
-            DownloadTaskType.Album => PlexMediaType.Album,
-            DownloadTaskType.Track or DownloadTaskType.TrackData or DownloadTaskType.TrackPart => PlexMediaType.Track,
-            DownloadTaskType.Photo or DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart => PlexMediaType.Photos,
+            DownloadTaskType.Artist => PlexMediaType.MusicArtist,
+            DownloadTaskType.Album => PlexMediaType.MusicAlbum,
+            DownloadTaskType.Track or DownloadTaskType.TrackData or DownloadTaskType.TrackPart =>
+                PlexMediaType.MusicTrack,
+            DownloadTaskType.Photo or DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart =>
+                PlexMediaType.PhotoImage,
             DownloadTaskType.OtherVideo or DownloadTaskType.OtherVideoData or DownloadTaskType.OtherVideoPart =>
                 PlexMediaType.OtherVideos,
             DownloadTaskType.None => PlexMediaType.None,

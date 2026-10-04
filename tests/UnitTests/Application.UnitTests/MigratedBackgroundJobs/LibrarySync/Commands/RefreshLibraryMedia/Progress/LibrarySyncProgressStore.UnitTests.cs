@@ -29,8 +29,13 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
     [Test]
     [Arguments(PlexMediaType.Movie, PlexMediaType.Movie, PlexMediaType.None, PlexMediaType.None)]
     [Arguments(PlexMediaType.TvShow, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode)]
-    [Arguments(PlexMediaType.Music, PlexMediaType.Music, PlexMediaType.Album, PlexMediaType.Track)]
-    [Arguments(PlexMediaType.PhotoAlbum, PlexMediaType.PhotoAlbum, PlexMediaType.Photos, PlexMediaType.None)]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        PlexMediaType.MusicArtist,
+        PlexMediaType.MusicAlbum,
+        PlexMediaType.MusicTrack
+    )]
+    [Arguments(PlexMediaType.PhotoAlbum, PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage, PlexMediaType.None)]
     [Arguments(PlexMediaType.OtherVideos, PlexMediaType.OtherVideos, PlexMediaType.None, PlexMediaType.None)]
     public async Task ShouldInitializeFamilyProgressItems_AndCompleteOnlyAfterConfirmedEmptyTotals(
         PlexMediaType libraryType,

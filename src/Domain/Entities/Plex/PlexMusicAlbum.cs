@@ -2,7 +2,7 @@ namespace Reaparr.Domain;
 
 public class PlexMusicAlbum : BasePlexMedia
 {
-    public override PlexMediaType Type => PlexMediaType.Album;
+    public override PlexMediaType Type => PlexMediaType.MusicAlbum;
 
     /// <summary>
     /// The Plex key of the <see cref="PlexTvShow"/> this belongs too.

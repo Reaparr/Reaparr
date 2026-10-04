@@ -61,7 +61,7 @@ public class GetAllMediaByTypeRequestValidator : Validator<GetAllMediaByTypeRequ
                 type
                     is PlexMediaType.TvShow
                         or PlexMediaType.Movie
-                        or PlexMediaType.Music
+                        or PlexMediaType.MusicArtist
                         or PlexMediaType.PhotoAlbum
                         or PlexMediaType.OtherVideos
             )
