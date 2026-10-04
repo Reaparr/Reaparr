@@ -23,7 +23,7 @@ describe('PasswordStrength', () => {
 		expect(validity.at(-1)).toBe(true);
 
 		// Act / Assert
-		for (const password of ['valid1!x', 'VALID1!X', 'Valid!!x', 'Valid11x', 'Ab1!xyz']) {
+		for (const password of ['valid1!x', 'VALID1!X', 'Valid!!x', 'Valid11x', 'Valid1-x', 'Ab1!xyz']) {
 			props.value = password;
 			await nextTick();
 			expect(validity.at(-1)).toBe(false);
