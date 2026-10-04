@@ -1,5 +1,20 @@
 Reaparr Changelog
 
+# [0.41.0-dev.2](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.1...v0.41.0-dev.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* **WebAPI:** Preserve settings during overlapping updates ([d7139e9](https://github.com/Reaparr/Reaparr/commit/d7139e9d2b55fa4011a3157c939315b04c93f28b))
+* **Web-UI:** Restore schedule after failed saves ([cc61f24](https://github.com/Reaparr/Reaparr/commit/cc61f246c6d9e3e384b7d9133432474b936f7c0c))
+
+
+### Features
+
+* **Web-UI:** Implement download limit schedule management feature ([0e5c8ed](https://github.com/Reaparr/Reaparr/commit/0e5c8ed61acb71a661519c9a4712ebdb80c908ff))
+* **WebAPI:** Implement download speed limit management and scheduling ([1e89077](https://github.com/Reaparr/Reaparr/commit/1e89077488f620661eb02f420037207750b3855c))
+* **Web-UI:** Introduce download schedule management functionality ([90999af](https://github.com/Reaparr/Reaparr/commit/90999af99ea08566bfedcd12781ca7c10bda1e68))
+
 # [0.41.0-dev.1](https://github.com/Reaparr/Reaparr/compare/v0.40.0...v0.41.0-dev.1) (2026-10-02)
 
 
