@@ -59,27 +59,6 @@ internal static class MediaOverviewExtensions
         return await libraries.Select(x => x.Id).ToListAsync(cancellationToken);
     }
 
-    public static PagedMediaQueryResult CreateEmptyPage(MediaQueryFilter filter) => new()
-    {
-        QueryHash = filter.QueryHash,
-        Page = filter.Page,
-        PageSize = filter.PageSize,
-    };
-
-    public static IQueryable<TSnapshot> ApplyOrder<TSnapshot>(
-        this IQueryable<TSnapshot> query,
-        string field,
-        bool descending
-    ) where TSnapshot : BaseMediaOverviewSnapshot => field switch
-    {
-        nameof(BasePlexMedia.Year) => descending ? query.OrderByDescending(x => x.YearRank) : query.OrderBy(x => x.YearRank),
-        nameof(BasePlexMedia.AddedAt) => descending ? query.OrderByDescending(x => x.AddedAtRank) : query.OrderBy(x => x.AddedAtRank),
-        nameof(BasePlexMedia.UpdatedAt) => descending ? query.OrderByDescending(x => x.UpdatedAtRank) : query.OrderBy(x => x.UpdatedAtRank),
-        nameof(BasePlexMedia.Duration) => descending ? query.OrderByDescending(x => x.DurationRank) : query.OrderBy(x => x.DurationRank),
-        nameof(BasePlexMedia.MediaSize) => descending ? query.OrderByDescending(x => x.MediaSizeRank) : query.OrderBy(x => x.MediaSizeRank),
-        _ => descending ? query.OrderByDescending(x => x.TitleRank) : query.OrderBy(x => x.TitleRank),
-    };
-
     public static List<PlexMediaSlimDTO> RestorePageOrder(
         this IEnumerable<PlexMediaSlimDTO> items,
         IReadOnlyList<int> ids

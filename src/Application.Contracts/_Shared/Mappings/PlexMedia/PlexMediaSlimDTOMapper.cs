@@ -154,24 +154,8 @@ public static class PlexMediaSlimDTOMapper
                 .ToList()
         );
 
-    public static PlexPhotoAlbumDTO ToSlimDTOMapper(this PlexPhotoAlbum source) =>
-        new()
-        {
-            Id = source.Id,
-            PlexApiRatingKey = source.PlexApiRatingKey,
-            Title = source.Title,
-            SearchTitle = source.SearchTitle,
-            SortIndex = source.SortIndex,
-            Summary = source.Summary,
-            Year = source.Year,
-            Duration = source.Duration,
-            MediaSize = source.MediaSize,
-            AddedAt = source.AddedAt,
-            UpdatedAt = source.UpdatedAt,
-            PlexLibraryId = source.PlexLibraryId,
-            PlexServerId = source.PlexServerId,
-            ChildCount = source.Photos.Count,
-        };
+    public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexPhotoAlbum source) =>
+        Map(source, null, 0, []);
 
     private static PlexMediaSlimDTO Map(
         BasePlexMedia source,

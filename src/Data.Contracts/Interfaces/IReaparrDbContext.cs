@@ -86,6 +86,8 @@ public interface IReaparrDbContext : IDisposable
 
     DbSet<PlexMusicArtist> PlexArtists { get; }
 
+    DbSet<MediaOverviewMusicArtistSnapshot> MediaOverviewMusicArtistSnapshots { get; }
+
     DbSet<PlexMusicAlbum> PlexAlbums { get; }
 
     DbSet<PlexMusicTrack> PlexTracks { get; }
