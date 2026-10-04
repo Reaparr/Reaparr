@@ -43,7 +43,6 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
             if (_appRuntimeInfo.IsIntegrationTestMode)
             {
                 await _scheduler.Start(cancellationToken);
-                await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), cancellationToken);
                 return;
             }
 
