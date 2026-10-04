@@ -100,9 +100,9 @@ public partial class PlexMediaTypeMappersUnitTests
             PlexMediaType.TvShow,
             PlexMediaType.Season,
             PlexMediaType.Episode,
-            PlexMediaType.Artist,
+            PlexMediaType.Music,
             PlexMediaType.Album,
-            PlexMediaType.Song,
+            PlexMediaType.Track,
             PlexMediaType.PhotoAlbum,
             PlexMediaType.Photos,
         };
@@ -122,7 +122,6 @@ public partial class PlexMediaTypeMappersUnitTests
     }
 
     [Test]
-    [Arguments("Music")] // Music enum exists but has no PlexApi string mapping
     [Arguments("None")] // None enum exists but has no PlexApi string mapping
     [Arguments("OtherVideos")] // OtherVideos enum exists but has no PlexApi string mapping
     [Arguments("Games")] // Games enum exists but has no PlexApi string mapping

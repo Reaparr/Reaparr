@@ -99,9 +99,8 @@ public partial class PlexMediaTypeMappersUnitTests
         PlexMediaType.Season.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Season));
         PlexMediaType.Episode.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Episode));
         PlexMediaType.Music.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Music));
-        PlexMediaType.Artist.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Artist));
         PlexMediaType.Album.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Album));
-        PlexMediaType.Song.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Song));
+        PlexMediaType.Track.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Track));
         PlexMediaType.PhotoAlbum.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.PhotoAlbum));
         PlexMediaType.Photos.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Photos));
         PlexMediaType.OtherVideos.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.OtherVideos));

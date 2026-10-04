@@ -46,9 +46,9 @@ public partial class PlexMediaTypeMappersUnitTests
             { PlexMediaType.TvShow, "show" },
             { PlexMediaType.Season, "season" },
             { PlexMediaType.Episode, "episode" },
-            { PlexMediaType.Artist, "artist" },
+            { PlexMediaType.Music, "artist" },
             { PlexMediaType.Album, "album" },
-            { PlexMediaType.Song, "track" },
+            { PlexMediaType.Track, "track" },
             { PlexMediaType.PhotoAlbum, "photoalbum" },
             { PlexMediaType.Photos, "photo" },
         };
@@ -77,9 +77,9 @@ public partial class PlexMediaTypeMappersUnitTests
             PlexMediaType.TvShow,
             PlexMediaType.Season,
             PlexMediaType.Episode,
-            PlexMediaType.Artist,
+            PlexMediaType.Music,
             PlexMediaType.Album,
-            PlexMediaType.Song,
+            PlexMediaType.Track,
             PlexMediaType.PhotoAlbum,
             PlexMediaType.Photos,
         };
@@ -109,9 +109,9 @@ public partial class PlexMediaTypeMappersUnitTests
         PlexMediaType.TvShow.ToPlexApiString().ShouldBe("show");
         PlexMediaType.Season.ToPlexApiString().ShouldBe("season");
         PlexMediaType.Episode.ToPlexApiString().ShouldBe("episode");
-        PlexMediaType.Artist.ToPlexApiString().ShouldBe("artist");
+        PlexMediaType.Music.ToPlexApiString().ShouldBe("artist");
         PlexMediaType.Album.ToPlexApiString().ShouldBe("album");
-        PlexMediaType.Song.ToPlexApiString().ShouldBe("track"); // Note: Song maps to "track"
+        PlexMediaType.Track.ToPlexApiString().ShouldBe("track");
         PlexMediaType.PhotoAlbum.ToPlexApiString().ShouldBe("photoalbum");
         PlexMediaType.Photos.ToPlexApiString().ShouldBe("photo");
     }
@@ -140,7 +140,6 @@ public partial class PlexMediaTypeMappersUnitTests
         var unsupportedEnumValues = new[]
         {
             PlexMediaType.None,
-            PlexMediaType.Music,
             PlexMediaType.OtherVideos,
             PlexMediaType.Games,
             PlexMediaType.Unknown,
