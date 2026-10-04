@@ -5,6 +5,7 @@
     "reaparr-backend": "symlink",
     "reaparr-backend-integration-tests": "symlink",
     "reaparr-backend-unit-tests": "symlink",
+    "reaparr-coderabbit-autofix": "symlink",
     "reaparr-command-handler-patterns": "symlink",
     "reaparr-desktop-build": "symlink",
     "reaparr-fix-back-end-tests": "symlink",
@@ -18,5 +19,5 @@
     "reaparr-radarr-integration": "symlink",
     "reaparr-sonarr-integration": "symlink"
   },
-  "updated_at": "2026-09-14T23:04:18.220059731+02:00"
+  "updated_at": "2026-10-04T15:42:56.320008388+02:00"
 }
