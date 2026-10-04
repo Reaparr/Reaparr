@@ -58,6 +58,7 @@ public static partial class PlexMediaDataMapper
             Duration = source.Duration,
             MediaSize = source.Media.Sum(x => x.Parts.Sum(p => p.Size)),
             Quality = mediaDataList.Count == 0 ? VideoQuality.Unknown : mediaDataList.Max(x => x.Quality),
+            MediaDataList = mediaDataList,
             ChildCount = source.ChildCount,
             AddedAt = source.AddedAt,
             UpdatedAt = source.UpdatedAt,

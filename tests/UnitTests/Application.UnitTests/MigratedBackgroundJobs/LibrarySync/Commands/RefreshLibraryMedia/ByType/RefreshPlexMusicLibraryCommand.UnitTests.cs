@@ -3,6 +3,80 @@ namespace Reaparr.Application.UnitTests;
 public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<RefreshPlexMusicLibraryCommand>
 {
     [Test]
+    [Arguments(PlexMediaType.Album)]
+    [Arguments(PlexMediaType.Track)]
+    public async Task ShouldRejectOrphansBeforeChangingHierarchyOrSyncing_WhenDescendantParentIsMissing(
+        PlexMediaType mediaType
+    )
+    {
+        // Arrange
+        var seed = new Seed(625630);
+        var library = FakeData.GetPlexLibrary(seed, PlexMediaType.Music).Generate();
+        library.Id = 17;
+        library.Music.Clear();
+        library.Albums.Clear();
+        library.Tracks.Clear();
+        var artist = FakeData.GetPlexMusicArtists(seed, x => x.MusicAlbumCount = 0).Generate();
+        artist.PlexApiRatingKey = 100;
+        var album = FakeData.GetPlexMusicAlbums(seed, x => x.MusicTrackCount = 0).Generate();
+        album.PlexApiRatingKey = 101;
+        album.ParentKey = mediaType == PlexMediaType.Album ? 999 : artist.PlexApiRatingKey;
+        album.PlexArtist = artist;
+        var track = FakeData.GetPlexMusicTracks(seed).Generate();
+        track.ParentKey = mediaType == PlexMediaType.Track ? 999 : album.PlexApiRatingKey;
+        track.PlexAlbum = album;
+        artist.Albums.Add(album);
+        album.Tracks.Add(track);
+        library.Music.Add(artist);
+        library.Albums.Add(album);
+        library.Tracks.Add(track);
+        var artistState = (artist.ChildCount, artist.Duration, artist.MediaSize);
+        var albumState = (album.ChildCount, album.TrackCount, album.Duration, album.MediaSize);
+        var response = new InsertMediaMetaDataCommandResponse(library);
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(
+                It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
+                    c.PlexLibrary == library && c.MediaType == PlexMediaType.Album),
+                CancellationToken))
+            .ReturnsAsync(Result.Ok(new LibraryMetadata(library)))
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(
+                It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
+                    c.PlexLibrary == library && c.MediaType == PlexMediaType.Track),
+                CancellationToken))
+            .ReturnsAsync(Result.Ok(new LibraryMetadata(library)))
+            .Verifiable(Times.Once());
+        Mock.Mock<ILibrarySyncProgressStore>()
+            .Setup(x => x.UpdateErrorAsync(
+                library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PlexLibrary>(new RefreshPlexMusicLibraryCommand(response));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.IsCancelled.ShouldBeFalse();
+        result.Errors.Count.ShouldBe(1);
+        library.Music.ShouldBe([artist]);
+        library.Albums.ShouldBe([album]);
+        library.Tracks.ShouldBe([track]);
+        artist.Albums.ShouldBe([album]);
+        album.Tracks.ShouldBe([track]);
+        album.PlexArtist.ShouldBeSameAs(artist);
+        track.PlexAlbum.ShouldBeSameAs(album);
+        (artist.ChildCount, artist.Duration, artist.MediaSize).ShouldBe(artistState);
+        (album.ChildCount, album.TrackCount, album.Duration, album.MediaSize).ShouldBe(albumState);
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ILibrarySyncProgressStore>().Verify();
+    }
+
+    [Test]
     public async Task ShouldPublishStructuredErrorAndSkipOptimization_WhenSyncFails()
     {
         // Arrange
@@ -208,12 +282,12 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var albums = FakeData.GetPlexMusicAlbums(seed, x => x.MusicTrackCount = 0).Generate(2);
         foreach (var album in albums)
         {
-            album.PlexArtist = artist;
+            album.PlexArtist = null!;
             album.ParentKey = artist.PlexApiRatingKey;
             library.Albums.Add(album);
         }
         var track = FakeData.GetPlexMusicTracks(seed).Generate();
-        track.PlexAlbum = albums[0];
+        track.PlexAlbum = null!;
         track.ParentKey = albums[0].PlexApiRatingKey;
         library.Tracks.Add(track);
         var response = new InsertMediaMetaDataCommandResponse(library);
@@ -322,6 +396,8 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         capturedArtist.Albums.ShouldBe(albums);
         captured.PlexLibrary.Tracks.ShouldBe([track]);
         albums[0].Tracks.ShouldBe([track]);
+        albums.ShouldAllBe(x => x.PlexArtist == artist);
+        track.PlexAlbum.ShouldBeSameAs(albums[0]);
         albums[1].Tracks.ShouldBeEmpty();
         (albums[0].TrackCount, albums[0].Duration, albums[0].MediaSize).ShouldBe((1, track.Duration, track.MediaSize));
         (artist.ChildCount, artist.Duration, artist.MediaSize).ShouldBe((2, track.Duration, track.MediaSize));

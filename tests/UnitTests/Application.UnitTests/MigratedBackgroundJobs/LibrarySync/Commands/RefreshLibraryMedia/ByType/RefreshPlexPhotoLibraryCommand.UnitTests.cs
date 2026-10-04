@@ -3,6 +3,62 @@ namespace Reaparr.Application.UnitTests;
 public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<RefreshPlexPhotoLibraryCommand>
 {
     [Test]
+    public async Task ShouldRejectOrphansBeforeChangingAlbumsOrSyncing_WhenPhotoParentIsMissing()
+    {
+        // Arrange
+        var seed = new Seed(625631);
+        var library = FakeData.GetPlexLibrary(seed, PlexMediaType.PhotoAlbum).Generate();
+        library.Id = 17;
+        library.PhotoAlbums.Clear();
+        library.Photos.Clear();
+        var album = FakeData.GetPlexPhotoAlbums(seed, x =>
+        {
+            x.PhotoCount = 0;
+            x.PhotoClipCount = 0;
+        }).Generate();
+        album.PlexApiRatingKey = 100;
+        var photo = FakeData.GetPlexPhotos(seed).Generate();
+        photo.ParentKey = 999;
+        photo.PlexPhotoAlbum = album;
+        album.Photos.Add(photo);
+        library.PhotoAlbums.Add(album);
+        library.Photos.Add(photo);
+        var albumState = (album.ChildCount, album.Duration, album.MediaSize, album.Quality);
+        var response = new InsertMediaMetaDataCommandResponse(library) { PhotoClipCount = 5 };
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(
+                It.Is<GetLibraryMediaFromPlexApiCommand>(c =>
+                    c.PlexLibrary == library && c.MediaType == PlexMediaType.Photos),
+                CancellationToken))
+            .ReturnsAsync(Result.Ok(new LibraryMetadata(library) { PhotoClipCount = 1 }))
+            .Verifiable(Times.Once());
+        Mock.Mock<ILibrarySyncProgressStore>()
+            .Setup(x => x.UpdateErrorAsync(
+                library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PlexLibrary>(new RefreshPlexPhotoLibraryCommand(response));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.IsCancelled.ShouldBeFalse();
+        result.Errors.Count.ShouldBe(1);
+        library.PhotoAlbums.ShouldBe([album]);
+        library.Photos.ShouldBe([photo]);
+        album.Photos.ShouldBe([photo]);
+        photo.PlexPhotoAlbum.ShouldBeSameAs(album);
+        (album.ChildCount, album.Duration, album.MediaSize, album.Quality).ShouldBe(albumState);
+        response.PhotoClipCount.ShouldBe(5);
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<SyncPlexPhotosCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ILibrarySyncProgressStore>().Verify();
+    }
+
+    [Test]
     public async Task ShouldRejectLeafPhotosLibraryWithoutDispatch_WhenRefreshingPhotoLibrary()
     {
         // Arrange
@@ -15,7 +71,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
 
         // Assert
         result.IsFailed.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(1);
+        result.Errors.Count.ShouldBe(2);
         Mock.Mock<ICommandExecutor>().Verify(
             x => x.Send(It.IsAny<GetLibraryMediaFromPlexApiCommand>(), It.IsAny<CancellationToken>()),
             Times.Never());
@@ -198,7 +254,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var photos = FakeData.GetPlexPhotos(seed).Generate(2);
         foreach (var photo in photos)
         {
-            photo.PlexPhotoAlbum = album;
+            photo.PlexPhotoAlbum = null!;
             photo.ParentKey = album.PlexApiRatingKey;
             library.Photos.Add(photo);
         }
@@ -280,6 +336,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         captured.PhotoClipCount.ShouldBe(1);
         captured.PlexLibrary.Photos.ShouldBe(photos);
         album.Photos.ShouldBe(photos);
+        photos.ShouldAllBe(x => x.PlexPhotoAlbum == album);
         album.MediaSize.ShouldBe(photos.Sum(x => x.MediaSize));
         album.ChildCount.ShouldBe(photos.Count);
         album.Duration.ShouldBe(photos.Sum(x => x.Duration));

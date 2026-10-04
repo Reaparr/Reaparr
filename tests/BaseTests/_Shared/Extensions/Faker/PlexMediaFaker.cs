@@ -23,7 +23,9 @@ public class PlexMediaDataSet : DataSet
     public string MediaTitle(PlexMediaType type) =>
         type switch
         {
-            PlexMediaType.Movie => _faker.PickRandomFromDataset(PlexMovieShowTitlesDataset.PlexMovieTitles.Value),
+            PlexMediaType.Movie or PlexMediaType.OtherVideos =>
+                _faker.PickRandomFromDataset(PlexMovieShowTitlesDataset.PlexMovieTitles.Value),
+            PlexMediaType.Music => _faker.Name.FullName(),
             PlexMediaType.TvShow => _faker.PickRandomFromDataset(PlexTvShowTitlesDataset.PlexTvShowTitles.Value),
             PlexMediaType.Episode => _faker.PickRandomFromDataset(PlexEpisodeShowTitlesDataset.PlexEpisodeTitles.Value),
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, "PlexMediaType not supported."),
@@ -46,6 +48,9 @@ public class PlexMediaDataSet : DataSet
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, "PlexMediaType not supported."),
         };
 
-    public string Guid(PlexMediaType type) =>
-        $"plex://{type.ToPlexApiString()}/${_faker.Random.Guid().ToString().Replace("-", "")}";
+    public string Guid(PlexMediaType type)
+    {
+        var mediaType = type == PlexMediaType.OtherVideos ? PlexMediaType.Movie : type;
+        return $"plex://{mediaType.ToPlexApiString()}/${_faker.Random.Guid().ToString().Replace("-", "")}";
+    }
 }

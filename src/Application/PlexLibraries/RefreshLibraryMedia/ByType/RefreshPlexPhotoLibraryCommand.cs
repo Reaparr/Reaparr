@@ -63,7 +63,12 @@ public class RefreshPlexPhotoLibraryCommandHandler
         }
 
         var photos = retrievalResult.Value.Library.Photos;
-        BuildPhotoTree(plexLibrary, photos);
+        var treeResult = BuildPhotoTree(plexLibrary, photos);
+        if (treeResult.IsFailed)
+        {
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, treeResult, cancellationToken);
+            return treeResult.LogError();
+        }
         command.LibraryMetadata.PhotoClipCount = retrievalResult.Value.PhotoClipCount;
 
         var syncResult = await Result.Try(() =>
@@ -126,8 +131,15 @@ public class RefreshPlexPhotoLibraryCommandHandler
             : Result.Ok(plexLibraryDb);
     }
 
-    private static void BuildPhotoTree(PlexLibrary library, ICollection<PlexPhoto> photos)
+    private static Result BuildPhotoTree(PlexLibrary library, ICollection<PlexPhoto> photos)
     {
+        var albums = library.PhotoAlbums.ToDictionary(x => x.PlexApiRatingKey);
+        var missingPhoto = photos.FirstOrDefault(x => !albums.ContainsKey(x.ParentKey));
+        if (missingPhoto is not null)
+            return Result.Fail(
+                $"Photo {missingPhoto.PlexApiRatingKey} has an unknown album {missingPhoto.ParentKey}"
+            );
+
         foreach (var album in library.PhotoAlbums)
         {
             album.Photos.Clear();
@@ -139,7 +151,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
 
         foreach (var photo in photos)
         {
-            var album = library.PhotoAlbums.Single(x => x.PlexApiRatingKey == photo.ParentKey);
+            var album = albums[photo.ParentKey];
             photo.PlexPhotoAlbum = album;
             album.Photos.Add(photo);
         }
@@ -151,5 +163,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
             album.MediaSize = album.Photos.Sum(x => x.MediaSize);
             album.Quality = album.Photos.Count == 0 ? VideoQuality.Unknown : album.Photos.Max(x => x.Quality);
         }
+
+        return Result.Ok();
     }
 }

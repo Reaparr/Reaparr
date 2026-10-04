@@ -61,6 +61,7 @@ public static partial class FakeData
         .RuleFor(x => x.SortIndex, f => f.IndexFaker + 1)
         .Ignore(x => x.PlexPhotoAlbumId)
         .Ignore(x => x.PlexPhotoAlbum)
+        .Ignore(x => x.ParentKey)
         .Ignore(x => x.MediaDataList)
         .FinishWith(
             (_, photo) =>

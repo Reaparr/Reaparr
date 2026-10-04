@@ -28,6 +28,7 @@ public class RefreshPlexOtherVideoLibraryCommandIntegrationTests : BaseIntegrati
         var client = container.GetApiClient();
         await client.SignIn();
         var library = await container.DbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var previousSyncedAt = library.SyncedAt;
         library.Type.ShouldBe(PlexMediaType.OtherVideos);
         (await container.DbContext.PlexOtherVideos.ToListAsync(CancellationToken)).ShouldBeEmpty();
         (await container.DbContext.PlexOtherVideoData.ToListAsync(CancellationToken)).ShouldBeEmpty();
@@ -35,6 +36,14 @@ public class RefreshPlexOtherVideoLibraryCommandIntegrationTests : BaseIntegrati
         // Act
         var response = await client.POSTAsync<RefreshLibraryMediaEndpoint, RefreshLibraryMediaEndpointRequest, ResultDTO<PlexLibraryDTO>>(
             new RefreshLibraryMediaEndpointRequest { PlexLibraryId = library.Id });
+        await WaitForDatabaseConditionAsync(async () =>
+        {
+            using var context = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
+            return await context.PlexLibraries.AnyAsync(
+                    x => x.Id == library.Id && x.SyncedAt != previousSyncedAt && x.OtherVideoCount == 3,
+                    CancellationToken)
+                && await context.PlexOtherVideoData.CountAsync(x => x.PlexLibraryId == library.Id, CancellationToken) == 3;
+        });
         await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
 
         // Assert
@@ -55,11 +64,20 @@ public class RefreshPlexOtherVideoLibraryCommandIntegrationTests : BaseIntegrati
                 x.OriginalFilename, x.Key, x.Container, x.Duration, x.Size }).ToListAsync(CancellationToken);
         (videos.Count, originals.Count).ShouldBe((3, 3));
 
+        previousSyncedAt = refreshed.SyncedAt;
         var repeatResponse = await client.POSTAsync<RefreshLibraryMediaEndpoint, RefreshLibraryMediaEndpointRequest, ResultDTO<PlexLibraryDTO>>(
             new RefreshLibraryMediaEndpointRequest { PlexLibraryId = library.Id, ForceLibrarySync = true });
         repeatResponse.Response.IsSuccessStatusCode.ShouldBeTrue();
         repeatResponse.Result.IsSuccess.ShouldBeTrue();
         repeatResponse.Result.Errors.Count.ShouldBe(0);
+        await WaitForDatabaseConditionAsync(async () =>
+        {
+            using var context = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
+            return await context.PlexLibraries.AnyAsync(
+                    x => x.Id == library.Id && x.SyncedAt != previousSyncedAt && x.OtherVideoCount == 3,
+                    CancellationToken)
+                && await context.PlexOtherVideoData.CountAsync(x => x.PlexLibraryId == library.Id, CancellationToken) == 3;
+        });
         await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
 
         using var repeatedContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();

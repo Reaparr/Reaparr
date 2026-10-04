@@ -79,7 +79,12 @@ public class RefreshPlexMusicLibraryCommandHandler
 
         var albums = albumsResult.Value.Library.Albums;
         var tracks = tracksResult.Value.Library.Tracks;
-        BuildMusicTree(plexLibrary, albums, tracks);
+        var treeResult = BuildMusicTree(plexLibrary, albums, tracks);
+        if (treeResult.IsFailed)
+        {
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, treeResult, cancellationToken);
+            return treeResult.LogError();
+        }
 
         var syncResult = await Result.Try(() =>
             _commandExecutor.Send(
@@ -151,12 +156,26 @@ public class RefreshPlexMusicLibraryCommandHandler
             : Result.Ok(plexLibraryDb);
     }
 
-    private static void BuildMusicTree(
+    private static Result BuildMusicTree(
         PlexLibrary library,
         ICollection<PlexMusicAlbum> albums,
         ICollection<PlexMusicTrack> tracks
     )
     {
+        var artistKeys = library.Music.Select(x => x.PlexApiRatingKey).ToHashSet();
+        var missingAlbum = albums.FirstOrDefault(x => !artistKeys.Contains(x.ParentKey));
+        if (missingAlbum is not null)
+            return Result.Fail(
+                $"Album {missingAlbum.PlexApiRatingKey} has an unknown artist {missingAlbum.ParentKey}"
+            );
+
+        var albumKeys = albums.Select(x => x.PlexApiRatingKey).ToHashSet();
+        var missingTrack = tracks.FirstOrDefault(x => !albumKeys.Contains(x.ParentKey));
+        if (missingTrack is not null)
+            return Result.Fail(
+                $"Track {missingTrack.PlexApiRatingKey} has an unknown album {missingTrack.ParentKey}"
+            );
+
         var albumsByArtist = albums.GroupBy(x => x.ParentKey).ToDictionary(x => x.Key, x => x.ToList());
         var tracksByAlbum = tracks.GroupBy(x => x.ParentKey).ToDictionary(x => x.Key, x => x.ToList());
 
@@ -191,5 +210,7 @@ public class RefreshPlexMusicLibraryCommandHandler
             artist.Duration = artist.Albums.Sum(x => x.Duration);
             artist.MediaSize = artist.Albums.Sum(x => x.MediaSize);
         }
+
+        return Result.Ok();
     }
 }
