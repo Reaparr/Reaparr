@@ -52,7 +52,7 @@ const requirements = computed((): { text: string; valid: boolean }[] => {
 		{
 			// 'Has a special character'
 			text: t('components.password-strength.validation.symbol'),
-			valid: /[^a-zA-Z0-9]/.test(value),
+			valid: /[!@#$%^&*(),.?":{}|<>]/.test(value),
 		},
 		{
 			// 'Longer than 7 characters'
