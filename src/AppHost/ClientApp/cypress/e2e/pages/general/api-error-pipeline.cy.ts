@@ -20,6 +20,8 @@ const failedResult = (statusCode: number, message: string) => generateFailedResu
 	errors: [{ message, reasons: [], metadata: {} }],
 });
 
+const browser = Cypress.browser.name === 'firefox' ? 'Firefox' : 'Google Chrome';
+
 describe('Global API error pipeline', () => {
 	beforeEach(() => {
 		cy.basePageSetup({ isLoggedIn: false, plexAccountCount: 0, plexServerCount: 0 });
@@ -50,7 +52,7 @@ describe('Global API error pipeline', () => {
 			expect(issue.searchParams.get('template')).to.equal('BUG-REPORT.yml');
 			expect(issue.searchParams.get('version')).to.equal('v0.31.0');
 			expect(issue.searchParams.get('os')).to.equal('Linux');
-			expect(issue.searchParams.get('browsers')).to.equal('Firefox');
+			expect(issue.searchParams.get('browsers')).to.equal(browser);
 			expect(issue.searchParams.get('reproduce-steps')).to.include('Page at report time: /login');
 			expect(issue.searchParams.get('logs')).to.include('Captured frontend request failures (not backend logs):')
 				.and.include(AuthenticationPaths.authenticationStatusEndpoint());
@@ -125,7 +127,7 @@ describe('Global API error pipeline', () => {
 				expect(issue.searchParams.get('template')).to.equal('BUG-REPORT.yml');
 				expect(issue.searchParams.get('title')).to.equal('[BUG] - Reaparr: Something went wrong');
 				expect(issue.searchParams.get('version')).to.equal('1.0.0');
-				expect(issue.searchParams.get('browsers')).to.equal('Firefox');
+				expect(issue.searchParams.get('browsers')).to.equal(browser);
 				expect(issue.searchParams.has('os')).to.equal(false);
 				expect(issue.searchParams.get('description')).to.include('Deployment: docker');
 				expect(issue.searchParams.get('reproduce-steps')).to.include('Page at report time: /setup');
