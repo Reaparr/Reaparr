@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@crazydos/vue-markdown": "^1.1.4",
+    "@date-fns/tz": "^1.5.0",
     "@microsoft/signalr": "^9.0.6",
     "@microsoft/signalr-protocol-msgpack": "^9.0.6",
     "@pinia/nuxt": "^0.11.3",
