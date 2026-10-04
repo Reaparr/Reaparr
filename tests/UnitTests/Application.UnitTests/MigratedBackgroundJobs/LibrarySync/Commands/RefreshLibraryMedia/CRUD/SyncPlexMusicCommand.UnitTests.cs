@@ -295,4 +295,72 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
                 .ToListAsync(CancellationToken)
         ).ShouldBe(controlData);
     }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldReplaceOrClearArtistMetadataWithoutChangingOtherLibraries_WhenArtistsAreUnchanged(bool clearMetadata)
+    {
+        // Arrange
+        var seed = await SetupDatabase(625111, x =>
+        {
+            x.PlexServerCount = 1;
+            x.PlexMusicLibraryCount = 2;
+            x.MusicArtistCount = 2;
+            x.MusicAlbumCount = 0;
+            x.MusicTrackCount = 0;
+        });
+        var db = IDbContext;
+        var library = await db.PlexLibraries.OrderBy(x => x.Id).FirstAsync(CancellationToken);
+        var artists = await db.PlexArtists.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        artists.Count.ShouldBe(4);
+        var actors = FakeData.GetPlexActors(seed).Generate(2);
+        var countries = FakeData.GetPlexCountries(seed).Generate(2);
+        var genres = FakeData.GetPlexGenres(seed).Generate(2);
+        db.PlexActors.AddRange(actors);
+        db.PlexCountries.AddRange(countries);
+        db.PlexGenres.AddRange(genres);
+        await db.SaveChangesAsync(CancellationToken);
+        foreach (var artist in artists)
+        {
+            db.PlexMusicArtistActors.Add(new PlexMusicArtistActors(actors[0].Id, artist.PlexLibraryId, artist.Id));
+            db.PlexMusicArtistCountries.Add(new PlexMusicArtistCountries(countries[0].Id, artist.PlexLibraryId, artist.Id));
+            db.PlexMusicArtistGenres.Add(new PlexMusicArtistGenres(genres[0].Id, artist.PlexLibraryId, artist.Id));
+            if (artist.PlexLibraryId == library.Id)
+            {
+                library.Music.Add(artist);
+                if (!clearMetadata)
+                {
+                    artist.Actors.AddRange([actors[1], actors[1]]);
+                    artist.Countries.AddRange([countries[1], countries[1]]);
+                    artist.Genres.AddRange([genres[1], genres[1]]);
+                }
+            }
+        }
+        await db.SaveChangesAsync(CancellationToken);
+        var metadata = new InsertMediaMetaDataCommandResponse(library)
+        {
+            PlexActors = actors.ToDictionary(x => x.Key),
+            PlexCountries = countries.ToDictionary(x => x.Key),
+            PlexGenres = genres.ToDictionary(x => x.Key),
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<CrudMusicReport>(new SyncPlexMusicCommand(metadata, false));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue(result.ToString());
+        result.Errors.Count.ShouldBe(0);
+        result.Value.ShouldBe(new CrudMusicReport { UnchangedArtists = 2 });
+        var expectedArtists = artists.Where(x => !clearMetadata || x.PlexLibraryId != library.Id).ToList();
+        (await db.PlexMusicArtistActors.OrderBy(x => x.PlexMusicArtistId).ToListAsync(CancellationToken))
+            .Select(x => (x.PlexLibraryId, x.PlexMusicArtistId, x.PlexActorId))
+            .ShouldBe(expectedArtists.Select(x => (x.PlexLibraryId, x.Id, actors[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+        (await db.PlexMusicArtistCountries.OrderBy(x => x.PlexMusicArtistId).ToListAsync(CancellationToken))
+            .Select(x => (x.PlexLibraryId, x.PlexMusicArtistId, x.CountryId))
+            .ShouldBe(expectedArtists.Select(x => (x.PlexLibraryId, x.Id, countries[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+        (await db.PlexMusicArtistGenres.OrderBy(x => x.PlexMusicArtistId).ToListAsync(CancellationToken))
+            .Select(x => (x.PlexLibraryId, x.PlexMusicArtistId, x.GenresId))
+            .ShouldBe(expectedArtists.Select(x => (x.PlexLibraryId, x.Id, genres[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+    }
 }

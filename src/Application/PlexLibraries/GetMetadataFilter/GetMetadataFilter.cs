@@ -175,6 +175,17 @@ public class GetMetadataFilter : Endpoint<GetMetadataFilterRequest, ResultDTO<Pl
             return qualities.Select(x => x.ToId()).ToList();
         }
 
+        if (mediaType == PlexMediaType.OtherVideos)
+        {
+            var qualities = await _dbContext
+                .PlexOtherVideoData.ApplyWhere(plexLibraryId > 0, x => x.PlexLibraryId == plexLibraryId)
+                .GroupBy(x => x.Quality)
+                .Select(g => g.Key)
+                .ToListAsync(ct);
+
+            return qualities.Select(x => x.ToId()).ToList();
+        }
+
         return [];
     }
 }

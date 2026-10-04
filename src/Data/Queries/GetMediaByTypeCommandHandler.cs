@@ -363,7 +363,13 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             }
             case PlexMediaType.MusicArtist:
             {
-                var artistQuery = _dbContext.PlexArtists.Include(x => x.Albums).ApplyFilter(options).ApplySort(options);
+                var artistQuery = _dbContext.PlexArtists
+                    .Include(x => x.Albums)
+                    .Include(x => x.Actors)
+                    .Include(x => x.Countries)
+                    .Include(x => x.Genres)
+                    .ApplyFilter(options)
+                    .ApplySort(options);
                 response.TotalCount = await artistQuery.CountAsync(ct);
                 response.MediaSize = await artistQuery.SumAsync(x => x.MediaSize, ct);
                 response.TotalMediaSize = response.MediaSize;
@@ -383,6 +389,9 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 );
                 var artists = await artistQuery.ApplyPaging(options).ToListAsync(ct);
                 response.Items = artists.Select(x => x.ToSlimDTOMapper()).ToList();
+                response.Roles = artists.SelectMany(x => x.Actors).Select(x => x.Id).Distinct().Order().ToList();
+                response.Countries = artists.SelectMany(x => x.Countries).Select(x => x.Id).Distinct().Order().ToList();
+                response.Genres = artists.SelectMany(x => x.Genres).Select(x => x.Id).Distinct().Order().ToList();
                 break;
             }
             case PlexMediaType.PhotoAlbum:
@@ -413,6 +422,9 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             {
                 var videoQuery = _dbContext
                     .PlexOtherVideos.Include(x => x.MediaDataList)
+                    .Include(x => x.Actors)
+                    .Include(x => x.Countries)
+                    .Include(x => x.Genres)
                     .ApplyFilter(options)
                     .ApplySort(options);
                 response.TotalCount = await videoQuery.CountAsync(ct);
@@ -434,6 +446,9 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 );
                 var videos = await videoQuery.ApplyPaging(options).ToListAsync(ct);
                 response.Items = videos.Select(x => x.ToSlimDTOMapper()).ToList();
+                response.Roles = videos.SelectMany(x => x.Actors).Select(x => x.Id).Distinct().Order().ToList();
+                response.Countries = videos.SelectMany(x => x.Countries).Select(x => x.Id).Distinct().Order().ToList();
+                response.Genres = videos.SelectMany(x => x.Genres).Select(x => x.Id).Distinct().Order().ToList();
                 response.Qualities = response
                     .Items.SelectMany(x => x.Qualities)
                     .Select(x => x.Quality.ToId())

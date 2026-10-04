@@ -180,6 +180,15 @@ public sealed class GetMediaOverviewMusicCommandHandler
         );
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
+        result.Roles = await context.PlexMusicArtistActors
+            .Where(x => ids.Contains(x.PlexMusicArtistId))
+            .Select(x => x.PlexActorId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        result.Countries = await context.PlexMusicArtistCountries
+            .Where(x => ids.Contains(x.PlexMusicArtistId))
+            .Select(x => x.CountryId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        result.Genres = await context.PlexMusicArtistGenres
+            .Where(x => ids.Contains(x.PlexMusicArtistId))
+            .Select(x => x.GenresId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
         LogPhase(filter, "Metadata", stopwatch.Elapsed, items.Count);
         result.Qualities = items
             .SelectMany(x => x.Qualities)

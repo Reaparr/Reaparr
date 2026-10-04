@@ -130,7 +130,8 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
                     else
                     {
                         track.Id = currentTrack.Id;
-                        changed = track.UpdatedAt != currentTrack.UpdatedAt || track.ParentKey != currentTrack.ParentKey;
+                        changed =
+                            track.UpdatedAt != currentTrack.UpdatedAt || track.ParentKey != currentTrack.ParentKey;
                         if (changed)
                             updatedTracks.Add(track);
                     }
@@ -250,12 +251,99 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
             },
             ct
         );
-        if (result.IsCancelled)
-            return result.LogWarning();
+
         if (result.IsFailed)
-            return result.LogError();
+            return result.LogIfFailed();
+
+        var metadataResult = Result.Merge(
+            await SyncArtistCountries(artists, command.LibraryMetadata, bulkConfig, ct),
+            await SyncArtistGenres(artists, command.LibraryMetadata, bulkConfig, ct),
+            await SyncArtistActors(artists, command.LibraryMetadata, bulkConfig, ct)
+        );
+        if (metadataResult.IsCancelled)
+            return metadataResult.LogWarning();
+        if (metadataResult.IsFailed)
+            return metadataResult.LogError();
         _log.Here().Information("Synchronized Music library {PlexLibraryId}: {@Report}", library.Id, report);
         return Result.Ok(report);
+    }
+
+    private Task<Result> SyncArtistActors(
+        List<PlexMusicArtist> artists,
+        InsertMediaMetaDataCommandResponse metadata,
+        BulkConfig bulkConfig,
+        CancellationToken ct
+    )
+    {
+        var rows = new List<PlexMusicArtistActors>();
+        var keys = new HashSet<(int ActorId, int ArtistId)>();
+        foreach (var artist in artists)
+        foreach (var actor in artist.Actors)
+            if (metadata.PlexActors.TryGetValue(actor.Key, out var stored) && keys.Add((stored.Id, artist.Id)))
+                rows.Add(new PlexMusicArtistActors(stored.Id, metadata.PlexLibraryId, artist.Id));
+
+        return _dbContext.ExecuteTransactionAsync(
+            async (ctx, token) =>
+            {
+                await ctx
+                    .PlexMusicArtistActors.Where(x => x.PlexLibraryId == metadata.PlexLibraryId)
+                    .ExecuteDeleteAsync(token);
+                await ctx.BulkInsertAsync(rows, bulkConfig, token);
+            },
+            ct
+        );
+    }
+
+    private Task<Result> SyncArtistGenres(
+        List<PlexMusicArtist> artists,
+        InsertMediaMetaDataCommandResponse metadata,
+        BulkConfig bulkConfig,
+        CancellationToken ct
+    )
+    {
+        var rows = new List<PlexMusicArtistGenres>();
+        var keys = new HashSet<(int GenreId, int ArtistId)>();
+        foreach (var artist in artists)
+        foreach (var genre in artist.Genres)
+            if (metadata.PlexGenres.TryGetValue(genre.Key, out var stored) && keys.Add((stored.Id, artist.Id)))
+                rows.Add(new PlexMusicArtistGenres(stored.Id, metadata.PlexLibraryId, artist.Id));
+
+        return _dbContext.ExecuteTransactionAsync(
+            async (ctx, token) =>
+            {
+                await ctx
+                    .PlexMusicArtistGenres.Where(x => x.PlexLibraryId == metadata.PlexLibraryId)
+                    .ExecuteDeleteAsync(token);
+                await ctx.BulkInsertAsync(rows, bulkConfig, token);
+            },
+            ct
+        );
+    }
+
+    private Task<Result> SyncArtistCountries(
+        List<PlexMusicArtist> artists,
+        InsertMediaMetaDataCommandResponse metadata,
+        BulkConfig bulkConfig,
+        CancellationToken ct
+    )
+    {
+        var rows = new List<PlexMusicArtistCountries>();
+        var keys = new HashSet<(int CountryId, int ArtistId)>();
+        foreach (var artist in artists)
+        foreach (var country in artist.Countries)
+            if (metadata.PlexCountries.TryGetValue(country.Key, out var stored) && keys.Add((stored.Id, artist.Id)))
+                rows.Add(new PlexMusicArtistCountries(stored.Id, metadata.PlexLibraryId, artist.Id));
+
+        return _dbContext.ExecuteTransactionAsync(
+            async (ctx, token) =>
+            {
+                await ctx
+                    .PlexMusicArtistCountries.Where(x => x.PlexLibraryId == metadata.PlexLibraryId)
+                    .ExecuteDeleteAsync(token);
+                await ctx.BulkInsertAsync(rows, bulkConfig, token);
+            },
+            ct
+        );
     }
 
     private sealed record CurrentArtist(int Id, int PlexApiRatingKey, DateTime? UpdatedAt);

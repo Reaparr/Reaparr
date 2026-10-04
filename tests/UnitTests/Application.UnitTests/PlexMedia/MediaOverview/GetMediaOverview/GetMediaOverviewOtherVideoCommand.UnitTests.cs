@@ -5,9 +5,13 @@ namespace Reaparr.Application.UnitTests;
 public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<GetMediaOverviewOtherVideoCommand>
 {
     [Test]
-    [Arguments("quality:asc")]
-    [Arguments("quality:desc")]
-    public async Task ShouldUsePersistedQualityRankForFilteredPage_WithExactQualitiesAndFullNavigation(string sort)
+    [Arguments("quality:asc", "Actors")]
+    [Arguments("quality:desc", "Actors")]
+    [Arguments("quality:asc", "Countries")]
+    [Arguments("quality:desc", "Countries")]
+    [Arguments("quality:asc", "Genres")]
+    [Arguments("quality:desc", "Genres")]
+    public async Task ShouldUsePersistedQualityRankForFilteredPage_WithExactQualitiesAndFullNavigation(string sort, string metadataField)
     {
         // Arrange
         await SetupDatabase(84203, config =>
@@ -25,6 +29,14 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
         var selectedData = await dbContext.PlexOtherVideoData.Where(x => x.PlexOtherVideoId == target[2].Id)
             .SingleAsync(CancellationToken);
         await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true), CancellationToken);
+        var metadataSeed = new Seed(84204);
+        var actor = FakeData.GetPlexActors(metadataSeed).Generate();
+        var country = FakeData.GetPlexCountries(metadataSeed).Generate();
+        var genre = FakeData.GetPlexGenres(metadataSeed).Generate();
+        dbContext.PlexActors.Add(actor);
+        dbContext.PlexCountries.Add(country);
+        dbContext.PlexGenres.Add(genre);
+        await dbContext.SaveChangesAsync(CancellationToken);
         foreach (var video in videos)
         {
             var targetIndex = target.FindIndex(x => x.Id == video.Id);
@@ -46,13 +58,20 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
                 YearRank = qualityRank, AddedAtRank = qualityRank, UpdatedAtRank = qualityRank,
                 DurationRank = qualityRank, MediaSizeRank = qualityRank,
             });
+            if (targetIndex != 3)
+            {
+                dbContext.PlexOtherVideoActors.Add(new PlexOtherVideoActors(actor.Id, video.PlexLibraryId, video.Id));
+                dbContext.PlexOtherVideoCountries.Add(new PlexOtherVideoCountries(country.Id, video.PlexLibraryId, video.Id));
+                dbContext.PlexOtherVideoGenres.Add(new PlexOtherVideoGenres(genre.Id, video.PlexLibraryId, video.Id));
+            }
         }
         await dbContext.SaveChangesAsync(CancellationToken);
+        var metadataId = metadataField switch { "Actors" => actor.Id, "Countries" => country.Id, _ => genre.Id };
         var filter = new MediaQueryFilter
         {
             MediaType = PlexMediaType.OtherVideos, PlexLibraryId = libraryIds[0],
             FilterOfflineMedia = false, FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters { Page = 2, PageSize = 1, Sort = sort, Filter = "Year:eq:2000" },
+            Parameters = new FlexQueryParameters { Page = 2, PageSize = 1, Sort = sort, Filter = $"{metadataField}:any:Id:eq:{metadataId}" },
         };
 
         // Act
@@ -73,6 +92,9 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
         item.Qualities.Select(x => (x.DataId, x.MediaId, x.MediaDataType, x.Quality))
             .ShouldBe([(selectedData.Id, target[2].Id, PlexMediaType.OtherVideos, VideoQuality.FullHD)]);
         result.Value.Qualities.ShouldBe([VideoQuality.FullHD.ToId()]);
+        result.Value.Roles.ShouldBe([actor.Id]);
+        result.Value.Countries.ShouldBe([country.Id]);
+        result.Value.Genres.ShouldBe([genre.Id]);
         result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe(sort.EndsWith("asc")
             ? [("720", 0), ("1080", 1), ("2160", 2)] : [("2160", 0), ("1080", 1), ("720", 2)]);
         Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<GetMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());

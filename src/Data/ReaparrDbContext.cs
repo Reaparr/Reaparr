@@ -132,6 +132,18 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
 
     public DbSet<PlexTvShowCountries> PlexTvShowCountries { get; set; }
 
+    public DbSet<PlexMusicArtistActors> PlexMusicArtistActors { get; set; }
+
+    public DbSet<PlexMusicArtistGenres> PlexMusicArtistGenres { get; set; }
+
+    public DbSet<PlexMusicArtistCountries> PlexMusicArtistCountries { get; set; }
+
+    public DbSet<PlexOtherVideoActors> PlexOtherVideoActors { get; set; }
+
+    public DbSet<PlexOtherVideoGenres> PlexOtherVideoGenres { get; set; }
+
+    public DbSet<PlexOtherVideoCountries> PlexOtherVideoCountries { get; set; }
+
     #region Comparison
 
     public DbSet<PlexComparisonState> PlexComparisonScopes { get; set; }

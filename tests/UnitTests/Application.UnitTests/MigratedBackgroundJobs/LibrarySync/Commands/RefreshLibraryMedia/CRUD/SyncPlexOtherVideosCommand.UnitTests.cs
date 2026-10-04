@@ -100,4 +100,70 @@ public class SyncPlexOtherVideosCommandUnitTests : BaseCommandUnitTest<SyncPlexO
         (await db.PlexOtherVideoData.Where(x => x.PlexLibraryId != library.Id).OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.PlexOtherVideoId, x.PlexApiPartId, x.Size }).ToListAsync(CancellationToken)).ShouldBe(controlData);
     }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldReplaceOrClearVideoMetadataWithoutChangingOtherLibraries_WhenVideosAreUnchanged(bool clearMetadata)
+    {
+        // Arrange
+        var seed = await SetupDatabase(625212, x =>
+        {
+            x.PlexServerCount = 1;
+            x.PlexOtherVideoLibraryCount = 2;
+            x.OtherVideoCount = 2;
+        });
+        var db = IDbContext;
+        var library = await db.PlexLibraries.OrderBy(x => x.Id).FirstAsync(CancellationToken);
+        var videos = await db.PlexOtherVideos.Include(x => x.MediaDataList).OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        videos.Count.ShouldBe(4);
+        var actors = FakeData.GetPlexActors(seed).Generate(2);
+        var countries = FakeData.GetPlexCountries(seed).Generate(2);
+        var genres = FakeData.GetPlexGenres(seed).Generate(2);
+        db.PlexActors.AddRange(actors);
+        db.PlexCountries.AddRange(countries);
+        db.PlexGenres.AddRange(genres);
+        await db.SaveChangesAsync(CancellationToken);
+        foreach (var video in videos)
+        {
+            db.PlexOtherVideoActors.Add(new PlexOtherVideoActors(actors[0].Id, video.PlexLibraryId, video.Id));
+            db.PlexOtherVideoCountries.Add(new PlexOtherVideoCountries(countries[0].Id, video.PlexLibraryId, video.Id));
+            db.PlexOtherVideoGenres.Add(new PlexOtherVideoGenres(genres[0].Id, video.PlexLibraryId, video.Id));
+            if (video.PlexLibraryId == library.Id)
+            {
+                library.OtherVideos.Add(video);
+                if (!clearMetadata)
+                {
+                    video.Actors.AddRange([actors[1], actors[1]]);
+                    video.Countries.AddRange([countries[1], countries[1]]);
+                    video.Genres.AddRange([genres[1], genres[1]]);
+                }
+            }
+        }
+        await db.SaveChangesAsync(CancellationToken);
+        var metadata = new InsertMediaMetaDataCommandResponse(library)
+        {
+            PlexActors = actors.ToDictionary(x => x.Key),
+            PlexCountries = countries.ToDictionary(x => x.Key),
+            PlexGenres = genres.ToDictionary(x => x.Key),
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<CrudOtherVideosReport>(new SyncPlexOtherVideosCommand(metadata, false));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue(result.ToString());
+        result.Errors.Count.ShouldBe(0);
+        result.Value.ShouldBe(new CrudOtherVideosReport { UnchangedOtherVideos = 2 });
+        var expectedVideos = videos.Where(x => !clearMetadata || x.PlexLibraryId != library.Id).ToList();
+        (await db.PlexOtherVideoActors.OrderBy(x => x.PlexOtherVideoId).ToListAsync(CancellationToken))
+            .Select(x => (x.PlexLibraryId, x.PlexOtherVideoId, x.PlexActorId))
+            .ShouldBe(expectedVideos.Select(x => (x.PlexLibraryId, x.Id, actors[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+        (await db.PlexOtherVideoCountries.OrderBy(x => x.PlexOtherVideoId).ToListAsync(CancellationToken))
+            .Select(x => (x.PlexLibraryId, x.PlexOtherVideoId, x.CountryId))
+            .ShouldBe(expectedVideos.Select(x => (x.PlexLibraryId, x.Id, countries[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+        (await db.PlexOtherVideoGenres.OrderBy(x => x.PlexOtherVideoId).ToListAsync(CancellationToken))
+            .Select(x => (x.PlexLibraryId, x.PlexOtherVideoId, x.GenresId))
+            .ShouldBe(expectedVideos.Select(x => (x.PlexLibraryId, x.Id, genres[x.PlexLibraryId == library.Id ? 1 : 0].Id)));
+    }
 }

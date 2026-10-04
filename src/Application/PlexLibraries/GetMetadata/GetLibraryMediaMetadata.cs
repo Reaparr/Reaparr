@@ -225,6 +225,20 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
                 .ToListAsync(ct);
         }
 
+        if (mediaType == PlexMediaType.OtherVideos)
+        {
+            uniqueQualities = await _dbContext
+                .PlexOtherVideoData.ApplyWhere(plexLibraryId > 0, x => x.PlexLibraryId == plexLibraryId)
+                .GroupBy(x => x.Quality)
+                .Select(g => new PlexQualityDTO
+                {
+                    Name = ((int)g.Key).ToString(),
+                    Quality = g.Key,
+                    Count = g.Count(),
+                })
+                .ToListAsync(ct);
+        }
+
         return uniqueQualities;
     }
 }

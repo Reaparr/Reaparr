@@ -73,6 +73,9 @@ public static partial class PlexMediaDataMapper
             HasThumb = !string.IsNullOrEmpty(source.Thumb),
             HasArt = !string.IsNullOrEmpty(source.Art),
             HasTheme = !string.IsNullOrEmpty(source.Theme),
+            Actors = source.Role.ToPlexActor(),
+            Genres = source.Genre.ToPlexGenre(),
+            Countries = source.Country.ToPlexCountry(),
             PlexLibraryId = 0,
             PlexServerId = 0,
         };

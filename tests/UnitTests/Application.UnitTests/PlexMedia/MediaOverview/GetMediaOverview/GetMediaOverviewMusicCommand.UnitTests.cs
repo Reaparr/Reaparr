@@ -5,9 +5,13 @@ namespace Reaparr.Application.UnitTests;
 public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMediaOverviewMusicCommand>
 {
     [Test]
-    [Arguments("sortIndex:asc")]
-    [Arguments("sortIndex:desc")]
-    public async Task ShouldReturnFilteredArtistPageInSnapshotOrder_WithFullNavigationAndHierarchy(string sort)
+    [Arguments("sortIndex:asc", "Actors")]
+    [Arguments("sortIndex:desc", "Actors")]
+    [Arguments("sortIndex:asc", "Countries")]
+    [Arguments("sortIndex:desc", "Countries")]
+    [Arguments("sortIndex:asc", "Genres")]
+    [Arguments("sortIndex:desc", "Genres")]
+    public async Task ShouldReturnFilteredArtistPageInSnapshotOrder_WithFullNavigationAndHierarchy(string sort, string metadataField)
     {
         // Arrange
         await SetupDatabase(
@@ -38,6 +42,14 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
         target[2].Albums.Count.ShouldBe(2);
         target[2].Albums.Select(x => x.Tracks.Count).ShouldBe([3, 3]);
         await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true), CancellationToken);
+        var metadataSeed = new Seed(84202);
+        var actor = FakeData.GetPlexActors(metadataSeed).Generate();
+        var country = FakeData.GetPlexCountries(metadataSeed).Generate();
+        var genre = FakeData.GetPlexGenres(metadataSeed).Generate();
+        dbContext.PlexActors.Add(actor);
+        dbContext.PlexCountries.Add(country);
+        dbContext.PlexGenres.Add(genre);
+        await dbContext.SaveChangesAsync(CancellationToken);
         foreach (var artist in artists)
         {
             var targetIndex = target.FindIndex(x => x.Id == artist.Id);
@@ -78,8 +90,15 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
                     MediaSizeRank = rank,
                 }
             );
+            if (targetIndex != 3)
+            {
+                dbContext.PlexMusicArtistActors.Add(new PlexMusicArtistActors(actor.Id, artist.PlexLibraryId, artist.Id));
+                dbContext.PlexMusicArtistCountries.Add(new PlexMusicArtistCountries(country.Id, artist.PlexLibraryId, artist.Id));
+                dbContext.PlexMusicArtistGenres.Add(new PlexMusicArtistGenres(genre.Id, artist.PlexLibraryId, artist.Id));
+            }
         }
         await dbContext.SaveChangesAsync(CancellationToken);
+        var metadataId = metadataField switch { "Actors" => actor.Id, "Countries" => country.Id, _ => genre.Id };
         var filter = new MediaQueryFilter
         {
             MediaType = PlexMediaType.MusicArtist,
@@ -91,7 +110,7 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
                 Page = 2,
                 PageSize = 1,
                 Sort = sort,
-                Filter = "Year:eq:2000",
+                Filter = $"{metadataField}:any:Id:eq:{metadataId}",
             },
         };
 
@@ -117,6 +136,9 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
         (item.SearchTitle, item.MediaSize).ShouldBe(("charlie", 300L));
         item.Qualities.ShouldBeEmpty();
         result.Value.Qualities.ShouldBeEmpty();
+        result.Value.Roles.ShouldBe([actor.Id]);
+        result.Value.Countries.ShouldBe([country.Id]);
+        result.Value.Genres.ShouldBe([genre.Id]);
         result
             .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
             .ShouldBe(sort.EndsWith("asc") ? [("B", 0), ("C", 1), ("A", 2)] : [("A", 0), ("C", 1), ("B", 2)]);

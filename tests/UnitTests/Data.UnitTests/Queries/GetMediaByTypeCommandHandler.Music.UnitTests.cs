@@ -6,9 +6,13 @@ namespace Reaparr.Data.UnitTests;
 public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<GetMediaByTypeCommand>
 {
     [Test]
-    [Arguments(false)]
-    [Arguments(true)]
-    public async Task ShouldReturnExactScopedMusicPage_WhenFilteringAndSortingCanonicalMedia(bool sortByQuality)
+    [Arguments(false, "Actors")]
+    [Arguments(true, "Actors")]
+    [Arguments(false, "Countries")]
+    [Arguments(true, "Countries")]
+    [Arguments(false, "Genres")]
+    [Arguments(true, "Genres")]
+    public async Task ShouldReturnExactScopedMusicPage_WhenFilteringAndSortingCanonicalMedia(bool sortByQuality, string metadataField)
     {
         // Arrange
         await SetupDatabase(
@@ -36,6 +40,13 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         var controlArtists = artists.Where(x => x.PlexLibraryId == controlLibraryId).OrderBy(x => x.Id).ToList();
         targetArtists.Count.ShouldBe(6);
         controlArtists.Count.ShouldBe(6);
+        var metadataSeed = new Seed(73102);
+        var actor = FakeData.GetPlexActors(metadataSeed).Generate();
+        var country = FakeData.GetPlexCountries(metadataSeed).Generate();
+        var genre = FakeData.GetPlexGenres(metadataSeed).Generate();
+        dbContext.PlexActors.Add(actor);
+        dbContext.PlexCountries.Add(country);
+        dbContext.PlexGenres.Add(genre);
         int[] years = [1999, 2000, 2000, 2001, 2001, 2002];
         foreach (var libraryArtists in new[] { targetArtists, controlArtists })
         {
@@ -48,6 +59,12 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
                 artist.Title = $"{artist.PlexLibraryId}-root-{i}";
                 artist.HasThumb = i % 2 == 0;
                 artist.Quality = VideoQuality.Unknown;
+                if (i > 0)
+                {
+                    artist.Actors.Add(actor);
+                    artist.Countries.Add(country);
+                    artist.Genres.Add(genre);
+                }
             }
         }
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -63,6 +80,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         albums.Select(x => x.ChildCount).ShouldBe(Enumerable.Repeat(3, 12));
 
         var expectedArtists = new[] { targetArtists[4], targetArtists[3] };
+        var metadataId = metadataField switch { "Actors" => actor.Id, "Countries" => country.Id, _ => genre.Id };
         var command = new GetMediaByTypeCommand
         {
             Filter = new MediaQueryFilter
@@ -75,7 +93,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
                 {
                     Page = 2,
                     PageSize = 2,
-                    Filter = "Year:gte:2000",
+                    Filter = $"{metadataField}:any:Id:eq:{metadataId}",
                     Sort = sortByQuality ? "quality:desc,Year:asc,Duration:desc" : "Year:asc,Duration:desc",
                 },
             },
@@ -162,9 +180,9 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         }
         response.Items.SelectMany(x => x.Qualities).ShouldBeEmpty();
         response.Qualities.ShouldBeEmpty();
-        response.Roles.ShouldBeEmpty();
-        response.Countries.ShouldBeEmpty();
-        response.Genres.ShouldBeEmpty();
+        response.Roles.ShouldBe([actor.Id]);
+        response.Countries.ShouldBe([country.Id]);
+        response.Genres.ShouldBe([genre.Id]);
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }

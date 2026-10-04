@@ -154,6 +154,18 @@ public interface IReaparrDbContext : IDisposable
 
     DbSet<PlexTvShowCountries> PlexTvShowCountries { get; }
 
+    DbSet<PlexMusicArtistActors> PlexMusicArtistActors { get; }
+
+    DbSet<PlexMusicArtistGenres> PlexMusicArtistGenres { get; }
+
+    DbSet<PlexMusicArtistCountries> PlexMusicArtistCountries { get; }
+
+    DbSet<PlexOtherVideoActors> PlexOtherVideoActors { get; }
+
+    DbSet<PlexOtherVideoGenres> PlexOtherVideoGenres { get; }
+
+    DbSet<PlexOtherVideoCountries> PlexOtherVideoCountries { get; }
+
     #endregion
 
     #region Comparison

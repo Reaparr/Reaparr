@@ -1,6 +1,6 @@
 namespace Reaparr.Application.UnitTests;
 
-public class DeterminePlexDownloadClientCommandUnitTests : BaseUnitTest<DeterminePlexDownloadClientCommandHandler>
+public class DeterminePlexDownloadClientCommandUnitTests : BaseCommandUnitTest<DeterminePlexDownloadClientCommand>
 {
     [Test]
     public async Task ShouldReturnDirect_WhenStreamDownloaderIsDisabled()
@@ -23,19 +23,24 @@ public class DeterminePlexDownloadClientCommandUnitTests : BaseUnitTest<Determin
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(
+        var result = await TestHandlerExecuteAsync<PlexDownloadClientType>(
             new DeterminePlexDownloadClientCommand(
                 downloadTask.PlexServerId,
                 downloadTask.ToKey(),
                 $"/library/metadata/{downloadTask.PlexApiRatingKey}"
-            ),
-            CancellationToken
+            )
         );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(PlexDownloadClientType.Direct);
         Mock.Mock<IServerSettingsModule>().Verify();
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<GetDashTranscodeDecisionCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -87,13 +92,13 @@ public class DeterminePlexDownloadClientCommandUnitTests : BaseUnitTest<Determin
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(
-            new DeterminePlexDownloadClientCommand(downloadTask.PlexServerId, downloadTask.ToKey(), expectedPath),
-            CancellationToken
+        var result = await TestHandlerExecuteAsync<PlexDownloadClientType>(
+            new DeterminePlexDownloadClientCommand(downloadTask.PlexServerId, downloadTask.ToKey(), expectedPath)
         );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(PlexDownloadClientType.Direct);
         Mock.Mock<IServerSettingsModule>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
@@ -148,13 +153,13 @@ public class DeterminePlexDownloadClientCommandUnitTests : BaseUnitTest<Determin
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(
-            new DeterminePlexDownloadClientCommand(downloadTask.PlexServerId, downloadTask.ToKey(), expectedPath),
-            CancellationToken
+        var result = await TestHandlerExecuteAsync<PlexDownloadClientType>(
+            new DeterminePlexDownloadClientCommand(downloadTask.PlexServerId, downloadTask.ToKey(), expectedPath)
         );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(PlexDownloadClientType.Dash);
         Mock.Mock<IServerSettingsModule>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
@@ -194,13 +199,13 @@ public class DeterminePlexDownloadClientCommandUnitTests : BaseUnitTest<Determin
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(
-            new DeterminePlexDownloadClientCommand(downloadTask.PlexServerId, downloadTask.ToKey(), expectedPath),
-            CancellationToken
+        var result = await TestHandlerExecuteAsync<PlexDownloadClientType>(
+            new DeterminePlexDownloadClientCommand(downloadTask.PlexServerId, downloadTask.ToKey(), expectedPath)
         );
 
         // Assert
         result.IsFailed.ShouldBeTrue();
+        result.Errors.Select(x => x.Message).ShouldBe(["decision failed"]);
         Mock.Mock<IServerSettingsModule>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
     }

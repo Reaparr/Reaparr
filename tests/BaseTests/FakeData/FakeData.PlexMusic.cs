@@ -11,6 +11,9 @@ public static partial class FakeData
         .RuleFor(x => x.Guid_TMDB, _ => null)
         .RuleFor(x => x.Guid_TVDB, _ => null)
         .Ignore(x => x.Albums)
+        .Ignore(x => x.Actors)
+        .Ignore(x => x.Genres)
+        .Ignore(x => x.Countries)
         .FinishWith(
             (_, artist) =>
             {

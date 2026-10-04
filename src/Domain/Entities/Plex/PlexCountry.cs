@@ -14,4 +14,8 @@ public class PlexCountry : BaseEntity
     public ICollection<PlexMovie> PlexMovieCountries { get; set; } = [];
 
     public ICollection<PlexTvShow> PlexTvShowCountries { get; set; } = [];
+
+    public ICollection<PlexMusicArtist> PlexMusicArtistCountries { get; set; } = [];
+
+    public ICollection<PlexOtherVideo> PlexOtherVideoCountries { get; set; } = [];
 }

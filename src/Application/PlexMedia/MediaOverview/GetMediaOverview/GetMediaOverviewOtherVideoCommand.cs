@@ -190,6 +190,15 @@ public sealed class GetMediaOverviewOtherVideoCommandHandler
         );
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
+        result.Roles = await context.PlexOtherVideoActors
+            .Where(x => ids.Contains(x.PlexOtherVideoId))
+            .Select(x => x.PlexActorId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        result.Countries = await context.PlexOtherVideoCountries
+            .Where(x => ids.Contains(x.PlexOtherVideoId))
+            .Select(x => x.CountryId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        result.Genres = await context.PlexOtherVideoGenres
+            .Where(x => ids.Contains(x.PlexOtherVideoId))
+            .Select(x => x.GenresId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
         LogPhase(filter, "Metadata", stopwatch.Elapsed, items.Count);
         result.Qualities = items
             .SelectMany(x => x.Qualities)

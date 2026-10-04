@@ -6,9 +6,13 @@ namespace Reaparr.Data.UnitTests;
 public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTest<GetMediaByTypeCommand>
 {
     [Test]
-    [Arguments(false)]
-    [Arguments(true)]
-    public async Task ShouldReturnExactScopedOtherVideoPage_WhenFilteringAndSortingCanonicalMedia(bool sortByQuality)
+    [Arguments(false, "Actors")]
+    [Arguments(true, "Actors")]
+    [Arguments(false, "Countries")]
+    [Arguments(true, "Countries")]
+    [Arguments(false, "Genres")]
+    [Arguments(true, "Genres")]
+    public async Task ShouldReturnExactScopedOtherVideoPage_WhenFilteringAndSortingCanonicalMedia(bool sortByQuality, string metadataField)
     {
         // Arrange
         await SetupDatabase(
@@ -31,6 +35,13 @@ public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTe
         var controlVideos = videos.Where(x => x.PlexLibraryId == controlLibraryId).OrderBy(x => x.Id).ToList();
         targetVideos.Count.ShouldBe(6);
         controlVideos.Count.ShouldBe(6);
+        var metadataSeed = new Seed(73102);
+        var actor = FakeData.GetPlexActors(metadataSeed).Generate();
+        var country = FakeData.GetPlexCountries(metadataSeed).Generate();
+        var genre = FakeData.GetPlexGenres(metadataSeed).Generate();
+        dbContext.PlexActors.Add(actor);
+        dbContext.PlexCountries.Add(country);
+        dbContext.PlexGenres.Add(genre);
         int[] years = [1999, 2000, 2000, 2001, 2001, 2002];
         foreach (var libraryVideos in new[] { targetVideos, controlVideos })
         {
@@ -43,6 +54,12 @@ public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTe
                 video.Title = $"{video.PlexLibraryId}-root-{i}";
                 video.HasThumb = i % 2 == 0;
                 video.Quality = VideoQuality.FullHD;
+                if (i > 0)
+                {
+                    video.Actors.Add(actor);
+                    video.Countries.Add(country);
+                    video.Genres.Add(genre);
+                }
             }
         }
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -56,6 +73,7 @@ public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTe
             .Select(x => new { x.PlexOtherVideoId, x.Id, x.Quality, x.Type })
             .ToListAsync(CancellationToken);
         qualityRows.Count.ShouldBe(2);
+        var metadataId = metadataField switch { "Actors" => actor.Id, "Countries" => country.Id, _ => genre.Id };
 
         var command = new GetMediaByTypeCommand
         {
@@ -69,7 +87,7 @@ public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTe
                 {
                     Page = 2,
                     PageSize = 2,
-                    Filter = "Year:gte:2000",
+                    Filter = $"{metadataField}:any:Id:eq:{metadataId}",
                     Sort = sortByQuality ? "quality:desc,Year:asc,Duration:desc" : "Year:asc,Duration:desc",
                 },
             },
@@ -135,9 +153,9 @@ public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTe
                 MediaId = x.PlexOtherVideoId, DataId = x.Id, x.Quality, MediaDataType = x.Type,
             }));
         response.Qualities.ShouldBe(new[] { VideoQuality.FullHD.ToId() });
-        response.Roles.ShouldBeEmpty();
-        response.Countries.ShouldBeEmpty();
-        response.Genres.ShouldBeEmpty();
+        response.Roles.ShouldBe([actor.Id]);
+        response.Countries.ShouldBe([country.Id]);
+        response.Genres.ShouldBe([genre.Id]);
         Mock.Mock<ICommandExecutor>().Verify(
             x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }

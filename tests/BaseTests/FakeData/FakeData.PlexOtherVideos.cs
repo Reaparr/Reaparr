@@ -12,6 +12,9 @@ public static partial class FakeData
         .RuleFor(x => x.ChildCount, _ => 0)
         .RuleFor(x => x.SortIndex, f => f.IndexFaker + 1)
         .Ignore(x => x.MediaDataList)
+        .Ignore(x => x.Actors)
+        .Ignore(x => x.Genres)
+        .Ignore(x => x.Countries)
         .FinishWith(
             (_, video) =>
             {
