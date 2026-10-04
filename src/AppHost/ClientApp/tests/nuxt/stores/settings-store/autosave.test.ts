@@ -80,5 +80,4 @@ describe('SettingsStore autosave regressions', () => {
 		expect(JSON.parse(mock.history.put[0]!.data).generalSettings.firstTimeSetup).toBe(!settings.generalSettings.firstTimeSetup);
 		expect(settingsStore.generalSettings.firstTimeSetup).toBe(!settings.generalSettings.firstTimeSetup);
 	});
-
 });
