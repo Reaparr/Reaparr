@@ -4,7 +4,6 @@ import { of, Subject, type Observable, type Subscription } from 'rxjs';
 import { debounceTime, switchMap, tap, map, catchError } from 'rxjs/operators';
 import { reactive, computed, toRefs } from 'vue';
 import { PlexMediaType, type SettingsModelDTO, ViewMode } from '@dto';
-
 import { StoreNames, type ISetupResult } from '@interfaces';
 import { settingsApi } from '@api';
 import { cloneDeep } from 'lodash-es';
@@ -13,14 +12,9 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 	// State
 	const defaultState: SettingsModelDTO = {
 		generalSettings: {
-			activeAccountId: 0,
-			firstTimeSetup: true,
-			disableAnimatedBackground: false,
-			hideMediaFromOfflineServers: false,
-			hideMediaFromOwnedServers: false,
-			useLowQualityPosterImages: false,
-			hasBeenInvitedToDiscord: false,
-			hasAgreedToDisclaimer: false,
+			activeAccountId: 0, firstTimeSetup: true, disableAnimatedBackground: false,
+			hideMediaFromOfflineServers: false, hideMediaFromOwnedServers: false,
+			useLowQualityPosterImages: false, hasBeenInvitedToDiscord: false, hasAgreedToDisclaimer: false,
 		},
 		debugSettings: {
 			debugModeEnabled: false,
@@ -45,7 +39,7 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 			movieViewMode: ViewMode.Poster, tvShowViewMode: ViewMode.Poster, allOverviewViewMode: PlexMediaType.TvShow,
 		},
 		downloadManagerSettings: {
-			downloadSegments: 4, keepCompletedInDownloadFolder: false,
+			downloadSegments: 4, keepCompletedInDownloadFolder: false, downloadSchedule: { enabled: false, days: {} },
 		},
 		languageSettings: { language: 'en-US' },
 		serverSettings: {
@@ -60,7 +54,6 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 			forwardedPathHeader: '',
 		},
 	};
-
 	const state = reactive<SettingsModelDTO>(cloneDeep(defaultState));
 	let settingsUpdated = new Subject<SettingsModelDTO>();
 	let settingsUpdatedSubscription: Subscription | null = null;
@@ -71,9 +64,8 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 		setup(): Observable<ISetupResult> {
 			return actions.refreshSettings().pipe(
 				tap((settings) => {
-					if (settings) {
-						initializeAutoSave();
-					}
+					if (!settings) return;
+					initializeAutoSave();
 				}),
 				map((settings) => ({
 					name: StoreNames.SettingsStore,
@@ -107,39 +99,22 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 			Object.assign(state.downloadManagerSettings, settings.downloadManagerSettings);
 			Object.assign(state.languageSettings, settings.languageSettings);
 
-			// Arrays: replace contents, not the array instance
+			// Preserve references held by consumers of these arrays.
 			state.serverSettings.data.splice(0, state.serverSettings.data.length, ...settings.serverSettings.data);
-			state.networkSettings.allowedProxyIps.splice(
-				0,
-				state.networkSettings.allowedProxyIps.length,
-				...settings.networkSettings.allowedProxyIps,
-			);
-
+			state.networkSettings.allowedProxyIps.splice(0, state.networkSettings.allowedProxyIps.length, ...settings.networkSettings.allowedProxyIps);
 			Object.assign(state.networkSettings, {
-				reverseProxyUrl: settings.networkSettings.reverseProxyUrl,
-				basePath: settings.networkSettings.basePath,
-				trustProxyHeaders: settings.networkSettings.trustProxyHeaders,
-				forwardedHostHeader: settings.networkSettings.forwardedHostHeader,
+				reverseProxyUrl: settings.networkSettings.reverseProxyUrl, basePath: settings.networkSettings.basePath,
+				trustProxyHeaders: settings.networkSettings.trustProxyHeaders, forwardedHostHeader: settings.networkSettings.forwardedHostHeader,
 				forwardedPathHeader: settings.networkSettings.forwardedPathHeader,
 			});
 		},
 		updateDownloadLimit(machineIdentifier: string, downloadLimit: number) {
-			const i = state.serverSettings.data.findIndex((server) => server.machineIdentifier === machineIdentifier);
-			if (i > -1) {
-				state.serverSettings.data.splice(i, 1, {
-					...state.serverSettings.data[i]!,
-					downloadSpeedLimit: downloadLimit,
-				});
-			}
+			const index = state.serverSettings.data.findIndex((server) => server.machineIdentifier === machineIdentifier);
+			if (index > -1) state.serverSettings.data.splice(index, 1, { ...state.serverSettings.data[index]!, downloadSpeedLimit: downloadLimit });
 		},
 		updateAllowStreamDownloader(machineIdentifier: string, allowStreamDownloader: boolean) {
-			const i = state.serverSettings.data.findIndex((server) => server.machineIdentifier === machineIdentifier);
-			if (i > -1) {
-				state.serverSettings.data.splice(i, 1, {
-					...state.serverSettings.data[i]!,
-					allowStreamDownloader,
-				});
-			}
+			const index = state.serverSettings.data.findIndex((server) => server.machineIdentifier === machineIdentifier);
+			if (index > -1) state.serverSettings.data.splice(index, 1, { ...state.serverSettings.data[index]!, allowStreamDownloader });
 		},
 		updateDisplayMode(type: PlexMediaType, viewMode: ViewMode) {
 			switch (type) {
@@ -149,23 +124,17 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 				case PlexMediaType.TvShow:
 					state.displaySettings.tvShowViewMode = viewMode;
 					break;
-				default:
-					Log.error('Could not set view mode for type' + type);
+				default: Log.error('Could not set view mode for type' + type);
 			}
 		},
 		getServerSettings: (machineIdentifier?: string) => machineIdentifier ? state.serverSettings.data.find((user) => user.machineIdentifier === machineIdentifier) : null,
 		isConfirmationEnabled: (type: PlexMediaType) => {
 			switch (type) {
-				case PlexMediaType.Movie:
-					return state.confirmationSettings.askDownloadMovieConfirmation;
-				case PlexMediaType.TvShow:
-					return state.confirmationSettings.askDownloadTvShowConfirmation;
-				case PlexMediaType.Season:
-					return state.confirmationSettings.askDownloadSeasonConfirmation;
-				case PlexMediaType.Episode:
-					return state.confirmationSettings.askDownloadEpisodeConfirmation;
-				default:
-					return true;
+				case PlexMediaType.Movie: return state.confirmationSettings.askDownloadMovieConfirmation;
+				case PlexMediaType.TvShow: return state.confirmationSettings.askDownloadTvShowConfirmation;
+				case PlexMediaType.Season: return state.confirmationSettings.askDownloadSeasonConfirmation;
+				case PlexMediaType.Episode: return state.confirmationSettings.askDownloadEpisodeConfirmation;
+				default: return true;
 			}
 		},
 		$reset() {
@@ -180,12 +149,11 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 			return;
 		}
 
-		settingsUpdatedSubscription = settingsUpdated
-			.pipe(
-				debounceTime(500),
-				tap((settings) => Log.debug('Settings updated', settings)),
-				switchMap((settings) => settingsApi.updateUserSettingsEndpoint(settings)),
-			)
+		settingsUpdatedSubscription = settingsUpdated.pipe(
+			debounceTime(500),
+			tap((settings) => Log.debug('Settings updated', settings)),
+			switchMap((settings) => settingsApi.updateUserSettingsEndpoint(settings)),
+		)
 			.subscribe();
 
 		unsubscribeStoreChanges = useSettingsStore().$subscribe((mutation, currentState) => {
@@ -208,14 +176,13 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 
 	// Getters
 	const getters = {
-		debugMode: computed((): boolean => state.debugSettings.debugModeEnabled),
-		shouldMaskServerNames: computed((): boolean => state.debugSettings.maskServerNames),
-		shouldMaskLibraryNames: computed((): boolean => state.debugSettings.maskLibraryNames),
-		shouldMaskAccountNames: computed((): boolean => state.debugSettings.maskAccountNames),
+		confirmedDownloadSchedule: computed(() => state.downloadManagerSettings.downloadSchedule),
+		debugMode: computed(() => state.debugSettings.debugModeEnabled),
+		shouldMaskServerNames: computed(() => state.debugSettings.maskServerNames),
+		shouldMaskLibraryNames: computed(() => state.debugSettings.maskLibraryNames),
+		shouldMaskAccountNames: computed(() => state.debugSettings.maskAccountNames),
 	};
-	return {
-		...toRefs(state), ...actions, ...getters,
-	};
+	return { ...toRefs(state), ...actions, ...getters };
 });
 
 if (import.meta.hot) {
