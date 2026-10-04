@@ -2,35 +2,39 @@ namespace Reaparr.PlexApi;
 
 public static partial class PlexMediaDataMapper
 {
-    public static PlexMusicArtist ToPlexMusicArtist(this LibraryMediaItemDTO source, PlexLibrary library) =>
+    public static List<PlexMusicArtist> ToPlexMusicArtists(this List<LibraryMediaItemDTO> source) =>
+        source.Select(value => value.ToPlexMusicArtist()).ToList();
+
+    public static PlexMusicArtist ToPlexMusicArtist(this LibraryMediaItemDTO source) =>
         new()
         {
-            PlexApiRatingKey = source.RatingKey,
-            PlexApiMetaDataKey = RetrieveMetaDataKey(source),
+            Id = 0,
             Title = source.Title,
             Year = source.Year,
             SortIndex = source.SortIndex,
             SearchTitle = source.SearchTitle,
+            Guid = source.Guid,
+            Guid_IMDB = source.Guids.GetImdbId(),
+            Guid_TMDB = source.Guids.GetTmdbId(),
+            Guid_TVDB = source.Guids.GetTvdbId(),
             Duration = source.Duration,
             MediaSize = 0,
+            ChildCount = source.ChildCount,
+            AddedAt = source.AddedAt,
+            UpdatedAt = source.UpdatedAt,
+            PlexApiRatingKey = source.RatingKey,
+            PlexApiMetaDataKey = RetrieveMetaDataKey(source),
             Studio = source.Studio,
             Summary = source.Summary,
             ContentRating = source.ContentRating,
             Rating = source.Rating,
-            ChildCount = 0,
-            AddedAt = source.AddedAt,
-            UpdatedAt = source.UpdatedAt,
             OriginallyAvailableAt = source.OriginallyAvailableAt.ToDateTime(),
             HasThumb = !string.IsNullOrEmpty(source.Thumb),
             HasArt = !string.IsNullOrEmpty(source.Art),
             HasTheme = !string.IsNullOrEmpty(source.Theme),
             FullTitle = source.Title,
-            Guid = source.Guid,
-            Guid_IMDB = null,
-            Guid_TMDB = null,
-            Guid_TVDB = null,
-            PlexLibraryId = library.Id,
-            PlexServerId = library.PlexServerId,
+            PlexLibraryId = 0,
+            PlexServerId = 0,
             MusicBrainzArtistId = GetMusicBrainzArtistId(source)?.ToString(),
         };
 

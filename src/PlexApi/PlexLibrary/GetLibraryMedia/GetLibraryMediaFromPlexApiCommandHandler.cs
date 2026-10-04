@@ -54,16 +54,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                 library.DefaultDestinationId = library.Type.ToDefaultDestinationFolderId();
             }
 
-            var mediaType =
-                command.MediaType
-                ?? (
-                    library.Type switch
-                    {
-                        PlexMediaType.Music => PlexMediaType.Artist,
-                        PlexMediaType.Photos => PlexMediaType.PhotoAlbum,
-                        _ => library.Type,
-                    }
-                );
+            var mediaType = command.MediaType ?? library.Type;
             var mediaResult = await _commandExecutor.Send(
                 new GetAllMediaByTypeFromPlexApiCommand(library, mediaType),
                 ct
@@ -92,14 +83,34 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                     library.TvShows.AddRange(media.ToPlexTvShows());
                     break;
                 case PlexMediaType.Music:
-                    library.Music.AddRange(media.Select(x => x.ToPlexMusicArtist(library)));
+                    library.Music.AddRange(media.ToPlexMusicArtists());
                     break;
+                case PlexMediaType.Album:
+                {
+                    var albums = media.ToPlexMusicAlbums();
+                    library.Albums.AddRange(albums);
+                    break;
+                }
+                case PlexMediaType.Track:
+                {
+                    var tracks = media.ToPlexMusicTracks();
+                    library.Tracks.AddRange(tracks);
+                    break;
+                }
                 case PlexMediaType.PhotoAlbum:
-                    library.PhotoAlbums.AddRange(media.Select(x => x.ToPlexPhotoAlbum(library)));
+                    library.PhotoAlbums.AddRange(media.ToPlexPhotoAlbums());
                     break;
+                case PlexMediaType.Photos:
+                {
+                    var photos = media.ToPlexPhotos();
+                    library.Photos.AddRange(photos);
+                    break;
+                }
                 case PlexMediaType.OtherVideos:
-                    library.OtherVideos.AddRange(media.Select(x => x.ToPlexOtherVideo(library)));
+                    library.OtherVideos.AddRange(media.ToPlexOtherVideos());
                     break;
+                default:
+                    return Result.Fail("Type {PlexMediaType} is not supported for library retrieval", mediaType);
             }
 
             return Result.Ok(

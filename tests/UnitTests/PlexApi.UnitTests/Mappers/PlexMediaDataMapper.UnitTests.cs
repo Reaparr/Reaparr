@@ -13,10 +13,9 @@ public class PlexMediaDataMapperUnitTests : BaseUnitTest
             Guid = $"mbid://{primaryId}",
             Guids = [new MetaDataGuidsDTO($"mbid://{supplementaryId}")],
         };
-        var library = FakeData.GetPlexLibrary(new Seed(9202), PlexMediaType.Music).Generate();
 
         // Act
-        var result = source.ToPlexMusicArtist(library);
+        var result = source.ToPlexMusicArtist();
 
         // Assert
         result.MusicBrainzArtistId.ShouldBe(primaryId.ToString());
@@ -37,10 +36,9 @@ public class PlexMediaDataMapperUnitTests : BaseUnitTest
                 new MetaDataGuidsDTO($"mbid://{expectedId}"),
             ],
         };
-        var library = FakeData.GetPlexLibrary(new Seed(9204), PlexMediaType.Music).Generate();
 
         // Act
-        var result = source.ToPlexMusicArtist(library);
+        var result = source.ToPlexMusicArtist();
 
         // Assert
         result.MusicBrainzArtistId.ShouldBe(expectedId.ToString());
@@ -82,10 +80,9 @@ public class PlexMediaDataMapperUnitTests : BaseUnitTest
         {
             Media = [media],
         };
-        var library = FakeData.GetPlexLibrary(seed, PlexMediaType.OtherVideos).Generate();
 
         // Act
-        var result = source.ToPlexOtherVideo(library);
+        var result = source.ToPlexOtherVideo();
 
         // Assert
         result.MediaDataList.OrderBy(x => x.PartIndex).Select(x => (x.PlexApiPartId, x.VideoFrameRate)).ShouldBe(
