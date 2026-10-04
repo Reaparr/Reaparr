@@ -37,15 +37,6 @@
           "Microsoft.Extensions.Options.ConfigurationExtensions": "9.0.10"
         }
       },
-      "Polly": {
-        "type": "Direct",
-        "requested": "[8.6.6, )",
-        "resolved": "8.6.6",
-        "contentHash": "czKHYJ6uGowPijuZt4kgF4njfGvWxVZ8mKBcrZ9iEtwDe9HKdF0ug6p6TwUG8EHuuufgbDU//rSBFebt5/0Fyw==",
-        "dependencies": {
-          "Polly.Core": "8.6.6"
-        }
-      },
       "ByteSize": {
         "type": "Transitive",
         "resolved": "2.1.2",
@@ -435,19 +426,6 @@
         "resolved": "2.1.0",
         "contentHash": "G70cCeAOYCk/uTuFw5PBGpYY9kmBZyzld7tphachvyU514PowMRDYyKwTefxIHNGWrhXY2d1DV5B1tDEnTtY3A=="
       },
-      "Polly.Core": {
-        "type": "Transitive",
-        "resolved": "8.6.6",
-        "contentHash": "lCBL9mmhF9TZxHG3beVRkyjlLohkIC464xIAq7J7Y59C+z42hmsdUaeCKl2SIAYertOUU5TeBXyQDLDQGIKePQ=="
-      },
-      "Quartz": {
-        "type": "Transitive",
-        "resolved": "3.19.1",
-        "contentHash": "u+kAlmReZLLpKRG9TcPt8gP0H5e8Nff11fh9tz52e4B+GtXm9cLBOe/bfGcDs4IQftmEcxakpfTzOlsZdv9ekg==",
-        "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "2.1.1"
-        }
-      },
       "Serilog": {
         "type": "Transitive",
         "resolved": "4.3.1",
@@ -561,7 +539,6 @@
       "Reaparr.Application.Contracts": {
         "type": "Project",
         "dependencies": {
-          "Quartz": "[3.19.1, )",
           "Reaparr.Domain": "[1.0.0, )"
         }
       },

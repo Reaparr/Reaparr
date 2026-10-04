@@ -12,7 +12,6 @@
         </PackageReference>
         <PackageReference Include="FastEndpoints" Version="8.1.0" />
         <PackageReference Include="HttpClientToCurl" Version="2.1.1" />
-        <PackageReference Include="Polly" Version="8.6.6" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Application.Contracts\Application.Contracts.csproj" />

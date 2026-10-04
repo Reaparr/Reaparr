@@ -5,9 +5,6 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\Domain\Domain.csproj" />
-        <ProjectReference Include="..\Environment\Environment.csproj" />
-        <ProjectReference Include="..\FluentResultExtensions\FluentResultExtensions.csproj" />
-        <ProjectReference Include="..\Logging\Logging.csproj" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="CSharpier.MsBuild" Version="1.3.0">
@@ -16,16 +13,7 @@
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
-        <Using Include="System.ComponentModel.DataAnnotations" />
-        <Using Include="System.ComponentModel.DataAnnotations.Schema" />
-        <Using Include="FastEndpoints" />
         <Using Include="Reaparr.FluentResults" />
-        <Using Include="FluentValidation" />
-        <Using Include="Microsoft.AspNetCore.Http" />
         <Using Include="Reaparr.Domain" />
-        <Using Include="Reaparr.Environment" />
-        <Using Include="Reaparr.FluentResultExtensions" />
-        <Using Include="Reaparr.Logging" />
-        <Using Include="Serilog" />
     </ItemGroup>
 </Project>
