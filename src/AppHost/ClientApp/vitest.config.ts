@@ -14,14 +14,6 @@ export default defineConfig({
 		projects: [
 			await defineVitestProject({
 				test: {
-					name: 'unit',
-					include: ['tests/unit/**/**/*.{test,spec}.ts'],
-					environment: 'nuxt',
-					setupFiles: [globalSetupFile, routerMockSetupFile],
-				},
-			}),
-			await defineVitestProject({
-				test: {
 					name: 'nuxt',
 					include: ['tests/nuxt/**/**/*.test.ts'],
 					environment: 'nuxt',

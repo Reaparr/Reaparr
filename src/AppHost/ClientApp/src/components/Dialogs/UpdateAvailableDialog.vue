@@ -78,7 +78,7 @@
 									<div
 										v-if="release.notes"
 										class="i18n-formatting update-dialog__notes">
-										<VueMarkdown :markdown="release.notes" />
+										<VueMarkdown :source="release.notes" />
 									</div>
 								</div>
 							</QScroll>
@@ -125,7 +125,7 @@
 import { useUpdateStore } from '@store';
 import { DialogType } from '@enums';
 import { useI18n } from 'vue-i18n';
-import { VueMarkdown } from '@crazydos/vue-markdown';
+import VueMarkdown from 'vue-markdown-render';
 import QScroll from '@components/Common/QScroll.vue';
 
 const { t } = useI18n();

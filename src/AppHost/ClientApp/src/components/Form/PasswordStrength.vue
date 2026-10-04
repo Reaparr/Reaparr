@@ -15,7 +15,6 @@
 
 <script setup lang="ts">
 import { get, set } from '@vueuse/core';
-import { passwordStrength as passwordCheck } from 'check-password-strength';
 import { ValidationLevel } from '@enums';
 
 const { t } = useI18n();
@@ -32,39 +31,33 @@ const props = withDefaults(defineProps<{
 	minPasswordLength: 8,
 });
 
-const passwordStrength = computed((): {
-	contains: ('lowercase' | 'uppercase' | 'number' | 'symbol')[];
-	length: number;
-	id: number;
-	value: string;
-} => passwordCheck(props.value));
-
 const requirements = computed((): { text: string; valid: boolean }[] => {
+	const value = props.value ?? '';
 	return [
 		{
 			// 'Has a capital letter'
 			text: t('components.password-strength.validation.uppercase'),
-			valid: get(passwordStrength).contains.some((x) => x === 'uppercase'),
+			valid: /[A-Z]/.test(value),
 		},
 		{
 			// 'Has a lowercase letter'
 			text: t('components.password-strength.validation.lowercase'),
-			valid: get(passwordStrength).contains.some((x) => x === 'lowercase'),
+			valid: /[a-z]/.test(value),
 		},
 		{
 			// 'Has a number'
 			text: t('components.password-strength.validation.number'),
-			valid: get(passwordStrength).contains.some((x) => x === 'number'),
+			valid: /[0-9]/.test(value),
 		},
 		{
 			// 'Has a special character'
 			text: t('components.password-strength.validation.symbol'),
-			valid: get(passwordStrength).contains.some((x) => x === 'symbol'),
+			valid: /[^a-zA-Z0-9]/.test(value),
 		},
 		{
 			// 'Longer than 7 characters'
 			text: t('components.password-strength.validation.length'),
-			valid: get(passwordStrength).length >= props.minPasswordLength,
+			valid: value.length >= props.minPasswordLength,
 		},
 	];
 });
