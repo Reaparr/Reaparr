@@ -896,17 +896,12 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
 
-        // Emit two speed limit values; the last one (2000 KB/s) must be reflected on the config
-        var speedLimits = new[] { 1000, 2000 };
+        using var speedLimits = new DownloadSpeedLimitProvider(new UserSettings());
+        speedLimits.SetScheduledDownloadSpeedLimits(
+            new Dictionary<string, long> { [serverMachineIdentifier] = 1000L * 1024 });
 
         // IDownloadManagerSettings.DownloadSegments is read in the SUT constructor
         Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(1);
-
-        Mock.Mock<IServerSettingsModule>().Setup(x => x.GetDownloadSpeedLimit(serverMachineIdentifier)).Returns(2000);
-
-        Mock.Mock<IServerSettingsModule>()
-            .Setup(x => x.GetDownloadSpeedLimitObservable(serverMachineIdentifier))
-            .Returns(speedLimits.ToObservable());
 
         DownloadConfiguration? capturedConfig = null;
 
@@ -922,6 +917,11 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                 async (_, targetPath, cancellationToken) =>
                 {
                     SetupVerifiedFile(fileMock, Mock.Mock<IFileInfoFactory>(), targetPath, downloadTask.DataTotal);
+                    capturedConfig.ShouldNotBeNull();
+                    capturedConfig.MaximumBytesPerSecond.ShouldBe(1000L * 1024);
+                    speedLimits.SetScheduledDownloadSpeedLimits(
+                        new Dictionary<string, long> { [serverMachineIdentifier] = 2000L * 1024 });
+                    capturedConfig.MaximumBytesPerSecond.ShouldBe(2000L * 1024);
 
                     await Task.Delay(50, cancellationToken); // allow observable subscriptions to run
                     downloadServiceMock.Raise(
@@ -936,6 +936,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         var sut = Mock.Create<DirectPlexDownloadClient>(
             new TypedParameter(typeof(IFile), fileMock.Object),
+            new NamedParameter("speedLimits", speedLimits),
             new NamedParameter(
                 "downloadServiceFactory",
                 (Func<DownloadConfiguration, IDownloadService>)(

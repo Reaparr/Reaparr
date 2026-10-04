@@ -360,10 +360,12 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         };
         using var speedLimits = new DownloadSpeedLimitProvider(settings);
         speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { [machineIdentifier] = 12345 });
+        var clock = new Mock<TimeProvider>(MockBehavior.Strict);
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
             builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterInstance(clock.Object).As<TimeProvider>();
         });
 
         // Act
@@ -376,5 +378,76 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         result.Errors.Count.ShouldBe(0);
         speedLimits.GetEffectiveDownloadSpeedLimit(machineIdentifier).ShouldBe(expectedKb * 1024L);
         settings.ServerSettings.Data.ShouldBeEmpty();
+        clock.Verify(x => x.GetUtcNow(), Times.Never());
+    }
+
+    [Test]
+    [Arguments("Asia/Kathmandu", "2026-10-04T18:30:00Z", 1000)]
+    [Arguments("America/New_York", "2026-11-01T05:45:00Z", 3000)]
+    [Arguments("America/New_York", "2026-11-01T06:45:00Z", 3000)]
+    public async Task ShouldEvaluateTheConfiguredWallClock_WhenLocalTimeIsOmitted(
+        string timeZone, string utc, int expectedKb)
+    {
+        // Arrange
+        await SetupDatabase(85334, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.DownloadStatus, DownloadStatus.Downloading), CancellationToken);
+        var machineIdentifier = await dbContext.PlexServers.Select(x => x.MachineIdentifier).SingleAsync();
+        var settings = new UserSettings();
+        settings.DateTimeSettings.TimeZone = timeZone;
+        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        {
+            Enabled = true,
+            Days = new()
+            {
+                ["Monday"] = new() { ["00:00"] = 1000, ["00:30"] = 2000 },
+                ["Sunday"] = new() { ["01:00"] = 3000, ["02:00"] = 4000 },
+            },
+        };
+        using var speedLimits = new DownloadSpeedLimitProvider(settings);
+        var clock = new Mock<TimeProvider>(MockBehavior.Strict);
+        clock.Setup(x => x.GetUtcNow()).Returns(DateTimeOffset.Parse(utc)).Verifiable(Times.Once());
+        SetupDependencies(builder =>
+        {
+            builder.RegisterInstance(settings).As<IUserSettings>();
+            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterInstance(clock.Object).As<TimeProvider>();
+        });
+
+        // Act
+        var result = await TestHandlerExecuteAsync(new UpdateScheduledDownloadLimitsCommand());
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        speedLimits.GetEffectiveDownloadSpeedLimit(machineIdentifier).ShouldBe(expectedKb * 1024L);
+        settings.ServerSettings.Data.ShouldBeEmpty();
+        clock.Verify();
+    }
+
+    [Test]
+    public async Task ShouldKeepTheLastAllocation_WhenTheExplicitTimeOverrideIsEmpty()
+    {
+        // Arrange
+        var settings = new UserSettings();
+        using var speedLimits = new DownloadSpeedLimitProvider(settings);
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
+        var clock = new Mock<TimeProvider>(MockBehavior.Strict);
+        SetupDependencies(builder =>
+        {
+            builder.RegisterInstance(settings).As<IUserSettings>();
+            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterInstance(clock.Object).As<TimeProvider>();
+        });
+
+        // Act
+        var result = await TestHandlerExecuteAsync(new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.MinValue));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(2);
+        speedLimits.GetEffectiveDownloadSpeedLimit("retained").ShouldBe(12345);
+        clock.Verify(x => x.GetUtcNow(), Times.Never());
     }
 }

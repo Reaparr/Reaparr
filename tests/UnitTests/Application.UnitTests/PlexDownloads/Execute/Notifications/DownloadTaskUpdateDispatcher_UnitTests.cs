@@ -188,6 +188,10 @@ public class DownloadTaskUpdateDispatcherUnitTests : BaseUnitTest<DownloadTaskUp
     {
         await SetupDatabase(84323, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.IsServerDownloading(movieFile.PlexServerId)).ReturnsAsync(true);
 
         var sequences = new ConcurrentBag<long>();
         Mock.Mock<IDownloadHubService>()
@@ -235,6 +239,10 @@ public class DownloadTaskUpdateDispatcherUnitTests : BaseUnitTest<DownloadTaskUp
         var episodeFile = await IDbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
         var season = await IDbContext.DownloadTaskTvShowSeason.FirstAsync(CancellationToken);
         var tvShow = await IDbContext.DownloadTaskTvShow.FirstAsync(CancellationToken);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.IsServerDownloading(episodeFile.PlexServerId)).ReturnsAsync(true);
 
         var capturedPatches = new List<IReadOnlyCollection<DownloadPatchDTO>>();
         Mock.Mock<IDownloadHubService>()
@@ -428,7 +436,9 @@ public class DownloadTaskUpdateDispatcherUnitTests : BaseUnitTest<DownloadTaskUp
         var sut = new DownloadTaskUpdateDispatcher(
             new LoggerConfiguration().CreateLogger(),
             delayedDbContextFactory.Object,
-            downloadHubService.Object
+            downloadHubService.Object,
+            Mock.Mock<ICommandExecutor>().Object,
+            Mock.Mock<IDownloadTaskScheduler>().Object
         );
 
         sut.OnProgressUpdated(movieFile.ToKey(), initialProgress);
@@ -483,6 +493,11 @@ public class DownloadTaskUpdateDispatcherUnitTests : BaseUnitTest<DownloadTaskUp
 
         var completedEpisodeFile = episodeFiles[0];
         var siblingEpisodeFile = episodeFiles[1];
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.IsServerDownloading(completedEpisodeFile.PlexServerId))
+            .ReturnsAsync(true);
 
         var capturedPatches = new List<IReadOnlyCollection<DownloadPatchDTO>>();
         Mock.Mock<IDownloadHubService>()

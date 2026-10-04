@@ -5,44 +5,30 @@ namespace Reaparr.Application.UnitTests;
 public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateScheduledDownloadLimitsJob>
 {
     [Test]
-    [Arguments("Asia/Kathmandu", "2026-10-04T18:30:00Z", "2026-10-05T00:15:00+05:45")]
-    [Arguments("America/New_York", "2026-11-01T05:45:00Z", "2026-11-01T01:45:00-04:00")]
-    [Arguments("America/New_York", "2026-11-01T06:45:00Z", "2026-11-01T01:45:00-05:00")]
-    public async Task ShouldEvaluateTheConfiguredWallClock_WhenOffsetsOrRepeatedHoursDifferFromUtc(
-        string timeZone,
-        string utc,
-        string expected
-    )
+    [Arguments(false, JobStatus.Completed)]
+    [Arguments(true, JobStatus.Failed)]
+    public async Task ShouldRecordRecalculationOutcome_WhenCommandCompletes(bool failed, JobStatus expectedStatus)
     {
         // Arrange
-        var settings = new UserSettings();
-        settings.DateTimeSettings.TimeZone = timeZone;
-        var expectedLocalTime = DateTimeOffset.Parse(expected);
-        SetupDependencies(builder =>
-        {
-            builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(new FixedTimeProvider(DateTimeOffset.Parse(utc))).As<TimeProvider>();
-        });
+        var commandResult = failed ? Result.Fail("Schedule recalculation failed.") : Result.Ok();
         var context = new Mock<IJobExecutionContext>();
         context.SetupProperty(x => x.Result);
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken).Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
-                    It.Is<UpdateScheduledDownloadLimitsCommand>(command =>
-                        command.LocalTime.EqualsExact(expectedLocalTime)
-                    ),
+                    It.Is<UpdateScheduledDownloadLimitsCommand>(command => command.LocalTime == null),
                     CancellationToken
                 )
             )
-            .ReturnsAsync(Result.Ok())
+            .ReturnsAsync(commandResult)
             .Verifiable(Times.Once());
 
         // Act
         await Sut.Execute(context.Object);
 
         // Assert
-        ((BackgroundJobResult)context.Object.Result!).Status.ShouldBe(JobStatus.Completed);
+        ((BackgroundJobResult)context.Object.Result!).Status.ShouldBe(expectedStatus);
         Mock.Mock<ICommandExecutor>().Verify();
         context.Verify();
     }
@@ -67,10 +53,5 @@ public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateSche
 
         // Assert
         nextFireTime.ShouldBe(DateTimeOffset.Parse(expected));
-    }
-
-    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
     }
 }

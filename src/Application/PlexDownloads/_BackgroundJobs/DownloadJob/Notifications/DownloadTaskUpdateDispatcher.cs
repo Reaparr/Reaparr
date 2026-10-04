@@ -14,6 +14,8 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
     private readonly ILogger _log;
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly IDownloadHubService _downloadHubService;
+    private readonly ICommandExecutor _commandExecutor;
+    private readonly IDownloadTaskScheduler _downloadTaskScheduler;
     private readonly Channel<ImmediatePatchRequest> _statusChannel;
     private readonly ConcurrentDictionary<Guid, BufferedProgressUpdate> _progressByNodeId;
     private readonly ConcurrentDictionary<int, long> _sequenceByServer;
@@ -31,12 +33,16 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
     public DownloadTaskUpdateDispatcher(
         ILogger log,
         IReaparrDbContextFactory dbContextFactory,
-        IDownloadHubService downloadHubService
+        IDownloadHubService downloadHubService,
+        ICommandExecutor commandExecutor,
+        IDownloadTaskScheduler downloadTaskScheduler
     )
     {
         _log = log.ForContext<DownloadTaskUpdateDispatcher>();
         _dbContextFactory = dbContextFactory;
         _downloadHubService = downloadHubService;
+        _commandExecutor = commandExecutor;
+        _downloadTaskScheduler = downloadTaskScheduler;
 
         _statusChannel = Channel.CreateUnbounded<ImmediatePatchRequest>(
             new UnboundedChannelOptions { SingleReader = true, SingleWriter = false }
@@ -108,6 +114,19 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                     newStatus,
                     $"Status change request ignored because task is already in status: {newStatus}"
                 );
+            }
+
+            if (
+                currentStatus == DownloadStatus.Downloading
+                || newStatus == DownloadStatus.Downloading
+                    && await _downloadTaskScheduler.IsServerDownloading(key.PlexServerId)
+            )
+            {
+                var refresh = await _commandExecutor.Send(
+                    new UpdateScheduledDownloadLimitsCommand(),
+                    CancellationToken.None
+                );
+                refresh.LogIfFailed();
             }
 
             var changedParentKeys = await DetermineDownloadStatusAsync(dbContext, key, cancellationToken);

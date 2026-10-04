@@ -1,12 +1,18 @@
 namespace Reaparr.Application;
 
-public record UpdateScheduledDownloadLimitsCommand(DateTimeOffset LocalTime) : ICommand<Result>;
+/// <summary>
+/// Recalculates scheduled download limits using the configured local clock.
+/// </summary>
+/// <param name="LocalTime">
+/// Optional local-time override for deterministic tests. Leave null to use the current time in the configured timezone.
+/// </param>
+public record UpdateScheduledDownloadLimitsCommand(DateTimeOffset? LocalTime = null) : ICommand<Result>;
 
 public class UpdateScheduledDownloadLimitsCommandValidator : AbstractValidator<UpdateScheduledDownloadLimitsCommand>
 {
     public UpdateScheduledDownloadLimitsCommandValidator()
     {
-        RuleFor(x => x.LocalTime).NotEmpty();
+        RuleFor(x => x.LocalTime).NotEqual(DateTimeOffset.MinValue);
     }
 }
 
@@ -16,22 +22,43 @@ public class UpdateScheduledDownloadLimitsCommandHandler : ICommandHandler<Updat
     private readonly IUserSettings _userSettings;
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly IDownloadSpeedLimitProvider _speedLimits;
+    private readonly TimeProvider _timeProvider;
+    private static readonly SemaphoreSlim _allocationGate = new(1, 1);
 
     public UpdateScheduledDownloadLimitsCommandHandler(
         ILogger log,
         IUserSettings userSettings,
         IReaparrDbContextFactory dbContextFactory,
-        IDownloadSpeedLimitProvider speedLimits
+        IDownloadSpeedLimitProvider speedLimits,
+        TimeProvider timeProvider
     )
     {
         _log = log.ForContext<UpdateScheduledDownloadLimitsCommandHandler>();
         _userSettings = userSettings;
         _dbContextFactory = dbContextFactory;
         _speedLimits = speedLimits;
+        _timeProvider = timeProvider;
     }
 
     /// <inheritdoc />
     public async Task<Result> ExecuteAsync(
+        UpdateScheduledDownloadLimitsCommand command,
+        CancellationToken cancellationToken
+    ) =>
+        await Result.Try(async Task<Result> () =>
+        {
+            await _allocationGate.WaitAsync(cancellationToken);
+            try
+            {
+                return await ApplyAsync(command, cancellationToken);
+            }
+            finally
+            {
+                _allocationGate.Release();
+            }
+        });
+
+    private async Task<Result> ApplyAsync(
         UpdateScheduledDownloadLimitsCommand command,
         CancellationToken cancellationToken
     )
@@ -40,13 +67,20 @@ public class UpdateScheduledDownloadLimitsCommandHandler : ICommandHandler<Updat
         if (!DownloadSchedule.IsValidDays(schedule.Days))
             return Result.Fail("The saved download schedule contains invalid change points or limits.").LogError();
 
-        _log.Here().Debug("Applying download schedule for local time {LocalTime}", command.LocalTime);
+        var localTime = command.LocalTime ?? TimeZoneInfo.ConvertTime(
+            _timeProvider.GetUtcNow(),
+            TimeZoneInfo.FindSystemTimeZoneById(_userSettings.DateTimeSettings.TimeZone)
+        );
+        _log.Here().Debug("Applying download schedule for local time {LocalTime}", localTime);
         var result = await Result.Try(async Task () =>
         {
             int? limitKb = null;
-            if (schedule.Enabled && schedule.Days.TryGetValue(Enum.GetName(command.LocalTime.DayOfWeek)!, out var points))
+            if (
+                schedule.Enabled
+                && schedule.Days.TryGetValue(Enum.GetName(localTime.DayOfWeek)!, out var points)
+            )
             {
-                var localMinute = command.LocalTime.Hour * 60 + command.LocalTime.Minute;
+                var localMinute = localTime.Hour * 60 + localTime.Minute;
                 var latestMinute = -1;
                 foreach (var (time, limit) in points)
                 {
@@ -119,6 +153,6 @@ public class UpdateScheduledDownloadLimitsCommandHandler : ICommandHandler<Updat
             _speedLimits.SetScheduledDownloadSpeedLimits(allocations);
         });
 
-        return result;
+        return result.LogIfFailed();
     }
 }
