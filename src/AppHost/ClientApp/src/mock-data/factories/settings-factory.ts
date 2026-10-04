@@ -13,7 +13,7 @@ export function generateSettingsModel({
 }): SettingsModelDTO {
 	const validConfig = checkConfig(config);
 
-	return <SettingsModelDTO>{
+	return {
 		dateTimeSettings: {
 			longDateFormat: 'EEEE, dd MMMM yyyy',
 			shortDateFormat: 'dd/MM/yyyy',
@@ -35,6 +35,10 @@ export function generateSettingsModel({
 		downloadManagerSettings: {
 			downloadSegments: 4,
 			keepCompletedInDownloadFolder: false,
+			downloadSchedule: {
+				enabled: false,
+				days: {},
+			},
 		},
 		languageSettings: {
 			language: 'en-US',
@@ -61,7 +65,7 @@ export function generateSettingsModel({
 					machineIdentifier: x.machineIdentifier,
 					plexServerName: '',
 					downloadSpeedLimit: 0,
-					hidden: false,
+					allowStreamDownloader: false,
 				};
 			}),
 		},

@@ -1,6 +1,25 @@
 <template>
 	<QSection :header="$t('pages.settings.ui.date-and-time.header')">
 		<HelpGroup class="q-mt-md">
+			<!--	Time Zone Setting	-->
+			<HelpRow
+				:label="$t('help.settings.ui.date-and-time.time-zone.label')"
+				:title="$t('help.settings.ui.date-and-time.time-zone.title')"
+				:text="$t('help.settings.ui.date-and-time.time-zone.text')">
+				<q-select
+					v-model:model-value="settingsStore.dateTimeSettings.timeZone"
+					:aria-label="$t('help.settings.ui.date-and-time.time-zone.label')"
+					:options="filteredTimeZoneOptions"
+					emit-value
+					map-options
+					use-input
+					fill-input
+					hide-selected
+					:input-debounce="0"
+					data-cy="time-zone"
+					@filter="filterTimeZones"
+					@popup-show="timeZoneDate = new Date()" />
+			</HelpRow>
 			<!--	Short Date Format Setting	-->
 			<HelpRow
 				:label="$t('help.settings.ui.date-and-time.short-date-format.label')"
@@ -73,30 +92,16 @@
 					data-cy="relative-date" />
 			</HelpRow>
 		</HelpGroup>
-		<!--	TODO: Dealing with Timezones is 1 big cluster fuck, will go back to try again later -->
-		<!--	Time Zone Setting	-->
-		<!--		<help-row help-id="help.settings.ui.date-and-time.time-zone"> -->
-		<!--								<v-select -->
-		<!--									v-model="timeZone" -->
-		<!--									color="red" -->
-		<!--									filled -->
-		<!--									outlined -->
-		<!--									dense -->
-		<!--									class="my-3" -->
-		<!--									hide-details="auto" -->
-		<!--									:menu-props="getMenuProps" -->
-		<!--									:options="timeZoneOptions" -->
-		<!--								/> -->
-		<!--		</help-row> -->
 	</QSection>
 </template>
 
 <script setup lang="ts">
 import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
-import { get } from '@vueuse/core';
+import { TZDate } from '@date-fns/tz';
+import { orderBy } from 'lodash-es';
+import { get, set } from '@vueuse/core';
 import { useSettingsStore } from '@store';
-import { useI18n } from 'vue-i18n';
 
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
@@ -124,15 +129,10 @@ const timeFormat = computed({
 	set: (value: ISelectOption) => (settingsStore.dateTimeSettings.timeFormat = value.value),
 });
 
-// const timeZone = computed({
-// 	get: () => get(timeZoneOptions).find((x) => x.value === settingsStore.dateTimeSettings.timeZone),
-// 	set: (value: ISelectOption) => (settingsStore.dateTimeSettings.timeZone = value.value),
-// });
-
 // endregion
 
 const getLocale = computed(() => {
-	switch (i18n.locale.value) {
+	switch (get(i18n.locale)) {
 		case 'en-US':
 			return { locale: enUS };
 		case 'fr-FR':
@@ -149,7 +149,7 @@ const shortDateOptions = computed(() => {
 	return values.map((dateFormat) => {
 		return {
 			value: dateFormat,
-			label: format(date, dateFormat, getLocale.value),
+			label: format(date, dateFormat, get(getLocale)),
 		};
 	});
 });
@@ -161,7 +161,7 @@ const longDateOptions = computed(() => {
 	return values.map((x) => {
 		return {
 			value: x,
-			label: format(date, x, getLocale.value),
+			label: format(date, x, get(getLocale)),
 		};
 	});
 });
@@ -172,14 +172,32 @@ const timeFormatOptions = computed(() => {
 	return values.map((x) => {
 		return {
 			value: x,
-			label: format(date, x, getLocale.value),
+			label: format(date, x, get(getLocale)),
 		};
 	});
 });
 
-// const timeZoneOptions = computed(() => {
-// 	const currentTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-// 	const offSet = new Date().getTimezoneOffset() / 60;
-// 	return [{ label: `${offSet} ${currentTZ}`, value: currentTZ }];
-// });
+const supportedTimeZones = Intl.supportedValuesOf('timeZone');
+const timeZoneDate = ref(new Date());
+const timeZoneOptions = computed<ISelectOption[]>(() => {
+	const date = get(timeZoneDate);
+	const options = [...new Set(['UTC', settingsStore.dateTimeSettings.timeZone, ...supportedTimeZones])].map((zone) => {
+		const zonedDate = new TZDate(date, zone);
+		return {
+			value: zone,
+			label: `(UTC${format(zonedDate, 'xxx')}) ${zone}`,
+			offset: -zonedDate.getTimezoneOffset(),
+		};
+	});
+	return orderBy(options, ['offset', 'value']);
+});
+const timeZoneFilter = ref('');
+const filteredTimeZoneOptions = computed(() => {
+	const query = get(timeZoneFilter).trim().toLowerCase();
+	return query ? get(timeZoneOptions).filter((option) => option.label.toLowerCase().includes(query)) : get(timeZoneOptions);
+});
+
+function filterTimeZones(value: string, update: (callback: () => void) => void) {
+	update(() => set(timeZoneFilter, value));
+}
 </script>

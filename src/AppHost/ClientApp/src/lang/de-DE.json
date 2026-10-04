@@ -1,5 +1,38 @@
 {
     "components": {
+        "download-schedule": {
+            "title": "Zeitplan für Downloadgeschwindigkeit",
+            "description": "Ein wöchentliches Bandbreitenbudget für herunterladende Server in Halbstundenintervallen. Ein kB/s entspricht 1024 Bytes pro Sekunde.",
+            "enabled": "Zeitplan aktivieren",
+            "reset": "Zeitplan zurücksetzen",
+            "reset-title": "Download-Zeitplan zurücksetzen?",
+            "reset-text": "Alle geplanten Geschwindigkeitsgrenzen löschen und alle Zeitintervalle auf Unbegrenzt setzen? Manuelle Downloadgrenzen der Server bleiben unverändert.",
+            "grid-help": "Halbstundenintervalle durch Klicken oder Ziehen auswählen. Mit Pfeiltasten bewegen, mit Umschalt + Pfeiltasten erweitern und mit Leertaste oder Eingabe auswählen. Der Bereichseditor funktioniert auch ohne Ziehen.",
+            "grid-label": "Wöchentliche Downloadgrenzen in Halbstundenintervallen",
+            "unlimited": "Unbegrenzt",
+            "edit-selection": "Ausgewählte Zeiten bearbeiten",
+            "weekday-work-hours": "Arbeitszeiten an Werktagen auswählen",
+            "days": "Tage",
+            "from": "Von",
+            "until-exclusive": "Bis (ausschließlich)",
+            "limit": "Grenzwert",
+            "positive-integer": "Positive ganze Zahl",
+            "mixed-values": "Gemischte Werte · neuen Grenzwert wählen",
+            "equal-times-invalid": "Von und Bis dürfen nicht gleich sein. Für einen ganzen Tag 00:00–24:00 verwenden.",
+            "positive-integer-error": "Eine ganze Zahl zwischen 1 und 2.147.483.647 kB/s eingeben.",
+            "apply-save": "Auf Auswahl anwenden und speichern",
+            "selection-help": "Auswahl und Eingaben ändern den gespeicherten Zeitplan erst nach dem Anwenden. Bis ist ausschließlich; ein früherer Endwert reicht in den nächsten Tag, auch von Sonntag auf Montag.",
+            "save-error": "Speichern fehlgeschlagen. Auswahl und Eingabe bleiben erhalten; zum Wiederholen erneut anwenden.",
+            "fairness-help": "Das Budget wird gleichmäßig auf herunterladende Server verteilt, innerhalb ihrer manuellen Grenzen. Direkte Downloads übernehmen neu berechnete Grenzen; DASH behält die Grenze vom Start. Ungenutzter Durchsatz wird nicht gemessen oder ausgeliehen.",
+            "timezone-help": "Die Zeiten verwenden die Einstellung unter Datum und Uhrzeit ({timezone}), nicht die Browser-Uhr. Jeder Tag beginnt unbegrenzt bis zum ersten Änderungspunkt. Grenzen werden um :00 und :30 sowie bei Änderungen am Zeitplan oder an der Zeitzone neu berechnet. Deaktivieren erhält den Zeitplan und manuelle Servergrenzen.",
+            "monday": "Montag",
+            "tuesday": "Dienstag",
+            "wednesday": "Mittwoch",
+            "thursday": "Donnerstag",
+            "friday": "Freitag",
+            "saturday": "Samstag",
+            "sunday": "Sonntag"
+        },
         "account-card": {
             "invalid-account": "Das Kontoobjekt war ungültig"
         },
@@ -870,6 +903,11 @@
                     }
                 },
                 "date-and-time": {
+                    "time-zone": {
+                        "label": "Zeitzone",
+                        "text": "",
+                        "title": ""
+                    },
                     "long-date-format": {
                         "label": "Datum im Langformat",
                         "text": "",

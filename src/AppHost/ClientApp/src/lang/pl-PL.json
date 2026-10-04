@@ -1,5 +1,38 @@
 {
     "components": {
+        "download-schedule": {
+            "title": "Harmonogram prędkości pobierania",
+            "description": "Tygodniowy budżet przepustowości współdzielony przez pobierające serwery w przedziałach półgodzinnych. Jeden kB/s to 1024 bajty na sekundę.",
+            "enabled": "Włącz harmonogram",
+            "reset": "Resetuj harmonogram",
+            "reset-title": "Zresetować harmonogram pobierania?",
+            "reset-text": "Usunąć wszystkie zaplanowane limity prędkości i ustawić każdy przedział bez limitu? Ręczne limity pobierania serwerów pozostaną bez zmian.",
+            "grid-help": "Wybierz przedziały półgodzinne kliknięciem lub przeciągnięciem. Strzałki przesuwają fokus, Shift + strzałki rozszerzają wybór, a Spacja lub Enter wybierają. Edytor zakresu działa również bez przeciągania.",
+            "grid-label": "Tygodniowe limity pobierania co pół godziny",
+            "unlimited": "Bez limitu",
+            "edit-selection": "Edytuj wybrane przedziały",
+            "weekday-work-hours": "Wybierz godziny pracy w dni robocze",
+            "days": "Dni",
+            "from": "Od",
+            "until-exclusive": "Do (bez tej godziny)",
+            "limit": "Limit",
+            "positive-integer": "Dodatnia liczba całkowita",
+            "mixed-values": "Różne wartości · wybierz nowy limit",
+            "equal-times-invalid": "Godziny Od i Do nie mogą być równe. Użyj 00:00–24:00 dla całego dnia.",
+            "positive-integer-error": "Wpisz liczbę całkowitą od 1 do 2 147 483 647 kB/s.",
+            "apply-save": "Zastosuj do wyboru i zapisz",
+            "selection-help": "Wybór i wpisane wartości nie zmieniają zapisanego harmonogramu przed zastosowaniem. Godzina Do jest wyłączona; wcześniejsza godzina Do przechodzi na następny dzień, także z niedzieli na poniedziałek.",
+            "save-error": "Zapis nie powiódł się. Wybór i wpisana wartość zostały zachowane; zastosuj ponownie, aby spróbować jeszcze raz.",
+            "fairness-help": "Budżet jest dzielony równo między pobierające serwery, z uwzględnieniem ich ręcznych limitów. Pobrania bezpośrednie otrzymują przeliczone limity; DASH zachowuje limit z chwili uruchomienia. Niewykorzystana przepustowość nie jest mierzona ani pożyczana.",
+            "timezone-help": "Godziny korzystają z ustawienia Data i czas ({timezone}), nie z zegara przeglądarki. Każdy dzień zaczyna się bez limitu do pierwszej zmiany. Limity są przeliczane o :00 i :30 oraz po zmianie harmonogramu lub strefy czasowej. Wyłączenie zachowuje harmonogram i ręczne limity serwerów.",
+            "monday": "Poniedziałek",
+            "tuesday": "Wtorek",
+            "wednesday": "Środa",
+            "thursday": "Czwartek",
+            "friday": "Piątek",
+            "saturday": "Sobota",
+            "sunday": "Niedziela"
+        },
         "account-card": {
             "invalid-account": "Obiekt konta był nieprawidłowy"
         },
@@ -870,6 +903,11 @@
                     }
                 },
                 "date-and-time": {
+                    "time-zone": {
+                        "label": "Strefa czasowa",
+                        "text": "",
+                        "title": ""
+                    },
                     "long-date-format": {
                         "label": "Długi format daty",
                         "text": "",
