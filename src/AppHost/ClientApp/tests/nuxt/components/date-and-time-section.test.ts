@@ -17,6 +17,7 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 
 	beforeAll(() => baseSetup());
 	beforeEach(async () => {
+		vi.useFakeTimers();
 		mock = getAxiosMock();
 		store = useNuxtApp().vueApp.runWithContext(() => useSettingsStore());
 		store.$reset();
@@ -26,6 +27,10 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		mock.onGet(SettingsPaths.getUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
 		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).reply((request) => [200, generateResultDTO(JSON.parse(request.data))]);
 		await subscribeSpyTo(store.setup()).onComplete();
+		// Drain initialization writes from the native store before exercising the component.
+		await vi.advanceTimersByTimeAsync(600);
+		mock.resetHistory();
+		vi.useRealTimers();
 		container = document.createElement('div');
 		document.body.append(container);
 		const vnode = h(DateAndTimeSection);
@@ -38,6 +43,7 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		container.remove();
 		store.$reset();
 		vi.restoreAllMocks();
+		vi.useRealTimers();
 	});
 
 	test('Should filter names and offsets without saving search text, then persist only the chosen timezone identifier', async () => {
@@ -60,6 +66,8 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		fireEvent.input(input, { target: { value: '+09:00' } });
 		const option = await waitFor(() => getByRole(document.body, 'option', { name: '(UTC+09:00) Asia/Tokyo' }));
 		fireEvent.click(option);
+		await nextTick();
+		expect(store.dateTimeSettings.timeZone).toBe('Asia/Tokyo');
 		await waitFor(() => expect(mock.history.put).toHaveLength(1));
 
 		// Assert
