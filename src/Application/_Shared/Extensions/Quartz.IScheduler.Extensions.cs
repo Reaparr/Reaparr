@@ -97,16 +97,6 @@ public static partial class QuartzExtensions
         return Result.Ok();
     }
 
-
-    /// <summary>
-    /// Determines whether the specified job is currently executing.
-    /// </summary>
-    public static Task<bool> IsJobRunning(
-        this IScheduler scheduler,
-        JobKey key,
-        CancellationToken cancellationToken = default
-    ) => scheduler.IsJobExecuting(key, cancellationToken);
-
     /// <summary>
     /// Determines whether the job has a runnable non-cron trigger waiting in Quartz.
     /// </summary>
@@ -248,14 +238,6 @@ public static partial class QuartzExtensions
             return Result.Ok();
         });
     }
-
-    /// <summary>
-    /// Returns Quartz execution contexts for jobs that are currently running.
-    /// </summary>
-    public static async Task<IReadOnlyCollection<IJobExecutionContext>> GetActiveJobs(
-        this IScheduler scheduler,
-        CancellationToken cancellationToken = default
-    ) => await scheduler.GetCurrentlyExecutingJobs(cancellationToken);
 
     /// <summary>
     /// Determines whether a job is runnable in Quartz or is currently executing.
