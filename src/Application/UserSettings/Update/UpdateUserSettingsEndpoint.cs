@@ -53,6 +53,7 @@ public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointReq
 {
     private readonly IUserSettings _userSettings;
     private readonly IScheduler _scheduler;
+    private static readonly SemaphoreSlim _updateGate = new(1, 1);
 
     public UpdateUserSettingsEndpoint(IUserSettings userSettings, IScheduler scheduler)
     {
@@ -73,30 +74,38 @@ public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointReq
 
     public override async Task HandleAsync(UpdateUserSettingsEndpointRequest req, CancellationToken ct)
     {
-        var settings = req.SettingsModelDto!.ToModel();
-
-        var timeZoneChanged = _userSettings.DateTimeSettings.TimeZone != settings.DateTimeSettings.TimeZone;
-        var downloadScheduleChanged =
-            _userSettings.DownloadManagerSettings.DownloadSchedule != settings.DownloadManagerSettings.DownloadSchedule;
-
-        _userSettings.UpdateSettings(settings);
-
-        if (timeZoneChanged || downloadScheduleChanged)
+        await _updateGate.WaitAsync(ct);
+        try
         {
-            var result = await Result.Try(async Task () =>
+            var settings = req.SettingsModelDto!.ToModel(_userSettings);
+
+            var timeZoneChanged = _userSettings.DateTimeSettings.TimeZone != settings.DateTimeSettings.TimeZone;
+            var downloadScheduleChanged =
+                _userSettings.DownloadManagerSettings.DownloadSchedule != settings.DownloadManagerSettings.DownloadSchedule;
+
+            _userSettings.UpdateSettings(settings);
+
+            if (timeZoneChanged || downloadScheduleChanged)
             {
-                if (timeZoneChanged)
-                    await _scheduler.RescheduleJob(
-                        UpdateScheduledDownloadLimitsJob.GetTriggerKey(),
-                        UpdateScheduledDownloadLimitsJob.CreateTrigger(_userSettings.DateTimeSettings.TimeZone),
-                        CancellationToken.None
-                    );
+                var result = await Result.Try(async Task () =>
+                {
+                    if (timeZoneChanged)
+                        await _scheduler.RescheduleJob(
+                            UpdateScheduledDownloadLimitsJob.GetTriggerKey(),
+                            UpdateScheduledDownloadLimitsJob.CreateTrigger(_userSettings.DateTimeSettings.TimeZone),
+                            CancellationToken.None
+                        );
 
-                await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None);
-            });
-            result.LogIfFailed();
+                    await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None);
+                });
+                result.LogIfFailed();
+            }
+
+            await Send.FluentResult(Result.Ok(_userSettings), x => x.ToDTO(), ct);
         }
-
-        await Send.FluentResult(Result.Ok(_userSettings), x => x.ToDTO(), ct);
+        finally
+        {
+            _updateGate.Release();
+        }
     }
 }

@@ -4,7 +4,7 @@ public static class SettingsModelToDTOMapper
 {
     #region ToModel
 
-    public static UserSettings ToModel(this SettingsModelDTO dto) =>
+    public static UserSettings ToModel(this SettingsModelDTO dto, IUserSettings? currentSettings = null) =>
         new()
         {
             GeneralSettings = dto.GeneralSettings.ToModel(),
@@ -16,6 +16,8 @@ public static class SettingsModelToDTOMapper
             DebugSettings = dto.DebugSettings.ToModel(),
             ServerSettings = dto.ServerSettings.ToModel(),
             NetworkSettings = dto.NetworkSettings.ToModel(),
+            AuthenticationSettings = currentSettings?.AuthenticationSettings ?? AuthenticationModule.Create(),
+            IntegrationsSettings = currentSettings?.IntegrationsSettings ?? IntegrationsSettings.Create(),
         };
 
     public static GeneralSettingsModule ToModel(this GeneralSettingsDTO dto) =>
