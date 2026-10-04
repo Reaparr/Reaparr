@@ -3,22 +3,12 @@ namespace Reaparr.BaseTests;
 public static partial class FakeData
 {
     private static readonly Faker<PlexPhotoAlbum> _plexPhotoAlbum = new Faker<PlexPhotoAlbum>()
-        .StrictMode(true)
-        .Ignore(x => x.Id)
-        .RuleFor(x => x.PlexApiRatingKey, _ => GetUniqueNumber())
+        .ApplyBasePlexMedia()
         .RuleFor(x => x.Title, f => f.Lorem.Sentence(3))
-        .RuleFor(x => x.SearchTitle, (_, x) => x.Title.ToSearchTitle())
-        .RuleFor(x => x.SortIndex, f => f.IndexFaker + 1)
-        .RuleFor(x => x.Summary, f => f.Lorem.Sentence())
-        .RuleFor(x => x.Year, f => f.Random.Int(2000, 2025))
-        .Ignore(x => x.Duration)
-        .Ignore(x => x.MediaSize)
-        .RuleFor(x => x.AddedAt, f => f.Date.Recent(30))
-        .RuleFor(x => x.UpdatedAt, f => f.Date.Recent(30))
-        .Ignore(x => x.PlexLibraryId)
-        .Ignore(x => x.PlexLibrary)
-        .Ignore(x => x.PlexServerId)
-        .Ignore(x => x.PlexServer)
+        .RuleFor(x => x.Guid, f => $"plex://photoalbum/{f.Random.Guid():N}")
+        .RuleFor(x => x.Guid_IMDB, _ => null)
+        .RuleFor(x => x.Guid_TMDB, _ => null)
+        .RuleFor(x => x.Guid_TVDB, _ => null)
         .Ignore(x => x.Photos)
         .FinishWith(
             (_, album) =>
@@ -30,8 +20,11 @@ public static partial class FakeData
                     photo.FullTitle = $"{album.Title}/{photo.Title}";
                 }
 
+                album.ChildCount = album.Photos.Count;
                 album.MediaSize = album.Photos.Sum(x => x.MediaSize);
                 album.Duration = album.Photos.Sum(x => x.Duration);
+                album.Quality = album.Photos.Count == 0 ? VideoQuality.Unknown : album.Photos.Max(x => x.Quality);
+                album.FullTitle = album.Title;
             }
         );
 
