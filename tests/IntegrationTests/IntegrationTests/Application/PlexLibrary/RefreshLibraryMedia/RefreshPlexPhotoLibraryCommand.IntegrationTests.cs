@@ -44,7 +44,7 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         );
         var client = container.GetApiClient();
         await client.SignIn();
-        var photoLibrary = await container.DbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.Photos, CancellationToken);
+        var photoLibrary = await container.DbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
         using var beforeContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
         (await beforeContext.PlexPhotoAlbums.ToListAsync(CancellationToken)).ShouldBeEmpty();
         (await beforeContext.PlexPhotos.ToListAsync(CancellationToken)).ShouldBeEmpty();
@@ -82,8 +82,9 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         var refreshedLibrary = await firstContext.PlexLibraries.SingleAsync(x => x.Id == photoLibrary.Id, CancellationToken);
         (refreshedLibrary.Id, refreshedLibrary.Type, refreshedLibrary.PhotoAlbumCount, refreshedLibrary.PhotoCount, refreshedLibrary.PhotoClipCount,
             refreshedLibrary.MediaSize, refreshedLibrary.SyncedAt != null).ShouldBe(
-            (photoLibrary.Id, PlexMediaType.Photos, 2, 4, 2,
+            (photoLibrary.Id, PlexMediaType.PhotoAlbum, 2, 4, 2,
                 await firstContext.PlexPhotoData.SumAsync(x => x.Size, CancellationToken), true));
+        refreshedLibrary.MediaCount.ShouldBe(2);
         var firstPhotoAlbums = await firstContext.PlexPhotoAlbums.OrderBy(x => x.PlexApiRatingKey)
             .Select(x => new { x.Id, x.PlexApiRatingKey }).ToListAsync(CancellationToken);
         var firstPhotos = await firstContext.PlexPhotos.OrderBy(x => x.PlexApiRatingKey)

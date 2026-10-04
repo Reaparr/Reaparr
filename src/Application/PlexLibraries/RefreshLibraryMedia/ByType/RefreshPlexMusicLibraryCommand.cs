@@ -157,12 +157,8 @@ public class RefreshPlexMusicLibraryCommandHandler
         ICollection<PlexMusicTrack> tracks
     )
     {
-        var albumsByArtist = albums
-            .GroupBy(x => x.PlexArtist!.PlexApiRatingKey)
-            .ToDictionary(x => x.Key, x => x.ToList());
-        var tracksByAlbum = tracks
-            .GroupBy(x => x.PlexAlbum!.PlexApiRatingKey)
-            .ToDictionary(x => x.Key, x => x.ToList());
+        var albumsByArtist = albums.GroupBy(x => x.ParentKey).ToDictionary(x => x.Key, x => x.ToList());
+        var tracksByAlbum = tracks.GroupBy(x => x.ParentKey).ToDictionary(x => x.Key, x => x.ToList());
 
         foreach (var artist in library.Music)
         {

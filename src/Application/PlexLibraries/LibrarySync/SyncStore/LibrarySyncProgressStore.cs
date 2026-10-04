@@ -73,7 +73,7 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
                 })
                 .ToList();
         }
-        else if (type == PlexMediaType.Photos)
+        else if (type == PlexMediaType.PhotoAlbum)
         {
             items = new[] { PlexMediaType.PhotoAlbum, PlexMediaType.Photos }
                 .Select(mediaType => new LibraryProgressItem

@@ -222,7 +222,7 @@ public class MockPlexApiServer : IMockPlexApiServer
             if (_config.PhotoLibraryCount > 0)
                 libraries.AddRange(
                     FakePlexApiData
-                        .GetLibrariesResponseDirectory(_seed, PlexMediaType.Photos)
+                        .GetLibrariesResponseDirectory(_seed, PlexMediaType.PhotoAlbum)
                         .Generate(_config.PhotoLibraryCount)
                 );
 
@@ -359,7 +359,7 @@ public class MockPlexApiServer : IMockPlexApiServer
                     continue;
                 }
 
-                if (type == PlexMediaType.Photos)
+                if (type == PlexMediaType.PhotoAlbum)
                 {
                     var albumList = FakePlexApiData
                         .GetMediaMetaDataMetadata(_seed, PlexMediaType.PhotoAlbum, _options)

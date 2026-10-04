@@ -12,7 +12,7 @@ public class RefreshPlexPhotoLibraryCommandValidator : AbstractValidator<Refresh
         RuleFor(x => x.LibraryMetadata).NotNull();
         RuleFor(x => x.LibraryMetadata.PlexLibrary).NotNull();
         RuleFor(x => x.LibraryMetadata.PlexLibraryId).GreaterThan(0);
-        RuleFor(x => x.LibraryMetadata.PlexLibrary.Type).Equal(PlexMediaType.Photos);
+        RuleFor(x => x.LibraryMetadata.PlexLibrary.Type).Equal(PlexMediaType.PhotoAlbum);
     }
 }
 
@@ -139,7 +139,8 @@ public class RefreshPlexPhotoLibraryCommandHandler
 
         foreach (var photo in photos)
         {
-            var album = photo.PlexPhotoAlbum!;
+            var album = library.PhotoAlbums.Single(x => x.PlexApiRatingKey == photo.ParentKey);
+            photo.PlexPhotoAlbum = album;
             album.Photos.Add(photo);
         }
 

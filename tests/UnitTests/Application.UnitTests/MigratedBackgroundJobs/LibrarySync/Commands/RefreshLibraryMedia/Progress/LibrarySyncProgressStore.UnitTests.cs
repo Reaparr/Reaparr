@@ -30,7 +30,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
     [Arguments(PlexMediaType.Movie, PlexMediaType.Movie, PlexMediaType.None, PlexMediaType.None)]
     [Arguments(PlexMediaType.TvShow, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode)]
     [Arguments(PlexMediaType.Music, PlexMediaType.Music, PlexMediaType.Album, PlexMediaType.Track)]
-    [Arguments(PlexMediaType.Photos, PlexMediaType.PhotoAlbum, PlexMediaType.Photos, PlexMediaType.None)]
+    [Arguments(PlexMediaType.PhotoAlbum, PlexMediaType.PhotoAlbum, PlexMediaType.Photos, PlexMediaType.None)]
     [Arguments(PlexMediaType.OtherVideos, PlexMediaType.OtherVideos, PlexMediaType.None, PlexMediaType.None)]
     public async Task ShouldInitializeFamilyProgressItems_AndCompleteOnlyAfterConfirmedEmptyTotals(
         PlexMediaType libraryType,

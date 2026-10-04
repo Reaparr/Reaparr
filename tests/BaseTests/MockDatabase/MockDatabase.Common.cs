@@ -115,7 +115,7 @@ public static partial class MockDatabase
             if (config.ShouldHavePhotoPlexLibrary)
                 plexLibraries.AddRange(
                     FakeData
-                        .GetPlexLibrary(seed, PlexMediaType.Photos)
+                        .GetPlexLibrary(seed, PlexMediaType.PhotoAlbum)
                         .Generate(Math.Max(1, config.PlexPhotoLibraryCount))
                 );
 
@@ -697,7 +697,7 @@ public static partial class MockDatabase
     )
     {
         var config = FakeDataConfig.FromOptions(options);
-        var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.Photos).ToListAsync();
+        var libraries = await context.PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum).ToListAsync();
         foreach (var library in libraries)
         {
             var albums = FakeData.GetPlexPhotoAlbums(seed, options).Generate(config.PhotoAlbumCount);

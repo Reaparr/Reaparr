@@ -66,8 +66,8 @@ public class GetLibrarySectionsCommandHandlerUnitTests : BaseUnitTest<GetLibrary
         result.Errors.Count.ShouldBe(0);
         result.Value.Select(x => (x.Key, x.Type, x.PlexServerId)).ShouldBe([
             ("1", PlexMediaType.Music, serverId),
-            ("2", PlexMediaType.Photos, serverId),
-            ("3", PlexMediaType.Photos, serverId),
+            ("2", PlexMediaType.PhotoAlbum, serverId),
+            ("3", PlexMediaType.PhotoAlbum, serverId),
             ("4", PlexMediaType.Movie, serverId),
             ("5", PlexMediaType.TvShow, serverId),
             ("6", PlexMediaType.OtherVideos, serverId),
@@ -76,6 +76,8 @@ public class GetLibrarySectionsCommandHandlerUnitTests : BaseUnitTest<GetLibrary
         ]);
         MediaTypeString.Artist.ToPlexMediaType().ShouldBe(PlexMediaType.Music);
         MediaTypeString.Movie.ToPlexMediaType().ShouldBe(PlexMediaType.Movie);
+        MediaTypeString.Photo.ToPlexMediaType().ShouldBe(PlexMediaType.Photos);
+        MediaTypeString.PhotoAlbum.ToPlexMediaType().ShouldBe(PlexMediaType.PhotoAlbum);
         sdk.Verify();
         Mock.Mock<IPlexApiClientFactory>().Verify();
     }

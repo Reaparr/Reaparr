@@ -20,6 +20,8 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
         var dbContext = IDbContext;
         var libraryIds = await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
         libraryIds.Count.ShouldBe(2);
+        (await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Type).ToListAsync(CancellationToken))
+            .ShouldBe([PlexMediaType.PhotoAlbum, PlexMediaType.PhotoAlbum]);
         var albums = await dbContext.PlexPhotoAlbums.Include(x => x.Photos)
             .OrderBy(x => x.PlexLibraryId).ThenBy(x => x.Id).ToListAsync(CancellationToken);
         var target = albums.Where(x => x.PlexLibraryId == libraryIds[0]).ToList();

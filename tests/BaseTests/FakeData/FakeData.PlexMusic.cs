@@ -18,6 +18,7 @@ public static partial class FakeData
                 {
                     album.PlexArtistId = artist.Id;
                     album.PlexArtist = artist;
+                    album.ParentKey = artist.PlexApiRatingKey;
                     album.FullTitle = $"{artist.Title}/{album.Title}";
 
                     foreach (var track in album.Tracks)
@@ -67,11 +68,11 @@ public static partial class FakeData
                 {
                     track.PlexAlbumId = album.Id;
                     track.PlexAlbum = album;
+                    track.ParentKey = album.PlexApiRatingKey;
                     track.DiscNumber = 1;
                     track.TrackNumber = index + 1;
                     track.FullTitle = $"{album.Title}/{track.Title}";
                 }
-
                 album.ChildCount = album.Tracks.Count;
                 album.TrackCount = album.Tracks.Count;
                 album.DiscCount = album.Tracks.Count == 0 ? 0 : 1;

@@ -21,7 +21,7 @@ public partial class FakePlexApiData
             .RuleFor(x => x.Agent, _ => type switch
             {
                 PlexMediaType.Music => "tv.plex.agents.music",
-                PlexMediaType.Photos => "com.plexapp.agents.none",
+                PlexMediaType.PhotoAlbum => "com.plexapp.agents.none",
                 PlexMediaType.OtherVideos => "com.plexapp.agents.none",
                 PlexMediaType.TvShow => "tv.plex.agents.series",
                 _ => "tv.plex.agents.movie",
@@ -29,7 +29,7 @@ public partial class FakePlexApiData
             .RuleFor(x => x.Scanner, _ => type switch
             {
                 PlexMediaType.Music => "Plex Music",
-                PlexMediaType.Photos => "Plex Photo Scanner",
+                PlexMediaType.PhotoAlbum => "Plex Photo Scanner",
                 PlexMediaType.OtherVideos => "Plex Video Files Scanner",
                 PlexMediaType.TvShow => "Plex TV Series",
                 _ => "Plex Movie",

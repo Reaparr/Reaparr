@@ -85,8 +85,11 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         {
             photo.PlexLibraryId = library.Id;
             photo.PlexServerId = library.PlexServerId;
-            photo.PlexPhotoAlbum = incomingAlbumByKey[photo.PlexPhotoAlbum!.PlexApiRatingKey];
+            var incomingAlbum = incomingAlbumByKey[photo.PlexPhotoAlbum!.PlexApiRatingKey];
+            photo.PlexPhotoAlbum = incomingAlbum;
+            photo.ParentKey = incomingAlbum.PlexApiRatingKey;
             var changed = true;
+
             if (!photoByKey.TryGetValue(photo.PlexApiRatingKey, out var existing))
             {
                 photo.Id = 0;
@@ -95,7 +98,7 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
             else
             {
                 photo.Id = existing.Id;
-                changed = photo.UpdatedAt != existing.UpdatedAt || photo.PlexPhotoAlbum.PlexApiRatingKey != existing.ParentKey;
+                changed = photo.UpdatedAt != existing.UpdatedAt || photo.ParentKey != existing.ParentKey;
                 if (changed)
                     updatedPhotos.Add(photo);
             }

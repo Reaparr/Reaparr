@@ -3,6 +3,28 @@ namespace Reaparr.Application.UnitTests;
 public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<RefreshPlexPhotoLibraryCommand>
 {
     [Test]
+    public async Task ShouldRejectLeafPhotosLibraryWithoutDispatch_WhenRefreshingPhotoLibrary()
+    {
+        // Arrange
+        var library = FakeData.GetPlexLibrary(new Seed(625622), PlexMediaType.Photos).Generate();
+        library.Id = 17;
+        var response = new InsertMediaMetaDataCommandResponse(library);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PlexLibrary>(new RefreshPlexPhotoLibraryCommand(response));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<GetLibraryMediaFromPlexApiCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never());
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<SyncPlexPhotosCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never());
+    }
+
+    [Test]
     public async Task ShouldPublishStructuredErrorAndSkipOptimization_WhenSyncFails()
     {
         // Arrange
@@ -16,7 +38,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         );
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
-            p => p.SetProperty(x => x.Type, PlexMediaType.Photos),
+            p => p.SetProperty(x => x.Type, PlexMediaType.PhotoAlbum),
             CancellationToken
         );
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
@@ -90,7 +112,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         );
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
-            p => p.SetProperty(x => x.Type, PlexMediaType.Photos),
+            p => p.SetProperty(x => x.Type, PlexMediaType.PhotoAlbum),
             CancellationToken
         );
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
@@ -162,7 +184,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         );
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
-            p => p.SetProperty(x => x.Type, PlexMediaType.Photos),
+            p => p.SetProperty(x => x.Type, PlexMediaType.PhotoAlbum),
             CancellationToken
         );
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
@@ -177,6 +199,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         foreach (var photo in photos)
         {
             photo.PlexPhotoAlbum = album;
+            photo.ParentKey = album.PlexApiRatingKey;
             library.Photos.Add(photo);
         }
         var response = new InsertMediaMetaDataCommandResponse(library);
@@ -251,7 +274,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        (result.Value.Id, result.Value.Type).ShouldBe((library.Id, PlexMediaType.Photos));
+        (result.Value.Id, result.Value.Type).ShouldBe((library.Id, PlexMediaType.PhotoAlbum));
         captured.ShouldBeSameAs(response);
         captured.ShouldNotBeNull();
         captured.PhotoClipCount.ShouldBe(1);

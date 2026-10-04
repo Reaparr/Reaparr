@@ -101,6 +101,7 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
             foreach (var album in artist.Albums)
             {
                 album.PlexArtist = artist;
+                album.ParentKey = artist.PlexApiRatingKey;
                 album.PlexLibraryId = library.Id;
                 album.PlexServerId = library.PlexServerId;
                 if (!albumByKey.TryGetValue(album.PlexApiRatingKey, out var currentAlbum))
@@ -111,12 +112,13 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
                 else
                 {
                     album.Id = currentAlbum.Id;
-                    if (album.UpdatedAt != currentAlbum.UpdatedAt || artist.PlexApiRatingKey != currentAlbum.ParentKey)
+                    if (album.UpdatedAt != currentAlbum.UpdatedAt || album.ParentKey != currentAlbum.ParentKey)
                         updatedAlbums.Add(album);
                 }
                 foreach (var track in album.Tracks)
                 {
                     track.PlexAlbum = album;
+                    track.ParentKey = album.PlexApiRatingKey;
                     track.PlexLibraryId = library.Id;
                     track.PlexServerId = library.PlexServerId;
                     var changed = true;
@@ -128,9 +130,7 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
                     else
                     {
                         track.Id = currentTrack.Id;
-                        changed =
-                            track.UpdatedAt != currentTrack.UpdatedAt
-                            || album.PlexApiRatingKey != currentTrack.ParentKey;
+                        changed = track.UpdatedAt != currentTrack.UpdatedAt || track.ParentKey != currentTrack.ParentKey;
                         if (changed)
                             updatedTracks.Add(track);
                     }

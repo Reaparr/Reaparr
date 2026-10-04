@@ -694,7 +694,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var supportedTypes = new[]
         {
             PlexMediaType.Music,
-            PlexMediaType.Photos,
+            PlexMediaType.PhotoAlbum,
             PlexMediaType.OtherVideos,
         };
         var addedLibraries = supportedTypes

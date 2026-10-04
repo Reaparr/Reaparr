@@ -209,10 +209,12 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         foreach (var album in albums)
         {
             album.PlexArtist = artist;
+            album.ParentKey = artist.PlexApiRatingKey;
             library.Albums.Add(album);
         }
         var track = FakeData.GetPlexMusicTracks(seed).Generate();
         track.PlexAlbum = albums[0];
+        track.ParentKey = albums[0].PlexApiRatingKey;
         library.Tracks.Add(track);
         var response = new InsertMediaMetaDataCommandResponse(library);
         InsertMediaMetaDataCommandResponse? captured = null;

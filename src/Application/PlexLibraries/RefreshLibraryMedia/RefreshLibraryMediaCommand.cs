@@ -99,7 +99,7 @@ public class RefreshLibraryMediaCommandHandler : ICommandHandler<RefreshLibraryM
                 ),
                 ct
             ),
-            PlexMediaType.Photos => await _commandExecutor.Send(
+            PlexMediaType.PhotoAlbum => await _commandExecutor.Send(
                 new RefreshPlexPhotoLibraryCommand(
                     insertPlexLibraryMediaMetaDataResult.Value,
                     command.ForceMediaRefresh

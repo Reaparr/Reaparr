@@ -17,6 +17,7 @@ public static partial class FakeData
                 {
                     photo.PlexPhotoAlbum = album;
                     photo.PlexPhotoAlbumId = album.Id;
+                    photo.ParentKey = album.PlexApiRatingKey;
                     photo.FullTitle = $"{album.Title}/{photo.Title}";
                 }
 

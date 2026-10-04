@@ -26,6 +26,8 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
         var dbContext = IDbContext;
         var libraryIds = await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
         libraryIds.Count.ShouldBe(2);
+        (await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Type).ToListAsync(CancellationToken))
+            .ShouldBe([PlexMediaType.PhotoAlbum, PlexMediaType.PhotoAlbum]);
         var targetLibraryId = libraryIds[0];
         var controlLibraryId = libraryIds[1];
         var albums = await dbContext.PlexPhotoAlbums.AsTracking().ToListAsync(CancellationToken);

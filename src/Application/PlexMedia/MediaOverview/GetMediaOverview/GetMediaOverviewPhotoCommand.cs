@@ -56,7 +56,7 @@ public sealed class GetMediaOverviewPhotoCommandHandler
         }
 
         using var context = await _dbContextFactory.CreateAsync();
-        var allowedLibraryIds = await context.ResolveAllowedLibraryIdsAsync(filter, PlexMediaType.Photos, cancellationToken);
+        var allowedLibraryIds = await context.ResolveAllowedLibraryIdsAsync(filter, cancellationToken);
         LogPhase(filter, "ResolveLibraries", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
         if (allowedLibraryIds.Count == 0)

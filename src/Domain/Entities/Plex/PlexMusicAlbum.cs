@@ -4,6 +4,11 @@ public class PlexMusicAlbum : BasePlexMedia
 {
     public override PlexMediaType Type => PlexMediaType.Album;
 
+    /// <summary>
+    /// The Plex key of the <see cref="PlexTvShow"/> this belongs too.
+    /// </summary>
+    public required int ParentKey { get; set; }
+
     public required int PlexArtistId { get; set; }
 
     public PlexMusicArtist? PlexArtist { get; set; }

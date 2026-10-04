@@ -114,7 +114,7 @@ public static class PlexMediaTypeToApiTypeExtensions
         value switch
         {
             MediaTypeString.Artist => PlexMediaType.Music,
-            MediaTypeString.Photo or MediaTypeString.PhotoAlbum => PlexMediaType.Photos,
+            MediaTypeString.Photo or MediaTypeString.PhotoAlbum => PlexMediaType.PhotoAlbum,
             MediaTypeString.Movie
                 when agent is "com.plexapp.agents.none" or "tv.plex.agents.none"
                     && scanner is "Plex Video Files Scanner" or "Plex Video Files" => PlexMediaType.OtherVideos,

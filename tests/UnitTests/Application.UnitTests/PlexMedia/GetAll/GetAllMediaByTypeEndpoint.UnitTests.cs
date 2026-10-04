@@ -1,51 +1,68 @@
-
-
 namespace Reaparr.Application.UnitTests;
 
 public class GetAllMediaByTypeEndpointUnitTests
     : BaseEndpointUnitTest<GetAllMediaByTypeEndpoint, GetAllMediaByTypeRequest, PlexMediaStatisticsDTO>
 {
     [Test]
-    public async Task ShouldMapFriendlyRequestToMediaOverviewQuery_WhenHandlingRequest()
+    public async Task ShouldRejectLeafPhotosWithoutDispatch_WhenRequestingRootOverview()
     {
-        await SetupDatabase(42, config => { config.PlexServerCount = 1; config.PlexMovieLibraryCount = 1; });
-        var libraryId = await IDbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.Movie).Select(x => x.Id).FirstAsync(CancellationToken);
-        var request = new GetAllMediaByTypeRequest
-        {
-            MediaType = PlexMediaType.Movie,
-            PlexLibraryId = libraryId,
-            Page = 2,
-            PageSize = 25,
-            Search = "matrix",
-            CountryId = 7,
-            GenreId = 13,
-            RoleId = 11,
-            QualityId = 480,
-            ComparisonState = PlexMediaComparisonState.Missing,
-            Sort = "sortIndex:asc",
-            FilterOwnedMedia = true,
-            FilterOfflineMedia = true,
-        };
-        Mock.SetupCommand<Result<PagedMediaQueryResult>>(
-                command =>
-                    ((GetMediaOverviewCommand)command).Filter.MediaType == PlexMediaType.Movie
-                    && ((GetMediaOverviewCommand)command).Filter.PlexLibraryId == libraryId
-                    && ((GetMediaOverviewCommand)command).Filter.Parameters.Page == 2
-                    && ((GetMediaOverviewCommand)command).Filter.Parameters.PageSize == 25
-                    && ((GetMediaOverviewCommand)command).Filter.Parameters.Filter
-                        == "SearchTitle:contains:matrix&Countries:any:Id:eq:7&Actors:any:Id:eq:11&Genres:any:Id:eq:13&MediaDataList:any:Quality:eq:SD"
-                    && ((GetMediaOverviewCommand)command).Filter.ComparisonState == PlexMediaComparisonState.Missing
-                    && ((GetMediaOverviewCommand)command).Filter.Parameters.Sort == "sortIndex:asc"
-                    && ((GetMediaOverviewCommand)command).Filter.FilterOwnedMedia
-                    && ((GetMediaOverviewCommand)command).Filter.FilterOfflineMedia
-            )
-            .ReturnsAsync(Result.Ok(new PagedMediaQueryResult()))
+        // Arrange
+        var request = new GetAllMediaByTypeRequest { MediaType = PlexMediaType.Photos };
+
+        // Act
+        var result = await TestEndpointHandleAsync(request);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.ValidationResult.ShouldNotBeNull().Errors.Select(x => x.PropertyName)
+            .ShouldBe([nameof(GetAllMediaByTypeRequest.MediaType)]);
+        result.Response.ShouldBeNull();
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<GetMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never());
+    }
+
+    [Test]
+    public async Task ShouldDispatchPhotoAlbumRootUnchanged_WhenRequestingRootOverview()
+    {
+        // Arrange
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(
+                It.Is<GetMediaOverviewCommand>(c =>
+                    c.Filter.MediaType == PlexMediaType.PhotoAlbum && c.Filter.PlexLibraryId == 17),
+                CancellationToken))
+            .ReturnsAsync(Result.Ok(new PagedMediaQueryResult
+            {
+                QueryHash = "photo-albums",
+                Page = 1,
+                PageSize = 20,
+                TotalCount = 2,
+                MediaCount = 2,
+            }))
             .Verifiable(Times.Once());
 
         // Act
-        await TestEndpointHandleAsync(request);
+        var result = await TestEndpointHandleAsync(new GetAllMediaByTypeRequest
+        {
+            MediaType = PlexMediaType.PhotoAlbum,
+            PlexLibraryId = 17,
+        });
 
         // Assert
+        result.IsValid.ShouldBeTrue();
+        result.StatusCode.ShouldBe(200);
+        result.Endpoint.HttpContext.Response.Body.Position = 0;
+        var response = await JsonSerializer.DeserializeAsync<ResultDTO<PlexMediaStatisticsDTO>>(
+            result.Endpoint.HttpContext.Response.Body,
+            DefaultJsonSerializerOptions.ConfigStandard,
+            CancellationToken);
+        response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        response.Errors.Count.ShouldBe(0);
+        var value = response.Value.ShouldNotBeNull();
+        (value.QueryHash, value.Page, value.PageSize, value.TotalCount, value.MediaCount)
+            .ShouldBe(("photo-albums", 1, 20, 2, 2));
+        value.MediaList.ShouldBeEmpty();
+        value.NavigationIndexes.ShouldBeEmpty();
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -65,10 +82,35 @@ public class GetAllMediaByTypeEndpointUnitTests
         };
         var result = validator.Validate(request);
         result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(x => x.PropertyName == nameof(GetAllMediaByTypeRequest.CountryId));
-        result.Errors.ShouldContain(x => x.PropertyName == nameof(GetAllMediaByTypeRequest.GenreId));
-        result.Errors.ShouldContain(x => x.PropertyName == nameof(GetAllMediaByTypeRequest.RoleId));
-        result.Errors.ShouldContain(x => x.PropertyName == nameof(GetAllMediaByTypeRequest.QualityId));
-        result.Errors.ShouldNotContain(x => x.PropertyName == nameof(GetAllMediaByTypeRequest.PlexLibraryId));
+        result.Errors.Select(x => x.PropertyName).ShouldBe(
+            new[]
+            {
+                nameof(GetAllMediaByTypeRequest.CountryId),
+                nameof(GetAllMediaByTypeRequest.GenreId),
+                nameof(GetAllMediaByTypeRequest.RoleId),
+                nameof(GetAllMediaByTypeRequest.QualityId),
+            }
+        );
+    }
+
+    [Test]
+    [Arguments(PlexMediaType.Music)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.OtherVideos)]
+    public void ShouldRejectComparisonForNewRoots_WhenValidatingRequest(PlexMediaType mediaType)
+    {
+        var validator = new GetAllMediaByTypeRequestValidator();
+        var request = new GetAllMediaByTypeRequest
+        {
+            MediaType = mediaType,
+            ComparisonState = PlexMediaComparisonState.Missing,
+        };
+
+        var result = validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.Select(x => x.PropertyName).ShouldBe(
+            new[] { nameof(GetAllMediaByTypeRequest.ComparisonState) }
+        );
     }
 }

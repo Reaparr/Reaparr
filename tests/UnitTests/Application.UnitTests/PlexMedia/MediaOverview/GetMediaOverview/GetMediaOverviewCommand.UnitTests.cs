@@ -5,10 +5,12 @@ namespace Reaparr.Application.UnitTests;
 public class GetMediaOverviewCommandUnitTests
 {
     [Test]
-    public void ShouldRejectUnsupportedMediaType_WhenValidatingRequest()
+    [Arguments(PlexMediaType.Unknown)]
+    [Arguments(PlexMediaType.Photos)]
+    public void ShouldRejectUnsupportedMediaType_WhenValidatingRequest(PlexMediaType mediaType)
     {
         // Arrange
-        var command = new GetMediaOverviewCommand(CreateFilter(PlexMediaType.Unknown));
+        var command = new GetMediaOverviewCommand(CreateFilter(mediaType));
 
         // Act
         var result = new GetMediaOverviewCommandValidator().Validate(command);
