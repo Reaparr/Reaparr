@@ -43,8 +43,14 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     }
 
     [Test]
-    public async Task ShouldReturnSuccessAndPersistDownloadFinished_WhenProcessExitsZero()
+    [Arguments(12345L, "12345")]
+    [Arguments(0L, null)]
+    public async Task ShouldReturnSuccessAndPersistDownloadFinished_WhenProcessExitsZero(
+        long speedLimitBytes,
+        string? expectedLimitRate
+    )
     {
+        // Arrange
         await SetupDatabase(
             12001,
             config =>
@@ -59,11 +65,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
 
-        SetupSpeedLimit(serverMachineIdentifier);
+        SetupSpeedLimit(serverMachineIdentifier, speedLimitBytes);
 
         var progressSubject = new Subject<DashDownloadProgress>();
         var outputSubject = new Subject<string>();
         var completionSubject = new Subject<DashDownloadCompletedEventArgs>();
+        DashMpdCliOptions? capturedOptions = null;
 
         var dashWrapperMock = new Mock<IDashMpdCliWrapper>();
         dashWrapperMock.Setup(x => x.Progress).Returns(progressSubject.AsObservable());
@@ -73,6 +80,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
             .Setup(x => x.StartAsync(It.IsAny<DashMpdCliOptions>()))
             .Returns<DashMpdCliOptions>(options =>
             {
+                capturedOptions = options;
                 completionSubject.OnNext(new DashDownloadCompletedEventArgs(false, 0, Result.Ok()));
                 return Task.FromResult(Result.Ok());
             });
@@ -116,9 +124,14 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
             .Returns(Task.CompletedTask);
 
         var sut = CreateSut(dashWrapperMock);
+        // Act
         var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
 
+        // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        capturedOptions.ShouldNotBeNull();
+        capturedOptions.LimitRate.ShouldBe(expectedLimitRate);
 
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Verify(
