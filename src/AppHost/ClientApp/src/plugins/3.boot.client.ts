@@ -45,7 +45,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 	});
 });
 
-export function setupAxios(appConfig: IAppConfig, router: Router, translate: (key: string) => string) {
+export function setupAxios(appConfig: IAppConfig, router: Router, t: (key: string) => string) {
 	const backendUrl = new URL(appConfig.baseUrl);
 	Axios.defaults.baseURL = appConfig.baseUrl;
 	Axios.defaults.withCredentials = true;
@@ -91,7 +91,7 @@ export function setupAxios(appConfig: IAppConfig, router: Router, translate: (ke
 
 					if (url.origin === backendUrl.origin && /^\/api(?:\/|$)/.test(url.pathname)) {
 						if (isConnectivityError) {
-							showErrorNotification(translate('components.alert-dialog.connection-failed'));
+							showErrorNotification(t('components.alert-dialog.connection-failed'));
 						} else {
 							const data = error.response?.data;
 							const backendMessage = Array.isArray(data?.errors)
@@ -104,7 +104,7 @@ export function setupAxios(appConfig: IAppConfig, router: Router, translate: (ke
 								url: url.href,
 								statusCode: status,
 								code: error.code,
-								message: backendMessage || translate('components.alert-dialog.request-failed'),
+								message: backendMessage || t('components.alert-dialog.request-failed'),
 							});
 						}
 					}

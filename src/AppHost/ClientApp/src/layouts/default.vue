@@ -146,7 +146,6 @@ onMounted(() => {
 		}),
 	);
 
-
 	useEventListener(window, 'resize', () => {
 		if (document.body.classList.contains('window-resizing')) {
 			return;
