@@ -4,7 +4,7 @@ public static class SettingsModelToDTOMapper
 {
     #region ToModel
 
-    public static UserSettings ToModel(this SettingsModelDTO dto) =>
+    public static UserSettings ToModel(this SettingsModelDTO dto, IUserSettings? currentSettings = null) =>
         new()
         {
             GeneralSettings = dto.GeneralSettings.ToModel(),
@@ -16,6 +16,8 @@ public static class SettingsModelToDTOMapper
             DebugSettings = dto.DebugSettings.ToModel(),
             ServerSettings = dto.ServerSettings.ToModel(),
             NetworkSettings = dto.NetworkSettings.ToModel(),
+            AuthenticationSettings = currentSettings?.AuthenticationSettings ?? AuthenticationModule.Create(),
+            IntegrationsSettings = currentSettings?.IntegrationsSettings ?? IntegrationsSettings.Create(),
         };
 
     public static GeneralSettingsModule ToModel(this GeneralSettingsDTO dto) =>
@@ -64,6 +66,11 @@ public static class SettingsModelToDTOMapper
         {
             DownloadSegments = dto.DownloadSegments,
             KeepCompletedInDownloadFolder = dto.KeepCompletedInDownloadFolder,
+            DownloadSchedule = new DownloadSchedule
+            {
+                Enabled = dto.DownloadSchedule.Enabled,
+                Days = dto.DownloadSchedule.Days,
+            },
         };
 
     public static PlexServerSettingsModule ToModel(this ServerSettingsDTO dto) => new() { Data = dto.Data };
@@ -153,6 +160,11 @@ public static class SettingsModelToDTOMapper
         {
             DownloadSegments = module.DownloadSegments,
             KeepCompletedInDownloadFolder = module.KeepCompletedInDownloadFolder,
+            DownloadSchedule = new DownloadScheduleDTO
+            {
+                Enabled = module.DownloadSchedule.Enabled,
+                Days = module.DownloadSchedule.Days,
+            },
         };
 
     public static ServerSettingsDTO ToDTO(this PlexServerSettingsModule module) => new() { Data = module.Data };

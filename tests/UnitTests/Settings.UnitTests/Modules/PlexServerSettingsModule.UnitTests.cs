@@ -36,37 +36,17 @@ public class PlexServerSettingsModuleUnitTests : BaseUnitTest<PlexServerSettings
     }
 
     [Test]
-    public void GetDownloadSpeedLimit_ShouldReturnDefaultWhenNotSet()
+    public void ShouldReturnConfiguredLimitInKilobytes_WhenReadingManualLimit()
     {
         // Arrange
         var sut = PlexServerSettingsModule.Create();
+        sut.SetDownloadSpeedLimit("machine1", 200);
 
         // Act
         var speedLimit = sut.GetDownloadSpeedLimit("machine1");
 
         // Assert
-        speedLimit.ShouldBe(0);
+        speedLimit.ShouldBe(200);
     }
 
-    [Test]
-    public void ShouldEmitValuesWhenChanged_WhenSubscribedToTheObservable()
-    {
-        // Arrange
-        var sut = PlexServerSettingsModule.Create();
-
-        var emittedValues = new List<int>();
-        var subscription = sut.GetDownloadSpeedLimitObservable("machine1").Subscribe(emittedValues.Add);
-
-        // Act
-        sut.SetDownloadSpeedLimit("machine1", 200);
-        sut.SetDownloadSpeedLimit("machine2", 500);
-        sut.SetDownloadSpeedLimit("machine1", 300);
-
-        // Assert
-        emittedValues[0].ShouldBe(0);
-        emittedValues[1].ShouldBe(200);
-        emittedValues[2].ShouldBe(300);
-
-        subscription.Dispose();
-    }
 }

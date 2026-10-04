@@ -16,10 +16,31 @@ public class UpdateUserSettingsEndpointRequestValidator : Validator<UpdateUserSe
             .DependentRules(() =>
             {
                 RuleFor(x => x.SettingsModelDto!.ConfirmationSettings).NotNull();
-                RuleFor(x => x.SettingsModelDto!.DateTimeSettings).NotNull();
+                RuleFor(x => x.SettingsModelDto!.DateTimeSettings)
+                    .NotNull()
+                    .DependentRules(() =>
+                    {
+                        RuleFor(x => x.SettingsModelDto!.DateTimeSettings.TimeZone)
+                            .Cascade(CascadeMode.Stop)
+                            .NotEmpty()
+                            .Must(timeZone => TimeZoneInfo.TryFindSystemTimeZoneById(timeZone, out _));
+                    });
                 RuleFor(x => x.SettingsModelDto!.DebugSettings).NotNull();
                 RuleFor(x => x.SettingsModelDto!.DisplaySettings).NotNull();
-                RuleFor(x => x.SettingsModelDto!.DownloadManagerSettings).NotNull();
+                RuleFor(x => x.SettingsModelDto!.DownloadManagerSettings)
+                    .NotNull()
+                    .DependentRules(() =>
+                    {
+                        RuleFor(x => x.SettingsModelDto!.DownloadManagerSettings.DownloadSchedule)
+                            .NotNull()
+                            .DependentRules(() =>
+                            {
+                                RuleFor(x => x.SettingsModelDto!.DownloadManagerSettings.DownloadSchedule.Days)
+                                    .Cascade(CascadeMode.Stop)
+                                    .NotNull()
+                                    .Must(DownloadSchedule.IsValidDays);
+                            });
+                    });
                 RuleFor(x => x.SettingsModelDto!.GeneralSettings).NotNull();
                 RuleFor(x => x.SettingsModelDto!.LanguageSettings).NotNull();
                 RuleFor(x => x.SettingsModelDto!.ServerSettings).NotNull();
@@ -31,10 +52,13 @@ public class UpdateUserSettingsEndpointRequestValidator : Validator<UpdateUserSe
 public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointRequest, SettingsModelDTO>
 {
     private readonly IUserSettings _userSettings;
+    private readonly IScheduler _scheduler;
+    private static readonly SemaphoreSlim _updateGate = new(1, 1);
 
-    public UpdateUserSettingsEndpoint(IUserSettings userSettings)
+    public UpdateUserSettingsEndpoint(IUserSettings userSettings, IScheduler scheduler)
     {
         _userSettings = userSettings;
+        _scheduler = scheduler;
     }
 
     public override void Configure()
@@ -50,8 +74,38 @@ public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointReq
 
     public override async Task HandleAsync(UpdateUserSettingsEndpointRequest req, CancellationToken ct)
     {
-        _userSettings.UpdateSettings(req.SettingsModelDto!.ToModel());
+        await _updateGate.WaitAsync(ct);
+        try
+        {
+            var settings = req.SettingsModelDto!.ToModel(_userSettings);
 
-        await Send.FluentResult(Result.Ok(_userSettings), x => x.ToDTO(), ct);
+            var timeZoneChanged = _userSettings.DateTimeSettings.TimeZone != settings.DateTimeSettings.TimeZone;
+            var downloadScheduleChanged =
+                _userSettings.DownloadManagerSettings.DownloadSchedule != settings.DownloadManagerSettings.DownloadSchedule;
+
+            _userSettings.UpdateSettings(settings);
+
+            if (timeZoneChanged || downloadScheduleChanged)
+            {
+                var result = await Result.Try(async Task () =>
+                {
+                    if (timeZoneChanged)
+                        await _scheduler.RescheduleJob(
+                            UpdateScheduledDownloadLimitsJob.GetTriggerKey(),
+                            UpdateScheduledDownloadLimitsJob.CreateTrigger(_userSettings.DateTimeSettings.TimeZone),
+                            CancellationToken.None
+                        );
+
+                    await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None);
+                });
+                result.LogIfFailed();
+            }
+
+            await Send.FluentResult(Result.Ok(_userSettings), x => x.ToDTO(), ct);
+        }
+        finally
+        {
+            _updateGate.Release();
+        }
     }
 }

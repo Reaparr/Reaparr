@@ -122,7 +122,7 @@ public class UserSettings : IUserSettings
         _downloadManagerSettings = DownloadManagerSettingsModule.Create();
         _languageSettings = LanguageSettingsModule.Create();
         _debugSettings = DebugSettingsModule.Create();
-        _serverSettings = PlexServerSettingsModule.Create();
+        _serverSettings.Update(PlexServerSettingsModule.Create());
         _networkSettings = NetworkSettingsModule.Create();
         _authenticationSettings = AuthenticationModule.Create();
         _integrationsSettings = IntegrationsSettings.Create();

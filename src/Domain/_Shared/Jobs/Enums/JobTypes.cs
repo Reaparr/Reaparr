@@ -49,5 +49,8 @@ public enum JobTypes
 
     [JsonStringEnumMemberName(nameof(OptimizeDatabaseJob))]
     OptimizeDatabaseJob = 12,
+
+    [JsonStringEnumMemberName(nameof(UpdateScheduledDownloadLimitsJob))]
+    UpdateScheduledDownloadLimitsJob = 13,
     // Ensure to also add in EnumMapperExtensions.JobType.cs
 }

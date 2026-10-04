@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -16,7 +17,7 @@ public class DashPlexDownloadClient : IPlexDownloadClient
     private readonly IDashMpdCliWrapper _dashWrapper;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IDownloadTaskUpdateDispatcher _downloadTaskUpdateDispatcher;
-    private readonly IServerSettingsModule _serverSettings;
+    private readonly IDownloadSpeedLimitProvider _speedLimits;
     private readonly INotificationHubService _notificationHubService;
 
     private DownloadTaskKey? _downloadTaskKey;
@@ -30,14 +31,14 @@ public class DashPlexDownloadClient : IPlexDownloadClient
         IDashMpdCliWrapper dashWrapper,
         ICommandExecutor commandExecutor,
         IDownloadTaskUpdateDispatcher downloadTaskUpdateDispatcher,
-        IServerSettingsModule serverSettings,
+        IDownloadSpeedLimitProvider speedLimits,
         INotificationHubService notificationHubService
     )
     {
         _dashWrapper = dashWrapper;
         _commandExecutor = commandExecutor;
         _downloadTaskUpdateDispatcher = downloadTaskUpdateDispatcher;
-        _serverSettings = serverSettings;
+        _speedLimits = speedLimits;
         _notificationHubService = notificationHubService;
         _dbContext = dbContextFactory.Create();
     }
@@ -160,7 +161,7 @@ public class DashPlexDownloadClient : IPlexDownloadClient
     private async Task<DashMpdCliOptions> CreateDashOptions(DownloadTaskFileBase downloadTask, string downloadUrl)
     {
         var serverMachineIdentifier = await _dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
-        var speedLimitKb = _serverSettings.GetDownloadSpeedLimit(serverMachineIdentifier);
+        var speedLimitBytes = _speedLimits.GetEffectiveDownloadSpeedLimit(serverMachineIdentifier);
 
         return new DashMpdCliOptions
         {
@@ -169,7 +170,7 @@ public class DashPlexDownloadClient : IPlexDownloadClient
             WorkingDirectory = downloadTask.DownloadDirectory,
             Quiet = false,
             Quality = "best",
-            LimitRate = speedLimitKb > 0 ? $"{speedLimitKb}K" : null,
+            LimitRate = speedLimitBytes > 0 ? speedLimitBytes.ToString(CultureInfo.InvariantCulture) : null,
             EnvironmentVariables = new Dictionary<string, string>
             {
                 ["TMPDIR"] = downloadTask.DownloadDirectory,

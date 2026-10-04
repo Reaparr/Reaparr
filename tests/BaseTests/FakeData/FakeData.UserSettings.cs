@@ -84,7 +84,7 @@ public static partial class FakeData
             .RuleFor(x => x.ShortDateFormat, f => f.PickRandom(_shortDateFormat))
             .RuleFor(x => x.LongDateFormat, f => f.PickRandom(_longDateFormat))
             .RuleFor(x => x.TimeFormat, f => f.PickRandom(_timeFormat))
-            .RuleFor(x => x.TimeZone, f => f.Date.TimeZoneString())
+            .RuleFor(x => x.TimeZone, f => f.PickRandom("UTC", "Europe/Amsterdam", "America/New_York", "Asia/Kathmandu"))
             .RuleFor(x => x.ShowRelativeDates, f => f.Random.Bool());
     }
 
@@ -107,7 +107,8 @@ public static partial class FakeData
             .StrictMode(true)
             .UseSeed(seed.Next())
             .RuleFor(x => x.DownloadSegments, f => f.Random.Int(1, 3))
-            .RuleFor(x => x.KeepCompletedInDownloadFolder, _ => false);
+            .RuleFor(x => x.KeepCompletedInDownloadFolder, _ => false)
+            .RuleFor(x => x.DownloadSchedule, _ => new DownloadSchedule());
     }
 
     public static Faker<LanguageSettingsModule> GetLanguageSettings(

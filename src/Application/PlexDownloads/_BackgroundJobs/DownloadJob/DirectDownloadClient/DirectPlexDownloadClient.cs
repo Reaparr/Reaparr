@@ -15,7 +15,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IDownloadTaskUpdateDispatcher _downloadTaskUpdateDispatcher;
-    private readonly IServerSettingsModule _serverSettings;
+    private readonly IDownloadSpeedLimitProvider _speedLimits;
     private readonly IFile _file;
     private readonly IFileInfoFactory _fileInfoFactory;
 
@@ -40,7 +40,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         ICommandExecutor commandExecutor,
         IDownloadTaskUpdateDispatcher downloadTaskUpdateDispatcher,
         IDownloadManagerSettings downloadManagerSettings,
-        IServerSettingsModule serverSettings,
+        IDownloadSpeedLimitProvider speedLimits,
         IFile file,
         IFileInfoFactory fileInfoFactory,
         Func<DownloadConfiguration, IDownloadService> downloadServiceFactory
@@ -51,7 +51,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         _commandExecutor = commandExecutor;
         _downloadTaskUpdateDispatcher = downloadTaskUpdateDispatcher;
         _dbContext = dbContextFactory.Create();
-        _serverSettings = serverSettings;
+        _speedLimits = speedLimits;
         _file = file;
         _fileInfoFactory = fileInfoFactory;
 
@@ -345,12 +345,12 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         // Setup DownloadLimit Subscription
         var serverMachineIdentifier = await _dbContext.GetPlexServerMachineIdentifierById(key.PlexServerId);
         _subscriptions.Add(
-            _serverSettings
-                .GetDownloadSpeedLimitObservable(serverMachineIdentifier)
+            _speedLimits
+                .GetEffectiveDownloadSpeedLimitObservable(serverMachineIdentifier)
                 .TakeUntil(_destroy)
                 .Subscribe(value =>
                 {
-                    _configuration.MaximumBytesPerSecond = Math.Max(0, value) * 1024;
+                    _configuration.MaximumBytesPerSecond = value;
                 })
         );
 

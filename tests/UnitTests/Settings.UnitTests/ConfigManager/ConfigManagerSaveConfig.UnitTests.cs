@@ -1,5 +1,4 @@
 ﻿using System.IO.Abstractions;
-using System.Reactive.Subjects;
 using Autofac;
 using Reaparr.Environment;
 using Reaparr.Settings.Contracts;
@@ -9,31 +8,69 @@ namespace Reaparr.Settings.UnitTests;
 public class ConfigManagerSaveConfigUnitTests : BaseUnitTest<ConfigManager>
 {
     [Test]
-    public void ShouldLoadConfigDuringSetup_WhenConfigFileAlreadyExists()
+    public void ShouldPersistCurrentSettings_WhenTheConfigurationWriteSucceeds()
     {
         // Arrange
-        Mock.Mock<IUserSettings>().SetupGet(x => x.SettingsUpdated).Returns(new Subject<UserSettings>());
-        Mock.Mock<IFile>().Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>())).Verifiable(Times.Once);
-        Mock.Mock<IFile>().Setup(x => x.Move(It.IsAny<string>(), It.IsAny<string>(), true)).Verifiable(Times.Once);
-
-        // Were mocking other methods from ConfigManager, that's why we need to mock it manually here
-        var sut = new Mock<ConfigManager>(
-            MockBehavior.Strict,
-            Mock.Container.Resolve<ILogger>(),
-            Mock.Container.Resolve<IPathProvider>(),
-            Mock.Container.Resolve<IUserSettings>(),
-            Mock.Container.Resolve<IFile>(),
-            Mock.Container.Resolve<IPath>(),
-            Mock.Container.Resolve<IDirectory>()
-        );
-        sut.Setup(x => x.SaveConfig()).CallBase();
-        sut.Setup(x => x.ConfigFileExists()).Returns(true);
-        sut.Setup(x => x.LoadConfig()).Returns(Result.Ok);
+        SetupFileSystem();
+        var settings = new UserSettings
+        {
+            DateTimeSettings = { TimeZone = "Asia/Kathmandu" },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new()
+                    {
+                        ["Monday"] = new() { ["09:30"] = 123, ["17:00"] = null },
+                    },
+                },
+            },
+        };
+        settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
+        SetupDependencies(builder => builder.RegisterInstance(settings).As<IUserSettings>());
+        var path = Mock.Container.Resolve<IPathProvider>().ConfigFileLocation;
+        var file = Mock.Container.Resolve<IFile>();
 
         // Act
-        var resetResult = sut.Object.SaveConfig();
+        var result = Sut.SaveConfig();
 
         // Assert
-        resetResult.IsSuccess.ShouldBeTrue();
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var saved = UserSettingsSerializer.Deserialize(file.ReadAllText(path));
+        saved.DateTimeSettings.TimeZone.ShouldBe("Asia/Kathmandu");
+        saved.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
+        saved.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["Monday"]);
+        saved
+            .DownloadManagerSettings.DownloadSchedule.Days["Monday"]
+            .ShouldBe(new Dictionary<string, int?> { ["09:30"] = 123, ["17:00"] = null }, ignoreOrder: true);
+        saved.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
+    }
+
+    [Test]
+    public void ShouldReturnFailure_WhenTheConfigurationWriteFails()
+    {
+        // Arrange
+        var settings = new UserSettings { DateTimeSettings = { TimeZone = "Asia/Kathmandu" } };
+        var file = new Mock<IFile>(MockBehavior.Strict);
+        SetupDependencies(builder =>
+        {
+            builder.RegisterInstance(settings).As<IUserSettings>();
+            builder.RegisterInstance(file.Object).As<IFile>();
+        });
+        var path = Mock.Container.Resolve<IPathProvider>().ConfigFileLocation;
+        var expectedJson = UserSettingsSerializer.Serialize(settings);
+        file.Setup(x => x.WriteAllText(path, expectedJson))
+            .Throws(new IOException("write failed"))
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = Sut.SaveConfig();
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(2);
+        file.Verify();
     }
 }

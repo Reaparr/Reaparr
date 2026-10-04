@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
-using System.Reactive.Subjects;
+using Autofac;
+using Reaparr.Environment;
 using Reaparr.Settings.Contracts;
 
 namespace Reaparr.Settings.UnitTests;
@@ -10,43 +11,67 @@ public class ConfigManagerSetupUnitTests : BaseUnitTest<ConfigManager>
     public void ShouldLoadConfigDuringSetup_WhenConfigFileAlreadyExists()
     {
         // Arrange
-        Mock.Mock<IUserSettings>().SetupGet(x => x.SettingsUpdated).Returns(new Subject<UserSettings>());
-        Mock.Mock<IDirectory>().Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.CreateDirectory(It.IsAny<string>()))
-            .Returns(Mock.Mock<IDirectoryInfo>().Object)
-            .Verifiable(Times.Never);
-        Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
-        Mock.Mock<IUserSettings>().Setup(x => x.Reset());
+        SetupFileSystem();
+        var settings = new UserSettings();
+        var persisted = new UserSettings();
+        persisted.DateTimeSettings.TimeZone = "Asia/Kathmandu";
+        persisted.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        {
+            Enabled = true,
+            Days = new() { ["Monday"] = new() { ["09:30"] = 123 } },
+        };
+        persisted.ServerSettings.SetDownloadSpeedLimit("retained", 200);
+        SetupDependencies(builder => builder.RegisterInstance(settings).As<IUserSettings>());
+        var paths = Mock.Container.Resolve<IPathProvider>();
+        var file = Mock.Container.Resolve<IFile>();
+        Mock.Container.Resolve<IDirectory>().CreateDirectory(paths.ConfigDirectory);
+        var json = UserSettingsSerializer.Serialize(persisted);
+        file.WriteAllText(paths.ConfigFileLocation, json);
 
         // Act
-        var resetResult = Sut.Setup();
+        var result = Sut.Setup();
 
         // Assert
-        resetResult.IsSuccess.ShouldBeTrue();
-
-        Mock.Mock<IUserSettings>().VerifyGet(x => x.SettingsUpdated, Times.Once);
+        result.IsSuccess.ShouldBeTrue();
+        settings.DateTimeSettings.TimeZone.ShouldBe("Asia/Kathmandu");
+        settings.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
+        settings.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["Monday"]);
+        settings
+            .DownloadManagerSettings.DownloadSchedule.Days["Monday"]
+            .ShouldBe(new Dictionary<string, int?> { ["09:30"] = 123 }, ignoreOrder: true);
+        settings.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
+        file.ReadAllText(paths.ConfigFileLocation).ShouldBe(json);
     }
 
     [Test]
     public void ShouldCreateConfigFile_WhenConfigFileDoesNotExists()
     {
         // Arrange
-        Mock.Mock<IUserSettings>().SetupGet(x => x.SettingsUpdated).Returns(new Subject<UserSettings>());
-        Mock.Mock<IFile>().Setup(x => x.WriteAllText(It.IsAny<string>(), It.IsAny<string>())).Verifiable(Times.Once);
-        Mock.Mock<IFile>().Setup(x => x.Move(It.IsAny<string>(), It.IsAny<string>(), true)).Verifiable(Times.Once);
-
-        Mock.Mock<IDirectory>().Setup(x => x.Exists(It.IsAny<string>())).Returns(false);
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.CreateDirectory(It.IsAny<string>()))
-            .Returns(new Mock<IDirectoryInfo>().Object);
-        Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(false);
+        SetupFileSystem();
+        var settings = new UserSettings();
+        settings.DateTimeSettings.TimeZone = "America/New_York";
+        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        {
+            Enabled = true,
+            Days = new() { ["Sunday"] = new() { ["23:30"] = 321 } },
+        };
+        settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
+        SetupDependencies(builder => builder.RegisterInstance(settings).As<IUserSettings>());
+        var path = Mock.Container.Resolve<IPathProvider>().ConfigFileLocation;
+        var file = Mock.Container.Resolve<IFile>();
 
         // Act
-        var resetResult = Sut.Setup();
+        var result = Sut.Setup();
 
         // Assert
-        resetResult.IsSuccess.ShouldBeTrue();
-        Mock.Mock<IUserSettings>().VerifyGet(x => x.SettingsUpdated, Times.Once);
+        result.IsSuccess.ShouldBeTrue();
+        var saved = UserSettingsSerializer.Deserialize(file.ReadAllText(path));
+        saved.DateTimeSettings.TimeZone.ShouldBe("America/New_York");
+        saved.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
+        saved.DownloadManagerSettings.DownloadSchedule.Days.Keys.ShouldBe(["Sunday"]);
+        saved
+            .DownloadManagerSettings.DownloadSchedule.Days["Sunday"]
+            .ShouldBe(new Dictionary<string, int?> { ["23:30"] = 321 }, ignoreOrder: true);
+        saved.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
     }
 }

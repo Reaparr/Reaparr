@@ -1,5 +1,38 @@
 {
     "components": {
+        "download-schedule": {
+            "title": "Download speed schedule",
+            "description": "A weekly bandwidth budget shared by downloading servers, in half-hour intervals. One kB/s is 1024 bytes per second.",
+            "enabled": "Enable schedule",
+            "reset": "Reset schedule",
+            "reset-title": "Reset download schedule?",
+            "reset-text": "Clear all scheduled speed limits and make every time slot Unlimited? Manual server download limits will not change.",
+            "grid-help": "Select half-hour slots with a click or drag. Use arrow keys to move, Shift + arrows to extend, and Space or Enter to select. The range editor also works without dragging.",
+            "grid-label": "Weekly half-hour download limits",
+            "unlimited": "Unlimited",
+            "edit-selection": "Edit selected times",
+            "weekday-work-hours": "Select weekday work hours",
+            "days": "Days",
+            "from": "From",
+            "until-exclusive": "Until (exclusive)",
+            "limit": "Limit",
+            "positive-integer": "Positive whole number",
+            "mixed-values": "Mixed values · choose a new limit",
+            "equal-times-invalid": "From and Until cannot be equal. Use 00:00–24:00 for a whole day.",
+            "positive-integer-error": "Enter a whole number between 1 and 2,147,483,647 kB/s.",
+            "apply-save": "Apply to selection & save",
+            "selection-help": "Selection and edits do not change the saved schedule until you apply them. Until is exclusive; an earlier Until continues into the next day, including Sunday to Monday.",
+            "save-error": "Save failed. Your selection and input are retained; apply again to retry.",
+            "fairness-help": "The budget is shared equally between downloading servers, within their manual caps. Direct downloads update when limits are recalculated; DASH keeps its startup limit. Unused throughput is not measured or borrowed.",
+            "timezone-help": "Times use the Date & time setting ({timezone}), not the browser clock. Each day starts Unlimited until its first change point. Limits are recalculated at :00 and :30, and when the schedule or timezone changes. Disabling preserves the schedule and manual server caps.",
+            "monday": "Monday",
+            "tuesday": "Tuesday",
+            "wednesday": "Wednesday",
+            "thursday": "Thursday",
+            "friday": "Friday",
+            "saturday": "Saturday",
+            "sunday": "Sunday"
+        },
         "account-card": {
             "invalid-account": "Account object was invalid"
         },
@@ -870,6 +903,11 @@
                     }
                 },
                 "date-and-time": {
+                    "time-zone": {
+                        "label": "Time Zone",
+                        "text": "",
+                        "title": ""
+                    },
                     "long-date-format": {
                         "label": "Long Date Format",
                         "text": "",

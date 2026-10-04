@@ -27,10 +27,12 @@ export function setupMockSettingsEndpoints(
 		});
 	}).as('settingsUpdate');
 
-	cy.intercept('GET', SettingsPaths.getUserSettingsEndpoint(), {
-		statusCode: 200,
-		body: generateResultDTO(this.settings),
-		...headers,
+	cy.intercept('GET', SettingsPaths.getUserSettingsEndpoint(), (req) => {
+		req.reply({
+			statusCode: 200,
+			body: generateResultDTO(this.settings),
+			...headers,
+		});
 	}).then(() => {
 		if (config.debugDisplayData) {
 			cy.log('BasePageSetup -> settings', this.settings);

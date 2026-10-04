@@ -21,7 +21,7 @@
     "preview": "nuxi preview",
     "dev:analyze": "nuxi analyze",
     "postinstall": "nuxi prepare",
-    "generate-ts": "swagger-typescript-api generate --path http://localhost:5000/swagger/internal/swagger.json --sort-types --modular --clean-output --module-name-index 1 --axios --api-class-name GeneratedApiClient --templates ./src/types/api/templates/modular -o ./src/types/api/generated",
+    "generate-api-ts": "swagger-typescript-api generate --path http://localhost:5000/swagger/internal/swagger.json --sort-types --modular --clean-output --module-name-index 1 --axios --api-class-name GeneratedApiClient --templates ./src/types/api/templates/modular -o ./src/types/api/generated",
     "typecheck": "vue-tsc -b tsconfig.typecheck.json --noEmit --pretty",
     "typecheck-watch": "vue-tsc -b tsconfig.typecheck.json --noEmit --watch --pretty",
     "npm-upgrade-packages": "bunx npm-upgrade",
@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@crazydos/vue-markdown": "^1.1.4",
+    "@date-fns/tz": "^1.5.0",
     "@microsoft/signalr": "^9.0.6",
     "@microsoft/signalr-protocol-msgpack": "^9.0.6",
     "@pinia/nuxt": "^0.11.3",

@@ -1,5 +1,38 @@
 {
     "components": {
+        "download-schedule": {
+            "title": "Planning de vitesse de téléchargement",
+            "description": "Un budget hebdomadaire de bande passante partagé entre les serveurs qui téléchargent, par demi-heure. Un kB/s correspond à 1024 octets par seconde.",
+            "enabled": "Activer le planning",
+            "reset": "Réinitialiser le planning",
+            "reset-title": "Réinitialiser le planning de téléchargement ?",
+            "reset-text": "Effacer toutes les limites planifiées et rendre tous les créneaux illimités ? Les limites manuelles des serveurs ne changeront pas.",
+            "grid-help": "Sélectionnez les créneaux de demi-heure par clic ou glissement. Utilisez les flèches pour vous déplacer, Maj + flèches pour étendre, et Espace ou Entrée pour sélectionner. L'éditeur de plage fonctionne aussi sans glisser.",
+            "grid-label": "Limites hebdomadaires de téléchargement par demi-heure",
+            "unlimited": "Illimité",
+            "edit-selection": "Modifier les créneaux sélectionnés",
+            "weekday-work-hours": "Sélectionner les heures de travail en semaine",
+            "days": "Jours",
+            "from": "De",
+            "until-exclusive": "À (exclu)",
+            "limit": "Limite",
+            "positive-integer": "Entier positif",
+            "mixed-values": "Valeurs mixtes · choisir une nouvelle limite",
+            "equal-times-invalid": "Les heures de début et de fin doivent être différentes. Utilisez 00:00–24:00 pour une journée entière.",
+            "positive-integer-error": "Saisissez un entier entre 1 et 2 147 483 647 kB/s.",
+            "apply-save": "Appliquer à la sélection et enregistrer",
+            "selection-help": "La sélection et les saisies ne changent pas le planning enregistré avant l'application. L'heure de fin est exclue ; une heure de fin antérieure continue le lendemain, y compris du dimanche au lundi.",
+            "save-error": "Échec de l'enregistrement. Votre sélection et votre saisie sont conservées ; appliquez à nouveau pour réessayer.",
+            "fairness-help": "Le budget est partagé équitablement entre les serveurs qui téléchargent, dans leurs limites manuelles. Les téléchargements directs suivent les limites recalculées ; DASH conserve sa limite de démarrage. Le débit inutilisé n'est ni mesuré ni prêté.",
+            "timezone-help": "Les heures utilisent le réglage Date et heure ({timezone}), pas l'horloge du navigateur. Chaque jour commence sans limite jusqu'au premier changement. Les limites sont recalculées à :00 et :30, ainsi que lors d'un changement du planning ou du fuseau horaire. Désactiver conserve le planning et les limites manuelles des serveurs.",
+            "monday": "Lundi",
+            "tuesday": "Mardi",
+            "wednesday": "Mercredi",
+            "thursday": "Jeudi",
+            "friday": "Vendredi",
+            "saturday": "Samedi",
+            "sunday": "Dimanche"
+        },
         "account-card": {
             "invalid-account": "L'objet de compte n'était pas valide"
         },
@@ -870,6 +903,11 @@
                     }
                 },
                 "date-and-time": {
+                    "time-zone": {
+                        "label": "Fuseau horaire",
+                        "text": "",
+                        "title": ""
+                    },
                     "long-date-format": {
                         "label": "Date au format long",
                         "text": "",

@@ -18,6 +18,7 @@ public static partial class EnumMapperExtensions
         ["LibraryComparisonJob"] = JobTypes.LibraryComparisonJob,
         ["MediaOverviewSnapshotJob"] = JobTypes.MediaOverviewSnapshotJob,
         ["OptimizeDatabaseJob"] = JobTypes.OptimizeDatabaseJob,
+        ["UpdateScheduledDownloadLimitsJob"] = JobTypes.UpdateScheduledDownloadLimitsJob,
     };
 
     /// <summary>

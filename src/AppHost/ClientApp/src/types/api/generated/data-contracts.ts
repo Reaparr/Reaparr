@@ -217,6 +217,7 @@ export interface DownloadJobUpdateDTO {
 }
 
 export interface DownloadManagerSettingsDTO {
+  downloadSchedule: DownloadScheduleDTO;
   /** @format int32 */
   downloadSegments: number;
   keepCompletedInDownloadFolder: boolean;
@@ -331,6 +332,11 @@ export interface DownloadProgressMessagePackDTO {
   /** @format int32 */
   timeRemaining: number;
   title: string;
+}
+
+export interface DownloadScheduleDTO {
+  days: Record<string, Record<string, number | null>>;
+  enabled: boolean;
 }
 
 export enum DownloadStatus {
@@ -628,6 +634,7 @@ export enum JobTypes {
   RefreshPlexAccountAccessJob = "RefreshPlexAccountAccessJob",
   MediaOverviewSnapshotJob = "MediaOverviewSnapshotJob",
   OptimizeDatabaseJob = "OptimizeDatabaseJob",
+  UpdateScheduledDownloadLimitsJob = "UpdateScheduledDownloadLimitsJob",
   Unknown = "Unknown",
 }
 

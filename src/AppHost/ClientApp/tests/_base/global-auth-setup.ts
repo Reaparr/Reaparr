@@ -83,7 +83,14 @@ mock.onGet(settingsMatcher).reply(200, ok({
 		tvShowViewMode: 0,
 		allOverviewViewMode: 1,
 	},
-	downloadManagerSettings: { downloadSegments: 4, keepCompletedInDownloadFolder: false },
+	downloadManagerSettings: {
+		downloadSegments: 4,
+		keepCompletedInDownloadFolder: false,
+		downloadSchedule: {
+			enabled: false,
+			days: {},
+		},
+	},
 	languageSettings: { language: 'en-US' },
 	serverSettings: { data: [] },
 	networkSettings: {

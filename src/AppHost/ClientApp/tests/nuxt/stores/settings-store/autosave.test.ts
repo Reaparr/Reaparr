@@ -28,7 +28,7 @@ describe('SettingsStore autosave regressions', () => {
 		const settingsStore = useSettingsStore();
 		const settings = generateSettingsModel({ config: initialConfig });
 		mock.onGet(SettingsPaths.getUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
-		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
+		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).reply((request) => [200, generateResultDTO(JSON.parse(request.data))]);
 		await subscribeSpyTo(settingsStore.setup()).onComplete();
 		await subscribeSpyTo(settingsStore.setup()).onComplete();
 
@@ -38,6 +38,8 @@ describe('SettingsStore autosave regressions', () => {
 
 		// Assert
 		expect(mock.history.put.filter((request) => request.url === SettingsPaths.updateUserSettingsEndpoint())).toHaveLength(1);
+		expect(JSON.parse(mock.history.put[0]!.data).generalSettings.firstTimeSetup).toBe(!settings.generalSettings.firstTimeSetup);
+		expect(settingsStore.generalSettings.firstTimeSetup).toBe(!settings.generalSettings.firstTimeSetup);
 	});
 
 	test('Should keep autosave working after reset', async () => {
@@ -45,7 +47,7 @@ describe('SettingsStore autosave regressions', () => {
 		const settingsStore = useSettingsStore();
 		const settings = generateSettingsModel({ config: initialConfig });
 		mock.onGet(SettingsPaths.getUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
-		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
+		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).reply((request) => [200, generateResultDTO(JSON.parse(request.data))]);
 		await subscribeSpyTo(settingsStore.setup()).onComplete();
 		settingsStore.$reset();
 
@@ -55,6 +57,8 @@ describe('SettingsStore autosave regressions', () => {
 
 		// Assert
 		expect(mock.history.put.filter((request) => request.url === SettingsPaths.updateUserSettingsEndpoint())).toHaveLength(1);
+		expect(JSON.parse(mock.history.put[0]!.data).generalSettings.firstTimeSetup).toBe(false);
+		expect(settingsStore.generalSettings.firstTimeSetup).toBe(false);
 	});
 
 	test('Should restore autosave after reset and setup are run again', async () => {
@@ -62,16 +66,18 @@ describe('SettingsStore autosave regressions', () => {
 		const settingsStore = useSettingsStore();
 		const settings = generateSettingsModel({ config: initialConfig });
 		mock.onGet(SettingsPaths.getUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
-		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).reply(200, generateResultDTO(settings));
+		mock.onPut(SettingsPaths.updateUserSettingsEndpoint()).reply((request) => [200, generateResultDTO(JSON.parse(request.data))]);
 		await subscribeSpyTo(settingsStore.setup()).onComplete();
 		settingsStore.$reset();
 		await subscribeSpyTo(settingsStore.setup()).onComplete();
 
 		// Act
-		settingsStore.generalSettings.firstTimeSetup = false;
+		settingsStore.generalSettings.firstTimeSetup = !settingsStore.generalSettings.firstTimeSetup;
 		await vi.advanceTimersByTimeAsync(600);
 
 		// Assert
 		expect(mock.history.put.filter((request) => request.url === SettingsPaths.updateUserSettingsEndpoint())).toHaveLength(1);
+		expect(JSON.parse(mock.history.put[0]!.data).generalSettings.firstTimeSetup).toBe(!settings.generalSettings.firstTimeSetup);
+		expect(settingsStore.generalSettings.firstTimeSetup).toBe(!settings.generalSettings.firstTimeSetup);
 	});
 });
