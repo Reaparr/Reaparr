@@ -16,6 +16,10 @@
 					<slot name="header">
 						{{ header }}
 					</slot>
+					<HelpButton
+						v-if="help"
+						class="q-ml-sm"
+						@click="helpStore.openHelpDialog({ label: header, title: header, text: help })" />
 				</QText>
 				<q-separator />
 			</QCol>
@@ -28,12 +32,18 @@
 </template>
 
 <script setup lang="ts">
+import { useHelpStore } from '@store';
+
+const helpStore = useHelpStore();
+
 withDefaults(defineProps<{
 	header?: string;
 	align?: 'left' | 'center' | 'right';
+	help?: string;
 }>(), {
 	header: '',
 	align: 'left',
+	help: '',
 });
 </script>
 
