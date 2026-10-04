@@ -1,5 +1,6 @@
-import { checkConfig, type MockConfig } from '@mock';
-import { type IBasePageSetupResult, BasePageSetupResult } from '@fixtures';
+import { checkConfig, generateResultDTO, type MockConfig } from '@mock';
+import { type IBasePageSetupResult, BasePageSetupResult, headers } from '@fixtures';
+import { IntegrationPaths } from '@api/generated/Integration';
 
 export function basePageSetup(config: Partial<MockConfig> = {}): Cypress.Chainable<IBasePageSetupResult> {
 	const validConfig = checkConfig(config);
@@ -64,6 +65,13 @@ export function basePageSetup(config: Partial<MockConfig> = {}): Cypress.Chainab
 
 	// Notifications call
 	result.setupNotificationsEndpoints();
+
+	// Integration setup runs after the other startup requests complete.
+	cy.intercept('GET', IntegrationPaths.getIntegrationsEndpoint(), {
+		statusCode: 200,
+		body: generateResultDTO([]),
+		...headers,
+	});
 
 	// Calculate library media size and count
 	for (const library of result.plexLibraries) {
