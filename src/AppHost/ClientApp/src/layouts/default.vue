@@ -41,8 +41,8 @@
 import Log from 'consola';
 import { useSubscription } from '@vueuse/rxjs';
 import { get, set } from '@vueuse/core';
-import type { IAlert } from '@interfaces';
 import { DialogType } from '@enums';
+import { storeToRefs } from 'pinia';
 import {
 	useHelpStore,
 	useAlertStore,
@@ -50,8 +50,7 @@ import {
 	useDialogStore,
 	useSettingsStore,
 	useAuthenticationStore,
-	useNuxtApp,
-} from '#imports';
+} from '@store';
 
 const nuxtApp = useNuxtApp();
 const route = useRoute();
@@ -64,7 +63,7 @@ const settingsStore = useSettingsStore();
 const globalStore = useGlobalStore();
 const authStore = useAuthenticationStore();
 
-const alerts = ref<IAlert[]>([]);
+const { alerts } = storeToRefs(alertStore);
 const $q = useQuasar();
 const showNavigationDrawerState = ref($q.screen.gt.sm);
 const showNotificationsDrawerState = ref(false);
@@ -147,19 +146,6 @@ onMounted(() => {
 		}),
 	);
 
-	useSubscription(
-		alertStore.getAlerts.subscribe((newAlerts) => {
-			if (newAlerts) {
-				set(alerts, newAlerts);
-				// Allow the alert dialog to render first before opening it
-				nextTick(() => {
-					for (const newAlert of get(alerts)) {
-						dialogStore.openAlertInfoDialog(newAlert);
-					}
-				});
-			}
-		}),
-	);
 
 	useEventListener(window, 'resize', () => {
 		if (document.body.classList.contains('window-resizing')) {

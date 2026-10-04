@@ -1,19 +1,17 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { reactive, computed, toRefs } from 'vue';
+import { reactive, toRefs } from 'vue';
 import type { Observable } from 'rxjs';
-import { of, Subject } from 'rxjs';
-import { StoreNames, type ISetupResult, type IAlert } from '@interfaces';
+import { of } from 'rxjs';
+import { StoreNames, type ISetupResult, type IAlert, type IApiError } from '@interfaces';
 import { cloneDeep } from 'lodash-es';
 
 interface IAlertStoreState {
 	alerts: IAlert[];
-	alertDialogObservable: Subject<IAlert[]>;
 }
 
 export const useAlertStore = defineStore(StoreNames.AlertStore, () => {
 	const defaultState: IAlertStoreState = {
 		alerts: [],
-		alertDialogObservable: new Subject<IAlert[]>(),
 	};
 	const state = reactive<IAlertStoreState>(cloneDeep(defaultState));
 
@@ -24,7 +22,32 @@ export const useAlertStore = defineStore(StoreNames.AlertStore, () => {
 		showAlert(alert: IAlert): void {
 			const newAlert = { ...alert, id: Date.now() };
 			state.alerts.push(newAlert);
-			state.alertDialogObservable.next(state.alerts);
+		},
+		showApiError(error: IApiError): void {
+			const alert = state.alerts.find((item) => item.apiErrors);
+			if (!alert?.apiErrors) {
+				state.alerts.push({
+					id: -1,
+					title: '',
+					text: '',
+					apiErrors: [error],
+					hasOmittedApiErrors: false,
+				});
+				return;
+			}
+
+			if (alert.apiErrors.some((item) =>
+				item.method === error.method && item.url === error.url
+				&& item.statusCode === error.statusCode && item.code === error.code)) {
+				return;
+			}
+
+			if (alert.apiErrors.length === 10) {
+				alert.hasOmittedApiErrors = true;
+				return;
+			}
+
+			alert.apiErrors.push(error);
 		},
 		removeAlert(id: number): void {
 			state.alerts = state.alerts.filter((x) => x.id !== id);
@@ -33,13 +56,9 @@ export const useAlertStore = defineStore(StoreNames.AlertStore, () => {
 			Object.assign(state, cloneDeep(defaultState));
 		},
 	};
-	const getters = {
-		getAlerts: computed((): Observable<IAlert[]> => state.alertDialogObservable),
-	};
 	return {
 		...toRefs(state),
 		...actions,
-		...getters,
 	};
 });
 

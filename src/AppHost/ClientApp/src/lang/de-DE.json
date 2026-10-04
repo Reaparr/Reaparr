@@ -309,7 +309,17 @@
             "server-unconnectable": "Es kann keine Verbindung zum Server hergestellt werden und er ist möglicherweise offline."
         },
         "alert-dialog": {
-            "request-data-sent": "Anfragedaten gesendet:"
+            "request-data-sent": "Anfragedaten gesendet:",
+            "title": "Etwas ist schiefgelaufen",
+            "description": "Backend-Anfragen sind fehlgeschlagen. Der GitHub-Bericht enthält alle unten angezeigten Fehler.",
+            "error-explanation": "Die betroffene Aktion wurde möglicherweise nicht abgeschlossen. Daher können Daten fehlen oder veraltet sein. HTTP 4xx bedeutet, dass die Anfrage abgelehnt wurde; HTTP 5xx bedeutet, dass der Server sie nicht abschließen konnte. Details stehen unten.",
+            "next-steps": "Schließen blendet nur diesen Dialog aus; fehlgeschlagene Anfragen werden nicht erneut ausgeführt. Wenn das Problem weiterhin besteht, öffnet Auf GitHub melden ein vorausgefülltes Issue zur Prüfung. Nichts wird automatisch übermittelt. Entfernen Sie sensible Informationen, ergänzen Sie Schritte zur Reproduktion und fügen Sie relevante Backend-Protokolle hinzu, bevor Sie das Issue absenden.",
+            "request-failed": "Das Backend konnte diese Anfrage nicht abschließen.",
+            "connection-failed": "Das Reaparr-Backend ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+            "endpoint": "Endpunkt",
+            "omitted-errors": "Nur die ersten 10 unterschiedlichen Fehler werden angezeigt. Weitere Fehler wurden ausgelassen; siehe Reaparr-Protokolle.",
+            "report-issue": "Auf GitHub melden",
+            "report-description": "Beschreiben Sie bitte, was Sie gerade getan haben, und fügen Sie relevante Reaparr-Protokolle hinzu."
         },
         "account-token-validate-dialog": {
             "column": {
