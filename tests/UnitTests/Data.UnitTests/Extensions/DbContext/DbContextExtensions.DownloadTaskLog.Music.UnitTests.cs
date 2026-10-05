@@ -17,7 +17,7 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var file = await AddMusicTask(dbContext, 1);
+        var file = await FakeData.AddMusicTask(dbContext, 1);
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         await dbContext.CreateDownloadClientLog(
             movieFile.ToKey(),
@@ -68,8 +68,8 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
         // Arrange
         await SetupDatabase(62302, config => config.PlexMusicLibraryCount = 1);
         var dbContext = IDbContext;
-        var file = await AddMusicTask(dbContext, 1);
-        var sibling = await AddMusicTask(dbContext, 2);
+        var file = await FakeData.AddMusicTask(dbContext, 1);
+        var sibling = await FakeData.AddMusicTask(dbContext, 2);
         dbContext.DownloadTaskTrackFileLogs.AddRange(
             MusicLog(file, "track-1"),
             MusicLog(file, "track-2"),
@@ -120,8 +120,8 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
         // Arrange
         await SetupDatabase(62303, config => config.PlexMusicLibraryCount = 1);
         var dbContext = IDbContext;
-        var file = await AddMusicTask(dbContext, 1);
-        var sibling = await AddMusicTask(dbContext, 2);
+        var file = await FakeData.AddMusicTask(dbContext, 1);
+        var sibling = await FakeData.AddMusicTask(dbContext, 2);
         dbContext.DownloadTaskTrackFileLogs.AddRange(MusicLog(file, "target"), MusicLog(sibling, "sibling"));
         await dbContext.SaveChangesAsync(CancellationToken);
         (
@@ -156,109 +156,6 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
         ).ShouldBe([new { DownloadTaskFileId = sibling.Id, Message = "sibling" }]);
     }
 
-    private static async Task<DownloadTaskMusicTrackFile> AddMusicTask(IReaparrDbContext dbContext, int index)
-    {
-        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.MusicArtist);
-        var createdAt = new DateTime(2026, 10, 4, 9, 0, 0, DateTimeKind.Utc);
-        var artist = new DownloadTaskMusicArtist
-        {
-            Id = Guid.NewGuid(),
-            PlexApiRatingKey = 1000 + index * 10,
-            Title = $"artist-{index}",
-            FullTitle = $"artist-{index}",
-            DownloadStatus = DownloadStatus.Queued,
-            CreatedAt = createdAt,
-            PlexServerId = library.PlexServerId,
-            PlexLibraryId = library.Id,
-            Year = 2026,
-            Children = [],
-            DataReceived = 0,
-            FileDataTransferred = 0,
-            DataTotal = 0,
-            DownloadSpeed = 0,
-            FileTransferSpeed = 0,
-        };
-        var album = new DownloadTaskMusicAlbum
-        {
-            Id = Guid.NewGuid(),
-            ParentId = artist.Id,
-            Parent = artist,
-            PlexApiRatingKey = 1001 + index * 10,
-            Title = $"album-{index}",
-            FullTitle = $"album-{index}",
-            DownloadStatus = DownloadStatus.Queued,
-            CreatedAt = createdAt,
-            PlexServerId = library.PlexServerId,
-            PlexLibraryId = library.Id,
-            Year = 2026,
-            Children = [],
-            DataReceived = 0,
-            FileDataTransferred = 0,
-            DataTotal = 0,
-            DownloadSpeed = 0,
-            FileTransferSpeed = 0,
-        };
-        var track = new DownloadTaskMusicTrack
-        {
-            Id = Guid.NewGuid(),
-            ParentId = album.Id,
-            Parent = album,
-            PlexApiRatingKey = 1002 + index * 10,
-            Title = $"track-{index}",
-            FullTitle = $"track-{index}",
-            DownloadStatus = DownloadStatus.Queued,
-            CreatedAt = createdAt,
-            PlexServerId = library.PlexServerId,
-            PlexLibraryId = library.Id,
-            Year = 2026,
-            Children = [],
-            DataReceived = 0,
-            FileDataTransferred = 0,
-            DataTotal = 0,
-            DownloadSpeed = 0,
-            FileTransferSpeed = 0,
-        };
-        var file = new DownloadTaskMusicTrackFile
-        {
-            Id = Guid.NewGuid(),
-            ParentId = track.Id,
-            Parent = track,
-            PlexApiRatingKey = 2000 + index,
-            Title = $"track-{index}",
-            FullTitle = $"track-{index}",
-            DownloadStatus = DownloadStatus.Queued,
-            CreatedAt = createdAt,
-            PlexServerId = library.PlexServerId,
-            PlexLibraryId = library.Id,
-            PlexApiMediaId = 1,
-            PlexApiPartId = 1,
-            FileName = $"track-{index}.flac",
-            FileLocationUrl = "/file",
-            HashId = null,
-            Quality = VideoQuality.HD,
-            DirectoryMeta = new DownloadTaskDirectory
-            {
-                DownloadRootPath = "/downloads",
-                DestinationRootPath = "/destination",
-                MovieFolder = $"track-{index}",
-                TvShowFolder = string.Empty,
-                SeasonFolder = string.Empty,
-                KeepCompletedInDownloadFolder = false,
-            },
-            DataReceived = 0,
-            DataTotal = 0,
-            DownloadSpeed = 0,
-            DirectDownloadSnapshot = null,
-            DownloadClientType = PlexDownloadClientType.Direct,
-            FileTransferSpeed = 0,
-            FileDataTransferred = 0,
-            TimeRemaining = 0,
-            DestinationFolderPathId = null,
-        };
-        dbContext.DownloadTaskTrackFiles.Add(file);
-        await dbContext.SaveChangesAsync(CancellationToken.None);
-        return file;
-    }
 
     private static DownloadTaskTrackFileLog MusicLog(DownloadTaskMusicTrackFile file, string message) =>
         new()

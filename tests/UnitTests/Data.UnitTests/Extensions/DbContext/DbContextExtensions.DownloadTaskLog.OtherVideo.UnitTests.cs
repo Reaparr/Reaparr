@@ -14,7 +14,7 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
             config.MovieDownloadTasksCount = 1;
         });
         var dbContext = IDbContext;
-        var file = await AddOtherVideoTask(dbContext, 1);
+        var file = await FakeData.AddOtherVideoTask(dbContext, 1);
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         await dbContext.CreateDownloadClientLog(movieFile.ToKey(), NotificationLevel.Information, DownloadStatus.Downloading, "movie-control");
         var movieLog = await dbContext.DownloadTaskMovieFileLogs.SingleAsync(CancellationToken);
@@ -44,8 +44,8 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
         // Arrange
         await SetupDatabase(62322, config => config.PlexOtherVideoLibraryCount = 1);
         var dbContext = IDbContext;
-        var file = await AddOtherVideoTask(dbContext, 1);
-        var sibling = await AddOtherVideoTask(dbContext, 2);
+        var file = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var sibling = await FakeData.AddOtherVideoTask(dbContext, 2);
         dbContext.DownloadTaskOtherVideoFileLogs.AddRange(
             OtherVideoLog(file, "video-1"), OtherVideoLog(file, "video-2"), OtherVideoLog(file, "video-3"), OtherVideoLog(sibling, "sibling"));
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -72,8 +72,8 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
         // Arrange
         await SetupDatabase(62323, config => config.PlexOtherVideoLibraryCount = 1);
         var dbContext = IDbContext;
-        var file = await AddOtherVideoTask(dbContext, 1);
-        var sibling = await AddOtherVideoTask(dbContext, 2);
+        var file = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var sibling = await FakeData.AddOtherVideoTask(dbContext, 2);
         dbContext.DownloadTaskOtherVideoFileLogs.AddRange(OtherVideoLog(file, "target"), OtherVideoLog(sibling, "sibling"));
         await dbContext.SaveChangesAsync(CancellationToken);
         (await dbContext.DownloadTaskOtherVideoFileLogs.OrderBy(x => x.Id).Select(x => x.Message).ToListAsync(CancellationToken)).ShouldBe(["target", "sibling"]);
@@ -90,69 +90,6 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
             .ShouldBe([new { DownloadTaskFileId = sibling.Id, Message = "sibling" }]);
     }
 
-    private static async Task<DownloadTaskOtherVideoFile> AddOtherVideoTask(IReaparrDbContext dbContext, int index)
-    {
-        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.OtherVideos);
-        var createdAt = new DateTime(2026, 10, 4, 9, 0, 0, DateTimeKind.Utc);
-        var video = new DownloadTaskOtherVideo
-        {
-            Id = Guid.NewGuid(),
-            PlexApiRatingKey = 1000 + index,
-            Title = $"video-{index}",
-            FullTitle = $"video-{index}",
-            DownloadStatus = DownloadStatus.Queued,
-            CreatedAt = createdAt,
-            PlexServerId = library.PlexServerId,
-            PlexLibraryId = library.Id,
-            Year = 2026,
-            Children = [],
-            DataReceived = 0,
-            FileDataTransferred = 0,
-            DataTotal = 0,
-            DownloadSpeed = 0,
-            FileTransferSpeed = 0,
-        };
-        var file = new DownloadTaskOtherVideoFile
-        {
-            Id = Guid.NewGuid(),
-            ParentId = video.Id,
-            Parent = video,
-            PlexApiRatingKey = 4000 + index,
-            Title = $"video-{index}",
-            FullTitle = $"video-{index}",
-            DownloadStatus = DownloadStatus.Queued,
-            CreatedAt = createdAt,
-            PlexServerId = library.PlexServerId,
-            PlexLibraryId = library.Id,
-            PlexApiMediaId = 1,
-            PlexApiPartId = 1,
-            FileName = $"video-{index}.mp4",
-            FileLocationUrl = "/file",
-            HashId = null,
-            Quality = VideoQuality.HD,
-            DirectoryMeta = new DownloadTaskDirectory
-            {
-                DownloadRootPath = "/downloads",
-                DestinationRootPath = "/destination",
-                MovieFolder = $"video-{index}",
-                TvShowFolder = string.Empty,
-                SeasonFolder = string.Empty,
-                KeepCompletedInDownloadFolder = false,
-            },
-            DataReceived = 0,
-            DataTotal = 0,
-            DownloadSpeed = 0,
-            DirectDownloadSnapshot = null,
-            DownloadClientType = PlexDownloadClientType.Direct,
-            FileTransferSpeed = 0,
-            FileDataTransferred = 0,
-            TimeRemaining = 0,
-            DestinationFolderPathId = null,
-        };
-        dbContext.DownloadTaskOtherVideoFiles.Add(file);
-        await dbContext.SaveChangesAsync(CancellationToken.None);
-        return file;
-    }
 
     private static DownloadTaskOtherVideoFileLog OtherVideoLog(DownloadTaskOtherVideoFile file, string message) => new()
     {
