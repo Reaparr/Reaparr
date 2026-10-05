@@ -273,6 +273,33 @@ public class DownloadJob : IJob
                         cancellationToken
                     );
                 break;
+            case DownloadTaskType.PhotoData:
+            case DownloadTaskType.PhotoPart:
+                await _dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x => x.Id == downloadTask.Id)
+                    .ExecuteUpdateAsync(
+                        p => p.SetProperty(x => x.DirectoryMeta, downloadTask.DirectoryMeta),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.MusicTrackData:
+            case DownloadTaskType.MusicTrackPart:
+                await _dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x => x.Id == downloadTask.Id)
+                    .ExecuteUpdateAsync(
+                        p => p.SetProperty(x => x.DirectoryMeta, downloadTask.DirectoryMeta),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.OtherVideoData:
+            case DownloadTaskType.OtherVideoPart:
+                await _dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x => x.Id == downloadTask.Id)
+                    .ExecuteUpdateAsync(
+                        p => p.SetProperty(x => x.DirectoryMeta, downloadTask.DirectoryMeta),
+                        cancellationToken
+                    );
+                break;
             default:
                 return Result.Fail(
                     "DownloadTaskType {DownloadTaskType} is not supported",
