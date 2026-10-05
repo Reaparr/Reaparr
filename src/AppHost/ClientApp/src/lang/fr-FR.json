@@ -309,7 +309,17 @@
             "server-unconnectable": "Le serveur ne peut pas être connecté et peut être hors ligne."
         },
         "alert-dialog": {
-            "request-data-sent": "Données de demande envoyées :"
+            "request-data-sent": "Données de demande envoyées :",
+            "title": "Une erreur s’est produite",
+            "description": "Des requêtes au serveur ont échoué. Le rapport GitHub inclura toutes les erreurs affichées ci-dessous.",
+            "error-explanation": "L’action concernée n’a peut-être pas abouti ; certaines données peuvent donc manquer ou ne plus être à jour. HTTP 4xx signifie que la requête a été rejetée ; HTTP 5xx signifie que le serveur n’a pas pu la terminer. Les détails figurent ci-dessous.",
+            "next-steps": "Fermer masque uniquement cette boîte de dialogue ; les requêtes échouées ne sont pas relancées. Si le problème persiste, Signaler sur GitHub ouvre un signalement prérempli à vérifier. Rien n’est envoyé automatiquement. Retirez les informations sensibles, ajoutez les étapes de reproduction et joignez les journaux du serveur pertinents avant l’envoi.",
+            "request-failed": "Le serveur n’a pas pu terminer cette requête.",
+            "connection-failed": "Impossible de joindre le serveur Reaparr. Vérifiez votre connexion et réessayez.",
+            "endpoint": "Point de terminaison",
+            "omitted-errors": "Seules les 10 premières erreurs distinctes sont affichées. Les erreurs supplémentaires ont été omises ; consultez les journaux Reaparr.",
+            "report-issue": "Signaler sur GitHub",
+            "report-description": "Décrivez ce que vous faisiez et ajoutez les journaux Reaparr pertinents."
         },
         "account-token-validate-dialog": {
             "column": {

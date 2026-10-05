@@ -13,7 +13,6 @@ import { Integration } from '@api/generated/Integration';
 import { Update } from '@api/generated/Update';
 import { Debug } from '@api/generated/Debug';
 
-export * from './baseApi';
 export * from './api-paths';
 export * from './custom';
 

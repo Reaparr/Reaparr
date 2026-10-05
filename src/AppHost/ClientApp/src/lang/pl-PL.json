@@ -309,7 +309,17 @@
             "server-unconnectable": "Nie można połączyć się z serwerem, może być offline."
         },
         "alert-dialog": {
-            "request-data-sent": "Wysłano dane żądania:"
+            "request-data-sent": "Wysłano dane żądania:",
+            "title": "Coś poszło nie tak",
+            "description": "Żądania do serwera nie powiodły się. Zgłoszenie na GitHubie będzie zawierać wszystkie błędy pokazane poniżej.",
+            "error-explanation": "Operacja mogła nie zostać ukończona, dlatego część danych może być niedostępna lub nieaktualna. HTTP 4xx oznacza odrzucenie żądania; HTTP 5xx oznacza, że serwer nie mógł go ukończyć. Szczegóły znajdują się poniżej.",
+            "next-steps": "Zamknij tylko ukrywa to okno; nie ponawia nieudanych żądań. Jeśli problem się powtarza, Zgłoś na GitHubie otwiera wstępnie wypełnione zgłoszenie do sprawdzenia. Nic nie jest wysyłane automatycznie. Przed wysłaniem usuń poufne informacje, dodaj kroki odtworzenia problemu i dołącz odpowiednie logi serwera.",
+            "request-failed": "Serwer nie mógł ukończyć tego żądania.",
+            "connection-failed": "Nie można połączyć się z serwerem Reaparr. Sprawdź połączenie i spróbuj ponownie.",
+            "endpoint": "Punkt końcowy",
+            "omitted-errors": "Wyświetlono tylko pierwszych 10 różnych błędów. Kolejne błędy pominięto; sprawdź logi Reaparr.",
+            "report-issue": "Zgłoś na GitHubie",
+            "report-description": "Opisz wykonywane czynności i dodaj odpowiednie logi Reaparr."
         },
         "account-token-validate-dialog": {
             "column": {

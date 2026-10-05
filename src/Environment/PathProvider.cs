@@ -69,161 +69,32 @@ public class PathProvider : IPathProvider
     #endregion
 
     /// <inheritdoc/>
-    public string DefaultDownloadsDestinationFolder
-    {
-        get
-        {
-            var downloadsPath = _appRuntimeInfo.DownloadsPath;
-            if (downloadsPath is not null)
-                return downloadsPath;
-
-            if (_appBuildInfo.IsDockerMode)
-                return Path.Combine("/", DefaultDownloadsFolderName);
-
-            if (_appBuildInfo.IsDesktopMode)
-                return Path.Combine(DataDirectory, DefaultDownloadsFolderName);
-
-            throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
-        }
-    }
+    public string DefaultDownloadsDestinationFolder =>
+        GetDestinationFolder(_appRuntimeInfo.DownloadsPath, DefaultDownloadsFolderName, useDataPath: false);
 
     /// <inheritdoc/>
-    public string DefaultMovieDestinationFolder
-    {
-        get
-        {
-            var perTypePath = _appRuntimeInfo.MoviesPath;
-            if (perTypePath is not null)
-                return perTypePath;
-
-            var dataPath = _appRuntimeInfo.DataPath;
-            if (dataPath is not null)
-                return Path.Combine(dataPath, DefaultMovieFolderName);
-
-            if (_appBuildInfo.IsDockerMode)
-                return Path.Combine("/", DefaultMovieFolderName);
-
-            if (_appBuildInfo.IsDesktopMode)
-                return Path.Combine(DataDirectory, DefaultMovieFolderName);
-
-            throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
-        }
-    }
+    public string DefaultMovieDestinationFolder =>
+        GetDestinationFolder(_appRuntimeInfo.MoviesPath, DefaultMovieFolderName);
 
     /// <inheritdoc/>
-    public string DefaultTvShowsDestinationFolder
-    {
-        get
-        {
-            var perTypePath = _appRuntimeInfo.TvShowsPath;
-            if (perTypePath is not null)
-                return perTypePath;
-
-            var dataPath = _appRuntimeInfo.DataPath;
-            if (dataPath is not null)
-                return Path.Combine(dataPath, DefaultTvShowsFolderName);
-
-            if (_appBuildInfo.IsDockerMode)
-                return Path.Combine("/", DefaultTvShowsFolderName);
-
-            if (_appBuildInfo.IsDesktopMode)
-                return Path.Combine(DataDirectory, DefaultTvShowsFolderName);
-
-            throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
-        }
-    }
+    public string DefaultTvShowsDestinationFolder =>
+        GetDestinationFolder(_appRuntimeInfo.TvShowsPath, DefaultTvShowsFolderName);
 
     /// <inheritdoc/>
-    public string DefaultMusicDestinationFolder
-    {
-        get
-        {
-            var perTypePath = _appRuntimeInfo.MusicPath;
-            if (perTypePath is not null)
-                return perTypePath;
-
-            var dataPath = _appRuntimeInfo.DataPath;
-            if (dataPath is not null)
-                return Path.Combine(dataPath, DefaultMusicFolderName);
-
-            if (_appBuildInfo.IsDockerMode)
-                return Path.Combine("/", DefaultMusicFolderName);
-
-            if (_appBuildInfo.IsDesktopMode)
-                return Path.Combine(DataDirectory, DefaultMusicFolderName);
-
-            throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
-        }
-    }
+    public string DefaultMusicDestinationFolder =>
+        GetDestinationFolder(_appRuntimeInfo.MusicPath, DefaultMusicFolderName);
 
     /// <inheritdoc/>
-    public string DefaultPhotosDestinationFolder
-    {
-        get
-        {
-            var perTypePath = _appRuntimeInfo.PhotosPath;
-            if (perTypePath is not null)
-                return perTypePath;
-
-            var dataPath = _appRuntimeInfo.DataPath;
-            if (dataPath is not null)
-                return Path.Combine(dataPath, DefaultPhotosFolderName);
-
-            if (_appBuildInfo.IsDockerMode)
-                return Path.Combine("/", DefaultPhotosFolderName);
-
-            if (_appBuildInfo.IsDesktopMode)
-                return Path.Combine(DataDirectory, DefaultPhotosFolderName);
-
-            throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
-        }
-    }
+    public string DefaultPhotosDestinationFolder =>
+        GetDestinationFolder(_appRuntimeInfo.PhotosPath, DefaultPhotosFolderName);
 
     /// <inheritdoc/>
-    public string DefaultOtherDestinationFolder
-    {
-        get
-        {
-            var perTypePath = _appRuntimeInfo.OtherPath;
-            if (perTypePath is not null)
-                return perTypePath;
-
-            var dataPath = _appRuntimeInfo.DataPath;
-            if (dataPath is not null)
-                return Path.Combine(dataPath, DefaultOtherFolderName);
-
-            if (_appBuildInfo.IsDockerMode)
-                return Path.Combine("/", DefaultOtherFolderName);
-
-            if (_appBuildInfo.IsDesktopMode)
-                return Path.Combine(DataDirectory, DefaultOtherFolderName);
-
-            throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
-        }
-    }
+    public string DefaultOtherDestinationFolder =>
+        GetDestinationFolder(_appRuntimeInfo.OtherPath, DefaultOtherFolderName);
 
     /// <inheritdoc/>
-    public string DefaultGamesDestinationFolder
-    {
-        get
-        {
-            var perTypePath = _appRuntimeInfo.GamesPath;
-            if (perTypePath is not null)
-                return perTypePath;
-
-            var dataPath = _appRuntimeInfo.DataPath;
-            if (dataPath is not null)
-                return Path.Combine(dataPath, DefaultGamesFolderName);
-
-            if (_appBuildInfo.IsDockerMode)
-                return Path.Combine("/", DefaultGamesFolderName);
-
-            if (_appBuildInfo.IsDesktopMode)
-                return Path.Combine(DataDirectory, DefaultGamesFolderName);
-
-            throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
-        }
-    }
+    public string DefaultGamesDestinationFolder =>
+        GetDestinationFolder(_appRuntimeInfo.GamesPath, DefaultGamesFolderName);
 
     #endregion
 
@@ -289,4 +160,25 @@ public class PathProvider : IPathProvider
     }
 
     #endregion
+
+    private string GetDestinationFolder(string? overridePath, string folderName, bool useDataPath = true)
+    {
+        if (overridePath is not null)
+            return overridePath;
+
+        if (useDataPath)
+        {
+            var dataPath = _appRuntimeInfo.DataPath;
+            if (dataPath is not null)
+                return Path.Combine(dataPath, folderName);
+        }
+
+        if (_appBuildInfo.IsDockerMode)
+            return Path.Combine("/", folderName);
+
+        if (_appBuildInfo.IsDesktopMode)
+            return Path.Combine(DataDirectory, folderName);
+
+        throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
+    }
 }

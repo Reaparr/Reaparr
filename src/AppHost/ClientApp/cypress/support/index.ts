@@ -2,7 +2,6 @@ import type { IBasePageSetupResult } from '@fixtures';
 import type { MockConfig } from '@mock';
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { type PlexServerConnectionDTO, type PlexServerDTO, JobStatus, JobTypes, type PlexAccountDTO } from '@dto';
-import type { Method, RouteHandler, RouteMatcher } from 'cypress/types/net-stubbing';
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -42,8 +41,6 @@ declare global {
 			correctDefaultFolderPaths(): Chainable;
 
 			awaitSettingsUpdate(): Chainable;
-
-			interceptNoQuery<TRequest = never, TResponse = never>(method: Method, url: RouteMatcher, response?: RouteHandler<TRequest, TResponse>): Chainable<null>;
 		}
 	}
 }

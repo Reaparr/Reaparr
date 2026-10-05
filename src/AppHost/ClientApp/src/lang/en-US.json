@@ -309,7 +309,17 @@
             "server-unconnectable": "Server cannot be connected to and might be offline.."
         },
         "alert-dialog": {
-            "request-data-sent": "Request data sent:"
+            "request-data-sent": "Request data sent:",
+            "title": "Something went wrong",
+            "description": "Backend requests failed. All errors shown below will be included in the GitHub report.",
+            "error-explanation": "The affected action may not have completed, so some data may be missing or out of date. HTTP 4xx means the request was rejected; HTTP 5xx means the server could not complete it. Details are listed below.",
+            "next-steps": "Close only dismisses this dialog; it does not retry failed requests. If the problem persists, Report on GitHub opens a prefilled issue for you to review. Nothing is submitted automatically. Remove sensitive information, add steps to reproduce, and attach relevant backend logs before submitting.",
+            "request-failed": "The backend could not complete this request.",
+            "connection-failed": "Cannot reach the Reaparr backend. Check your connection and try again.",
+            "endpoint": "Endpoint",
+            "omitted-errors": "Only the first 10 distinct failures are shown. Additional failures were omitted; see the Reaparr logs.",
+            "report-issue": "Report on GitHub",
+            "report-description": "Please describe what you were doing and add relevant Reaparr logs."
         },
         "account-token-validate-dialog": {
             "column": {

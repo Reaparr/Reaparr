@@ -39,7 +39,7 @@ describe('sign-in-process', () => {
 		});
 	});
 
-	it('Should redirect to the login page when not logged in and then show invalid credentials when wrong', () => {
+	it('Should show authentication failures and recover with valid credentials', () => {
 		cy.basePageSetup({
 			isLoggedIn: false,
 		});
@@ -51,7 +51,10 @@ describe('sign-in-process', () => {
 			// Login
 			cy.intercept('POST', AuthenticationPaths.appUserLoginEndpoint(), {
 				statusCode: 401,
-				body: generateFailedResultDTO(),
+				body: generateFailedResultDTO({
+					statusCode: 401,
+					errors: [{ message: 'Invalid credentials', reasons: [], metadata: {} }],
+				}),
 			}).as('loginUnauthorized');
 			cy.interceptAuthenticationStatus(false);
 
@@ -64,6 +67,7 @@ describe('sign-in-process', () => {
 
 			cy.url().should('eq', route('/login'));
 			cy.getCy('login-invalid-credentials-alert').should('be.visible');
+			cy.getCy('alert-dialog').should('not.exist');
 
 			// Submit 3 times to lock account
 			cy.getCy('login-submit-button').click();
@@ -73,14 +77,37 @@ describe('sign-in-process', () => {
 
 			cy.intercept('POST', AuthenticationPaths.appUserLoginEndpoint(), {
 				statusCode: 403,
-				body: generateFailedResultDTO(),
+				body: generateFailedResultDTO({
+					statusCode: 403,
+					errors: [{ message: 'Account locked', reasons: [], metadata: {} }],
+				}),
 			}).as('loginLocked');
 
 			cy.getCy('login-submit-button').click();
 			cy.wait('@loginLocked');
+			cy.getCy('alert-dialog').should('be.visible');
+			cy.getCy('api-error').should('have.length', 1)
+				.and('contain.text', 'POST — HTTP 403')
+				.and('contain.text', AuthenticationPaths.appUserLoginEndpoint())
+				.and('contain.text', 'Account locked');
+			cy.getCy('close-alert-dialog').click();
+			cy.getCy('alert-dialog').should('not.exist');
 
 			cy.url().should('eq', route('/login'));
 			cy.getCy('login-locked-out-alert').should('be.visible');
+
+			cy.intercept('POST', AuthenticationPaths.appUserLoginEndpoint(), {
+				statusCode: 200,
+				body: generateResultDTO<AppUserLoginEndpointRequest>({
+					username: 'admin',
+					password: 'password',
+					rememberMe: true,
+				}),
+			}).as('loginRecovered');
+			cy.interceptAuthenticationStatus(true);
+			cy.getCy('login-submit-button').click();
+			cy.wait('@loginRecovered').its('response.statusCode').should('equal', 200);
+			cy.url().should('eq', route('/'));
 		});
 	});
 });

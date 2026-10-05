@@ -35,7 +35,6 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@crazydos/vue-markdown": "^1.1.4",
     "@date-fns/tz": "^1.5.0",
     "@microsoft/signalr": "^9.0.6",
     "@microsoft/signalr-protocol-msgpack": "^9.0.6",
@@ -45,8 +44,6 @@
     "@vueuse/router": "^14.3.0",
     "@vueuse/rxjs": "^13.0.0",
     "axios": "^1.13.2",
-    "caniuse-lite": "^1.0.30001788",
-    "check-password-strength": "^3.0.0",
     "consola": "^3.4.2",
     "date-fns": "^4.1.0",
     "frappe-gantt": "^1.0.4",

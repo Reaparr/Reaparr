@@ -1,7 +1,6 @@
 import { PlexAccountPaths } from '@api-urls';
 import { generatePlexAccount, generateResultDTO } from '@mock';
 import type { PlexAccountDTO, ValidatePlexCredentialsDTO, ValidatePlexTokenEndpointResponse } from '@dto';
-import type { Method, RouteHandler, RouteMatcher } from 'cypress/types/net-stubbing';
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -20,17 +19,6 @@ declare global {
 		}
 	}
 }
-
-Cypress.Commands.add('interceptNoQuery', (
-	method: Method,
-	url: RouteMatcher,
-	response?: RouteHandler,
-) => {
-	const urlWithoutQuery = typeof url === 'string'
-		? url.replace(/\?.*$/, '') + '*'
-		: url;
-	return cy.intercept(method, urlWithoutQuery, response);
-});
 
 Cypress.Commands.add('validatePlexCredentialsEndpoint', ({ isUnAuthorized = false, partialData = {} }: {
 	isUnAuthorized?: boolean; partialData?: Partial<ValidatePlexCredentialsDTO>;
