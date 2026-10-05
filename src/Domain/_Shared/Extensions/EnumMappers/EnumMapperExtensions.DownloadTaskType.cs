@@ -20,7 +20,8 @@ public static partial class EnumMapperExtensions
         ["Track"] = DownloadTaskType.MusicTrack,
         ["TrackData"] = DownloadTaskType.MusicTrackData,
         ["TrackPart"] = DownloadTaskType.MusicTrackPart,
-        ["Photo"] = DownloadTaskType.PhotoAlbum,
+        ["PhotoAlbum"] = DownloadTaskType.PhotoAlbum,
+        ["PhotoImage"] = DownloadTaskType.PhotoImage,
         ["PhotoData"] = DownloadTaskType.PhotoData,
         ["PhotoPart"] = DownloadTaskType.PhotoPart,
         ["OtherVideo"] = DownloadTaskType.OtherVideo,
@@ -72,7 +73,8 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.MusicTrack => "Track",
             DownloadTaskType.MusicTrackData => "TrackData",
             DownloadTaskType.MusicTrackPart => "TrackPart",
-            DownloadTaskType.PhotoAlbum => "Photo",
+            DownloadTaskType.PhotoAlbum => "PhotoAlbum",
+            DownloadTaskType.PhotoImage => "PhotoImage",
             DownloadTaskType.PhotoData => "PhotoData",
             DownloadTaskType.PhotoPart => "PhotoPart",
             DownloadTaskType.OtherVideo => "OtherVideo",
@@ -134,7 +136,8 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.MusicAlbum => PlexMediaType.MusicAlbum,
             DownloadTaskType.MusicTrack or DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart =>
                 PlexMediaType.MusicTrack,
-            DownloadTaskType.PhotoAlbum or DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart =>
+            DownloadTaskType.PhotoAlbum => PlexMediaType.PhotoAlbum,
+            DownloadTaskType.PhotoImage or DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart =>
                 PlexMediaType.PhotoImage,
             DownloadTaskType.OtherVideo or DownloadTaskType.OtherVideoData or DownloadTaskType.OtherVideoPart =>
                 PlexMediaType.OtherVideos,

@@ -52,17 +52,22 @@ public class CleanUpDownloadTaskFoldersHandler : ICommandHandler<CleanUpDownload
             return Result.Ok();
         }
 
-        // This deletes the Season or movie folder
+        // Remove the empty media folder without touching active sibling downloads.
         var result = DeleteDirectoryFromFilePath(filePath);
         if (result.IsFailed)
             return result;
 
-        if (downloadTask.DownloadTaskType == DownloadTaskType.EpisodeData)
+        if (
+            downloadTask.DownloadTaskType
+            is DownloadTaskType.EpisodeData
+                or DownloadTaskType.MusicTrackData
+                or DownloadTaskType.PhotoData
+                or DownloadTaskType.OtherVideoData
+        )
         {
-            // This deletes the TvShow folder
-            var result2 = DeleteDirectoryFromFilePath(downloadTask.DownloadDirectory);
-            if (result2.IsFailed)
-                return result2;
+            var deleteResult = DeleteDirectoryFromFilePath(downloadTask.DownloadDirectory);
+            if (deleteResult.IsFailed)
+                return deleteResult;
         }
 
         return Result.Ok();
@@ -94,7 +99,37 @@ public class CleanUpDownloadTaskFoldersHandler : ICommandHandler<CleanUpDownload
             )
             .ToListAsync(cancellationToken);
 
-        return activeEpisodeTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory);
+        if (activeEpisodeTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory))
+            return true;
+
+        var activePhotoTasks = await _dbContext
+            .DownloadTaskPhotoImageFiles.Where(x =>
+                x.Id != downloadTask.Id
+                && x.DownloadStatus != DownloadStatus.Completed
+                && x.DownloadStatus != DownloadStatus.Deleted
+            )
+            .ToListAsync(cancellationToken);
+        if (activePhotoTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory))
+            return true;
+
+        var activeMusicTasks = await _dbContext
+            .DownloadTaskMusicTrackFiles.Where(x =>
+                x.Id != downloadTask.Id
+                && x.DownloadStatus != DownloadStatus.Completed
+                && x.DownloadStatus != DownloadStatus.Deleted
+            )
+            .ToListAsync(cancellationToken);
+        if (activeMusicTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory))
+            return true;
+
+        var activeOtherVideoTasks = await _dbContext
+            .DownloadTaskOtherVideoFiles.Where(x =>
+                x.Id != downloadTask.Id
+                && x.DownloadStatus != DownloadStatus.Completed
+                && x.DownloadStatus != DownloadStatus.Deleted
+            )
+            .ToListAsync(cancellationToken);
+        return activeOtherVideoTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory);
     }
 
     private Result DeleteDirectoryFromFilePath(string filePath)

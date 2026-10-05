@@ -20,5 +20,12 @@ public class DownloadTaskPhotoImage : DownloadTaskParentBase
     [NotMapped]
     public override int Count => Children.Sum(x => x.Count) + 1;
 
-    public override DownloadTaskKey? ToParentKey() => null;
+    public override DownloadTaskKey ToParentKey() =>
+        new()
+        {
+            Type = DownloadTaskType.PhotoAlbum,
+            Id = ParentId,
+            PlexServerId = PlexServerId,
+            PlexLibraryId = PlexLibraryId,
+        };
 }

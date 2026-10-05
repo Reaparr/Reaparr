@@ -109,4 +109,94 @@ public static class DownloadTaskKeyMapper
         });
 
     #endregion
+    public static IQueryable<DownloadTaskKey> ProjectToKey<T>(this IQueryable<T> tasks)
+        where T : DownloadTaskBase =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.Id,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = x.DownloadTaskType,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToParentKey(this IQueryable<DownloadTaskMusicAlbum> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.ParentId,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.MusicArtist,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToParentKey(this IQueryable<DownloadTaskMusicTrack> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.ParentId,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.MusicAlbum,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToParentKey(this IQueryable<DownloadTaskMusicTrackFile> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.ParentId,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.MusicTrack,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToParentKey(this IQueryable<DownloadTaskOtherVideoFile> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.ParentId,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.OtherVideo,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToKey(this IQueryable<DownloadTaskPhotoAlbum> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.Id,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.PhotoAlbum,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToKey(this IQueryable<DownloadTaskPhotoImage> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.Id,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.PhotoImage,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToKey(this IQueryable<DownloadTaskPhotoImageFile> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.Id,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.PhotoData,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToParentKey(this IQueryable<DownloadTaskPhotoImage> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.ParentId,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.PhotoAlbum,
+        });
+
+    public static IQueryable<DownloadTaskKey> ProjectToParentKey(this IQueryable<DownloadTaskPhotoImageFile> tasks) =>
+        tasks.Select(x => new DownloadTaskKey
+        {
+            Id = x.ParentId,
+            PlexServerId = x.PlexServerId,
+            PlexLibraryId = x.PlexLibraryId,
+            Type = DownloadTaskType.PhotoImage,
+        });
 }

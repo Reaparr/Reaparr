@@ -23,7 +23,7 @@ public class DownloadTaskPhotoImageFile : DownloadTaskFileBase
     public override DownloadTaskKey ToParentKey() =>
         new()
         {
-            Type = DownloadTaskType.PhotoAlbum,
+            Type = DownloadTaskType.PhotoImage,
             Id = ParentId,
             PlexServerId = PlexServerId,
             PlexLibraryId = PlexLibraryId,

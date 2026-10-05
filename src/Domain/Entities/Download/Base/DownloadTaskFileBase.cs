@@ -148,6 +148,7 @@ public abstract class DownloadTaskFileBase : DownloadTaskBase, IDownloadTaskProg
 
             switch (DownloadTaskType)
             {
+                // TODO replace magic strings with constants from PathProvider
                 case DownloadTaskType.MovieData:
                     return Path.Combine(DirectoryMeta.DownloadRootPath, "Movies", DirectoryMeta.MovieFolder);
                 case DownloadTaskType.EpisodeData:
@@ -157,6 +158,20 @@ public abstract class DownloadTaskFileBase : DownloadTaskBase, IDownloadTaskProg
                         DirectoryMeta.TvShowFolder,
                         DirectoryMeta.SeasonFolder
                     );
+                case DownloadTaskType.PhotoData:
+                case DownloadTaskType.PhotoPart:
+                    return Path.Combine(DirectoryMeta.DownloadRootPath, "Photos", DirectoryMeta.PhotoAlbumFolder);
+                case DownloadTaskType.MusicTrackData:
+                case DownloadTaskType.MusicTrackPart:
+                    return Path.Combine(
+                        DirectoryMeta.DownloadRootPath,
+                        "Music",
+                        DirectoryMeta.MusicArtistFolder,
+                        DirectoryMeta.MusicAlbumFolder
+                    );
+                case DownloadTaskType.OtherVideoData:
+                case DownloadTaskType.OtherVideoPart:
+                    return Path.Combine(DirectoryMeta.DownloadRootPath, "OtherVideos", DirectoryMeta.OtherVideoFolder);
                 default:
                     Result.Fail<string>($"Invalid DownloadTaskType of type: {DownloadTaskType}").LogError();
                     return string.Empty;
@@ -185,6 +200,19 @@ public abstract class DownloadTaskFileBase : DownloadTaskBase, IDownloadTaskProg
                         DirectoryMeta.TvShowFolder,
                         DirectoryMeta.SeasonFolder
                     );
+                case DownloadTaskType.PhotoData:
+                case DownloadTaskType.PhotoPart:
+                    return Path.Combine(DirectoryMeta.DestinationRootPath, DirectoryMeta.PhotoAlbumFolder);
+                case DownloadTaskType.MusicTrackData:
+                case DownloadTaskType.MusicTrackPart:
+                    return Path.Combine(
+                        DirectoryMeta.DestinationRootPath,
+                        DirectoryMeta.MusicArtistFolder,
+                        DirectoryMeta.MusicAlbumFolder
+                    );
+                case DownloadTaskType.OtherVideoData:
+                case DownloadTaskType.OtherVideoPart:
+                    return Path.Combine(DirectoryMeta.DestinationRootPath, DirectoryMeta.OtherVideoFolder);
                 default:
                     Result.Fail<string>($"Invalid DownloadTaskType of type: {DownloadTaskType}").LogError();
                     return string.Empty;
