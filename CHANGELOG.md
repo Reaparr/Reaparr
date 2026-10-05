@@ -1,5 +1,17 @@
 Reaparr Changelog
 
+# [0.41.0-dev.3](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.2...v0.41.0-dev.3) (2026-10-05)
+
+
+### Bug Fixes
+
+* **Web-UI:** Expose error translations to the lint analyzer ([1701d25](https://github.com/Reaparr/Reaparr/commit/1701d250a895c1b464afb6e6b4d725ba01c17ef5))
+
+
+### Features
+
+* **WebAPI:** Enhance error handling in Axios setup and improve alert dialog functionality ([494ce8c](https://github.com/Reaparr/Reaparr/commit/494ce8c5e56f608ca1749ca95823650328b09630))
+
 # [0.41.0-dev.2](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.1...v0.41.0-dev.2) (2026-10-04)
 
 
