@@ -2,7 +2,7 @@ namespace Reaparr.Application;
 
 public static partial class PlexMediaDTOMapper
 {
-    public static PlexMediaDTO ToDTO(this PlexMovie source) =>
+    public static PlexMediaDTO ToDTO(this PlexOtherVideo source) =>
         new()
         {
             Id = source.Id,
@@ -25,17 +25,21 @@ public static partial class PlexMediaDTOMapper
             Type = source.Type,
             HasThumb = source.HasThumb,
             Qualities = source
-                .MediaDataList.SortByQuality()
+                .MediaDataList.GroupBy(x => x.PlexApiMediaId)
+                .Select(group => group.OrderBy(x => x.PartIndex).ThenBy(x => x.Id).First())
+                .OrderByDescending(x => x.Quality)
+                .ThenBy(x => x.PlexApiMediaId)
                 .Select(x => new PlexMediaQualityDTO
                 {
                     Quality = x.Quality,
-                    MediaDataType = x.Type,
+                    MediaDataType = PlexMediaType.OtherVideos,
                     DataId = x.Id,
                     MediaId = source.Id,
                 })
                 .ToList(),
-            ComparisonId = source.ComparisonState.ToComparisonId(),
+            ComparisonId = PlexMediaComparisonState.NotCompared.ToComparisonId(),
             PlexApiRatingKey = source.PlexApiRatingKey,
+            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
             HasArt = source.HasArt,
             HasTheme = source.HasTheme,
             Studio = source.Studio,
@@ -44,13 +48,12 @@ public static partial class PlexMediaDTOMapper
             Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             Children = [],
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
         };
 
-    public static List<PlexMediaDataDTO> ToDTO(this ICollection<PlexMovieMediaData> source) =>
+    public static List<PlexMediaDataDTO> ToDTO(this ICollection<PlexOtherVideoMediaData> source) =>
         source.Select(x => x.ToDTO()).ToList();
 
-    public static PlexMediaDataDTO ToDTO(this PlexMovieMediaData source) =>
+    public static PlexMediaDataDTO ToDTO(this PlexOtherVideoMediaData source) =>
         new()
         {
             Id = source.Id,

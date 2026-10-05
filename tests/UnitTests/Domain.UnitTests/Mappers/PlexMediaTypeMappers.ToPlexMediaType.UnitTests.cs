@@ -8,11 +8,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("TvShow", PlexMediaType.TvShow)]
     [Arguments("Season", PlexMediaType.Season)]
     [Arguments("Episode", PlexMediaType.Episode)]
-    [Arguments("Music", PlexMediaType.MusicArtist)]
-    [Arguments("Album", PlexMediaType.MusicAlbum)]
-    [Arguments("Track", PlexMediaType.MusicTrack)]
+    [Arguments("MusicArtist", PlexMediaType.MusicArtist)]
+    [Arguments("MusicAlbum", PlexMediaType.MusicAlbum)]
+    [Arguments("MusicTrack", PlexMediaType.MusicTrack)]
     [Arguments("PhotoAlbum", PlexMediaType.PhotoAlbum)]
-    [Arguments("Photos", PlexMediaType.PhotoImage)]
+    [Arguments("PhotoImage", PlexMediaType.PhotoImage)]
     [Arguments("OtherVideos", PlexMediaType.OtherVideos)]
     [Arguments("Games", PlexMediaType.Games)]
     [Arguments("Unknown", PlexMediaType.Unknown)]
@@ -54,6 +54,10 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("null")]
     [Arguments("Artist")]
     [Arguments("Song")]
+    [Arguments("Music")]
+    [Arguments("Album")]
+    [Arguments("Track")]
+    [Arguments("Photos")]
     public void ShouldThrowNotImplementedException_WhenInvalidStringProvided(string input)
     {
         // Act & Assert

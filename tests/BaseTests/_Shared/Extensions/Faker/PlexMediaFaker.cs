@@ -46,6 +46,9 @@ public class PlexMediaDataSet : DataSet
                 $"Episode - {_faker.PickRandomFromDataset(PlexEpisodeShowTitlesDataset.PlexEpisodeTitles.Value)}",
             DownloadTaskType.EpisodeData =>
                 $"EpisodeData - {_faker.PickRandomFromDataset(PlexEpisodeShowTitlesDataset.PlexEpisodeTitles.Value)}",
+            DownloadTaskType.PhotoAlbum => $"Photo Album - {_faker.Lorem.Word()}",
+            DownloadTaskType.PhotoImage => $"Photo - {_faker.Lorem.Word()}",
+            DownloadTaskType.PhotoData => $"PhotoData - {_faker.Lorem.Word()}",
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, "PlexMediaType not supported."),
         };
 

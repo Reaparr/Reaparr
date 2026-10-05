@@ -25,6 +25,7 @@ public static class PlexMediaTypeMappers
             "episode" => PlexMediaType.Episode,
             nameof(PlexMediaType.MusicArtist) => PlexMediaType.MusicArtist,
             "artist" => PlexMediaType.MusicArtist,
+            "Artist" => PlexMediaType.MusicArtist,
             nameof(PlexMediaType.MusicAlbum) => PlexMediaType.MusicAlbum,
             "album" => PlexMediaType.MusicAlbum,
             nameof(PlexMediaType.MusicTrack) => PlexMediaType.MusicTrack,

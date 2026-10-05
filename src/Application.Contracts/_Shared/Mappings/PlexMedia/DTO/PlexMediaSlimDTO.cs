@@ -45,6 +45,7 @@ public record PlexMediaSlimDTO
 
     public required PlexMediaType Type { get; init; }
 
+    // TODO Remove ParentId
     public int? ParentId { get; init; }
 
     public required bool HasThumb { get; set; }
