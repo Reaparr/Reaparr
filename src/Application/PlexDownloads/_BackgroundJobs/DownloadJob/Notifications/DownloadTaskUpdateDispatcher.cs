@@ -128,7 +128,6 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 );
                 refresh.LogIfFailed();
             }
-
             var changedParentKeys = await dbContext.DetermineDownloadStatus(key, cancellationToken);
             var rootKey = await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: cancellationToken);
             if (rootKey is null)
