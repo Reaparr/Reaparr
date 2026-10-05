@@ -57,6 +57,9 @@ public class AutoPauseActiveDownloadsCommandHandler : ICommandHandler<AutoPauseA
                         cancellationToken
                     );
 
+                    if (pauseResult.IsCancelled)
+                        return pauseResult.LogIfFailed();
+
                     if (pauseResult.IsFailed)
                     {
                         _log.Here()
@@ -79,7 +82,7 @@ public class AutoPauseActiveDownloadsCommandHandler : ICommandHandler<AutoPauseA
             _log.Here().Information("Auto-paused {Count} active download or move task(s) during shutdown", totalPaused);
 
         if (pauseFailure.IsFailed)
-            return pauseFailure.LogError();
+            return pauseFailure.LogIfFailed();
 
         return Result.Ok();
     }

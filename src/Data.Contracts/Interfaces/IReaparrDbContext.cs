@@ -35,6 +35,7 @@ public interface IReaparrDbContext : IDisposable
     DbSet<DownloadTaskMusicTrack> DownloadTaskTracks { get; }
     DbSet<DownloadTaskMusicTrackFile> DownloadTaskTrackFiles { get; }
     DbSet<DownloadTaskTrackFileLog> DownloadTaskTrackFileLogs { get; }
+    DbSet<DownloadTaskPhotoAlbum> DownloadTaskPhotoAlbums { get; }
     DbSet<DownloadTaskPhotoImage> DownloadTaskPhotos { get; }
     DbSet<DownloadTaskPhotoImageFile> DownloadTaskPhotoFiles { get; }
     DbSet<DownloadTaskPhotoImageFileLog> DownloadTaskPhotoFileLogs { get; }
