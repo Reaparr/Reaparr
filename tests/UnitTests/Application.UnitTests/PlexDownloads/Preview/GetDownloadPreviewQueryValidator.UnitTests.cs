@@ -9,13 +9,9 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
     [Arguments(PlexMediaType.MusicAlbum, true)]
     [Arguments(PlexMediaType.MusicTrack, false)]
     [Arguments(PlexMediaType.MusicTrack, true)]
-    [Arguments(PlexMediaType.PhotoAlbum, false)]
-    [Arguments(PlexMediaType.PhotoAlbum, true)]
-    [Arguments(PlexMediaType.PhotoImage, false)]
-    [Arguments(PlexMediaType.PhotoImage, true)]
     [Arguments(PlexMediaType.OtherVideos, false)]
     [Arguments(PlexMediaType.OtherVideos, true)]
-    public async Task ShouldRejectEntireSelection_WhenUnsupportedTypeIsAloneOrMixedWithMovie(
+    public async Task ShouldAcceptEntireSelection_WhenMusicOrOtherVideoIsAloneOrMixedWithMovie(
         PlexMediaType type,
         bool mixedWithMovie
     )
@@ -50,8 +46,32 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
         var result = await Sut.ValidateAsync(query, CancellationToken);
 
         // Assert
-        result.IsValid.ShouldBeFalse();
-        result.Errors.Count.ShouldBe(1);
-        result.Errors.Single().PropertyName.ShouldBe($"DownloadMedias[{(mixedWithMovie ? 1 : 0)}].Type");
+        result.IsValid.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+    }
+
+    [Test]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.PhotoImage)]
+    public async Task ShouldAcceptPhotoSelections_WhenAlbumOrImageIsSelected(PlexMediaType type)
+    {
+        // Arrange
+        var query = new GetDownloadPreviewQuery([
+            new DownloadMediaDTO
+            {
+                Type = type,
+                PlexServerId = 1,
+                PlexLibraryId = 11,
+                MediaIds = [101],
+                Qualities = [],
+            },
+        ]);
+
+        // Act
+        var result = await Sut.ValidateAsync(query, CancellationToken);
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        result.Errors.ShouldBeEmpty();
     }
 }

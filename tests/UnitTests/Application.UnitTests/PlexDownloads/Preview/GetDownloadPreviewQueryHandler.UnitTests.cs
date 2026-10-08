@@ -19,6 +19,93 @@ public class GetDownloadPreviewQueryHandlerUnitTests : BaseUnitTest<GetDownloadP
     }
 
     [Test]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.PhotoImage)]
+    public async Task ShouldReturnAlbumImageHierarchyWithSourceIds_WhenPhotoSelectionIsRequested(PlexMediaType type)
+    {
+        // Arrange
+        await SetupDatabase(62306, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+        });
+        var album = await IDbContext
+            .PlexPhotoAlbums.Include(x => x.Photos)
+            .ThenInclude(x => x.MediaDataList)
+            .SingleAsync(CancellationToken);
+        var selectedImages = type == PlexMediaType.PhotoAlbum ? album.Photos.ToList() : [album.Photos.First()];
+        var query = new GetDownloadPreviewQuery([
+            new DownloadMediaDTO
+            {
+                Type = type,
+                PlexServerId = album.PlexServerId,
+                PlexLibraryId = album.PlexLibraryId,
+                MediaIds = type == PlexMediaType.PhotoAlbum ? [album.Id] : [selectedImages[0].Id],
+                Qualities = [],
+            },
+        ]);
+
+        // Act
+        var result = await Sut.ExecuteAsync(query, CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Count.ShouldBe(1);
+        var previewAlbum = result.Value.Single();
+        previewAlbum.Id.ShouldBe(album.Id);
+        previewAlbum.MediaType.ShouldBe(PlexMediaType.PhotoAlbum);
+        previewAlbum.Children.Count.ShouldBe(selectedImages.Count);
+        previewAlbum.Children.Select(x => x.Id).Order().ShouldBe(selectedImages.Select(x => x.Id).Order());
+        previewAlbum.Children.ShouldAllBe(x => x.ParentId == album.Id);
+        previewAlbum.Children.ShouldAllBe(x => x.MediaType == PlexMediaType.PhotoImage);
+        previewAlbum.Children.ShouldAllBe(x => x.Qualities.Count == 1);
+        previewAlbum.Children.SelectMany(x => x.Qualities).ShouldAllBe(x => x.MediaDataType == PlexMediaType.PhotoImage);
+        previewAlbum.Size.ShouldBe(previewAlbum.Children.Sum(x => x.Size));
+    }
+
+
+    [Test]
+    public async Task ShouldRejectOriginalSelector_WhenDataIdBelongsToDifferentPhoto()
+    {
+        // Arrange
+        await SetupDatabase(62311, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+        });
+        var images = await IDbContext.PlexPhotoImages.Include(x => x.MediaDataList).OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var target = images[0];
+        var wrongData = images[1].MediaDataList.Single();
+        var query = new GetDownloadPreviewQuery([
+            new DownloadMediaDTO
+            {
+                Type = PlexMediaType.PhotoImage,
+                PlexServerId = target.PlexServerId,
+                PlexLibraryId = target.PlexLibraryId,
+                MediaIds = [target.Id],
+                Qualities = [new PlexMediaQualityDTO
+                {
+                    MediaId = target.Id,
+                    DataId = wrongData.Id,
+                    MediaDataType = PlexMediaType.PhotoImage,
+                    Quality = VideoQuality.Unknown,
+                }],
+            },
+        ]);
+
+        // Act
+        var result = await Sut.ExecuteAsync(query, CancellationToken);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Single().Message.ShouldBe("A selected photo original does not belong to that photo.");
+    }
+    [Test]
     public async Task ShouldReturnTheCorrectDownloadPreview_WhenMixedMediaTypes()
     {
         // Arrange
