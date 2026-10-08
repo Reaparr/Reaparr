@@ -33,19 +33,25 @@ public class DownloadTaskPhotoImageFileUnitTests : BaseUnitTest
         await SetupDatabase(62380, config =>
         {
             config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
             config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
         });
         var dbContext = IDbContext;
         DownloadTaskFileBase file = type == PlexMediaType.MusicTrack
-            ? await FakeData.AddMusicTask(dbContext, 1)
-            : await FakeData.AddOtherVideoTask(dbContext, 1);
+            ? dbContext.DownloadTaskMusicTrackFiles.Single()
+            : dbContext.DownloadTaskOtherVideoFiles.Single();
         var downloadRoot = Path.Combine(Path.GetTempPath(), "downloads");
         var destinationRoot = Path.Combine(Path.GetTempPath(), "destination");
         file.DirectoryMeta.DownloadRootPath = downloadRoot;
         file.DirectoryMeta.DestinationRootPath = destinationRoot;
         var relativeDirectory = type == PlexMediaType.MusicTrack
-            ? Path.Combine("artist-1", "album-1")
-            : "video-1";
+            ? Path.Combine(file.DirectoryMeta.MusicArtistFolder, file.DirectoryMeta.MusicAlbumFolder)
+            : file.DirectoryMeta.OtherVideoFolder;
         var category = type == PlexMediaType.MusicTrack ? "Music" : "OtherVideos";
         var originalFilename = file.FileName;
 

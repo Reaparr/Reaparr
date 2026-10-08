@@ -5,20 +5,46 @@ public static partial class DownloadTaskExtensions
     /// <summary>
     /// This will set the relationship ids for the download tasks and it's children.
     /// </summary>
-    public static void SetRelationshipIds(
-        this ICollection<DownloadTaskMovie> downloadTasks,
-        int plexServerId,
-        int plexLibraryId
-    )
+    /// TODO Change to a recursive function on DownloadTaskBase and not on individual descendants
+    public static void SetRelationshipIds<T>(this ICollection<T> downloadTasks, int plexServerId, int plexLibraryId)
+        where T : DownloadTaskBase
     {
-        foreach (var downloadTaskMovie in downloadTasks)
+        foreach (var task in downloadTasks)
         {
-            downloadTaskMovie.PlexLibraryId = plexLibraryId;
-            downloadTaskMovie.PlexServerId = plexServerId;
-            foreach (var downloadTaskMovieFile in downloadTaskMovie.Children)
+            task.PlexLibraryId = plexLibraryId;
+            task.PlexServerId = plexServerId;
+            switch (task)
             {
-                downloadTaskMovieFile.PlexLibraryId = plexLibraryId;
-                downloadTaskMovieFile.PlexServerId = plexServerId;
+                case DownloadTaskMovie movie:
+                    movie.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskTvShow show:
+                    show.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskTvShowSeason season:
+                    season.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskTvShowEpisode episode:
+                    episode.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskMusicArtist artist:
+                    artist.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskMusicAlbum album:
+                    album.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskMusicTrack track:
+                    track.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskPhotoAlbum photoAlbum:
+                    photoAlbum.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskPhotoImage image:
+                    image.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
+                case DownloadTaskOtherVideo video:
+                    video.Children.SetRelationshipIds(plexServerId, plexLibraryId);
+                    break;
             }
         }
     }
