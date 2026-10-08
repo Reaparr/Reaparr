@@ -213,13 +213,17 @@ public class CleanUpDownloadTaskFoldersMovieUnitTests : BaseCommandUnitTest<Clea
         {
             config.MovieDownloadTasksCount = 3;
             config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
         });
         var dbContext = IDbContext;
         var movieFiles = await dbContext.DownloadTaskMovieFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
         movieFiles.Count.ShouldBe(3);
         var target = movieFiles[0];
         var control = movieFiles[2];
-        var sibling = await FakeData.AddMusicTask(dbContext, 1);
+        var sibling = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
         var root = paths.DefaultDownloadsDestinationFolder;
         target.DirectoryMeta.DownloadRootPath = root;
@@ -264,13 +268,15 @@ public class CleanUpDownloadTaskFoldersMovieUnitTests : BaseCommandUnitTest<Clea
         {
             config.MovieDownloadTasksCount = 3;
             config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
         });
         var dbContext = IDbContext;
         var movieFiles = await dbContext.DownloadTaskMovieFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
         movieFiles.Count.ShouldBe(3);
         var target = movieFiles[0];
         var control = movieFiles[2];
-        var sibling = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var sibling = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
         var root = paths.DefaultDownloadsDestinationFolder;
         target.DirectoryMeta.DownloadRootPath = root;

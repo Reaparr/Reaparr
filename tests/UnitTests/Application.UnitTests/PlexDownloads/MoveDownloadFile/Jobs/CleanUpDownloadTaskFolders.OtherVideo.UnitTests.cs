@@ -8,9 +8,17 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
     public async Task ShouldRemoveOnlyEmptyMediaFolder_WhenCleaningCompletedOtherVideo(bool containsFile)
     {
         // Arrange
-        await SetupDatabase(66001, config => config.PlexOtherVideoLibraryCount = 1);
+        await SetupDatabase(
+            66001,
+            config =>
+            {
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var file = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var file = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
         file.DirectoryMeta.DownloadRootPath = paths.DefaultDownloadsDestinationFolder;
         file.DownloadStatus = DownloadStatus.Completed;
@@ -47,11 +55,16 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         await SetupDatabase(66002, config =>
         {
             config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
             config.MovieDownloadTasksCount = 1;
         });
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
-        var control = await FakeData.AddOtherVideoTask(dbContext, 2);
+        var videoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var target = videoFiles[0];
+        var control = videoFiles[1];
         var sibling = await dbContext.DownloadTaskMovieFile.AsTracking().SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
         var root = paths.DefaultDownloadsDestinationFolder;
@@ -95,13 +108,18 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         await SetupDatabase(66003, config =>
         {
             config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
             config.TvShowDownloadTasksCount = 1;
             config.TvShowSeasonDownloadTasksCount = 1;
             config.TvShowEpisodeDownloadTasksCount = 1;
         });
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
-        var control = await FakeData.AddOtherVideoTask(dbContext, 2);
+        var videoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var target = videoFiles[0];
+        var control = videoFiles[1];
         var sibling = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
         var root = paths.DefaultDownloadsDestinationFolder;
@@ -146,11 +164,16 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         await SetupDatabase(66004, config =>
         {
             config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
             config.PlexPhotoLibraryCount = 1;
         });
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
-        var control = await FakeData.AddOtherVideoTask(dbContext, 2);
+        var videoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var target = videoFiles[0];
+        var control = videoFiles[1];
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
             .GetDownloadTaskPhotoAlbum(new Seed(66004))
@@ -206,12 +229,21 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         await SetupDatabase(66005, config =>
         {
             config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
             config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
         });
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
-        var control = await FakeData.AddOtherVideoTask(dbContext, 2);
-        var sibling = await FakeData.AddMusicTask(dbContext, 1);
+        var videoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var target = videoFiles[0];
+        var control = videoFiles[1];
+        var sibling = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
         var root = paths.DefaultDownloadsDestinationFolder;
         target.DirectoryMeta.DownloadRootPath = root;
@@ -252,11 +284,22 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
     public async Task ShouldRespectOtherVideoSiblingStatusWhenCleaningOtherVideo(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(66006, config => config.PlexOtherVideoLibraryCount = 1);
+        await SetupDatabase(
+            66006,
+            config =>
+            {
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 3;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
-        var sibling = await FakeData.AddOtherVideoTask(dbContext, 2);
-        var control = await FakeData.AddOtherVideoTask(dbContext, 3);
+        var videoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var target = videoFiles[0];
+        var sibling = videoFiles[1];
+        var control = videoFiles[2];
         var paths = Mock.Container.Resolve<IPathProvider>();
         var root = paths.DefaultDownloadsDestinationFolder;
         target.DirectoryMeta.DownloadRootPath = root;
@@ -292,9 +335,17 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
     public async Task ShouldReturnFailedResult_WhenSecondCleanupPathResolutionFails()
     {
         // Arrange
-        await SetupDatabase(66007, config => config.PlexOtherVideoLibraryCount = 1);
+        await SetupDatabase(
+            66007,
+            config =>
+            {
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var target = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -331,9 +382,17 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
     public async Task ShouldReturnFailedResult_WhenSecondCleanupDirectoryEntriesCannotBeRead()
     {
         // Arrange
-        await SetupDatabase(66008, config => config.PlexOtherVideoLibraryCount = 1);
+        await SetupDatabase(
+            66008,
+            config =>
+            {
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var target = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -375,9 +434,17 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
     public async Task ShouldReturnFailedResult_WhenSecondCleanupDirectoryCannotBeDeleted()
     {
         // Arrange
-        await SetupDatabase(66009, config => config.PlexOtherVideoLibraryCount = 1);
+        await SetupDatabase(
+            66009,
+            config =>
+            {
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var target = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
