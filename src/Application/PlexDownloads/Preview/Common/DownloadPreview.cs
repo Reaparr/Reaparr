@@ -16,6 +16,12 @@ public record DownloadPreview
 
     public required int SeasonId { get; init; }
 
+    public required int ArtistId { get; init; }
+
+    public required int AlbumId { get; init; }
+
+    public required int PhotoAlbumId { get; init; }
+
     public required List<PlexMediaQuality> Qualities { get; init; }
 
     public required List<DownloadPreview> Children { get; init; } = [];

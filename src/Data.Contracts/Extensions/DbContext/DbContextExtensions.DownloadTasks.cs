@@ -680,7 +680,11 @@ public static partial class DbContextExtensions
             DownloadTaskType.EpisodeData,
             DownloadTaskType.EpisodePart
         );
-        await AddFilesAsync(dbContext.DownloadTaskPhotoImageFiles, DownloadTaskType.PhotoData, DownloadTaskType.PhotoPart);
+        await AddFilesAsync(
+            dbContext.DownloadTaskPhotoImageFiles,
+            DownloadTaskType.PhotoData,
+            DownloadTaskType.PhotoPart
+        );
         await AddFilesAsync(
             dbContext.DownloadTaskMusicTrackFiles,
             DownloadTaskType.MusicTrackData,
@@ -702,8 +706,7 @@ public static partial class DbContextExtensions
                 return;
 
             files.AddRange(
-                await set
-                    .Where(x => ids.Contains(x.Id))
+                await set.Where(x => ids.Contains(x.Id))
                     .Include(x => x.PlexServer)
                     .Include(x => x.PlexLibrary)
                     .ToListAsync(cancellationToken)
@@ -733,8 +736,7 @@ public static partial class DbContextExtensions
             where T : DownloadTaskFileBase
         {
             files.AddRange(
-                await set
-                    .Where(x => statuses.Contains(x.DownloadStatus))
+                await set.Where(x => statuses.Contains(x.DownloadStatus))
                     .Include(x => x.PlexServer)
                     .Include(x => x.PlexLibrary)
                     .ToListAsync(cancellationToken)
