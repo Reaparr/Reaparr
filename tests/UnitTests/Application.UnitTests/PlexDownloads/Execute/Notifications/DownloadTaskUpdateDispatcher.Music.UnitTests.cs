@@ -13,10 +13,23 @@ public class DownloadTaskUpdateDispatcherMusicUnitTests : BaseUnitTest<DownloadT
     )
     {
         // Arrange
-        await SetupDatabase(88003, c => c.PlexMusicLibraryCount = 1);
+        await SetupDatabase(
+            88003,
+            c =>
+            {
+                c.PlexMusicLibraryCount = 1;
+                c.MusicArtistDownloadTasksCount = 2;
+                c.MusicAlbumDownloadTasksCount = 1;
+                c.MusicTrackDownloadTasksCount = 1;
+                c.MusicTrackFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var target = await FakeData.AddMusicTask(dbContext, 1);
-        var sibling = await FakeData.AddMusicTask(dbContext, 2);
+        var files = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var target = files[0];
+        var sibling = files[1];
         var track = await dbContext.DownloadTaskMusicTracks.SingleAsync(
             x => x.Id == target.ParentId,
             CancellationToken

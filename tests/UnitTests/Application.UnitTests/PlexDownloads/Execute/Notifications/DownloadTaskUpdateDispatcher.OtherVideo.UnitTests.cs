@@ -13,10 +13,21 @@ public class DownloadTaskUpdateDispatcherOtherVideoUnitTests : BaseUnitTest<Down
     )
     {
         // Arrange
-        await SetupDatabase(88003, c => c.PlexOtherVideoLibraryCount = 1);
+        await SetupDatabase(
+            88003,
+            c =>
+            {
+                c.PlexOtherVideoLibraryCount = 1;
+                c.OtherVideoDownloadTasksCount = 2;
+                c.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var target = await FakeData.AddOtherVideoTask(dbContext, 1);
-        var sibling = await FakeData.AddOtherVideoTask(dbContext, 2);
+        var files = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var target = files[0];
+        var sibling = files[1];
         var ancestorIds = new[] { target.ParentId };
         await dbContext
             .DownloadTaskOtherVideoFiles.Where(x => x.Id == sibling.Id)
