@@ -229,27 +229,6 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
             if (selectedMediaIds.Count == 1)
                 groups.RemoveAll(x => x.Key != selectedMediaIds[0]);
 
-            var preview = new DownloadPreview
-            {
-                Id = track.Id,
-                Title = track.Title,
-                MediaType = PlexMediaType.MusicTrack,
-                TvShowId = 0,
-                SeasonId = 0,
-                ParentId = track.PlexAlbumId,
-                Children = [],
-                Size = groups.Sum(x => x.Sum(y => y.Size)),
-                ChildCount = groups.Sum(x => x.Count()),
-                Qualities = groups
-                    .Select(group => new PlexMediaQuality
-                    {
-                        MediaId = track.Id,
-                        DataId = group.Min(x => x.Id),
-                        MediaDataType = PlexMediaType.MusicTrack,
-                        Quality = VideoQuality.Unknown,
-                    })
-                    .ToList(),
-            };
             var album = track.PlexAlbum;
             var artist = album?.PlexArtist;
             if (
@@ -262,38 +241,17 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
             )
                 return ResultExtensions.Create400BadRequestResult("The selected track hierarchy is invalid.");
 
+            var preview = track.ProjectToDownloadPreviewMapper(groups);
+
             if (!artistPreviews.TryGetValue(artist.Id, out var artistPreview))
             {
-                artistPreview = new DownloadPreview
-                {
-                    Id = artist.Id,
-                    Title = artist.Title,
-                    MediaType = PlexMediaType.MusicArtist,
-                    TvShowId = 0,
-                    SeasonId = 0,
-                    Size = 0,
-                    ChildCount = 0,
-                    Children = [],
-                    Qualities = [],
-                };
+                artistPreview = artist.ProjectToDownloadPreviewMapper();
                 artistPreviews.Add(artist.Id, artistPreview);
                 previews.Add(artistPreview);
             }
             if (!albumPreviews.TryGetValue(album.Id, out var albumPreview))
             {
-                albumPreview = new DownloadPreview
-                {
-                    Id = album.Id,
-                    ParentId = artist.Id,
-                    Title = album.Title,
-                    MediaType = PlexMediaType.MusicAlbum,
-                    TvShowId = 0,
-                    SeasonId = 0,
-                    Size = 0,
-                    ChildCount = 0,
-                    Children = [],
-                    Qualities = [],
-                };
+                albumPreview = album.ProjectToDownloadPreviewMapper();
                 albumPreviews.Add(album.Id, albumPreview);
                 artistPreview.Children.Add(albumPreview);
                 artistPreview.ChildCount++;
@@ -409,29 +367,7 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
             if (selectedMediaIds.Count == 1)
                 groups.RemoveAll(x => x.Key != selectedMediaIds[0]);
 
-            previews.Add(
-                new DownloadPreview
-                {
-                    Id = video.Id,
-                    Title = video.Title,
-                    MediaType = PlexMediaType.OtherVideos,
-                    TvShowId = 0,
-                    SeasonId = 0,
-                    ParentId = null,
-                    Children = [],
-                    Size = groups.Sum(x => x.Sum(y => y.Size)),
-                    ChildCount = groups.Sum(x => x.Count()),
-                    Qualities = groups
-                        .Select(group => new PlexMediaQuality
-                        {
-                            MediaId = video.Id,
-                            DataId = group.Min(x => x.Id),
-                            MediaDataType = PlexMediaType.OtherVideos,
-                            Quality = group.First().Quality,
-                        })
-                        .ToList(),
-                }
-            );
+            previews.Add(video.ProjectToDownloadPreviewMapper(groups));
         }
 
         return Result.Ok<IEnumerable<DownloadPreview>>(previews);
@@ -759,7 +695,7 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
         {
             var selection =
                 imageScope.GetValueOrDefault(image.Id)
-                ?? albumSelections.FirstOrDefault(x => x.MediaIds.Contains(image.ParentId!.Value));
+                ?? albumSelections.FirstOrDefault(x => x.MediaIds.Contains(image.PhotoAlbumId));
             if (selection is null)
                 continue;
 
@@ -781,13 +717,13 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
             image.Size = selectedGroup.Size;
         }
 
-        var allAlbumIds = images.Select(x => x.ParentId!.Value).Distinct().ToList();
+        var allAlbumIds = images.Select(x => x.PhotoAlbumId).Distinct().ToList();
         var albums = await _dbContext
             .PlexPhotoAlbums.Where(x => allAlbumIds.Contains(x.Id))
             .ProjectToDownloadPreview()
             .ToListAsync(cancellationToken);
         var imagesByAlbum = images
-            .GroupBy(x => x.ParentId!.Value)
+            .GroupBy(x => x.PhotoAlbumId)
             .ToDictionary(x => x.Key, x => x.OrderByNatural(y => y.Title).ToList());
         foreach (var album in albums)
         {

@@ -40,7 +40,16 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
         );
         var dbContext = IDbContext;
         var photoLibrary = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
-        var album = FakeData.GetDownloadTaskPhotoAlbum(new Seed(88301)).Generate();
+        var album = FakeData
+            .GetDownloadTaskPhotoAlbum(
+                new Seed(88301),
+                config =>
+                {
+                    config.PhotoImageDownloadTasksCount = 1;
+                    config.PhotoImageFileDownloadTasksCount = 1;
+                }
+            )
+            .Generate();
         var photoFile = album.Children.Single().Children.Single();
         foreach (
             var node in new DownloadTaskBase[] { album }
@@ -57,8 +66,8 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
             await dbContext.DownloadTaskMovieFile.AsTracking().SingleAsync(CancellationToken),
             await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken),
             photoFile,
-            await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken),
-            await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken),
+            await dbContext.DownloadTaskMusicTrackFiles.AsTracking().SingleAsync(CancellationToken),
+            await dbContext.DownloadTaskOtherVideoFiles.AsTracking().SingleAsync(CancellationToken),
         };
         var createdAt = new DateTime(2026, 10, 5, 9, 0, 0, DateTimeKind.Utc);
         foreach (var file in files)

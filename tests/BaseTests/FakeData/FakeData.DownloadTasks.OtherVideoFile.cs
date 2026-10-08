@@ -5,6 +5,7 @@ public static partial class FakeData
     private static readonly Faker<DownloadTaskOtherVideoFile> _downloadTaskOtherVideoFileFaker =
         new Faker<DownloadTaskOtherVideoFile>()
             .ApplyDownloadTaskFileBase(DownloadTaskType.OtherVideoData)
+            .Ignore(x => x.DestinationFolderPath)
             .Ignore(x => x.Parent)
             .Ignore(x => x.ParentId)
             .Ignore(x => x.Logs)

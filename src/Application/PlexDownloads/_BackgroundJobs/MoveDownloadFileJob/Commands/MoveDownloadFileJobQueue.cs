@@ -26,7 +26,91 @@ public class MoveDownloadFileJobQueue : IMoveDownloadFileQueue
         // Create a new DbContext for this operation to avoid threading issues
         using var dbContext = await _dbContextFactory.CreateAsync();
 
-        var key = await dbContext.GetNextMoveDownloadTaskKeyAsync(cancellationToken);
+        // Find the oldest ready-to-move task (DownloadFinished preferred, MoveError as retry)
+        var movieCandidates = dbContext
+            .DownloadTaskMovieFile.Where(x =>
+                x.DownloadStatus == DownloadStatus.DownloadFinished || x.DownloadStatus == DownloadStatus.MoveError
+            )
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                Type = DownloadTaskType.MovieData,
+                x.CreatedAt,
+                IsDownloadFinished = x.DownloadStatus == DownloadStatus.DownloadFinished,
+            });
+
+        var episodeCandidates = dbContext
+            .DownloadTaskTvShowEpisodeFile.Where(x =>
+                x.DownloadStatus == DownloadStatus.DownloadFinished || x.DownloadStatus == DownloadStatus.MoveError
+            )
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                Type = DownloadTaskType.EpisodeData,
+                x.CreatedAt,
+                IsDownloadFinished = x.DownloadStatus == DownloadStatus.DownloadFinished,
+            });
+
+        var photoCandidates = dbContext
+            .DownloadTaskPhotoImageFiles.Where(x =>
+                x.DownloadStatus == DownloadStatus.DownloadFinished || x.DownloadStatus == DownloadStatus.MoveError
+            )
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                Type = DownloadTaskType.PhotoData,
+                x.CreatedAt,
+                IsDownloadFinished = x.DownloadStatus == DownloadStatus.DownloadFinished,
+            });
+
+        var musicCandidates = dbContext
+            .DownloadTaskMusicTrackFiles.Where(x =>
+                x.DownloadStatus == DownloadStatus.DownloadFinished || x.DownloadStatus == DownloadStatus.MoveError
+            )
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                Type = DownloadTaskType.MusicTrackData,
+                x.CreatedAt,
+                IsDownloadFinished = x.DownloadStatus == DownloadStatus.DownloadFinished,
+            });
+
+        var otherVideoCandidates = dbContext
+            .DownloadTaskOtherVideoFiles.Where(x =>
+                x.DownloadStatus == DownloadStatus.DownloadFinished || x.DownloadStatus == DownloadStatus.MoveError
+            )
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                Type = DownloadTaskType.OtherVideoData,
+                x.CreatedAt,
+                IsDownloadFinished = x.DownloadStatus == DownloadStatus.DownloadFinished,
+            });
+        var key = await movieCandidates
+            .Concat(episodeCandidates)
+            .Concat(photoCandidates)
+            .Concat(musicCandidates)
+            .Concat(otherVideoCandidates)
+            .OrderByDescending(x => x.IsDownloadFinished)
+            .ThenBy(x => x.CreatedAt)
+            .Select(x => new DownloadTaskKey
+            {
+                Id = x.Id,
+                PlexServerId = x.PlexServerId,
+                PlexLibraryId = x.PlexLibraryId,
+                Type = x.Type,
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (key is null)
         {
