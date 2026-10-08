@@ -35,28 +35,7 @@ public class DeleteDownloadTaskFilesCommandHandler : ICommandHandler<DeleteDownl
     public async Task<Result> ExecuteAsync(DeleteDownloadTaskFilesCommand command, CancellationToken cancellationToken)
     {
         var keys = command.Keys;
-
-        var movieFileIds = keys.Where(k => k.Type is DownloadTaskType.MovieData or DownloadTaskType.MoviePart)
-            .Select(k => k.Id)
-            .ToList();
-
-        var episodeFileIds = keys.Where(k => k.Type is DownloadTaskType.EpisodeData or DownloadTaskType.EpisodePart)
-            .Select(k => k.Id)
-            .ToList();
-
-        var movieFileTask = _dbContext
-            .DownloadTaskMovieFile.AsNoTracking()
-            .Where(x => movieFileIds.Contains(x.Id))
-            .ToListAsync(cancellationToken);
-
-        var movieFileTasks = await movieFileTask;
-
-        var episodeFileTask = _dbContext
-            .DownloadTaskTvShowEpisodeFile.AsNoTracking()
-            .Where(x => episodeFileIds.Contains(x.Id))
-            .ToListAsync(cancellationToken);
-        var episodeFileTasks = await episodeFileTask;
-        var allFileTasks = movieFileTasks.Cast<DownloadTaskFileBase>().Concat(episodeFileTasks).ToList();
+        var allFileTasks = await _dbContext.GetDownloadTaskFilesAsync(keys, cancellationToken);
 
         foreach (var task in allFileTasks)
         {
@@ -65,10 +44,9 @@ public class DeleteDownloadTaskFilesCommandHandler : ICommandHandler<DeleteDownl
                 return deleteFileResult;
         }
 
-        // After deleting files, try to clean up any empty directories left behind.
-        // Build a deduplicated map of download directory → category stop-root so the recursion
-        // is strictly bounded and can never delete the category folder or anything above it.
-        // Category folders (e.g. …/Movies/ and …/TvShows/) must never be removed even when empty.
+        // After deleting files, clean up any empty directories left behind.
+        // Build a deduplicated map of download directory → stop root so recursion is
+        // strictly bounded and can never delete the category folder or anything above it.
         var directoryToStopRoot = allFileTasks
             .Where(t => !string.IsNullOrEmpty(t.DownloadDirectory))
             .GroupBy(t => t.DownloadDirectory, StringComparer.OrdinalIgnoreCase)
@@ -93,8 +71,28 @@ public class DeleteDownloadTaskFilesCommandHandler : ICommandHandler<DeleteDownl
                 StringComparer.OrdinalIgnoreCase
             );
 
+        var activeDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (allFileTasks.Count > 0)
+        {
+            var deletingFileKeys = allFileTasks.Select(x => x.ToKey()).ToHashSet();
+            var downloadTasks = await _dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: cancellationToken);
+            activeDirectories.UnionWith(
+                downloadTasks
+                    .Flatten(x => x.Children)
+                    .Where(x =>
+                        x.IsDownloadable
+                        && !deletingFileKeys.Contains(x.ToKey())
+                        && x.DownloadStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted)
+                        && !string.IsNullOrEmpty(x.DownloadDirectory)
+                    )
+                    .Select(x => x.DownloadDirectory)
+            );
+        }
+
         foreach (var (directory, stopRoot) in directoryToStopRoot)
         {
+            if (activeDirectories.Contains(directory))
+                continue;
             var deleteDirectoryResult = DeleteDirectoryIfEmpty(directory, stopRoot);
             if (deleteDirectoryResult.IsFailed)
                 return deleteDirectoryResult;

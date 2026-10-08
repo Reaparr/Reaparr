@@ -31,46 +31,50 @@ public class DeleteDownloadTasksByKeyCommandHandler : ICommandHandler<DeleteDown
         );
         var orphanParentCandidates = await GetOrphanParentCandidatesAsync(affectedRootIds, ct);
 
-        // Group by type → one targeted DELETE per table, no scatter across all six.
+        // Group by type so each delete targets its own task table.
         var byType = command.Keys.ToLookup(k => k.Type, k => k.Id);
 
-        var movieIds = byType[DownloadTaskType.Movie].ToList();
-        var movieFileIds = byType[DownloadTaskType.MovieData].Concat(byType[DownloadTaskType.MoviePart]).ToList();
-        var tvShowIds = byType[DownloadTaskType.TvShow].ToList();
-        var seasonIds = byType[DownloadTaskType.Season].ToList();
-        var episodeIds = byType[DownloadTaskType.Episode].ToList();
-        var episodeFileIds = byType[DownloadTaskType.EpisodeData].Concat(byType[DownloadTaskType.EpisodePart]).ToList();
-
-        await _dbContext.BulkDeleteByIdsAsync(movieIds, (db, ids) => db.DownloadTaskMovie.Where(x => ids.Contains(x.Id)), ct);
-        await _dbContext.BulkDeleteByIdsAsync(
-            movieFileIds,
-            (db, ids) => db.DownloadTaskMovieFile.Where(x => ids.Contains(x.Id)),
-            ct
+        await DeleteAsync(_dbContext.DownloadTaskMovie, DownloadTaskType.Movie);
+        await DeleteAsync(_dbContext.DownloadTaskMovieFile, DownloadTaskType.MovieData, DownloadTaskType.MoviePart);
+        await DeleteAsync(_dbContext.DownloadTaskTvShow, DownloadTaskType.TvShow);
+        await DeleteAsync(_dbContext.DownloadTaskTvShowSeason, DownloadTaskType.Season);
+        await DeleteAsync(_dbContext.DownloadTaskTvShowEpisode, DownloadTaskType.Episode);
+        await DeleteAsync(
+            _dbContext.DownloadTaskTvShowEpisodeFile,
+            DownloadTaskType.EpisodeData,
+            DownloadTaskType.EpisodePart
         );
-        await _dbContext.BulkDeleteByIdsAsync(
-            tvShowIds,
-            (db, ids) => db.DownloadTaskTvShow.Where(x => ids.Contains(x.Id)),
-            ct
+        await DeleteAsync(_dbContext.DownloadTaskPhotoAlbums, DownloadTaskType.PhotoAlbum);
+        await DeleteAsync(_dbContext.DownloadTaskPhotoImages, DownloadTaskType.PhotoImage);
+        await DeleteAsync(
+            _dbContext.DownloadTaskPhotoImageFiles,
+            DownloadTaskType.PhotoData,
+            DownloadTaskType.PhotoPart
         );
-        await _dbContext.BulkDeleteByIdsAsync(
-            seasonIds,
-            (db, ids) => db.DownloadTaskTvShowSeason.Where(x => ids.Contains(x.Id)),
-            ct
+        await DeleteAsync(_dbContext.DownloadTaskMusicArtists, DownloadTaskType.MusicArtist);
+        await DeleteAsync(_dbContext.DownloadTaskMusicAlbums, DownloadTaskType.MusicAlbum);
+        await DeleteAsync(_dbContext.DownloadTaskMusicTracks, DownloadTaskType.MusicTrack);
+        await DeleteAsync(
+            _dbContext.DownloadTaskMusicTrackFiles,
+            DownloadTaskType.MusicTrackData,
+            DownloadTaskType.MusicTrackPart
         );
-        await _dbContext.BulkDeleteByIdsAsync(
-            episodeIds,
-            (db, ids) => db.DownloadTaskTvShowEpisode.Where(x => ids.Contains(x.Id)),
-            ct
-        );
-        await _dbContext.BulkDeleteByIdsAsync(
-            episodeFileIds,
-            (db, ids) => db.DownloadTaskTvShowEpisodeFile.Where(x => ids.Contains(x.Id)),
-            ct
+        await DeleteAsync(_dbContext.DownloadTaskOtherVideos, DownloadTaskType.OtherVideo);
+        await DeleteAsync(
+            _dbContext.DownloadTaskOtherVideoFiles,
+            DownloadTaskType.OtherVideoData,
+            DownloadTaskType.OtherVideoPart
         );
 
         // Exclude roots that were already directly deleted above — orphan cleanup only
         // applies to roots whose children were removed, not roots deleted explicitly.
-        var directlyDeletedRootIds = new HashSet<Guid>(movieIds.Concat(tvShowIds));
+        var directlyDeletedRootIds = new HashSet<Guid>(
+            byType[DownloadTaskType.Movie]
+                .Concat(byType[DownloadTaskType.TvShow])
+                .Concat(byType[DownloadTaskType.MusicArtist])
+                .Concat(byType[DownloadTaskType.PhotoAlbum])
+                .Concat(byType[DownloadTaskType.OtherVideo])
+        );
         var orphanRootIds = affectedRootIds.Where(id => !directlyDeletedRootIds.Contains(id)).ToList();
         await _dbContext.DeleteOrphanedParentTasksByRootIdsAsync(orphanRootIds, ct);
 
@@ -94,6 +98,14 @@ public class DeleteDownloadTasksByKeyCommandHandler : ICommandHandler<DeleteDown
         }
 
         return Result.Ok();
+
+        Task DeleteAsync<T>(IQueryable<T> tasks, DownloadTaskType type, DownloadTaskType? partType = null)
+            where T : DownloadTaskBase =>
+            _dbContext.BulkDeleteByIdsAsync(
+                partType.HasValue ? byType[type].Concat(byType[partType.Value]) : byType[type],
+                (_, ids) => tasks.Where(x => ids.Contains(x.Id)),
+                ct
+            );
     }
 
     private async Task<List<DownloadTaskKey>> GetOrphanParentCandidatesAsync(
@@ -104,65 +116,32 @@ public class DeleteDownloadTasksByKeyCommandHandler : ICommandHandler<DeleteDown
         if (rootIds.Count == 0)
             return [];
 
-        var movieCandidatesTask = _dbContext
-            .DownloadTaskMovie.Where(x => rootIds.Contains(x.Id))
-            .Select(x => new DownloadTaskKey
-            {
-                Id = x.Id,
-                Type = DownloadTaskType.Movie,
-                PlexServerId = x.PlexServerId,
-                PlexLibraryId = x.PlexLibraryId,
-            })
-            .ToListAsync(ct);
+        var candidates = new List<DownloadTaskKey>();
+        await AddCandidatesAsync(_dbContext.DownloadTaskMovie.Where(x => rootIds.Contains(x.Id)).ProjectToKey());
+        await AddCandidatesAsync(_dbContext.DownloadTaskTvShow.Where(x => rootIds.Contains(x.Id)).ProjectToKey());
+        await AddCandidatesAsync(
+            _dbContext.DownloadTaskTvShowSeason.Where(x => rootIds.Contains(x.ParentId)).ProjectToKey()
+        );
+        await AddCandidatesAsync(
+            _dbContext.DownloadTaskTvShowEpisode.Where(x => rootIds.Contains(x.Parent!.ParentId)).ProjectToKey()
+        );
+        await AddCandidatesAsync(_dbContext.DownloadTaskPhotoAlbums.Where(x => rootIds.Contains(x.Id)).ProjectToKey());
+        await AddCandidatesAsync(
+            _dbContext.DownloadTaskPhotoImages.Where(x => rootIds.Contains(x.ParentId)).ProjectToKey()
+        );
+        await AddCandidatesAsync(_dbContext.DownloadTaskMusicArtists.Where(x => rootIds.Contains(x.Id)).ProjectToKey());
+        await AddCandidatesAsync(
+            _dbContext.DownloadTaskMusicAlbums.Where(x => rootIds.Contains(x.ParentId)).ProjectToKey()
+        );
+        await AddCandidatesAsync(
+            _dbContext.DownloadTaskMusicTracks.Where(x => rootIds.Contains(x.Parent!.ParentId)).ProjectToKey()
+        );
+        await AddCandidatesAsync(_dbContext.DownloadTaskOtherVideos.Where(x => rootIds.Contains(x.Id)).ProjectToKey());
 
-        var tvShowCandidatesTask = _dbContext
-            .DownloadTaskTvShow.Where(x => rootIds.Contains(x.Id))
-            .Select(x => new DownloadTaskKey
-            {
-                Id = x.Id,
-                Type = DownloadTaskType.TvShow,
-                PlexServerId = x.PlexServerId,
-                PlexLibraryId = x.PlexLibraryId,
-            })
-            .ToListAsync(ct);
+        return candidates.DistinctBy(x => (x.Id, x.Type, x.PlexServerId, x.PlexLibraryId)).ToList();
 
-        var seasonCandidatesTask = _dbContext
-            .DownloadTaskTvShowSeason.Where(x => rootIds.Contains(x.ParentId))
-            .Select(x => new DownloadTaskKey
-            {
-                Id = x.Id,
-                Type = DownloadTaskType.Season,
-                PlexServerId = x.PlexServerId,
-                PlexLibraryId = x.PlexLibraryId,
-            })
-            .ToListAsync(ct);
-
-        var episodeCandidatesTask = _dbContext
-            .DownloadTaskTvShowEpisode.Where(x => rootIds.Contains(x.Parent!.ParentId))
-            .Select(x => new DownloadTaskKey
-            {
-                Id = x.Id,
-                Type = DownloadTaskType.Episode,
-                PlexServerId = x.PlexServerId,
-                PlexLibraryId = x.PlexLibraryId,
-            })
-            .ToListAsync(ct);
-
-        await Task.WhenAll(movieCandidatesTask, tvShowCandidatesTask, seasonCandidatesTask, episodeCandidatesTask);
-
-        return movieCandidatesTask
-            .Result.Concat(tvShowCandidatesTask.Result)
-            .Concat(seasonCandidatesTask.Result)
-            .Concat(episodeCandidatesTask.Result)
-            .GroupBy(k => new
-            {
-                k.Id,
-                k.Type,
-                k.PlexServerId,
-                k.PlexLibraryId,
-            })
-            .Select(g => g.First())
-            .ToList();
+        async Task AddCandidatesAsync(IQueryable<DownloadTaskKey> query) =>
+            candidates.AddRange(await query.ToListAsync(ct));
     }
 
     private async Task<List<DownloadTaskKey>> GetDeletedParentKeysAsync(
@@ -177,42 +156,26 @@ public class DeleteDownloadTasksByKeyCommandHandler : ICommandHandler<DeleteDown
 
         var existing = new HashSet<Guid>();
 
-        if (idsByType.TryGetValue(DownloadTaskType.Movie, out var movieIds) && movieIds.Count > 0)
-        {
-            var matches = await _dbContext
-                .DownloadTaskMovie.Where(x => movieIds.Contains(x.Id))
-                .Select(x => x.Id)
-                .ToListAsync(ct);
-            existing.UnionWith(matches);
-        }
-
-        if (idsByType.TryGetValue(DownloadTaskType.TvShow, out var tvShowIds) && tvShowIds.Count > 0)
-        {
-            var matches = await _dbContext
-                .DownloadTaskTvShow.Where(x => tvShowIds.Contains(x.Id))
-                .Select(x => x.Id)
-                .ToListAsync(ct);
-            existing.UnionWith(matches);
-        }
-
-        if (idsByType.TryGetValue(DownloadTaskType.Season, out var seasonIds) && seasonIds.Count > 0)
-        {
-            var matches = await _dbContext
-                .DownloadTaskTvShowSeason.Where(x => seasonIds.Contains(x.Id))
-                .Select(x => x.Id)
-                .ToListAsync(ct);
-            existing.UnionWith(matches);
-        }
-
-        if (idsByType.TryGetValue(DownloadTaskType.Episode, out var episodeIds) && episodeIds.Count > 0)
-        {
-            var matches = await _dbContext
-                .DownloadTaskTvShowEpisode.Where(x => episodeIds.Contains(x.Id))
-                .Select(x => x.Id)
-                .ToListAsync(ct);
-            existing.UnionWith(matches);
-        }
+        await AddExistingAsync(_dbContext.DownloadTaskMovie, DownloadTaskType.Movie);
+        await AddExistingAsync(_dbContext.DownloadTaskTvShow, DownloadTaskType.TvShow);
+        await AddExistingAsync(_dbContext.DownloadTaskTvShowSeason, DownloadTaskType.Season);
+        await AddExistingAsync(_dbContext.DownloadTaskTvShowEpisode, DownloadTaskType.Episode);
+        await AddExistingAsync(_dbContext.DownloadTaskPhotoAlbums, DownloadTaskType.PhotoAlbum);
+        await AddExistingAsync(_dbContext.DownloadTaskPhotoImages, DownloadTaskType.PhotoImage);
+        await AddExistingAsync(_dbContext.DownloadTaskMusicArtists, DownloadTaskType.MusicArtist);
+        await AddExistingAsync(_dbContext.DownloadTaskMusicAlbums, DownloadTaskType.MusicAlbum);
+        await AddExistingAsync(_dbContext.DownloadTaskMusicTracks, DownloadTaskType.MusicTrack);
+        await AddExistingAsync(_dbContext.DownloadTaskOtherVideos, DownloadTaskType.OtherVideo);
 
         return candidates.Where(x => !existing.Contains(x.Id)).ToList();
+
+        async Task AddExistingAsync<T>(IQueryable<T> tasks, DownloadTaskType type)
+            where T : DownloadTaskBase
+        {
+            if (!idsByType.TryGetValue(type, out var ids) || ids.Count == 0)
+                return;
+
+            existing.UnionWith(await tasks.Where(x => ids.Contains(x.Id)).Select(x => x.Id).ToListAsync(ct));
+        }
     }
 }
