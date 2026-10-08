@@ -211,6 +211,80 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
     }
 
     [Test]
+    public void MusicArtistDownloadTask_ShouldGenerateConfiguredHierarchyAndMusicFiles()
+    {
+        // Arrange
+        var seed = new Seed(24681);
+        var config = new FakeDataConfig
+        {
+            MusicAlbumDownloadTasksCount = 2,
+            MusicTrackDownloadTasksCount = 3,
+            MusicTrackFileDownloadTasksCount = 2,
+        };
+
+        // Act
+        var artist = FakeData
+            .GetDownloadTaskMusicArtist(
+                seed,
+                options =>
+                {
+                    options.MusicAlbumDownloadTasksCount = config.MusicAlbumDownloadTasksCount;
+                    options.MusicTrackDownloadTasksCount = config.MusicTrackDownloadTasksCount;
+                    options.MusicTrackFileDownloadTasksCount = config.MusicTrackFileDownloadTasksCount;
+                }
+            )
+            .Generate();
+        var files = artist.Children.SelectMany(album => album.Children).SelectMany(track => track.Children).ToList();
+
+        // Assert
+        artist.DownloadTaskType.ShouldBe(DownloadTaskType.MusicArtist);
+        artist.Children.Count.ShouldBe(config.MusicAlbumDownloadTasksCount);
+        artist.Children.ShouldAllBe(album => album.Children.Count == config.MusicTrackDownloadTasksCount);
+        files.Count.ShouldBe(
+            config.MusicAlbumDownloadTasksCount
+                * config.MusicTrackDownloadTasksCount
+                * config.MusicTrackFileDownloadTasksCount
+        );
+        artist.DataTotal.ShouldBe(files.Sum(file => file.DataTotal));
+        files.ShouldAllBe(
+            file =>
+                file.DownloadTaskType == DownloadTaskType.MusicTrackData
+                && file.Quality == VideoQuality.None
+                && file.FileName.EndsWith(".flac", StringComparison.Ordinal)
+                && file.DirectoryMeta.MusicArtistFolder == artist.Title.SanitizeFolderName()
+        );
+    }
+
+    [Test]
+    public void OtherVideoDownloadTask_ShouldGenerateConfiguredFilesWithVideoSemantics()
+    {
+        // Arrange
+        var seed = new Seed(24682);
+        var config = new FakeDataConfig { OtherVideoFileDownloadTasksCount = 2 };
+
+        // Act
+        var video = FakeData
+            .GetDownloadTaskOtherVideo(
+                seed,
+                options => options.OtherVideoFileDownloadTasksCount = config.OtherVideoFileDownloadTasksCount
+            )
+            .Generate();
+        var files = video.Children.ToList();
+
+        // Assert
+        video.DownloadTaskType.ShouldBe(DownloadTaskType.OtherVideo);
+        files.Count.ShouldBe(config.OtherVideoFileDownloadTasksCount);
+        video.DataTotal.ShouldBe(files.Sum(file => file.DataTotal));
+        files.ShouldAllBe(
+            file =>
+                file.DownloadTaskType == DownloadTaskType.OtherVideoData
+                && file.Quality == VideoQuality.FullHD
+                && file.FileName.EndsWith(".mp4", StringComparison.Ordinal)
+                && file.DirectoryMeta.OtherVideoFolder == video.Title.SanitizeFolderName()
+        );
+    }
+
+    [Test]
     public void DownloadTaskConfig_ShouldModifyFileSizeWhenConfigured()
     {
         // Arrange

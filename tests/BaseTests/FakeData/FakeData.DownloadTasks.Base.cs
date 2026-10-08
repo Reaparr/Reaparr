@@ -73,12 +73,17 @@ public static partial class FakeData
                         MovieFolder = x.Title,
                         TvShowFolder = string.Empty,
                         SeasonFolder = string.Empty,
+                        MusicArtistFolder = string.Empty,
+                        MusicAlbumFolder = string.Empty,
+                        PhotoAlbumFolder = string.Empty,
+                        OtherVideoFolder = string.Empty,
                         KeepCompletedInDownloadFolder = false,
                     }
             )
             .RuleFor(x => x.DirectDownloadSnapshot, _ => null)
             .RuleFor(x => x.DownloadClientType, _ => PlexDownloadClientType.Direct);
     }
+
 
     private static string ToDefaultDestinationLocation(this PlexMediaType type)
     {

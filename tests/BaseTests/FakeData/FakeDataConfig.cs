@@ -82,6 +82,18 @@ public class FakeDataConfig : BaseConfig<FakeDataConfig>
 
     public int TvShowEpisodeDownloadTasksCount { get; set; } = 0;
 
+    public int MusicArtistDownloadTasksCount { get; set; } = 0;
+
+    public int MusicAlbumDownloadTasksCount { get; set; } = 0;
+
+    public int MusicTrackDownloadTasksCount { get; set; } = 0;
+
+    public int MusicTrackFileDownloadTasksCount { get; set; } = 0;
+
+    public int OtherVideoDownloadTasksCount { get; set; } = 0;
+
+    public int OtherVideoFileDownloadTasksCount { get; set; } = 0;
+
     #endregion
 
     public bool IncludeMultiPartMovies { get; set; }
@@ -114,11 +126,21 @@ public class FakeDataConfig : BaseConfig<FakeDataConfig>
         || TvShowEpisodeDownloadTasksCount > 0;
 
     public bool ShouldHaveMusicPlexLibrary =>
-        PlexMusicLibraryCount > 0 || MusicArtistCount > 0 || MusicAlbumCount > 0 || MusicTrackCount > 0;
+        PlexMusicLibraryCount > 0
+        || MusicArtistCount > 0
+        || MusicAlbumCount > 0
+        || MusicTrackCount > 0
+        || MusicArtistDownloadTasksCount > 0
+        || MusicAlbumDownloadTasksCount > 0
+        || MusicTrackDownloadTasksCount > 0
+        || MusicTrackFileDownloadTasksCount > 0;
 
     public bool ShouldHavePhotoPlexLibrary =>
         PlexPhotoLibraryCount > 0 || PhotoAlbumCount > 0 || PhotoCount > 0 || PhotoClipCount > 0;
 
     public bool ShouldHaveOtherVideoPlexLibrary =>
-        PlexOtherVideoLibraryCount > 0 || OtherVideoCount > 0;
+        PlexOtherVideoLibraryCount > 0
+        || OtherVideoCount > 0
+        || OtherVideoDownloadTasksCount > 0
+        || OtherVideoFileDownloadTasksCount > 0;
 }
