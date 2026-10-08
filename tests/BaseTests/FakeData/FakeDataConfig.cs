@@ -90,6 +90,12 @@ public class FakeDataConfig : BaseConfig<FakeDataConfig>
 
     public int MusicTrackFileDownloadTasksCount { get; set; } = 0;
 
+    public int PhotoAlbumDownloadTasksCount { get; set; } = 0;
+
+    public int PhotoImageDownloadTasksCount { get; set; } = 0;
+
+    public int PhotoImageFileDownloadTasksCount { get; set; } = 0;
+
     public int OtherVideoDownloadTasksCount { get; set; } = 0;
 
     public int OtherVideoFileDownloadTasksCount { get; set; } = 0;
@@ -136,7 +142,13 @@ public class FakeDataConfig : BaseConfig<FakeDataConfig>
         || MusicTrackFileDownloadTasksCount > 0;
 
     public bool ShouldHavePhotoPlexLibrary =>
-        PlexPhotoLibraryCount > 0 || PhotoAlbumCount > 0 || PhotoCount > 0 || PhotoClipCount > 0;
+        PlexPhotoLibraryCount > 0
+        || PhotoAlbumCount > 0
+        || PhotoCount > 0
+        || PhotoClipCount > 0
+        || PhotoAlbumDownloadTasksCount > 0
+        || PhotoImageDownloadTasksCount > 0
+        || PhotoImageFileDownloadTasksCount > 0;
 
     public bool ShouldHaveOtherVideoPlexLibrary =>
         PlexOtherVideoLibraryCount > 0

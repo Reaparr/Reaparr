@@ -5,11 +5,23 @@ public static partial class FakeData
     public static Faker<DownloadTaskPhotoAlbum> GetDownloadTaskPhotoAlbum(
         Seed seed,
         Action<FakeDataConfig>? options = null
-    ) =>
-        new Faker<DownloadTaskPhotoAlbum>()
+    )
+    {
+        var config = FakeDataConfig.FromOptions(options);
+
+        return new Faker<DownloadTaskPhotoAlbum>()
             .ApplyDownloadTaskParentBase(DownloadTaskType.PhotoAlbum)
             .UseSeed(seed.Next())
-            .RuleFor(x => x.Children, _ => GetDownloadTaskPhotoImage(seed, options).Generate(1))
+            .RuleFor(
+                x => x.Children,
+                _ =>
+                {
+                    var faker = GetDownloadTaskPhotoImage(seed, options);
+                    return config.PhotoImageDownloadTasksCount > 0
+                        ? faker.Generate(config.PhotoImageDownloadTasksCount)
+                        : faker.GenerateBetween(1, 5);
+                }
+            )
             .RuleFor(x => x.DataTotal, (_, x) => x.Children.Sum(image => image.DataTotal))
             .FinishWith(
                 (_, album) =>
@@ -25,4 +37,5 @@ public static partial class FakeData
                     }
                 }
             );
+    }
 }
