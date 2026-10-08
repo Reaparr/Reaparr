@@ -662,6 +662,86 @@ public static partial class DbContextExtensions
         }
     }
 
+    public static async Task<List<DownloadTaskFileBase>> GetDownloadTaskFilesAsync(
+        this IReaparrDbContext dbContext,
+        IReadOnlyList<DownloadTaskKey> keys,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (keys.Count == 0)
+            return [];
+
+        var byType = keys.ToLookup(x => x.Type, x => x.Id);
+        var files = new List<DownloadTaskFileBase>(keys.Count);
+
+        await AddFilesAsync(dbContext.DownloadTaskMovieFile, DownloadTaskType.MovieData, DownloadTaskType.MoviePart);
+        await AddFilesAsync(
+            dbContext.DownloadTaskTvShowEpisodeFile,
+            DownloadTaskType.EpisodeData,
+            DownloadTaskType.EpisodePart
+        );
+        await AddFilesAsync(dbContext.DownloadTaskPhotoImageFiles, DownloadTaskType.PhotoData, DownloadTaskType.PhotoPart);
+        await AddFilesAsync(
+            dbContext.DownloadTaskMusicTrackFiles,
+            DownloadTaskType.MusicTrackData,
+            DownloadTaskType.MusicTrackPart
+        );
+        await AddFilesAsync(
+            dbContext.DownloadTaskOtherVideoFiles,
+            DownloadTaskType.OtherVideoData,
+            DownloadTaskType.OtherVideoPart
+        );
+
+        return files;
+
+        async Task AddFilesAsync<T>(IQueryable<T> set, DownloadTaskType dataType, DownloadTaskType partType)
+            where T : DownloadTaskFileBase
+        {
+            var ids = byType[dataType].Concat(byType[partType]).Distinct().ToList();
+            if (ids.Count == 0)
+                return;
+
+            files.AddRange(
+                await set
+                    .Where(x => ids.Contains(x.Id))
+                    .Include(x => x.PlexServer)
+                    .Include(x => x.PlexLibrary)
+                    .ToListAsync(cancellationToken)
+            );
+        }
+    }
+
+    public static async Task<List<DownloadTaskFileBase>> GetDownloadTaskFilesByStatusAsync(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<DownloadStatus> statuses,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (statuses.Count == 0)
+            return [];
+
+        var files = new List<DownloadTaskFileBase>();
+        await AddFilesAsync(dbContext.DownloadTaskMovieFile);
+        await AddFilesAsync(dbContext.DownloadTaskTvShowEpisodeFile);
+        await AddFilesAsync(dbContext.DownloadTaskPhotoImageFiles);
+        await AddFilesAsync(dbContext.DownloadTaskMusicTrackFiles);
+        await AddFilesAsync(dbContext.DownloadTaskOtherVideoFiles);
+
+        return files;
+
+        async Task AddFilesAsync<T>(IQueryable<T> set)
+            where T : DownloadTaskFileBase
+        {
+            files.AddRange(
+                await set
+                    .Where(x => statuses.Contains(x.DownloadStatus))
+                    .Include(x => x.PlexServer)
+                    .Include(x => x.PlexLibrary)
+                    .ToListAsync(cancellationToken)
+            );
+        }
+    }
+
     public static async Task<List<DownloadTaskGeneric>> GetAllDownloadTasksByServerAsync(
         this IReaparrDbContext dbContext,
         int plexServerId = 0,
