@@ -260,10 +260,8 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
             await SyncArtistGenres(artists, command.LibraryMetadata, bulkConfig, ct),
             await SyncArtistActors(artists, command.LibraryMetadata, bulkConfig, ct)
         );
-        if (metadataResult.IsCancelled)
-            return metadataResult.LogWarning();
         if (metadataResult.IsFailed)
-            return metadataResult.LogError();
+            return metadataResult.LogIfFailed();
         _log.Here().Information("Synchronized Music library {PlexLibraryId}: {@Report}", library.Id, report);
         return Result.Ok(report);
     }

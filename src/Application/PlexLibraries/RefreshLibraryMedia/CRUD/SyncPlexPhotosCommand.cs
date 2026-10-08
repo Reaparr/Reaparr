@@ -219,10 +219,8 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
             },
             ct
         );
-        if (result.IsCancelled)
-            return result.LogWarning();
         if (result.IsFailed)
-            return result.LogError();
+            return result.LogIfFailed();
         _log.Here().Information("Synchronized Photos library {PlexLibraryId}: {@Report}", library.Id, report);
         return Result.Ok(report);
     }
