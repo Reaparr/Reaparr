@@ -13,11 +13,15 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
             config =>
             {
                 config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 1;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
                 config.MovieDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
-        var file = await FakeData.AddMusicTask(dbContext, 1);
+        var file = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         await dbContext.CreateDownloadClientLog(
             movieFile.ToKey(),
@@ -66,10 +70,23 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
     )
     {
         // Arrange
-        await SetupDatabase(62302, config => config.PlexMusicLibraryCount = 1);
+        await SetupDatabase(
+            62302,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var file = await FakeData.AddMusicTask(dbContext, 1);
-        var sibling = await FakeData.AddMusicTask(dbContext, 2);
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var file = musicFiles[0];
+        var sibling = musicFiles[1];
         dbContext.DownloadTaskTrackFileLogs.AddRange(
             MusicLog(file, "track-1"),
             MusicLog(file, "track-2"),
@@ -118,10 +135,23 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
     public async Task ShouldDeleteOnlyRequestedMusicLogs_WhenSiblingLogsExist(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(62303, config => config.PlexMusicLibraryCount = 1);
+        await SetupDatabase(
+            62303,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var file = await FakeData.AddMusicTask(dbContext, 1);
-        var sibling = await FakeData.AddMusicTask(dbContext, 2);
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var file = musicFiles[0];
+        var sibling = musicFiles[1];
         dbContext.DownloadTaskTrackFileLogs.AddRange(MusicLog(file, "target"), MusicLog(sibling, "sibling"));
         await dbContext.SaveChangesAsync(CancellationToken);
         (

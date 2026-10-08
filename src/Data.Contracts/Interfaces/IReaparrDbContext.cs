@@ -30,15 +30,15 @@ public interface IReaparrDbContext : IDisposable
     DbSet<PlexOtherVideoMediaData> PlexOtherVideoData { get; }
     DbSet<MediaOverviewOtherVideoSnapshot> MediaOverviewOtherVideoSnapshots { get; }
 
-    DbSet<DownloadTaskMusicArtist> DownloadTaskArtists { get; }
-    DbSet<DownloadTaskMusicAlbum> DownloadTaskAlbums { get; }
-    DbSet<DownloadTaskMusicTrack> DownloadTaskTracks { get; }
-    DbSet<DownloadTaskMusicTrackFile> DownloadTaskTrackFiles { get; }
+    DbSet<DownloadTaskMusicArtist> DownloadTaskMusicArtists { get; }
+    DbSet<DownloadTaskMusicAlbum> DownloadTaskMusicAlbums { get; }
+    DbSet<DownloadTaskMusicTrack> DownloadTaskMusicTracks { get; }
+    DbSet<DownloadTaskMusicTrackFile> DownloadTaskMusicTrackFiles { get; }
     DbSet<DownloadTaskTrackFileLog> DownloadTaskTrackFileLogs { get; }
     DbSet<DownloadTaskPhotoAlbum> DownloadTaskPhotoAlbums { get; }
-    DbSet<DownloadTaskPhotoImage> DownloadTaskPhotos { get; }
-    DbSet<DownloadTaskPhotoImageFile> DownloadTaskPhotoFiles { get; }
-    DbSet<DownloadTaskPhotoImageFileLog> DownloadTaskPhotoFileLogs { get; }
+    DbSet<DownloadTaskPhotoImage> DownloadTaskPhotoImages { get; }
+    DbSet<DownloadTaskPhotoImageFile> DownloadTaskPhotoImageFiles { get; }
+    DbSet<DownloadTaskPhotoImageFileLog> DownloadTaskPhotoImageFileLogs { get; }
     DbSet<DownloadTaskOtherVideo> DownloadTaskOtherVideos { get; }
     DbSet<DownloadTaskOtherVideoFile> DownloadTaskOtherVideoFiles { get; }
     DbSet<DownloadTaskOtherVideoFileLog> DownloadTaskOtherVideoFileLogs { get; }

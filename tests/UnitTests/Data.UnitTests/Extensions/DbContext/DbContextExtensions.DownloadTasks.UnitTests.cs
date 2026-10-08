@@ -17,16 +17,24 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             config =>
             {
                 config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
                 config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
-        DownloadTaskFileBase target = music
-            ? await FakeData.AddMusicTask(dbContext, 1)
-            : await FakeData.AddOtherVideoTask(dbContext, 1);
-        DownloadTaskFileBase control = music
-            ? await FakeData.AddMusicTask(dbContext, 2)
-            : await FakeData.AddOtherVideoTask(dbContext, 2);
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
         DownloadTaskBase[] hierarchy = music
             ?
             [
@@ -61,12 +69,18 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             config =>
             {
                 config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 1;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
                 config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
-        var music = await FakeData.AddMusicTask(dbContext, 1);
-        var video = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var music = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
+        var video = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         (await dbContext.DownloadTaskTrackFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.DownloadTaskOtherVideoFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
         var createdAt = new DateTime(2026, 10, 5, 10, 0, 0, DateTimeKind.Utc);
@@ -144,16 +158,24 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             config =>
             {
                 config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
                 config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
-        DownloadTaskFileBase target = music
-            ? await FakeData.AddMusicTask(dbContext, 1)
-            : await FakeData.AddOtherVideoTask(dbContext, 1);
-        DownloadTaskFileBase control = music
-            ? await FakeData.AddMusicTask(dbContext, 2)
-            : await FakeData.AddOtherVideoTask(dbContext, 2);
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
         var targetRoot = (
             await dbContext.GetRootDownloadTaskKeyAsync(target.ToKey(), cancellationToken: CancellationToken)
         )!;
@@ -218,17 +240,25 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             config =>
             {
                 config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
                 config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
         var music = type is DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart;
-        DownloadTaskFileBase target = music
-            ? await FakeData.AddMusicTask(dbContext, 1)
-            : await FakeData.AddOtherVideoTask(dbContext, 1);
-        DownloadTaskFileBase control = music
-            ? await FakeData.AddMusicTask(dbContext, 2)
-            : await FakeData.AddOtherVideoTask(dbContext, 2);
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
         var key = target.ToKey() with { Type = type };
         (await dbContext.GetDownloadStatusAsync(key)).ShouldBe(DownloadStatus.Queued);
         (await dbContext.GetDownloadStatusAsync(control.ToKey())).ShouldBe(DownloadStatus.Queued);
@@ -261,17 +291,25 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             config =>
             {
                 config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
                 config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
         var music = type is DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart;
-        DownloadTaskFileBase target = music
-            ? await FakeData.AddMusicTask(dbContext, 1)
-            : await FakeData.AddOtherVideoTask(dbContext, 1);
-        DownloadTaskFileBase control = music
-            ? await FakeData.AddMusicTask(dbContext, 2)
-            : await FakeData.AddOtherVideoTask(dbContext, 2);
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
         var key = target.ToKey() with { Type = type };
         var canonicalKey = target.ToKey();
         var rootKey = music
@@ -406,16 +444,24 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             config =>
             {
                 config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
                 config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
-        DownloadTaskFileBase target = music
-            ? await FakeData.AddMusicTask(dbContext, 1)
-            : await FakeData.AddOtherVideoTask(dbContext, 1);
-        DownloadTaskFileBase control = music
-            ? await FakeData.AddMusicTask(dbContext, 2)
-            : await FakeData.AddOtherVideoTask(dbContext, 2);
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
         var root = music
             ? ((DownloadTaskMusicTrackFile)target).Parent!.Parent!.Parent!.ToKey()
             : ((DownloadTaskOtherVideoFile)target).Parent!.ToKey();

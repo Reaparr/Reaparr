@@ -11,10 +11,12 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
         await SetupDatabase(62321, config =>
         {
             config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
             config.MovieDownloadTasksCount = 1;
         });
         var dbContext = IDbContext;
-        var file = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var file = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         await dbContext.CreateDownloadClientLog(movieFile.ToKey(), NotificationLevel.Information, DownloadStatus.Downloading, "movie-control");
         var movieLog = await dbContext.DownloadTaskMovieFileLogs.SingleAsync(CancellationToken);
@@ -42,10 +44,21 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
     public async Task ShouldReturnOrderedOtherVideoLogsForRequestedScope_WhenSiblingLogsExist(DownloadTaskType type, bool incremental)
     {
         // Arrange
-        await SetupDatabase(62322, config => config.PlexOtherVideoLibraryCount = 1);
+        await SetupDatabase(
+            62322,
+            config =>
+            {
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var file = await FakeData.AddOtherVideoTask(dbContext, 1);
-        var sibling = await FakeData.AddOtherVideoTask(dbContext, 2);
+        var videoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var file = videoFiles[0];
+        var sibling = videoFiles[1];
         dbContext.DownloadTaskOtherVideoFileLogs.AddRange(
             OtherVideoLog(file, "video-1"), OtherVideoLog(file, "video-2"), OtherVideoLog(file, "video-3"), OtherVideoLog(sibling, "sibling"));
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -70,10 +83,21 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
     public async Task ShouldDeleteOnlyRequestedOtherVideoLogs_WhenSiblingLogsExist(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(62323, config => config.PlexOtherVideoLibraryCount = 1);
+        await SetupDatabase(
+            62323,
+            config =>
+            {
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var file = await FakeData.AddOtherVideoTask(dbContext, 1);
-        var sibling = await FakeData.AddOtherVideoTask(dbContext, 2);
+        var videoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var file = videoFiles[0];
+        var sibling = videoFiles[1];
         dbContext.DownloadTaskOtherVideoFileLogs.AddRange(OtherVideoLog(file, "target"), OtherVideoLog(sibling, "sibling"));
         await dbContext.SaveChangesAsync(CancellationToken);
         (await dbContext.DownloadTaskOtherVideoFileLogs.OrderBy(x => x.Id).Select(x => x.Message).ToListAsync(CancellationToken)).ShouldBe(["target", "sibling"]);
