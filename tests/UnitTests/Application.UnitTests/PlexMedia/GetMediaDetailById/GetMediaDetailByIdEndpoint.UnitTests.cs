@@ -93,6 +93,282 @@ public class GetMediaDetailByIdEndpointUnitTests
     }
 
     [Test]
+    public async Task ShouldReturnPhotoAlbumImagesWithOriginalIds_WhenPhotoAlbumDetailIsRequested()
+    {
+        // Arrange
+        await SetupDatabase(62307, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 2;
+        });
+        var dbContext = IDbContext;
+        var album = await dbContext
+            .PlexPhotoAlbums.Include(x => x.Photos)
+            .ThenInclude(x => x.MediaDataList)
+            .OrderBy(x => x.Id)
+            .FirstAsync(CancellationToken);
+        album.Photos.Count.ShouldBe(2);
+
+        // Act
+        var response = await TestEndpointHandleAsync(
+            new GetMediaDetailByIdEndpointRequest(album.Id, PlexMediaType.PhotoAlbum)
+        );
+
+        // Assert
+        response.IsValid.ShouldBeTrue();
+        response.StatusCode.ShouldBe(200);
+        var result = response.Response.ShouldNotBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var dto = result.Value.ShouldNotBeNull();
+        (dto.Id, dto.Type, dto.PlexLibraryId, dto.PlexServerId).ShouldBe(
+            (album.Id, PlexMediaType.PhotoAlbum, album.PlexLibraryId, album.PlexServerId)
+        );
+        dto.ParentId.ShouldBeNull();
+        dto.Children.Select(x => x.Id).ShouldBe(album.Photos.OrderBy(x => x.SortIndex).Select(x => x.Id));
+        foreach (var photo in dto.Children)
+        {
+            var original = album.Photos.Single(x => x.Id == photo.Id);
+            (photo.ParentId, photo.Type).ShouldBe(((int?)album.Id, PlexMediaType.PhotoImage));
+            photo.Children.ShouldBeEmpty();
+            photo.MediaData.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId)).ShouldBe(
+                original.MediaDataList.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId))
+            );
+            photo.Qualities.Select(x => (x.DataId, x.MediaId, x.MediaDataType)).ShouldBe(
+                original.MediaDataList.Select(x => (x.Id, original.Id, PlexMediaType.PhotoImage))
+            );
+            var validation = await PlexMediaDtoValidator.ValidateAsync(photo, CancellationToken);
+            validation.Errors.ShouldBeEmpty();
+        }
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+    }
+
+    [Test]
+    public async Task ShouldReturnMusicHierarchyWithOriginalIds_WhenArtistDetailIsRequested()
+    {
+        // Arrange
+        await SetupDatabase(62503, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 2;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 3;
+        });
+        var dbContext = IDbContext;
+        var artist = await dbContext
+            .PlexArtists.Include(x => x.Albums)
+            .ThenInclude(x => x.Tracks)
+            .ThenInclude(x => x.MediaDataList)
+            .OrderBy(x => x.Id)
+            .FirstAsync(CancellationToken);
+        artist.Albums.Count.ShouldBe(2);
+        artist.Albums.ShouldAllBe(x => x.Tracks.Count == 3);
+
+        // Act
+        var response = await TestEndpointHandleAsync(
+            new GetMediaDetailByIdEndpointRequest(artist.Id, PlexMediaType.MusicArtist)
+        );
+
+        // Assert
+        response.IsValid.ShouldBeTrue();
+        response.StatusCode.ShouldBe(200);
+        var result = response.Response.ShouldNotBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var dto = result.Value.ShouldNotBeNull();
+        (dto.Id, dto.Type, dto.PlexLibraryId, dto.PlexServerId).ShouldBe(
+            (artist.Id, PlexMediaType.MusicArtist, artist.PlexLibraryId, artist.PlexServerId)
+        );
+        dto.ParentId.ShouldBeNull();
+        dto.Children.Select(x => x.Id).ShouldBe(artist.Albums.OrderBy(x => x.SortIndex).ThenBy(x => x.Id).Select(x => x.Id));
+        dto.Children.ShouldAllBe(x => x.ParentId == artist.Id && x.Type == PlexMediaType.MusicAlbum);
+        dto.GrandChildCount.ShouldBe(6);
+        foreach (var album in dto.Children)
+        {
+            var originalAlbum = artist.Albums.Single(x => x.Id == album.Id);
+            album.Children.Select(x => x.Id).ShouldBe(
+                originalAlbum.Tracks.OrderBy(x => x.SortIndex).ThenBy(x => x.Id).Select(x => x.Id)
+            );
+            foreach (var track in album.Children)
+            {
+                var originalTrack = originalAlbum.Tracks.Single(x => x.Id == track.Id);
+                track.ParentId.ShouldBe(originalTrack.PlexAlbumId);
+                track.Type.ShouldBe(PlexMediaType.MusicTrack);
+                track.Children.ShouldBeEmpty();
+                track.ComparisonId.ShouldBe(PlexMediaComparisonState.NotCompared.ToComparisonId());
+                track.MediaData.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId, x.AudioCodec)).ShouldBe(
+                    originalTrack.MediaDataList.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId, x.AudioCodec))
+                );
+                track.Qualities.Select(x => (x.DataId, x.MediaId, x.MediaDataType, x.Quality)).ShouldBe(
+                    originalTrack.MediaDataList.Select(x => (x.Id, originalTrack.Id, PlexMediaType.MusicTrack, VideoQuality.Unknown))
+                );
+                var validation = await PlexMediaDtoValidator.ValidateAsync(track, CancellationToken);
+                validation.Errors.ShouldBeEmpty();
+            }
+        }
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+    }
+
+    [Test]
+    public async Task ShouldReturnOtherVideoOriginalPartsAndVersionSelectors_WhenDetailIsRequested()
+    {
+        // Arrange
+        var seed = await SetupDatabase(62504, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
+        using var dbContext = IDbContext;
+        var video = await dbContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
+        var original = video.MediaDataList.Single();
+        var parts = FakeData.GetPlexOtherVideoMediaData(seed).Generate(2);
+        foreach (var part in parts)
+        {
+            part.PlexOtherVideoId = video.Id;
+            part.UpdateInitProperty(nameof(part.PlexLibraryId), video.PlexLibraryId);
+            part.UpdateInitProperty(nameof(part.PlexServerId), video.PlexServerId);
+            part.UpdateInitProperty(nameof(part.PlexApiRatingKey), video.PlexApiRatingKey);
+        }
+        parts[0].UpdateInitProperty(nameof(original.PlexApiMediaId), original.PlexApiMediaId);
+        parts[0].PartIndex = 1;
+        parts[1].UpdateInitProperty(nameof(original.PlexApiMediaId), original.PlexApiMediaId + 1);
+        dbContext.PlexOtherVideoData.AddRange(parts);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        (await dbContext.PlexOtherVideoData.CountAsync(x => x.PlexOtherVideoId == video.Id, CancellationToken)).ShouldBe(3);
+
+        // Act
+        var response = await TestEndpointHandleAsync(
+            new GetMediaDetailByIdEndpointRequest(video.Id, PlexMediaType.OtherVideos)
+        );
+
+        // Assert
+        response.IsValid.ShouldBeTrue();
+        response.StatusCode.ShouldBe(200);
+        response.Response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        response.Response.Errors.Count.ShouldBe(0);
+        var dto = response.Response.ShouldNotBeNull().Value.ShouldNotBeNull();
+        dto.Type.ShouldBe(PlexMediaType.OtherVideos);
+        dto.ParentId.ShouldBeNull();
+        dto.Children.ShouldBeEmpty();
+        dto.ComparisonId.ShouldBe(PlexMediaComparisonState.NotCompared.ToComparisonId());
+        dto.MediaData.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId)).Order().ShouldBe(
+            new[] { original }.Concat(parts).Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId)).Order()
+        );
+        dto.Qualities.Select(x => (x.DataId, x.MediaId, x.MediaDataType)).Order().ShouldBe(
+            new[] { original, parts[1] }.Select(x => (x.Id, video.Id, PlexMediaType.OtherVideos)).Order()
+        );
+        dto.MediaData.Single(x => x.Id == original.Id).FileName.ShouldBe(original.OriginalFilename.GetFileName());
+        var validation = await PlexMediaDtoValidator.ValidateAsync(dto, CancellationToken);
+        validation.Errors.ShouldBeEmpty();
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+    }
+
+    [Test]
+    [Arguments(PlexMediaType.MusicArtist)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    public async Task ShouldReturnRootWithoutChildren_WhenHierarchyIsEmpty(PlexMediaType type)
+    {
+        // Arrange
+        await SetupDatabase(62308, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 0;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 0;
+        });
+        var dbContext = IDbContext;
+        BasePlexMedia root = type == PlexMediaType.MusicArtist
+            ? await dbContext.PlexArtists.SingleAsync(CancellationToken)
+            : await dbContext.PlexPhotoAlbums.SingleAsync(CancellationToken);
+        root.ChildCount.ShouldBe(0);
+
+        // Act
+        var response = await TestEndpointHandleAsync(new GetMediaDetailByIdEndpointRequest(root.Id, type));
+
+        // Assert
+        response.IsValid.ShouldBeTrue();
+        response.StatusCode.ShouldBe(200);
+        var result = response.Response.ShouldNotBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var dto = result.Value.ShouldNotBeNull();
+        (dto.Id, dto.Type).ShouldBe((root.Id, type));
+        dto.ParentId.ShouldBeNull();
+        dto.ChildCount.ShouldBe(0);
+        dto.Children.ShouldBeEmpty();
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+    }
+
+    [Test]
+    [Arguments(PlexMediaType.MusicArtist)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.OtherVideos)]
+    public async Task ShouldReturnNotFound_WhenRequestedNewFamilyMediaDoesNotExist(PlexMediaType type)
+    {
+        // Arrange
+        await SetupDatabase(62505, _ => { });
+
+        // Act
+        var response = await TestEndpointHandleAsync(new GetMediaDetailByIdEndpointRequest(int.MaxValue, type));
+
+        // Assert
+        response.IsValid.ShouldBeTrue();
+        response.StatusCode.ShouldBe(404);
+        response.Response.ShouldNotBeNull().IsSuccess.ShouldBeFalse();
+        response.Response.Errors.Count.ShouldBe(1);
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+    }
+
+    [Test]
+    [Arguments(PlexMediaType.None)]
+    [Arguments(PlexMediaType.Unknown)]
+    [Arguments(PlexMediaType.Games)]
+    [Arguments(PlexMediaType.Season)]
+    [Arguments(PlexMediaType.Episode)]
+    [Arguments(PlexMediaType.MusicAlbum)]
+    [Arguments(PlexMediaType.MusicTrack)]
+    [Arguments(PlexMediaType.PhotoImage)]
+    [Arguments((PlexMediaType)999)]
+    public async Task ShouldRejectUnsupportedDetailTypesWithoutExecutingEndpoint_WhenValidatingRequest(PlexMediaType type)
+    {
+        // Arrange
+        var request = new GetMediaDetailByIdEndpointRequest(1, type);
+
+        // Act
+        var response = await TestEndpointHandleAsync(request);
+
+        // Assert
+        response.IsValid.ShouldBeFalse();
+        response.ValidationResult.ShouldNotBeNull().Errors.Select(x => x.PropertyName).ShouldBe(
+            new[] { nameof(GetMediaDetailByIdEndpointRequest.Type) }
+        );
+        response.Response.ShouldBeNull();
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+    }
+
+    [Test]
     public async Task ShouldProjectEpisodeComparisonStates_WhenRemoteTvShowDetailHasCurrentOwnedComparisonScope()
     {
         // Arrange

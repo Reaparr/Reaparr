@@ -28,7 +28,7 @@ public class GetMediaDetailByIdEndpointRequestValidator : Validator<GetMediaDeta
     public GetMediaDetailByIdEndpointRequestValidator()
     {
         RuleFor(x => x.PlexMediaId).GreaterThan(0);
-        RuleFor(x => x.Type).Must(x => x is PlexMediaType.Movie or PlexMediaType.TvShow);
+        RuleFor(x => x.Type).Must(x => x.IsRootType());
     }
 }
 
@@ -89,8 +89,43 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
 
             await Send.FluentResult(plexTvShowResult, x => x.ToDTO(), ct);
         }
-        else
-            await Send.FluentResult(ResultExtensions.Create400BadRequestResult($"Type {req.Type} is not allowed"), ct);
+        else if (req.Type == PlexMediaType.MusicArtist)
+        {
+            var plexMusicArtistResult = await GetPlexMusicArtist(req.PlexMediaId, ct);
+            if (plexMusicArtistResult.IsFailed)
+            {
+                await Send.FluentResult(plexMusicArtistResult, ct);
+                return;
+            }
+
+            await Send.FluentResult(plexMusicArtistResult, x => x.ToDTO(), ct);
+        }
+        else if (req.Type == PlexMediaType.PhotoAlbum)
+        {
+            var plexPhotoAlbumResult = await GetPlexPhotoAlbum(req.PlexMediaId, ct);
+            if (plexPhotoAlbumResult.IsFailed)
+            {
+                await Send.FluentResult(plexPhotoAlbumResult, ct);
+                return;
+            }
+
+            await Send.FluentResult(plexPhotoAlbumResult, x => x.ToDTO(), ct);
+        }
+        else if (req.Type == PlexMediaType.OtherVideos)
+        {
+            var plexOtherVideo = await _dbContext
+                .PlexOtherVideos.Include(x => x.MediaDataList)
+                .FirstOrDefaultAsync(x => x.Id == req.PlexMediaId, ct);
+            if (plexOtherVideo is null)
+            {
+                await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexOtherVideo), req.PlexMediaId), ct);
+                return;
+            }
+
+            await SetNestedOtherVideoProperties(plexOtherVideo, ct);
+
+            await Send.FluentResult(Result.Ok(plexOtherVideo), x => x.ToDTO(), ct);
+        }
     }
 
     private async Task<Result<PlexTvShow>> GetPlexTvShow(int plexTvShowId, CancellationToken ct)
@@ -117,6 +152,52 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         await SetNestedTvShowProperties(plexTvShow, ct);
 
         return Result.Ok(plexTvShow);
+    }
+
+    private async Task<Result<PlexMusicArtist>> GetPlexMusicArtist(int plexMusicArtistId, CancellationToken ct)
+    {
+        var plexMusicArtist = _dbContext.PlexArtists.FirstOrDefault(x => x.Id == plexMusicArtistId);
+
+        if (plexMusicArtist is null)
+            return ResultExtensions.EntityNotFound(nameof(PlexMusicArtist), plexMusicArtistId).LogError();
+
+        plexMusicArtist.Albums = _dbContext
+            .PlexAlbums.Where(x => x.PlexArtistId == plexMusicArtistId)
+            .Take(plexMusicArtist.ChildCount)
+            .ToList();
+
+        plexMusicArtist.Albums = plexMusicArtist.Albums.OrderBy(x => x.SortIndex).ToList();
+
+        foreach (var album in plexMusicArtist.Albums)
+            album.Tracks = _dbContext
+                .PlexTracks.Include(x => x.MediaDataList)
+                .Where(x => x.PlexAlbumId == album.Id)
+                .Take(album.ChildCount)
+                .ToList();
+
+        await SetNestedMusicArtistProperties(plexMusicArtist, ct);
+
+        return Result.Ok(plexMusicArtist);
+    }
+
+    private async Task<Result<PlexPhotoAlbum>> GetPlexPhotoAlbum(int plexPhotoAlbumId, CancellationToken ct)
+    {
+        var plexPhotoAlbum = _dbContext.PlexPhotoAlbums.FirstOrDefault(x => x.Id == plexPhotoAlbumId);
+
+        if (plexPhotoAlbum is null)
+            return ResultExtensions.EntityNotFound(nameof(PlexPhotoAlbum), plexPhotoAlbumId).LogError();
+
+        plexPhotoAlbum.Photos = _dbContext
+            .PlexPhotoImages.Include(x => x.MediaDataList)
+            .Where(x => x.PlexPhotoAlbumId == plexPhotoAlbumId)
+            .Take(plexPhotoAlbum.ChildCount)
+            .ToList();
+
+        plexPhotoAlbum.Photos = plexPhotoAlbum.Photos.OrderBy(x => x.SortIndex).ToList();
+
+        await SetNestedPhotoAlbumProperties(plexPhotoAlbum, ct);
+
+        return Result.Ok(plexPhotoAlbum);
     }
 
     private async Task ApplyTvShowDetailComparisonStateAsync(PlexTvShow plexTvShow, CancellationToken ct)
@@ -170,10 +251,7 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         }
 
         var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexMovie.PlexServerId, ct);
-        if (plexServerToken.IsFailed)
-        {
-            plexServerToken.ToResult().LogError();
-        }
+        plexServerToken.LogIfFailed();
     }
 
     private async Task SetNestedTvShowProperties(PlexTvShow plexTvShow, CancellationToken ct = default)
@@ -186,9 +264,45 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         }
 
         var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexTvShow.PlexServerId, ct);
-        if (plexServerToken.IsFailed)
+        plexServerToken.LogIfFailed();
+    }
+
+    private async Task SetNestedMusicArtistProperties(PlexMusicArtist plexMusicArtist, CancellationToken ct = default)
+    {
+        var plexServerConnection = await _dbContext.ChoosePlexServerConnection(plexMusicArtist.PlexServerId, ct);
+        if (plexServerConnection.IsFailed)
         {
-            plexServerToken.ToResult().LogError();
+            plexServerConnection.ToResult().LogError();
+            return;
         }
+
+        var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexMusicArtist.PlexServerId, ct);
+        plexServerToken.LogIfFailed();
+    }
+
+    private async Task SetNestedPhotoAlbumProperties(PlexPhotoAlbum plexPhotoAlbum, CancellationToken ct = default)
+    {
+        var plexServerConnection = await _dbContext.ChoosePlexServerConnection(plexPhotoAlbum.PlexServerId, ct);
+        if (plexServerConnection.IsFailed)
+        {
+            plexServerConnection.ToResult().LogError();
+            return;
+        }
+
+        var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexPhotoAlbum.PlexServerId, ct);
+        plexServerToken.LogIfFailed();
+    }
+
+    private async Task SetNestedOtherVideoProperties(PlexOtherVideo plexOtherVideo, CancellationToken ct = default)
+    {
+        var plexServerConnection = await _dbContext.ChoosePlexServerConnection(plexOtherVideo.PlexServerId, ct);
+        if (plexServerConnection.IsFailed)
+        {
+            plexServerConnection.ToResult().LogError();
+            return;
+        }
+
+        var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexOtherVideo.PlexServerId, ct);
+        plexServerToken.LogIfFailed();
     }
 }
