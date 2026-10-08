@@ -99,9 +99,7 @@ public class GenerateDownloadTaskMusicTracksCommandHandler
 
             foreach (var track in tracks)
             {
-                var selectedQuality = selection.Qualities.FirstOrDefault(x =>
-                    x.MediaId == track.Id && x.MediaDataType == PlexMediaType.MusicTrack
-                );
+                var selectedQuality = selection.Qualities.FirstOrDefault(x => x.MediaId == track.Id);
                 var selectedMedia = selectedQuality is null
                     ? null
                     : track.MediaDataList.FirstOrDefault(x => x.Id == selectedQuality.DataId);

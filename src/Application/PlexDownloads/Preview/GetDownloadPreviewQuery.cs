@@ -609,7 +609,6 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
 
         var albumIds = albumSelections.SelectMany(x => x.MediaIds).Distinct().ToHashSet();
         var imageIds = imageSelections.SelectMany(x => x.MediaIds).Distinct().ToHashSet();
-        var selectedAlbumImages = new List<int>();
         foreach (var selection in albumSelections)
         {
             var selectedAlbums = await _dbContext
@@ -624,20 +623,33 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
                 return ResultExtensions.Create400BadRequestResult(
                     "Every selected photo album must belong to the requested library and server."
                 );
-            selectedAlbumImages.AddRange(selectedAlbums.SelectMany(x => x.ImageIds));
+            var selectedImageIds = selectedAlbums.SelectMany(x => x.ImageIds).ToHashSet();
+            if (selection.Qualities.Any(x => !selectedImageIds.Contains(x.MediaId)))
+            {
+                return ResultExtensions.Create400BadRequestResult(
+                    "A selected photo original does not belong to the requested media selection."
+                );
+            }
+            imageIds.UnionWith(selectedImageIds);
         }
 
-        imageIds.UnionWith(selectedAlbumImages);
         foreach (var selection in imageSelections)
         {
+            var selectedImageIds = selection.MediaIds.ToHashSet();
+            if (selection.Qualities.Any(x => !selectedImageIds.Contains(x.MediaId)))
+            {
+                return ResultExtensions.Create400BadRequestResult(
+                    "A selected photo original does not belong to the requested media selection."
+                );
+            }
             var matchingImageCount = await _dbContext.PlexPhotoImages.CountAsync(
                 x =>
-                    selection.MediaIds.Contains(x.Id)
+                    selectedImageIds.Contains(x.Id)
                     && x.PlexLibraryId == selection.PlexLibraryId
                     && x.PlexServerId == selection.PlexServerId,
                 cancellationToken
             );
-            if (matchingImageCount != selection.MediaIds.Distinct().Count())
+            if (matchingImageCount != selectedImageIds.Count)
                 return ResultExtensions.Create400BadRequestResult(
                     "Every selected photo must belong to the requested library and server."
                 );

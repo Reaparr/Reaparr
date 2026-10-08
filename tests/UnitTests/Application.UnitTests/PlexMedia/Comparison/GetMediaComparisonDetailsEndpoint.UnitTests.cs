@@ -47,10 +47,14 @@ public class GetMediaComparisonDetailsEndpointUnitTests
     }
 
     [Test]
-    public async Task ShouldReturnFailure_WhenUnsupportedMediaTypeReachesHandler()
+    [Arguments(PlexMediaType.Episode)]
+    [Arguments(PlexMediaType.MusicArtist)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.OtherVideos)]
+    public async Task ShouldReturnFailure_WhenUnsupportedMediaTypeReachesHandler(PlexMediaType type)
     {
         // Arrange
-        var request = new GetMediaComparisonDetailsEndpointRequest(1889, PlexMediaType.Episode);
+        var request = new GetMediaComparisonDetailsEndpointRequest(1889, type);
         var endpoint = SetupEndpointUnitTest<GetMediaComparisonDetailsEndpoint>();
         endpoint.HttpContext.Response.Body = new MemoryStream();
 
@@ -72,7 +76,7 @@ public class GetMediaComparisonDetailsEndpointUnitTests
         // Assert
         result.ShouldNotBeNull();
         result.IsSuccess.ShouldBeFalse();
-        result.Errors.Select(x => x.Message).ShouldContain("Unsupported media type");
+        result.Errors.Select(x => x.Message).ShouldBe(["Unsupported media type"]);
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -103,10 +107,14 @@ public class GetMediaComparisonDetailsEndpointUnitTests
     }
 
     [Test]
-    public async Task ShouldRejectRequest_WhenMediaTypeIsUnsupportedByValidator()
+    [Arguments(PlexMediaType.Episode)]
+    [Arguments(PlexMediaType.MusicArtist)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.OtherVideos)]
+    public async Task ShouldRejectRequest_WhenMediaTypeIsUnsupportedByValidator(PlexMediaType type)
     {
         // Arrange
-        var request = new GetMediaComparisonDetailsEndpointRequest(1889, PlexMediaType.Episode);
+        var request = new GetMediaComparisonDetailsEndpointRequest(1889, type);
 
         Mock.SetupCommand<Result<PlexMediaComparisonDetailsDTO>>(x =>
                 (x as GetMovieMediaComparisonDetailsCommand) != null
@@ -123,8 +131,11 @@ public class GetMediaComparisonDetailsEndpointUnitTests
         var endpointResult = await TestEndpointHandleAsync(request);
 
         // Assert
+        endpointResult.HasValidator.ShouldBeTrue();
         endpointResult.IsValid.ShouldBeFalse();
-        endpointResult.ValidationErrors.ShouldNotBeEmpty();
+        endpointResult.ValidationErrors.Select(x => x.PropertyName)
+            .ShouldBe([nameof(GetMediaComparisonDetailsEndpointRequest.Type)]);
+        endpointResult.Response.ShouldBeNull();
         Mock.Mock<ICommandExecutor>().Verify();
     }
 

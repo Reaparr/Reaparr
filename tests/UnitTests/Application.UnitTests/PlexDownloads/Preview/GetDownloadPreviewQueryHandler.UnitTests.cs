@@ -66,6 +66,184 @@ public class GetDownloadPreviewQueryHandlerUnitTests : BaseUnitTest<GetDownloadP
         previewAlbum.Size.ShouldBe(previewAlbum.Children.Sum(x => x.Size));
     }
 
+    [Test]
+    [Arguments(PlexMediaType.PhotoImage, false)]
+    [Arguments(PlexMediaType.PhotoAlbum, false)]
+    [Arguments(PlexMediaType.PhotoAlbum, true)]
+    public async Task ShouldRejectPhotoOriginalOutsideSelection_WhenOriginalBelongsToUnselectedDescendant(
+        PlexMediaType type,
+        bool selectOutsiderSeparately
+    )
+    {
+        // Arrange
+        await SetupDatabase(62820, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 1;
+        });
+        var dbContext = IDbContext;
+        var albums = await dbContext
+            .PlexPhotoAlbums.Include(x => x.Photos)
+            .ThenInclude(x => x.MediaDataList)
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
+        var targetAlbum = albums[0];
+        var target = targetAlbum.Photos.Single();
+        var outsider = albums[1].Photos.Single();
+        var outsiderOriginal = outsider.MediaDataList.Single();
+        target.Id.ShouldNotBe(outsider.Id);
+        target.PlexPhotoAlbumId.ShouldBe(targetAlbum.Id);
+        outsider.PlexPhotoAlbumId.ShouldBe(albums[1].Id);
+        outsiderOriginal.PlexPhotoId.ShouldBe(outsider.Id);
+        outsider.PlexLibraryId.ShouldBe(target.PlexLibraryId);
+        var selections = new List<DownloadMediaDTO>
+        {
+            new()
+            {
+                Type = type,
+                PlexServerId = target.PlexServerId,
+                PlexLibraryId = target.PlexLibraryId,
+                MediaIds = type == PlexMediaType.PhotoAlbum ? [targetAlbum.Id] : [target.Id],
+                Qualities =
+                [
+                    new PlexMediaQualityDTO
+                    {
+                        MediaId = outsider.Id,
+                        DataId = outsiderOriginal.Id,
+                        MediaDataType = PlexMediaType.PhotoImage,
+                        Quality = VideoQuality.Unknown,
+                    },
+                ],
+            },
+        };
+        if (selectOutsiderSeparately)
+        {
+            selections.Add(
+                new DownloadMediaDTO
+                {
+                    Type = PlexMediaType.PhotoImage,
+                    PlexServerId = outsider.PlexServerId,
+                    PlexLibraryId = outsider.PlexLibraryId,
+                    MediaIds = [outsider.Id],
+                    Qualities = [],
+                }
+            );
+        }
+        var query = new GetDownloadPreviewQuery(selections);
+        var pipeline = new ValidationPipeline<GetDownloadPreviewQuery, Result<List<DownloadPreview>>>(
+            [new GetDownloadPreviewQueryValidator()]
+        );
+
+        // Act
+        var result = await pipeline.ExecuteAsync(
+            query,
+            () => Sut.ExecuteAsync(query, CancellationToken),
+            CancellationToken
+        );
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.ToResult().Has400BadRequestError().ShouldBeTrue();
+    }
+
+    [Test]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    [Arguments(PlexMediaType.PhotoImage)]
+    public async Task ShouldKeepSelectedMultipartClipInPhotoHierarchy_WhenSelectorBelongsToSelection(PlexMediaType type)
+    {
+        // Arrange
+        await SetupDatabase(62821, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 0;
+            config.PhotoClipCount = 1;
+        });
+        var dbContext = IDbContext;
+        var album = await dbContext
+            .PlexPhotoAlbums.Include(x => x.Photos)
+            .ThenInclude(x => x.MediaDataList)
+            .SingleAsync(CancellationToken);
+        var clip = album.Photos.Single();
+        var original = clip.MediaDataList.Single();
+        original.Container.ShouldBe("mp4");
+        original.VideoCodec.ShouldBe("h264");
+        var secondPart = FakeData.GetPlexPhotoMediaData(new Seed(62822), isClip: true)
+            .RuleFor(x => x.Id, _ => 0)
+            .RuleFor(x => x.PlexPhotoId, _ => clip.Id)
+            .RuleFor(x => x.PlexServerId, _ => clip.PlexServerId)
+            .RuleFor(x => x.PlexLibraryId, _ => clip.PlexLibraryId)
+            .RuleFor(x => x.PlexApiRatingKey, _ => clip.PlexApiRatingKey)
+            .RuleFor(x => x.PlexApiMediaId, _ => original.PlexApiMediaId)
+            .RuleFor(x => x.PlexApiPartId, _ => original.PlexApiPartId + 1)
+            .Generate();
+        var alternate = FakeData.GetPlexPhotoMediaData(new Seed(62823), isClip: true)
+            .RuleFor(x => x.Id, _ => 0)
+            .RuleFor(x => x.PlexPhotoId, _ => clip.Id)
+            .RuleFor(x => x.PlexServerId, _ => clip.PlexServerId)
+            .RuleFor(x => x.PlexLibraryId, _ => clip.PlexLibraryId)
+            .RuleFor(x => x.PlexApiRatingKey, _ => clip.PlexApiRatingKey)
+            .RuleFor(x => x.PlexApiMediaId, _ => original.PlexApiMediaId + 1)
+            .Generate();
+        dbContext.PlexPhotoData.AddRange(secondPart, alternate);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var storedOriginalIds = await dbContext
+            .PlexPhotoData.Where(x => x.PlexPhotoId == clip.Id)
+            .OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
+        storedOriginalIds.ShouldBe([original.Id, secondPart.Id, alternate.Id]);
+        var query = new GetDownloadPreviewQuery(
+            [
+                new DownloadMediaDTO
+                {
+                    Type = type,
+                    PlexServerId = clip.PlexServerId,
+                    PlexLibraryId = clip.PlexLibraryId,
+                    MediaIds = type == PlexMediaType.PhotoAlbum ? [album.Id] : [clip.Id],
+                    Qualities =
+                    [
+                        new PlexMediaQualityDTO
+                        {
+                            MediaId = clip.Id,
+                            DataId = secondPart.Id,
+                            MediaDataType = PlexMediaType.PhotoImage,
+                            Quality = VideoQuality.Unknown,
+                        },
+                    ],
+                },
+            ]
+        );
+        var pipeline = new ValidationPipeline<GetDownloadPreviewQuery, Result<List<DownloadPreview>>>(
+            [new GetDownloadPreviewQueryValidator()]
+        );
+
+        // Act
+        var result = await pipeline.ExecuteAsync(
+            query,
+            () => Sut.ExecuteAsync(query, CancellationToken),
+            CancellationToken
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var previewAlbum = result.Value.Single();
+        (previewAlbum.Id, previewAlbum.MediaType, previewAlbum.ChildCount).ShouldBe((album.Id, PlexMediaType.PhotoAlbum, 1));
+        var previewClip = previewAlbum.Children.Single();
+        (previewClip.Id, previewClip.PhotoAlbumId, previewClip.MediaType).ShouldBe(
+            (clip.Id, album.Id, PlexMediaType.PhotoImage)
+        );
+        previewClip.Qualities.Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.Quality))
+            .ShouldBe([(clip.Id, original.Id, PlexMediaType.PhotoImage, VideoQuality.Unknown)]);
+        previewClip.Size.ShouldBe(original.Size + secondPart.Size);
+        previewAlbum.Size.ShouldBe(previewClip.Size);
+        previewClip.Children.ShouldBeEmpty();
+    }
 
     [Test]
     public async Task ShouldRejectOriginalSelector_WhenDataIdBelongsToDifferentPhoto()
