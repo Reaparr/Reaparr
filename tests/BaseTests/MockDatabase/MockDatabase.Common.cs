@@ -531,6 +531,30 @@ public static partial class MockDatabase
         if (config.TvShowDownloadTasksCount > 0)
             reaparrContext = await reaparrContext.AddDownloadTaskTvShows(seed, pathProvider, appRuntimeInfo, options);
 
+        if (config.MusicArtistDownloadTasksCount > 0)
+            reaparrContext = await reaparrContext.AddDownloadTaskMusicArtists(
+                seed,
+                pathProvider,
+                appRuntimeInfo,
+                options
+            );
+
+        if (config.PhotoAlbumDownloadTasksCount > 0)
+            reaparrContext = await reaparrContext.AddDownloadTaskPhotoAlbums(
+                seed,
+                pathProvider,
+                appRuntimeInfo,
+                options
+            );
+
+        if (config.OtherVideoDownloadTasksCount > 0)
+            reaparrContext = await reaparrContext.AddDownloadTaskOtherVideos(
+                seed,
+                pathProvider,
+                appRuntimeInfo,
+                options
+            );
+
         if (config.RadarrIntegrationCount > 0)
             reaparrContext = await reaparrContext.AddRadarrIntegrations(seed, options);
 
