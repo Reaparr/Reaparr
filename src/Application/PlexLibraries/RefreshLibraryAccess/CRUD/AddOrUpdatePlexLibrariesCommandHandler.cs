@@ -100,6 +100,8 @@ public class AddOrUpdatePlexLibrariesCommandHandler
                     plexLibraryDb.ContentChangedAt = incomingPlexLibrary.ContentChangedAt;
                     plexLibraryDb.Uuid = incomingPlexLibrary.Uuid;
                     plexLibraryDb.Language = incomingPlexLibrary.Language;
+                    // Rewrite legacy aliases through the converter even when the enum value is unchanged.
+                    _dbContext.Entry(plexLibraryDb).Property(nameof(PlexLibrary.Type)).IsModified = true;
 
                     var contentChangedAfterLastSync =
                         incomingPlexLibrary.ContentChangedAt != plexLibraryDb.SyncedContentChangedAt;

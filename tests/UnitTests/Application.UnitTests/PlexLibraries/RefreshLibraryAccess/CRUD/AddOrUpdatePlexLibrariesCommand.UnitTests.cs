@@ -17,6 +17,82 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     }
 
     [Test]
+    public async Task ShouldCanonicalizeOnlyRefreshedLibraryTypeAndRestoreMediaCount_WhenStoredTypeIsLegacyArtist()
+    {
+        // Arrange
+        await SetupDatabase(62614, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexAccountCount = 1;
+            config.PlexMusicLibraryCount = 1;
+        });
+        var dbContext = IDbContext;
+        var account = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
+        var targetId = libraries[0].Id;
+        var controlId = libraries[1].Id;
+        var updatedAt = new DateTime(2026, 10, 8, 12, 0, 0, DateTimeKind.Utc);
+        await dbContext.PlexLibraries.Where(x => x.Id == targetId).ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.MusicArtistCount, 7)
+                .SetProperty(x => x.UpdatedAt, updatedAt)
+                .SetProperty(x => x.SyncedContentChangedAt, x => x.ContentChangedAt)
+                .SetProperty(x => x.Outdated, false), CancellationToken);
+        await dbContext.ExecuteSqlInterpolatedAsync(
+            $"UPDATE PlexLibraries SET Type = 'Artist' WHERE Id = {targetId} OR Id = {controlId}", CancellationToken);
+        var target = await dbContext.PlexLibraries.SingleAsync(x => x.Id == targetId, CancellationToken);
+        target.Type.ShouldBe(PlexMediaType.MusicArtist);
+        target.MusicArtistCount.ShouldBe(7);
+        target.MediaCount.ShouldBe(-1);
+        (await dbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.MusicArtist)
+            .Select(x => x.Id).ToListAsync(CancellationToken)).ShouldBeEmpty();
+        var beforeAccess = await dbContext.PlexAccountLibraries.OrderBy(x => x.PlexServerId)
+            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.PlexLibraryId }).ToListAsync(CancellationToken);
+        beforeAccess.Select(x => (x.PlexAccountId, x.PlexServerId, x.PlexLibraryId))
+            .ShouldBe([(account.Id, target.PlexServerId, targetId), (account.Id, libraries[1].PlexServerId, controlId)]);
+        var request = new AddOrUpdatePlexLibrariesCommand
+        {
+            PlexAccountId = account.Id,
+            PlexLibraries = new List<PlexLibrary> { target }.ToApiLibraries(updatedAt),
+        };
+        var pipeline = new ValidationPipeline<AddOrUpdatePlexLibrariesCommand, Result<List<PlexLibraryAccessRapport>>>(
+            [new AddOrUpdatePlexLibrariesValidator()]);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(
+                It.Is<InvalidateLibraryComparisonJobsCommand>(c => c.PlexLibraryIds.Count == 0), CancellationToken))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await pipeline.ExecuteAsync(request, () => Sut.ExecuteAsync(request, CancellationToken), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var rapport = result.Value.Single();
+        rapport.PlexServerId.ShouldBe(target.PlexServerId);
+        rapport.Data.ShouldBe([new PlexLibraryAccessRow(PlexAccessState.Updated, target.PlexServerId, targetId, target.Name)]);
+        (await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken))
+            .ShouldBe(new[] { targetId, controlId }.Order());
+        (await dbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.MusicArtist)
+            .Select(x => x.Id).ToListAsync(CancellationToken)).ShouldBe([targetId]);
+        var refreshed = await dbContext.PlexLibraries.SingleAsync(x => x.Id == targetId, CancellationToken);
+        (refreshed.Id, refreshed.PlexServerId, refreshed.Uuid, refreshed.MusicArtistCount, refreshed.MediaCount)
+            .ShouldBe((targetId, target.PlexServerId, target.Uuid, 7, 7));
+        refreshed.SyncedAt.ShouldBe(target.SyncedAt);
+        refreshed.DefaultDestinationId.ShouldBe(target.DefaultDestinationId);
+        refreshed.Outdated.ShouldBeFalse();
+        (await dbContext.PlexLibraries.SingleAsync(x => x.Id == controlId, CancellationToken)).MediaCount.ShouldBe(-1);
+        (await dbContext.PlexAccountLibraries.OrderBy(x => x.PlexServerId)
+            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.PlexLibraryId }).ToListAsync(CancellationToken))
+            .ShouldBe(beforeAccess);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<QueueLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    [Test]
     public async Task ShouldAddAllPlexLibraries_WhenNoneExistInTheDatabase()
     {
         // Arrange
