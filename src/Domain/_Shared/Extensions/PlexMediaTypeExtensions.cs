@@ -2,6 +2,14 @@
 
 public static class PlexMediaTypeExtensions
 {
+    public static bool IsRootType(this PlexMediaType downloadTaskType) =>
+        downloadTaskType
+            is PlexMediaType.Movie
+                or PlexMediaType.TvShow
+                or PlexMediaType.MusicArtist
+                or PlexMediaType.PhotoAlbum
+                or PlexMediaType.OtherVideos;
+
     public static int ToDefaultDestinationFolderId(this PlexMediaType type)
     {
         return type switch
