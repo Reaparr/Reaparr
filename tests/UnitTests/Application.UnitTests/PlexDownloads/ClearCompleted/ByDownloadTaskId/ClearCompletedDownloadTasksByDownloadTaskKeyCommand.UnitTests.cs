@@ -253,6 +253,63 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     }
 
     [Test]
+    public async Task ShouldDispatchCompletedKeysAcrossTaskTypes()
+    {
+        // Arrange
+        await SetupDatabase(
+            55008,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieDownloadTasksCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowDownloadTasksCount = 1;
+            }
+        );
+
+        var dbContext = IDbContext;
+        var movieTask = await dbContext.DownloadTaskMovie.AsTracking().SingleAsync(CancellationToken);
+        var tvShowTask = await dbContext.DownloadTaskTvShow.AsTracking().SingleAsync(CancellationToken);
+
+        movieTask.SetDownloadStatus(DownloadStatus.Completed);
+        tvShowTask.SetDownloadStatus(DownloadStatus.Completed);
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        var taskKeys = new List<DownloadTaskKey>
+        {
+            await dbContext.DownloadTaskMovie.ProjectToKey().SingleAsync(CancellationToken),
+            await dbContext.DownloadTaskTvShow.ProjectToKey().SingleAsync(CancellationToken),
+        };
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<DeleteDownloadTasksByKeyCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(
+            new ClearCompletedDownloadTasksByDownloadTaskKeyCommand(taskKeys),
+            CancellationToken
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.ShouldBe(2);
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x =>
+                    x.Send(
+                        It.Is<DeleteDownloadTasksByKeyCommand>(cmd =>
+                            cmd.Keys.Count == taskKeys.Count && taskKeys.TrueForAll(k => cmd.Keys.Any(ck => ck == k))
+                        ),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
+    }
+
+    [Test]
     public async Task ShouldOnlyCountAndDeleteFullyMatchedCompletedKeys_WhenSameIdIsProvidedWithWrongType()
     {
         // Arrange

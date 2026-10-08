@@ -245,10 +245,23 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
     public async Task ShouldPauseEachUniqueMusicAndOtherDownloadOrMoveOnBothPasses_WhenAutoPausing()
     {
         // Arrange
-        await SetupDatabase(88280, c => { c.PlexMusicLibraryCount = 1; c.PlexOtherVideoLibraryCount = 1; });
+        await SetupDatabase(
+            88280,
+            c =>
+            {
+                c.PlexMusicLibraryCount = 1;
+                c.MusicArtistDownloadTasksCount = 1;
+                c.MusicAlbumDownloadTasksCount = 1;
+                c.MusicTrackDownloadTasksCount = 1;
+                c.MusicTrackFileDownloadTasksCount = 1;
+                c.PlexOtherVideoLibraryCount = 1;
+                c.OtherVideoDownloadTasksCount = 1;
+                c.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var music = await FakeData.AddMusicTask(dbContext, 1);
-        var video = await FakeData.AddOtherVideoTask(dbContext, 1);
+        var music = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
+        var video = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         var keys = new[] { music.ToKey(), video.ToKey() };
         var serverId = music.PlexServerId;
         (await dbContext.GetDownloadTaskKeysAsync(keys.Select(x => x.Id).ToList(), CancellationToken))
@@ -282,9 +295,19 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
     public async Task ShouldPropagateCancellationWithoutTakingAnotherSnapshot_WhenAutoPauseIsCancelled()
     {
         // Arrange
-        await SetupDatabase(88310, c => c.PlexMusicLibraryCount = 1);
+        await SetupDatabase(
+            88310,
+            c =>
+            {
+                c.PlexMusicLibraryCount = 1;
+                c.MusicArtistDownloadTasksCount = 1;
+                c.MusicAlbumDownloadTasksCount = 1;
+                c.MusicTrackDownloadTasksCount = 1;
+                c.MusicTrackFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var file = await FakeData.AddMusicTask(dbContext, 1);
+        var file = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         var cancelled = Result.Try((Action)(() => throw new OperationCanceledException(CancellationToken)));
         cancelled.IsCancelled.ShouldBeTrue();
         Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.GetCurrentlyDownloadingKeysByServer(file.PlexServerId))

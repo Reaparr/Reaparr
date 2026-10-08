@@ -109,6 +109,133 @@ public static partial class DbContextExtensions
         return keys;
     }
 
+    public static async Task<List<DownloadTaskKey>> GetDownloadTaskKeysByStatusAsync(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<DownloadTaskKey> keys,
+        IReadOnlyCollection<DownloadStatus> statuses,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (keys.Count == 0 || statuses.Count == 0)
+            return [];
+
+        var byType = keys.ToLookup(x => x.Type);
+        var queries = new List<IQueryable<DownloadTaskKey>>();
+
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskMovie,
+            byType[DownloadTaskType.Movie],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskMovieFile,
+            byType[DownloadTaskType.MovieData].Concat(byType[DownloadTaskType.MoviePart]),
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskTvShow,
+            byType[DownloadTaskType.TvShow],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskTvShowSeason,
+            byType[DownloadTaskType.Season],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskTvShowEpisode,
+            byType[DownloadTaskType.Episode],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskTvShowEpisodeFile,
+            byType[DownloadTaskType.EpisodeData].Concat(byType[DownloadTaskType.EpisodePart]),
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskPhotoAlbums,
+            byType[DownloadTaskType.PhotoAlbum],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskPhotoImages,
+            byType[DownloadTaskType.PhotoImage],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskPhotoImageFiles,
+            byType[DownloadTaskType.PhotoData].Concat(byType[DownloadTaskType.PhotoPart]),
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskMusicArtists,
+            byType[DownloadTaskType.MusicArtist],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskMusicAlbums,
+            byType[DownloadTaskType.MusicAlbum],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskMusicTracks,
+            byType[DownloadTaskType.MusicTrack],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskMusicTrackFiles,
+            byType[DownloadTaskType.MusicTrackData].Concat(byType[DownloadTaskType.MusicTrackPart]),
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskOtherVideos,
+            byType[DownloadTaskType.OtherVideo],
+            statuses
+        );
+        AddDownloadTaskKeysByStatusQuery(
+            queries,
+            dbContext.DownloadTaskOtherVideoFiles,
+            byType[DownloadTaskType.OtherVideoData].Concat(byType[DownloadTaskType.OtherVideoPart]),
+            statuses
+        );
+
+        if (queries.Count == 0)
+            return [];
+
+        var query = queries.Skip(1).Aggregate(queries[0], (currentQuery, nextQuery) => currentQuery.Concat(nextQuery));
+
+        return [.. (await query.ToListAsync(cancellationToken)).Distinct()];
+    }
+
+    private static void AddDownloadTaskKeysByStatusQuery<T>(
+        List<IQueryable<DownloadTaskKey>> queries,
+        IQueryable<T> set,
+        IEnumerable<DownloadTaskKey> keys,
+        IReadOnlyCollection<DownloadStatus> statuses
+    )
+        where T : DownloadTaskBase
+    {
+        var ids = keys.Select(x => x.Id).ToList();
+        if (ids.Count == 0)
+            return;
+
+        queries.Add(set.Where(x => ids.Contains(x.Id) && statuses.Contains(x.DownloadStatus)).ProjectToKey());
+    }
+
     public static async Task<DownloadTaskType> GetDownloadTaskTypeAsync(
         this IReaparrDbContext dbContext,
         Guid guid,
