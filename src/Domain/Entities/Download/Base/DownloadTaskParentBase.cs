@@ -49,5 +49,51 @@ public abstract class DownloadTaskParentBase : DownloadTaskBase, IDownloadTaskPr
     [NotMapped]
     public int TimeRemaining { get; set; }
 
+    /// <summary>
+    /// Resolves this task's directories from loaded file metadata.
+    /// Returns empty paths when no descendant file is loaded.
+    /// </summary>
+    public (string DownloadDirectory, string DestinationDirectory) GetDirectories()
+    {
+        var directoryMeta = GetDirectoryMeta();
+        return directoryMeta is null
+            ? (string.Empty, string.Empty)
+            : (
+                directoryMeta.GetDownloadDirectory(DownloadTaskType),
+                directoryMeta.GetDestinationDirectory(DownloadTaskType)
+            );
+    }
+
+    private DownloadTaskDirectory? GetDirectoryMeta()
+    {
+        IEnumerable<DownloadTaskBase> children = this switch
+        {
+            DownloadTaskMovie x => x.Children,
+            DownloadTaskTvShow x => x.Children,
+            DownloadTaskTvShowSeason x => x.Children,
+            DownloadTaskTvShowEpisode x => x.Children,
+            DownloadTaskPhotoAlbum x => x.Children,
+            DownloadTaskPhotoImage x => x.Children,
+            DownloadTaskMusicArtist x => x.Children,
+            DownloadTaskMusicAlbum x => x.Children,
+            DownloadTaskMusicTrack x => x.Children,
+            DownloadTaskOtherVideo x => x.Children,
+            _ => throw new ArgumentOutOfRangeException(nameof(DownloadTaskType)),
+        };
+        foreach (var child in children)
+        {
+            var directoryMeta = child switch
+            {
+                DownloadTaskFileBase file => file.DirectoryMeta,
+                DownloadTaskParentBase parent => parent.GetDirectoryMeta(),
+                _ => throw new ArgumentOutOfRangeException(nameof(child)),
+            };
+            if (directoryMeta is not null)
+                return directoryMeta;
+        }
+
+        return null;
+    }
+
     #endregion
 }

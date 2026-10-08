@@ -139,86 +139,13 @@ public abstract class DownloadTaskFileBase : DownloadTaskBase, IDownloadTaskProg
     /// Gets the download directory appended to the MediaPath e.g: [DownloadPath]/[TvShow]/[Season]/ or  [DownloadPath]/[Movie]/.
     /// </summary>
     [NotMapped]
-    public string DownloadDirectory
-    {
-        get
-        {
-            if (DirectoryMeta.DownloadRootPath == string.Empty)
-                return string.Empty;
-
-            switch (DownloadTaskType)
-            {
-                // TODO replace magic strings with constants from PathProvider
-                case DownloadTaskType.MovieData:
-                    return Path.Combine(DirectoryMeta.DownloadRootPath, "Movies", DirectoryMeta.MovieFolder);
-                case DownloadTaskType.EpisodeData:
-                    return Path.Combine(
-                        DirectoryMeta.DownloadRootPath,
-                        "TvShows",
-                        DirectoryMeta.TvShowFolder,
-                        DirectoryMeta.SeasonFolder
-                    );
-                case DownloadTaskType.PhotoData:
-                case DownloadTaskType.PhotoPart:
-                    return Path.Combine(DirectoryMeta.DownloadRootPath, "Photos", DirectoryMeta.PhotoAlbumFolder);
-                case DownloadTaskType.MusicTrackData:
-                case DownloadTaskType.MusicTrackPart:
-                    return Path.Combine(
-                        DirectoryMeta.DownloadRootPath,
-                        "Music",
-                        DirectoryMeta.MusicArtistFolder,
-                        DirectoryMeta.MusicAlbumFolder
-                    );
-                case DownloadTaskType.OtherVideoData:
-                case DownloadTaskType.OtherVideoPart:
-                    return Path.Combine(DirectoryMeta.DownloadRootPath, "OtherVideos", DirectoryMeta.OtherVideoFolder);
-                default:
-                    Result.Fail<string>($"Invalid DownloadTaskType of type: {DownloadTaskType}").LogError();
-                    return string.Empty;
-            }
-        }
-    }
+    public string DownloadDirectory => DirectoryMeta.GetDownloadDirectory(DownloadTaskType);
 
     /// <summary>
     /// Gets the destination directory appended to the MediaPath e.g: [DestinationPath]/[TvShow]/[Season]/ or  [DestinationPath]/[Movie]/.
     /// </summary>
     [NotMapped]
-    public string DestinationDirectory
-    {
-        get
-        {
-            if (DirectoryMeta.DestinationRootPath == string.Empty)
-                return string.Empty;
-
-            switch (DownloadTaskType)
-            {
-                case DownloadTaskType.MovieData:
-                    return Path.Combine(DirectoryMeta.DestinationRootPath, DirectoryMeta.MovieFolder);
-                case DownloadTaskType.EpisodeData:
-                    return Path.Combine(
-                        DirectoryMeta.DestinationRootPath,
-                        DirectoryMeta.TvShowFolder,
-                        DirectoryMeta.SeasonFolder
-                    );
-                case DownloadTaskType.PhotoData:
-                case DownloadTaskType.PhotoPart:
-                    return Path.Combine(DirectoryMeta.DestinationRootPath, DirectoryMeta.PhotoAlbumFolder);
-                case DownloadTaskType.MusicTrackData:
-                case DownloadTaskType.MusicTrackPart:
-                    return Path.Combine(
-                        DirectoryMeta.DestinationRootPath,
-                        DirectoryMeta.MusicArtistFolder,
-                        DirectoryMeta.MusicAlbumFolder
-                    );
-                case DownloadTaskType.OtherVideoData:
-                case DownloadTaskType.OtherVideoPart:
-                    return Path.Combine(DirectoryMeta.DestinationRootPath, DirectoryMeta.OtherVideoFolder);
-                default:
-                    Result.Fail<string>($"Invalid DownloadTaskType of type: {DownloadTaskType}").LogError();
-                    return string.Empty;
-            }
-        }
-    }
+    public string DestinationDirectory => DirectoryMeta.GetDestinationDirectory(DownloadTaskType);
 
     public override string ToString() =>
         $"[MoveDownloadFileProgress {Title} - {Percentage:F2}% - {DataFormat.FormatSpeedString(Speed)} - {DataFormat.FormatSizeString(DownloadTaskPhase == DownloadTaskPhase.FileTransfer ? FileDataTransferred : DataReceived)} / {DataFormat.FormatSizeString(DataTotal)} - {DataFormat.FormatTimeSpanString(TimeSpan.FromSeconds(TimeRemaining))}]";
