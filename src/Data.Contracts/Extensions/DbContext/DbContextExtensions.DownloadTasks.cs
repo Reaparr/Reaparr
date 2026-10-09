@@ -285,9 +285,11 @@ public static partial class DbContextExtensions
         if (queries.Count == 0)
             return [];
 
-        var query = queries.Skip(1).Aggregate(queries[0], (currentQuery, nextQuery) => currentQuery.Concat(nextQuery));
+        var resultKeys = new List<DownloadTaskKey>();
+        foreach (var query in queries)
+            resultKeys.AddRange(await query.ToListAsync(cancellationToken));
 
-        return [.. (await query.ToListAsync(cancellationToken)).Distinct()];
+        return [.. resultKeys.Distinct()];
     }
 
     public static async Task<DownloadTaskType> GetDownloadTaskTypeAsync(
