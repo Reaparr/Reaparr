@@ -3,8 +3,10 @@
 		:loading="loading"
 		:name="DialogType.MediaDownloadConfirmationDialog"
 		:type="[] as DownloadMediaDTO[]"
+		cy="download-confirmation-dialog"
 		full-height
-		@opened="openDialog">
+		@opened="openDialog"
+		@closed="cancelPreview">
 		<template #top-row>
 			<QRow class="download-confirmation-summary q-pa-md">
 				<QCol>
@@ -32,11 +34,25 @@
 					:expander="i === 0"
 					:field="col.field"
 					:header="col.label"
-					:style="{ 'width': col.width ? `${col.width}px` : 'auto', 'text-align': 'center' }" />
+					:style="{ 'width': col.type === 'file-size' ? 'var(--download-confirmation-size-width)' : col.type === 'media-quality' ? 'var(--download-confirmation-quality-width)' : col.width ? `${col.width}px` : 'auto', 'text-align': 'center' }" />
 			</TreeTable>
 		</template>
 		<template #default>
+			<q-banner
+				v-if="previewFailed"
+				data-cy="download-confirmation-error"
+				role="alert">
+				{{ t('components.download-confirmation.preview-error') }}
+				<template #action>
+					<q-btn
+						data-cy="download-confirmation-retry"
+						:label="t('components.download-confirmation.retry')"
+						outline
+						@click="requestPreview" />
+				</template>
+			</q-banner>
 			<TreeTable
+				v-else
 				v-model:expanded-keys="expandedKeys"
 				:lazy="true"
 				:loading="loading"
@@ -49,7 +65,7 @@
 					:expander="i === 0 && hasAnyChildren"
 					:field="col.field"
 					:header="col.label"
-					:style="{ width: col.width ? `${col.width}px` : 'auto' }">
+					:style="{ width: col.type === 'file-size' ? 'var(--download-confirmation-size-width)' : col.type === 'media-quality' ? 'var(--download-confirmation-quality-width)' : col.width ? `${col.width}px` : 'auto' }">
 					<template #body="{ node }: { node: DownloadPreviewDTO }">
 						<template v-if="col.type === 'title'">
 							<QMediaTypeIcon
@@ -79,7 +95,9 @@
 		</template>
 		<!-- Download Actions -->
 		<template #actions="{ close }">
-			<CancelButton @click="close()" />
+			<CancelButton
+				cy="download-confirmation-cancel"
+				@click="close()" />
 			<div class="download-confirmation-actions">
 				<div
 					class="download-confirmation-destination"
@@ -92,8 +110,10 @@
 						class="download-confirmation-destination-path" />
 				</div>
 				<q-btn-dropdown
+					data-cy="download-confirmation-submit"
+					:disable="!canDownload"
 					color="green"
-					label="Download"
+					:label="t('general.commands.download')"
 					outline
 					split
 					@click="onDownload(close)">
@@ -107,6 +127,7 @@
 							<q-item
 								v-for="folderPath in folderPathDestinations"
 								:key="folderPath.id"
+								:data-cy="`download-confirmation-destination-${folderPath.id}`"
 								clickable
 								tag="label">
 								<q-item-section avatar>
@@ -123,6 +144,7 @@
 							</q-item>
 							<!-- Custom Directory -->
 							<q-item
+								data-cy="download-confirmation-destination-custom"
 								clickable
 								@click="dialogStore.openDirectoryBrowserDialog(customDirectory)">
 								<q-item-section avatar>
@@ -152,6 +174,7 @@
 <script lang="ts" setup>
 import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
+import { EMPTY, Subject, catchError, of, switchMap } from 'rxjs';
 import {
 	type CreateDownloadTasksRequest,
 	type DownloadMediaDTO,
@@ -163,6 +186,7 @@ import {
 import { DialogType } from '@enums';
 import { useI18n } from 'vue-i18n';
 import { useDialogStore, useDownloadStore, useFolderPathStore } from '@store';
+import Convert from '@class/Convert';
 import Log from 'consola';
 
 const { t } = useI18n();
@@ -175,6 +199,8 @@ const emits = defineEmits<{
 }>();
 const expandedKeys = ref<Record<string, boolean>>({});
 const loading = ref(true);
+const previewFailed = ref(false);
+const previewRequests = new Subject<DownloadMediaDTO[] | null>();
 const downloadPreview = ref<DownloadPreviewDTO[]>([]);
 const downloadMediaCommand = ref<DownloadMediaDTO[]>([]);
 const mediaType = ref<PlexMediaType>(PlexMediaType.Unknown);
@@ -184,7 +210,7 @@ const customDirectory = ref<FolderPathDTO>({
 	displayName: 'Custom',
 	directory: '',
 	mediaType: get(mediaType),
-	folderType: FolderType.TvShowFolder,
+	folderType: FolderType.Unknown,
 	isValid: true,
 	isDefault: false,
 });
@@ -201,12 +227,15 @@ const getDownloadPreviewTableColumns = computed((): {
 			field: 'title',
 			type: 'title',
 		},
-		{
-			label: t('components.media-list.columns.quality'),
-			field: 'qualities',
-			type: 'media-quality',
-			width: 200,
-		},
+		...(Convert.mediaTypeToFolderType(get(mediaType)) === FolderType.MusicFolder
+			|| Convert.mediaTypeToFolderType(get(mediaType)) === FolderType.PhotosFolder
+			? []
+			: [{
+					label: t('components.media-list.columns.quality'),
+					field: 'qualities' as const,
+					type: 'media-quality' as const,
+					width: 200,
+				}]),
 		{
 			label: t('components.download-confirmation.columns.file-size'),
 			field: 'size',
@@ -220,42 +249,61 @@ const hasAnyChildren = computed(() => get(downloadPreview).some((x) => x.childre
 
 const selectedFolderPath = ref<FolderPathDTO>(get(customDirectory));
 
-const folderPathDestinations = computed(() => folderPathStore.getFolderPaths().filter((x) => x.mediaType === get(mediaType)));
+const folderPathDestinations = computed(() => folderPathStore.getFolderPaths().filter((path) =>
+	Convert.mediaTypeToFolderType(path.mediaType) === Convert.mediaTypeToFolderType(get(mediaType)),
+));
+const canDownload = computed(() => !get(loading) && !get(previewFailed) && get(downloadPreview).length > 0);
 
 const selectedDestination = computed(() => get(selectedFolderPath).directory || t('components.download-confirmation.destination.not-set'));
 
 function openDialog(data: DownloadMediaDTO[]): void {
-	set(loading, true);
-	reset();
-
-	// This assumes that the data is always 1 category, either movie or tv show
-	if (data.some((x) => x.type === PlexMediaType.Movie)) {
-		set(mediaType, PlexMediaType.Movie);
-	} else if (data.some((x) => x.type === PlexMediaType.TvShow || x.type === PlexMediaType.Season || x.type === PlexMediaType.Episode)) {
-		set(mediaType, PlexMediaType.TvShow);
-	} else {
-		set(mediaType, PlexMediaType.Unknown);
-	}
-
-	set(selectedFolderPath, get(folderPathDestinations)[0] ?? get(customDirectory));
-
+	set(mediaType, data.find((item) => item.type === PlexMediaType.Movie)?.type ?? data[0]?.type ?? PlexMediaType.Unknown);
+	set(customDirectory, {
+		...get(customDirectory),
+		mediaType: get(mediaType),
+		folderType: Convert.mediaTypeToFolderType(get(mediaType)),
+	});
+	const destinations = get(folderPathDestinations);
+	set(selectedFolderPath, destinations.find((path) => path.isDefault) ?? destinations[0] ?? get(customDirectory));
 	set(downloadMediaCommand, data);
-	useSubscription(
-		downloadStore.previewDownload(data).subscribe((result) => {
-			if (!result) {
-				Log.error('Download preview failed, no data received');
-				reset();
-				set(loading, false);
-				return;
-			}
-
-			set(downloadPreview, Object.freeze(result.previews));
-			set(totalSize, result.totalSize);
-			set(expandedKeys, result.expanded);
-			set(loading, false);
-		}),
-	);
+	requestPreview();
 }
+
+function requestPreview(): void {
+	cancelPreview();
+	reset();
+	set(previewFailed, false);
+	set(loading, true);
+	previewRequests.next(get(downloadMediaCommand));
+}
+
+function onPreviewError(): void {
+	Log.error('Download preview failed');
+	reset();
+	set(previewFailed, true);
+	set(loading, false);
+}
+
+function cancelPreview(): void {
+	previewRequests.next(null);
+}
+
+useSubscription(
+	previewRequests.pipe(
+		switchMap((data) => data
+			? downloadStore.previewDownload(data).pipe(catchError(() => of(null)))
+			: EMPTY),
+	).subscribe((result) => {
+		if (!result || result.previews.length === 0) {
+			onPreviewError();
+			return;
+		}
+		set(downloadPreview, Object.freeze(result.previews));
+		set(totalSize, result.totalSize);
+		set(expandedKeys, result.expanded);
+		set(loading, false);
+	}),
+);
 
 function onCustomDirectorySelected(path: FolderPathDTO): void {
 	set(customDirectory, path);
@@ -263,6 +311,8 @@ function onCustomDirectorySelected(path: FolderPathDTO): void {
 }
 
 function onDownload(close: () => void) {
+	if (!get(canDownload))
+		return;
 	emits('download', {
 		downloadMedias: get(downloadMediaCommand),
 		destinationFolderPathId: get(selectedFolderPath).id > 0 ? get(selectedFolderPath).id : 0,
@@ -279,6 +329,12 @@ function reset() {
 </script>
 
 <style lang="scss">
+.download-confirmation-table-header,
+.download-confirmation-table-body {
+  --download-confirmation-size-width: 150px;
+  --download-confirmation-quality-width: 200px;
+}
+
 .download-confirmation-actions {
   display: flex;
   align-items: center;
@@ -308,11 +364,18 @@ function reset() {
     min-height: 44px;
   }
 
+  .download-confirmation-actions .q-btn-dropdown .q-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .download-confirmation-table-header {
     display: none;
   }
 
   .download-confirmation-table-body {
+    --download-confirmation-size-width: 5rem;
+    --download-confirmation-quality-width: 6rem;
     overflow-x: auto;
 
     .p-treetable-thead {
@@ -361,6 +424,21 @@ function reset() {
 }
 
 .download-confirmation-table-body {
+  .p-treetable-tbody > tr > td:first-child .q-text-container {
+    flex: 1;
+    min-width: 0;
+
+    .col {
+      min-width: 0;
+    }
+
+    .q-text {
+      display: block;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+  }
+
   .p-treetable-thead {
     display: none;
   }

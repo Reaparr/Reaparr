@@ -2,8 +2,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
 import type { Pinia } from 'pinia';
-import type { DownloadMediaDTO, PlexMediaDTO } from '@dto';
-import { PlexMediaType } from '@dto';
+import type { DownloadMediaDTO, PlexMediaDTO, PlexMediaDataDTO } from '@dto';
+import { PlexMediaType, VideoQuality } from '@dto';
 import { baseSetup } from '@services-test-base';
 import MusicMediaList from '@/components/MediaOverview/MusicMediaList.vue';
 import { useMediaOverviewStore } from '@store';
@@ -44,6 +44,21 @@ function media(overrides: Partial<PlexMediaDTO>): PlexMediaDTO {
 	};
 }
 
+function original(overrides: Partial<PlexMediaDataDTO>): PlexMediaDataDTO {
+	return {
+		audioCodec: 'flac',
+		duration: 180000,
+		fileName: 'track.flac',
+		id: 0,
+		plexApiMediaId: 0,
+		plexApiPartId: 0,
+		size: 1000,
+		videoCodec: '',
+		videoResolution: VideoQuality.Unknown,
+		...overrides,
+	};
+}
+
 function artistFixture(): PlexMediaDTO {
 	return media({
 		id: 100,
@@ -52,15 +67,33 @@ function artistFixture(): PlexMediaDTO {
 		children: [
 			media({
 				id: 7,
+				parentId: 100,
 				title: 'Album One',
 				type: PlexMediaType.MusicAlbum,
 				children: [
-					media({ id: 7, parentId: 7, title: 'Overlapping Track', sortIndex: 1 }),
-					media({ id: 8, parentId: 7, title: 'Track Two', sortIndex: 2 }),
+					media({
+						id: 7,
+						parentId: 7,
+						title: 'Overlapping Track',
+						sortIndex: 1,
+						mediaData: [
+							original({ id: 701, plexApiMediaId: 70, plexApiPartId: 1, fileName: 'disc-a.flac', size: 1000 }),
+							original({ id: 702, plexApiMediaId: 70, plexApiPartId: 2, fileName: 'disc-b.flac', size: 2000 }),
+							original({ id: 703, plexApiMediaId: 71, plexApiPartId: 3, fileName: 'alternate.mp3', audioCodec: 'mp3', size: 700 }),
+						],
+					}),
+					media({
+						id: 8,
+						parentId: 7,
+						title: 'Track Two',
+						sortIndex: 2,
+						mediaData: [original({ id: 801, plexApiMediaId: 80, fileName: 'track-two.flac' })],
+					}),
 				],
 			}),
 			media({
 				id: 9,
+				parentId: 100,
 				title: 'Empty Album',
 				type: PlexMediaType.MusicAlbum,
 				children: [],
@@ -163,6 +196,100 @@ describe('MusicMediaList hierarchy selection', () => {
 		expect(wrapper.get('[data-cy="music-album-checkbox-7"]').attributes('aria-checked')).toBe('true');
 		expect(commands[0]).toMatchObject([{ type: PlexMediaType.MusicAlbum, mediaIds: [7] }]);
 		expect(commands[0]).toHaveLength(1);
+	});
+
+	test('Should group multipart originals and send the representative part for a track choice', async () => {
+		// Arrange
+		const wrapper = await render();
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="music-album-7"] .q-item').trigger('click');
+		expect(wrapper.text()).toContain('disc-a.flac');
+		expect(wrapper.text()).toContain('disc-b.flac');
+		expect(wrapper.text()).toContain('alternate.mp3');
+		expect(wrapper.text()).toContain('flac');
+		expect(wrapper.text()).toContain('mp3');
+
+		// Act
+		await wrapper.get('[data-cy="music-track-original-7-7-70"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-checkbox-7-7"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[0]).toMatchObject([{
+			type: PlexMediaType.MusicTrack,
+			mediaIds: [7],
+			qualities: [{ mediaId: 7, dataId: 701, mediaDataType: PlexMediaType.MusicTrack, quality: VideoQuality.Unknown }],
+		}]);
+	});
+
+	test('Should propagate only selected descendant originals through album and artist requests', async () => {
+		// Arrange
+		const item = artistFixture();
+		item.children[0]!.children.push(media({
+			id: 90,
+			parentId: 7,
+			title: 'Foreign Track',
+			plexServerId: 99,
+			mediaData: [original({ id: 9001, plexApiMediaId: 900 })],
+		}));
+		item.children.push(media({
+			id: 91,
+			parentId: 100,
+			title: 'Foreign Album',
+			type: PlexMediaType.MusicAlbum,
+			plexLibraryId: 99,
+			children: [media({ id: 92, parentId: 91, title: 'Unrelated Track' })],
+		}));
+		const wrapper = await render(item);
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="music-album-7"] .q-item').trigger('click');
+		await wrapper.get('[data-cy="music-track-original-7-7-71"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-original-7-8-80"]').trigger('click');
+
+		// Act
+		await wrapper.get('[data-cy="music-track-checkbox-7-7"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+		await wrapper.get('[data-cy="music-album-checkbox-7"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+		await wrapper.get('[data-cy="music-artist-checkbox"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(wrapper.find('[data-cy="music-track-7-90"]').exists()).toBe(false);
+		expect(wrapper.find('[data-cy="music-album-91"]').exists()).toBe(false);
+		expect(commands[0]).toMatchObject([{ type: PlexMediaType.MusicTrack, qualities: [{ mediaId: 7, dataId: 703 }] }]);
+		expect(commands[1]).toMatchObject([{
+			type: PlexMediaType.MusicAlbum,
+			qualities: [{ mediaId: 7, dataId: 703 }, { mediaId: 8, dataId: 801 }],
+		}]);
+		expect(commands[2]).toMatchObject([{
+			type: PlexMediaType.MusicArtist,
+			qualities: [{ mediaId: 7, dataId: 703 }, { mediaId: 8, dataId: 801 }],
+		}]);
+	});
+
+	test('Should use automatic originals and clear an explicit choice for a replacement root', async () => {
+		// Arrange
+		const wrapper = await render();
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="music-album-7"] .q-item').trigger('click');
+		await wrapper.get('[data-cy="music-track-original-7-7-70"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-original-7-7-automatic"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-checkbox-7-7"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+		await wrapper.get('[data-cy="music-track-original-7-7-70"]').trigger('click');
+		const replacement = artistFixture();
+		replacement.id = 200;
+		replacement.children[0]!.parentId = 200;
+		await wrapper.setProps({ mediaItem: replacement });
+		await wrapper.get('[data-cy="music-album-7"] .q-item').trigger('click');
+
+		// Act
+		await wrapper.get('[data-cy="music-track-checkbox-7-7"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands).toMatchObject([[{ qualities: [] }], [{ qualities: [] }]]);
 	});
 
 	test('Should clear selection when the artist changes and expose an empty hierarchy', async () => {

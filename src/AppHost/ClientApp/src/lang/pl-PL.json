@@ -160,6 +160,8 @@
         },
         "download-confirmation": {
             "description": "Reaparr rozpocznie pobieranie następujących plików",
+            "preview-error": "Nie można wczytać podglądu pobierania. Spróbuj ponownie.",
+            "retry": "Spróbuj ponownie",
             "total-size": "Całkowity rozmiar:",
             "columns": {
                 "file-size": "Rozmiar pliku",
@@ -619,6 +621,11 @@
         }
     },
     "general": {
+        "labels": {
+            "original": "Oryginał",
+            "automatic-original": "Automatycznie (domyślnie)",
+            "select-original": "Wybierz oryginał dla {title}"
+        },
         "comparison": {
             "comparison-missing": "Zaginiony",
             "comparison-higher-quality": "Dostępna wyższa jakość",
@@ -723,6 +730,12 @@
             "auto-paused": "Automatyczne wstrzymanie"
         },
         "download-notification": {
+            "music-artist": "Pobieranie {count} wykonawcy | Pobieranie {count} wykonawców | Pobieranie {count} wykonawców",
+            "music-album": "Pobieranie {count} albumu muzycznego | Pobieranie {count} albumów muzycznych | Pobieranie {count} albumów muzycznych",
+            "music-track": "Pobieranie {count} utworu muzycznego | Pobieranie {count} utworów muzycznych | Pobieranie {count} utworów muzycznych",
+            "photo-album": "Pobieranie {count} albumu zdjęć | Pobieranie {count} albumów zdjęć | Pobieranie {count} albumów zdjęć",
+            "photo-image": "Pobieranie {count} zdjęcia | Pobieranie {count} zdjęć | Pobieranie {count} zdjęć",
+            "other-video": "Pobieranie {count} innego filmu | Pobieranie {count} innych filmów | Pobieranie {count} innych filmów",
             "movie": "Pobieranie {count} filmu | Pobieranie {count} filmów | Pobieranie {count} filmów",
             "tv-show": "Pobieranie {count} serialu | Pobieranie {count} seriali | Pobieranie {count} seriali",
             "season": "Pobieranie {count} sezonu | Pobieranie {count} sezonów | Pobieranie {count} sezonów",

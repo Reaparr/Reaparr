@@ -319,7 +319,18 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 			}).filter((x) => x.downloads.length > 0);
 		}),
 		getActiveDownloadList(serverId = 0): DownloadProgressDTO[] {
-			return getters.getDownloadsByServerId(serverId).flatMap((x) => x.children).flatMap((x) => x.children).flatMap((x) => x.children).filter((x) => x.status != DownloadStatus.Completed && x.status != DownloadStatus.Error);
+			const active: DownloadProgressDTO[] = [];
+			function collectActiveLeaves(node: DownloadProgressDTO): void {
+				if (node.children?.length) {
+					for (const child of node.children)
+						collectActiveLeaves(child);
+				} else if (node.status !== DownloadStatus.Completed && node.status !== DownloadStatus.Error) {
+					active.push(node);
+				}
+			}
+			for (const root of getters.getDownloadsByServerId(serverId))
+				collectActiveLeaves(root);
+			return active;
 		},
 		/**
          * Get the total number of download tasks that are downloadable in the download list.

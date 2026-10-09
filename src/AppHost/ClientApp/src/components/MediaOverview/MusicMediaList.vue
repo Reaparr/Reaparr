@@ -71,33 +71,54 @@
 						:aria-label="t('components.music-media-list.select-track', { title: track.title })"
 						:model-value="isTrackSelected(album.id, track.id)"
 						@update:model-value="setTrackSelected(album, track.id, Boolean($event))" />
-					<div class="music-track-row__title">
-						<span class="text-caption text-grey-6">{{ track.sortIndex }}</span>
-						<span>{{ track.title }}</span>
-					</div>
-					<div class="music-track-row__metadata">
-						<div
-							v-if="track.mediaData.length === 0"
-							class="music-track-original">
-							<QDuration
-								short
-								:value="track.duration" />
-							<QFileSize :size="track.mediaSize" />
+					<div class="music-track-row__details">
+						<div class="music-track-row__title">
+							<span class="text-caption text-grey-6">{{ track.sortIndex }}</span>
+							<span>{{ track.title }}</span>
 						</div>
 						<div
-							v-for="original in track.mediaData"
-							:key="original.id"
-							class="music-track-original">
-							<span v-if="original.audioCodec">{{ original.audioCodec }}</span>
-							<QDuration
-								short
-								:value="original.duration || track.duration" />
-							<QFileSize :size="original.size || track.mediaSize" />
-							<span
-								v-if="original.fileName"
-								class="music-track-row__filename">
-								{{ original.fileName }}
-							</span>
+							class="music-track-originals"
+							role="radiogroup"
+							:aria-label="t('general.labels.select-original', { title: track.title })">
+							<label class="music-track-original music-track-original--automatic">
+								<q-radio
+									class="music-track-original__control"
+									:data-cy="`music-track-original-${album.id}-${track.id}-automatic`"
+									:model-value="selectedOriginals.get(trackKey(album.id, track.id)) ?? 'automatic'"
+									val="automatic"
+									:aria-label="t('general.labels.automatic-original')"
+									@update:model-value="setSelectedOriginal(album, track, $event)" />
+								<strong>{{ t('general.labels.automatic-original') }}</strong>
+							</label>
+							<label
+								v-for="original in trackOriginals(track)"
+								:key="original.plexApiMediaId"
+								class="music-track-original">
+								<q-radio
+									class="music-track-original__control"
+									:data-cy="`music-track-original-${album.id}-${track.id}-${original.plexApiMediaId}`"
+									:model-value="selectedOriginals.get(trackKey(album.id, track.id)) ?? 'automatic'"
+									:val="original.plexApiMediaId"
+									:aria-label="`${t('general.labels.original')} ${original.files.map(file => file.fileName).join(', ')}`"
+									@update:model-value="setSelectedOriginal(album, track, $event)" />
+								<div class="music-track-original__content">
+									<strong>{{ t('general.labels.original') }}</strong>
+									<div
+										v-for="file in original.files"
+										:key="file.id"
+										class="music-track-original__file">
+										<span
+											v-if="file.fileName"
+											class="music-track-row__filename">{{ file.fileName }}</span>
+										<span v-if="file.audioCodec">{{ file.audioCodec }}</span>
+										<span v-if="file.videoCodec">{{ file.videoCodec }}</span>
+										<QDuration
+											short
+											:value="file.duration || track.duration" />
+										<QFileSize :size="file.size || track.mediaSize" />
+									</div>
+								</div>
+							</label>
 						</div>
 					</div>
 				</div>
@@ -120,7 +141,7 @@
 
 <script setup lang="ts">
 import { get, set } from '@vueuse/core';
-import type { DownloadMediaDTO, PlexMediaDTO } from '@dto';
+import { PlexMediaType, type DownloadMediaDTO, type PlexMediaDataDTO, type PlexMediaDTO, type PlexMediaQualityDTO } from '@dto';
 import { useMediaOverviewStore } from '@store';
 import { sendMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
 import { toDownloadMedia } from '@composables/conversion';
@@ -134,8 +155,21 @@ const mediaOverviewStore = useMediaOverviewStore();
 const artistSelected = ref(false);
 const selectedAlbumIds = ref(new Set<number>());
 const selectedTrackIds = ref(new Map<number, Set<number>>());
+const selectedOriginals = ref(new Map<string, number>());
 
-const albums = computed(() => props.mediaItem.children);
+const albums = computed(() => props.mediaItem.children.filter((album) =>
+	album.type === PlexMediaType.MusicAlbum
+	&& album.parentId === props.mediaItem.id
+	&& album.plexLibraryId === props.mediaItem.plexLibraryId
+	&& album.plexServerId === props.mediaItem.plexServerId)
+	.map((album) => ({
+		...album,
+		children: album.children.filter((track) =>
+			track.type === PlexMediaType.MusicTrack
+			&& track.parentId === album.id
+			&& track.plexLibraryId === album.plexLibraryId
+			&& track.plexServerId === album.plexServerId),
+	})));
 
 const selectedCount = computed(() => {
 	if (get(artistSelected)) {
@@ -162,6 +196,49 @@ function resetSelection(): void {
 	set(artistSelected, false);
 	set(selectedAlbumIds, new Set());
 	set(selectedTrackIds, new Map());
+}
+
+function trackKey(albumId: number, trackId: number): string {
+	return `${albumId}:${trackId}`;
+}
+
+function trackOriginals(track: PlexMediaDTO): Array<{ plexApiMediaId: number; files: PlexMediaDataDTO[] }> {
+	const groups = new Map<number, PlexMediaDataDTO[]>();
+	for (const file of track.mediaData) {
+		const files = groups.get(file.plexApiMediaId);
+		if (files)
+			files.push(file);
+		else
+			groups.set(file.plexApiMediaId, [file]);
+	}
+	return Array.from(groups, ([plexApiMediaId, files]) => ({ plexApiMediaId, files }));
+}
+
+function setSelectedOriginal(album: PlexMediaDTO, track: PlexMediaDTO, value: number | 'automatic'): void {
+	const next = new Map(get(selectedOriginals));
+	const key = trackKey(album.id, track.id);
+	if (value === 'automatic' || !trackOriginals(track).some((original) => original.plexApiMediaId === value))
+		next.delete(key);
+	else
+		next.set(key, value);
+	set(selectedOriginals, next);
+}
+
+function selectedQualities(album: PlexMediaDTO, tracks: PlexMediaDTO[]): PlexMediaQualityDTO[] {
+	const result: PlexMediaQualityDTO[] = [];
+	for (const track of tracks) {
+		const plexApiMediaId = get(selectedOriginals).get(trackKey(album.id, track.id));
+		const original = plexApiMediaId === undefined ? undefined : trackOriginals(track).find((group) => group.plexApiMediaId === plexApiMediaId);
+		const representative = original?.files[0];
+		if (representative) {
+			result.push({ mediaId: track.id, dataId: representative.id, mediaDataType: track.type, quality: representative.videoResolution });
+		}
+	}
+	return result;
+}
+
+function downloadMedia(item: PlexMediaDTO, qualities: PlexMediaQualityDTO[]): DownloadMediaDTO {
+	return { ...toDownloadMedia(item)[0]!, qualities };
 }
 
 function setArtistSelected(value: boolean): void {
@@ -230,7 +307,7 @@ function setTrackSelected(album: PlexMediaDTO, trackId: number, value: boolean):
 
 function selectedDownloadMedia(): DownloadMediaDTO[] {
 	if (get(artistSelected)) {
-		return toDownloadMedia(props.mediaItem);
+		return [downloadMedia(props.mediaItem, get(albums).flatMap((album) => selectedQualities(album, album.children)))];
 	}
 
 	const result: DownloadMediaDTO[] = [];
@@ -238,21 +315,23 @@ function selectedDownloadMedia(): DownloadMediaDTO[] {
 		if (album.children.length === 0)
 			continue;
 		if (get(selectedAlbumIds).has(album.id)) {
-			result.push(...toDownloadMedia(album));
+			result.push(downloadMedia(album, selectedQualities(album, album.children)));
 			continue;
 		}
 
 		const trackIds = get(selectedTrackIds).get(album.id);
 		for (const track of album.children) {
-			if (trackIds?.has(track.id)) {
-				result.push(...toDownloadMedia(track));
-			}
+			if (trackIds?.has(track.id))
+				result.push(downloadMedia(track, selectedQualities(album, [track])));
 		}
 	}
 	return result;
 }
 
-watch(() => props.mediaItem, resetSelection, { deep: false });
+watch(() => props.mediaItem, () => {
+	resetSelection();
+	set(selectedOriginals, new Map());
+}, { deep: false });
 watch(selectedCount, (count) => {
 	mediaOverviewStore.$patch({ downloadButtonVisible: count > 0 });
 }, { immediate: true });
@@ -287,63 +366,75 @@ onBeforeUnmount(() => {
 
 .music-track-row {
 	display: grid;
-	grid-template-columns: 52px minmax(12rem, 1fr) minmax(18rem, 1fr);
-	align-items: center;
+	grid-template-columns: 52px minmax(0, 1fr);
+	align-items: start;
 	gap: 0.75rem;
-	min-height: 52px;
-	padding: 0.25rem 1rem 0.25rem 2rem;
+	padding: 0.5rem 1rem 0.75rem 2rem;
 	border-bottom: 1px solid rgb(255 255 255 / 8%);
+
+	&__details,
+	&__title,
+	&__filename {
+		min-width: 0;
+	}
 
 	&__title {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		min-width: 0;
-	}
-
-	&__metadata {
-		display: grid;
-		justify-items: end;
-		gap: 0.35rem;
-		min-width: 0;
+		min-height: 44px;
 	}
 
 	&__filename {
-		max-width: 22rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		overflow-wrap: anywhere;
 	}
+}
+
+.music-track-originals {
+	display: grid;
+	gap: 0.5rem;
 }
 
 .music-track-original {
 	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 0.75rem;
+	align-items: flex-start;
+	gap: 0.5rem;
 	min-width: 0;
-	flex-wrap: wrap;
+	min-height: 44px;
+	padding: 0.35rem;
+	border: 1px solid rgb(255 255 255 / 12%);
+	border-radius: 4px;
+
+	&__control {
+		min-width: 44px;
+		min-height: 44px;
+	}
+
+	&__content {
+		min-width: 0;
+		padding-top: 0.35rem;
+	}
+
+	&__file {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		min-width: 0;
+	}
+
+	&__file + &__file {
+		margin-top: 0.5rem;
+	}
 }
 
 @media (max-width: $breakpoint-sm-max) {
 	.music-track-row {
 		grid-template-columns: 44px minmax(0, 1fr);
-		padding: 0.5rem;
+		padding: 0.5rem 0.25rem;
+	}
 
-		&__metadata {
-			grid-column: 2;
-			justify-items: start;
-		}
-
-		.music-track-original {
-			justify-content: flex-start;
-		}
-
-		&__filename {
-			max-width: 100%;
-			white-space: normal;
-			overflow-wrap: anywhere;
-		}
+	.music-track-original {
+		padding-inline: 0;
 	}
 }
 </style>

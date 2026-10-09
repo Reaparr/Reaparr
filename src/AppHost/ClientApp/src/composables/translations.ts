@@ -14,6 +14,18 @@ function translateDownloadMediaCount(mediaType: PlexMediaType, count: number): s
 			return t('general.download-notification.season', { count }, { plural: count });
 		case PlexMediaType.Episode:
 			return t('general.download-notification.episode', { count }, { plural: count });
+		case PlexMediaType.MusicArtist:
+			return t('general.download-notification.music-artist', { count }, { plural: count });
+		case PlexMediaType.MusicAlbum:
+			return t('general.download-notification.music-album', { count }, { plural: count });
+		case PlexMediaType.MusicTrack:
+			return t('general.download-notification.music-track', { count }, { plural: count });
+		case PlexMediaType.PhotoAlbum:
+			return t('general.download-notification.photo-album', { count }, { plural: count });
+		case PlexMediaType.PhotoImage:
+			return t('general.download-notification.photo-image', { count }, { plural: count });
+		case PlexMediaType.OtherVideos:
+			return t('general.download-notification.other-video', { count }, { plural: count });
 		default:
 			return t('general.download-notification.unknown');
 	}
@@ -29,10 +41,11 @@ export function translateDownloadNotification(
 
 	const { $i18n } = useNuxtApp();
 	const { t } = $i18n;
-	const { movies, tvShows, seasons, episodes } = result.value;
+	const { movies, tvShows, seasons, episodes, musicArtists, musicAlbums, musicTracks, photoAlbums, photoImages, otherVideos } = result.value;
 	const singleMediaType = request.downloadMedias.length === 1 && request.downloadMedias[0]?.mediaIds.length === 1
 		? request.downloadMedias[0].type
 		: null;
+	const requestedMediaType = request.downloadMedias[0]?.type;
 	let message = t('general.download-notification.unknown');
 
 	if (movies > 0 && tvShows > 0) {
@@ -123,6 +136,27 @@ export function translateDownloadNotification(
 				message = t('general.download-notification.tv-show-detail-v7', { shows: tvShows, seasons, episodes });
 				break;
 		}
+	} else if (requestedMediaType === PlexMediaType.MusicAlbum && musicAlbums > 0
+		&& request.downloadMedias.every((media) => media.type === requestedMediaType)) {
+		message = translateDownloadMediaCount(requestedMediaType, musicAlbums);
+	} else if (requestedMediaType === PlexMediaType.MusicTrack && musicTracks > 0
+		&& request.downloadMedias.every((media) => media.type === requestedMediaType)) {
+		message = translateDownloadMediaCount(requestedMediaType, musicTracks);
+	} else if (requestedMediaType === PlexMediaType.PhotoImage && photoImages > 0
+		&& request.downloadMedias.every((media) => media.type === requestedMediaType)) {
+		message = translateDownloadMediaCount(requestedMediaType, photoImages);
+	} else if (musicArtists > 0) {
+		message = translateDownloadMediaCount(PlexMediaType.MusicArtist, musicArtists);
+	} else if (musicAlbums > 0) {
+		message = translateDownloadMediaCount(PlexMediaType.MusicAlbum, musicAlbums);
+	} else if (musicTracks > 0) {
+		message = translateDownloadMediaCount(PlexMediaType.MusicTrack, musicTracks);
+	} else if (photoAlbums > 0) {
+		message = translateDownloadMediaCount(PlexMediaType.PhotoAlbum, photoAlbums);
+	} else if (photoImages > 0) {
+		message = translateDownloadMediaCount(PlexMediaType.PhotoImage, photoImages);
+	} else if (otherVideos > 0) {
+		message = translateDownloadMediaCount(PlexMediaType.OtherVideos, otherVideos);
 	}
 
 	return message;

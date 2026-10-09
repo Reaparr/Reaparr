@@ -160,6 +160,8 @@
         },
         "download-confirmation": {
             "description": "Reaparr will start downloading the following",
+            "preview-error": "Unable to load the download preview. Please retry.",
+            "retry": "Retry",
             "total-size": "Total size:",
             "columns": {
                 "file-size": "File size",
@@ -619,6 +621,11 @@
         }
     },
     "general": {
+        "labels": {
+            "original": "Original",
+            "automatic-original": "Automatic (default)",
+            "select-original": "Select an original for {title}"
+        },
         "comparison": {
             "comparison-missing": "Missing",
             "comparison-higher-quality": "Higher quality available",
@@ -723,6 +730,12 @@
             "auto-paused": "Auto Paused"
         },
         "download-notification": {
+            "music-artist": "Downloading {count} music artist | Downloading {count} music artists",
+            "music-album": "Downloading {count} music album | Downloading {count} music albums",
+            "music-track": "Downloading {count} music track | Downloading {count} music tracks",
+            "photo-album": "Downloading {count} photo album | Downloading {count} photo albums",
+            "photo-image": "Downloading {count} photo | Downloading {count} photos",
+            "other-video": "Downloading {count} other video | Downloading {count} other videos",
             "movie": "Downloading {count} movie | Downloading {count} movies",
             "tv-show": "Downloading {count} TV show | Downloading {count} TV shows",
             "season": "Downloading {count} season | Downloading {count} seasons",

@@ -160,6 +160,8 @@
         },
         "download-confirmation": {
             "description": "Reaparr commencera à télécharger les éléments suivants",
+            "preview-error": "Impossible de charger l’aperçu du téléchargement. Réessayez.",
+            "retry": "Réessayer",
             "total-size": "Taille Total:",
             "columns": {
                 "file-size": "Taille du fichier",
@@ -619,6 +621,11 @@
         }
     },
     "general": {
+        "labels": {
+            "original": "Original",
+            "automatic-original": "Automatique (par défaut)",
+            "select-original": "Sélectionner un original pour {title}"
+        },
         "comparison": {
             "comparison-missing": "Manquant",
             "comparison-higher-quality": "Qualité supérieure disponible",
@@ -723,6 +730,12 @@
             "auto-paused": "Pause automatique"
         },
         "download-notification": {
+            "music-artist": "Téléchargement de {count} artiste musical | Téléchargement de {count} artistes musicaux",
+            "music-album": "Téléchargement de {count} album musical | Téléchargement de {count} albums musicaux",
+            "music-track": "Téléchargement de {count} piste musicale | Téléchargement de {count} pistes musicales",
+            "photo-album": "Téléchargement de {count} album photo | Téléchargement de {count} albums photo",
+            "photo-image": "Téléchargement de {count} photo | Téléchargement de {count} photos",
+            "other-video": "Téléchargement de {count} autre vidéo | Téléchargement de {count} autres vidéos",
             "movie": "Téléchargement de {count} film | Téléchargement de {count} films",
             "tv-show": "Téléchargement de {count} série TV | Téléchargement de {count} séries TV",
             "season": "Téléchargement de {count} saison | Téléchargement de {count} saisons",

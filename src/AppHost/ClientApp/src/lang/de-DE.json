@@ -160,6 +160,8 @@
         },
         "download-confirmation": {
             "description": "Reaparr beginnt mit dem Herunterladen der folgenden",
+            "preview-error": "Die Download-Vorschau konnte nicht geladen werden. Bitte erneut versuchen.",
+            "retry": "Erneut versuchen",
             "total-size": "Gesamt größe:",
             "columns": {
                 "file-size": "Dateigröße",
@@ -619,6 +621,11 @@
         }
     },
     "general": {
+        "labels": {
+            "original": "Original",
+            "automatic-original": "Automatisch (Standard)",
+            "select-original": "Original für {title} auswählen"
+        },
         "comparison": {
             "comparison-missing": "Fehlen",
             "comparison-higher-quality": "Höhere Qualität verfügbar",
@@ -723,6 +730,12 @@
             "auto-paused": "Automatisch pausiert"
         },
         "download-notification": {
+            "music-artist": "Lade {count} Musikkünstler herunter | Lade {count} Musikkünstler herunter",
+            "music-album": "Lade {count} Musikalbum herunter | Lade {count} Musikalben herunter",
+            "music-track": "Lade {count} Musikstück herunter | Lade {count} Musikstücke herunter",
+            "photo-album": "Lade {count} Fotoalbum herunter | Lade {count} Fotoalben herunter",
+            "photo-image": "Lade {count} Foto herunter | Lade {count} Fotos herunter",
+            "other-video": "Lade {count} sonstiges Video herunter | Lade {count} sonstige Videos herunter",
             "movie": "Lade {count} Film herunter | Lade {count} Filme herunter",
             "tv-show": "Lade {count} TV-Serie herunter | Lade {count} TV-Serien herunter",
             "season": "Lade {count} Staffel herunter | Lade {count} Staffeln herunter",

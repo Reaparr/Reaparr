@@ -1,6 +1,7 @@
 <template>
 	<section
 		class="other-video-files"
+		data-cy="other-video-media-list"
 		:aria-label="t('components.other-video-media-list.originals')">
 		<div
 			v-if="originals.length"
@@ -14,38 +15,60 @@
 			<strong>{{ t('components.other-video-media-list.originals') }}</strong>
 			<span data-cy="other-video-selected-count">{{ t('components.other-video-media-list.selected-count', { count: rootSelected ? 1 : 0 }) }}</span>
 		</div>
-		<q-list
+		<div
 			v-if="originals.length"
-			bordered
-			separator>
-			<q-item
-				v-for="original in originals"
-				:key="original.id"
-				class="other-video-files__item">
-				<q-item-section>
-					<div
-						v-for="file in original.files"
-						:key="file.id"
-						class="other-video-files__file">
-						<strong class="other-video-files__name">{{ file.fileName }}</strong>
-						<div class="other-video-files__metadata">
-							<QFileSize :size="file.size" />
-							<QDuration
-								v-if="file.duration > 0"
-								:value="file.duration"
-								short />
-							<MediaVideoQuality
-								v-if="file.videoResolution !== VideoQuality.Unknown"
-								:quality="file.videoResolution" />
-							<span v-if="file.videoCodec">{{ file.videoCodec }}</span>
-							<span v-if="file.audioCodec">{{ file.audioCodec }}</span>
+			role="radiogroup"
+			:aria-label="t('general.labels.select-original', { title: mediaItem.title })">
+			<q-radio
+				class="other-video-files__control"
+				data-cy="other-video-original-automatic"
+				:model-value="selectedOriginal"
+				:val="null"
+				:label="t('general.labels.automatic-original')"
+				@update:model-value="selectOriginal($event)" />
+			<q-list
+				bordered
+				separator>
+				<q-item
+					v-for="original in originals"
+					:key="original.id"
+					:data-cy="`other-video-original-files-${original.id}`"
+					class="other-video-files__item">
+					<q-item-section side>
+						<q-radio
+							class="other-video-files__control"
+							:data-cy="`other-video-original-${original.id}`"
+							:model-value="selectedOriginal"
+							:val="original.id"
+							:label="t('general.labels.original')"
+							:aria-label="t('general.labels.select-original', { title: original.files.map((file) => file.fileName).join(', ') })"
+							@update:model-value="selectOriginal($event)" />
+					</q-item-section>
+					<q-item-section>
+						<div
+							v-for="file in original.files"
+							:key="file.id"
+							class="other-video-files__file">
+							<strong class="other-video-files__name">{{ file.fileName }}</strong>
+							<div class="other-video-files__metadata">
+								<QFileSize :size="file.size" />
+								<QDuration
+									v-if="file.duration > 0"
+									:value="file.duration"
+									short />
+								<MediaVideoQuality
+									v-if="file.videoResolution !== VideoQuality.Unknown"
+									:quality="file.videoResolution" />
+								<span v-if="file.videoCodec">{{ file.videoCodec }}</span>
+								<span v-if="file.audioCodec">{{ file.audioCodec }}</span>
+							</div>
 						</div>
-					</div>
-				</q-item-section>
-			</q-item>
-		</q-list>
+					</q-item-section>
+				</q-item>
+			</q-list>
+		</div>
 		<p
-			v-else
+			v-if="!originals.length"
 			role="status"
 			data-cy="other-video-files-empty">
 			{{ t('components.other-video-media-list.empty') }}
@@ -54,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onBeforeUnmount } from 'vue';
+import { get, set } from '@vueuse/core';
 import { PlexMediaType, VideoQuality, type PlexMediaDTO, type PlexMediaDataDTO, type DownloadMediaDTO } from '@dto';
 import { useMediaOverviewStore, useSettingsStore } from '@store';
 import { sendMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
@@ -64,6 +87,7 @@ const { t } = useI18n();
 const mediaOverviewStore = useMediaOverviewStore();
 const settingsStore = useSettingsStore();
 const rootSelected = ref(false);
+const selectedOriginal = ref<number | null>(null);
 const originals = computed(() => {
 	const groups = new Map<number, { id: number; files: PlexMediaDataDTO[] }>();
 	for (const file of props.mediaItem.mediaData) {
@@ -77,29 +101,39 @@ const originals = computed(() => {
 });
 
 function selectAll(value: boolean): void {
-	rootSelected.value = value;
+	set(rootSelected, value && get(originals).length > 0);
+}
+
+function selectOriginal(dataId: number | null): void {
+	set(selectedOriginal, dataId);
 }
 watch(() => props.mediaItem, () => {
-	rootSelected.value = false;
-});
+	set(rootSelected, false);
+	set(selectedOriginal, null);
+}, { flush: 'sync', deep: true });
 watch(rootSelected, (selected) => {
-	mediaOverviewStore.downloadButtonVisible = selected;
-}, { immediate: true });
+	mediaOverviewStore.$patch({ downloadButtonVisible: selected });
+}, { immediate: true, flush: 'sync' });
 useMediaOverviewBarDownloadCommandBus().on(() => {
-	if (!rootSelected.value)
+	if (!get(rootSelected) || get(originals).length === 0)
 		return;
+	const file = get(originals).find((original) => original.id === get(selectedOriginal))?.files[0];
 	const command: DownloadMediaDTO = {
 		type: PlexMediaType.OtherVideos,
 		mediaIds: [props.mediaItem.id],
 		plexLibraryId: props.mediaItem.plexLibraryId,
 		plexServerId: props.mediaItem.plexServerId,
 		keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
-		qualities: [],
+		qualities: file
+			? [{
+					mediaId: props.mediaItem.id, dataId: file.id, mediaDataType: PlexMediaType.OtherVideos, quality: file.videoResolution,
+				}]
+			: [],
 	};
 	sendMediaOverviewDownloadCommand([command]);
 });
 onBeforeUnmount(() => {
-	mediaOverviewStore.downloadButtonVisible = false;
+	mediaOverviewStore.$patch({ downloadButtonVisible: false });
 });
 </script>
 

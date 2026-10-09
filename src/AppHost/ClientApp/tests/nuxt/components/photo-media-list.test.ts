@@ -40,6 +40,17 @@ describe('PhotoMediaList - owned asset selection', () => {
 					id: id + 100, fileName: id === 22 ? 'holiday.mp4' : 'holiday.jpg', size: 1024,
 					duration: id === 22 ? 6000 : 0, audioCodec: '', videoCodec: id === 22 ? 'h264' : '',
 					videoResolution: VideoQuality.Unknown, plexApiMediaId: id, plexApiPartId: id,
+				}, {
+					id: id + 110, fileName: `second-part-${id}.bin`, size: 2048,
+					duration: id === 22 ? 6000 : 0, audioCodec: '', videoCodec: '',
+					videoResolution: VideoQuality.Unknown, plexApiMediaId: id, plexApiPartId: id + 1,
+				}, {
+					id: id + 120, fileName: `alternative-${id}.bin`, size: 4096,
+					duration: id === 22 ? 12000 : 0, audioCodec: '', videoCodec: id === 22 ? 'hevc' : 'webp',
+					videoResolution: VideoQuality.Unknown, plexApiMediaId: id + 1000, plexApiPartId: id + 2,
+				}],
+				qualities: [{
+					mediaId: id, dataId: id + 100, mediaDataType: PlexMediaType.PhotoImage, quality: VideoQuality.Unknown,
 				}],
 			},
 		});
@@ -51,6 +62,9 @@ describe('PhotoMediaList - owned asset selection', () => {
 			partialData: {
 				id, type: PlexMediaType.PhotoAlbum, plexServerId: 3, plexLibraryId: 4,
 				title: `Album ${id}`, hasThumb: false, childCount: 2, children: [asset(21, id), asset(22, id)],
+				qualities: [{
+					mediaId: 21, dataId: 121, mediaDataType: PlexMediaType.PhotoImage, quality: VideoQuality.Unknown,
+				}],
 			},
 		});
 	}
@@ -90,6 +104,7 @@ describe('PhotoMediaList - owned asset selection', () => {
 		expect(commands[0]?.map((command) => ({ ids: command.mediaIds, type: command.type }))).toEqual([
 			{ ids: [22], type: PlexMediaType.PhotoImage },
 		]);
+		expect(commands[0]?.[0]?.qualities).toEqual([]);
 		expect(useMediaOverviewStore().downloadButtonVisible).toBe(true);
 	});
 
@@ -111,6 +126,7 @@ describe('PhotoMediaList - owned asset selection', () => {
 		expect(commands[0]?.map((command) => ({ ids: command.mediaIds, type: command.type }))).toEqual([
 			{ ids: [20], type: PlexMediaType.PhotoAlbum },
 		]);
+		expect(commands[0]?.[0]?.qualities).toEqual([]);
 	});
 
 	test('Should downgrade album selection to remaining assets when one child is unchecked and reset all selection', async () => {
@@ -144,6 +160,7 @@ describe('PhotoMediaList - owned asset selection', () => {
 		const wrapper = await render();
 		const commands = captureDownloads();
 		await wrapper.get('[data-cy="photo-album-checkbox"]').trigger('click');
+		await wrapper.get('[data-cy="photo-original-21-141"]').trigger('click');
 
 		// Act
 		await wrapper.setProps({ mediaItem: album(30) });
@@ -155,24 +172,169 @@ describe('PhotoMediaList - owned asset selection', () => {
 		expect(wrapper.get('[data-cy="photo-asset-checkbox-22"]').attributes('aria-checked')).toBe('false');
 		expect(commands).toEqual([]);
 		expect(useMediaOverviewStore().downloadButtonVisible).toBe(false);
+		expect(wrapper.get('[data-cy="photo-original-automatic-21"]').attributes('aria-checked')).toBe('true');
+
+		// Act
+		await wrapper.get('[data-cy="photo-album-checkbox"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[0]).toMatchObject([{
+			mediaIds: [30], plexLibraryId: 4, plexServerId: 3, type: PlexMediaType.PhotoAlbum, qualities: [],
+		}]);
 	});
 
 	test('Should render only directly owned PhotoImage children and expose an empty state when there are none', async () => {
 		// Arrange
 		const mediaItem = album();
-		mediaItem.children.push(asset(23, 99), asset(24, 20, PlexMediaType.OtherVideos));
+		mediaItem.children.push(
+			asset(23, 99),
+			asset(24, 20, PlexMediaType.OtherVideos),
+			{ ...asset(25), plexLibraryId: 99 },
+			{ ...asset(26), plexServerId: 99 },
+		);
 		const wrapper = await render(mediaItem);
 
 		// Assert
 		expect(wrapper.find('[data-cy="photo-asset-23"]').exists()).toBe(false);
 		expect(wrapper.find('[data-cy="photo-asset-24"]').exists()).toBe(false);
 
+		expect(wrapper.find('[data-cy="photo-asset-25"]').exists()).toBe(false);
+		expect(wrapper.find('[data-cy="photo-asset-26"]').exists()).toBe(false);
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="photo-original-21-141"]').trigger('click');
+		await wrapper.get('[data-cy="photo-album-checkbox"]').trigger('click');
 		// Act
 		await wrapper.setProps({ mediaItem: { ...mediaItem, children: [] } });
 
+		useMediaOverviewBarDownloadCommandBus().emit('download');
 		// Assert
 		expect(wrapper.get('[data-cy="photo-assets-empty"]').text()).toBe('No images or clips found in this album.');
 		expect(wrapper.find('[data-cy="photo-asset-21"]').exists()).toBe(false);
 		expect(mock.history.get).toHaveLength(0);
+		expect(wrapper.get('[data-cy="photo-album-checkbox"]').attributes('aria-disabled')).toBe('true');
+		expect(commands).toEqual([]);
+		expect(useMediaOverviewStore().downloadButtonVisible).toBe(false);
+	});
+
+	test('Should send one selector per multipart original under a selected album without ancestor and leaf duplicates', async () => {
+		// Arrange
+		const wrapper = await render();
+		const commands = captureDownloads();
+
+		// Act
+		await wrapper.get('[data-cy="photo-original-21-121"]').trigger('click');
+		await wrapper.get('[data-cy="photo-original-22-142"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands).toEqual([]);
+		expect(wrapper.findAll('[role="radio"]')).toHaveLength(6);
+		expect(wrapper.get('[data-cy="photo-asset-21"]').text()).toContain('second-part-21.bin');
+		expect(wrapper.get('[data-cy="photo-asset-21"]').text()).toContain('alternative-21.bin');
+		expect(wrapper.findAll('[data-cy="photo-original-21-131"]')).toHaveLength(0);
+		expect(wrapper.get('[data-cy="photo-original-21-121"]').attributes('aria-label')).toContain('second-part-21.bin');
+
+		// Act
+		await wrapper.get('[data-cy="photo-album-checkbox"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[0]).toMatchObject([{
+			type: PlexMediaType.PhotoAlbum, mediaIds: [20], plexLibraryId: 4, plexServerId: 3,
+			qualities: [
+				{ mediaId: 21, dataId: 121, mediaDataType: PlexMediaType.PhotoImage, quality: VideoQuality.Unknown },
+				{ mediaId: 22, dataId: 142, mediaDataType: PlexMediaType.PhotoImage, quality: VideoQuality.Unknown },
+			],
+		}]);
+		expect(commands[0]).toHaveLength(1);
+
+		// Act
+		await wrapper.get('[data-cy="photo-asset-checkbox-21"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[1]).toMatchObject([{
+			type: PlexMediaType.PhotoImage, mediaIds: [22],
+			qualities: [{ mediaId: 22, dataId: 142, mediaDataType: PlexMediaType.PhotoImage, quality: VideoQuality.Unknown }],
+		}]);
+		expect(commands[1]).toHaveLength(1);
+		expect(wrapper.get('[data-cy="photo-album-checkbox"]').attributes('aria-checked')).toBe('mixed');
+	});
+
+	test('Should use only the selected leaf original and restore backend fallback when Automatic is chosen', async () => {
+		// Arrange
+		const wrapper = await render();
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="photo-original-21-141"]').trigger('click');
+		await wrapper.get('[data-cy="photo-original-22-122"]').trigger('click');
+
+		// Act
+		await wrapper.get('[data-cy="photo-asset-checkbox-21"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[0]).toMatchObject([{
+			type: PlexMediaType.PhotoImage, mediaIds: [21], plexLibraryId: 4, plexServerId: 3,
+			qualities: [{ mediaId: 21, dataId: 141, mediaDataType: PlexMediaType.PhotoImage, quality: VideoQuality.Unknown }],
+		}]);
+		expect(commands[0]).toHaveLength(1);
+
+		// Act
+		await wrapper.get('[data-cy="photo-original-automatic-21"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[1]?.[0]?.qualities).toEqual([]);
+
+		// Act
+		await wrapper.get('[data-cy="photo-album-checkbox"]').trigger('click');
+		await wrapper.get('[data-cy="photo-original-automatic-22"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[2]).toMatchObject([{ type: PlexMediaType.PhotoAlbum, mediaIds: [20], qualities: [] }]);
+		expect(commands[2]).toHaveLength(1);
+	});
+
+	test('Should reset an optional original even when no media has been selected', async () => {
+		// Arrange
+		const wrapper = await render();
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="photo-original-21-141"]').trigger('click');
+
+		// Act
+		await wrapper.get('[data-cy="photo-reset-selection"]').trigger('click');
+		await wrapper.get('[data-cy="photo-asset-checkbox-21"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(wrapper.get('[data-cy="photo-original-automatic-21"]').attributes('aria-checked')).toBe('true');
+		expect(wrapper.get('[data-cy="photo-selected-count"]').text()).toBe('1 selected');
+		expect(commands[0]?.[0]?.qualities).toEqual([]);
+	});
+
+	test('Should retain leaf commands when every image is individually selected rather than explicitly selecting the album', async () => {
+		// Arrange
+		const wrapper = await render();
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="photo-original-21-141"]').trigger('click');
+
+		// Act
+		await wrapper.get('[data-cy="photo-asset-checkbox-21"]').trigger('click');
+		await wrapper.get('[data-cy="photo-asset-checkbox-22"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(wrapper.get('[data-cy="photo-album-checkbox"]').attributes('aria-checked')).toBe('true');
+		expect(wrapper.get('[data-cy="photo-selected-count"]').text()).toBe('2 selected');
+		expect(commands[0]).toMatchObject([
+			{
+				type: PlexMediaType.PhotoImage, mediaIds: [21],
+				qualities: [{ mediaId: 21, dataId: 141, mediaDataType: PlexMediaType.PhotoImage, quality: VideoQuality.Unknown }],
+			},
+			{ type: PlexMediaType.PhotoImage, mediaIds: [22], qualities: [] },
+		]);
+		expect(commands[0]).toHaveLength(2);
 	});
 });
