@@ -121,7 +121,7 @@ public interface IPathProvider
     /// <summary>
     /// Gets the default folder name used for uncategorized media under the root media directory.
     /// </summary>
-    public static string DefaultOtherFolderName => "Other";
+    public static string DefaultOtherFolderName => "OtherVideos";
 
     /// <summary>
     /// Gets the default folder name used for game libraries under the root media directory.
