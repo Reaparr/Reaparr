@@ -279,8 +279,10 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         // Act
         await Sut.Execute(context);
 
-        // Assert
-        context.Result.ShouldBeNull();
+        if (scenario == "cleanup-failure")
+            context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
+        else
+            context.Result.ShouldBeNull();
         var persisted = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!;
         persisted.Id.ShouldBe(target.Id);
         persisted.ToParentKey().ShouldBe(target.ToParentKey());
@@ -525,11 +527,12 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         // Act
         await Sut.Execute(context);
 
-        // Assert
         moveOutcome.ShouldNotBeNull();
         moveOutcome!.Errors.Count.ShouldBe(1);
         moveOutcome.IsCancelled.ShouldBe(scenario == "cancelled");
-        context.Result.ShouldBeNull();
+        context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(
+            scenario == "cancelled" ? JobStatus.Cancelled : JobStatus.Failed
+        );
         var persisted = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!;
         persisted.DownloadStatus.ShouldBe(
             scenario == "cancelled" ? DownloadStatus.MovePaused : DownloadStatus.MoveError

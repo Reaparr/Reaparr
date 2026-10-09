@@ -9,6 +9,13 @@ public static partial class DbContextExtensions
         PlexMediaType mediaType
     )
     {
+        Result<int> ToLookupResult(int id) =>
+            id == 0
+                ? Result.Fail<int>(
+                    $"Media with rating key {plexApiRatingKey} was not found on server {plexServerId} for type {mediaType}"
+                )
+                : Result.Ok(id);
+
         switch (mediaType)
         {
             case PlexMediaType.Movie:
@@ -17,7 +24,7 @@ public static partial class DbContextExtensions
                     .PlexMovies.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.TvShow:
             {
@@ -25,7 +32,7 @@ public static partial class DbContextExtensions
                     .PlexTvShows.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.Season:
             {
@@ -35,7 +42,7 @@ public static partial class DbContextExtensions
                     )
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.Episode:
             {
@@ -45,7 +52,7 @@ public static partial class DbContextExtensions
                     )
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.MusicArtist:
             {
@@ -53,7 +60,7 @@ public static partial class DbContextExtensions
                     .PlexArtists.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.MusicAlbum:
             {
@@ -61,7 +68,7 @@ public static partial class DbContextExtensions
                     .PlexAlbums.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.MusicTrack:
             {
@@ -69,7 +76,7 @@ public static partial class DbContextExtensions
                     .PlexTracks.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.PhotoAlbum:
             {
@@ -79,7 +86,7 @@ public static partial class DbContextExtensions
                     )
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.PhotoImage:
             {
@@ -89,7 +96,7 @@ public static partial class DbContextExtensions
                     )
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             case PlexMediaType.OtherVideos:
             {
@@ -99,7 +106,7 @@ public static partial class DbContextExtensions
                     )
                     .Select(x => x.Id)
                     .FirstOrDefaultAsync(CancellationToken.None);
-                return Result.Ok(id);
+                return ToLookupResult(id);
             }
             default:
                 return Result.Fail(
