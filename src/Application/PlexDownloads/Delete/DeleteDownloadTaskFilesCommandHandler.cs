@@ -59,30 +59,7 @@ public class DeleteDownloadTaskFilesCommandHandler : ICommandHandler<DeleteDownl
                     if (string.IsNullOrEmpty(downloadRoot))
                         return _path.GetPathRoot(_path.GetFullPath(g.Key)) ?? string.Empty;
 
-                    // stopRoot is the category folder directly under the download root.
-                    // Matches the hardcoded subfolder names used in DownloadTaskFileBase.DownloadDirectory.
-                    return task.DownloadTaskType switch
-                    {
-                        // TODO move this into a shared helper to determinde the download root subfolder for a given task type, so that the same logic is used in both places.
-                        DownloadTaskType.MovieData => _path.Combine(downloadRoot, IPathProvider.DefaultMovieFolderName),
-                        DownloadTaskType.EpisodeData => _path.Combine(
-                            downloadRoot,
-                            IPathProvider.DefaultTvShowsFolderName
-                        ),
-                        DownloadTaskType.MusicTrackData => _path.Combine(
-                            downloadRoot,
-                            IPathProvider.DefaultMusicFolderName
-                        ),
-                        DownloadTaskType.PhotoData => _path.Combine(
-                            downloadRoot,
-                            IPathProvider.DefaultPhotosFolderName
-                        ),
-                        DownloadTaskType.OtherVideoData => _path.Combine(
-                            downloadRoot,
-                            IPathProvider.DefaultOtherFolderName
-                        ),
-                        _ => downloadRoot,
-                    };
+                    return task.DirectoryMeta.GetDownloadCategoryDirectory(task.DownloadTaskType);
                 },
                 StringComparer.OrdinalIgnoreCase
             );

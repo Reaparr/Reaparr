@@ -35,7 +35,7 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         defaultTvShowsFolderName.ShouldBe("TvShows");
         defaultMusicFolderName.ShouldBe("Music");
         defaultPhotosFolderName.ShouldBe("Photos");
-        defaultOtherFolderName.ShouldBe("Other");
+        defaultOtherFolderName.ShouldBe("OtherVideos");
         defaultGamesFolderName.ShouldBe("Games");
         configFileName.ShouldBe("ReaparrSettings.json");
         databaseName.ShouldBe("ReaparrDB.db");
@@ -194,7 +194,7 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
     [Arguments(PlexMediaType.TvShow, "TvShows")]
     [Arguments(PlexMediaType.MusicArtist, "Music")]
     [Arguments(PlexMediaType.PhotoImage, "Photos")]
-    [Arguments(PlexMediaType.OtherVideos, "Other")]
+    [Arguments(PlexMediaType.OtherVideos, "OtherVideos")]
     [Arguments(PlexMediaType.Games, "Games")]
     public void ShouldReturnMediaFolderInsideDataDirectory_WhenPerTypeOverrideIsMissing(
         PlexMediaType mediaType,
