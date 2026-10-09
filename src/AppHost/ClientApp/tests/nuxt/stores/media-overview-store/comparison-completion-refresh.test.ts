@@ -3,13 +3,13 @@ import { createPinia, setActivePinia } from 'pinia';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import {
 	generatePlexLibrary,
-	generatePlexMediaSlims,
+	generatePlexMedia,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
 	Seed,
 } from '@mock';
 import { useLibraryStore, useMediaOverviewStore } from '@store';
-import { type LibraryComparisonCompletedDTO, type PlexMediaSlimDTO, PlexMediaType } from '@dto';
+import { type LibraryComparisonCompletedDTO, type PlexMediaStatisticsDTO, PlexMediaType } from '@dto';
 
 describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', () => {
 	let { mock } = baseVars();
@@ -23,19 +23,17 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		setActivePinia(createPinia());
 	});
 
-	function createMediaPage(page: number, queryHash: string): ReturnType<typeof generatePlexMediaStatisticsDTO> {
-		const mediaItems = generatePlexMediaSlims({
-			config: { tvShowCount: 3 },
+	function createMediaPage(page: number, queryHash: string, type = PlexMediaType.TvShow): PlexMediaStatisticsDTO {
+		const mediaItems = Array.from({ length: 3 }, (_, index) => generatePlexMedia({
+			config: { seed: 4817, seasonCount: 0 },
 			partialData: {
 				plexServerId: 1,
 				plexLibraryId: 17,
-				type: PlexMediaType.TvShow,
+				type,
+				id: (page * 100) + index,
+				sortIndex: (page * 100) + index,
 			},
-		}).map((item, index) => ({
-			...item,
-			id: (page * 100) + index,
-			sortIndex: (page * 100) + index,
-		})) as PlexMediaSlimDTO[];
+		}));
 		const pageData = generatePlexMediaStatisticsDTO(mediaItems);
 		pageData.page = page;
 		pageData.pageSize = 100;
@@ -45,7 +43,7 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		return pageData;
 	}
 
-	test('Should re-request cached pages when current library is included in affected library ids', async () => {
+	test.each([PlexMediaType.TvShow, PlexMediaType.MusicArtist])('Should re-request cached %s pages when current library is affected', async (type) => {
 		// Arrange
 		const libraryId = 17;
 		const mediaOverviewStore = useMediaOverviewStore();
@@ -53,7 +51,7 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		const library = generatePlexLibrary({
 			seed: new Seed(4817),
 			plexServerId: 1,
-			type: PlexMediaType.TvShow,
+			type,
 			partialData: {
 				id: libraryId,
 			},
@@ -61,8 +59,10 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		libraryStore.updateLibrary(library);
 		mediaOverviewStore.libraryId = libraryId;
 
-		const initialPage = createMediaPage(1, 'initial-query-hash');
-		const refreshedPage = createMediaPage(1, 'refreshed-query-hash');
+		const initialPage = createMediaPage(1, 'initial-query-hash', type);
+		const refreshedPage = createMediaPage(1, 'refreshed-query-hash', type);
+		initialPage.mediaList.forEach((item) => item.comparisonId = 3);
+		refreshedPage.mediaList.forEach((item) => item.comparisonId = 1);
 		let requestCount = 0;
 		mock.onGet(new RegExp('/api/PlexMedia')).reply(() => {
 			requestCount++;
@@ -72,7 +72,7 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		await subscribeSpyTo(mediaOverviewStore.requestMediaPage(1)).onComplete();
 		const notification: LibraryComparisonCompletedDTO = {
 			affectedLibraryIds: [214, libraryId],
-			mediaType: PlexMediaType.TvShow,
+			mediaType: type,
 			completedAt: new Date().toISOString(),
 		};
 
@@ -87,7 +87,7 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		expect(mediaOverviewStore.getMediaItems).toEqual(refreshedPage.mediaList);
 	});
 
-	test('Should ignore comparison completion when current library is not affected', async () => {
+	test.each([PlexMediaType.TvShow, PlexMediaType.MusicArtist])('Should ignore %s comparison completion when current library is not affected', async (type) => {
 		// Arrange
 		const libraryId = 17;
 		const mediaOverviewStore = useMediaOverviewStore();
@@ -95,7 +95,7 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		const library = generatePlexLibrary({
 			seed: new Seed(4818),
 			plexServerId: 1,
-			type: PlexMediaType.TvShow,
+			type,
 			partialData: {
 				id: libraryId,
 			},
@@ -103,14 +103,14 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		libraryStore.updateLibrary(library);
 		mediaOverviewStore.libraryId = libraryId;
 
-		const initialPage = createMediaPage(1, 'initial-query-hash');
+		const initialPage = createMediaPage(1, 'initial-query-hash', type);
 		mock.onGet(new RegExp('/api/PlexMedia')).reply(200, generateResultDTO(initialPage));
 
 		await subscribeSpyTo(mediaOverviewStore.requestMediaPage(1)).onComplete();
 		const notification: LibraryComparisonCompletedDTO = {
 			affectedLibraryIds: [214, 18],
-			mediaType: PlexMediaType.TvShow,
-			completedAt: new Date().toISOString(),
+			mediaType: type,
+			completedAt: '2026-10-09T00:00:00Z',
 		};
 
 		// Act
@@ -122,5 +122,25 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		expect(mock.history.get.filter((request) => request.url === '/api/PlexMedia')).toHaveLength(1);
 		expect(mediaOverviewStore.queryHash).toBe('initial-query-hash');
 		expect(mediaOverviewStore.getMediaItems).toEqual(initialPage.mediaList);
+	});
+	test('Should ignore a different media family completion even when the Music library id is affected', async () => {
+		// Arrange
+		const store = useMediaOverviewStore();
+		useLibraryStore().updateLibrary(generatePlexLibrary({
+			seed: new Seed(4819), plexServerId: 1, type: PlexMediaType.MusicArtist, partialData: { id: 17 },
+		}));
+		store.libraryId = 17;
+		const initialPage = createMediaPage(1, 'music-query', PlexMediaType.MusicArtist);
+		mock.onGet('/api/PlexMedia').reply(200, generateResultDTO(initialPage));
+		await subscribeSpyTo(store.requestMediaPage(1)).onComplete();
+
+		// Act
+		await subscribeSpyTo(store.refreshCurrentMediaDataWhenComparisonCompleted({
+			affectedLibraryIds: [17], mediaType: PlexMediaType.Movie, completedAt: '2026-10-09T00:00:00Z',
+		})).onComplete();
+
+		// Assert
+		expect(mock.history.get.filter((request) => request.url === '/api/PlexMedia')).toHaveLength(1);
+		expect(store.getMediaItems).toEqual(initialPage.mediaList);
 	});
 });

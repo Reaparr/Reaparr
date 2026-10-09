@@ -132,6 +132,7 @@
 						v-if="supportsComparison"
 						class="comparison-state-button"
 						:comparison-state="getPlexMediaComparisonState(mediaItem)"
+						:media-type="mediaType"
 						show-tooltip
 						dense
 						:clickable="comparisonBadgeClickable"
@@ -259,10 +260,13 @@ const mobileMenuVisible = shallowRef(false);
 const mediaType = computed(() => props.mediaItem?.type ?? PlexMediaType.Unknown);
 
 const hasDetailsAction = computed(() => Convert.mediaTypeToDetailsPath(props.mediaItem) !== null);
-const supportsComparison = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow].includes(get(mediaType)));
+const supportsComparison = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist].includes(get(mediaType)));
 const supportsVideoQuality = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.OtherVideos].includes(get(mediaType)));
 
 const comparisonBadgeClickable = computed(() => {
+	if (get(mediaType) === PlexMediaType.MusicArtist)
+		return [PlexMediaComparisonState.Missing, PlexMediaComparisonState.Partial].includes(getPlexMediaComparisonState(props.mediaItem));
+
 	return [
 		PlexMediaComparisonState.Missing,
 		PlexMediaComparisonState.HigherQuality,

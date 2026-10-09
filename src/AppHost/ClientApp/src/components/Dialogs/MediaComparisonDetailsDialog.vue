@@ -1,18 +1,19 @@
 <template>
 	<QCardDialog
 		:name="DialogType.MediaComparisonDetailsDialog"
-		:loading="loading"
 		close-button
 		full-height
 		full-width
 		cy="media-comparison-details-dialog"
-		@opened="onOpen">
+		@opened="onOpen"
+		@closed="onClose">
 		<template #title>
 			<div class="media-comparison-details__header">
 				<MediaComparisonStateButton
 					v-if="selectedMediaItem"
 					show-tooltip
 					:comparison-state="getPlexMediaComparisonState(selectedMediaItem)"
+					:media-type="selectedMediaItem.type"
 					dense
 					cy="media-comparison-details-dialog-state" />
 				<QText
@@ -24,7 +25,7 @@
 					class="media-comparison-details__download-button media-comparison-details__download-button--desktop"
 					:label="t('components.media-overview.comparison.download-selected')"
 					icon="mdi-download"
-					:disabled="selectedDownloadRows.length === 0"
+					:disabled="!canDownload || selectedDownloadRows.length === 0"
 					cy="media-comparison-details-dialog-download-button"
 					@click="downloadRows(selectedDownloadRows)" />
 			</div>
@@ -34,36 +35,80 @@
 			<div
 				v-if="selectedMediaItem"
 				class="media-comparison-details">
+				<div
+					v-if="comparisonFailed"
+					role="alert"
+					class="q-pa-md"
+					data-cy="media-comparison-details-error">
+					<QText :value="t('components.media-overview.comparison.details-load-error')" />
+					<BaseButton
+						:label="t('components.download-confirmation.retry')"
+						cy="media-comparison-details-retry"
+						@click="requestComparison" />
+				</div>
 				<QTreeTable
+					v-if="!comparisonFailed"
 					class="media-comparison-details__table"
 					data-cy="media-comparison-details-table"
 					:loading="loading"
 					:nodes="detailTreeRows"
 					:columns="responsiveComparisonColumns"
-					:selection-keys="selectedRows"
+					:selection-keys="isMusic ? undefined : selectedRows"
 					@selected="onSelectionChange">
+					<template
+						v-if="isMusic"
+						#header-title>
+						<QCheckbox
+							:model-value="getMusicSelectionValue(comparisonRows)"
+							:disable="!canDownload || getMissingMusicTracks(comparisonRows).length === 0"
+							:aria-label="t('components.media-overview.comparison.download-selected')"
+							data-cy="media-comparison-details-select-all"
+							@update:model-value="toggleMusicSelection(comparisonRows, $event === true)" />
+						<QText :value="t('components.media-overview.comparison.details-column-title')" />
+					</template>
 					<template #cell-title="{ node, data }: { node: IComparisonDetailTreeNode; data: IComparisonDetailsRow }">
 						<div class="media-comparison-details__row-content">
 							<div class="media-comparison-details__row-title">
+								<QCheckbox
+									v-if="isMusic"
+									:model-value="getMusicSelectionValue([data])"
+									:disable="!canDownload || getMissingMusicTracks([data]).length === 0"
+									:aria-label="data.title"
+									:data-cy="`media-comparison-details-select-${node.key}`"
+									@update:model-value="toggleMusicSelection([data], $event === true)"
+									@click.stop />
 								<MediaComparisonStateButton
 									:comparison-state="getComparisonState(data)"
+									:media-type="data.type"
 									show-tooltip
 									dense />
 								<QText
 									:cy="`media-comparison-details-title-${node.key}`"
 									:value="data.title" />
+								<IconSquareButton
+									v-if="isMusic && $q.screen.lt.md && getMissingMusicTracks([data]).length > 0"
+									:cy="`media-comparison-details-download-${node.key}`"
+									icon="mdi-download"
+									:tooltip-text="t('components.media-overview.comparison.download-selected')"
+									:disabled="!canDownload"
+									dense
+									@click.stop="downloadRows([data])" />
 							</div>
 							<div
 								v-if="$q.screen.lt.md"
 								class="media-comparison-details__metadata">
-								<div class="media-comparison-details__metadata-item">
+								<div
+									v-if="!isMusic"
+									class="media-comparison-details__metadata-item">
 									<QText
 										class="media-comparison-details__metadata-label"
 										size="caption"
 										:value="t('components.media-overview.comparison.details-column-owned-quality')" />
 									<MediaVideoQuality :quality="data.ownedQuality ?? VideoQuality.None" />
 								</div>
-								<div class="media-comparison-details__metadata-item">
+								<div
+									v-if="!isMusic"
+									class="media-comparison-details__metadata-item">
 									<QText
 										class="media-comparison-details__metadata-label"
 										size="caption"
@@ -111,7 +156,9 @@
 						<QRow justify="end">
 							<QCol cols="auto">
 								<IconSquareButton
+									v-if="!isMusic || getMissingMusicTracks([data]).length > 0"
 									:cy="`media-comparison-details-download-${node.key}`"
+									:disabled="!canDownload"
 									icon="mdi-download"
 									:tooltip-text="t('components.media-overview.comparison.download-selected')"
 									dense
@@ -120,7 +167,9 @@
 						</QRow>
 					</template>
 					<template #empty>
-						<div class="full-width text-center q-pa-md">
+						<div
+							v-if="!loading"
+							class="full-width text-center q-pa-md">
 							{{ t('components.media-overview.comparison.details-no-actionable-rows') }}
 						</div>
 					</template>
@@ -135,7 +184,7 @@
 				:label="t('components.media-overview.comparison.download-selected')"
 				icon="mdi-download"
 				block
-				:disabled="selectedDownloadRows.length === 0"
+				:disabled="!canDownload || selectedDownloadRows.length === 0"
 				cy="media-comparison-details-dialog-download-button"
 				@click="downloadRows(selectedDownloadRows)" />
 		</template>
@@ -145,21 +194,21 @@
 <script setup lang="ts">
 import { useSubscription } from '@vueuse/rxjs';
 import { get, set } from '@vueuse/core';
-import { VideoQuality } from '@dto';
+import { PlexMediaComparisonState, PlexMediaType, VideoQuality } from '@dto';
 import type {
 	DownloadMediaDTO,
 	PlexMediaComparisonDetailsRowDTO,
 	PlexMediaSlimDTO,
-	PlexMediaComparisonState,
 } from '@dto';
 import { DialogType } from '@enums';
 import type { QTreeTableColumn } from '@props';
 import { QTreeTableColumnType } from '@props';
-import { useDialogStore, useMediaStore, useSettingsStore } from '@store';
+import { useDialogStore, useLibraryStore, useMediaStore, useServerStore, useSettingsStore } from '@store';
 import { getPlexMediaComparisonState, getPlexMediaComparisonStateFromId } from '@composables';
 import type { TreeNode } from 'primevue/treenode';
 import type { TreeTableSelectionKeys } from 'primevue/treetable';
-import { uniqueId } from 'lodash-es';
+import { omit, uniqueId, uniqBy } from 'lodash-es';
+import { catchError, defer, EMPTY, finalize, map, Subject, switchMap, take, throwIfEmpty } from 'rxjs';
 
 interface IComparisonDetailsRow extends Omit<PlexMediaComparisonDetailsRowDTO, 'children'> {
 	key: string;
@@ -180,6 +229,8 @@ const libraryStore = useLibraryStore();
 const serverStore = useServerStore();
 
 const loading = ref(false);
+const comparisonFailed = ref(false);
+const comparisonRequests = new Subject<PlexMediaSlimDTO | null>();
 const comparisonRows = ref<IComparisonDetailsRow[]>([]);
 const selectedMediaItem = ref<PlexMediaSlimDTO | null>(null);
 const selectedRows = ref<TreeTableSelectionKeys>({});
@@ -187,6 +238,8 @@ const selectedRows = ref<TreeTableSelectionKeys>({});
 const detailTreeRows = computed(() => mapToTreeNodes(get(comparisonRows)));
 
 const selectedDownloadRows = computed(() => getSelectedDownloadRows(get(comparisonRows)));
+const isMusic = computed(() => get(selectedMediaItem)?.type === PlexMediaType.MusicArtist);
+const canDownload = computed(() => get(selectedMediaItem) !== null && !get(loading) && !get(comparisonFailed));
 
 const comparisonColumns: QTreeTableColumn[] = [
 	{
@@ -225,13 +278,10 @@ const comparisonColumns: QTreeTableColumn[] = [
 ];
 
 const responsiveComparisonColumns = computed<QTreeTableColumn[]>(() => {
-	if (!$q.screen.lt.md)
-		return comparisonColumns;
-
-	return [{
-		header: t('components.media-overview.comparison.details-column-title'),
-		field: 'title',
-	}];
+	const columns = comparisonColumns
+		.filter((column) => !get(isMusic) || !['ownedQuality', 'remoteQuality'].includes(column.field))
+		.map((column) => column.field === 'title' ? { ...column, selection: !get(isMusic) } : column);
+	return $q.screen.lt.md ? columns.filter((column) => column.field === 'title') : columns;
 });
 
 function mapToTreeNodes(rows: IComparisonDetailsRow[]): IComparisonDetailTreeNode[] {
@@ -256,24 +306,82 @@ function getComparisonState(row: IComparisonDetailsRow): PlexMediaComparisonStat
 }
 
 function onOpen(value: unknown) {
-	const mediaItem = value as PlexMediaSlimDTO;
-	set(selectedMediaItem, mediaItem);
-	set(loading, true);
-	set(comparisonRows, []);
-	set(selectedRows, {});
-	useSubscription(
-		mediaStore.getMediaComparisonDetails(mediaItem.id, mediaItem.type).subscribe({
-			next: (details) => set(comparisonRows, details.rows.map(toComparisonRow)),
-			complete: () => set(loading, false),
-			error: () => set(loading, false),
-		}),
-	);
+	set(selectedMediaItem, value as PlexMediaSlimDTO);
+	requestComparison();
 }
 
+function requestComparison() {
+	comparisonRequests.next(get(selectedMediaItem));
+}
+
+function onClose() {
+	comparisonRequests.next(null);
+	set(selectedMediaItem, null);
+}
+
+useSubscription(
+	comparisonRequests.pipe(
+		switchMap((mediaItem) => {
+			set(comparisonRows, []);
+			set(selectedRows, {});
+			set(comparisonFailed, false);
+			set(loading, mediaItem !== null);
+			if (!mediaItem)
+				return EMPTY;
+
+			return defer(() => mediaStore.getMediaComparisonDetails(mediaItem.id, mediaItem.type)).pipe(
+				take(1),
+				throwIfEmpty(),
+				map((details) => details.rows.map(toComparisonRow)),
+				catchError(() => {
+					set(comparisonFailed, true);
+					return EMPTY;
+				}),
+				finalize(() => set(loading, false)),
+			);
+		}),
+	).subscribe((rows) => set(comparisonRows, rows)),
+);
+
 function onSelectionChange(keys: TreeTableSelectionKeys) {
+	if (!get(canDownload))
+		return;
 	set(selectedRows, Object.fromEntries(
 		Object.entries(keys).filter(([, value]) => value.checked || value.partialChecked),
 	));
+	if (get(isMusic)) {
+		const tracks = getMissingMusicTracks(getSelectedDownloadRows(get(comparisonRows)));
+		set(selectedRows, Object.fromEntries(tracks.map((track) => [track.key, { checked: true, partialChecked: false }])));
+	}
+}
+
+function getMissingMusicTracks(rows: IComparisonDetailsRow[]): IComparisonDetailsRow[] {
+	return rows.flatMap((row) => {
+		if (getComparisonState(row) === PlexMediaComparisonState.Owned)
+			return [];
+		if (row.type === PlexMediaType.MusicTrack) {
+			return row.children.length === 0 && getComparisonState(row) === PlexMediaComparisonState.Missing ? [row] : [];
+		}
+		return getMissingMusicTracks(row.children);
+	});
+}
+
+function getMusicSelectionValue(rows: IComparisonDetailsRow[]): boolean | null {
+	const tracks = getMissingMusicTracks(rows);
+	const selectedCount = tracks.filter((track) => get(selectedRows)[track.key]?.checked).length;
+	return tracks.length > 0 && selectedCount === tracks.length ? true : selectedCount > 0 ? null : false;
+}
+
+function toggleMusicSelection(rows: IComparisonDetailsRow[], checked: boolean) {
+	if (!get(canDownload))
+		return;
+	const tracks = getMissingMusicTracks(rows);
+	const keys = checked ? { ...get(selectedRows) } : omit(get(selectedRows), tracks.map((track) => track.key));
+	if (checked) {
+		for (const track of tracks)
+			keys[track.key] = { checked: true, partialChecked: false };
+	}
+	set(selectedRows, keys);
 }
 
 function getSelectedDownloadRows(rows: IComparisonDetailsRow[]): IComparisonDetailsRow[] {
@@ -287,8 +395,12 @@ function getSelectedDownloadRows(rows: IComparisonDetailsRow[]): IComparisonDeta
 }
 
 function downloadRows(rows: IComparisonDetailsRow[]) {
-	const downloadCommands = rows
-		.map(toDownloadMediaCommand);
+	if (!get(canDownload))
+		return;
+	const downloadRows = get(isMusic)
+		? uniqBy(getMissingMusicTracks(rows), (row) => `${row.type}-${row.plexServerId}-${row.plexLibraryId}-${row.plexMediaId}`)
+		: rows;
+	const downloadCommands = downloadRows.map(toDownloadMediaCommand);
 
 	if (downloadCommands.length === 0)
 		return;

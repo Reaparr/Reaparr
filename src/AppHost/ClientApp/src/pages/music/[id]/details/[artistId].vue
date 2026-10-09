@@ -87,6 +87,7 @@
 				@click="backToArtists" />
 		</div>
 
+		<MediaComparisonDetailsDialog />
 		<DownloadConfirmation @download="downloadStore.downloadMedia($event)" />
 		<QLoadingOverlay :loading="loading" />
 	</QPage>

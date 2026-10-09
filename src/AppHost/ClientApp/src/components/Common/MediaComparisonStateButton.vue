@@ -24,11 +24,12 @@
 </template>
 
 <script setup lang="ts">
-import { PlexMediaComparisonState } from '@dto';
+import { PlexMediaComparisonState, PlexMediaType } from '@dto';
 import { translateMediaComparisonState } from '@composables';
 
 const props = withDefaults(defineProps<{
 	comparisonState: PlexMediaComparisonState;
+	mediaType: PlexMediaType;
 	showTooltip?: boolean;
 	showLabel?: boolean;
 	size?: string;
@@ -80,7 +81,9 @@ const comparisonBadge = computed((): {
 			};
 		case PlexMediaComparisonState.Missing:
 			return {
-				icon: 'mdi-video-off-outline',
+				icon: [PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack].includes(props.mediaType)
+					? 'mdi-music-note-off-outline'
+					: 'mdi-video-off-outline',
 				tone: 'missing',
 			};
 		case PlexMediaComparisonState.HigherQuality:

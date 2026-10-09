@@ -159,7 +159,7 @@ for (const family of families) {
 			cy.getCy(`sort-option-${MediaSortField.Year}-btn`).click();
 			cy.get('.media-poster-card').first().should('contain.text', 'Synth collection');
 			cy.getCy('media-overview-filter-btn').filter(':visible').click();
-			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.ComparisonState}`).should('not.exist');
+			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.ComparisonState}`).should(family.type === PlexMediaType.MusicArtist ? 'be.visible' : 'not.exist');
 			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.Quality}`).should(family.type === PlexMediaType.OtherVideos ? 'be.visible' : 'not.exist');
 			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.Genres}`).click();
 			cy.contains('.media-filter-menu-list .q-item', 'Jazz').click();

@@ -1,6 +1,5 @@
 <template>
 	<q-list
-		v-if="albums.length > 0"
 		class="music-media-list"
 		data-cy="music-media-list">
 		<q-item class="music-media-list__root">
@@ -17,6 +16,16 @@
 				<q-item-label class="text-h6 text-weight-bold">
 					{{ mediaItem.title }}
 				</q-item-label>
+			</q-item-section>
+			<q-item-section side>
+				<MediaComparisonStateButton
+					:comparison-state="getPlexMediaComparisonState(mediaItem)"
+					:media-type="mediaItem.type"
+					show-tooltip
+					dense
+					:clickable="artistComparisonClickable"
+					:cy="`music-comparison-artist-${mediaItem.id}`"
+					@click="openArtistComparison" />
 			</q-item-section>
 			<q-item-section
 				v-if="selectedCount > 0"
@@ -50,7 +59,15 @@
 						{{ t('components.music-media-list.track-count', { count: album.children.length }) }}
 					</q-item-label>
 				</q-item-section>
-				<q-item-section side>
+				<q-item-section
+					side
+					@click.stop>
+					<MediaComparisonStateButton
+						:comparison-state="getPlexMediaComparisonState(album)"
+						:media-type="album.type"
+						show-tooltip
+						dense
+						:cy="`music-comparison-album-${album.id}`" />
 					<QDuration
 						short
 						:value="album.duration" />
@@ -121,6 +138,12 @@
 							</label>
 						</div>
 					</div>
+					<MediaComparisonStateButton
+						:comparison-state="getPlexMediaComparisonState(track)"
+						:media-type="track.type"
+						show-tooltip
+						dense
+						:cy="`music-comparison-track-${album.id}-${track.id}`" />
 				</div>
 			</div>
 			<div
@@ -132,7 +155,7 @@
 	</q-list>
 
 	<div
-		v-else
+		v-if="albums.length === 0"
 		class="q-pa-lg text-center"
 		data-cy="music-media-list-empty">
 		{{ t('components.music-media-list.no-albums') }}
@@ -141,10 +164,10 @@
 
 <script setup lang="ts">
 import { get, set } from '@vueuse/core';
-import { PlexMediaType, type DownloadMediaDTO, type PlexMediaDataDTO, type PlexMediaDTO, type PlexMediaQualityDTO } from '@dto';
-import { useMediaOverviewStore } from '@store';
+import { PlexMediaComparisonState, PlexMediaType, type DownloadMediaDTO, type PlexMediaDataDTO, type PlexMediaDTO, type PlexMediaQualityDTO } from '@dto';
+import { useDialogStore, useMediaOverviewStore } from '@store';
 import { sendMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
-import { toDownloadMedia } from '@composables/conversion';
+import { getPlexMediaComparisonState, toDownloadMedia } from '@composables/conversion';
 
 const props = defineProps<{
 	mediaItem: PlexMediaDTO;
@@ -152,6 +175,15 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const mediaOverviewStore = useMediaOverviewStore();
+const dialogStore = useDialogStore();
+const artistComparisonClickable = computed(() =>
+	[PlexMediaComparisonState.Missing, PlexMediaComparisonState.Partial].includes(getPlexMediaComparisonState(props.mediaItem)));
+
+function openArtistComparison(): void {
+	if (get(artistComparisonClickable))
+		dialogStore.openMediaComparisonDetailsDialog(props.mediaItem);
+}
+
 const artistSelected = ref(false);
 const selectedAlbumIds = ref(new Set<number>());
 const selectedTrackIds = ref(new Map<number, Set<number>>());
@@ -366,7 +398,7 @@ onBeforeUnmount(() => {
 
 .music-track-row {
 	display: grid;
-	grid-template-columns: 52px minmax(0, 1fr);
+	grid-template-columns: 52px minmax(0, 1fr) auto;
 	align-items: start;
 	gap: 0.75rem;
 	padding: 0.5rem 1rem 0.75rem 2rem;
@@ -429,7 +461,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: $breakpoint-sm-max) {
 	.music-track-row {
-		grid-template-columns: 44px minmax(0, 1fr);
+		grid-template-columns: 44px minmax(0, 1fr) auto;
 		padding: 0.5rem 0.25rem;
 	}
 

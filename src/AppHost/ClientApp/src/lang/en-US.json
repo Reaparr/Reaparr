@@ -225,6 +225,7 @@
                 "details-column-remote-quality": "Available quality",
                 "details-column-owned-quality": "Current quality",
                 "details-no-actionable-rows": "No actionable comparison rows were returned for this media item.",
+                "details-load-error": "Unable to load comparison details. Please retry.",
                 "download-selected": "Download selected"
             }
         },

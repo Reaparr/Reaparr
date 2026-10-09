@@ -1,15 +1,16 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
 import type { Pinia } from 'pinia';
 import type { DownloadMediaDTO, PlexMediaDTO, PlexMediaDataDTO } from '@dto';
-import { PlexMediaType, VideoQuality } from '@dto';
+import { PlexMediaComparisonState, PlexMediaType, VideoQuality } from '@dto';
 import { baseSetup } from '@services-test-base';
 import MusicMediaList from '@/components/MediaOverview/MusicMediaList.vue';
-import { useMediaOverviewStore } from '@store';
+import { useDialogStore, useMediaOverviewStore } from '@store';
 import { listenMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus, useMediaOverviewCommandsBus } from '@composables/event-bus';
 import { createI18n } from 'vue-i18n';
 import messages from '@/lang/en-US.json';
+import MediaComparisonStateButton from '@/components/Common/MediaComparisonStateButton.vue';
 
 function media(overrides: Partial<PlexMediaDTO>): PlexMediaDTO {
 	return {
@@ -115,6 +116,7 @@ describe('MusicMediaList hierarchy selection', () => {
 	afterEach(() => {
 		mounted.forEach((wrapper) => wrapper.unmount());
 		mounted.length = 0;
+		vi.restoreAllMocks();
 		useMediaOverviewCommandsBus().reset();
 		useMediaOverviewBarDownloadCommandBus().reset();
 	});
@@ -324,5 +326,68 @@ describe('MusicMediaList hierarchy selection', () => {
 		expect(wrapper.get('[data-cy="music-artist-checkbox"]').attributes('aria-disabled')).toBe('true');
 		expect(wrapper.get('[data-cy="music-album-checkbox-9"]').attributes('aria-disabled')).toBe('true');
 		expect(commands).toEqual([]);
+	});
+	test('Should display projected hierarchy states and open only the artist-scoped comparison', async () => {
+		// Arrange
+		const item = artistFixture();
+		item.comparisonId = 5;
+		item.children[0]!.comparisonId = 5;
+		item.children[0]!.children[0]!.comparisonId = 3;
+		item.children[0]!.children[1]!.comparisonId = 1;
+		const open = vi.spyOn(useDialogStore(), 'openMediaComparisonDetailsDialog');
+		const wrapper = await render(item);
+		await wrapper.get('[data-cy="music-album-7"] .q-item').trigger('click');
+
+		// Act
+		await wrapper.get('[data-cy="music-comparison-album-7"]').trigger('click');
+		await wrapper.get('[data-cy="music-comparison-track-7-7"]').trigger('click');
+		await wrapper.get('[data-cy="music-comparison-track-7-8"]').trigger('click');
+
+		// Assert
+		expect(open).not.toHaveBeenCalled();
+		expect(wrapper.findAllComponents(MediaComparisonStateButton).map((badge) => ({
+			type: badge.props('mediaType'), state: badge.props('comparisonState'),
+		}))).toEqual(expect.arrayContaining([
+			{ type: PlexMediaType.MusicArtist, state: PlexMediaComparisonState.Partial },
+			{ type: PlexMediaType.MusicAlbum, state: PlexMediaComparisonState.Partial },
+			{ type: PlexMediaType.MusicTrack, state: PlexMediaComparisonState.Missing },
+			{ type: PlexMediaType.MusicTrack, state: PlexMediaComparisonState.Owned },
+		]));
+		expect(wrapper.get('[data-cy="music-comparison-track-7-7"] .q-icon').classes()).toContain('mdi-music-note-off-outline');
+		expect(wrapper.get('[data-cy="music-track-checkbox-7-7"]').attributes('aria-checked')).toBe('false');
+
+		// Act
+		await wrapper.get('[data-cy="music-comparison-artist-100"]').trigger('click');
+
+		// Assert
+		expect(open).toHaveBeenCalledExactlyOnceWith(item);
+	});
+
+	test.each([0, 1, 2, -1])('Should keep artist state %s status-only', async (comparisonId) => {
+		// Arrange
+		const item = artistFixture();
+		item.comparisonId = comparisonId;
+		const open = vi.spyOn(useDialogStore(), 'openMediaComparisonDetailsDialog');
+		const wrapper = await render(item);
+
+		// Act
+		await wrapper.get('[data-cy="music-comparison-artist-100"]').trigger('click');
+
+		// Assert
+		expect(open).not.toHaveBeenCalled();
+	});
+
+	test('Should allow missing artist comparison even when no albums are projected', async () => {
+		// Arrange
+		const item = media({ id: 101, type: PlexMediaType.MusicArtist, comparisonId: 3, children: [] });
+		const open = vi.spyOn(useDialogStore(), 'openMediaComparisonDetailsDialog');
+		const wrapper = await render(item);
+
+		// Act
+		await wrapper.get('[data-cy="music-comparison-artist-101"]').trigger('click');
+
+		// Assert
+		expect(wrapper.find('[data-cy="music-media-list-empty"]').exists()).toBe(true);
+		expect(open).toHaveBeenCalledExactlyOnceWith(item);
 	});
 });

@@ -158,7 +158,7 @@ describe('MediaOverviewStore - Filter / Search', () => {
 	});
 
 	for (const family of [PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum]) {
-		test(`Should remove stale Movie quality, comparison and quality sorting when browsing ${family}`, async () => {
+		test(`Should remove stale Movie upgrade filters and quality sorting when browsing ${family}`, async () => {
 			// Arrange
 			const settings = useSettingsStore();
 			settings.displaySettings.allOverviewViewMode = PlexMediaType.Movie;
@@ -170,7 +170,10 @@ describe('MediaOverviewStore - Filter / Search', () => {
 			mock.onGet('/api/PlexMedia').reply((request) => {
 				const type = request.params.mediaType as PlexMediaType;
 				const unsupported = type !== PlexMediaType.Movie && (
-					request.params.qualityId || request.params.comparisonState || request.params.sort.startsWith('quality:')
+					request.params.qualityId
+					|| [PlexMediaComparisonState.HigherQuality, PlexMediaComparisonState.PartialAndHigherQuality].includes(request.params.comparisonState)
+					|| (type === PlexMediaType.PhotoAlbum && request.params.comparisonState)
+					|| request.params.sort.startsWith('quality:')
 				);
 				const item = generatePlexMedia({
 					config: { seed: 625 }, partialData: { id: 100, type, plexLibraryId: 4, plexServerId: 3, title: 'Root item' },
@@ -181,7 +184,7 @@ describe('MediaOverviewStore - Filter / Search', () => {
 				return [200, generateResultDTO(response)];
 			});
 			await subscribeSpyTo(store.setQualityFilter(1080)).onComplete();
-			await subscribeSpyTo(store.setComparisonStateFilter(PlexMediaComparisonState.NotCompared)).onComplete();
+			await subscribeSpyTo(store.setComparisonStateFilter(PlexMediaComparisonState.HigherQuality)).onComplete();
 			store.toggleSortMedia(MediaSortField.Quality);
 			await flushPromises();
 

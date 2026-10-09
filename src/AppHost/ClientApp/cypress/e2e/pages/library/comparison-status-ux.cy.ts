@@ -12,6 +12,15 @@ function openComparisonFilterMenu() {
 }
 
 describe('Comparison poster status UX', () => {
+	beforeEach(() => {
+		cy.intercept('**/api/**', (request) => {
+			throw new Error(`Unmocked API request: ${request.method} ${request.url}`);
+		});
+		cy.intercept('GET', '**/api/Integration', { statusCode: 200, body: generateResultDTO([]), ...headers });
+		cy.intercept('GET', '**/api/PlexLibrary/0/metadata-filter*', { statusCode: 200, body: generateResultDTO({ countries: [], genres: [], roles: [], qualities: [] }), ...headers });
+		cy.intercept('GET', '**/api/PlexLibrary/0/metadata?*', { statusCode: 200, body: generateResultDTO({ countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 0 }), ...headers });
+	});
+
 	it('Should show comparison badges in the filter menu for all-media movie overview', () => {
 		cy.basePageSetup({
 			plexAccountCount: 1,
@@ -19,6 +28,7 @@ describe('Comparison poster status UX', () => {
 			plexMovieLibraryCount: 2,
 			movieCount: 2,
 			isLoggedIn: true,
+			override: { settings: (settings) => ({ ...settings, displaySettings: { ...settings.displaySettings, allOverviewViewMode: PlexMediaType.Movie } }) },
 		})
 			.then(({ mediaData }) => {
 				mediaData[0]!.media[0]!.comparisonId = getPlexMediaComparisonStateId(PlexMediaComparisonState.HigherQuality);
@@ -41,6 +51,7 @@ describe('Comparison poster status UX', () => {
 			plexMovieLibraryCount: 1,
 			movieCount: 1,
 			isLoggedIn: true,
+			override: { settings: (settings) => ({ ...settings, displaySettings: { ...settings.displaySettings, allOverviewViewMode: PlexMediaType.Movie } }) },
 		})
 			.then(({ mediaData, plexLibraries }) => {
 				const movieLibrary = plexLibraries.find((x) => x.type === PlexMediaType.Movie);

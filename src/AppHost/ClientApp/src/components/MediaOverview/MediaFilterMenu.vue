@@ -146,6 +146,7 @@
 							<q-item-section>
 								<MediaComparisonStateButton
 									:comparison-state="comparisonState.value"
+									:media-type="mediaOverviewStore.getMediaType"
 									show-label
 									dense
 									flat
@@ -229,6 +230,16 @@ const isOwnedLibrary = computed(() => {
 });
 
 const possibleComparisonStates = computed((): PlexMediaComparisonState[] => {
+	if (mediaOverviewStore.getMediaType === PlexMediaType.MusicArtist) {
+		return [
+			PlexMediaComparisonState.NotCompared,
+			PlexMediaComparisonState.Owned,
+			PlexMediaComparisonState.Pending,
+			PlexMediaComparisonState.Partial,
+			...(get(isOwnedLibrary) ? [] : [PlexMediaComparisonState.Missing]),
+		];
+	}
+
 	const baseStates = [
 		PlexMediaComparisonState.NotCompared,
 		PlexMediaComparisonState.Owned,

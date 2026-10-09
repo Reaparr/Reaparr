@@ -235,10 +235,8 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 							set(sortQuery, undefined);
 						}
 					}
-					if (!get(getters.getSupportsComparison)) {
-						state.metadata.comparisonState = null;
-						set(comparisonStateQuery, undefined);
-					}
+					state.metadata.comparisonState = normalizeComparisonState(state.metadata.comparisonState);
+					set(comparisonStateQuery, state.metadata.comparisonState ?? undefined);
 					if (library && (!library.isEnabled || library.syncedAt === null)) {
 						state.loading = false;
 						return of(null);
@@ -336,7 +334,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				countryId: state.metadata.countryId > 0 ? state.metadata.countryId : undefined,
 				genreId: state.metadata.genreId > 0 ? state.metadata.genreId : undefined,
 				qualityId: get(getters.getSupportsVideoQuality) && state.metadata.qualityId > 0 ? state.metadata.qualityId : undefined,
-				comparisonState: get(getters.getSupportsComparison) ? state.metadata.comparisonState ?? undefined : undefined,
+				comparisonState: normalizeComparisonState(state.metadata.comparisonState) ?? undefined,
 				roleId: state.metadata.roleId > 0 ? state.metadata.roleId : undefined,
 				mediaType,
 				plexLibraryId: state.libraryId > 0 ? state.libraryId : undefined,
@@ -479,7 +477,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		},
 		setComparisonStateFilter(comparisonState?: PlexMediaComparisonState | null): Observable<PlexMediaStatisticsDTO | null> {
 			return of(comparisonState).pipe(
-				map((value) => get(getters.getSupportsComparison) && value && Object.values(PlexMediaComparisonState).includes(value) ? value : null),
+				map(normalizeComparisonState),
 				tap((value) => {
 					state.metadata.comparisonState = value;
 					set(comparisonStateQuery, value ?? undefined);
@@ -534,9 +532,12 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				state.metadata.qualityId = qualityId;
 			}
 
-			if (Object.values(PlexMediaComparisonState).includes(comparisonState as PlexMediaComparisonState)) {
-				state.metadata.comparisonState = comparisonState as PlexMediaComparisonState;
-			}
+			state.metadata.comparisonState = get(getters.getMediaType) === PlexMediaType.None
+				&& Object.values(PlexMediaComparisonState).includes(comparisonState as PlexMediaComparisonState)
+				? comparisonState as PlexMediaComparisonState
+				: normalizeComparisonState(comparisonState as PlexMediaComparisonState);
+			if (!state.metadata.comparisonState)
+				set(comparisonStateQuery, undefined);
 
 			if (scrollIndex > 0) {
 				state.currentScrollIndex = scrollIndex;
@@ -625,6 +626,20 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			state.loading = true;
 		},
 	};
+
+	function normalizeComparisonState(value?: PlexMediaComparisonState | null): PlexMediaComparisonState | null {
+		if (!get(getters.getSupportsComparison) || !value || !Object.values(PlexMediaComparisonState).includes(value))
+			return null;
+		if (get(getters.getMediaType) === PlexMediaType.MusicArtist && ![
+			PlexMediaComparisonState.NotCompared,
+			PlexMediaComparisonState.Owned,
+			PlexMediaComparisonState.Pending,
+			PlexMediaComparisonState.Missing,
+			PlexMediaComparisonState.Partial,
+		].includes(value))
+			return null;
+		return value;
+	}
 
 	const getters = {
 		hasSelectedMedia: computed((): boolean => {
@@ -722,7 +737,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		}),
 		getMediaType: computed((): PlexMediaType => state.libraryId === 0 ? settingsStore.displaySettings.allOverviewViewMode : libraryStore.getLibrary(state.libraryId)?.type ?? PlexMediaType.None),
 		getSupportsVideoQuality: computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.OtherVideos].includes(get(getters.getMediaType))),
-		getSupportsComparison: computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow].includes(get(getters.getMediaType))),
+		getSupportsComparison: computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist].includes(get(getters.getMediaType))),
 		getIsSorted: computed((): boolean => {
 			if (state.sortedState.sort === SortDirection.NoSort) {
 				return false;
@@ -778,7 +793,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				PlexMediaComparisonState.PartialAndHigherQuality,
 			];
 
-			return states.map((state) => ({
+			return states.filter((comparisonState) => normalizeComparisonState(comparisonState) !== null).map((state) => ({
 				value: state,
 				label: translateMediaComparisonState(state),
 			}));

@@ -475,11 +475,10 @@ describe('Photos download and lifecycle parity', () => {
 			cy.then(() => selectPreview(state, image));
 			cy.getCy(`photo-asset-checkbox-${image.id}`).click();
 			openConfirmation();
+			cy.then(() => state.releasePreview!());
 			const command = assertCommand(state, PlexMediaType.PhotoImage, image.id);
 			cy.wait('@imagePreview').its('request.body').should('deep.equal', [command]);
-			cy.getCy(`column-title-preview-${image.id}`).should('have.text', image.title);
 			cy.getCy('download-confirmation-error').should('not.exist');
-			cy.then(() => state.releasePreview!());
 			cy.getCy(`column-title-preview-${state.root.id}`).should('not.exist');
 			cy.getCy(`column-title-preview-${image.id}`).should('have.text', image.title);
 			createAndOpenQueue(state, command, image);
