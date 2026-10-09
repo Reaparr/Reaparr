@@ -19,33 +19,6 @@ public class MockPathProvider : IPathProvider
     }
 
     /// <inheritdoc/>
-    public string DefaultConfigFolderName => _pathProvider.DefaultConfigFolderName;
-
-    /// <inheritdoc/>
-    public string DefaultReaparrFolderName => _pathProvider.DefaultReaparrFolderName;
-
-    /// <inheritdoc/>
-    public string DefaultMovieFolderName => _pathProvider.DefaultMovieFolderName;
-
-    /// <inheritdoc/>
-    public string DefaultDownloadsFolderName => _pathProvider.DefaultDownloadsFolderName;
-
-    /// <inheritdoc/>
-    public string DefaultTvShowsFolderName => _pathProvider.DefaultTvShowsFolderName;
-
-    /// <inheritdoc/>
-    public string DefaultMusicFolderName => _pathProvider.DefaultMusicFolderName;
-
-    /// <inheritdoc/>
-    public string DefaultPhotosFolderName => _pathProvider.DefaultPhotosFolderName;
-
-    /// <inheritdoc/>
-    public string DefaultOtherFolderName => _pathProvider.DefaultOtherFolderName;
-
-    /// <inheritdoc/>
-    public string DefaultGamesFolderName => _pathProvider.DefaultGamesFolderName;
-
-    /// <inheritdoc/>
     public string ConfigFileName => _pathProvider.ConfigFileName;
 
     /// <inheritdoc/>
@@ -58,28 +31,31 @@ public class MockPathProvider : IPathProvider
     public string DatabaseWalName => _pathProvider.DatabaseWalName;
 
     /// <inheritdoc/>
-    public string DefaultDownloadsDestinationFolder => Path.Combine(_sandboxFolder, DefaultDownloadsFolderName);
+    public string DefaultDownloadsDestinationFolder =>
+        Path.Combine(_sandboxFolder, IPathProvider.DefaultDownloadsFolderName);
 
     /// <inheritdoc/>
-    public string DefaultMovieDestinationFolder => Path.Combine(_sandboxFolder, DefaultMovieFolderName);
+    public string DefaultMovieDestinationFolder => Path.Combine(_sandboxFolder, IPathProvider.DefaultMovieFolderName);
 
     /// <inheritdoc/>
-    public string DefaultTvShowsDestinationFolder => Path.Combine(_sandboxFolder, DefaultTvShowsFolderName);
+    public string DefaultTvShowsDestinationFolder =>
+        Path.Combine(_sandboxFolder, IPathProvider.DefaultTvShowsFolderName);
 
     /// <inheritdoc/>
-    public string DefaultMusicDestinationFolder => Path.Combine(_sandboxFolder, DefaultMusicFolderName);
+    public string DefaultMusicDestinationFolder => Path.Combine(_sandboxFolder, IPathProvider.DefaultMusicFolderName);
 
     /// <inheritdoc/>
-    public string DefaultPhotosDestinationFolder => Path.Combine(_sandboxFolder, DefaultPhotosFolderName);
+    public string DefaultPhotosDestinationFolder =>
+        Path.Combine(_sandboxFolder, IPathProvider.DefaultPhotosFolderName);
 
     /// <inheritdoc/>
-    public string DefaultOtherDestinationFolder => Path.Combine(_sandboxFolder, DefaultOtherFolderName);
+    public string DefaultOtherDestinationFolder => Path.Combine(_sandboxFolder, IPathProvider.DefaultOtherFolderName);
 
     /// <inheritdoc/>
-    public string DefaultGamesDestinationFolder => Path.Combine(_sandboxFolder, DefaultGamesFolderName);
+    public string DefaultGamesDestinationFolder => Path.Combine(_sandboxFolder, IPathProvider.DefaultGamesFolderName);
 
     /// <inheritdoc/>
-    public string ConfigDirectory => Path.Combine(_sandboxFolder, DefaultConfigFolderName);
+    public string ConfigDirectory => Path.Combine(_sandboxFolder, IPathProvider.DefaultConfigFolderName);
 
     /// <inheritdoc/>
     public string ConfigFileLocation => Path.Combine(ConfigDirectory, ConfigFileName);
@@ -97,7 +73,7 @@ public class MockPathProvider : IPathProvider
     public string Database_WAL_Path => Path.Combine(ConfigDirectory, DatabaseWalName);
 
     /// <inheritdoc/>
-    public string LogsDirectory => Path.Combine(ConfigDirectory, "Logs");
+    public string LogsDirectory => Path.Combine(ConfigDirectory, IPathProvider.DefaultLogsFolderName);
 
     /// <inheritdoc/>
     public List<string> DatabaseFiles => [DatabasePath, Database_SHM_Path, Database_WAL_Path];
