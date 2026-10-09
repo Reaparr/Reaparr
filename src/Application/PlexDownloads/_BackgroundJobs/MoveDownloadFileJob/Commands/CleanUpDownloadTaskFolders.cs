@@ -2,24 +2,24 @@ namespace Reaparr.Application;
 
 public record CleanUpDownloadTaskFoldersCommand(DownloadTaskKey DownloadTaskKey) : ICommand<Result>;
 
-public class CleanUpDownloadTaskFoldersValidator : AbstractValidator<CleanUpDownloadTaskFoldersCommand>
+public class CleanUpDownloadTaskFoldersCommandValidator : AbstractValidator<CleanUpDownloadTaskFoldersCommand>
 {
-    public CleanUpDownloadTaskFoldersValidator()
+    public CleanUpDownloadTaskFoldersCommandValidator()
     {
         RuleFor(x => x).NotNull();
     }
 }
 
-public class CleanUpDownloadTaskFoldersHandler : ICommandHandler<CleanUpDownloadTaskFoldersCommand, Result>
+public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpDownloadTaskFoldersCommand, Result>
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly IPath _path;
     private readonly IDirectory _directory;
 
-    public CleanUpDownloadTaskFoldersHandler(ILogger log, IReaparrDbContext dbContext, IPath path, IDirectory directory)
+    public CleanUpDownloadTaskFoldersCommandHandler(ILogger log, IReaparrDbContext dbContext, IPath path, IDirectory directory)
     {
-        _log = log.ForContext<CleanUpDownloadTaskFoldersHandler>();
+        _log = log.ForContext<CleanUpDownloadTaskFoldersCommandHandler>();
         _dbContext = dbContext;
         _path = path;
         _directory = directory;

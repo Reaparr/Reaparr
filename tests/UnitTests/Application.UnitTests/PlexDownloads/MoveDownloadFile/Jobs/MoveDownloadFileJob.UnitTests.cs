@@ -264,7 +264,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
                 (c, ct) =>
                     scenario == "cleanup-failure"
                         ? Task.FromResult(Result.Fail("cleanup unavailable"))
-                        : Mock.Create<CleanUpDownloadTaskFoldersHandler>().ExecuteAsync(c, ct)
+                        : Mock.Create<CleanUpDownloadTaskFoldersCommandHandler>().ExecuteAsync(c, ct)
             )
             .Verifiable(Times.Once());
         Mock.Mock<IMoveDownloadFileQueue>()

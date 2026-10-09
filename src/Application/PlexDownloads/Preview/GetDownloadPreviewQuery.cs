@@ -169,40 +169,16 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
                     "Every selected media item must belong to the requested library and server."
                 );
 
-            foreach (var selector in selection.Qualities)
-            {
-                var track = tracks.SingleOrDefault(x =>
-                    x.Id == selector.MediaId && selector.MediaDataType == PlexMediaType.MusicTrack
-                );
-                if (
-                    track is null
-                    || !track.MediaDataList.Any(x =>
-                        x.Id == selector.DataId
-                        && x.PlexLibraryId == selection.PlexLibraryId
-                        && x.PlexServerId == selection.PlexServerId
-                    )
-                )
-                    return ResultExtensions.Create400BadRequestResult(
-                        "A selected original does not belong to the requested media selection."
-                    );
-            }
-
             foreach (var track in tracks)
             {
                 tracksById[track.Id] = track;
                 sourceSelections[track.Id] =
                     sourceSelections.TryGetValue(track.Id, out var previous)
-                    && !selection.Qualities.Any(x =>
-                        x.MediaId == track.Id && x.MediaDataType == PlexMediaType.MusicTrack
-                    )
-                    && previous.Qualities.Any(x => x.MediaId == track.Id && x.MediaDataType == PlexMediaType.MusicTrack)
+                    && !selection.Qualities.Any(x => x.MediaId == track.Id)
+                    && previous.Qualities.Any(x => x.MediaId == track.Id)
                         ? selection with
                         {
-                            Qualities = previous
-                                .Qualities.Where(x =>
-                                    x.MediaId == track.Id && x.MediaDataType == PlexMediaType.MusicTrack
-                                )
-                                .ToList(),
+                            Qualities = previous.Qualities.Where(x => x.MediaId == track.Id).ToList(),
                         }
                         : selection;
             }
@@ -215,19 +191,10 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
         {
             var data = track.MediaDataList;
             var groups = data.GroupBy(x => x.PlexApiMediaId).ToList();
-            var selectors = sourceSelections[track.Id]
-                .Qualities.Where(x => x.MediaId == track.Id && x.MediaDataType == PlexMediaType.MusicTrack)
-                .ToList();
-            var selectedMediaIds = selectors
-                .Select(x => data.Single(y => y.Id == x.DataId).PlexApiMediaId)
-                .Distinct()
-                .ToList();
-            if (selectedMediaIds.Count > 1)
-                return ResultExtensions.Create400BadRequestResult(
-                    "Select exactly one original version per media item."
-                );
-            if (selectedMediaIds.Count == 1)
-                groups.RemoveAll(x => x.Key != selectedMediaIds[0]);
+            var selector = sourceSelections[track.Id].Qualities.FirstOrDefault(x => x.MediaId == track.Id);
+            var selectedData = data.FirstOrDefault(x => x.Id == selector?.DataId);
+            if (selectedData is not null)
+                groups.RemoveAll(x => x.Key != selectedData.PlexApiMediaId);
 
             var album = track.PlexAlbum;
             var artist = album?.PlexArtist;
@@ -307,42 +274,16 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
                     "Every selected media item must belong to the requested library and server."
                 );
 
-            foreach (var selector in selection.Qualities)
-            {
-                var video = videos.SingleOrDefault(x =>
-                    x.Id == selector.MediaId && selector.MediaDataType == PlexMediaType.OtherVideos
-                );
-                if (
-                    video is null
-                    || !video.MediaDataList.Any(x =>
-                        x.Id == selector.DataId
-                        && x.PlexLibraryId == selection.PlexLibraryId
-                        && x.PlexServerId == selection.PlexServerId
-                    )
-                )
-                    return ResultExtensions.Create400BadRequestResult(
-                        "A selected original does not belong to the requested media selection."
-                    );
-            }
-
             foreach (var video in videos)
             {
                 videosById[video.Id] = video;
                 sourceSelections[video.Id] =
                     sourceSelections.TryGetValue(video.Id, out var previous)
-                    && !selection.Qualities.Any(x =>
-                        x.MediaId == video.Id && x.MediaDataType == PlexMediaType.OtherVideos
-                    )
-                    && previous.Qualities.Any(x =>
-                        x.MediaId == video.Id && x.MediaDataType == PlexMediaType.OtherVideos
-                    )
+                    && !selection.Qualities.Any(x => x.MediaId == video.Id)
+                    && previous.Qualities.Any(x => x.MediaId == video.Id)
                         ? selection with
                         {
-                            Qualities = previous
-                                .Qualities.Where(x =>
-                                    x.MediaId == video.Id && x.MediaDataType == PlexMediaType.OtherVideos
-                                )
-                                .ToList(),
+                            Qualities = previous.Qualities.Where(x => x.MediaId == video.Id).ToList(),
                         }
                         : selection;
             }
@@ -353,19 +294,10 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
         {
             var data = video.MediaDataList;
             var groups = data.GroupBy(x => x.PlexApiMediaId).ToList();
-            var selectors = sourceSelections[video.Id]
-                .Qualities.Where(x => x.MediaId == video.Id && x.MediaDataType == PlexMediaType.OtherVideos)
-                .ToList();
-            var selectedMediaIds = selectors
-                .Select(x => data.Single(y => y.Id == x.DataId).PlexApiMediaId)
-                .Distinct()
-                .ToList();
-            if (selectedMediaIds.Count > 1)
-                return ResultExtensions.Create400BadRequestResult(
-                    "Select exactly one original version per media item."
-                );
-            if (selectedMediaIds.Count == 1)
-                groups.RemoveAll(x => x.Key != selectedMediaIds[0]);
+            var selector = sourceSelections[video.Id].Qualities.FirstOrDefault(x => x.MediaId == video.Id);
+            var selectedData = data.FirstOrDefault(x => x.Id == selector?.DataId);
+            if (selectedData is not null)
+                groups.RemoveAll(x => x.Key != selectedData.PlexApiMediaId);
 
             previews.Add(video.ProjectToDownloadPreviewMapper(groups));
         }
@@ -624,24 +556,12 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
                     "Every selected photo album must belong to the requested library and server."
                 );
             var selectedImageIds = selectedAlbums.SelectMany(x => x.ImageIds).ToHashSet();
-            if (selection.Qualities.Any(x => !selectedImageIds.Contains(x.MediaId)))
-            {
-                return ResultExtensions.Create400BadRequestResult(
-                    "A selected photo original does not belong to the requested media selection."
-                );
-            }
             imageIds.UnionWith(selectedImageIds);
         }
 
         foreach (var selection in imageSelections)
         {
             var selectedImageIds = selection.MediaIds.ToHashSet();
-            if (selection.Qualities.Any(x => !selectedImageIds.Contains(x.MediaId)))
-            {
-                return ResultExtensions.Create400BadRequestResult(
-                    "A selected photo original does not belong to the requested media selection."
-                );
-            }
             var matchingImageCount = await _dbContext.PlexPhotoImages.CountAsync(
                 x =>
                     selectedImageIds.Contains(x.Id)
@@ -667,19 +587,11 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
             .SelectMany(selection => selection.MediaIds.Select(id => (Id: id, Selection: selection)))
             .ToDictionary(x => x.Id, x => x.Selection);
         var selectedQualities = groupedSelections
-            .SelectMany(x => x.Qualities.Where(y => y.MediaDataType == PlexMediaType.PhotoImage))
+            .SelectMany(x => x.Qualities)
             .ToList();
-        if (
-            groupedSelections.Any(selection =>
-                selection.Qualities.Any(x => x.MediaDataType != PlexMediaType.PhotoImage)
-            )
-        )
-            return ResultExtensions.Create400BadRequestResult(
-                "Photo original selectors must use the photo media type."
-            );
         var selectedDataIds = selectedQualities.Select(x => x.DataId).Distinct().ToList();
         var selectedData = await _dbContext
-            .PlexPhotoData.Where(x => selectedDataIds.Contains(x.Id))
+            .PlexPhotoData.Where(x => imageIds.Contains(x.PlexPhotoId) && selectedDataIds.Contains(x.Id))
             .Select(x => new
             {
                 x.Id,
@@ -687,12 +599,6 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
                 x.PlexApiMediaId,
             })
             .ToListAsync(cancellationToken);
-        if (selectedData.Count != selectedDataIds.Count)
-            return ResultExtensions.Create400BadRequestResult("A selected photo original no longer exists.");
-        if (selectedQualities.Any(x => selectedData.All(y => y.Id != x.DataId || y.PlexPhotoId != x.MediaId)))
-            return ResultExtensions.Create400BadRequestResult(
-                "A selected photo original does not belong to that photo."
-            );
 
         var selectedMediaIds = selectedData.Select(x => x.PlexApiMediaId).Distinct().ToList();
         var selectedGroupData = await _dbContext
@@ -700,7 +606,7 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
             .GroupBy(x => new { x.PlexPhotoId, x.PlexApiMediaId })
             .ToDictionaryAsync(
                 x => (x.Key.PlexPhotoId, x.Key.PlexApiMediaId),
-                x => (Size: x.Sum(y => y.Size), DataId: x.Min(y => y.Id)),
+                x => (Size: x.Sum(y => y.Size), DataId: x.Min(y => y.Id), Count: x.Count()),
                 cancellationToken
             );
         foreach (var image in images)
@@ -711,22 +617,15 @@ public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreview
             if (selection is null)
                 continue;
 
-            var selectors = selection
-                .Qualities.Where(x => x.MediaDataType == PlexMediaType.PhotoImage && x.MediaId == image.Id)
-                .ToList();
-            if (selectors.Count == 0)
+            var selector = selection.Qualities.FirstOrDefault(x => x.MediaId == image.Id);
+            var selectedOriginal = selectedData.FirstOrDefault(x => x.Id == selector?.DataId && x.PlexPhotoId == image.Id);
+            if (selectedOriginal is null)
                 continue;
-            var selectedGroups = selectors
-                .Select(x => selectedData.Single(y => y.Id == x.DataId))
-                .Select(x => x.PlexApiMediaId)
-                .Distinct()
-                .ToList();
-            if (selectedGroups.Count != 1)
-                return ResultExtensions.Create400BadRequestResult("Select exactly one original version per photo.");
 
-            var selectedGroup = selectedGroupData[(image.Id, selectedGroups[0])];
+            var selectedGroup = selectedGroupData[(image.Id, selectedOriginal.PlexApiMediaId)];
             image.Qualities.RemoveAll(x => x.DataId != selectedGroup.DataId);
             image.Size = selectedGroup.Size;
+            image.ChildCount = selectedGroup.Count;
         }
 
         var allAlbumIds = images.Select(x => x.PhotoAlbumId).Distinct().ToList();
