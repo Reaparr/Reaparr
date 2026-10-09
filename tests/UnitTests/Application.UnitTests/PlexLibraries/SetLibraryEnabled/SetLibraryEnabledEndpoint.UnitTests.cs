@@ -170,6 +170,9 @@ public class SetLibraryEnabledEndpointUnitTests
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(2));
+        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
+            c => c.PlexLibraryIds.SequenceEqual(new[] { targetMusic.Id })), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(2));

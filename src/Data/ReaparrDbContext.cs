@@ -157,6 +157,12 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
 
     public DbSet<PlexEpisodeComparison> PlexEpisodeComparisons { get; set; }
 
+    public DbSet<PlexMusicArtistComparison> PlexMusicArtistComparisons { get; set; }
+
+    public DbSet<PlexMusicAlbumComparison> PlexMusicAlbumComparisons { get; set; }
+
+    public DbSet<PlexMusicTrackComparison> PlexMusicTrackComparisons { get; set; }
+
     #endregion
 
     public string DatabaseName { get; }

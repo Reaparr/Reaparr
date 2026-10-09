@@ -23,6 +23,7 @@ public class StopDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<St
         );
         var dbContext = IDbContext;
         var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .Include(x => x.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         DownloadTaskFileBase target = otherVideoFiles[0];
@@ -125,14 +126,23 @@ public class StopDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<St
             .Setup(x => x.StopDownloadTaskJob(files[0].ToKey(), CancellationToken))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.Mock<IMoveDownloadFileScheduler>()
-            .Setup(x => x.IsDownloadFileMoving(It.IsAny<DownloadTaskKey>(), CancellationToken))
-            .ReturnsAsync(false)
-            .Verifiable(Times.Exactly(2));
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<DeleteDownloadTaskFilesCommand>(), CancellationToken))
-            .ReturnsAsync(Result.Ok())
-            .Verifiable(Times.Once());
+        foreach (var file in files)
+        {
+            var key = file.ToKey();
+            Mock.Mock<IMoveDownloadFileScheduler>()
+                .Setup(x => x.IsDownloadFileMoving(key, CancellationToken))
+                .ReturnsAsync(false)
+                .Verifiable(Times.Once());
+            Mock.Mock<ICommandExecutor>()
+                .Setup(x =>
+                    x.Send(
+                        It.Is<DeleteDownloadTaskFilesCommand>(c => c.Keys.SequenceEqual(new[] { key })),
+                        CancellationToken
+                    )
+                )
+                .ReturnsAsync(Result.Ok())
+                .Verifiable(Times.Once());
+        }
 
         // Act
         var result = await TestHandlerExecuteAsync(new StopDownloadTaskCommand(otherVideo.Id));
@@ -141,11 +151,14 @@ public class StopDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<St
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         var after = await dbContext.DownloadTaskOtherVideoFiles.OrderBy(x => x.Id).ToListAsync(CancellationToken);
-        after.ShouldAllBe(x => x.DownloadStatus == DownloadStatus.Stopped);
+        after.Select(x => new { x.Id, x.ParentId, x.DownloadStatus }).ShouldBe(
+            files.Select(x => new { x.Id, x.ParentId, DownloadStatus = DownloadStatus.Stopped })
+        );
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Verify(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), DownloadStatus.Stopped, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        (await dbContext.DownloadTaskOtherVideos.SingleAsync(CancellationToken)).DownloadStatus.ShouldBe(
+            DownloadStatus.Stopped
+        );
     }
 }

@@ -25,7 +25,7 @@ public enum DownloadTaskType
     /// A movie that consists of multiple file parts where each file part is a movie part.
     /// </summary>
     [JsonStringEnumMemberName(nameof(MoviePart))]
-    MoviePart = 3,
+    MoviePart = 3, // TODO Parts can most likely be removed in the future, as they are not used in the current implementation. The MovieData type is used instead.
 
     [JsonStringEnumMemberName(nameof(TvShow))]
     TvShow = 4,

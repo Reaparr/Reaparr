@@ -23,7 +23,7 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             }
         );
         var dbContext = IDbContext;
-        var target = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
+        var target = await dbContext.DownloadTaskOtherVideoFiles.Include(x => x.Parent).SingleAsync(CancellationToken);
         DownloadTaskBase node = selection == DownloadTaskType.OtherVideo ? target.Parent! : target;
         await dbContext.SetDownloadStatus(target.ToKey(), DownloadStatus.AutoPaused);
         (await dbContext.GetDownloadableChildTaskKeys(node.ToKey(), CancellationToken)).ShouldBe([target.ToKey()]);
@@ -81,7 +81,7 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
     [Test]
     [Arguments(false)]
     [Arguments(true)]
-    public async Task ShouldResumeAllSelectedOtherVideosByPhaseAndRestoreRejectedMove_WhenContinuing(bool failMove)
+    public async Task ShouldResumeOnlyNextOtherVideoMoveAndRestoreRejectedMove_WhenContinuing(bool failMove)
     {
         // Arrange
         await SetupDatabase(
@@ -94,7 +94,8 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             }
         );
         var dbContext = IDbContext;
-        var files = (await dbContext.DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken))
+        var files = (await dbContext.DownloadTaskOtherVideoFiles.Include(x => x.Parent)
+            .OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken))
             .Cast<DownloadTaskFileBase>()
             .ToList();
         var download = files[0];
@@ -110,7 +111,7 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
         var node = ((DownloadTaskOtherVideoFile)download).Parent!;
         DownloadStatus[] statuses =
         [
-            DownloadStatus.Paused,
+            DownloadStatus.MovePaused,
             DownloadStatus.AutoMovePaused,
             DownloadStatus.MovePaused,
             DownloadStatus.Paused,
@@ -119,23 +120,12 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             await dbContext.SetDownloadStatus(files[index].ToKey(), statuses[index]);
         var selected = await dbContext.GetDownloadableChildTasks(node.ToKey(), CancellationToken);
         selected.Select(x => x.Id).Order().ShouldBe(files.Take(3).Select(x => x.Id).Order());
-        var moves = selected.Where(x => x.DownloadTaskPhase == DownloadTaskPhase.FileTransfer).ToList();
-        moves.Count.ShouldBe(2);
+        var moves = selected.ToList();
+        moves.Count.ShouldBe(3);
+        var nextMove = moves.First();
         var error = new Error("move rejected");
         SetupDependencies(b => b.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>());
-        Mock.Mock<IDownloadTaskScheduler>()
-            .Setup(x => x.IsDownloading(download.ToKey(), CancellationToken))
-            .ReturnsAsync(false)
-            .Verifiable(Times.Once());
-        Mock.Mock<IDownloadTaskScheduler>()
-            .Setup(x => x.StartDownloadTaskJob(download.ToKey(), CancellationToken))
-            .ReturnsAsync(Result.Ok())
-            .Verifiable(Times.Once());
-        Mock.Mock<IDownloadTaskScheduler>()
-            .Setup(x => x.GetCurrentlyDownloadingKeysByServer(download.PlexServerId))
-            .ReturnsAsync([download.ToKey()])
-            .Verifiable(Times.Once());
-        foreach (var move in moves)
+        foreach (var move in moves.Take(1))
         {
             Mock.Mock<IMoveDownloadFileScheduler>()
                 .Setup(x => x.IsDownloadFileMoving(move.ToKey(), CancellationToken))
@@ -143,7 +133,7 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
                 .Verifiable(Times.Once());
             Mock.Mock<IMoveDownloadFileScheduler>()
                 .Setup(x => x.StartMoveDownloadFileJob(move.ToKey(), CancellationToken))
-                .ReturnsAsync(failMove && move.Id == moves.Last().Id ? Result.Fail(error) : Result.Ok())
+                .ReturnsAsync(failMove ? Result.Fail(error) : Result.Ok())
                 .Verifiable(Times.Once());
         }
         if (!failMove)
@@ -167,12 +157,9 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
         result.Errors.Count.ShouldBe(failMove ? 1 : 0);
         if (failMove)
             result.Errors.Single().ShouldBeSameAs(error);
-        (await dbContext.GetDownloadTaskFileAsync(download.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(
-            DownloadStatus.Queued
-        );
         foreach (var move in moves)
             (await dbContext.GetDownloadTaskFileAsync(move.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(
-                failMove && move.Id == moves.Last().Id ? move.DownloadStatus : DownloadStatus.DownloadFinished
+                !failMove && move.Id == nextMove.Id ? DownloadStatus.DownloadFinished : move.DownloadStatus
             );
         (await dbContext.GetDownloadTaskFileAsync(files[3].ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(
             DownloadStatus.Paused
@@ -184,7 +171,7 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             .Verify(
                 x =>
                     x.StartDownloadTaskJob(
-                        It.Is<DownloadTaskKey>(k => k.Id != download.Id),
+                        It.IsAny<DownloadTaskKey>(),
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Never()

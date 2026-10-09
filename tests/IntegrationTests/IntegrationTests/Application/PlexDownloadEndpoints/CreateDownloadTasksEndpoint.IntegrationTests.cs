@@ -242,7 +242,8 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         foreach (var expected in expectedFiles)
             fileSystem.File.Exists(expected.Destination).ShouldBeFalse();
 
-        var control = await arrangeContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
+        var control = await arrangeContext.DownloadTaskOtherVideoFiles.AsTracking()
+            .Include(x => x.Parent).SingleAsync(CancellationToken);
         control.DownloadStatus = DownloadStatus.Paused;
         control.Parent!.DownloadStatus = DownloadStatus.Paused;
         control.DirectoryMeta.DownloadRootPath = paths.DefaultDownloadsDestinationFolder;

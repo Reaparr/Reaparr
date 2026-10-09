@@ -57,7 +57,7 @@ public class ScheduleAffectedLibraryComparisonJobsCommandHandler
         if (sourceLibrary is null)
             return Result.Fail("Library {PlexLibraryId} was not found or was disabled", command.PlexLibraryId);
 
-        if (sourceLibrary.Type is not PlexMediaType.Movie and not PlexMediaType.TvShow)
+        if (!sourceLibrary.Type.SupportsComparison())
             return Result.Ok();
 
         var targetLibraries = await _dbContext

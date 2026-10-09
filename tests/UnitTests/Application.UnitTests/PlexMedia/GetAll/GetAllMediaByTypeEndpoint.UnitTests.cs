@@ -105,10 +105,9 @@ public class GetAllMediaByTypeEndpointUnitTests
     }
 
     [Test]
-    [Arguments(PlexMediaType.MusicArtist)]
     [Arguments(PlexMediaType.PhotoAlbum)]
     [Arguments(PlexMediaType.OtherVideos)]
-    public void ShouldRejectComparisonForNewRoots_WhenValidatingRequest(PlexMediaType mediaType)
+    public void ShouldRejectComparisonForNonComparableRoots_WhenValidatingRequest(PlexMediaType mediaType)
     {
         var validator = new GetAllMediaByTypeRequestValidator();
         var request = new GetAllMediaByTypeRequest

@@ -69,7 +69,7 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
                     TimeRemaining = 10,
                 }
             );
-        else
+        if (!progressOnly || status == DownloadStatus.Paused)
             await sut.OnStatusChangedAsync(target.ToKey(), status, CancellationToken);
         await sut.StartAsync(CancellationToken.None);
         IReadOnlyCollection<DownloadPatchDTO> patches;

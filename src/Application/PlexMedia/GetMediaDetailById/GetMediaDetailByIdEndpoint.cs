@@ -94,9 +94,11 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
             var plexMusicArtistResult = await GetPlexMusicArtist(req.PlexMediaId, ct);
             if (plexMusicArtistResult.IsFailed)
             {
-                await Send.FluentResult(plexMusicArtistResult, ct);
+                await Send.FluentResult(plexMusicArtistResult.ToResult(), ct);
                 return;
             }
+
+            await ApplyMusicDetailComparisonStateAsync(plexMusicArtistResult.Value, ct);
 
             await Send.FluentResult(plexMusicArtistResult, x => x.ToDTO(), ct);
         }
@@ -105,7 +107,7 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
             var plexPhotoAlbumResult = await GetPlexPhotoAlbum(req.PlexMediaId, ct);
             if (plexPhotoAlbumResult.IsFailed)
             {
-                await Send.FluentResult(plexPhotoAlbumResult, ct);
+                await Send.FluentResult(plexPhotoAlbumResult.ToResult(), ct);
                 return;
             }
 
@@ -222,6 +224,29 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
 
         for (var i = 0; i < episodes.Count; i++)
             episodes[i].ComparisonState = items[i + 1].ComparisonId.ToComparisonState();
+    }
+
+    private async Task ApplyMusicDetailComparisonStateAsync(PlexMusicArtist artist, CancellationToken ct)
+    {
+        var media = new List<BasePlexMedia> { artist };
+        media.AddRange(artist.Albums);
+        media.AddRange(artist.Albums.SelectMany(x => x.Tracks));
+        var items = new List<PlexMediaSlimDTO> { artist.ToSlimDTOMapper() };
+        items.AddRange(artist.Albums.Select(x => x.ToSlimDTOMapper()));
+        items.AddRange(artist.Albums.SelectMany(x => x.Tracks).Select(x => x.ToSlimDTOMapper()));
+        var result = await _commandExecutor.Send(
+            new ApplyComparisonStateCommand(items, PlexMediaType.MusicArtist, artist.PlexLibraryId),
+            ct
+        );
+
+        if (result.IsFailed)
+        {
+            result.LogIfFailed();
+            return;
+        }
+
+        for (var i = 0; i < media.Count; i++)
+            media[i].ComparisonState = items[i].ComparisonId.ToComparisonState();
     }
 
     private async Task ApplyMovieDetailComparisonStateAsync(PlexMovie plexMovie, CancellationToken ct)

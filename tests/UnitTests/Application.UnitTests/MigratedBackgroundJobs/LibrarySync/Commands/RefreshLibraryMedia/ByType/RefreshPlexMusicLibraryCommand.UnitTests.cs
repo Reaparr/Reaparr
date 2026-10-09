@@ -33,6 +33,9 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var artistState = (artist.ChildCount, artist.Duration, artist.MediaSize);
         var albumState = (album.ChildCount, album.TrackCount, album.Duration, album.MediaSize);
         var response = new InsertMediaMetaDataCommandResponse(library);
+        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
+            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -105,6 +108,9 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var response = new InsertMediaMetaDataCommandResponse(library);
         var failure = Result.Fail("catalog retrieval incomplete");
+        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
+            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -196,6 +202,9 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var failure = cancelled
             ? ResultExtensions.TaskIsCancelled("descendants")
             : Result.Fail("incomplete descendants");
+        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
+            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
 
         if (mediaType == PlexMediaType.MusicTrack)
         {
@@ -301,6 +310,9 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         library.Tracks.Add(track);
         var response = new InsertMediaMetaDataCommandResponse(library);
         InsertMediaMetaDataCommandResponse? captured = null;
+        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
+            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>

@@ -503,6 +503,31 @@ public class GetDownloadPreviewQueryHandlerUnitTests : BaseUnitTest<GetDownloadP
             .ShouldBe(expectedVideoData.GroupBy(x => x.PlexApiMediaId).OrderBy(x => x.Min(y => y.Id))
                 .Select(x => (video.Id, x.Min(y => y.Id), PlexMediaType.OtherVideos, x.First().Quality)));
         result.Value.Single(x => x.MediaType == PlexMediaType.Movie).Children.ShouldBeEmpty();
+        var dto = result.Value.ToDTO();
+        dto.TotalSize.ShouldBe(result.Value.Sum(x => x.Size));
+        dto.Previews.Select(x => x.Type).Order().ShouldBe(result.Value.Select(x => x.MediaType).Order());
+        var dtoTrack = dto.Previews.Single(x => x.Type == PlexMediaType.MusicArtist)
+            .Children.Single().Children.Single();
+        dtoTrack.Type.ShouldBe(PlexMediaType.MusicTrack);
+        dtoTrack.Qualities.OrderBy(x => x.DataId)
+            .Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.Quality))
+            .ShouldBe(previewTrack.Qualities.OrderBy(x => x.DataId)
+                .Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.Quality)));
+        var dtoPhoto = dto.Previews.Single(x => x.Type == PlexMediaType.PhotoAlbum).Children.Single();
+        dtoPhoto.Type.ShouldBe(PlexMediaType.PhotoImage);
+        dtoPhoto.Qualities.Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.Quality))
+            .ShouldBe(previewImage.Qualities.Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.Quality)));
+        var dtoVideo = dto.Previews.Single(x => x.Type == PlexMediaType.OtherVideos);
+        dtoVideo.Qualities.OrderBy(x => x.DataId)
+            .Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.Quality))
+            .ShouldBe(previewVideo.Qualities.OrderBy(x => x.DataId)
+                .Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.Quality)));
+        var keys = dto.Previews.SelectMany(x => new[] { x }
+            .Concat(x.Children)
+            .Concat(x.Children.SelectMany(y => y.Children)))
+            .Select(x => x.Key)
+            .ToList();
+        keys.Distinct().Count().ShouldBe(keys.Count);
     }
     [Test]
     public async Task ShouldReturnTheCorrectDownloadPreview_WhenMixedMediaTypes()

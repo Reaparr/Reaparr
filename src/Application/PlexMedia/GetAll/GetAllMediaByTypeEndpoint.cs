@@ -74,6 +74,18 @@ public class GetAllMediaByTypeRequestValidator : Validator<GetAllMediaByTypeRequ
         RuleFor(x => x.RoleId).GreaterThan(0).When(x => x.RoleId.HasValue);
         RuleFor(x => x.QualityId).GreaterThan(0).When(x => x.QualityId.HasValue);
         RuleFor(x => x.ComparisonState).IsInEnum().When(x => x.ComparisonState.HasValue);
+        RuleFor(x => x.ComparisonState).Null().When(x => !x.MediaType.SupportsComparison());
+        RuleFor(x => x.ComparisonState)
+            .Must(x =>
+                x
+                    is null
+                        or PlexMediaComparisonState.NotCompared
+                        or PlexMediaComparisonState.Pending
+                        or PlexMediaComparisonState.Owned
+                        or PlexMediaComparisonState.Missing
+                        or PlexMediaComparisonState.Partial
+            )
+            .When(x => x.MediaType == PlexMediaType.MusicArtist);
     }
 }
 

@@ -31,7 +31,11 @@ public class PauseDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<PauseD
             }
         );
         var dbContext = IDbContext;
-        var target = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
+        var target = await dbContext.DownloadTaskMusicTrackFiles
+            .Include(x => x.Parent)
+                .ThenInclude(x => x!.Parent)
+                    .ThenInclude(x => x!.Parent)
+            .SingleAsync(CancellationToken);
         target.DataReceived = 128;
         target.FileDataTransferred = 64;
         dbContext.Entry(target).State = EntityState.Modified;

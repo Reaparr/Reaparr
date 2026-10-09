@@ -10,6 +10,9 @@ public static class PlexMediaTypeExtensions
                 or PlexMediaType.PhotoAlbum
                 or PlexMediaType.OtherVideos;
 
+    public static bool SupportsComparison(this PlexMediaType downloadTaskType) =>
+        downloadTaskType is PlexMediaType.Movie or PlexMediaType.TvShow or PlexMediaType.MusicArtist;
+
     public static int ToDefaultDestinationFolderId(this PlexMediaType type)
     {
         return type switch

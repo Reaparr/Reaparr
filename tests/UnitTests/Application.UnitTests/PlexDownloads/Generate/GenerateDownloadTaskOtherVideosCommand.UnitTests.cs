@@ -50,6 +50,7 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests : BaseCommandUnitTe
         task.FullTitle.ShouldBe(source.FullTitle);
         task.Year.ShouldBe(source.Year);
         task.DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        task.Calculate();
         task.DataTotal.ShouldBe(data.Size);
         task.SonarrIntegrationId.ShouldBeNull();
         task.RadarrIntegrationId.ShouldBeNull();
@@ -146,6 +147,7 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests : BaseCommandUnitTe
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(new DownloadTaskCreationReport { OtherVideos = 1 });
         var task = await dbContext.DownloadTaskOtherVideos.Include(x => x.Children).SingleAsync(CancellationToken);
+        task.Calculate();
         task.DataTotal.ShouldBe(expected.Sum(x => x.Size));
         task.Children.OrderBy(x => x.PlexApiPartId)
             .Select(x => (x.ParentId, x.PlexApiMediaId, x.PlexApiPartId, x.DataTotal, x.FileName, x.FileLocationUrl, x.Quality))

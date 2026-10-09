@@ -48,6 +48,32 @@ public class DownloadTaskGenericMapperUnitTests : BaseUnitTest
         // Assert
         result.DownloadDirectory.ShouldBe(Path.Combine("/downloads", category, folder, subfolder));
         result.DestinationDirectory.ShouldBe(Path.Combine("/destination", folder, subfolder));
+        result.Id.ShouldBe(task.Id);
+        result.ParentId.ShouldBe(task.ToParentKey()?.Id ?? Guid.Empty);
+        result.DownloadTaskType.ShouldBe(type);
+        result.MediaType.ShouldBe(task.MediaType);
+        result.RatingKey.ShouldBe(task.PlexApiRatingKey);
+        result.Title.ShouldBe(task.Title);
+        result.FullTitle.ShouldBe(task.FullTitle);
+        result.PlexServerId.ShouldBe(task.PlexServerId);
+        result.PlexLibraryId.ShouldBe(task.PlexLibraryId);
+        result.IsDownloadable.ShouldBe(task.IsDownloadable);
+        var mappedFile = new[] { result }.Flatten(x => x.Children)
+            .Single(x => x.Id == file.Id && x.DownloadTaskType == file.DownloadTaskType);
+        mappedFile.ParentId.ShouldBe(file.ToParentKey()!.Id);
+        mappedFile.DownloadTaskType.ShouldBe(file.DownloadTaskType);
+        mappedFile.MediaType.ShouldBe(file.MediaType);
+        mappedFile.IsDownloadable.ShouldBeTrue();
+        mappedFile.Children.ShouldBeEmpty();
+        mappedFile.FileName.ShouldBe(file.FileName);
+        mappedFile.FileLocationUrl.ShouldBe(file.FileLocationUrl);
+        mappedFile.DownloadStatus.ShouldBe(file.DownloadStatus);
+        mappedFile.DataTotal.ShouldBe(file.DataTotal);
+        mappedFile.DataReceived.ShouldBe(file.DataReceived);
+        mappedFile.DownloadSpeed.ShouldBe(file.DownloadSpeed);
+        mappedFile.FileTransferSpeed.ShouldBe(file.FileTransferSpeed);
+        mappedFile.FileDataTransferred.ShouldBe(file.FileDataTransferred);
+        mappedFile.CurrentFileTransferBytesOffset.ShouldBe(file.CurrentFileTransferBytesOffset);
     }
 
     [Test]

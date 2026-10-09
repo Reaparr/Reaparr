@@ -45,6 +45,12 @@ public class RefreshPlexMusicLibraryCommandHandler
         var plexLibrary = command.LibraryMetadata.PlexLibrary;
         var plexLibraryId = command.LibraryMetadata.PlexLibraryId;
 
+        var comparisonResult = await Result.Try(() =>
+            _commandExecutor.Send(new InvalidateLibraryComparisonJobsCommand([plexLibraryId]), cancellationToken)
+        );
+        if (comparisonResult.IsFailed)
+            return comparisonResult.LogIfFailed();
+
         var albumsResult = await Result.Try(() =>
             _commandExecutor.Send(
                 new GetLibraryMediaFromPlexApiCommand(plexLibrary, PlexMediaType.MusicAlbum),

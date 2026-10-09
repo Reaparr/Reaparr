@@ -181,6 +181,12 @@ public interface IReaparrDbContext : IDisposable
 
     DbSet<PlexEpisodeComparison> PlexEpisodeComparisons { get; }
 
+    DbSet<PlexMusicArtistComparison> PlexMusicArtistComparisons { get; }
+
+    DbSet<PlexMusicAlbumComparison> PlexMusicAlbumComparisons { get; }
+
+    DbSet<PlexMusicTrackComparison> PlexMusicTrackComparisons { get; }
+
     #endregion
 
     string DatabaseName { get; }

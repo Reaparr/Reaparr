@@ -25,6 +25,14 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
             (await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: CancellationToken)).ShouldBe(
                 album.ToKey()
             );
+            var inferred = await dbContext.GetDownloadTaskAsync(key.Id, cancellationToken: CancellationToken);
+            inferred.ShouldNotBeNull();
+            inferred.Id.ShouldBe(key.Id);
+            inferred.DownloadTaskType.ShouldBe(key.Type);
+            inferred.ParentId.ShouldBe(
+                key.Id == album.Id ? Guid.Empty : key.Id == image.Id ? album.Id : image.Id
+            );
+            (await dbContext.GetDownloadableChildTaskKeys(key, CancellationToken)).ShouldBe([file.ToKey()]);
         }
 
         album.ToParentKey().ShouldBeNull();

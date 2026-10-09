@@ -456,8 +456,12 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 x.Send(It.Is<GenerateDownloadTaskMoviesCommand>(c => c.Request == command.Request), CancellationToken)
             )
             .Returns(
-                (GenerateDownloadTaskMoviesCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskMoviesCommandHandler(Serilog.Log.Logger, dbContext).ExecuteAsync(c, ct)
+                async (GenerateDownloadTaskMoviesCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskMoviesCommandHandler(Serilog.Log.Logger, commandContext)
+                        .ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -465,12 +469,15 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 x.Send(It.Is<GenerateDownloadTaskTvShowsCommand>(c => c.Request == command.Request), CancellationToken)
             )
             .Returns(
-                (GenerateDownloadTaskTvShowsCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskTvShowsCommandHandler(
+                async (GenerateDownloadTaskTvShowsCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskTvShowsCommandHandler(
                         Serilog.Log.Logger,
-                        dbContext,
+                        commandContext,
                         Mock.Mock<ICommandExecutor>().Object
-                    ).ExecuteAsync(c, ct)
+                    ).ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -488,12 +495,15 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 )
             )
             .Returns(
-                (GenerateDownloadTaskTvShowSeasonsCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskTvShowSeasonsCommandHandler(
+                async (GenerateDownloadTaskTvShowSeasonsCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskTvShowSeasonsCommandHandler(
                         Serilog.Log.Logger,
-                        dbContext,
+                        commandContext,
                         Mock.Mock<ICommandExecutor>().Object
-                    ).ExecuteAsync(c, ct)
+                    ).ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -511,11 +521,12 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 )
             )
             .Returns(
-                (GenerateDownloadTaskTvShowEpisodesCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskTvShowEpisodesCommandHandler(Serilog.Log.Logger, dbContext).ExecuteAsync(
-                        c,
-                        ct
-                    )
+                async (GenerateDownloadTaskTvShowEpisodesCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskTvShowEpisodesCommandHandler(Serilog.Log.Logger, commandContext)
+                        .ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -523,12 +534,15 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 x.Send(It.Is<GenerateDownloadTaskMusicArtistsCommand>(c => c.Request == command.Request), CancellationToken)
             )
             .Returns(
-                (GenerateDownloadTaskMusicArtistsCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskMusicArtistsCommandHandler(
+                async (GenerateDownloadTaskMusicArtistsCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskMusicArtistsCommandHandler(
                         Serilog.Log.Logger,
-                        dbContext,
+                        commandContext,
                         Mock.Mock<ICommandExecutor>().Object
-                    ).ExecuteAsync(c, ct)
+                    ).ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -545,12 +559,15 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 )
             )
             .Returns(
-                (GenerateDownloadTaskMusicAlbumsCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskMusicAlbumsCommandHandler(
+                async (GenerateDownloadTaskMusicAlbumsCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskMusicAlbumsCommandHandler(
                         Serilog.Log.Logger,
-                        dbContext,
+                        commandContext,
                         Mock.Mock<ICommandExecutor>().Object
-                    ).ExecuteAsync(c, ct)
+                    ).ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -567,8 +584,12 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 )
             )
             .Returns(
-                (GenerateDownloadTaskMusicTracksCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskMusicTracksCommandHandler(Serilog.Log.Logger, dbContext).ExecuteAsync(c, ct)
+                async (GenerateDownloadTaskMusicTracksCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskMusicTracksCommandHandler(Serilog.Log.Logger, commandContext)
+                        .ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -576,12 +597,15 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 x.Send(It.Is<GenerateDownloadTaskPhotoAlbumsCommand>(c => c.Request == command.Request), CancellationToken)
             )
             .Returns(
-                (GenerateDownloadTaskPhotoAlbumsCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskPhotoAlbumsCommandHandler(
+                async (GenerateDownloadTaskPhotoAlbumsCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskPhotoAlbumsCommandHandler(
                         Serilog.Log.Logger,
-                        dbContext,
+                        commandContext,
                         Mock.Mock<ICommandExecutor>().Object
-                    ).ExecuteAsync(c, ct)
+                    ).ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -598,8 +622,12 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 )
             )
             .Returns(
-                (GenerateDownloadTaskPhotoImagesCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskPhotoImagesCommandHandler(Serilog.Log.Logger, dbContext).ExecuteAsync(c, ct)
+                async (GenerateDownloadTaskPhotoImagesCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskPhotoImagesCommandHandler(Serilog.Log.Logger, commandContext)
+                        .ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -610,8 +638,12 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 )
             )
             .Returns(
-                (GenerateDownloadTaskOtherVideosCommand c, CancellationToken ct) =>
-                    new GenerateDownloadTaskOtherVideosCommandHandler(Serilog.Log.Logger, dbContext).ExecuteAsync(c, ct)
+                async (GenerateDownloadTaskOtherVideosCommand c, CancellationToken ct) =>
+                {
+                    using var commandContext = IDbContext;
+                    return await new GenerateDownloadTaskOtherVideosCommandHandler(Serilog.Log.Logger, commandContext)
+                        .ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<IEventPublisher>()

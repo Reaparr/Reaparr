@@ -123,6 +123,15 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         if (cancelResult.IsFailed)
             return cancelResult.LogIfFailed();
 
+        if (plexLibrary.Type == PlexMediaType.MusicArtist)
+        {
+            var comparisonResult = await _commandExecutor.Send(
+                new InvalidateLibraryComparisonJobsCommand([plexLibrary.Id]), ct
+            );
+            if (comparisonResult.IsFailed)
+                return comparisonResult.LogIfFailed();
+        }
+
         // Purge synced media and reset metadata atomically.
         var deleteResult = await _dbContext.ExecuteTransactionAsync(
             async (dbContext, txCt) =>

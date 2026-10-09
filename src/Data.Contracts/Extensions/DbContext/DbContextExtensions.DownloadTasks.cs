@@ -122,96 +122,165 @@ public static partial class DbContextExtensions
         var byType = keys.ToLookup(x => x.Type);
         var queries = new List<IQueryable<DownloadTaskKey>>();
 
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskMovie,
-            byType[DownloadTaskType.Movie],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskMovieFile,
-            byType[DownloadTaskType.MovieData].Concat(byType[DownloadTaskType.MoviePart]),
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskTvShow,
-            byType[DownloadTaskType.TvShow],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskTvShowSeason,
-            byType[DownloadTaskType.Season],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskTvShowEpisode,
-            byType[DownloadTaskType.Episode],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskTvShowEpisodeFile,
-            byType[DownloadTaskType.EpisodeData].Concat(byType[DownloadTaskType.EpisodePart]),
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskPhotoAlbums,
-            byType[DownloadTaskType.PhotoAlbum],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskPhotoImages,
-            byType[DownloadTaskType.PhotoImage],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskPhotoImageFiles,
-            byType[DownloadTaskType.PhotoData].Concat(byType[DownloadTaskType.PhotoPart]),
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskMusicArtists,
-            byType[DownloadTaskType.MusicArtist],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskMusicAlbums,
-            byType[DownloadTaskType.MusicAlbum],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskMusicTracks,
-            byType[DownloadTaskType.MusicTrack],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskMusicTrackFiles,
-            byType[DownloadTaskType.MusicTrackData].Concat(byType[DownloadTaskType.MusicTrackPart]),
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskOtherVideos,
-            byType[DownloadTaskType.OtherVideo],
-            statuses
-        );
-        AddDownloadTaskKeysByStatusQuery(
-            queries,
-            dbContext.DownloadTaskOtherVideoFiles,
-            byType[DownloadTaskType.OtherVideoData].Concat(byType[DownloadTaskType.OtherVideoPart]),
-            statuses
-        );
+        if (byType[DownloadTaskType.Movie].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMovie.Where(x =>
+                        byType[DownloadTaskType.Movie].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MovieData].Concat(byType[DownloadTaskType.MoviePart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMovieFile.Where(x =>
+                        byType[DownloadTaskType.MovieData]
+                            .Concat(byType[DownloadTaskType.MoviePart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.TvShow].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskTvShow.Where(x =>
+                        byType[DownloadTaskType.TvShow].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.Season].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskTvShowSeason.Where(x =>
+                        byType[DownloadTaskType.Season].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.Episode].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskTvShowEpisode.Where(x =>
+                        byType[DownloadTaskType.Episode].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.EpisodeData].Concat(byType[DownloadTaskType.EpisodePart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskTvShowEpisodeFile.Where(x =>
+                        byType[DownloadTaskType.EpisodeData]
+                            .Concat(byType[DownloadTaskType.EpisodePart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.PhotoAlbum].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskPhotoAlbums.Where(x =>
+                        byType[DownloadTaskType.PhotoAlbum].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.PhotoImage].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskPhotoImages.Where(x =>
+                        byType[DownloadTaskType.PhotoImage].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.PhotoData].Concat(byType[DownloadTaskType.PhotoPart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x =>
+                        byType[DownloadTaskType.PhotoData]
+                            .Concat(byType[DownloadTaskType.PhotoPart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MusicArtist].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMusicArtists.Where(x =>
+                        byType[DownloadTaskType.MusicArtist].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MusicAlbum].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMusicAlbums.Where(x =>
+                        byType[DownloadTaskType.MusicAlbum].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MusicTrack].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMusicTracks.Where(x =>
+                        byType[DownloadTaskType.MusicTrack].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MusicTrackData].Concat(byType[DownloadTaskType.MusicTrackPart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x =>
+                        byType[DownloadTaskType.MusicTrackData]
+                            .Concat(byType[DownloadTaskType.MusicTrackPart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.OtherVideo].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskOtherVideos.Where(x =>
+                        byType[DownloadTaskType.OtherVideo].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.OtherVideoData].Concat(byType[DownloadTaskType.OtherVideoPart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x =>
+                        byType[DownloadTaskType.OtherVideoData]
+                            .Concat(byType[DownloadTaskType.OtherVideoPart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
 
         if (queries.Count == 0)
             return [];
@@ -219,21 +288,6 @@ public static partial class DbContextExtensions
         var query = queries.Skip(1).Aggregate(queries[0], (currentQuery, nextQuery) => currentQuery.Concat(nextQuery));
 
         return [.. (await query.ToListAsync(cancellationToken)).Distinct()];
-    }
-
-    private static void AddDownloadTaskKeysByStatusQuery<T>(
-        List<IQueryable<DownloadTaskKey>> queries,
-        IQueryable<T> set,
-        IEnumerable<DownloadTaskKey> keys,
-        IReadOnlyCollection<DownloadStatus> statuses
-    )
-        where T : DownloadTaskBase
-    {
-        var ids = keys.Select(x => x.Id).ToList();
-        if (ids.Count == 0)
-            return;
-
-        queries.Add(set.Where(x => ids.Contains(x.Id) && statuses.Contains(x.DownloadStatus)).ProjectToKey());
     }
 
     public static async Task<DownloadTaskType> GetDownloadTaskTypeAsync(

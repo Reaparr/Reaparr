@@ -18,9 +18,18 @@ public class GetMediaByTypeCommandValidator : AbstractValidator<GetMediaByTypeCo
             .Must(mediaType => mediaType is not PlexMediaType.None and not PlexMediaType.Unknown)
             .When(x => x.Filter.PlexLibraryId == 0)
             .WithMessage("MediaType is required when PlexLibraryId is 0.");
+        RuleFor(x => x.Filter.ComparisonState).Null().When(x => !x.Filter.MediaType.SupportsComparison());
         RuleFor(x => x.Filter.ComparisonState)
-            .Null()
-            .When(x => x.Filter.MediaType is not PlexMediaType.Movie and not PlexMediaType.TvShow);
+            .Must(x =>
+                x
+                    is null
+                        or PlexMediaComparisonState.NotCompared
+                        or PlexMediaComparisonState.Pending
+                        or PlexMediaComparisonState.Owned
+                        or PlexMediaComparisonState.Missing
+                        or PlexMediaComparisonState.Partial
+            )
+            .When(x => x.Filter.MediaType == PlexMediaType.MusicArtist);
     }
 }
 
@@ -363,32 +372,81 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             }
             case PlexMediaType.MusicArtist:
             {
-                var artistQuery = _dbContext.PlexArtists
-                    .Include(x => x.Albums)
+                var artistQuery = _dbContext
+                    .PlexArtists.Include(x => x.Albums)
                     .Include(x => x.Actors)
                     .Include(x => x.Countries)
                     .Include(x => x.Genres)
                     .ApplyFilter(options)
                     .ApplySort(options);
-                response.TotalCount = await artistQuery.CountAsync(ct);
-                response.MediaSize = await artistQuery.SumAsync(x => x.MediaSize, ct);
-                response.TotalMediaSize = response.MediaSize;
-                await SetNavigationIndexes(
-                    response,
-                    artistQuery.Select(x => new MediaNavigationIndexRow(
-                        x.SearchTitle,
-                        x.Year,
-                        null,
-                        x.Duration,
-                        x.AddedAt,
-                        x.UpdatedAt,
-                        x.MediaSize
-                    )),
-                    options,
-                    ct
-                );
-                var artists = await artistQuery.ApplyPaging(options).ToListAsync(ct);
-                response.Items = artists.Select(x => x.ToSlimDTOMapper()).ToList();
+                List<PlexMusicArtist> artists;
+                if (filter.ComparisonState.HasValue)
+                {
+                    var candidates = await artistQuery.ToListAsync(ct);
+                    var candidateDtos = candidates.Select(x => x.ToSlimDTOMapper()).ToList();
+                    var comparisonResult = await ApplyComparisonStateAsync(
+                        candidateDtos,
+                        plexLibraryId,
+                        PlexMediaType.MusicArtist,
+                        ct
+                    );
+                    if (comparisonResult.IsFailed)
+                        return Result.Fail<PagedMediaQueryResult>(comparisonResult.Errors);
+                    var filteredDtos = candidateDtos
+                        .Where(x => x.ComparisonId == filter.ComparisonState.Value.ToComparisonId())
+                        .ToList();
+                    var filteredIds = filteredDtos.Select(x => x.Id).ToHashSet();
+                    var filteredArtists = candidates.Where(x => filteredIds.Contains(x.Id)).ToList();
+                    response.TotalCount = filteredDtos.Count;
+                    response.MediaSize = filteredDtos.Sum(x => x.MediaSize);
+                    response.TotalMediaSize = response.MediaSize;
+                    SetNavigationIndexes(
+                        response,
+                        filteredArtists.Select(x => new MediaNavigationIndexRow(
+                            x.SearchTitle,
+                            x.Year,
+                            null,
+                            x.Duration,
+                            x.AddedAt,
+                            x.UpdatedAt,
+                            x.MediaSize
+                        )),
+                        options
+                    );
+                    response.Items = ApplyDtoPaging(filteredDtos, page, pageSize);
+                    var pagedIds = response.Items.Select(x => x.Id).ToHashSet();
+                    artists = filteredArtists.Where(x => pagedIds.Contains(x.Id)).ToList();
+                }
+                else
+                {
+                    response.TotalCount = await artistQuery.CountAsync(ct);
+                    response.MediaSize = await artistQuery.SumAsync(x => x.MediaSize, ct);
+                    response.TotalMediaSize = response.MediaSize;
+                    await SetNavigationIndexes(
+                        response,
+                        artistQuery.Select(x => new MediaNavigationIndexRow(
+                            x.SearchTitle,
+                            x.Year,
+                            null,
+                            x.Duration,
+                            x.AddedAt,
+                            x.UpdatedAt,
+                            x.MediaSize
+                        )),
+                        options,
+                        ct
+                    );
+                    artists = await artistQuery.ApplyPaging(options).ToListAsync(ct);
+                    response.Items = artists.Select(x => x.ToSlimDTOMapper()).ToList();
+                    var comparisonResult = await ApplyComparisonStateAsync(
+                        response.Items,
+                        plexLibraryId,
+                        PlexMediaType.MusicArtist,
+                        ct
+                    );
+                    if (comparisonResult.IsFailed)
+                        return Result.Fail<PagedMediaQueryResult>(comparisonResult.Errors);
+                }
                 response.Roles = artists.SelectMany(x => x.Actors).Select(x => x.Id).Distinct().Order().ToList();
                 response.Countries = artists.SelectMany(x => x.Countries).Select(x => x.Id).Distinct().Order().ToList();
                 response.Genres = artists.SelectMany(x => x.Genres).Select(x => x.Id).Distinct().Order().ToList();

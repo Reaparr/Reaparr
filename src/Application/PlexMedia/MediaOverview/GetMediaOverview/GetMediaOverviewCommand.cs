@@ -22,9 +22,18 @@ public sealed class GetMediaOverviewCommandValidator : AbstractValidator<GetMedi
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
             .When(x => x.Filter.Parameters.PageSize.HasValue);
+        RuleFor(x => x.Filter.ComparisonState).Null().When(x => !x.Filter.MediaType.SupportsComparison());
         RuleFor(x => x.Filter.ComparisonState)
-            .Null()
-            .When(x => x.Filter.MediaType is not PlexMediaType.Movie and not PlexMediaType.TvShow);
+            .Must(x =>
+                x
+                    is null
+                        or PlexMediaComparisonState.NotCompared
+                        or PlexMediaComparisonState.Pending
+                        or PlexMediaComparisonState.Owned
+                        or PlexMediaComparisonState.Missing
+                        or PlexMediaComparisonState.Partial
+            )
+            .When(x => x.Filter.MediaType == PlexMediaType.MusicArtist);
     }
 }
 

@@ -10,7 +10,16 @@ public sealed class GetMediaOverviewMusicCommandValidator : AbstractValidator<Ge
     public GetMediaOverviewMusicCommandValidator()
     {
         RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.MusicArtist);
-        RuleFor(x => x.Filter.ComparisonState).Null();
+        RuleFor(x => x.Filter.ComparisonState)
+            .Must(x =>
+                x
+                    is null
+                        or PlexMediaComparisonState.NotCompared
+                        or PlexMediaComparisonState.Pending
+                        or PlexMediaComparisonState.Owned
+                        or PlexMediaComparisonState.Missing
+                        or PlexMediaComparisonState.Partial
+            );
         RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
@@ -45,7 +54,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
         var filter = command.Filter;
         var options = QueryOptionsParser.Parse(filter.Parameters);
         var sort = options.ResolveSort();
-        if (sort is null || sort.Value.Field == "Quality")
+        if (filter.ComparisonState.HasValue || sort is null || sort.Value.Field == "Quality")
         {
             var mediaResult = await _commandExecutor.Send(
                 new GetMediaByTypeCommand { Filter = filter },
@@ -147,6 +156,17 @@ public sealed class GetMediaOverviewMusicCommandHandler
         items = items.RestorePageOrder(ids);
         LogPhase(filter, "Items", stopwatch.Elapsed, items.Count);
         stopwatch.Restart();
+        var comparisonResult = await _commandExecutor.Send(
+            new ApplyComparisonStateCommand(
+                items,
+                PlexMediaType.MusicArtist,
+                filter.PlexLibraryId > 0 ? filter.PlexLibraryId : null
+            ),
+            cancellationToken
+        );
+
+        if (comparisonResult.IsFailed)
+            return comparisonResult.LogIfFailed().ToResult<PagedMediaQueryResult>();
 
         var result = await context.CreatePageResultAsync(
             filter,
@@ -180,15 +200,24 @@ public sealed class GetMediaOverviewMusicCommandHandler
         );
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
-        result.Roles = await context.PlexMusicArtistActors
-            .Where(x => ids.Contains(x.PlexMusicArtistId))
-            .Select(x => x.PlexActorId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
-        result.Countries = await context.PlexMusicArtistCountries
-            .Where(x => ids.Contains(x.PlexMusicArtistId))
-            .Select(x => x.CountryId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
-        result.Genres = await context.PlexMusicArtistGenres
-            .Where(x => ids.Contains(x.PlexMusicArtistId))
-            .Select(x => x.GenresId).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+        result.Roles = await context
+            .PlexMusicArtistActors.Where(x => ids.Contains(x.PlexMusicArtistId))
+            .Select(x => x.PlexActorId)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync(cancellationToken);
+        result.Countries = await context
+            .PlexMusicArtistCountries.Where(x => ids.Contains(x.PlexMusicArtistId))
+            .Select(x => x.CountryId)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync(cancellationToken);
+        result.Genres = await context
+            .PlexMusicArtistGenres.Where(x => ids.Contains(x.PlexMusicArtistId))
+            .Select(x => x.GenresId)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync(cancellationToken);
         LogPhase(filter, "Metadata", stopwatch.Elapsed, items.Count);
         result.Qualities = items
             .SelectMany(x => x.Qualities)

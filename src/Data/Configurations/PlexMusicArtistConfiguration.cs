@@ -7,6 +7,8 @@ public class PlexMusicArtistConfiguration : IEntityTypeConfiguration<PlexMusicAr
         builder.HasIndex(x => new { x.PlexLibraryId, x.PlexApiRatingKey }).IsUnique();
         builder.Property(x => x.SearchTitle).UseCollation("NOCASE");
         builder.HasIndex(x => new { x.PlexLibraryId, x.SearchTitle });
+        builder.Property(x => x.MusicBrainzArtistId).UseCollation("NOCASE");
+        builder.HasIndex(x => new { x.PlexLibraryId, x.MusicBrainzArtistId });
         builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
         builder
             .HasOne(x => x.PlexLibrary)

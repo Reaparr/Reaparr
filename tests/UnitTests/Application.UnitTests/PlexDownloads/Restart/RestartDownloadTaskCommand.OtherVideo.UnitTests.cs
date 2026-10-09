@@ -25,6 +25,7 @@ public class RestartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest
         );
         var dbContext = IDbContext;
         var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .Include(x => x.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         DownloadTaskFileBase target = otherVideoFiles[0];

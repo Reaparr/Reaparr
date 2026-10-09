@@ -28,7 +28,8 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
         GenerateDownloadTaskMusicAlbumsCommand? forwarded = null;
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<GenerateDownloadTaskMusicAlbumsCommand>(), It.IsAny<CancellationToken>()))
-            .Callback<GenerateDownloadTaskMusicAlbumsCommand, CancellationToken>((value, _) => forwarded = value)
+            .Callback<ICommand<Result<DownloadTaskCreationReport>>, CancellationToken>(
+                (value, _) => forwarded = (GenerateDownloadTaskMusicAlbumsCommand)value)
             .ReturnsAsync(Result.Ok(new DownloadTaskCreationReport { MusicAlbums = 1, MusicTracks = 1 }))
             .Verifiable(Times.Once());
         var request = new CreateDownloadTasksRequest(

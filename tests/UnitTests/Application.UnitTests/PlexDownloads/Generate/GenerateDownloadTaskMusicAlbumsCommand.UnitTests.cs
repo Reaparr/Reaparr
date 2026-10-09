@@ -18,7 +18,8 @@ public partial class GenerateDownloadTaskMusicAlbumsCommandUnitTests
         GenerateDownloadTaskMusicTracksCommand? forwarded = null;
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<GenerateDownloadTaskMusicTracksCommand>(), It.IsAny<CancellationToken>()))
-            .Callback<GenerateDownloadTaskMusicTracksCommand, CancellationToken>((value, _) => forwarded = value)
+            .Callback<ICommand<Result<DownloadTaskCreationReport>>, CancellationToken>(
+                (value, _) => forwarded = (GenerateDownloadTaskMusicTracksCommand)value)
             .ReturnsAsync(Result.Ok(new DownloadTaskCreationReport { MusicTracks = 2 }))
             .Verifiable(Times.Once());
         var selection = new DownloadMediaDTO
@@ -64,11 +65,12 @@ public partial class GenerateDownloadTaskMusicAlbumsCommandUnitTests
             config.MusicAlbumCount = 1;
             config.MusicTrackCount = 1;
         });
-        var album = await IDbContext.PlexAlbums.Include(x => x.PlexArtist).Include(x => x.Tracks).SingleAsync(CancellationToken);
+        var dbContext = IDbContext;
+        var album = await dbContext.PlexAlbums.Include(x => x.PlexArtist).Include(x => x.Tracks).SingleAsync(CancellationToken);
         var artistTask = album.PlexArtist!.MapToDownloadTask(null);
         artistTask.Children.Add(album.MapToDownloadTask(artistTask, null));
-        IDbContext.DownloadTaskMusicArtists.Add(artistTask);
-        await IDbContext.SaveChangesAsync(CancellationToken);
+        dbContext.DownloadTaskMusicArtists.Add(artistTask);
+        await dbContext.SaveChangesAsync(CancellationToken);
         var selection = new DownloadMediaDTO
         {
             Type = PlexMediaType.MusicAlbum,
@@ -98,8 +100,8 @@ public partial class GenerateDownloadTaskMusicAlbumsCommandUnitTests
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(new DownloadTaskCreationReport());
-        (await IDbContext.DownloadTaskMusicArtists.CountAsync(CancellationToken)).ShouldBe(1);
-        (await IDbContext.DownloadTaskMusicAlbums.CountAsync(CancellationToken)).ShouldBe(1);
+        (await dbContext.DownloadTaskMusicArtists.CountAsync(CancellationToken)).ShouldBe(1);
+        (await dbContext.DownloadTaskMusicAlbums.CountAsync(CancellationToken)).ShouldBe(1);
         Mock.Mock<ICommandExecutor>().Verify();
     }
 }

@@ -9,7 +9,7 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
     [Arguments(DownloadTaskType.PhotoAlbum, true)]
     [Arguments(DownloadTaskType.PhotoData, false)]
     [Arguments(DownloadTaskType.PhotoData, true)]
-    public async Task ShouldQueueOnlySelectedPausedPhotoPartsOrRestoreThem_WhenStartingPhotos(
+    public async Task ShouldQueueWaitingPhotosOnlyForAlbumsAndRestoreRejectedStart_WhenStartingPhotos(
         DownloadTaskType selection,
         bool failStart
     )
@@ -77,7 +77,20 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
             .Verifiable(Times.Once());
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.StartDownloadTaskJob(selected, CancellationToken))
-            .ReturnsAsync(failStart ? Result.Fail(schedulerError) : Result.Ok())
+            .Returns(async () =>
+            {
+                var duringStart = await dbContext.DownloadTaskPhotoImageFiles.OrderBy(x => x.Id)
+                    .Select(x => new { x.Id, x.ParentId, x.DownloadStatus }).ToListAsync(CancellationToken);
+                duringStart.ShouldBe(before.Select(x => new
+                {
+                    x.Id,
+                    x.ParentId,
+                    DownloadStatus = x.Id == selected.Id
+                        || selection == DownloadTaskType.PhotoAlbum && selectedIds.Contains(x.Id)
+                            ? DownloadStatus.Queued : x.DownloadStatus,
+                }));
+                return failStart ? Result.Fail(schedulerError) : Result.Ok();
+            })
             .Verifiable(Times.Once());
         if (!failStart)
         {
@@ -119,7 +132,9 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
             {
                 x.Id,
                 x.ParentId,
-                DownloadStatus = selectedIds.Contains(x.Id) ? expectedStatus : x.DownloadStatus,
+                DownloadStatus = !failStart && (x.Id == selected.Id
+                    || selection == DownloadTaskType.PhotoAlbum && selectedIds.Contains(x.Id))
+                        ? expectedStatus : x.DownloadStatus,
             })
         );
         Mock.Mock<IDownloadTaskScheduler>().Verify();
@@ -152,7 +167,7 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
     [Arguments(true, false, true)]
     [Arguments(true, true, false)]
     [Arguments(true, true, true)]
-    public async Task ShouldResumeSelectedPhotoPartsByPhaseAndRestoreRejectedMove_WhenStartingPhotos(
+    public async Task ShouldResumeOnlyNextPhotoMoveAndRestoreRejectedMove_WhenStartingPhotos(
         bool startAlbum,
         bool includeDownloads,
         bool failMove
@@ -215,38 +230,17 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
                 x.DownloadStatus,
             })
             .ToListAsync(CancellationToken);
-        var downloadKeys = selectedFiles
-            .Where(x => x.DownloadTaskPhase == DownloadTaskPhase.Downloading)
-            .Select(x => x.ToKey())
-            .ToList();
         var moveKeys = selectedFiles
             .Where(x => x.DownloadTaskPhase == DownloadTaskPhase.FileTransfer)
             .Select(x => x.ToKey())
             .ToList();
-        var attemptedMoves = failMove ? moveKeys.Take(includeDownloads ? 2 : 1).ToList() : moveKeys;
+        var attemptedMoves = moveKeys.Take(1).ToList();
         var successfulMoveIds = attemptedMoves
             .Where(x => !failMove || x != attemptedMoves.Last())
             .Select(x => x.Id)
             .ToHashSet();
-        var queuedIds = downloadKeys.Select(x => x.Id).ToHashSet();
         var schedulerError = new Error("Move scheduler rejected selected photo part");
         SetupDependencies(b => b.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>());
-        if (includeDownloads)
-        {
-            var selectedDownload = downloadKeys.First();
-            Mock.Mock<IDownloadTaskScheduler>()
-                .Setup(x => x.IsDownloading(selectedDownload, CancellationToken))
-                .ReturnsAsync(false)
-                .Verifiable(Times.Once());
-            Mock.Mock<IDownloadTaskScheduler>()
-                .Setup(x => x.StartDownloadTaskJob(selectedDownload, CancellationToken))
-                .ReturnsAsync(Result.Ok())
-                .Verifiable(Times.Once());
-            Mock.Mock<IDownloadTaskScheduler>()
-                .Setup(x => x.GetCurrentlyDownloadingKeysByServer(library.PlexServerId))
-                .ReturnsAsync([selectedDownload])
-                .Verifiable(Times.Once());
-        }
         foreach (var moveKey in attemptedMoves)
         {
             Mock.Mock<IMoveDownloadFileScheduler>()
@@ -295,9 +289,8 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
             {
                 x.Id,
                 x.ParentId,
-                DownloadStatus = queuedIds.Contains(x.Id) ? DownloadStatus.Queued
-                : successfulMoveIds.Contains(x.Id) ? DownloadStatus.DownloadFinished
-                : x.DownloadStatus,
+                DownloadStatus = successfulMoveIds.Contains(x.Id)
+                    ? DownloadStatus.DownloadFinished : x.DownloadStatus,
             })
         );
         Mock.Mock<IDownloadTaskScheduler>().Verify();
@@ -305,7 +298,7 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
             .Verify(
                 x =>
                     x.StartDownloadTaskJob(
-                        It.Is<DownloadTaskKey>(k => !includeDownloads || k != downloadKeys[0]),
+                        It.IsAny<DownloadTaskKey>(),
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Never()

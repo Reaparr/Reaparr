@@ -25,7 +25,9 @@ public class PauseDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<P
             }
         );
         var dbContext = IDbContext;
-        var target = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
+        var target = await dbContext.DownloadTaskOtherVideoFiles
+            .Include(x => x.Parent)
+            .SingleAsync(CancellationToken);
         target.DataReceived = 128;
         target.FileDataTransferred = 64;
         dbContext.Entry(target).State = EntityState.Modified;

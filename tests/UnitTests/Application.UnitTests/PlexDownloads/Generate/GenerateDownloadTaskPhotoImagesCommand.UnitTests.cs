@@ -308,7 +308,7 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests : BaseCommandUnitTe
         var result = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(new GenerateDownloadTaskPhotoImagesCommand(request));
 
         // Assert
-        result.IsFailed.ShouldBeTrue(); result.Errors.Count.ShouldBe(1);
+        result.IsFailed.ShouldBeTrue(); result.Errors.Count.ShouldBe(2);
         (await dbContext.DownloadTaskPhotoAlbums.CountAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.DownloadTaskPhotoImages.CountAsync(CancellationToken)).ShouldBe(0);
         (await dbContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(0);

@@ -41,4 +41,12 @@ public enum PlexMediaComparisonMatchType
     /// Matched by parent structure (matched show + season/episode numbers).
     /// </summary>
     ParentAndChildNumbers = 6,
+
+    MusicBrainzArtistId = 7,
+
+    MusicBrainzReleaseId = 8,
+
+    MusicBrainzReleaseTrackId = 9,
+
+    MusicBrainzRecordingId = 10,
 }

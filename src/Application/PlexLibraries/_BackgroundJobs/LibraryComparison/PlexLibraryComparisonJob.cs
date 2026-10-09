@@ -116,6 +116,12 @@ public class PlexLibraryComparisonJob : IJob
                     cancellationToken
                 );
                 break;
+            case PlexMediaType.MusicArtist:
+                result = await _commandExecutor.Send(
+                    new CompareMusicPlexLibraryCommand(ownedLibrary.Id, remoteLibrary.Id),
+                    cancellationToken
+                );
+                break;
             default:
                 result = Result.Fail(
                     "Library comparisons are not supported for media type {RemoteLibraryType}",

@@ -27,6 +27,9 @@ public class StopDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StopDow
         );
         var dbContext = IDbContext;
         var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .Include(x => x.Parent)
+                .ThenInclude(x => x!.Parent)
+                    .ThenInclude(x => x!.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         DownloadTaskFileBase target = musicFiles[0];

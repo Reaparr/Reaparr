@@ -113,6 +113,13 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
                 Filter = $"{metadataField}:any:Id:eq:{metadataId}",
             },
         };
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.Is<ApplyComparisonStateCommand>(c =>
+                c.MediaType == PlexMediaType.MusicArtist && c.PlexLibraryId == libraryIds[0]
+                && c.Items.Count == 1 && c.Items[0].Id == target[2].Id), CancellationToken))
+            .Callback<ICommand<Result>, CancellationToken>((command, _) =>
+                ((ApplyComparisonStateCommand)command).Items[0].SetComparisonState(PlexMediaComparisonState.Partial))
+            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMusicCommand(filter));
@@ -130,6 +137,7 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
         (item.Type, item.SortIndex, item.ChildCount, item.GrandChildCount).ShouldBe(
             (PlexMediaType.MusicArtist, 2, 2, 6)
         );
+        item.ComparisonId.ShouldBe(PlexMediaComparisonState.Partial.ToComparisonId());
         (item.PlexLibraryId, item.PlexServerId, item.PlexApiRatingKey, item.PlexApiMetaDataKey, item.HasThumb).ShouldBe(
             (libraryIds[0], target[2].PlexServerId, target[2].PlexApiRatingKey, target[2].PlexApiMetaDataKey, true)
         );
@@ -144,7 +152,39 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
             .ShouldBe(sort.EndsWith("asc") ? [("B", 0), ("C", 1), ("A", 2)] : [("A", 0), ("C", 1), ("B", 2)]);
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<GetMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
-        Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+    [Test]
+    [Arguments(PlexMediaComparisonState.NotCompared)]
+    [Arguments(PlexMediaComparisonState.Pending)]
+    [Arguments(PlexMediaComparisonState.Owned)]
+    [Arguments(PlexMediaComparisonState.Missing)]
+    [Arguments(PlexMediaComparisonState.Partial)]
+    public async Task ShouldUseCanonicalFallback_WhenMusicComparisonFilterIsRequested(PlexMediaComparisonState state)
+    {
+        // Arrange
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.MusicArtist, PlexLibraryId = 17,
+            FilterOfflineMedia = false, FilterOwnedMedia = false, ComparisonState = state,
+            Parameters = new FlexQueryParameters { Page = 2, PageSize = 3, Sort = "Year:desc", Filter = "Year:gte:2000" },
+        };
+        var page = new PagedMediaQueryResult
+        {
+            QueryHash = filter.QueryHash, Page = 2, PageSize = 3,
+            TotalCount = 4, MediaCount = 4, MediaSize = 1234, TotalMediaSize = 1234,
+        };
+        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<GetMediaByTypeCommand>(c => c.Filter == filter), CancellationToken))
+            .ReturnsAsync(Result.Ok(page)).Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMusicCommand(filter));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.ShouldBeSameAs(page);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 }

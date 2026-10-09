@@ -77,7 +77,13 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
 
         var queuedWaitingTasks = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
 
-        if (key.Type is DownloadTaskType.TvShow or DownloadTaskType.Season)
+        if (
+            key.Type is DownloadTaskType.TvShow
+                or DownloadTaskType.Season
+                or DownloadTaskType.MusicArtist
+                or DownloadTaskType.MusicAlbum
+                or DownloadTaskType.PhotoAlbum
+        )
         {
             DownloadStatus[] statusesToQueue = nextDownloadTask.DownloadStatus switch
             {
