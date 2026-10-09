@@ -16,13 +16,15 @@ public class DeleteDownloadTaskFilesCommandHandler : ICommandHandler<DeleteDownl
     private readonly IFile _file;
     private readonly IDirectory _directory;
     private readonly IPath _path;
+    private readonly IPathProvider _pathProvider;
 
     public DeleteDownloadTaskFilesCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
         IFile file,
         IDirectory directory,
-        IPath path
+        IPath path,
+        IPathProvider pathProvider
     )
     {
         _log = log.ForContext<DeleteDownloadTaskFilesCommandHandler>();
@@ -30,6 +32,7 @@ public class DeleteDownloadTaskFilesCommandHandler : ICommandHandler<DeleteDownl
         _file = file;
         _directory = directory;
         _path = path;
+        _pathProvider = pathProvider;
     }
 
     public async Task<Result> ExecuteAsync(DeleteDownloadTaskFilesCommand command, CancellationToken cancellationToken)
@@ -63,8 +66,24 @@ public class DeleteDownloadTaskFilesCommandHandler : ICommandHandler<DeleteDownl
                     // Matches the hardcoded subfolder names used in DownloadTaskFileBase.DownloadDirectory.
                     return task.DownloadTaskType switch
                     {
-                        DownloadTaskType.MovieData => _path.Combine(downloadRoot, "Movies"),
-                        DownloadTaskType.EpisodeData => _path.Combine(downloadRoot, "TvShows"),
+                        // TODO move this into a shared helper to determinde the download root subfolder for a given task type, so that the same logic is used in both places.
+                        DownloadTaskType.MovieData => _path.Combine(downloadRoot, _pathProvider.DefaultMovieFolderName),
+                        DownloadTaskType.EpisodeData => _path.Combine(
+                            downloadRoot,
+                            _pathProvider.DefaultTvShowsFolderName
+                        ),
+                        DownloadTaskType.MusicTrackData => _path.Combine(
+                            downloadRoot,
+                            _pathProvider.DefaultMusicFolderName
+                        ),
+                        DownloadTaskType.PhotoData => _path.Combine(
+                            downloadRoot,
+                            _pathProvider.DefaultPhotosFolderName
+                        ),
+                        DownloadTaskType.OtherVideoData => _path.Combine(
+                            downloadRoot,
+                            _pathProvider.DefaultOtherFolderName
+                        ),
                         _ => downloadRoot,
                     };
                 },
