@@ -39,6 +39,8 @@
             "select-track": "Titel {title} auswählen",
             "selected-count": "{count} ausgewählt",
             "track-count": "{count} Titel",
+            "disc-label": "Disc {number}",
+            "unknown-disc": "Nicht angegebene Disc",
             "no-tracks": "Keine Titel gefunden",
             "no-albums": "Keine Alben gefunden"
         },
@@ -983,6 +985,36 @@
                         "label": "Frage nach Bestätigung für Filme Download",
                         "text": "Soll vor dem Herunterladen eines Films ein Bestätigungs-Popup angezeigt werden?",
                         "title": "Frage nach Bestätigung für Filme Download"
+                    },
+                    "download-music-artist-confirmation": {
+                        "label": "Downloads von Interpreten bestätigen",
+                        "text": "Soll vor dem Herunterladen der Musik eines Interpreten eine Bestätigung angezeigt werden?",
+                        "title": "Downloads von Interpreten bestätigen"
+                    },
+                    "download-music-album-confirmation": {
+                        "label": "Downloads von Musikalben bestätigen",
+                        "text": "Soll vor dem Herunterladen eines Musikalbums eine Bestätigung angezeigt werden?",
+                        "title": "Downloads von Musikalben bestätigen"
+                    },
+                    "download-music-track-confirmation": {
+                        "label": "Downloads von Musiktiteln bestätigen",
+                        "text": "Soll vor dem Herunterladen eines Musiktitels eine Bestätigung angezeigt werden?",
+                        "title": "Downloads von Musiktiteln bestätigen"
+                    },
+                    "download-photo-album-confirmation": {
+                        "label": "Downloads von Fotoalben bestätigen",
+                        "text": "Soll vor dem Herunterladen eines Fotoalbums eine Bestätigung angezeigt werden?",
+                        "title": "Downloads von Fotoalben bestätigen"
+                    },
+                    "download-photo-image-confirmation": {
+                        "label": "Downloads von Fotos und Clips bestätigen",
+                        "text": "Soll vor dem Herunterladen eines Fotos oder Clips eine Bestätigung angezeigt werden?",
+                        "title": "Downloads von Fotos und Clips bestätigen"
+                    },
+                    "download-other-videos-confirmation": {
+                        "label": "Downloads sonstiger Videos bestätigen",
+                        "text": "Soll vor dem Herunterladen eines sonstigen Videos eine Bestätigung angezeigt werden?",
+                        "title": "Downloads sonstiger Videos bestätigen"
                     },
                     "download-season-confirmation": {
                         "label": "Frage nach Bestätigung für Staffel Download",

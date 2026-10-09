@@ -103,6 +103,29 @@ function artistFixture(): PlexMediaDTO {
 	});
 }
 
+function multiDiscArtistFixture(): PlexMediaDTO {
+	const artist = artistFixture();
+	const album = artist.children[0]!;
+	Object.assign(album.children[0]!, { discNumber: 2, trackNumber: 1, sortIndex: 99 });
+	Object.assign(album.children[1]!, { discNumber: 1, trackNumber: 1, sortIndex: 88 });
+	album.children.push(
+		media({ id: 10, parentId: 7, title: 'Disc One Track Two', discNumber: 1, trackNumber: 2, sortIndex: 77 }),
+		media({ id: 11, parentId: 7, title: 'Unnumbered Track', discNumber: null, trackNumber: null, sortIndex: 66 }),
+		media({ id: 12, parentId: 7, title: 'Missing Metadata Track', sortIndex: 55 }),
+	);
+	artist.children.push(media({
+		id: 20,
+		parentId: 100,
+		title: 'Another Album',
+		type: PlexMediaType.MusicAlbum,
+		children: [
+			media({ id: 21, parentId: 20, title: 'Another Disc One', discNumber: 1, trackNumber: 1 }),
+			media({ id: 22, parentId: 20, title: 'Another Disc Two', discNumber: 2, trackNumber: 1 }),
+		],
+	}));
+	return artist;
+}
+
 describe('MusicMediaList hierarchy selection', () => {
 	let pinia: Pinia;
 	const mounted: Array<{ unmount: () => void }> = [];
@@ -389,5 +412,136 @@ describe('MusicMediaList hierarchy selection', () => {
 		// Assert
 		expect(wrapper.find('[data-cy="music-media-list-empty"]').exists()).toBe(true);
 		expect(open).toHaveBeenCalledExactlyOnceWith(item);
+	});
+
+	test('Should group real discs within each album and render unknown metadata without invented numbers', async () => {
+		// Arrange
+		const wrapper = await render(multiDiscArtistFixture());
+
+		// Act
+		await wrapper.get('[data-cy="music-album-7"] .q-item').trigger('click');
+		await wrapper.get('[data-cy="music-album-20"] .q-item').trigger('click');
+
+		// Assert
+		expect(wrapper.findAll('[data-cy^="music-disc-"]').map((disc) => disc.attributes('data-cy'))).toEqual([
+			'music-disc-7-1', 'music-disc-7-2', 'music-disc-7-unknown', 'music-disc-20-1', 'music-disc-20-2',
+		]);
+		expect(wrapper.get('[data-cy="music-disc-7-1"]').findAll('.music-track-row').map((track) => track.attributes('data-cy'))).toEqual([
+			'music-track-7-8', 'music-track-7-10',
+		]);
+		expect(wrapper.get('[data-cy="music-disc-7-2"]').findAll('.music-track-row').map((track) => track.attributes('data-cy'))).toEqual(['music-track-7-7']);
+		expect(wrapper.get('[data-cy="music-disc-7-unknown"]').findAll('.music-track-row')).toHaveLength(2);
+		expect(wrapper.get('[data-cy="music-track-number-7-7"]').text()).toBe('1');
+		expect(wrapper.get('[data-cy="music-track-number-7-8"]').text()).toBe('1');
+		expect(wrapper.get('[data-cy="music-track-number-7-10"]').text()).toBe('2');
+		expect(wrapper.get('[data-cy="music-track-number-20-21"]').text()).toBe('1');
+		expect(wrapper.find('[data-cy="music-track-number-7-11"]').exists()).toBe(false);
+		expect(wrapper.find('[data-cy="music-track-number-7-12"]').exists()).toBe(false);
+		expect(wrapper.findAll('.music-track-row')).toHaveLength(7);
+
+		// Act
+		const header = wrapper.get('[data-cy="music-disc-7-2"] .q-item');
+		expect(header.attributes('aria-expanded')).toBe('true');
+		await header.trigger('click');
+
+		// Assert
+		expect(header.attributes('aria-expanded')).toBe('false');
+		await header.trigger('click');
+		expect(header.attributes('aria-expanded')).toBe('true');
+		expect(wrapper.find('[data-cy="music-track-7-7"]').exists()).toBe(true);
+	});
+
+	test('Should keep canonical selection and original payloads across repeated disc and track numbers', async () => {
+		// Arrange
+		const item = multiDiscArtistFixture();
+		const wrapper = await render(item);
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="music-album-7"] .q-item').trigger('click');
+		await wrapper.get('[data-cy="music-album-20"] .q-item').trigger('click');
+
+		// Act
+		await wrapper.get('[data-cy="music-track-original-7-7-71"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-original-7-8-80"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-checkbox-7-7"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-checkbox-7-8"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-checkbox-20-21"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[0]).toEqual([
+			expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [7], plexServerId: 2, plexLibraryId: 4,
+				qualities: [expect.objectContaining({ mediaId: 7, dataId: 703 })] }),
+			expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [8], plexServerId: 2, plexLibraryId: 4,
+				qualities: [expect.objectContaining({ mediaId: 8, dataId: 801 })] }),
+			expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [21], plexServerId: 2, plexLibraryId: 4, qualities: [] }),
+		]);
+		expect(wrapper.get('[data-cy="music-album-checkbox-7"]').attributes('aria-checked')).toBe('mixed');
+		expect(wrapper.get('[data-cy="music-track-checkbox-20-22"]').attributes('aria-checked')).toBe('false');
+		expect(wrapper.get('.music-media-list__root').text()).toContain('3');
+
+		// Act
+		await wrapper.get('[data-cy="music-album-checkbox-7"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+		await wrapper.get('[data-cy="music-artist-checkbox"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[1]).toEqual([
+			expect.objectContaining({ type: PlexMediaType.MusicAlbum, mediaIds: [7],
+				qualities: [expect.objectContaining({ mediaId: 7, dataId: 703 }), expect.objectContaining({ mediaId: 8, dataId: 801 })] }),
+			expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [21], qualities: [] }),
+		]);
+		expect(commands[2]).toEqual([expect.objectContaining({ type: PlexMediaType.MusicArtist, mediaIds: [100],
+			qualities: [expect.objectContaining({ mediaId: 7, dataId: 703 }), expect.objectContaining({ mediaId: 8, dataId: 801 })] })]);
+
+		// Act
+		await wrapper.get('[data-cy="music-disc-7-2"] .q-item').trigger('click');
+		await wrapper.get('[data-cy="music-disc-7-2"] .q-item').trigger('click');
+		expect(wrapper.get('[data-cy="music-track-original-7-7-71"]').attributes('aria-checked')).toBe('true');
+		await wrapper.get('[data-cy="music-track-checkbox-7-7"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands[3]).toEqual([
+			expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [8],
+				qualities: [expect.objectContaining({ mediaId: 8, dataId: 801 })] }),
+			expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [10], qualities: [] }),
+			expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [11], qualities: [] }),
+			expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [12], qualities: [] }),
+			expect.objectContaining({ type: PlexMediaType.MusicAlbum, mediaIds: [20], qualities: [] }),
+		]);
+		expect(wrapper.get('[data-cy="music-album-checkbox-7"]').attributes('aria-checked')).toBe('mixed');
+		expect(wrapper.get('[data-cy="music-album-checkbox-20"]').attributes('aria-checked')).toBe('true');
+	});
+
+	test('Should derive refreshed discs and reset selection and original choices for a replacement artist object', async () => {
+		// Arrange
+		const wrapper = await render(multiDiscArtistFixture());
+		const commands = captureDownloads();
+		await wrapper.get('[data-cy="music-album-7"] .q-item').trigger('click');
+		await wrapper.get('[data-cy="music-track-original-7-7-71"]').trigger('click');
+		await wrapper.get('[data-cy="music-track-checkbox-7-7"]').trigger('click');
+		const replacement = multiDiscArtistFixture();
+		replacement.children[0]!.children[0]!.discNumber = 3;
+		replacement.children[0]!.children[0]!.trackNumber = 9;
+
+		// Act
+		await wrapper.setProps({ mediaItem: replacement });
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands).toEqual([]);
+		expect(useMediaOverviewStore().downloadButtonVisible).toBe(false);
+		expect(wrapper.find('[data-cy="music-disc-7-2"]').exists()).toBe(false);
+		expect(wrapper.get('[data-cy="music-disc-7-3"]').find('[data-cy="music-track-7-7"]').exists()).toBe(true);
+		expect(wrapper.get('[data-cy="music-track-number-7-7"]').text()).toBe('9');
+		expect(wrapper.get('[data-cy="music-track-original-7-7-automatic"]').attributes('aria-checked')).toBe('true');
+
+		// Act
+		await wrapper.get('[data-cy="music-track-checkbox-7-7"]').trigger('click');
+		useMediaOverviewBarDownloadCommandBus().emit('download');
+
+		// Assert
+		expect(commands).toEqual([[expect.objectContaining({ type: PlexMediaType.MusicTrack, mediaIds: [7], qualities: [] })]]);
 	});
 });

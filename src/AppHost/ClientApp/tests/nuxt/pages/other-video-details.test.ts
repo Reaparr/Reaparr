@@ -6,7 +6,9 @@ import { of, Subject } from 'rxjs';
 import { baseSetup } from '@services-test-base';
 import { generatePlexMedia } from '@mock';
 import { PlexMediaType, type PlexMediaDTO } from '@dto';
-import { useMediaStore } from '@store';
+import { useDialogStore, useDownloadStore, useMediaStore, useSettingsStore } from '@store';
+import { resetMediaOverviewCommandsBus, sendMediaOverviewDownloadCommand } from '@/composables/event-bus';
+import ConfirmationSection from '@/components/Views/Settings/ConfirmationSection.vue';
 import OtherVideoDetails from '@/pages/other-videos/[libraryId]/details/[videoId].vue';
 import { createI18n } from 'vue-i18n';
 import messages from '@/lang/en-US.json';
@@ -27,6 +29,7 @@ describe('Other Videos root detail - request lifetime', () => {
 		mounted.forEach((wrapper) => wrapper.unmount());
 		mounted.length = 0;
 		vi.restoreAllMocks();
+		resetMediaOverviewCommandsBus();
 	});
 
 	function video(id = 20): PlexMediaDTO {
@@ -153,5 +156,31 @@ describe('Other Videos root detail - request lifetime', () => {
 		expect(wrapper.get('[data-cy="other-video-details-error"]').text()).toBe('Invalid video library or video.');
 		expect(wrapper.find('[data-cy="other-video-details-loading"]').exists()).toBe(false);
 		expect(wrapper.get('button').text()).toContain('Back');
+	});
+	test('Should use the Other Videos confirmation control without borrowing Movie confirmation', async () => {
+		// Arrange
+		vi.spyOn(useMediaStore(), 'getMediaDataDetailById').mockReturnValue(of(video()));
+		const open = vi.spyOn(useDialogStore(), 'openMediaConfirmationDownloadDialog');
+		const download = vi.spyOn(useDownloadStore(), 'downloadMedia').mockImplementation(() => undefined);
+		await render();
+		const settings = await mountSuspended(ConfirmationSection, { global: {
+			plugins: [pinia, createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': messages } })],
+			stubs: { QSection: { template: '<section><slot /></section>' }, HelpGroup: { template: '<div><slot /></div>' }, HelpRow: { template: '<div><slot /></div>' } },
+		} });
+		mounted.push(settings);
+		const command = [{ type: PlexMediaType.OtherVideos, mediaIds: [20], plexServerId: 3, plexLibraryId: 5, qualities: [], keepCompletedInDownloadFolder: false }];
+		sendMediaOverviewDownloadCommand(command);
+		expect(open).toHaveBeenCalledExactlyOnceWith(command);
+		open.mockClear();
+
+		// Act
+		await settings.get('[data-cy="ask-download-other-videos-confirmation"]').trigger('click');
+		sendMediaOverviewDownloadCommand(command);
+
+		// Assert
+		expect(open).not.toHaveBeenCalled();
+		expect(download).toHaveBeenCalledExactlyOnceWith({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
+		expect(useSettingsStore().confirmationSettings.askDownloadMovieConfirmation).toBe(true);
+		expect(useSettingsStore().confirmationSettings.askDownloadTvShowConfirmation).toBe(true);
 	});
 });

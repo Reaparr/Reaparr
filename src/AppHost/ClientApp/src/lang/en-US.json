@@ -39,6 +39,8 @@
             "select-track": "Select track {title}",
             "selected-count": "{count} selected",
             "track-count": "{count} tracks",
+            "disc-label": "Disc {number}",
+            "unknown-disc": "Unspecified disc",
             "no-tracks": "No tracks found",
             "no-albums": "No albums found"
         },
@@ -983,6 +985,36 @@
                         "label": "Ask Download Movie Confirmation",
                         "text": "Should a confirmation pop-up be shown when a movie is about to be downloaded?",
                         "title": "Ask Download Movie Confirmation"
+                    },
+                    "download-music-artist-confirmation": {
+                        "label": "Ask Download Music Artist Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading an artist's music?",
+                        "title": "Ask Download Music Artist Confirmation"
+                    },
+                    "download-music-album-confirmation": {
+                        "label": "Ask Download Music Album Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading a music album?",
+                        "title": "Ask Download Music Album Confirmation"
+                    },
+                    "download-music-track-confirmation": {
+                        "label": "Ask Download Music Track Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading a music track?",
+                        "title": "Ask Download Music Track Confirmation"
+                    },
+                    "download-photo-album-confirmation": {
+                        "label": "Ask Download Photo Album Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading a photo album?",
+                        "title": "Ask Download Photo Album Confirmation"
+                    },
+                    "download-photo-image-confirmation": {
+                        "label": "Ask Download Photo Image Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading a photo image or clip?",
+                        "title": "Ask Download Photo Image Confirmation"
+                    },
+                    "download-other-videos-confirmation": {
+                        "label": "Ask Download Other Videos Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading an Other Videos item?",
+                        "title": "Ask Download Other Videos Confirmation"
                     },
                     "download-season-confirmation": {
                         "label": "Ask Download Season Confirmation",

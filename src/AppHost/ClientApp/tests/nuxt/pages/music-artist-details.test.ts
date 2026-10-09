@@ -7,7 +7,9 @@ import { nextTick, reactive } from 'vue';
 import type { PlexMediaDTO } from '@dto';
 import { PlexMediaType } from '@dto';
 import { baseSetup } from '@services-test-base';
-import { useMediaStore } from '@store';
+import { useDialogStore, useDownloadStore, useMediaStore, useSettingsStore } from '@store';
+import { resetMediaOverviewCommandsBus, sendMediaOverviewDownloadCommand } from '@/composables/event-bus';
+import ConfirmationSection from '@/components/Views/Settings/ConfirmationSection.vue';
 import MusicArtistDetails from '@/pages/music/[id]/details/[artistId].vue';
 import { createI18n } from 'vue-i18n';
 import messages from '@/lang/en-US.json';
@@ -63,6 +65,7 @@ describe('Music artist details page', () => {
 		mounted.forEach((wrapper) => wrapper.unmount());
 		mounted.length = 0;
 		vi.restoreAllMocks();
+		resetMediaOverviewCommandsBus();
 	});
 
 	async function render() {
@@ -180,5 +183,35 @@ describe('Music artist details page', () => {
 		expect(wrapper.get('[data-cy="music-details-error"]').text()).toContain('Invalid music library or artist.');
 		expect(wrapper.find('[data-cy="music-media-list-empty"]').exists()).toBe(false);
 		expect(wrapper.get('button').text()).toContain('Back');
+	});
+	test.each([
+		[PlexMediaType.MusicArtist, 'ask-download-music-artist-confirmation'],
+		[PlexMediaType.MusicAlbum, 'ask-download-music-album-confirmation'],
+		[PlexMediaType.MusicTrack, 'ask-download-music-track-confirmation'],
+	] as const)('Should use the distinct %s confirmation control in the detail download consumer', async (type, control) => {
+		// Arrange
+		vi.spyOn(useMediaStore(), 'getMediaDataDetailById').mockReturnValue(of(artist()));
+		const open = vi.spyOn(useDialogStore(), 'openMediaConfirmationDownloadDialog');
+		const download = vi.spyOn(useDownloadStore(), 'downloadMedia').mockImplementation(() => undefined);
+		await render();
+		const settings = await mountSuspended(ConfirmationSection, { global: {
+			plugins: [pinia, createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': messages } })],
+			stubs: { QSection: { template: '<section><slot /></section>' }, HelpGroup: { template: '<div><slot /></div>' }, HelpRow: { template: '<div><slot /></div>' } },
+		} });
+		mounted.push(settings);
+		const command = [{ type, mediaIds: [12], plexServerId: 2, plexLibraryId: 4, qualities: [], keepCompletedInDownloadFolder: false }];
+		sendMediaOverviewDownloadCommand(command);
+		expect(open).toHaveBeenCalledExactlyOnceWith(command);
+		open.mockClear();
+
+		// Act
+		await settings.get(`[data-cy="${control}"]`).trigger('click');
+		sendMediaOverviewDownloadCommand(command);
+
+		// Assert
+		expect(open).not.toHaveBeenCalled();
+		expect(download).toHaveBeenCalledExactlyOnceWith({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
+		expect(useSettingsStore().confirmationSettings.askDownloadMovieConfirmation).toBe(true);
+		expect(useSettingsStore().confirmationSettings.askDownloadTvShowConfirmation).toBe(true);
 	});
 });

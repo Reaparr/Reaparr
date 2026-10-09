@@ -77,74 +77,85 @@
 			<div
 				v-if="album.children.length > 0"
 				class="music-media-list__tracks">
-				<div
-					v-for="track in album.children"
-					:key="track.id"
-					class="music-track-row"
-					:data-cy="`music-track-${album.id}-${track.id}`">
-					<q-checkbox
-						class="music-media-list__checkbox"
-						:data-cy="`music-track-checkbox-${album.id}-${track.id}`"
-						:aria-label="t('components.music-media-list.select-track', { title: track.title })"
-						:model-value="isTrackSelected(album.id, track.id)"
-						@update:model-value="setTrackSelected(album, track.id, Boolean($event))" />
-					<div class="music-track-row__details">
-						<div class="music-track-row__title">
-							<span class="text-caption text-grey-6">{{ track.sortIndex }}</span>
-							<span>{{ track.title }}</span>
-						</div>
-						<div
-							class="music-track-originals"
-							role="radiogroup"
-							:aria-label="t('general.labels.select-original', { title: track.title })">
-							<label class="music-track-original music-track-original--automatic">
-								<q-radio
-									class="music-track-original__control"
-									:data-cy="`music-track-original-${album.id}-${track.id}-automatic`"
-									:model-value="selectedOriginals.get(trackKey(album.id, track.id)) ?? 'automatic'"
-									val="automatic"
-									:aria-label="t('general.labels.automatic-original')"
-									@update:model-value="setSelectedOriginal(album, track, $event)" />
-								<strong>{{ t('general.labels.automatic-original') }}</strong>
-							</label>
-							<label
-								v-for="original in trackOriginals(track)"
-								:key="original.plexApiMediaId"
-								class="music-track-original">
-								<q-radio
-									class="music-track-original__control"
-									:data-cy="`music-track-original-${album.id}-${track.id}-${original.plexApiMediaId}`"
-									:model-value="selectedOriginals.get(trackKey(album.id, track.id)) ?? 'automatic'"
-									:val="original.plexApiMediaId"
-									:aria-label="`${t('general.labels.original')} ${original.files.map(file => file.fileName).join(', ')}`"
-									@update:model-value="setSelectedOriginal(album, track, $event)" />
-								<div class="music-track-original__content">
-									<strong>{{ t('general.labels.original') }}</strong>
-									<div
-										v-for="file in original.files"
-										:key="file.id"
-										class="music-track-original__file">
-										<span
-											v-if="file.fileName"
-											class="music-track-row__filename">{{ file.fileName }}</span>
-										<span v-if="file.audioCodec">{{ file.audioCodec }}</span>
-										<span v-if="file.videoCodec">{{ file.videoCodec }}</span>
-										<QDuration
-											short
-											:value="file.duration || track.duration" />
-										<QFileSize :size="file.size || track.mediaSize" />
+				<q-expansion-item
+					v-for="disc in album.discs"
+					:key="disc.number ?? 'unknown'"
+					default-opened
+					expand-separator
+					:label="disc.number === null ? t('components.music-media-list.unknown-disc') : t('components.music-media-list.disc-label', { number: disc.number })"
+					:data-cy="`music-disc-${album.id}-${disc.number ?? 'unknown'}`">
+					<div
+						v-for="track in disc.tracks"
+						:key="track.id"
+						class="music-track-row"
+						:data-cy="`music-track-${album.id}-${track.id}`">
+						<q-checkbox
+							class="music-media-list__checkbox"
+							:data-cy="`music-track-checkbox-${album.id}-${track.id}`"
+							:aria-label="t('components.music-media-list.select-track', { title: track.title })"
+							:model-value="isTrackSelected(album.id, track.id)"
+							@update:model-value="setTrackSelected(album, track.id, Boolean($event))" />
+						<div class="music-track-row__details">
+							<div class="music-track-row__title">
+								<span
+									v-if="track.trackNumber != null"
+									class="text-caption text-grey-6"
+									:data-cy="`music-track-number-${album.id}-${track.id}`">{{ track.trackNumber }}</span>
+								<span>{{ track.title }}</span>
+							</div>
+							<div
+								class="music-track-originals"
+								role="radiogroup"
+								:aria-label="t('general.labels.select-original', { title: track.title })">
+								<label class="music-track-original music-track-original--automatic">
+									<q-radio
+										class="music-track-original__control"
+										:data-cy="`music-track-original-${album.id}-${track.id}-automatic`"
+										:model-value="selectedOriginals.get(trackKey(album.id, track.id)) ?? 'automatic'"
+										val="automatic"
+										:aria-label="t('general.labels.automatic-original')"
+										@update:model-value="setSelectedOriginal(album, track, $event)" />
+									<strong>{{ t('general.labels.automatic-original') }}</strong>
+								</label>
+								<label
+									v-for="original in trackOriginals(track)"
+									:key="original.plexApiMediaId"
+									class="music-track-original">
+									<q-radio
+										class="music-track-original__control"
+										:data-cy="`music-track-original-${album.id}-${track.id}-${original.plexApiMediaId}`"
+										:model-value="selectedOriginals.get(trackKey(album.id, track.id)) ?? 'automatic'"
+										:val="original.plexApiMediaId"
+										:aria-label="`${t('general.labels.original')} ${original.files.map(file => file.fileName).join(', ')}`"
+										@update:model-value="setSelectedOriginal(album, track, $event)" />
+									<div class="music-track-original__content">
+										<strong>{{ t('general.labels.original') }}</strong>
+										<div
+											v-for="file in original.files"
+											:key="file.id"
+											class="music-track-original__file">
+											<span
+												v-if="file.fileName"
+												class="music-track-row__filename">{{ file.fileName }}</span>
+											<span v-if="file.audioCodec">{{ file.audioCodec }}</span>
+											<span v-if="file.videoCodec">{{ file.videoCodec }}</span>
+											<QDuration
+												short
+												:value="file.duration || track.duration" />
+											<QFileSize :size="file.size || track.mediaSize" />
+										</div>
 									</div>
-								</div>
-							</label>
+								</label>
+							</div>
 						</div>
+						<MediaComparisonStateButton
+							:comparison-state="getPlexMediaComparisonState(track)"
+							:media-type="track.type"
+							show-tooltip
+							dense
+							:cy="`music-comparison-track-${album.id}-${track.id}`" />
 					</div>
-					<MediaComparisonStateButton
-						:comparison-state="getPlexMediaComparisonState(track)"
-						:media-type="track.type"
-						show-tooltip
-						dense
-						:cy="`music-comparison-track-${album.id}-${track.id}`" />
-				</div>
+				</q-expansion-item>
 			</div>
 			<div
 				v-else
@@ -164,6 +175,7 @@
 
 <script setup lang="ts">
 import { get, set } from '@vueuse/core';
+import { groupBy, orderBy } from 'lodash-es';
 import { PlexMediaComparisonState, PlexMediaType, type DownloadMediaDTO, type PlexMediaDataDTO, type PlexMediaDTO, type PlexMediaQualityDTO } from '@dto';
 import { useDialogStore, useMediaOverviewStore } from '@store';
 import { sendMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
@@ -194,14 +206,21 @@ const albums = computed(() => props.mediaItem.children.filter((album) =>
 	&& album.parentId === props.mediaItem.id
 	&& album.plexLibraryId === props.mediaItem.plexLibraryId
 	&& album.plexServerId === props.mediaItem.plexServerId)
-	.map((album) => ({
-		...album,
-		children: album.children.filter((track) =>
+	.map((album) => {
+		const children = album.children.filter((track) =>
 			track.type === PlexMediaType.MusicTrack
 			&& track.parentId === album.id
 			&& track.plexLibraryId === album.plexLibraryId
-			&& track.plexServerId === album.plexServerId),
-	})));
+			&& track.plexServerId === album.plexServerId);
+		const discs = orderBy(
+			Object.values(groupBy(children, (track) => track.discNumber ?? 'unknown'))
+				.map((tracks) => ({
+					number: tracks[0]!.discNumber ?? null,
+					tracks: orderBy(tracks, [(track) => track.trackNumber ?? Number.POSITIVE_INFINITY, 'sortIndex', 'id']),
+				})),
+			[(disc) => disc.number ?? Number.POSITIVE_INFINITY]);
+		return { ...album, children, discs };
+	}));
 
 const selectedCount = computed(() => {
 	if (get(artistSelected)) {

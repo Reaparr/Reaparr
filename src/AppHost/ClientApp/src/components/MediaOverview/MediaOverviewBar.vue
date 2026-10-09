@@ -324,7 +324,9 @@ const downloadCommandBus = useMediaOverviewBarDownloadCommandBus();
 
 const settingsStore = useSettingsStore();
 const { t } = useI18n();
-const supportsViewMode = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow].includes(mediaOverviewStore.getMediaType));
+const supportsViewMode = computed(() => [
+	PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos,
+].includes(mediaOverviewStore.getMediaType));
 
 withDefaults(defineProps<{
 	libraryId?: number;

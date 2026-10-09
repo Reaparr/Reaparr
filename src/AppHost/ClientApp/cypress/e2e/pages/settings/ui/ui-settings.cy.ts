@@ -1,5 +1,7 @@
-import { route } from '@fixtures';
+import { headers, route } from '@fixtures';
 import type { SettingsModelDTO } from '@dto';
+import { SettingsPaths } from '@api/api-paths';
+import { generateResultDTO } from '@mock';
 
 describe('Change UI settings', () => {
 	beforeEach(() => {
@@ -61,6 +63,32 @@ describe('Change UI settings', () => {
 				expect(settings.confirmationSettings.askDownloadSeasonConfirmation).to.equal(false);
 				expect(settings.confirmationSettings.askDownloadEpisodeConfirmation).to.equal(false);
 			});
+		});
+	});
+
+	it('Should persist all six independent family confirmation switches across reload without changing Movie or TV', () => {
+		cy.getPageData().then(({ settings }) => {
+			cy.intercept('GET', SettingsPaths.getUserSettingsEndpoint(), (request) => {
+				request.reply({ statusCode: 200, body: generateResultDTO(settings), ...headers });
+			});
+			const controls = [
+				['music-artist', 'askDownloadMusicArtistConfirmation'],
+				['music-album', 'askDownloadMusicAlbumConfirmation'],
+				['music-track', 'askDownloadMusicTrackConfirmation'],
+				['photo-album', 'askDownloadPhotoAlbumConfirmation'],
+				['photo-image', 'askDownloadPhotoImageConfirmation'],
+				['other-videos', 'askDownloadOtherVideosConfirmation'],
+			] as const;
+			for (const [control, field] of controls) {
+				cy.getCy(`ask-download-${control}-confirmation`).scrollIntoView().should('have.attr', 'aria-checked', 'true').click();
+				cy.awaitSettingsUpdate().its(`request.body.confirmationSettings.${field}`).should('eq', false);
+			}
+			cy.reload();
+			cy.getPageData();
+			for (const [control] of controls) cy.getCy(`ask-download-${control}-confirmation`).should('have.attr', 'aria-checked', 'false');
+			for (const control of ['movie', 'tvshow', 'season', 'episode']) {
+				cy.getCy(`ask-download-${control}-confirmation`).should('have.attr', 'aria-checked', 'true');
+			}
 		});
 	});
 });

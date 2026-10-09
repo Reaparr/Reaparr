@@ -1,14 +1,14 @@
 import { headers, route } from '@fixtures';
 import { generatePlexMedia, generateResultDTO, type MockConfig } from '@mock';
-import { PlexLibraryPaths, PlexMediaPaths } from '@api/api-paths';
+import { PlexLibraryPaths, PlexMediaPaths, SettingsPaths } from '@api/api-paths';
 import { MediaMetaDataTypes, MediaSortField } from '@enums';
-import { PlexMediaType, VideoQuality, type PlexMediaDTO, type PlexMediaMetadataDTO, type PlexMediaStatisticsDTO } from '@dto';
+import { PlexMediaType, VideoQuality, ViewMode, type PlexMediaDTO, type PlexMediaMetadataDTO, type PlexMediaStatisticsDTO, type SettingsModelDTO } from '@dto';
 
 const families = [
-	{ type: PlexMediaType.MusicArtist, path: 'music', name: 'Music' },
-	{ type: PlexMediaType.PhotoAlbum, path: 'photos', name: 'Photos' },
-	{ type: PlexMediaType.OtherVideos, path: 'other-videos', name: 'Other Videos' },
-];
+	{ type: PlexMediaType.MusicArtist, path: 'music', name: 'Music', viewField: 'musicArtistViewMode' },
+	{ type: PlexMediaType.PhotoAlbum, path: 'photos', name: 'Photos', viewField: 'photoAlbumViewMode' },
+	{ type: PlexMediaType.OtherVideos, path: 'other-videos', name: 'Other Videos', viewField: 'otherVideosViewMode' },
+] as const;
 
 function createRoots(type: PlexMediaType, config: MockConfig, libraryId: number, serverId: number): PlexMediaDTO[] {
 	const create = (id: number, mediaType: PlexMediaType, title: string, parentId?: number) => generatePlexMedia({
@@ -29,8 +29,10 @@ function createRoots(type: PlexMediaType, config: MockConfig, libraryId: number,
 		if (type === PlexMediaType.MusicArtist) {
 			root.children = [0, 1].map((albumIndex) => {
 				const album = create(root.id + 10 + albumIndex * 10, PlexMediaType.MusicAlbum, `Album ${albumIndex + 1}`, root.id);
-				album.children = Array.from({ length: albumIndex === 0 ? 2 : 1 }, (_, trackIndex) => {
+				album.children = Array.from({ length: albumIndex === 0 ? 4 : 1 }, (_, trackIndex) => {
 					const track = create(album.id + trackIndex + 1, PlexMediaType.MusicTrack, `Track ${trackIndex + 1}`, album.id);
+					track.discNumber = albumIndex === 0 ? [1, 2, 1, null][trackIndex] : 1;
+					track.trackNumber = albumIndex === 0 ? [1, 1, 2, null][trackIndex] : 1;
 					track.mediaData = [{ id: track.id, plexApiMediaId: track.id, plexApiPartId: track.id, fileName: `original-${track.id}.flac`, audioCodec: 'flac', videoCodec: '', videoResolution: VideoQuality.Unknown, duration: 6000, size: 1024 }];
 					return track;
 				});
@@ -61,13 +63,20 @@ function createRoots(type: PlexMediaType, config: MockConfig, libraryId: number,
 }
 
 function setupFamily(family: (typeof families)[number]) {
+	cy.intercept('**/api/**', (request) => {
+		throw new Error(`Unmocked API request: ${request.method} ${request.url}`);
+	});
 	return cy.basePageSetup({
 		seed: 625, plexServerCount: 1, plexMovieLibraryCount: 1, plexTvShowLibraryCount: 0,
 		movieCount: 0, tvShowCount: 0, firstTimeSetup: false,
 		override: {
 			plexLibraries: (libraries) => libraries.map((library) => ({ ...library, id: 45, name: `${family.name} library`, count: 2, mediaSize: 2048 })),
 		},
-	}).then(({ config, plexLibraries }) => {
+	}).then(({ config, plexLibraries, settings }) => {
+		cy.intercept('GET', '**/api/Integration', { statusCode: 200, body: generateResultDTO([]), ...headers });
+		cy.intercept('GET', SettingsPaths.getUserSettingsEndpoint(), (request) => {
+			request.reply({ statusCode: 200, body: generateResultDTO(settings), ...headers });
+		});
 		const library = { ...plexLibraries[0]!, type: family.type };
 		cy.intercept('GET', PlexLibraryPaths.getAllPlexLibrariesEndpoint(), { statusCode: 200, body: generateResultDTO([library]), ...headers });
 		cy.intercept('GET', PlexLibraryPaths.getPlexLibraryByIdEndpoint(library.id), { statusCode: 200, body: generateResultDTO(library), ...headers });
@@ -148,6 +157,32 @@ function scrollLastFileIntoViewport(selector: string) {
 	});
 }
 
+function assertViewPersistence(family: (typeof families)[number], phone = false) {
+	for (const mode of [ViewMode.Table, ViewMode.Poster]) {
+		if (phone) cy.getCy('media-overview-bar-mobile-menu').click();
+		cy.getCy('change-view-mode-btn').filter(':visible').click();
+		cy.getCy(`view-mode-${mode.toLowerCase()}-btn`).filter(':visible').click();
+		cy.awaitSettingsUpdate().then(({ request }) => {
+			const display = (request.body as SettingsModelDTO).displaySettings;
+			expect(display.movieViewMode).to.equal(ViewMode.Poster);
+			expect(display.tvShowViewMode).to.equal(ViewMode.Poster);
+			for (const other of families) {
+				expect(display[other.viewField]).to.equal(other === family ? mode : ViewMode.Poster);
+			}
+		});
+		cy.reload();
+		cy.getPageData();
+		if (mode === ViewMode.Table) {
+			cy.getCy('media-table').should('be.visible').and('contain.text', 'Acoustic collection');
+			cy.get('.media-poster-card').should('not.exist');
+		} else {
+			cy.get('.media-poster-card').should('have.length', 2);
+			cy.getCy('media-table').should('not.exist');
+		}
+		assertNoHorizontalOverflow();
+	}
+}
+
 for (const family of families) {
 	describe(`${family.name} independent browse and detail`, () => {
 		it('searches and sorts roots and applies only reported, applicable metadata filters', () => {
@@ -155,6 +190,7 @@ for (const family of families) {
 			setupFamily(family).then(({ library }) => cy.visit(route(`/${family.path}/${library.id}`)));
 			cy.getPageData();
 			cy.get('.media-poster-card').should('have.length', 2).first().should('contain.text', 'Acoustic collection');
+			assertViewPersistence(family);
 			cy.getCy('media-overview-sort-btn').click();
 			cy.getCy(`sort-option-${MediaSortField.Year}-btn`).click();
 			cy.get('.media-poster-card').first().should('contain.text', 'Synth collection');
@@ -179,6 +215,7 @@ for (const family of families) {
 				const root = roots[0]!;
 				cy.visit(route(`/${family.path}/${library.id}`));
 				cy.getPageData();
+				assertViewPersistence(family, true);
 				cy.contains('.media-poster-card', root.title).scrollIntoView().should('be.visible');
 				cy.contains('.media-poster-card', root.title).find('[data-cy="media-poster-menu-trigger"]').click();
 				cy.getCy('media-poster-menu-details').should('be.visible').click({ scrollBehavior: false });
@@ -187,11 +224,22 @@ for (const family of families) {
 				cy.get('dl').should('contain.text', '1960').find('dt').should('not.contain.text', 'Updated');
 				if (family.type === PlexMediaType.MusicArtist) {
 					assertTouchControl('music-artist-checkbox');
-					cy.getCy(`music-album-${root.children[0]!.id}`).find('.q-expansion-item__container > .q-item').first().click();
+					const album = root.children[0]!;
+					cy.getCy(`music-album-${album.id}`).find('.q-expansion-item__container > .q-item').first().click();
+					cy.getCy(`music-disc-${album.id}-1`).should('contain.text', 'Disc 1');
+					cy.getCy(`music-disc-${album.id}-2`).should('contain.text', 'Disc 2');
+					cy.getCy(`music-disc-${album.id}-unknown`).should('contain.text', 'Unspecified disc');
+					cy.getCy(`music-track-number-${album.id}-${album.children[0]!.id}`).should('have.text', '1');
+					cy.getCy(`music-track-number-${album.id}-${album.children[1]!.id}`).should('have.text', '1');
+					cy.getCy(`music-track-number-${album.id}-${album.children[3]!.id}`).should('not.exist');
 					const track = root.children[0]!.children[0]!;
 					cy.getCy(`music-track-checkbox-${root.children[0]!.id}-${track.id}`).click();
 					cy.contains('original-' + track.id + '.flac').should('be.visible');
 					cy.getCy('music-artist-checkbox').should('have.attr', 'aria-checked', 'mixed');
+					cy.getCy(`music-disc-${album.id}-1`).find('.q-expansion-item__container > .q-item').first().scrollIntoView().focus().type('{enter}');
+					cy.getCy(`music-track-checkbox-${album.id}-${track.id}`).should('not.be.visible');
+					cy.getCy(`music-disc-${album.id}-1`).find('.q-expansion-item__container > .q-item').first().type('{enter}');
+					cy.getCy(`music-track-checkbox-${album.id}-${track.id}`).should('have.attr', 'aria-checked', 'true');
 				} else if (family.type === PlexMediaType.PhotoAlbum) {
 					const asset = root.children.at(-1)!;
 					const selector = `[data-cy="photo-asset-${asset.id}"]`;

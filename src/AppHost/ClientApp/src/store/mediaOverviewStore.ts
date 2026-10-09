@@ -711,6 +711,12 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 					return settingsStore.displaySettings.movieViewMode;
 				case PlexMediaType.TvShow:
 					return settingsStore.displaySettings.tvShowViewMode;
+				case PlexMediaType.MusicArtist:
+					return settingsStore.displaySettings.musicArtistViewMode;
+				case PlexMediaType.PhotoAlbum:
+					return settingsStore.displaySettings.photoAlbumViewMode;
+				case PlexMediaType.OtherVideos:
+					return settingsStore.displaySettings.otherVideosViewMode;
 				default:
 					return ViewMode.Poster;
 			}

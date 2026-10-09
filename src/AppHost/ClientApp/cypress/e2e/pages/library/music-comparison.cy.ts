@@ -194,7 +194,7 @@ describe('Actual Music comparison frontend integration', () => {
 			cy.get('h1').should('be.visible').and('have.text', state.artist.title);
 			cy.getCy(`music-comparison-artist-${state.artist.id}`).scrollIntoView().should('be.visible');
 			cy.getCy('music-comparison-album-110').scrollIntoView().should('be.visible');
-			cy.getCy('music-album-110').find('.q-expansion-item__container > .q-item').click();
+			cy.getCy('music-album-110').find('.q-expansion-item__container > .q-item').first().click();
 			cy.getCy('music-comparison-track-110-111').scrollIntoView().should('be.visible');
 			cy.getCy('music-comparison-track-110-112').scrollIntoView().should('be.visible').click();
 			cy.then(() => expect(state.detailsRequests).to.equal(0));

@@ -1,7 +1,7 @@
 import prettyBytes from 'pretty-bytes';
 import { headers, route } from '@fixtures';
 import { generateDownloadTask, generatePlexMedia, generateResultDTO, type MockConfig } from '@mock';
-import { PlexLibraryPaths, PlexMediaPaths } from '@api/api-paths';
+import { PlexLibraryPaths, PlexMediaPaths, SettingsPaths } from '@api/api-paths';
 import { MediaMetaDataTypes } from '@enums';
 import {
 	DownloadStatus, DownloadTaskType, FileSystemEntityType, FolderType, MessageTypes, PlexMediaType, VideoQuality,
@@ -68,6 +68,8 @@ function createRoot(family: Family, config: MockConfig, libraryId: number, serve
 			album.children = [1, 2].map((trackIndex) => {
 				const track = media(id + trackIndex, PlexMediaType.MusicTrack, `Synth track ${albumIndex + 1}.${trackIndex}`, id);
 				track.sortIndex = trackIndex;
+				track.discNumber = trackIndex;
+				track.trackNumber = 1;
 				track.mediaData = [
 					{ ...file(track.id * 100, track.id * 10, `track-${track.id}-part-1.flac`), audioCodec: 'flac', duration: 6000 },
 					{ ...file(track.id * 100 + 1, track.id * 10, `track-${track.id}-part-2.flac`), audioCodec: 'flac', duration: 6000 },
@@ -114,7 +116,8 @@ function setupFamily(family: Family) {
 		seed: 625, plexServerCount: 1, plexMovieLibraryCount: 1, plexTvShowLibraryCount: 0,
 		movieCount: 0, tvShowCount: 0, movieDownloadTask: 0, tvShowDownloadTask: 0, firstTimeSetup: false,
 		override: { plexLibraries: (libraries) => libraries.map((library) => ({ ...library, id: 45, name: `${family} library`, count: 1 })) },
-	}).then(({ config, plexLibraries }) => {
+	}).then(({ config, plexLibraries, settings }) => {
+		cy.intercept('GET', SettingsPaths.getUserSettingsEndpoint(), (request) => request.reply(reply(settings)));
 		const library = { ...plexLibraries[0]!, type: families[family].type };
 		const root = createRoot(family, config, library.id, library.plexServerId);
 		const folder = (id: number, name: string, isDefault: boolean): FolderPathDTO => ({
@@ -152,7 +155,10 @@ function setupFamily(family: Family) {
 		cy.intercept('GET', PlexMediaPaths.getMediaDetailByIdEndpoint(root.id, { type: root.type }), reply(root)).as('familyDetail');
 		cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => request.reply(reply([state.queue]))).as('queue');
 		cy.intercept('POST', '**/api/Download/preview', (request) => {
-			if (request.body[0]?.type === PlexMediaType.PhotoImage) request.alias = 'imagePreview';
+			if (request.body[0]?.type === PlexMediaType.PhotoImage) {
+				request.alias = 'imagePreview';
+				state.releasePreview?.();
+			}
 			if (state.previewFailures > 0) {
 				state.previewFailures--;
 				request.reply({ statusCode: 500, body: { ...generateResultDTO(null), isSuccess: false, statusCode: 500, errors: [{ message: 'Preview unavailable', reasons: [] }] }, ...headers });
@@ -163,6 +169,7 @@ function setupFamily(family: Family) {
 				state.holdNextPreview = false;
 				return new Promise<void>((resolve) => {
 					state.releasePreview = () => {
+						state.releasePreview = undefined;
 						request.reply(response);
 						resolve();
 					};
@@ -475,7 +482,6 @@ describe('Photos download and lifecycle parity', () => {
 			cy.then(() => selectPreview(state, image));
 			cy.getCy(`photo-asset-checkbox-${image.id}`).click();
 			openConfirmation();
-			cy.then(() => state.releasePreview!());
 			const command = assertCommand(state, PlexMediaType.PhotoImage, image.id);
 			cy.wait('@imagePreview').its('request.body').should('deep.equal', [command]);
 			cy.getCy('download-confirmation-error').should('not.exist');
@@ -497,6 +503,10 @@ for (const scope of ['artist', 'album', 'track'] as const) {
 			selectPreview(state, target);
 			visitDetail('music', state);
 			cy.getCy(`music-album-${album.id}`).find('.q-expansion-item__container > .q-item').first().click();
+			for (const number of [1, 2]) {
+				cy.getCy(`music-disc-${album.id}-${number}`).find('.q-expansion-item__container > .q-item').first().should('contain.text', `Disc ${number}`).click().should('be.visible').click();
+			}
+			for (const leaf of album.children) cy.getCy(`music-track-number-${album.id}-${leaf.id}`).should('have.text', '1');
 			cy.getCy(`music-track-original-${album.id}-${track.id}-${track.id * 10}`).click();
 			if (scope === 'track') assertPhoneOriginal(`music-track-original-${album.id}-${track.id}-${track.id * 10}`);
 			cy.getCy(`music-track-${album.id}-${track.id}`).find('[role="radio"]').should('have.length', 3);
@@ -567,6 +577,53 @@ for (const destination of ['default', 'override', 'custom'] as const) {
 				cy.wait('@queue');
 				cy.getCy(`column-title-${item.id}`).should('not.exist');
 			});
+		});
+	});
+}
+
+for (const scenario of [
+	{ family: 'music', control: 'music-track', field: 'askDownloadMusicTrackConfirmation' },
+	{ family: 'photos', control: 'photo-image', field: 'askDownloadPhotoImageConfirmation' },
+	{ family: 'other-videos', control: 'other-videos', field: 'askDownloadOtherVideosConfirmation' },
+] as const) {
+	it(`${scenario.family} skips confirmation only after its own saved preference and keeps canonical default-destination commands`, () => {
+		cy.viewport(1280, 800);
+		setupFamily(scenario.family).then((state) => {
+			const target = scenario.family === 'music'
+				? state.root.children[0]!.children[0]!
+				: scenario.family === 'photos' ? state.root.children[0]! : state.root;
+			selectPreview(state, target);
+			cy.visit(route('/settings/ui'));
+			cy.getPageData();
+			cy.getCy(`ask-download-${scenario.control}-confirmation`).scrollIntoView().click();
+			cy.awaitSettingsUpdate().then(({ request }) => {
+				expect(request.body.confirmationSettings[scenario.field]).to.equal(false);
+				expect(request.body.confirmationSettings.askDownloadMovieConfirmation).to.equal(true);
+				expect(request.body.confirmationSettings.askDownloadTvShowConfirmation).to.equal(true);
+			});
+			cy.reload();
+			cy.getPageData();
+			cy.getCy(`ask-download-${scenario.control}-confirmation`).should('have.attr', 'aria-checked', 'false');
+			visitDetail(scenario.family, state);
+			if (scenario.family === 'music') {
+				cy.getCy(`music-album-${state.root.children[0]!.id}`).find('.q-expansion-item__container > .q-item').first().click();
+				cy.getCy(`music-track-checkbox-${state.root.children[0]!.id}-${target.id}`).click();
+			} else if (scenario.family === 'photos') {
+				cy.getCy(`photo-asset-checkbox-${target.id}`).click();
+			} else {
+				cy.getCy('other-video-root-checkbox').click();
+			}
+			visibleCy('media-overview-bar-download-button').click();
+			cy.wait('@create').its('request.body').should('deep.equal', {
+				downloadMedias: [assertCommand(state, target.type, target.id)],
+				destinationFolderPathId: null,
+				customDestinationFolderPath: '',
+			});
+			cy.getCy('download-confirmation-dialog').should('not.exist');
+			cy.get('@preview.all').should('have.length', 0);
+			cy.visit(route('/downloads'));
+			cy.getPageData();
+			queueCy(`column-title-${taskId(target.id)}`).should('have.text', target.title);
 		});
 	});
 }

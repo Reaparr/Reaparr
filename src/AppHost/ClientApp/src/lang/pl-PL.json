@@ -39,6 +39,8 @@
             "select-track": "Wybierz utwór {title}",
             "selected-count": "Wybrano: {count}",
             "track-count": "Utwory: {count}",
+            "disc-label": "Płyta {number}",
+            "unknown-disc": "Nieokreślona płyta",
             "no-tracks": "Nie znaleziono utworów",
             "no-albums": "Nie znaleziono albumów"
         },
@@ -983,6 +985,36 @@
                         "label": "Potwierdzenie pobrania filmu",
                         "text": "Czy powinno być wyświetlane okno potwierdzenia, gdy film ma być pobrany?",
                         "title": "Potwierdzenie pobrania filmu"
+                    },
+                    "download-music-artist-confirmation": {
+                        "label": "Potwierdzenie pobrania muzyki wykonawcy",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem muzyki wykonawcy?",
+                        "title": "Potwierdzenie pobrania muzyki wykonawcy"
+                    },
+                    "download-music-album-confirmation": {
+                        "label": "Potwierdzenie pobrania albumu muzycznego",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem albumu muzycznego?",
+                        "title": "Potwierdzenie pobrania albumu muzycznego"
+                    },
+                    "download-music-track-confirmation": {
+                        "label": "Potwierdzenie pobrania utworu",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem utworu muzycznego?",
+                        "title": "Potwierdzenie pobrania utworu"
+                    },
+                    "download-photo-album-confirmation": {
+                        "label": "Potwierdzenie pobrania albumu zdjęć",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem albumu zdjęć?",
+                        "title": "Potwierdzenie pobrania albumu zdjęć"
+                    },
+                    "download-photo-image-confirmation": {
+                        "label": "Potwierdzenie pobrania zdjęcia lub klipu",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem zdjęcia lub klipu?",
+                        "title": "Potwierdzenie pobrania zdjęcia lub klipu"
+                    },
+                    "download-other-videos-confirmation": {
+                        "label": "Potwierdzenie pobrania innych filmów",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem innego filmu?",
+                        "title": "Potwierdzenie pobrania innych filmów"
                     },
                     "download-season-confirmation": {
                         "label": "Zapytaj o potwierdzenie pobrania sezonu",

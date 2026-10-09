@@ -39,6 +39,8 @@
             "select-track": "Sélectionner la piste {title}",
             "selected-count": "{count} sélectionnés",
             "track-count": "{count} pistes",
+            "disc-label": "Disque {number}",
+            "unknown-disc": "Disque non précisé",
             "no-tracks": "Aucune piste trouvée",
             "no-albums": "Aucun album trouvé"
         },
@@ -983,6 +985,36 @@
                         "label": "Demander confirmation du téléchargement du film",
                         "text": "Une fenêtre contextuelle de confirmation doit-elle s'afficher lorsqu'un film est sur le point d'être téléchargé ?",
                         "title": "Demander confirmation du téléchargement du film"
+                    },
+                    "download-music-artist-confirmation": {
+                        "label": "Confirmer les téléchargements d’artistes",
+                        "text": "Faut-il afficher une confirmation avant de télécharger la musique d’un artiste ?",
+                        "title": "Confirmer les téléchargements d’artistes"
+                    },
+                    "download-music-album-confirmation": {
+                        "label": "Confirmer les téléchargements d’albums musicaux",
+                        "text": "Faut-il afficher une confirmation avant de télécharger un album musical ?",
+                        "title": "Confirmer les téléchargements d’albums musicaux"
+                    },
+                    "download-music-track-confirmation": {
+                        "label": "Confirmer les téléchargements de pistes",
+                        "text": "Faut-il afficher une confirmation avant de télécharger une piste musicale ?",
+                        "title": "Confirmer les téléchargements de pistes"
+                    },
+                    "download-photo-album-confirmation": {
+                        "label": "Confirmer les téléchargements d’albums photo",
+                        "text": "Faut-il afficher une confirmation avant de télécharger un album photo ?",
+                        "title": "Confirmer les téléchargements d’albums photo"
+                    },
+                    "download-photo-image-confirmation": {
+                        "label": "Confirmer les téléchargements de photos et clips",
+                        "text": "Faut-il afficher une confirmation avant de télécharger une photo ou un clip ?",
+                        "title": "Confirmer les téléchargements de photos et clips"
+                    },
+                    "download-other-videos-confirmation": {
+                        "label": "Confirmer les téléchargements d’autres vidéos",
+                        "text": "Faut-il afficher une confirmation avant de télécharger une autre vidéo ?",
+                        "title": "Confirmer les téléchargements d’autres vidéos"
                     },
                     "download-season-confirmation": {
                         "label": "Demander confirmation du téléchargement de la saison",

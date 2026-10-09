@@ -2,11 +2,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vi
 import { reactive, nextTick } from 'vue';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
-import { Subject } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { baseSetup, baseVars, getAxiosMock } from '@services-test-base';
 import { generatePlexMedia } from '@mock';
 import { PlexMediaType, type PlexMediaDTO } from '@dto';
-import { useMediaStore } from '@store';
+import { useDialogStore, useDownloadStore, useMediaStore, useSettingsStore } from '@store';
+import { resetMediaOverviewCommandsBus, sendMediaOverviewDownloadCommand } from '@/composables/event-bus';
+import ConfirmationSection from '@/components/Views/Settings/ConfirmationSection.vue';
 import PhotoDetails from '@/pages/photos/[id]/details/[albumId].vue';
 import { createI18n } from 'vue-i18n';
 import messages from '@/lang/en-US.json';
@@ -29,6 +31,7 @@ describe('Photos album detail - request lifetime', () => {
 		mounted.forEach((wrapper) => wrapper.unmount());
 		mounted.length = 0;
 		vi.restoreAllMocks();
+		resetMediaOverviewCommandsBus();
 	});
 
 	function album(id: number) {
@@ -125,5 +128,34 @@ describe('Photos album detail - request lifetime', () => {
 		expect(request).not.toHaveBeenCalled();
 		expect(wrapper.get('button').text()).toContain('Back');
 		expect(mock.history.get).toHaveLength(0);
+	});
+	test.each([
+		[PlexMediaType.PhotoAlbum, 'ask-download-photo-album-confirmation'],
+		[PlexMediaType.PhotoImage, 'ask-download-photo-image-confirmation'],
+	] as const)('Should use the distinct %s confirmation control in the detail download consumer', async (type, control) => {
+		// Arrange
+		vi.spyOn(useMediaStore(), 'getMediaDataDetailById').mockReturnValue(of(album(20)));
+		const open = vi.spyOn(useDialogStore(), 'openMediaConfirmationDownloadDialog');
+		const download = vi.spyOn(useDownloadStore(), 'downloadMedia').mockImplementation(() => undefined);
+		await render();
+		const settings = await mountSuspended(ConfirmationSection, { global: {
+			plugins: [pinia, createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': messages } })],
+			stubs: { QSection: { template: '<section><slot /></section>' }, HelpGroup: { template: '<div><slot /></div>' }, HelpRow: { template: '<div><slot /></div>' } },
+		} });
+		mounted.push(settings);
+		const command = [{ type, mediaIds: [20], plexServerId: 3, plexLibraryId: 4, qualities: [], keepCompletedInDownloadFolder: false }];
+		sendMediaOverviewDownloadCommand(command);
+		expect(open).toHaveBeenCalledExactlyOnceWith(command);
+		open.mockClear();
+
+		// Act
+		await settings.get(`[data-cy="${control}"]`).trigger('click');
+		sendMediaOverviewDownloadCommand(command);
+
+		// Assert
+		expect(open).not.toHaveBeenCalled();
+		expect(download).toHaveBeenCalledExactlyOnceWith({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
+		expect(useSettingsStore().confirmationSettings.askDownloadMusicArtistConfirmation).toBe(true);
+		expect(useSettingsStore().confirmationSettings.askDownloadMovieConfirmation).toBe(true);
 	});
 });

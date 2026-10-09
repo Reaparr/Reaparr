@@ -65,6 +65,12 @@ export interface CheckAllConnectionStatusUpdateDTO {
 export interface ConfirmationSettingsDTO {
   askDownloadEpisodeConfirmation: boolean;
   askDownloadMovieConfirmation: boolean;
+  askDownloadMusicAlbumConfirmation: boolean;
+  askDownloadMusicArtistConfirmation: boolean;
+  askDownloadMusicTrackConfirmation: boolean;
+  askDownloadOtherVideosConfirmation: boolean;
+  askDownloadPhotoAlbumConfirmation: boolean;
+  askDownloadPhotoImageConfirmation: boolean;
   askDownloadSeasonConfirmation: boolean;
   askDownloadTvShowConfirmation: boolean;
 }
@@ -199,6 +205,9 @@ export enum DesktopMessageType {
 export interface DisplaySettingsDTO {
   allOverviewViewMode: PlexMediaType;
   movieViewMode: ViewMode;
+  musicArtistViewMode: ViewMode;
+  otherVideosViewMode: ViewMode;
+  photoAlbumViewMode: ViewMode;
   tvShowViewMode: ViewMode;
 }
 
@@ -1017,6 +1026,8 @@ export interface PlexMediaDTO {
   comparisonId: number;
   contentRating?: string | null;
   /** @format int32 */
+  discNumber?: number | null;
+  /** @format int32 */
   duration: number;
   /** @format int32 */
   grandChildCount: number;
@@ -1049,6 +1060,8 @@ export interface PlexMediaDTO {
   studio: string;
   summary: string;
   title: string;
+  /** @format int32 */
+  trackNumber?: number | null;
   /** @format int32 */
   tvShowId: number;
   /** @format int32 */
