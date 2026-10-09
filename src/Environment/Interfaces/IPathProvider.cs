@@ -1,4 +1,4 @@
-﻿namespace Reaparr.Environment;
+namespace Reaparr.Environment;
 
 public interface IPathProvider
 {
