@@ -82,6 +82,7 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         );
 
         var episodeFile = await IDbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
+
         var season = await IDbContext.DownloadTaskTvShowSeason.FirstAsync(CancellationToken);
         var tvShow = await IDbContext.DownloadTaskTvShow.FirstAsync(CancellationToken);
 
@@ -449,6 +450,13 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         );
 
         var episodeFile = await IDbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
+
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(episodeFile.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
         var season = await IDbContext.DownloadTaskTvShowSeason.FirstAsync(CancellationToken);
         var tvShow = await IDbContext.DownloadTaskTvShow.FirstAsync(CancellationToken);
 

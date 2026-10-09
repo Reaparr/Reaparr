@@ -32,6 +32,12 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         // Arrange
         await SetupDatabase(84336, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(movieFile.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
 
         var capturedDeletedIds = new List<IReadOnlyCollection<Guid>?>();
         var capturedUpserts = new List<IReadOnlyCollection<DownloadPatchDTO>>();
@@ -186,6 +192,12 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     {
         await SetupDatabase(84329, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(movieFile.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
 
         var sut = Sut;
         await sut.StartAsync(CancellationToken.None);
@@ -246,6 +258,12 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     {
         await SetupDatabase(84328, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(movieFile.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
         var initialProgress = new DownloadTaskProgress
         {
             DataTotal = 1000,
@@ -276,7 +294,9 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         var sut = new DownloadTaskUpdateDispatcher(
             new LoggerConfiguration().CreateLogger(),
             delayedDbContextFactory.Object,
-            downloadHubService.Object
+            downloadHubService.Object,
+            Mock.Mock<ICommandExecutor>().Object,
+            Mock.Mock<IDownloadTaskScheduler>().Object
         );
 
         sut.OnProgressUpdated(movieFile.ToKey(), initialProgress);
@@ -313,6 +333,12 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     {
         await SetupDatabase(84327, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(movieFile.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
 
         var sut = Sut;
         sut.OnProgressUpdated(
@@ -340,6 +366,18 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         // Arrange
         await SetupDatabase(84326, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(movieFile.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(movieFile.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
 
         var sequences = new ConcurrentBag<long>();
         Mock.Mock<IDownloadHubService>()
@@ -437,6 +475,12 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     {
         await SetupDatabase(84323, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(movieFile.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
 
         var sequences = new ConcurrentBag<long>();
         Mock.Mock<IDownloadHubService>()

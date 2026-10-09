@@ -35,6 +35,13 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
         await dbContext.SaveChangesAsync(CancellationToken);
         var target = files[0];
         var sibling = files[1];
+
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(target.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
         (await dbContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(2);
         var expectedIds = new[] { album.Id, images[0].Id, target.Id }.Order().ToArray();
         var patchReceived = new TaskCompletionSource<IReadOnlyCollection<DownloadPatchDTO>>(

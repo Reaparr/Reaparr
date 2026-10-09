@@ -44,6 +44,13 @@ public class DownloadTaskUpdateDispatcherMusicUnitTests : BaseUnitTest<DownloadT
             CancellationToken
         );
         var key = target.ToKey();
+
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(target.PlexServerId))
+            .ReturnsAsync(true);
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok());
         var expectedIds = ancestorIds.Append(target.Id).Order().ToArray();
         (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!.DownloadStatus.ShouldBe(
             DownloadStatus.Queued

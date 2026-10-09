@@ -364,7 +364,7 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         tvShowsDirectory.ShouldBe(Path.Combine(dataDirectory, "TvShows"));
         musicDirectory.ShouldBe(Path.Combine(dataDirectory, "Music"));
         photosDirectory.ShouldBe(Path.Combine(dataDirectory, "Photos"));
-        otherDirectory.ShouldBe(Path.Combine(dataDirectory, "Other"));
+        otherDirectory.ShouldBe(Path.Combine(dataDirectory, IPathProvider.DefaultOtherFolderName));
         gamesDirectory.ShouldBe(Path.Combine(dataDirectory, "Games"));
     }
 

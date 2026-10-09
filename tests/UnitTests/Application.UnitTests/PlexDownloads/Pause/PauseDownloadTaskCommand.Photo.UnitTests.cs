@@ -52,6 +52,10 @@ public class PauseDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<PauseD
                 .Setup(x => x.StopDownloadTaskJob(target.ToKey(), CancellationToken))
                 .ReturnsAsync(Result.Ok())
                 .Verifiable(Times.Once());
+
+            Mock.Mock<ICommandExecutor>()
+                .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+                .ReturnsAsync(Result.Ok());
         }
         if (before is DownloadStatus.Moving or DownloadStatus.DownloadFinished)
         {
