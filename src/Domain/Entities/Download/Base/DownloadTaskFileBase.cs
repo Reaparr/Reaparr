@@ -124,28 +124,22 @@ public abstract class DownloadTaskFileBase : DownloadTaskBase, IDownloadTaskProg
     public override DownloadTaskType DownloadTaskType => DownloadTaskType.None;
 
     [NotMapped]
-    public string DestinationFilePath => Path.Join(DestinationDirectory, FileName);
+    public string DestinationFilePath => this.GetDestinationFilePath();
 
     [NotMapped]
-    public string DownloadFilePath => Path.Combine(DownloadDirectory, FileName.AddReaparrTempSuffixToFileName());
+    public string DownloadFilePath => this.GetDownloadFilePath();
+
+    [NotMapped]
+    public string DownloadDirectory => this.GetDownloadDirectory();
+
+    [NotMapped]
+    public string DestinationDirectory => this.GetDestinationDirectory();
 
     [NotMapped]
     public DownloadTaskPhase DownloadTaskPhase => DownloadStatus.ToDownloadTaskPhase();
 
     [NotMapped]
     public long Speed => DownloadTaskPhaseExtensions.Speed(DownloadTaskPhase, this, this);
-
-    /// <summary>
-    /// Gets the download directory appended to the MediaPath e.g: [DownloadPath]/[TvShow]/[Season]/ or  [DownloadPath]/[Movie]/.
-    /// </summary>
-    [NotMapped]
-    public string DownloadDirectory => DirectoryMeta.GetDownloadDirectory(DownloadTaskType);
-
-    /// <summary>
-    /// Gets the destination directory appended to the MediaPath e.g: [DestinationPath]/[TvShow]/[Season]/ or  [DestinationPath]/[Movie]/.
-    /// </summary>
-    [NotMapped]
-    public string DestinationDirectory => DirectoryMeta.GetDestinationDirectory(DownloadTaskType);
 
     public override string ToString() =>
         $"[MoveDownloadFileProgress {Title} - {Percentage:F2}% - {DataFormat.FormatSpeedString(Speed)} - {DataFormat.FormatSizeString(DownloadTaskPhase == DownloadTaskPhase.FileTransfer ? FileDataTransferred : DataReceived)} / {DataFormat.FormatSizeString(DataTotal)} - {DataFormat.FormatTimeSpanString(TimeSpan.FromSeconds(TimeRemaining))}]";
