@@ -1,6 +1,5 @@
 <template>
 	<QCardDialog
-		:loading="loading"
 		:name="DialogType.MediaDownloadConfirmationDialog"
 		:type="[] as DownloadMediaDTO[]"
 		cy="download-confirmation-dialog"

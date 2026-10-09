@@ -445,52 +445,64 @@ describe('Photos download and lifecycle parity', () => {
 		});
 	});
 
-	it('disables failed and pending previews, retries accessibly and ignores a cancelled stale album preview', () => {
-		cy.viewport(1280, 800);
-		setupFamily('photos').then((state) => {
-			state.previewFailures = 1;
-			visitDetail('photos', state);
-			cy.getCy('photo-album-checkbox').click();
-			openConfirmation();
-			cy.wait('@preview').its('response.statusCode').should('eq', 500);
-			cy.getCy('download-confirmation-error').should('be.visible').and('have.attr', 'role', 'alert');
-			submit().should('be.disabled');
-			cy.then(() => {
-				state.holdNextPreview = true;
+	for (const [width, height] of [[1280, 800], [320, 568]] as const) {
+		it(`disables failed and pending previews, retries and ignores a cancelled stale album preview at ${width}px`, () => {
+			const phone = width === 320;
+			cy.viewport(width, height);
+			setupFamily('photos').then((state) => {
+				state.previewFailures = 1;
+				visitDetail('photos', state);
+				cy.getCy('photo-album-checkbox').click();
+				openConfirmation(phone);
+				cy.wait('@preview').its('response.statusCode').should('eq', 500);
+				cy.getCy('download-confirmation-error').should('be.visible').and('have.attr', 'role', 'alert');
+				submit().should('be.disabled');
+				cy.then(() => {
+					state.holdNextPreview = true;
+				});
+				cy.getCy('download-confirmation-retry').should('be.visible').click();
+				cy.wrap(null).should(() => {
+					expect(state.releasePreview).to.be.a('function');
+					expect(state.createCount).to.equal(0);
+				});
+				submit().should('be.disabled');
+				cy.then(() => state.releasePreview!());
+				assertPreview(assertCommand(state, PlexMediaType.PhotoAlbum, state.root.id), state.root);
+				cy.getCy('download-confirmation-error').should('not.exist');
+				cy.getCy('download-confirmation-cancel').should('be.visible').click();
+				cy.then(() => {
+					state.holdNextPreview = true;
+					state.releasePreview = undefined;
+				});
+				openConfirmation(phone);
+				cy.wrap(null).should(() => expect(state.releasePreview).to.be.a('function'));
+				submit().should('be.disabled');
+				cy.getCy('download-confirmation-cancel').should('be.visible').and(($button) => {
+					if (phone) {
+						const rect = $button[0]!.getBoundingClientRect();
+						expect(rect.width).to.be.at.least(44);
+						expect(rect.height).to.be.at.least(44);
+					}
+				}).click();
+				cy.getCy('download-confirmation-dialog').should('not.exist');
+				cy.getCy('photo-album-checkbox').click();
+				const image = state.root.children[0]!;
+				cy.then(() => selectPreview(state, image));
+				cy.getCy(`photo-asset-checkbox-${image.id}`).click();
+				openConfirmation(phone);
+				const command = assertCommand(state, PlexMediaType.PhotoImage, image.id);
+				cy.wait('@imagePreview').its('request.body').should('deep.equal', [command]);
+				cy.getCy('download-confirmation-error').should('not.exist');
+				cy.getCy(`column-title-preview-${state.root.id}`).should('not.exist');
+				cy.getCy(`column-title-preview-${image.id}`).should('be.visible').and('have.text', image.title);
+				createAndOpenQueue(state, command, image);
+				cy.document().should((document) => {
+					expect(document.documentElement.scrollWidth).to.equal(document.documentElement.clientWidth);
+				});
+				cy.then(() => expect(state.createCount).to.equal(1));
 			});
-			cy.getCy('download-confirmation-retry').should('be.visible').click();
-			cy.wrap(null).should(() => {
-				expect(state.releasePreview).to.be.a('function');
-				expect(state.createCount).to.equal(0);
-			});
-			submit().should('be.disabled');
-			cy.then(() => state.releasePreview!());
-			assertPreview(assertCommand(state, PlexMediaType.PhotoAlbum, state.root.id), state.root);
-			cy.getCy('download-confirmation-error').should('not.exist');
-			cy.getCy('download-confirmation-cancel').should('be.visible').click();
-			cy.then(() => {
-				state.holdNextPreview = true;
-				state.releasePreview = undefined;
-			});
-			openConfirmation();
-			cy.wrap(null).should(() => expect(state.releasePreview).to.be.a('function'));
-			submit().should('be.disabled');
-			cy.getCy('download-confirmation-cancel').should('be.visible').click();
-			cy.getCy('download-confirmation-dialog').should('not.exist');
-			cy.getCy('photo-album-checkbox').click();
-			const image = state.root.children[0]!;
-			cy.then(() => selectPreview(state, image));
-			cy.getCy(`photo-asset-checkbox-${image.id}`).click();
-			openConfirmation();
-			const command = assertCommand(state, PlexMediaType.PhotoImage, image.id);
-			cy.wait('@imagePreview').its('request.body').should('deep.equal', [command]);
-			cy.getCy('download-confirmation-error').should('not.exist');
-			cy.getCy(`column-title-preview-${state.root.id}`).should('not.exist');
-			cy.getCy(`column-title-preview-${image.id}`).should('have.text', image.title);
-			createAndOpenQueue(state, command, image);
-			cy.then(() => expect(state.createCount).to.equal(1));
 		});
-	});
+	}
 });
 
 for (const scope of ['artist', 'album', 'track'] as const) {
