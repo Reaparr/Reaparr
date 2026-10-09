@@ -49,7 +49,8 @@ public class GenerateDownloadTaskMusicArtistsCommandHandler
     )
     {
         var request = command.Request;
-        var artistSelections = request.DownloadMedias.MergeAndGroupList().FindAll(x => x.Type == PlexMediaType.MusicArtist);
+        var downloadMedias = request.DownloadMedias.MergeAndGroupList();
+        var artistSelections = downloadMedias.FindAll(x => x.Type == PlexMediaType.MusicArtist);
         if (artistSelections.Count == 0)
             return ResultExtensions.IsEmpty(nameof(artistSelections)).LogWarning();
         if (request.Integration is not null)
@@ -111,7 +112,7 @@ public class GenerateDownloadTaskMusicArtistsCommandHandler
 
                 foreach (var album in artist.Albums)
                 {
-                    var directAlbum = request.DownloadMedias.FirstOrDefault(x =>
+                    var directAlbum = downloadMedias.FirstOrDefault(x =>
                         x.Type == PlexMediaType.MusicAlbum
                         && x.PlexServerId == album.PlexServerId
                         && x.PlexLibraryId == album.PlexLibraryId
@@ -133,7 +134,7 @@ public class GenerateDownloadTaskMusicArtistsCommandHandler
                 }
                 var trackIds = artist.Albums.SelectMany(x => x.Tracks).Select(x => x.Id).ToHashSet();
                 albumSelections.AddRange(
-                    request.DownloadMedias
+                    downloadMedias
                         .Where(x =>
                             x.Type == PlexMediaType.MusicTrack
                             && x.PlexServerId == artist.PlexServerId

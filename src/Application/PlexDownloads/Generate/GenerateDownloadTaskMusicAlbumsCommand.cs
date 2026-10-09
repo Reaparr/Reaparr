@@ -42,7 +42,8 @@ public class GenerateDownloadTaskMusicAlbumsCommandHandler
     )
     {
         var request = command.Request;
-        var albumSelections = request.DownloadMedias.MergeAndGroupList().FindAll(x => x.Type == PlexMediaType.MusicAlbum);
+        var downloadMedias = request.DownloadMedias.MergeAndGroupList();
+        var albumSelections = downloadMedias.FindAll(x => x.Type == PlexMediaType.MusicAlbum);
         if (albumSelections.Count == 0)
             return ResultExtensions.IsEmpty(nameof(albumSelections)).LogWarning();
         if (request.Integration is not null)
@@ -122,7 +123,7 @@ public class GenerateDownloadTaskMusicAlbumsCommandHandler
 
                 foreach (var track in album.Tracks)
                 {
-                    var directTrack = request.DownloadMedias.FirstOrDefault(x =>
+                    var directTrack = downloadMedias.FirstOrDefault(x =>
                         x.Type == PlexMediaType.MusicTrack
                         && x.PlexServerId == track.PlexServerId
                         && x.PlexLibraryId == track.PlexLibraryId

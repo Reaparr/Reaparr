@@ -994,10 +994,22 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
     }
 
     [Test]
-    [Arguments(PlexMediaType.MusicArtist)]
-    [Arguments(PlexMediaType.MusicAlbum)]
-    [Arguments(PlexMediaType.PhotoAlbum)]
-    public async Task ShouldPreferExplicitLeafOriginal_WhenAncestorAndLeafSelectionsOverlap(PlexMediaType ancestorType)
+    [Arguments(PlexMediaType.MusicArtist, PlexMediaType.MusicTrack, 0)]
+    [Arguments(PlexMediaType.MusicArtist, PlexMediaType.MusicTrack, 1)]
+    [Arguments(PlexMediaType.MusicArtist, PlexMediaType.MusicTrack, 2)]
+    [Arguments(PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, 0)]
+    [Arguments(PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, 1)]
+    [Arguments(PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack, 0)]
+    [Arguments(PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack, 1)]
+    [Arguments(PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack, 2)]
+    [Arguments(PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage, 0)]
+    [Arguments(PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage, 1)]
+    [Arguments(PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage, 2)]
+    public async Task ShouldPersistOriginalChoiceAndOptions_WhenAncestorSelectionsExpand(
+        PlexMediaType ancestorType,
+        PlexMediaType descendantType,
+        int duplicatePath
+    )
     {
         // Arrange
         var music = ancestorType != PlexMediaType.PhotoAlbum;
@@ -1013,6 +1025,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         });
         var dbContext = IDbContext;
         BasePlexMedia ancestor;
+        BasePlexMedia descendant;
         BasePlexMedia leaf;
         BasePlexMediaData inheritedOriginal;
         BasePlexMediaData explicitOriginal;
@@ -1022,6 +1035,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 .Include(x => x.PlexAlbum).ThenInclude(x => x!.PlexArtist)
                 .Include(x => x.MediaDataList).SingleAsync(CancellationToken);
             ancestor = ancestorType == PlexMediaType.MusicArtist ? track.PlexAlbum!.PlexArtist! : track.PlexAlbum!;
+            descendant = descendantType == PlexMediaType.MusicAlbum ? track.PlexAlbum! : track;
             leaf = track;
             inheritedOriginal = track.MediaDataList.Single();
             var alternate = FakeData.GetPlexMusicTrackMediaData(new Seed(62553))
@@ -1040,6 +1054,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
             var image = await dbContext.PlexPhotoImages
                 .Include(x => x.PlexPhotoAlbum).Include(x => x.MediaDataList).SingleAsync(CancellationToken);
             ancestor = image.PlexPhotoAlbum!;
+            descendant = image;
             leaf = image;
             inheritedOriginal = image.MediaDataList.Single();
             var alternate = FakeData.GetPlexPhotoMediaData(new Seed(62554))
@@ -1055,6 +1070,11 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         }
         await dbContext.SaveChangesAsync(CancellationToken);
         inheritedOriginal.PlexApiMediaId.ShouldNotBe(explicitOriginal.PlexApiMediaId);
+        inheritedOriginal.Id.ShouldBeGreaterThan(0);
+        explicitOriginal.Id.ShouldBeGreaterThan(0);
+        (await dbContext.DownloadTaskMusicArtists.CountAsync(CancellationToken)).ShouldBe(0);
+        (await dbContext.DownloadTaskPhotoAlbums.CountAsync(CancellationToken)).ShouldBe(0);
+        var selectedOriginal = duplicatePath == 2 ? inheritedOriginal : explicitOriginal;
         var parentSelection = new DownloadMediaDTO
         {
             Type = ancestorType,
@@ -1072,10 +1092,10 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 },
             ],
         };
-        var leafSelection = parentSelection with
+        var descendantSelection = parentSelection with
         {
-            Type = leaf.Type,
-            MediaIds = [leaf.Id],
+            Type = descendantType,
+            MediaIds = [descendant.Id],
             Qualities =
             [
                 new PlexMediaQualityDTO
@@ -1088,8 +1108,25 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
             ],
             KeepCompletedInDownloadFolder = true,
         };
+        List<DownloadMediaDTO> selections = duplicatePath switch
+        {
+            1 => [
+                parentSelection,
+                descendantSelection with { Qualities = [], KeepCompletedInDownloadFolder = false },
+                descendantSelection,
+            ],
+            2 => [
+                parentSelection with { Qualities = [], KeepCompletedInDownloadFolder = false },
+                parentSelection with { KeepCompletedInDownloadFolder = true },
+            ],
+            _ => [parentSelection, descendantSelection],
+        };
+        var expectedCalls = duplicatePath == 2
+            ? ancestorType == PlexMediaType.MusicArtist ? 3 : 2
+            : descendantType == PlexMediaType.MusicAlbum ? 5
+            : ancestorType == PlexMediaType.MusicArtist ? 4 : 3;
         var command = new CreateDownloadTasksCommand(
-            new CreateDownloadTasksRequest([parentSelection, leafSelection], customDestinationFolderPath: "/leaf-choice")
+            new CreateDownloadTasksRequest(selections, customDestinationFolderPath: "/leaf-choice")
         );
         var executor = Mock.Mock<ICommandExecutor>();
         executor.Setup(x => x.Send(It.IsAny<ICommand<Result<DownloadTaskCreationReport>>>(), CancellationToken))
@@ -1110,7 +1147,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                     new GenerateDownloadTaskPhotoImagesCommandHandler(Serilog.Log.Logger, dbContext).ExecuteAsync(images, ct),
                 _ => throw new InvalidOperationException($"Unexpected generator {c.GetType().Name}"),
             })
-            .Verifiable(Times.Exactly(ancestorType == PlexMediaType.MusicArtist ? 4 : 3));
+            .Verifiable(Times.Exactly(expectedCalls));
         Mock.Mock<IEventPublisher>()
             .Setup(x => x.PublishAsync(
                 It.Is<CheckDownloadQueueEvent>(e => e.PlexServerIds.SequenceEqual(new[] { leaf.PlexServerId })),
@@ -1139,10 +1176,14 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
             ? await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken)
             : await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(CancellationToken);
         (file.PlexServerId, file.PlexLibraryId, file.PlexApiRatingKey, file.PlexApiMediaId, file.PlexApiPartId)
-            .ShouldBe((leaf.PlexServerId, leaf.PlexLibraryId, explicitOriginal.PlexApiRatingKey,
-                explicitOriginal.PlexApiMediaId, explicitOriginal.PlexApiPartId));
+            .ShouldBe((leaf.PlexServerId, leaf.PlexLibraryId, selectedOriginal.PlexApiRatingKey,
+                selectedOriginal.PlexApiMediaId, selectedOriginal.PlexApiPartId));
         file.DirectoryMeta.DestinationRootPath.ShouldBe("/leaf-choice");
         file.DirectoryMeta.KeepCompletedInDownloadFolder.ShouldBeTrue();
+        (file.DataTotal, file.FileLocationUrl, file.DownloadStatus)
+            .ShouldBe((selectedOriginal.Size, selectedOriginal.Key, DownloadStatus.Queued));
+        parentSelection.Qualities.Select(x => x.DataId).ShouldBe([inheritedOriginal.Id]);
+        descendantSelection.Qualities.Select(x => x.DataId).ShouldBe([explicitOriginal.Id]);
         var loggedFileId = music
             ? await dbContext.DownloadTaskTrackFileLogs.Select(x => x.DownloadTaskFileId).SingleAsync(CancellationToken)
             : await dbContext.DownloadTaskPhotoImageFileLogs.Select(x => x.DownloadTaskFileId).SingleAsync(CancellationToken);

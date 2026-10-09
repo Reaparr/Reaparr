@@ -39,7 +39,8 @@ public class GenerateDownloadTaskPhotoAlbumsCommandHandler
     )
     {
         var request = command.Request;
-        var selections = request.DownloadMedias.Where(x => x.Type == PlexMediaType.PhotoAlbum).ToList().MergeAndGroupList();
+        var downloadMedias = request.DownloadMedias.MergeAndGroupList();
+        var selections = downloadMedias.FindAll(x => x.Type == PlexMediaType.PhotoAlbum);
         if (selections.Count == 0)
             return ResultExtensions.IsEmpty(nameof(selections)).LogWarning();
         if (request.Integration is not null)
@@ -73,10 +74,10 @@ public class GenerateDownloadTaskPhotoAlbumsCommandHandler
                 _dbContext.DownloadTaskPhotoAlbums.Add(album.MapToDownloadTask(null));
                 createdAlbums++;
             }
-            var inherited = request.DownloadMedias.First(x => x.Type == PlexMediaType.PhotoAlbum && x.PlexServerId == album.PlexServerId && x.PlexLibraryId == album.PlexLibraryId && x.MediaIds.Contains(album.Id));
+            var inherited = selections.First(x => x.PlexServerId == album.PlexServerId && x.PlexLibraryId == album.PlexLibraryId && x.MediaIds.Contains(album.Id));
             foreach (var image in album.Photos)
             {
-                var direct = request.DownloadMedias.FirstOrDefault(x => x.Type == PlexMediaType.PhotoImage && x.PlexServerId == image.PlexServerId && x.PlexLibraryId == image.PlexLibraryId && x.MediaIds.Contains(image.Id));
+                var direct = downloadMedias.FirstOrDefault(x => x.Type == PlexMediaType.PhotoImage && x.PlexServerId == image.PlexServerId && x.PlexLibraryId == image.PlexLibraryId && x.MediaIds.Contains(image.Id));
                 var qualities = direct?.Qualities.Where(x => x.MediaId == image.Id).ToList() ?? [];
                 if (qualities.Count == 0)
                     qualities = inherited.Qualities.Where(x => x.MediaId == image.Id).ToList();
