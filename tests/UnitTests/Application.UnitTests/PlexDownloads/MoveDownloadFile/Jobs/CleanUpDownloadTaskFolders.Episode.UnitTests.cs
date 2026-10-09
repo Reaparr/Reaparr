@@ -85,6 +85,7 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         control.DownloadStatus = DownloadStatus.Downloading;
         sibling.DirectoryMeta.DownloadRootPath = Path.Combine(root, "TvShows");
         sibling.DirectoryMeta.MovieFolder = "shared/file";
+        sibling.DownloadStatus = siblingStatus;
         foreach (var file in new DownloadTaskFileBase[] { target, control, sibling })
             dbContext.Entry(file).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -103,7 +104,7 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
         (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(new[] { target.Id, control.Id }.Order());
+            .ShouldBe(episodeFiles.Select(x => x.Id).Order());
         (await dbContext.DownloadTaskMovieFile.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
     }
 
@@ -205,7 +206,8 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         control.DownloadStatus = DownloadStatus.Downloading;
         sibling.DirectoryMeta.DownloadRootPath = Path.Combine(root, "TvShows");
         sibling.DirectoryMeta.PhotoAlbumFolder = "shared/file";
-        foreach (var file in new DownloadTaskFileBase[] { target, control, sibling })
+        sibling.DownloadStatus = siblingStatus;
+        foreach (var file in new DownloadTaskFileBase[] { target, control })
             dbContext.Entry(file).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         target.DownloadDirectory.ShouldBe(sibling.DownloadDirectory);
@@ -223,7 +225,7 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
         (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(new[] { target.Id, control.Id }.Order());
+            .ShouldBe(episodeFiles.Select(x => x.Id).Order());
         (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
     }
 
@@ -264,6 +266,7 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         sibling.DirectoryMeta.DownloadRootPath = Path.Combine(root, "TvShows");
         sibling.DirectoryMeta.MusicArtistFolder = "shared";
         sibling.DirectoryMeta.MusicAlbumFolder = "file";
+        sibling.DownloadStatus = siblingStatus;
         foreach (var file in new DownloadTaskFileBase[] { target, control, sibling })
             dbContext.Entry(file).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -282,7 +285,7 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
         (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(new[] { target.Id, control.Id }.Order());
+            .ShouldBe(episodeFiles.Select(x => x.Id).Order());
         (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
     }
 
@@ -320,6 +323,7 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         control.DownloadStatus = DownloadStatus.Downloading;
         sibling.DirectoryMeta.DownloadRootPath = Path.Combine(root, "TvShows");
         sibling.DirectoryMeta.OtherVideoFolder = "shared/file";
+        sibling.DownloadStatus = siblingStatus;
         foreach (var file in new DownloadTaskFileBase[] { target, control, sibling })
             dbContext.Entry(file).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -338,7 +342,7 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
         (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(new[] { target.Id, control.Id }.Order());
+            .ShouldBe(episodeFiles.Select(x => x.Id).Order());
         (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
     }
 

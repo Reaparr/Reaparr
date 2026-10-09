@@ -48,7 +48,6 @@ public class GetMediaComparisonDetailsEndpointUnitTests
 
     [Test]
     [Arguments(PlexMediaType.Episode)]
-    [Arguments(PlexMediaType.MusicArtist)]
     [Arguments(PlexMediaType.PhotoAlbum)]
     [Arguments(PlexMediaType.OtherVideos)]
     public async Task ShouldReturnFailure_WhenUnsupportedMediaTypeReachesHandler(PlexMediaType type)
@@ -108,7 +107,6 @@ public class GetMediaComparisonDetailsEndpointUnitTests
 
     [Test]
     [Arguments(PlexMediaType.Episode)]
-    [Arguments(PlexMediaType.MusicArtist)]
     [Arguments(PlexMediaType.PhotoAlbum)]
     [Arguments(PlexMediaType.OtherVideos)]
     public async Task ShouldRejectRequest_WhenMediaTypeIsUnsupportedByValidator(PlexMediaType type)

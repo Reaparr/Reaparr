@@ -17,7 +17,10 @@ public class ClearCompletedDownloadTasksByServerIdCommandUnitTests
         );
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
-        var albums = FakeData.GetDownloadTaskPhotoAlbum(new Seed(88100)).Generate(3);
+        var albums = FakeData
+            .GetDownloadTaskPhotoAlbum(new Seed(88100))
+            .RuleFor(x => x.Children, _ => FakeData.GetDownloadTaskPhotoImage(new Seed(88101)).Generate(1))
+            .Generate(3);
         for (var i = 0; i < albums.Count; i++)
         {
             var album = albums[i];
@@ -84,10 +87,14 @@ public class ClearCompletedDownloadTasksByServerIdCommandUnitTests
         );
         var dbContext = IDbContext;
         var musicFiles = await dbContext
-            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
+            .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
+            .ThenInclude(x => x!.Parent!)
+            .ThenInclude(x => x!.Parent!)
+            .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var otherVideoFiles = await dbContext
-            .DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey)
+            .DownloadTaskOtherVideoFiles.Include(x => x.Parent)
+            .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         DownloadTaskFileBase target = isMusic ? musicFiles[0] : otherVideoFiles[0];
         DownloadTaskFileBase idle = isMusic ? musicFiles[1] : otherVideoFiles[1];

@@ -27,6 +27,7 @@ public class DbContextExtensionsDownloadTaskLogPhotoUnitTests : BaseUnitTest
         );
         var movieLog = await dbContext.DownloadTaskMovieFileLogs.SingleAsync(CancellationToken);
         movieLog.Id.ShouldBe(1);
+        ((DbContext)dbContext).ChangeTracker.Clear();
 
         // Act
         await dbContext.CreateDownloadClientLog(
@@ -199,7 +200,13 @@ public class DbContextExtensionsDownloadTaskLogPhotoUnitTests : BaseUnitTest
     private static async Task<DownloadTaskPhotoImageFile> AddPhotoTask(IReaparrDbContext dbContext, int index)
     {
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
-        var albums = FakeData.GetDownloadTaskPhotoAlbum(new Seed(index)).Generate(1);
+        var albums = FakeData
+            .GetDownloadTaskPhotoAlbum(new Seed(index))
+            .RuleFor(
+                x => x.Children,
+                _ => FakeData.GetDownloadTaskPhotoImage(new Seed(index + 100)).Generate(1)
+            )
+            .Generate(1);
         albums.SetRelationshipIds(library.PlexServerId, library.Id);
         dbContext.DownloadTaskPhotoAlbums.AddRange(albums);
         await dbContext.SaveChangesAsync(CancellationToken.None);

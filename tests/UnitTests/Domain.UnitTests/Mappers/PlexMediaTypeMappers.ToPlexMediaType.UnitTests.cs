@@ -52,7 +52,6 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("randomstring")]
     [Arguments("123")]
     [Arguments("null")]
-    [Arguments("Artist")]
     [Arguments("Song")]
     [Arguments("Music")]
     [Arguments("Album")]

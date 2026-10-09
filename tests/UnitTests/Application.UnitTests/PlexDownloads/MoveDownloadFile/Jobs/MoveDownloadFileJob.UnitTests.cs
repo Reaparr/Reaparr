@@ -637,7 +637,10 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
                 break;
             case PlexMediaType.PhotoImage:
                 var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
-                var album = FakeData.GetDownloadTaskPhotoAlbum(new Seed(11003)).Generate();
+                var album = FakeData
+                    .GetDownloadTaskPhotoAlbum(new Seed(11003))
+                    .RuleFor(x => x.Children, _ => FakeData.GetDownloadTaskPhotoImage(new Seed(11004)).Generate(1))
+                    .Generate();
                 var image = album.Children.Single();
                 var photo = image.Children.Single();
                 foreach (var node in new DownloadTaskBase[] { album, image, photo })

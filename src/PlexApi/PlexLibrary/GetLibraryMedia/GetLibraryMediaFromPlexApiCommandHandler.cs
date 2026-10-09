@@ -86,26 +86,17 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                     library.Music.AddRange(media.ToPlexMusicArtists());
                     break;
                 case PlexMediaType.MusicAlbum:
-                {
-                    var albums = media.ToPlexMusicAlbums();
-                    library.Albums.AddRange(albums);
+                    library.Albums.AddRange(media.ToPlexMusicAlbums());
                     break;
-                }
                 case PlexMediaType.MusicTrack:
-                {
-                    var tracks = media.ToPlexMusicTracks();
-                    library.Tracks.AddRange(tracks);
+                    library.Tracks.AddRange(media.ToPlexMusicTracks());
                     break;
-                }
                 case PlexMediaType.PhotoAlbum:
                     library.PhotoAlbums.AddRange(media.ToPlexPhotoAlbums());
                     break;
                 case PlexMediaType.PhotoImage:
-                {
-                    var photos = media.ToPlexPhotos();
-                    library.PhotoImages.AddRange(photos);
+                    library.PhotoImages.AddRange(media.ToPlexPhotos());
                     break;
-                }
                 case PlexMediaType.OtherVideos:
                     library.OtherVideos.AddRange(media.ToPlexOtherVideos());
                     break;

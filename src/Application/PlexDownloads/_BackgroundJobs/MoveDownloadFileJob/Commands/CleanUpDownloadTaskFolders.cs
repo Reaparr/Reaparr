@@ -17,7 +17,12 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
     private readonly IPath _path;
     private readonly IDirectory _directory;
 
-    public CleanUpDownloadTaskFoldersCommandHandler(ILogger log, IReaparrDbContext dbContext, IPath path, IDirectory directory)
+    public CleanUpDownloadTaskFoldersCommandHandler(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        IPath path,
+        IDirectory directory
+    )
     {
         _log = log.ForContext<CleanUpDownloadTaskFoldersCommandHandler>();
         _dbContext = dbContext;
@@ -79,9 +84,8 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
     )
     {
         var activeMovieTasks = await _dbContext
-            .DownloadTaskMovieFile.AsNoTracking()
-            .Where(x =>
-                x.Id != downloadTask.Id
+            .DownloadTaskMovieFile.Where(x =>
+                (downloadTask.DownloadTaskType != DownloadTaskType.MovieData || x.Id != downloadTask.Id)
                 && x.DownloadStatus != DownloadStatus.Completed
                 && x.DownloadStatus != DownloadStatus.Deleted
             )
@@ -91,9 +95,8 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
             return true;
 
         var activeEpisodeTasks = await _dbContext
-            .DownloadTaskTvShowEpisodeFile.AsNoTracking()
-            .Where(x =>
-                x.Id != downloadTask.Id
+            .DownloadTaskTvShowEpisodeFile.Where(x =>
+                (downloadTask.DownloadTaskType != DownloadTaskType.EpisodeData || x.Id != downloadTask.Id)
                 && x.DownloadStatus != DownloadStatus.Completed
                 && x.DownloadStatus != DownloadStatus.Deleted
             )
@@ -104,7 +107,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
 
         var activePhotoTasks = await _dbContext
             .DownloadTaskPhotoImageFiles.Where(x =>
-                x.Id != downloadTask.Id
+                (downloadTask.DownloadTaskType != DownloadTaskType.PhotoData || x.Id != downloadTask.Id)
                 && x.DownloadStatus != DownloadStatus.Completed
                 && x.DownloadStatus != DownloadStatus.Deleted
             )
@@ -114,7 +117,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
 
         var activeMusicTasks = await _dbContext
             .DownloadTaskMusicTrackFiles.Where(x =>
-                x.Id != downloadTask.Id
+                (downloadTask.DownloadTaskType != DownloadTaskType.MusicTrackData || x.Id != downloadTask.Id)
                 && x.DownloadStatus != DownloadStatus.Completed
                 && x.DownloadStatus != DownloadStatus.Deleted
             )
@@ -124,7 +127,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
 
         var activeOtherVideoTasks = await _dbContext
             .DownloadTaskOtherVideoFiles.Where(x =>
-                x.Id != downloadTask.Id
+                (downloadTask.DownloadTaskType != DownloadTaskType.OtherVideoData || x.Id != downloadTask.Id)
                 && x.DownloadStatus != DownloadStatus.Completed
                 && x.DownloadStatus != DownloadStatus.Deleted
             )
@@ -136,7 +139,10 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
     {
         var directoryNameResult = Result.Try(() => _path.GetDirectoryName(filePath));
 
-        if (directoryNameResult.IsFailed || string.IsNullOrEmpty(directoryNameResult.Value))
+        if (directoryNameResult.IsFailed)
+            return Result.Fail(directoryNameResult.Errors).LogError();
+
+        if (string.IsNullOrEmpty(directoryNameResult.Value))
             return ResultExtensions.IsEmpty(nameof(directoryNameResult.Value)).LogError();
 
         var parentDirectory = directoryNameResult.Value;
@@ -147,7 +153,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
         var entriesResult = Result.Try(() => _directory.GetFileSystemEntries(parentDirectory).ToList());
         if (entriesResult.IsFailed)
         {
-            return entriesResult.ToResult().LogError();
+            return Result.Fail(entriesResult.Errors).LogError();
         }
 
         if (!entriesResult.Value.Any())
@@ -155,7 +161,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
             var deleteResult = Result.Try(() => _directory.Delete(parentDirectory));
             if (deleteResult.IsFailed)
             {
-                return deleteResult.ToResult().LogError();
+                return Result.Fail(deleteResult.Errors).LogError();
             }
 
             return Result.Ok();

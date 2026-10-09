@@ -21,6 +21,7 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
         await dbContext.CreateDownloadClientLog(movieFile.ToKey(), NotificationLevel.Information, DownloadStatus.Downloading, "movie-control");
         var movieLog = await dbContext.DownloadTaskMovieFileLogs.SingleAsync(CancellationToken);
         movieLog.Id.ShouldBe(1);
+        ((DbContext)dbContext).ChangeTracker.Clear();
 
         // Act
         await dbContext.CreateDownloadClientLog(file.ToKey() with { Type = type }, NotificationLevel.Information, DownloadStatus.DownloadFinished, "other-video-log");

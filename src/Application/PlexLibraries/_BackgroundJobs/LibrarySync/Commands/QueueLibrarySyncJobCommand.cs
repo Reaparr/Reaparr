@@ -34,7 +34,7 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
     public async Task<Result> ExecuteAsync(QueueLibrarySyncJobCommand command, CancellationToken cancellationToken)
     {
         var libraries = await _dbContext
-            .PlexLibraries.Where(x => command.PlexLibraryIds.Contains(x.Id))
+            .PlexLibraries.Where(x => command.PlexLibraryIds.Contains(x.Id) && x.Type.IsRootType())
             .Select(x => new
             {
                 x.Id,

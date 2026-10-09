@@ -1,8 +1,8 @@
 namespace Reaparr.Application;
 
 /// <summary>
-/// Invalidates every active comparison job in which one of the supplied libraries participates.
-/// Queued jobs are deleted; running jobs receive cooperative cancellation and retain their history.
+/// Invalidates every comparison in which one of the supplied libraries participates.
+/// Queued jobs and persisted comparison results are deleted.
 /// </summary>
 public record InvalidateLibraryComparisonJobsCommand(IReadOnlyCollection<int> PlexLibraryIds) : ICommand<Result>;
 
@@ -20,11 +20,13 @@ public class InvalidateLibraryComparisonJobsCommandHandler
     : ICommandHandler<InvalidateLibraryComparisonJobsCommand, Result>
 {
     private readonly ILogger _log;
+    private readonly IReaparrDbContext _dbContext;
     private readonly IScheduler _scheduler;
 
-    public InvalidateLibraryComparisonJobsCommandHandler(ILogger log, IScheduler scheduler)
+    public InvalidateLibraryComparisonJobsCommandHandler(ILogger log, IReaparrDbContext dbContext, IScheduler scheduler)
     {
         _log = log.ForContext<InvalidateLibraryComparisonJobsCommandHandler>();
+        _dbContext = dbContext;
         _scheduler = scheduler;
     }
 
@@ -55,9 +57,40 @@ public class InvalidateLibraryComparisonJobsCommandHandler
             .ToList();
 
         var result = await _scheduler.DeleteBatchJobs(jobKeysToDelete, cancellationToken);
+        if (result.IsFailed)
+            return result;
 
-        if (result.IsSuccess)
-            _log.Here().Debug("Invalidated comparison jobs for libraries {LibraryIds}", command.PlexLibraryIds);
+        var comparisonResult = await _dbContext.ExecuteTransactionAsync(async (ctx, ct) =>
+        {
+            await ctx.PlexMovieComparisons
+                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
+                .ExecuteDeleteAsync(ct);
+            await ctx.PlexTvShowComparisons
+                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
+                .ExecuteDeleteAsync(ct);
+            await ctx.PlexSeasonComparisons
+                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
+                .ExecuteDeleteAsync(ct);
+            await ctx.PlexEpisodeComparisons
+                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
+                .ExecuteDeleteAsync(ct);
+            await ctx.PlexMusicArtistComparisons
+                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
+                .ExecuteDeleteAsync(ct);
+            await ctx.PlexMusicAlbumComparisons
+                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
+                .ExecuteDeleteAsync(ct);
+            await ctx.PlexMusicTrackComparisons
+                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
+                .ExecuteDeleteAsync(ct);
+            await ctx.PlexComparisonScopes
+                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
+                .ExecuteDeleteAsync(ct);
+        }, cancellationToken);
+        if (comparisonResult.IsFailed)
+            return comparisonResult;
+
+        _log.Here().Debug("Invalidated comparison jobs for libraries {LibraryIds}", command.PlexLibraryIds);
 
         return result;
     }

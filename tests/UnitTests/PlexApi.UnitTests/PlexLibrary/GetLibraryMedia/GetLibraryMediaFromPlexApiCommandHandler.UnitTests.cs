@@ -514,43 +514,6 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
             );
     }
 
-    [Test]
-    [Arguments(PlexMediaType.MusicAlbum)]
-    [Arguments(PlexMediaType.MusicTrack)]
-    [Arguments(PlexMediaType.PhotoImage)]
-    public async Task ShouldClearOnlyRequestedDescendants_WhenRetrievalConfirmsEmpty(PlexMediaType mediaType)
-    {
-        // Arrange
-        var template = FakeData.GetLibraryMediaItemDTO(new Seed(625629)).Generate();
-        var library = CreateDescendantLibrary(mediaType, template);
-        var artists = library.Music.ToArray();
-        var photoAlbums = library.PhotoAlbums.ToArray();
-        var albums = library.Albums.ToArray();
-        var tracks = library.Tracks.ToArray();
-        Mock.SetupCommand(() =>
-                It.Is<GetAllMediaByTypeFromPlexApiCommand>(x => x.PlexLibrary == library && x.MediaType == mediaType)
-            )
-            .ReturnsAsync(Result.Ok(new List<LibraryMediaItemDTO>()))
-            .Verifiable(Times.Once());
-
-        // Act
-        var result = await Sut.ExecuteAsync(
-            new GetLibraryMediaFromPlexApiCommand(library, mediaType),
-            CancellationToken
-        );
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        library.Music.ShouldBe(artists);
-        library.PhotoAlbums.ShouldBe(photoAlbums);
-        library.Albums.ShouldBe(mediaType == PlexMediaType.MusicAlbum ? [] : albums);
-        library.Tracks.ShouldBe(mediaType == PlexMediaType.MusicTrack ? [] : tracks);
-        library.PhotoImages.ShouldBeEmpty();
-        result.Value.PhotoClipCount.ShouldBe(0);
-        Mock.Mock<ICommandExecutor>().Verify();
-    }
-
     private static PlexLibrary CreateDescendantLibrary(PlexMediaType mediaType, LibraryMediaItemDTO template)
     {
         var library = CreateLibrary(

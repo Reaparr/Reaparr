@@ -21,7 +21,11 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var file = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
+        var file = await dbContext
+            .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
+            .ThenInclude(x => x!.Parent)
+            .ThenInclude(x => x!.Parent)
+            .SingleAsync(CancellationToken);
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         await dbContext.CreateDownloadClientLog(
             movieFile.ToKey(),
@@ -31,6 +35,7 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
         );
         var movieLog = await dbContext.DownloadTaskMovieFileLogs.SingleAsync(CancellationToken);
         movieLog.Id.ShouldBe(1);
+        ((DbContext)dbContext).ChangeTracker.Clear();
 
         // Act
         await dbContext.CreateDownloadClientLog(
@@ -82,7 +87,10 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+        var musicFiles = await dbContext
+            .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
+            .ThenInclude(x => x!.Parent)
+            .ThenInclude(x => x!.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var file = musicFiles[0];
@@ -147,7 +155,10 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+        var musicFiles = await dbContext
+            .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
+            .ThenInclude(x => x!.Parent)
+            .ThenInclude(x => x!.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var file = musicFiles[0];
