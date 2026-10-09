@@ -266,6 +266,18 @@
             "tv-show": {
                 "header": "Serien Pfad",
                 "default-name": "TV-Sendungs-Ordnerpfad"
+            },
+            "music": {
+                "header": "Musikpfade",
+                "default-name": "Musikordnerpfad"
+            },
+            "photos": {
+                "header": "Fotopfade",
+                "default-name": "Fotoordnerpfad"
+            },
+            "other-videos": {
+                "header": "Pfade für andere Videos",
+                "default-name": "Ordnerpfad für andere Videos"
             }
         },
         "server-dialog": {
@@ -1092,6 +1104,21 @@
                     "label": "Standard-TV-Show-Pfad",
                     "text": "Standartpfad für Serien wenn kein individueller Pfad angegeben wurde.",
                     "title": "Serien Pfad"
+                },
+                "music-folder": {
+                    "label": "Standard-Musikpfad",
+                    "text": "Der Standardpfad für Musik, wenn kein individuelles Ziel ausgewählt wurde.",
+                    "title": "Musikpfad"
+                },
+                "photos-folder": {
+                    "label": "Standard-Fotopfad",
+                    "text": "Der Standardpfad für Fotos und Videos aus Fotomediatheken, wenn kein individuelles Ziel ausgewählt wurde.",
+                    "title": "Fotopfad"
+                },
+                "other-videos-folder": {
+                    "label": "Standardpfad für andere Videos",
+                    "text": "Der Standardpfad für andere Videos, wenn kein individuelles Ziel ausgewählt wurde.",
+                    "title": "Pfad für andere Videos"
                 }
             },
             "integrations": {

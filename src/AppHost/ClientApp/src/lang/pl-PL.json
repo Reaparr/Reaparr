@@ -266,6 +266,18 @@
             "tv-show": {
                 "header": "Ścieżki seriali",
                 "default-name": "Ścieżka folderu serialu"
+            },
+            "music": {
+                "header": "Ścieżki muzyki",
+                "default-name": "Ścieżka folderu muzyki"
+            },
+            "photos": {
+                "header": "Ścieżki zdjęć",
+                "default-name": "Ścieżka folderu zdjęć"
+            },
+            "other-videos": {
+                "header": "Ścieżki innych filmów",
+                "default-name": "Ścieżka folderu innych filmów"
             }
         },
         "server-dialog": {
@@ -1092,6 +1104,21 @@
                     "label": "Domyślna ścieżka programów telewizyjnych",
                     "text": "Domyślna ścieżka seriali w przypadku, gdy nie wybrano żadnego niestandardowego miejsca docelowego.",
                     "title": "Ścieżka Seriali"
+                },
+                "music-folder": {
+                    "label": "Domyślna ścieżka muzyki",
+                    "text": "Domyślna ścieżka muzyki, gdy nie wybrano niestandardowego miejsca docelowego.",
+                    "title": "Ścieżka muzyki"
+                },
+                "photos-folder": {
+                    "label": "Domyślna ścieżka zdjęć",
+                    "text": "Domyślna ścieżka zdjęć i filmów z bibliotek zdjęć, gdy nie wybrano niestandardowego miejsca docelowego.",
+                    "title": "Ścieżka zdjęć"
+                },
+                "other-videos-folder": {
+                    "label": "Domyślna ścieżka innych filmów",
+                    "text": "Domyślna ścieżka innych filmów, gdy nie wybrano niestandardowego miejsca docelowego.",
+                    "title": "Ścieżka innych filmów"
                 }
             },
             "integrations": {

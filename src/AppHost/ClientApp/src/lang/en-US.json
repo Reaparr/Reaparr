@@ -266,6 +266,18 @@
             "tv-show": {
                 "header": "TV-Show Paths",
                 "default-name": "Tv-show Folder Path"
+            },
+            "music": {
+                "header": "Music Paths",
+                "default-name": "Music Folder Path"
+            },
+            "photos": {
+                "header": "Photos Paths",
+                "default-name": "Photos Folder Path"
+            },
+            "other-videos": {
+                "header": "Other Videos Paths",
+                "default-name": "Other Videos Folder Path"
             }
         },
         "server-dialog": {
@@ -1092,6 +1104,21 @@
                     "label": "Default TV Show Path",
                     "text": "The default path of TV-Show when no custom destination has been selected.",
                     "title": "TV-Show Path"
+                },
+                "music-folder": {
+                    "label": "Default Music Path",
+                    "text": "The default path for music when no custom destination has been selected.",
+                    "title": "Music Path"
+                },
+                "photos-folder": {
+                    "label": "Default Photos Path",
+                    "text": "The default path for photos and photo-library clips when no custom destination has been selected.",
+                    "title": "Photos Path"
+                },
+                "other-videos-folder": {
+                    "label": "Default Other Videos Path",
+                    "text": "The default path for Other Videos when no custom destination has been selected.",
+                    "title": "Other Videos Path"
                 }
             },
             "integrations": {

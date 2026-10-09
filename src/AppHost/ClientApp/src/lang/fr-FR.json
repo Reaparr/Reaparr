@@ -266,6 +266,18 @@
             "tv-show": {
                 "header": "Dossier séries",
                 "default-name": "Chemin du dossier de l'émission télévisée"
+            },
+            "music": {
+                "header": "Dossiers de musique",
+                "default-name": "Chemin du dossier de musique"
+            },
+            "photos": {
+                "header": "Dossiers de photos",
+                "default-name": "Chemin du dossier de photos"
+            },
+            "other-videos": {
+                "header": "Dossiers des autres vidéos",
+                "default-name": "Chemin du dossier des autres vidéos"
             }
         },
         "server-dialog": {
@@ -1092,6 +1104,21 @@
                     "label": "Chemin de séries TV par défaut",
                     "text": "Le dossier par défaut des séries quant aucun dossier personnalisé n'a été sélectionné.",
                     "title": "Dossier des série"
+                },
+                "music-folder": {
+                    "label": "Chemin de musique par défaut",
+                    "text": "Le dossier par défaut de la musique lorsqu'aucune destination personnalisée n'a été sélectionnée.",
+                    "title": "Dossier de musique"
+                },
+                "photos-folder": {
+                    "label": "Chemin de photos par défaut",
+                    "text": "Le dossier par défaut des photos et des vidéos des photothèques lorsqu'aucune destination personnalisée n'a été sélectionnée.",
+                    "title": "Dossier de photos"
+                },
+                "other-videos-folder": {
+                    "label": "Chemin des autres vidéos par défaut",
+                    "text": "Le dossier par défaut des autres vidéos lorsqu'aucune destination personnalisée n'a été sélectionnée.",
+                    "title": "Dossier des autres vidéos"
                 }
             },
             "integrations": {
