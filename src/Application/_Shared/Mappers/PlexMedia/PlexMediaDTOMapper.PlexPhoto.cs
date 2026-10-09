@@ -36,6 +36,8 @@ public static partial class PlexMediaDTOMapper
             Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             Children = source.Photos.OrderBy(x => x.SortIndex).Select(x => x.ToDTO()).ToList(),
+            DiscNumber = null,
+            TrackNumber = null,
         };
 
     public static PlexMediaDTO ToDTO(this PlexPhotoImage source) =>
@@ -86,6 +88,8 @@ public static partial class PlexMediaDTOMapper
             Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             Children = [],
+            DiscNumber = null,
+            TrackNumber = null,
         };
 
     public static List<PlexMediaDataDTO> ToDTO(this ICollection<PlexPhotoMediaData> source) =>

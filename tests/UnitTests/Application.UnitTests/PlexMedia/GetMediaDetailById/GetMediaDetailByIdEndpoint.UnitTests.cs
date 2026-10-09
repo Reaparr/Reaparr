@@ -41,6 +41,8 @@ public class GetMediaDetailByIdEndpointUnitTests
         var validationResult = await PlexMediaDtoValidator.ValidateAsync(result.Value, CancellationToken);
         validationResult.Errors.ShouldBeEmpty();
         result.Value.Children.ShouldBeEmpty();
+        result.Value.DiscNumber.ShouldBeNull();
+        result.Value.TrackNumber.ShouldBeNull();
     }
 
     [Test]
@@ -78,16 +80,22 @@ public class GetMediaDetailByIdEndpointUnitTests
         var validationResult = await PlexMediaDtoValidator.ValidateAsync(result.Value, CancellationToken);
         validationResult.Errors.ShouldBeEmpty();
         result.Value.Children.ShouldNotBeEmpty();
+        result.Value.DiscNumber.ShouldBeNull();
+        result.Value.TrackNumber.ShouldBeNull();
         foreach (var season in result.Value.Children)
         {
             var validationSeasonResult = await PlexMediaDtoValidator.ValidateAsync(season, CancellationToken);
             validationSeasonResult.Errors.ShouldBeEmpty();
             season.Children.ShouldNotBeEmpty();
+            season.DiscNumber.ShouldBeNull();
+            season.TrackNumber.ShouldBeNull();
             foreach (var episode in season.Children)
             {
                 var validationEpisode = await PlexMediaDtoValidator.ValidateAsync(episode, CancellationToken);
                 validationEpisode.Errors.ShouldBeEmpty();
                 episode.Children.ShouldBeEmpty();
+                episode.DiscNumber.ShouldBeNull();
+                episode.TrackNumber.ShouldBeNull();
             }
         }
     }
@@ -127,12 +135,16 @@ public class GetMediaDetailByIdEndpointUnitTests
             (album.Id, PlexMediaType.PhotoAlbum, album.PlexLibraryId, album.PlexServerId)
         );
         dto.ParentId.ShouldBeNull();
+        dto.DiscNumber.ShouldBeNull();
+        dto.TrackNumber.ShouldBeNull();
         dto.Children.Select(x => x.Id).ShouldBe(album.Photos.OrderBy(x => x.SortIndex).Select(x => x.Id));
         foreach (var photo in dto.Children)
         {
             var original = album.Photos.Single(x => x.Id == photo.Id);
             (photo.ParentId, photo.Type).ShouldBe(((int?)album.Id, PlexMediaType.PhotoImage));
             photo.Children.ShouldBeEmpty();
+            photo.DiscNumber.ShouldBeNull();
+            photo.TrackNumber.ShouldBeNull();
             photo.MediaData.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId)).ShouldBe(
                 original.MediaDataList.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId))
             );
@@ -149,7 +161,7 @@ public class GetMediaDetailByIdEndpointUnitTests
     }
 
     [Test]
-    public async Task ShouldReturnMusicHierarchyWithOriginalIds_WhenArtistDetailIsRequested()
+    public async Task ShouldReturnMusicHierarchyWithStoredDiscAndTrackNumbers_WhenArtistDetailIsRequested()
     {
         // Arrange
         await SetupDatabase(62503, config =>
@@ -161,13 +173,38 @@ public class GetMediaDetailByIdEndpointUnitTests
         });
         var dbContext = IDbContext;
         var artist = await dbContext
-            .PlexArtists.Include(x => x.Albums)
+            .PlexArtists.AsTracking()
+            .Include(x => x.Albums)
             .ThenInclude(x => x.Tracks)
             .ThenInclude(x => x.MediaDataList)
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
         artist.Albums.Count.ShouldBe(2);
         artist.Albums.ShouldAllBe(x => x.Tracks.Count == 3);
+        var tracks = artist.Albums.SelectMany(x => x.Tracks).OrderBy(x => x.Id).ToList();
+        var numbering = new (int? DiscNumber, int? TrackNumber)[]
+        {
+            (1, 1),
+            (1, 2),
+            (2, 1),
+            (2, 2),
+            (1, 1),
+            (null, null),
+        };
+        for (var i = 0; i < tracks.Count; i++)
+        {
+            tracks[i].DiscNumber = numbering[i].DiscNumber;
+            tracks[i].TrackNumber = numbering[i].TrackNumber;
+        }
+        await dbContext.SaveChangesAsync(CancellationToken);
+        tracks.Select(x => (x.DiscNumber, x.TrackNumber)).ShouldBe(numbering);
+        var persistedTracks = await dbContext
+            .PlexTracks.Where(x => x.PlexAlbum!.PlexArtistId == artist.Id)
+            .OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.DiscNumber, x.TrackNumber })
+            .ToListAsync(CancellationToken);
+        persistedTracks.Select(x => x.Id).ShouldBe(tracks.Select(x => x.Id));
+        persistedTracks.Select(x => (x.DiscNumber, x.TrackNumber)).ShouldBe(numbering);
         var isOwned = await dbContext.PlexLibraries.WhereIsOwned().AnyAsync(x => x.Id == artist.PlexLibraryId, CancellationToken);
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.Is<ApplyComparisonStateCommand>(c =>
@@ -198,9 +235,12 @@ public class GetMediaDetailByIdEndpointUnitTests
             (artist.Id, PlexMediaType.MusicArtist, artist.PlexLibraryId, artist.PlexServerId)
         );
         dto.ParentId.ShouldBeNull();
+        dto.DiscNumber.ShouldBeNull();
+        dto.TrackNumber.ShouldBeNull();
         dto.Children.Select(x => x.Id).ShouldBe(artist.Albums.OrderBy(x => x.SortIndex).ThenBy(x => x.Id).Select(x => x.Id));
         dto.Children.ShouldAllBe(x => x.ParentId == artist.Id && x.Type == PlexMediaType.MusicAlbum);
         dto.GrandChildCount.ShouldBe(6);
+        dto.Children.ShouldAllBe(x => x.DiscNumber == null && x.TrackNumber == null);
         foreach (var album in dto.Children)
         {
             var originalAlbum = artist.Albums.Single(x => x.Id == album.Id);
@@ -212,6 +252,9 @@ public class GetMediaDetailByIdEndpointUnitTests
                 var originalTrack = originalAlbum.Tracks.Single(x => x.Id == track.Id);
                 track.ParentId.ShouldBe(originalTrack.PlexAlbumId);
                 track.Type.ShouldBe(PlexMediaType.MusicTrack);
+                (track.Id, track.DiscNumber, track.TrackNumber).ShouldBe(
+                    (originalTrack.Id, originalTrack.DiscNumber, originalTrack.TrackNumber)
+                );
                 track.Children.ShouldBeEmpty();
                 track.ComparisonId.ShouldBe(PlexMediaComparisonState.NotCompared.ToComparisonId());
                 track.MediaData.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId, x.AudioCodec)).ShouldBe(
@@ -268,6 +311,8 @@ public class GetMediaDetailByIdEndpointUnitTests
         dto.Type.ShouldBe(PlexMediaType.OtherVideos);
         dto.ParentId.ShouldBeNull();
         dto.Children.ShouldBeEmpty();
+        dto.DiscNumber.ShouldBeNull();
+        dto.TrackNumber.ShouldBeNull();
         dto.ComparisonId.ShouldBe(PlexMediaComparisonState.NotCompared.ToComparisonId());
         dto.MediaData.Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId)).Order().ShouldBe(
             new[] { original }.Concat(parts).Select(x => (x.Id, x.PlexApiMediaId, x.PlexApiPartId)).Order()

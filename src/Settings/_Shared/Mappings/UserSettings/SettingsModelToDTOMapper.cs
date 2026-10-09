@@ -39,6 +39,12 @@ public static class SettingsModelToDTOMapper
             AskDownloadTvShowConfirmation = dto.AskDownloadTvShowConfirmation,
             AskDownloadSeasonConfirmation = dto.AskDownloadSeasonConfirmation,
             AskDownloadEpisodeConfirmation = dto.AskDownloadEpisodeConfirmation,
+            AskDownloadMusicArtistConfirmation = dto.AskDownloadMusicArtistConfirmation,
+            AskDownloadMusicAlbumConfirmation = dto.AskDownloadMusicAlbumConfirmation,
+            AskDownloadMusicTrackConfirmation = dto.AskDownloadMusicTrackConfirmation,
+            AskDownloadPhotoAlbumConfirmation = dto.AskDownloadPhotoAlbumConfirmation,
+            AskDownloadPhotoImageConfirmation = dto.AskDownloadPhotoImageConfirmation,
+            AskDownloadOtherVideosConfirmation = dto.AskDownloadOtherVideosConfirmation,
         };
 
     public static DateTimeSettingsModule ToModel(this DateTimeSettingsDTO dto) =>
@@ -56,6 +62,9 @@ public static class SettingsModelToDTOMapper
         {
             TvShowViewMode = dto.TvShowViewMode,
             MovieViewMode = dto.MovieViewMode,
+            MusicArtistViewMode = dto.MusicArtistViewMode,
+            PhotoAlbumViewMode = dto.PhotoAlbumViewMode,
+            OtherVideosViewMode = dto.OtherVideosViewMode,
             AllOverviewViewMode = dto.AllOverviewViewMode,
         };
 
@@ -133,6 +142,12 @@ public static class SettingsModelToDTOMapper
             AskDownloadTvShowConfirmation = module.AskDownloadTvShowConfirmation,
             AskDownloadSeasonConfirmation = module.AskDownloadSeasonConfirmation,
             AskDownloadEpisodeConfirmation = module.AskDownloadEpisodeConfirmation,
+            AskDownloadMusicArtistConfirmation = module.AskDownloadMusicArtistConfirmation,
+            AskDownloadMusicAlbumConfirmation = module.AskDownloadMusicAlbumConfirmation,
+            AskDownloadMusicTrackConfirmation = module.AskDownloadMusicTrackConfirmation,
+            AskDownloadPhotoAlbumConfirmation = module.AskDownloadPhotoAlbumConfirmation,
+            AskDownloadPhotoImageConfirmation = module.AskDownloadPhotoImageConfirmation,
+            AskDownloadOtherVideosConfirmation = module.AskDownloadOtherVideosConfirmation,
         };
 
     public static DateTimeSettingsDTO ToDTO(this DateTimeSettingsModule module) =>
@@ -150,6 +165,9 @@ public static class SettingsModelToDTOMapper
         {
             TvShowViewMode = module.TvShowViewMode,
             MovieViewMode = module.MovieViewMode,
+            MusicArtistViewMode = module.MusicArtistViewMode,
+            PhotoAlbumViewMode = module.PhotoAlbumViewMode,
+            OtherVideosViewMode = module.OtherVideosViewMode,
             AllOverviewViewMode = module.AllOverviewViewMode,
         };
 

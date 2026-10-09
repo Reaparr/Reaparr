@@ -70,7 +70,13 @@ public static partial class FakeData
             .RuleFor(x => x.AskDownloadMovieConfirmation, f => f.Random.Bool())
             .RuleFor(x => x.AskDownloadTvShowConfirmation, f => f.Random.Bool())
             .RuleFor(x => x.AskDownloadSeasonConfirmation, f => f.Random.Bool())
-            .RuleFor(x => x.AskDownloadEpisodeConfirmation, f => f.Random.Bool());
+            .RuleFor(x => x.AskDownloadEpisodeConfirmation, f => f.Random.Bool())
+            .RuleFor(x => x.AskDownloadMusicArtistConfirmation, f => f.Random.Bool())
+            .RuleFor(x => x.AskDownloadMusicAlbumConfirmation, f => f.Random.Bool())
+            .RuleFor(x => x.AskDownloadMusicTrackConfirmation, f => f.Random.Bool())
+            .RuleFor(x => x.AskDownloadPhotoAlbumConfirmation, f => f.Random.Bool())
+            .RuleFor(x => x.AskDownloadPhotoImageConfirmation, f => f.Random.Bool())
+            .RuleFor(x => x.AskDownloadOtherVideosConfirmation, f => f.Random.Bool());
     }
 
     public static Faker<DateTimeSettingsModule> GetDateTimeSettings(
@@ -95,7 +101,10 @@ public static partial class FakeData
             .UseSeed(seed.Next())
             .RuleFor(x => x.MovieViewMode, f => f.Random.Enum<ViewMode>())
             .RuleFor(x => x.TvShowViewMode, f => f.Random.Enum<ViewMode>())
-            .RuleFor(x => x.AllOverviewViewMode, f => f.PickRandom(PlexMediaType.Movie, PlexMediaType.TvShow));
+            .RuleFor(x => x.AllOverviewViewMode, f => f.PickRandom(PlexMediaType.Movie, PlexMediaType.TvShow))
+            .RuleFor(x => x.MusicArtistViewMode, f => f.Random.Enum<ViewMode>())
+            .RuleFor(x => x.PhotoAlbumViewMode, f => f.Random.Enum<ViewMode>())
+            .RuleFor(x => x.OtherVideosViewMode, f => f.Random.Enum<ViewMode>());
     }
 
     public static Faker<DownloadManagerSettingsModule> GetDownloadManagerSettings(
