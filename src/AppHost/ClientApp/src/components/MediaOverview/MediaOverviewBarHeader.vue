@@ -7,7 +7,7 @@
 			<q-item-section avatar>
 				<QMediaTypeIcon
 					class="media-overview-bar-header__desktop-icon"
-					:media-type="mediaOverviewStore.getMediaType"
+					:media-type="mediaType"
 					:size="36" />
 				<q-btn
 					class="media-overview-bar-header__mobile-trigger"
@@ -18,7 +18,7 @@
 					data-cy="media-overview-bar-header-mobile-trigger"
 					@click.stop>
 					<QMediaTypeIcon
-						:media-type="mediaOverviewStore.getMediaType"
+						:media-type="mediaType"
 						:size="36" />
 					<q-menu
 						anchor="bottom left"
@@ -53,8 +53,8 @@
 							<template v-if="mediaOverviewStore.allMediaMode">
 								<q-separator />
 								<q-item
-									v-for="(type, i) in [PlexMediaType.Movie, PlexMediaType.TvShow].filter(x => x !== mediaOverviewStore.getMediaType)"
-									:key="i"
+									v-for="type in overviewTypes.filter(x => x !== mediaType)"
+									:key="type"
 									v-close-popup
 									v-ripple
 									clickable
@@ -104,8 +104,8 @@
 				self="top left">
 				<q-list>
 					<q-item
-						v-for="(type, i) in [PlexMediaType.Movie, PlexMediaType.TvShow].filter(x => x !== mediaOverviewStore.getMediaType)"
-						:key="i"
+						v-for="type in overviewTypes.filter(x => x !== mediaType)"
+						:key="type"
 						v-ripple
 						clickable
 						@click="mediaOverviewStore.changeAllMediaOverviewType(type)">
@@ -131,14 +131,8 @@
 import { get } from '@vueuse/core';
 import { type PlexMediaDTO, PlexMediaType } from '@dto';
 import prettyBytes from 'pretty-bytes';
-import {
-	useAccountStore,
-	useLibraryStore,
-	useServerStore,
-	useLocalizationStore,
-	useMediaOverviewStore,
-	useI18n,
-} from '#imports';
+import { useAccountStore, useLibraryStore, useServerStore, useLocalizationStore, useMediaOverviewStore } from '@store';
+import { useI18n } from '#imports';
 
 const accountStore = useAccountStore();
 const libraryStore = useLibraryStore();
@@ -155,6 +149,8 @@ const props = withDefaults(defineProps<{
 	libraryId: 0,
 	detailMode: false,
 });
+const mediaType = computed(() => props.mediaDetailItem?.type ?? mediaOverviewStore.getMediaType);
+const overviewTypes = [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos];
 
 const server = computed(() => serverStore.getServer(get(library)?.plexServerId ?? -1));
 const library = computed(() => libraryStore.getLibrary(props.libraryId));
@@ -199,7 +195,7 @@ function formatted({ movieCount, tvShowCount, seasonCount, episodeCount, fileSiz
 	episodeCount: number;
 	fileSize: number;
 }): string {
-	switch (mediaOverviewStore.getMediaType) {
+	switch (get(mediaType)) {
 		case PlexMediaType.Movie:
 			return t('components.media-overview-bar-header.movies-metadata', {
 				movieCount,
@@ -212,8 +208,34 @@ function formatted({ movieCount, tvShowCount, seasonCount, episodeCount, fileSiz
 				episodeCount,
 				fileSize: toFileSize(fileSize),
 			});
+		case PlexMediaType.MusicArtist:
+			return props.mediaDetailItem
+				? t('components.media-overview-bar-header.music-detail-metadata', {
+						albumCount: props.mediaDetailItem.childCount,
+						trackCount: props.mediaDetailItem.grandChildCount,
+						fileSize: toFileSize(fileSize),
+					})
+				: t('components.media-overview-bar-header.music-metadata', {
+						artistCount: mediaOverviewStore.totalCount,
+						fileSize: toFileSize(fileSize),
+					});
+		case PlexMediaType.PhotoAlbum:
+			return props.mediaDetailItem
+				? t('components.media-overview-bar-header.photo-detail-metadata', {
+						assetCount: props.mediaDetailItem.childCount,
+						fileSize: toFileSize(fileSize),
+					})
+				: t('components.media-overview-bar-header.photos-metadata', {
+						albumCount: mediaOverviewStore.totalCount,
+						fileSize: toFileSize(fileSize),
+					});
+		case PlexMediaType.OtherVideos:
+			return t('components.media-overview-bar-header.other-videos-metadata', {
+				videoCount: props.mediaDetailItem ? 1 : mediaOverviewStore.totalCount,
+				fileSize: toFileSize(fileSize),
+			});
 		default:
-			return `Media type ${mediaOverviewStore.getMediaType} is not supported in the media count`;
+			return t('general.error.unknown');
 	}
 }
 
@@ -230,6 +252,12 @@ function mediaTypeToAllText(mediaType: PlexMediaType): string {
 			return t('components.media-overview-bar.all-media-mode.movies');
 		case PlexMediaType.TvShow:
 			return t('components.media-overview-bar.all-media-mode.tv-shows');
+		case PlexMediaType.MusicArtist:
+			return t('components.media-overview-bar.all-media-mode.music');
+		case PlexMediaType.PhotoAlbum:
+			return t('components.media-overview-bar.all-media-mode.photos');
+		case PlexMediaType.OtherVideos:
+			return t('components.media-overview-bar.all-media-mode.other-videos');
 		default:
 			return t('general.error.unknown');
 	}

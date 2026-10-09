@@ -33,6 +33,63 @@
             "saturday": "Sobota",
             "sunday": "Niedziela"
         },
+        "music-media-list": {
+            "select-artist": "Wybierz wykonawcę {title}",
+            "select-album": "Wybierz album {title}",
+            "select-track": "Wybierz utwór {title}",
+            "selected-count": "Wybrano: {count}",
+            "track-count": "Utwory: {count}",
+            "no-tracks": "Nie znaleziono utworów",
+            "no-albums": "Nie znaleziono albumów"
+        },
+        "music-details": {
+            "album-count": "Albumy",
+            "track-count": "Utwory",
+            "duration": "Czas trwania",
+            "size": "Rozmiar",
+            "year": "Rok",
+            "originally-available": "Pierwsza dostępność",
+            "added-at": "Dodano",
+            "updated-at": "Zaktualizowano",
+            "load-error": "Nie można wczytać tego wykonawcy",
+            "invalid-route": "Nieprawidłowa biblioteka muzyczna lub wykonawca."
+        },
+        "photo-media-list": {
+            "select-album": "Wybierz album {title}",
+            "select-asset": "Wybierz element {title}",
+            "selected-count": "Wybrano: {count}",
+            "reset-selection": "Wyczyść wybór",
+            "empty": "W tym albumie nie znaleziono obrazów ani klipów."
+        },
+        "photo-details": {
+            "asset-count": "Elementy",
+            "size": "Łączny rozmiar",
+            "originally-available": "Pierwsza dostępność",
+            "added-at": "Dodano",
+            "updated-at": "Zaktualizowano",
+            "loading": "Wczytywanie albumu zdjęć…",
+            "load-error": "Nie można wczytać tego albumu zdjęć.",
+            "invalid-route": "Nieprawidłowa biblioteka zdjęć lub album.",
+            "retry": "Spróbuj ponownie"
+        },
+        "other-video-media-list": {
+            "originals": "Wersje oryginalne",
+            "select-video": "Wybierz film {title}",
+            "selected-count": "Wybrano: {count}",
+            "empty": "Brak oryginalnych plików."
+        },
+        "other-video-details": {
+            "duration": "Czas trwania",
+            "size": "Łączny rozmiar",
+            "file-count": "Pliki",
+            "year": "Rok",
+            "originally-available": "Pierwsza dostępność",
+            "added-at": "Dodano",
+            "updated-at": "Zaktualizowano",
+            "loading": "Wczytywanie filmu…",
+            "load-error": "Nie można wczytać tego filmu.",
+            "invalid-route": "Nieprawidłowa biblioteka filmów lub film."
+        },
         "account-card": {
             "invalid-account": "Obiekt konta był nieprawidłowy"
         },
@@ -389,7 +446,14 @@
         "media-overview-bar": {
             "all-media-mode": {
                 "movies": "Wszystkie filmy",
-                "tv-shows": "Wszystkie programy telewizyjne"
+                "tv-shows": "Wszystkie programy telewizyjne",
+                "music": "Cała muzyka",
+                "photos": "Wszystkie zdjęcia",
+                "other-videos": "Wszystkie pozostałe filmy"
+            },
+            "view-mode": {
+                "poster": "Widok plakatów",
+                "table": "Widok tabeli"
             }
         },
         "media-options-dialog": {
@@ -403,7 +467,12 @@
         "media-overview-bar-header": {
             "details": "Szczegóły przeglądu multimediów",
             "movies-metadata": "{movieCount} Filmy - {fileSize} ",
-            "tv-shows-metadata": "{tvShowCount} Programy telewizyjne - {seasonCount} Sezony - {episodeCount} Odcinki - {fileSize} "
+            "tv-shows-metadata": "{tvShowCount} Programy telewizyjne - {seasonCount} Sezony - {episodeCount} Odcinki - {fileSize} ",
+            "music-metadata": "Wykonawcy: {artistCount} - {fileSize}",
+            "music-detail-metadata": "Albumy: {albumCount} - Utwory: {trackCount} - {fileSize}",
+            "photos-metadata": "Albumy: {albumCount} - {fileSize}",
+            "photo-detail-metadata": "Elementy: {assetCount} - {fileSize}",
+            "other-videos-metadata": "Filmy: {videoCount} - {fileSize}"
         },
         "discord-invite-dialog": {
             "discord-invite-button-text": "Dołącz do Reaparr Discord!",
@@ -1095,19 +1164,21 @@
             "return-link": "Wróć do strony głównej"
         },
         "music": {
-            "music-id": {
-                "header": "Biblioteki muzyczne niestety nie są jeszcze obsługiwane :("
-            },
             "index": {
-                "header": "Biblioteki muzyczne niestety nie są jeszcze obsługiwane :("
+                "header": "Muzyka",
+                "sub-header": "Wybierz bibliotekę muzyczną, aby przeglądać wykonawców, albumy i utwory."
             }
         },
         "photos": {
-            "photo-id": {
-                "header": "Biblioteki zdjęć niestety nie są jeszcze obsługiwane :("
-            },
             "index": {
-                "header": "Biblioteki zdjęć niestety nie są jeszcze obsługiwane :("
+                "header": "Zdjęcia",
+                "sub-header": "Wybierz bibliotekę zdjęć, aby przeglądać albumy, obrazy i klipy."
+            }
+        },
+        "other-videos": {
+            "index": {
+                "header": "Pozostałe filmy",
+                "sub-header": "Wybierz bibliotekę pozostałych filmów, aby przeglądać pojedyncze filmy."
             }
         },
         "settings": {

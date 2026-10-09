@@ -35,6 +35,21 @@
 				align="center"
 				size="subtitle1" />
 			<QText
+				v-if="mediaType === PlexMediaType.MusicArtist"
+				:value="`${$t('components.music-details.album-count')}: ${mediaItem.childCount}`"
+				align="center"
+				size="subtitle1" />
+			<QText
+				v-if="mediaType === PlexMediaType.MusicArtist"
+				:value="`${$t('components.music-details.track-count')}: ${mediaItem.grandChildCount}`"
+				align="center"
+				size="subtitle1" />
+			<QText
+				v-if="mediaType === PlexMediaType.PhotoAlbum"
+				:value="`${$t('components.photo-details.asset-count')}: ${mediaItem.childCount}`"
+				align="center"
+				size="subtitle1" />
+			<QText
 				v-if="allMediaMode"
 				align="center"
 				:size="allMediaMode ? 'subtitle2' : 'h6'"

@@ -128,7 +128,7 @@
 
 				<!--	View mode	-->
 				<VerticalButton
-					v-if="!detailMode"
+					v-if="!detailMode && supportsViewMode"
 					:height="barHeight"
 					:label="$t('general.commands.view')"
 					:width="verticalButtonWidth"
@@ -273,7 +273,7 @@
 
 						<!-- View mode -->
 						<q-item
-							v-if="!detailMode"
+							v-if="!detailMode && supportsViewMode"
 							clickable
 							data-cy="change-view-mode-btn">
 							<q-item-section avatar>
@@ -313,19 +313,18 @@
 
 <script lang="ts" setup>
 import type { PlexMediaDTO } from '@dto';
-import { ViewMode } from '@dto';
+import { PlexMediaType, ViewMode } from '@dto';
 import { SortDirection } from '@enums';
 import type { IMediaOverviewBarActions, IViewOptions } from '@interfaces';
-import {
-	useMediaOverviewBarDownloadCommandBus,
-	useMediaOverviewStore,
-	useSettingsStore,
-} from '#imports';
+import { useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
+import { useMediaOverviewStore, useSettingsStore } from '@store';
 
 const mediaOverviewStore = useMediaOverviewStore();
 const downloadCommandBus = useMediaOverviewBarDownloadCommandBus();
 
 const settingsStore = useSettingsStore();
+const { t } = useI18n();
+const supportsViewMode = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow].includes(mediaOverviewStore.getMediaType));
 
 withDefaults(defineProps<{
 	libraryId?: number;
@@ -359,11 +358,11 @@ const activeSortIcon = computed((): string => {
 const viewOptions = computed((): IViewOptions[] => {
 	return [
 		{
-			label: 'Poster View',
+			label: t('components.media-overview-bar.view-mode.poster'),
 			viewMode: ViewMode.Poster,
 		},
 		{
-			label: 'Table View',
+			label: t('components.media-overview-bar.view-mode.table'),
 			viewMode: ViewMode.Table,
 		},
 	];

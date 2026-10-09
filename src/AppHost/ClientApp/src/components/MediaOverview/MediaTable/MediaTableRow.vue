@@ -124,6 +124,7 @@ import {
 	sendMediaOverviewDownloadCommand,
 } from '@composables/event-bus';
 import { toDownloadMedia } from '@composables/conversion';
+import { useMediaOverviewStore } from '@store';
 
 const props = withDefaults(
 	defineProps<{
@@ -157,14 +158,13 @@ function onRowAction(action: IMediaOverviewCommands) {
 			sendMediaOverviewDownloadCommand(toDownloadMedia(props.row));
 			break;
 		case 'open-details':
-			mediaOverviewStore.setPendingMediaHighlight(props.row.id, mediaOverviewStore.libraryId);
-			router.push({
-				name: 'tvshows-libraryId-details-tvShowId',
-				params: {
-					libraryId: props.row.plexLibraryId.toString(),
-					tvShowId: props.row.id.toString(),
-				},
-			});
+			{
+				const path = Convert.mediaTypeToDetailsPath(props.row);
+				if (!path)
+					return;
+				mediaOverviewStore.setPendingMediaHighlight(props.row.id, mediaOverviewStore.libraryId);
+				router.push(path);
+			}
 			break;
 		default:
 			throw new Error(`Unknown action: ${action.command} in MediaTableRow.vue`);

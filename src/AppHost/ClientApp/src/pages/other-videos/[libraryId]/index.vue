@@ -1,6 +1,5 @@
 <template>
-	<NuxtPage v-if="route.params.albumId" />
-	<QPage v-else>
+	<QPage>
 		<MediaOverview
 			v-if="validLibraryId"
 			:key="libraryId"
@@ -9,17 +8,15 @@
 			v-else
 			role="alert"
 			class="q-pa-md">
-			{{ t('components.photo-details.invalid-route') }}
+			{{ t('components.other-video-details.invalid-route') }}
 		</p>
 	</QPage>
 </template>
 
 <script setup lang="ts">
-import { get } from '@vueuse/core';
-
 definePageMeta({ scrollToTop: false });
 const route = useRoute();
 const { t } = useI18n();
-const libraryId = computed(() => Number(route.params.id));
-const validLibraryId = computed(() => Number.isSafeInteger(get(libraryId)) && get(libraryId) > 0);
+const libraryId = computed(() => Number(route.params.libraryId));
+const validLibraryId = computed(() => Number.isSafeInteger(libraryId.value) && libraryId.value > 0);
 </script>

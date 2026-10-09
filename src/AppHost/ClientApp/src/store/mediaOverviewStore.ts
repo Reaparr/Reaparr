@@ -227,6 +227,18 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			).pipe(
 				switchMap(() => {
 					const library = libraryStore.getLibrary(state.libraryId);
+					if (!get(getters.getSupportsVideoQuality)) {
+						state.metadata.qualityId = 0;
+						set(qualityIdQuery, undefined);
+						if (state.sortedState.field === MediaSortField.Quality) {
+							state.sortedState = cloneDeep(defaultState.sortedState);
+							set(sortQuery, undefined);
+						}
+					}
+					if (!get(getters.getSupportsComparison)) {
+						state.metadata.comparisonState = null;
+						set(comparisonStateQuery, undefined);
+					}
 					if (library && (!library.isEnabled || library.syncedAt === null)) {
 						state.loading = false;
 						return of(null);
@@ -323,8 +335,8 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				sort: get(getters.getSortDSL),
 				countryId: state.metadata.countryId > 0 ? state.metadata.countryId : undefined,
 				genreId: state.metadata.genreId > 0 ? state.metadata.genreId : undefined,
-				qualityId: state.metadata.qualityId > 0 ? state.metadata.qualityId : undefined,
-				comparisonState: state.metadata.comparisonState ?? undefined,
+				qualityId: get(getters.getSupportsVideoQuality) && state.metadata.qualityId > 0 ? state.metadata.qualityId : undefined,
+				comparisonState: get(getters.getSupportsComparison) ? state.metadata.comparisonState ?? undefined : undefined,
 				roleId: state.metadata.roleId > 0 ? state.metadata.roleId : undefined,
 				mediaType,
 				plexLibraryId: state.libraryId > 0 ? state.libraryId : undefined,
@@ -457,7 +469,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 
 		setQualityFilter(qualityId?: number | null): Observable<PlexMediaStatisticsDTO | null> {
 			return of(qualityId).pipe(
-				map((x) => isNumber(x) && x > 0 ? x : 0),
+				map((x) => get(getters.getSupportsVideoQuality) && isNumber(x) && x > 0 ? x : 0),
 				tap((value) => {
 					state.metadata.qualityId = value;
 					set(qualityIdQuery, value > 0 ? value : undefined);
@@ -467,7 +479,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		},
 		setComparisonStateFilter(comparisonState?: PlexMediaComparisonState | null): Observable<PlexMediaStatisticsDTO | null> {
 			return of(comparisonState).pipe(
-				map((value) => value && Object.values(PlexMediaComparisonState).includes(value) ? value : null),
+				map((value) => get(getters.getSupportsComparison) && value && Object.values(PlexMediaComparisonState).includes(value) ? value : null),
 				tap((value) => {
 					state.metadata.comparisonState = value;
 					set(comparisonStateQuery, value ?? undefined);
@@ -709,6 +721,8 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			return state.sortedState;
 		}),
 		getMediaType: computed((): PlexMediaType => state.libraryId === 0 ? settingsStore.displaySettings.allOverviewViewMode : libraryStore.getLibrary(state.libraryId)?.type ?? PlexMediaType.None),
+		getSupportsVideoQuality: computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.OtherVideos].includes(get(getters.getMediaType))),
+		getSupportsComparison: computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow].includes(get(getters.getMediaType))),
 		getIsSorted: computed((): boolean => {
 			if (state.sortedState.sort === SortDirection.NoSort) {
 				return false;
@@ -725,8 +739,10 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				{ field: MediaSortField.UpdatedAt, label: t('general.sort.updated-at'), direction: SortDirection.NoSort },
 				{ field: MediaSortField.Duration, label: t('general.sort.duration'), direction: SortDirection.NoSort },
 				{ field: MediaSortField.MediaSize, label: t('general.sort.size'), direction: SortDirection.NoSort },
-				{ field: MediaSortField.Quality, label: t('general.sort.quality'), direction: SortDirection.NoSort },
 			];
+			if (get(getters.getSupportsVideoQuality)) {
+				options.push({ field: MediaSortField.Quality, label: t('general.sort.quality'), direction: SortDirection.NoSort });
+			}
 
 			for (const option of options) {
 				if (option.field === state.sortedState.field) {

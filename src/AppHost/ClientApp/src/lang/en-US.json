@@ -33,6 +33,63 @@
             "saturday": "Saturday",
             "sunday": "Sunday"
         },
+        "music-media-list": {
+            "select-artist": "Select artist {title}",
+            "select-album": "Select album {title}",
+            "select-track": "Select track {title}",
+            "selected-count": "{count} selected",
+            "track-count": "{count} tracks",
+            "no-tracks": "No tracks found",
+            "no-albums": "No albums found"
+        },
+        "music-details": {
+            "album-count": "Albums",
+            "track-count": "Tracks",
+            "duration": "Duration",
+            "size": "Size",
+            "year": "Year",
+            "originally-available": "Originally available",
+            "added-at": "Added",
+            "updated-at": "Updated",
+            "load-error": "Unable to load this artist",
+            "invalid-route": "Invalid music library or artist."
+        },
+        "photo-media-list": {
+            "select-album": "Select album {title}",
+            "select-asset": "Select asset {title}",
+            "selected-count": "{count} selected",
+            "reset-selection": "Reset selection",
+            "empty": "No images or clips found in this album."
+        },
+        "photo-details": {
+            "asset-count": "Assets",
+            "size": "Total size",
+            "originally-available": "Originally available",
+            "added-at": "Added",
+            "updated-at": "Updated",
+            "loading": "Loading photo album…",
+            "load-error": "Unable to load this photo album.",
+            "invalid-route": "Invalid photo library or album.",
+            "retry": "Retry"
+        },
+        "other-video-media-list": {
+            "originals": "Original versions",
+            "select-video": "Select video {title}",
+            "selected-count": "{count} selected",
+            "empty": "No original files available."
+        },
+        "other-video-details": {
+            "duration": "Duration",
+            "size": "Total size",
+            "file-count": "Files",
+            "year": "Year",
+            "originally-available": "Originally available",
+            "added-at": "Added",
+            "updated-at": "Updated",
+            "loading": "Loading video…",
+            "load-error": "Unable to load this video.",
+            "invalid-route": "Invalid video library or video."
+        },
         "account-card": {
             "invalid-account": "Account object was invalid"
         },
@@ -389,7 +446,14 @@
         "media-overview-bar": {
             "all-media-mode": {
                 "movies": "All Movies",
-                "tv-shows": "All TV-Shows"
+                "tv-shows": "All TV-Shows",
+                "music": "All Music",
+                "photos": "All Photos",
+                "other-videos": "All Other Videos"
+            },
+            "view-mode": {
+                "poster": "Poster View",
+                "table": "Table View"
             }
         },
         "media-options-dialog": {
@@ -403,7 +467,12 @@
         "media-overview-bar-header": {
             "details": "Media overview details",
             "movies-metadata": "{movieCount} Movies - {fileSize} ",
-            "tv-shows-metadata": "{tvShowCount} TV Shows - {seasonCount} Seasons - {episodeCount} Episodes - {fileSize} "
+            "tv-shows-metadata": "{tvShowCount} TV Shows - {seasonCount} Seasons - {episodeCount} Episodes - {fileSize} ",
+            "music-metadata": "{artistCount} Artists - {fileSize}",
+            "music-detail-metadata": "{albumCount} Albums - {trackCount} Tracks - {fileSize}",
+            "photos-metadata": "{albumCount} Albums - {fileSize}",
+            "photo-detail-metadata": "{assetCount} Assets - {fileSize}",
+            "other-videos-metadata": "{videoCount} Videos - {fileSize}"
         },
         "discord-invite-dialog": {
             "discord-invite-button-text": "Join the Reaparr Discord!",
@@ -1095,19 +1164,21 @@
             "return-link": "Go back to home page"
         },
         "music": {
-            "music-id": {
-                "header": "Music Libraries are unfortunately not yet supported :("
-            },
             "index": {
-                "header": "Music Libraries are unfortunately not yet supported :("
+                "header": "Music",
+                "sub-header": "Select a Music library to browse artists, albums and tracks."
             }
         },
         "photos": {
-            "photo-id": {
-                "header": "Photo Libraries are unfortunately not yet supported :("
-            },
             "index": {
-                "header": "Photo Libraries are unfortunately not yet supported :("
+                "header": "Photos",
+                "sub-header": "Select a Photos library to browse albums, images and clips."
+            }
+        },
+        "other-videos": {
+            "index": {
+                "header": "Other Videos",
+                "sub-header": "Select an Other Videos library to browse individual videos."
             }
         },
         "settings": {
