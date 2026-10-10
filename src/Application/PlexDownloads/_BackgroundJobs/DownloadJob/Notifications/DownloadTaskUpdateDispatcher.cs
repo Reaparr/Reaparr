@@ -91,7 +91,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
             }
 
             using var dbContext = await _dbContextFactory.CreateAsync();
-            var currentStatus = await dbContext.GetDownloadStatusAsync(key, cancellationToken);
+            var currentStatus = await dbContext.GetDownloadStatusAsync(key);
             var hasStatusChanged = currentStatus != newStatus;
 
             if (hasStatusChanged)
@@ -99,7 +99,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 if (newStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused)
                     await PersistBufferedProgressBeforePauseAsync(dbContext, key, cancellationToken);
 
-                await SetDownloadStatusAsync(dbContext, key, newStatus, cancellationToken);
+                await dbContext.SetDownloadStatus(key, newStatus);
                 await LogStatusChangeAsync(dbContext, key, newStatus, cancellationToken);
                 ResetProgressJourneyTrackingIfNeeded(key.Id, newStatus);
 
@@ -129,7 +129,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 refresh.LogIfFailed();
             }
 
-            var changedParentKeys = await DetermineDownloadStatusAsync(dbContext, key, cancellationToken);
+            var changedParentKeys = await dbContext.DetermineDownloadStatus(key, cancellationToken);
             var rootKey = await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: cancellationToken);
             if (rootKey is null)
                 return;
@@ -583,54 +583,6 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         return resolvedScope;
     }
 
-    private static async Task SetDownloadStatusAsync(
-        IReaparrDbContext dbContext,
-        DownloadTaskKey key,
-        DownloadStatus status,
-        CancellationToken cancellationToken
-    )
-    {
-        switch (key.Type)
-        {
-            case DownloadTaskType.Movie:
-                await dbContext
-                    .DownloadTaskMovie.Where(x => x.Id == key.Id)
-                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, status), cancellationToken);
-                break;
-            case DownloadTaskType.MovieData:
-            case DownloadTaskType.MoviePart:
-                await dbContext
-                    .DownloadTaskMovieFile.Where(x => x.Id == key.Id)
-                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, status), cancellationToken);
-                break;
-            case DownloadTaskType.TvShow:
-                await dbContext
-                    .DownloadTaskTvShow.Where(x => x.Id == key.Id)
-                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, status), cancellationToken);
-                break;
-            case DownloadTaskType.Season:
-                await dbContext
-                    .DownloadTaskTvShowSeason.Where(x => x.Id == key.Id)
-                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, status), cancellationToken);
-                break;
-            case DownloadTaskType.Episode:
-                await dbContext
-                    .DownloadTaskTvShowEpisode.Where(x => x.Id == key.Id)
-                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, status), cancellationToken);
-                break;
-            case DownloadTaskType.EpisodeData:
-            case DownloadTaskType.EpisodePart:
-                await dbContext
-                    .DownloadTaskTvShowEpisodeFile.Where(x => x.Id == key.Id)
-                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, status), cancellationToken);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(
-                    $"{key.Type} is not supported in {nameof(SetDownloadStatusAsync)}"
-                );
-        }
-    }
-
     private async Task LogStatusChangeAsync(
         IReaparrDbContext dbContext,
         DownloadTaskKey key,
@@ -769,166 +721,44 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 .DownloadTaskTvShowEpisodeFile.Where(x => x.Id == key.Id)
                 .Select(x => x.FileName)
                 .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.PhotoAlbum => await dbContext
+                .DownloadTaskPhotoAlbums.Where(x => x.Id == key.Id)
+                .Select(x => x.Title)
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.PhotoImage => await dbContext
+                .DownloadTaskPhotoImages.Where(x => x.Id == key.Id)
+                .Select(x => x.Title)
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart => await dbContext
+                .DownloadTaskPhotoImageFiles.Where(x => x.Id == key.Id)
+                .Select(x => x.FileName)
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.MusicArtist => await dbContext
+                .DownloadTaskMusicArtists.Where(x => x.Id == key.Id)
+                .Select(x => x.Title)
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.MusicAlbum => await dbContext
+                .DownloadTaskMusicAlbums.Where(x => x.Id == key.Id)
+                .Select(x => x.Title)
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.MusicTrack => await dbContext
+                .DownloadTaskMusicTracks.Where(x => x.Id == key.Id)
+                .Select(x => x.Title)
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart => await dbContext
+                .DownloadTaskMusicTrackFiles.Where(x => x.Id == key.Id)
+                .Select(x => x.FileName)
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.OtherVideo => await dbContext
+                .DownloadTaskOtherVideos.Where(x => x.Id == key.Id)
+                .Select(x => x.Title)
+                .FirstOrDefaultAsync(cancellationToken),
+            DownloadTaskType.OtherVideoData or DownloadTaskType.OtherVideoPart => await dbContext
+                .DownloadTaskOtherVideoFiles.Where(x => x.Id == key.Id)
+                .Select(x => x.FileName)
+                .FirstOrDefaultAsync(cancellationToken),
             _ => null,
         };
-    }
-
-    private async Task<List<DownloadTaskKey>> DetermineDownloadStatusAsync(
-        IReaparrDbContext dbContext,
-        DownloadTaskKey key,
-        CancellationToken cancellationToken
-    )
-    {
-        var changedKeys = new List<DownloadTaskKey>();
-        var serverId = key.PlexServerId;
-        var libraryId = key.PlexLibraryId;
-        var parentKey = key;
-
-        while (parentKey is not null)
-        {
-            var currentParentKey = parentKey;
-
-            switch (currentParentKey.Type)
-            {
-                case DownloadTaskType.Movie:
-                {
-                    var currentParentId = currentParentKey.Id;
-
-                    var statuses = await dbContext
-                        .DownloadTaskMovieFile.Where(x => x.ParentId == currentParentId)
-                        .Select(x => x.DownloadStatus)
-                        .ToListAsync(cancellationToken);
-                    var newStatus = DownloadTaskActions.Aggregate(statuses);
-
-                    var changedCount = await dbContext
-                        .DownloadTaskMovie.Where(x => x.Id == currentParentId && x.DownloadStatus != newStatus)
-                        .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, newStatus), cancellationToken);
-
-                    if (changedCount > 0)
-                        changedKeys.Add(currentParentKey);
-
-                    parentKey = null;
-                    break;
-                }
-                case DownloadTaskType.TvShow:
-                {
-                    var currentParentId = currentParentKey.Id;
-
-                    var statuses = await dbContext
-                        .DownloadTaskTvShowSeason.Where(x => x.ParentId == currentParentId)
-                        .Select(x => x.DownloadStatus)
-                        .ToListAsync(cancellationToken);
-                    var newStatus = DownloadTaskActions.Aggregate(statuses);
-
-                    var changedCount = await dbContext
-                        .DownloadTaskTvShow.Where(x => x.Id == currentParentId && x.DownloadStatus != newStatus)
-                        .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, newStatus), cancellationToken);
-
-                    if (changedCount > 0)
-                        changedKeys.Add(currentParentKey);
-
-                    parentKey = null;
-                    break;
-                }
-                case DownloadTaskType.Season:
-                {
-                    var currentParentId = currentParentKey.Id;
-
-                    var showId = await dbContext
-                        .DownloadTaskTvShowSeason.Where(x => x.Id == currentParentId)
-                        .Select(x => (Guid?)x.ParentId)
-                        .FirstOrDefaultAsync(cancellationToken);
-                    if (showId is null)
-                    {
-                        parentKey = null;
-                        break;
-                    }
-
-                    var statuses = await dbContext
-                        .DownloadTaskTvShowEpisode.Where(x => x.ParentId == currentParentId)
-                        .Select(x => x.DownloadStatus)
-                        .ToListAsync(cancellationToken);
-                    var newStatus = DownloadTaskActions.Aggregate(statuses);
-
-                    var changedCount = await dbContext
-                        .DownloadTaskTvShowSeason.Where(x => x.Id == currentParentId && x.DownloadStatus != newStatus)
-                        .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, newStatus), cancellationToken);
-
-                    if (changedCount > 0)
-                        changedKeys.Add(currentParentKey);
-
-                    parentKey = new DownloadTaskKey
-                    {
-                        Type = DownloadTaskType.TvShow,
-                        Id = showId.Value,
-                        PlexServerId = serverId,
-                        PlexLibraryId = libraryId,
-                    };
-                    break;
-                }
-                case DownloadTaskType.Episode:
-                {
-                    var currentParentId = currentParentKey.Id;
-
-                    var seasonId = await dbContext
-                        .DownloadTaskTvShowEpisode.Where(x => x.Id == currentParentId)
-                        .Select(x => (Guid?)x.ParentId)
-                        .FirstOrDefaultAsync(cancellationToken);
-                    if (seasonId is null)
-                    {
-                        parentKey = null;
-                        break;
-                    }
-
-                    var statuses = await dbContext
-                        .DownloadTaskTvShowEpisodeFile.Where(x => x.ParentId == currentParentId)
-                        .Select(x => x.DownloadStatus)
-                        .ToListAsync(cancellationToken);
-                    var newStatus = DownloadTaskActions.Aggregate(statuses);
-
-                    var changedCount = await dbContext
-                        .DownloadTaskTvShowEpisode.Where(x => x.Id == currentParentId && x.DownloadStatus != newStatus)
-                        .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, newStatus), cancellationToken);
-
-                    if (changedCount > 0)
-                        changedKeys.Add(currentParentKey);
-
-                    parentKey = new DownloadTaskKey
-                    {
-                        Type = DownloadTaskType.Season,
-                        Id = seasonId.Value,
-                        PlexServerId = serverId,
-                        PlexLibraryId = libraryId,
-                    };
-                    break;
-                }
-                case DownloadTaskType.MovieData:
-                case DownloadTaskType.MoviePart:
-                    parentKey = await dbContext
-                        .DownloadTaskMovieFile.Where(x => x.Id == currentParentKey.Id)
-                        .ProjectToParentKey()
-                        .FirstOrDefaultAsync(cancellationToken);
-                    break;
-                case DownloadTaskType.EpisodeData:
-                case DownloadTaskType.EpisodePart:
-                    parentKey = await dbContext
-                        .DownloadTaskTvShowEpisodeFile.Where(x => x.Id == currentParentKey.Id)
-                        .ProjectToParentKey()
-                        .FirstOrDefaultAsync(cancellationToken);
-                    break;
-                default:
-                    _log.Here()
-                        .Error(
-                            "DownloadTaskType {DownloadTaskType} is not supported in {DetermineDownloadStatus}",
-                            currentParentKey.Type,
-                            nameof(DetermineDownloadStatusAsync)
-                        );
-                    parentKey = null;
-                    break;
-            }
-        }
-
-        return changedKeys;
     }
 
     private static async Task<List<DownloadTaskGeneric>> GetDownloadProgressRootTasksAsync(
@@ -946,8 +776,29 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
             .Select(x => x.Id)
             .Distinct()
             .ToList();
+        var photoAlbumRootIds = rootKeys
+            .Where(x => x.Type == DownloadTaskType.PhotoAlbum)
+            .Select(x => x.Id)
+            .Distinct()
+            .ToList();
+        var musicArtistRootIds = rootKeys
+            .Where(x => x.Type == DownloadTaskType.MusicArtist)
+            .Select(x => x.Id)
+            .Distinct()
+            .ToList();
+        var otherVideoRootIds = rootKeys
+            .Where(x => x.Type == DownloadTaskType.OtherVideo)
+            .Select(x => x.Id)
+            .Distinct()
+            .ToList();
 
-        var rootTasks = new List<DownloadTaskGeneric>(movieRootIds.Count + tvShowRootIds.Count);
+        var rootTasks = new List<DownloadTaskGeneric>(
+            movieRootIds.Count
+                + tvShowRootIds.Count
+                + photoAlbumRootIds.Count
+                + musicArtistRootIds.Count
+                + otherVideoRootIds.Count
+        );
 
         if (movieRootIds.Count > 0)
         {
@@ -980,6 +831,53 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
             foreach (var show in tvShowRoots)
             {
                 var generic = show.ToGeneric();
+                generic.Calculate();
+                rootTasks.Add(generic);
+            }
+        }
+
+        if (photoAlbumRootIds.Count > 0)
+        {
+            var photoRoots = await dbContext
+                .DownloadTaskPhotoAlbums.AsSplitQuery()
+                .Where(x => photoAlbumRootIds.Contains(x.Id))
+                .Include(x => x.Children)
+                    .ThenInclude(x => x.Children)
+                .ToListAsync(cancellationToken);
+            foreach (var album in photoRoots)
+            {
+                var generic = album.ToGeneric();
+                generic.Calculate();
+                rootTasks.Add(generic);
+            }
+        }
+        if (musicArtistRootIds.Count > 0)
+        {
+            var musicRoots = await dbContext
+                .DownloadTaskMusicArtists.AsSplitQuery()
+                .Where(x => musicArtistRootIds.Contains(x.Id))
+                .Include(x => x.Children)
+                    .ThenInclude(x => x.Children)
+                        .ThenInclude(x => x.Children)
+                .ToListAsync(cancellationToken);
+            foreach (var artist in musicRoots)
+            {
+                var generic = artist.ToGeneric();
+                generic.Calculate();
+                rootTasks.Add(generic);
+            }
+        }
+
+        if (otherVideoRootIds.Count > 0)
+        {
+            var otherRoots = await dbContext
+                .DownloadTaskOtherVideos.AsSplitQuery()
+                .Where(x => otherVideoRootIds.Contains(x.Id))
+                .Include(x => x.Children)
+                .ToListAsync(cancellationToken);
+            foreach (var video in otherRoots)
+            {
+                var generic = video.ToGeneric();
                 generic.Calculate();
                 rootTasks.Add(generic);
             }

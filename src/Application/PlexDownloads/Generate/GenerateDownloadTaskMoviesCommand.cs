@@ -78,13 +78,27 @@ public class GenerateDownloadTaskMoviesCommandHandler
                 continue;
             }
 
+            if (plexLibrary.PlexServerId != downloadMediaDto.PlexServerId || plexLibrary.Type != PlexMediaType.Movie)
+                return ResultExtensions
+                    .Create400BadRequestResult("The selected Movie library does not match the requested server or media type.")
+                    .LogError();
+
             var plexServer = plexLibrary.PlexServer!;
             var downloadRootPath = (await _dbContext.GetDownloadFolder(request.Integration)).DirectoryPath;
 
             var plexMovies = await _dbContext
-                .PlexMovies.Where(x => downloadMediaDto.MediaIds.Contains(x.Id))
+                .PlexMovies.Where(x =>
+                    downloadMediaDto.MediaIds.Contains(x.Id)
+                    && x.PlexLibraryId == plexLibrary.Id
+                    && x.PlexServerId == plexLibrary.PlexServerId
+                )
                 .IncludeAll()
                 .ToListAsync(cancellationToken);
+
+            if (plexMovies.Count != downloadMediaDto.MediaIds.Count)
+                return ResultExtensions
+                    .Create400BadRequestResult("Every selected Movie must belong to the requested library and server.")
+                    .LogError();
 
             foreach (var plexMovie in plexMovies)
             {

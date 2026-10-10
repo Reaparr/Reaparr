@@ -14,8 +14,8 @@ public class ApplyComparisonStateCommandValidator : AbstractValidator<ApplyCompa
             .When(x => x.PlexLibraryId is null)
             .WithMessage("Items must contain a library ID when PlexLibraryId is null.");
         RuleFor(x => x.MediaType)
-            .Must(x => x is PlexMediaType.Movie or PlexMediaType.TvShow)
-            .WithMessage("MediaType must be Movie or TvShow.");
+            .Must(x => x is PlexMediaType.Movie or PlexMediaType.TvShow or PlexMediaType.MusicArtist)
+            .WithMessage("MediaType must be Movie, TvShow or MusicArtist.");
     }
 }
 
@@ -105,6 +105,11 @@ public class ApplyComparisonStateCommandHandler : ICommandHandler<ApplyCompariso
                         new ApplyOwnedTvShowComparisonStateCommand(items, plexLibraryId),
                         ct
                     );
+                case PlexMediaType.MusicArtist:
+                    return await _commandExecutor.Send(
+                        new ApplyOwnedMusicComparisonStateCommand(items, plexLibraryId),
+                        ct
+                    );
                 default:
                     return Result.Fail(
                         "Unsupported media type {PlexMediaType} for owned library {PlexLibraryId}",
@@ -124,6 +129,11 @@ public class ApplyComparisonStateCommandHandler : ICommandHandler<ApplyCompariso
             case PlexMediaType.TvShow:
                 return await _commandExecutor.Send(
                     new ApplyRemoteTvShowComparisonStateCommand(items, plexLibraryId),
+                    ct
+                );
+            case PlexMediaType.MusicArtist:
+                return await _commandExecutor.Send(
+                    new ApplyRemoteMusicComparisonStateCommand(items, plexLibraryId),
                     ct
                 );
             default:

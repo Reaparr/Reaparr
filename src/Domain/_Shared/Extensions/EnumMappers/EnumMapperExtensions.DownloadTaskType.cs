@@ -15,6 +15,18 @@ public static partial class EnumMapperExtensions
         ["Episode"] = DownloadTaskType.Episode,
         ["EpisodeData"] = DownloadTaskType.EpisodeData,
         ["EpisodePart"] = DownloadTaskType.EpisodePart,
+        ["Artist"] = DownloadTaskType.MusicArtist,
+        ["Album"] = DownloadTaskType.MusicAlbum,
+        ["Track"] = DownloadTaskType.MusicTrack,
+        ["TrackData"] = DownloadTaskType.MusicTrackData,
+        ["TrackPart"] = DownloadTaskType.MusicTrackPart,
+        ["PhotoAlbum"] = DownloadTaskType.PhotoAlbum,
+        ["PhotoImage"] = DownloadTaskType.PhotoImage,
+        ["PhotoData"] = DownloadTaskType.PhotoData,
+        ["PhotoPart"] = DownloadTaskType.PhotoPart,
+        ["OtherVideo"] = DownloadTaskType.OtherVideo,
+        ["OtherVideoData"] = DownloadTaskType.OtherVideoData,
+        ["OtherVideoPart"] = DownloadTaskType.OtherVideoPart,
     };
 
     /// <summary>
@@ -56,6 +68,18 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.Episode => "Episode",
             DownloadTaskType.EpisodeData => "EpisodeData",
             DownloadTaskType.EpisodePart => "EpisodePart",
+            DownloadTaskType.MusicArtist => "Artist",
+            DownloadTaskType.MusicAlbum => "Album",
+            DownloadTaskType.MusicTrack => "Track",
+            DownloadTaskType.MusicTrackData => "TrackData",
+            DownloadTaskType.MusicTrackPart => "TrackPart",
+            DownloadTaskType.PhotoAlbum => "PhotoAlbum",
+            DownloadTaskType.PhotoImage => "PhotoImage",
+            DownloadTaskType.PhotoData => "PhotoData",
+            DownloadTaskType.PhotoPart => "PhotoPart",
+            DownloadTaskType.OtherVideo => "OtherVideo",
+            DownloadTaskType.OtherVideoData => "OtherVideoData",
+            DownloadTaskType.OtherVideoPart => "OtherVideoPart",
             _ => DefaultException(),
         };
 
@@ -78,11 +102,24 @@ public static partial class EnumMapperExtensions
             or DownloadTaskType.TvShow
             or DownloadTaskType.Season
             or DownloadTaskType.Episode
+            or DownloadTaskType.MusicArtist
+            or DownloadTaskType.MusicAlbum
+            or DownloadTaskType.MusicTrack
+            or DownloadTaskType.PhotoAlbum
+            or DownloadTaskType.PhotoImage
+            or DownloadTaskType.OtherVideo
             or DownloadTaskType.None => false,
+
             DownloadTaskType.MovieData
             or DownloadTaskType.MoviePart
             or DownloadTaskType.EpisodeData
-            or DownloadTaskType.EpisodePart => true,
+            or DownloadTaskType.EpisodePart
+            or DownloadTaskType.MusicTrackData
+            or DownloadTaskType.MusicTrackPart
+            or DownloadTaskType.PhotoData
+            or DownloadTaskType.PhotoPart
+            or DownloadTaskType.OtherVideoData
+            or DownloadTaskType.OtherVideoPart => true,
             var _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };
 
@@ -95,6 +132,15 @@ public static partial class EnumMapperExtensions
             DownloadTaskType.Season => PlexMediaType.Season,
             DownloadTaskType.Episode or DownloadTaskType.EpisodeData or DownloadTaskType.EpisodePart =>
                 PlexMediaType.Episode,
+            DownloadTaskType.MusicArtist => PlexMediaType.MusicArtist,
+            DownloadTaskType.MusicAlbum => PlexMediaType.MusicAlbum,
+            DownloadTaskType.MusicTrack or DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart =>
+                PlexMediaType.MusicTrack,
+            DownloadTaskType.PhotoAlbum => PlexMediaType.PhotoAlbum,
+            DownloadTaskType.PhotoImage or DownloadTaskType.PhotoData or DownloadTaskType.PhotoPart =>
+                PlexMediaType.PhotoImage,
+            DownloadTaskType.OtherVideo or DownloadTaskType.OtherVideoData or DownloadTaskType.OtherVideoPart =>
+                PlexMediaType.OtherVideos,
             DownloadTaskType.None => PlexMediaType.None,
             _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };

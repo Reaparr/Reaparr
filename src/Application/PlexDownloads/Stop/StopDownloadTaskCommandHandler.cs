@@ -41,16 +41,13 @@ public class StopDownloadTaskCommandHandler : ICommandHandler<StopDownloadTaskCo
             return ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), command.DownloadTaskGuid).LogError();
 
         var downloadTasks = await _dbContext.GetDownloadableChildTaskKeys(key, cancellationToken);
-
-        // For TvShow/Season, only stop children that are actively running — others may still
-        // be queued and must not have their partial files or state disturbed. For Movie/Episode
-        // the parent maps 1-to-1 with its file tasks, so always stop regardless of activity.
-        var stopOnlyActiveChildren = key.Type is DownloadTaskType.TvShow or DownloadTaskType.Season;
+        var filesById = (await _dbContext.GetDownloadTaskFilesAsync(downloadTasks, cancellationToken)).ToDictionary(x =>
+            x.Id
+        );
 
         foreach (var downloadTaskKey in downloadTasks)
         {
-            var downloadTask = await _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, cancellationToken);
-            if (downloadTask is null)
+            if (!filesById.TryGetValue(downloadTaskKey.Id, out var downloadTask))
             {
                 ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogError();
                 continue;
@@ -59,7 +56,9 @@ public class StopDownloadTaskCommandHandler : ICommandHandler<StopDownloadTaskCo
             var isDownloading = await _downloadTaskScheduler.IsDownloading(downloadTaskKey, cancellationToken);
             var isMoving = await _moveDownloadFileScheduler.IsDownloadFileMoving(downloadTaskKey, cancellationToken);
 
-            if (stopOnlyActiveChildren && !isDownloading && !isMoving)
+            // Multi-child parents stop only active children; queued siblings retain their files and state.
+            // Single-item and file selections stop their selected files regardless of activity.
+            if (key.Type.IsParent() && !isDownloading && !isMoving)
             {
                 await _dbContext.CreateDownloadClientLog(
                     downloadTaskKey,
@@ -115,7 +114,13 @@ public class StopDownloadTaskCommandHandler : ICommandHandler<StopDownloadTaskCo
                     downloadTask.FileName
                 );
 
-            await _dbContext.ResetDownloadTaskProgress(downloadTaskKey, DownloadStatus.Stopped, cancellationToken);
+            var resetResult = await _dbContext.ResetDownloadTaskProgress(
+                downloadTaskKey,
+                DownloadStatus.Stopped,
+                cancellationToken
+            );
+            if (resetResult.IsFailed)
+                return resetResult.LogIfFailed();
             await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
                 downloadTaskKey,
                 DownloadStatus.Stopped,

@@ -167,6 +167,35 @@ public class TorznabFeedItemProjectionUnitTests
     }
 
     [Test]
+    [Arguments(ReleaseSource.None, "None")]
+    [Arguments(ReleaseSource.BluRay, "BluRay")]
+    [Arguments(ReleaseSource.BluRayRemux, "BluRay Remux")]
+    [Arguments(ReleaseSource.WebDl, "WEB-DL")]
+    [Arguments(ReleaseSource.WebRip, "WEBRip")]
+    [Arguments(ReleaseSource.DVD, "DVD")]
+    [Arguments(ReleaseSource.HDTV, "HDTV")]
+    public void ShouldSerializeReleaseSourceUsingWireMemberNames(ReleaseSource source, string expected)
+    {
+        // Arrange
+        var projection = CreateProjection() with
+        {
+            Source = source,
+        };
+
+        // Act
+        var item = projection.ToTorznabItem(
+            new IntegrationIdentity(IntegrationType.Radarr, Guid.NewGuid()),
+            "key",
+            "http://localhost"
+        );
+
+        // Assert
+        System.Text.Json.JsonSerializer.Serialize(source, DefaultJsonSerializerOptions.ConfigStandard)
+            .ShouldBe($"\"{expected}\"");
+        item.Attributes.Single(x => x.Name == "source").Value.ShouldBe(expected);
+    }
+
+    [Test]
     [Arguments(VideoQuality.UHD_4K, ReleaseSource.DVD, "2000", "2030")]
     [Arguments(VideoQuality.SD, ReleaseSource.BluRay, "2000", "2030", "2050")]
     [Arguments(VideoQuality.UHD_4K, ReleaseSource.WebDl, "2000", "2045", "2070")]

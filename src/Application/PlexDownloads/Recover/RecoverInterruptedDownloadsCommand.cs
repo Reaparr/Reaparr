@@ -29,41 +29,13 @@ public class RecoverInterruptedDownloadsCommandHandler : ICommandHandler<Recover
     {
         using var dbContext = await _dbContextFactory.CreateAsync();
 
-        var movieFileZombies = await dbContext
-            .DownloadTaskMovieFile.Where(x =>
-                x.DownloadStatus == DownloadStatus.Downloading
-                || x.DownloadStatus == DownloadStatus.Moving
-                || x.DownloadStatus == DownloadStatus.MoveFinished
-            )
-            .Select(x => new
-            {
-                x.Id,
-                x.FullTitle,
-                x.PlexServerId,
-                x.PlexLibraryId,
-                x.DownloadStatus,
-            })
-            .ToListAsync(cancellationToken);
-
-        var episodeFileZombies = await dbContext
-            .DownloadTaskTvShowEpisodeFile.Where(x =>
-                x.DownloadStatus == DownloadStatus.Downloading
-                || x.DownloadStatus == DownloadStatus.Moving
-                || x.DownloadStatus == DownloadStatus.MoveFinished
-            )
-            .Select(x => new
-            {
-                x.Id,
-                x.FullTitle,
-                x.PlexServerId,
-                x.PlexLibraryId,
-                x.DownloadStatus,
-            })
-            .ToListAsync(cancellationToken);
+        var fileTasks = await dbContext.GetDownloadTaskFilesByStatusAsync(
+            [DownloadStatus.Downloading, DownloadStatus.Moving, DownloadStatus.MoveFinished],
+            cancellationToken
+        );
 
         var totalReset = 0;
-
-        foreach (var zombie in movieFileZombies)
+        foreach (var zombie in fileTasks)
         {
             var resetStatus = zombie.DownloadStatus switch
             {
@@ -71,7 +43,6 @@ public class RecoverInterruptedDownloadsCommandHandler : ICommandHandler<Recover
                 DownloadStatus.MoveFinished => DownloadStatus.Completed,
                 _ => DownloadStatus.AutoPaused,
             };
-
             _log.Here()
                 .Warning(
                     "Recovering interrupted download task {DownloadTaskId} ({FullTitle}) on PlexServer {PlexServerId} — was left in {DownloadStatus} across a restart, resetting to {ResetStatus}",
@@ -81,53 +52,11 @@ public class RecoverInterruptedDownloadsCommandHandler : ICommandHandler<Recover
                     zombie.DownloadStatus,
                     resetStatus
                 );
-
             await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
-                new DownloadTaskKey
-                {
-                    Id = zombie.Id,
-                    Type = DownloadTaskType.MovieData,
-                    PlexServerId = zombie.PlexServerId,
-                    PlexLibraryId = zombie.PlexLibraryId,
-                },
+                zombie.ToKey(),
                 resetStatus,
                 cancellationToken
             );
-
-            totalReset++;
-        }
-
-        foreach (var zombie in episodeFileZombies)
-        {
-            var resetStatus = zombie.DownloadStatus switch
-            {
-                DownloadStatus.Moving => DownloadStatus.AutoMovePaused,
-                DownloadStatus.MoveFinished => DownloadStatus.Completed,
-                _ => DownloadStatus.AutoPaused,
-            };
-
-            _log.Here()
-                .Warning(
-                    "Recovering interrupted download task {DownloadTaskId} ({FullTitle}) on PlexServer {PlexServerId} — was left in {DownloadStatus} across a restart, resetting to {ResetStatus}",
-                    zombie.Id,
-                    zombie.FullTitle,
-                    zombie.PlexServerId,
-                    zombie.DownloadStatus,
-                    resetStatus
-                );
-
-            await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
-                new DownloadTaskKey
-                {
-                    Id = zombie.Id,
-                    Type = DownloadTaskType.EpisodeData,
-                    PlexServerId = zombie.PlexServerId,
-                    PlexLibraryId = zombie.PlexLibraryId,
-                },
-                resetStatus,
-                cancellationToken
-            );
-
             totalReset++;
         }
 

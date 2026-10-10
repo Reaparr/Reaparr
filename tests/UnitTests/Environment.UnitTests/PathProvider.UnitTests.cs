@@ -11,21 +11,23 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         var sut = Sut;
 
         // Act
-        var defaultConfigFolderName = sut.DefaultConfigFolderName;
-        var defaultReaparrFolderName = sut.DefaultReaparrFolderName;
-        var defaultMovieFolderName = sut.DefaultMovieFolderName;
-        var defaultDownloadsFolderName = sut.DefaultDownloadsFolderName;
-        var defaultTvShowsFolderName = sut.DefaultTvShowsFolderName;
-        var defaultMusicFolderName = sut.DefaultMusicFolderName;
-        var defaultPhotosFolderName = sut.DefaultPhotosFolderName;
-        var defaultOtherFolderName = sut.DefaultOtherFolderName;
-        var defaultGamesFolderName = sut.DefaultGamesFolderName;
+        var defaultLogsFolderName = IPathProvider.DefaultLogsFolderName;
+        var defaultConfigFolderName = IPathProvider.DefaultConfigFolderName;
+        var defaultReaparrFolderName = IPathProvider.DefaultReaparrFolderName;
+        var defaultMovieFolderName = IPathProvider.DefaultMovieFolderName;
+        var defaultDownloadsFolderName = IPathProvider.DefaultDownloadsFolderName;
+        var defaultTvShowsFolderName = IPathProvider.DefaultTvShowsFolderName;
+        var defaultMusicFolderName = IPathProvider.DefaultMusicFolderName;
+        var defaultPhotosFolderName = IPathProvider.DefaultPhotosFolderName;
+        var defaultOtherFolderName = IPathProvider.DefaultOtherFolderName;
+        var defaultGamesFolderName = IPathProvider.DefaultGamesFolderName;
         var configFileName = sut.ConfigFileName;
         var databaseName = sut.DatabaseName;
         var databaseShmName = sut.DatabaseShmName;
         var databaseWalName = sut.DatabaseWalName;
 
         // Assert
+        defaultLogsFolderName.ShouldBe("Logs");
         defaultConfigFolderName.ShouldBe("Config");
         defaultReaparrFolderName.ShouldBe("Reaparr");
         defaultMovieFolderName.ShouldBe("Movies");
@@ -33,7 +35,7 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         defaultTvShowsFolderName.ShouldBe("TvShows");
         defaultMusicFolderName.ShouldBe("Music");
         defaultPhotosFolderName.ShouldBe("Photos");
-        defaultOtherFolderName.ShouldBe("Other");
+        defaultOtherFolderName.ShouldBe("OtherVideos");
         defaultGamesFolderName.ShouldBe("Games");
         configFileName.ShouldBe("ReaparrSettings.json");
         databaseName.ShouldBe("ReaparrDB.db");
@@ -133,14 +135,14 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         var result = sut.DefaultDownloadsDestinationFolder;
 
         // Assert
-        result.ShouldBe(Path.Combine(dataDirectory, sut.DefaultDownloadsFolderName));
+        result.ShouldBe(Path.Combine(dataDirectory, IPathProvider.DefaultDownloadsFolderName));
     }
 
     [Test]
     [Arguments(EnvKeys.ReaparrMoviesPath, "/custom/media/movies", PlexMediaType.Movie)]
     [Arguments(EnvKeys.ReaparrTvShowsPath, "/custom/media/tvshows", PlexMediaType.TvShow)]
-    [Arguments(EnvKeys.ReaparrMusicPath, "/custom/media/music", PlexMediaType.Music)]
-    [Arguments(EnvKeys.ReaparrPhotosPath, "/custom/media/photos", PlexMediaType.Photos)]
+    [Arguments(EnvKeys.ReaparrMusicPath, "/custom/media/music", PlexMediaType.MusicArtist)]
+    [Arguments(EnvKeys.ReaparrPhotosPath, "/custom/media/photos", PlexMediaType.PhotoImage)]
     [Arguments(EnvKeys.ReaparrOtherPath, "/custom/media/other", PlexMediaType.OtherVideos)]
     [Arguments(EnvKeys.ReaparrGamesPath, "/custom/media/games", PlexMediaType.Games)]
     public void ShouldReturnDedicatedMediaPath_WhenPerTypeOverrideExists(
@@ -190,9 +192,9 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
     [Test]
     [Arguments(PlexMediaType.Movie, "Movies")]
     [Arguments(PlexMediaType.TvShow, "TvShows")]
-    [Arguments(PlexMediaType.Music, "Music")]
-    [Arguments(PlexMediaType.Photos, "Photos")]
-    [Arguments(PlexMediaType.OtherVideos, "Other")]
+    [Arguments(PlexMediaType.MusicArtist, "Music")]
+    [Arguments(PlexMediaType.PhotoImage, "Photos")]
+    [Arguments(PlexMediaType.OtherVideos, "OtherVideos")]
     [Arguments(PlexMediaType.Games, "Games")]
     public void ShouldReturnMediaFolderInsideDataDirectory_WhenPerTypeOverrideIsMissing(
         PlexMediaType mediaType,
@@ -231,15 +233,15 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         var gamesDirectory = sut.DefaultGamesDestinationFolder;
 
         // Assert
-        configDirectory.ShouldBe(Path.Combine("/", sut.DefaultConfigFolderName));
+        configDirectory.ShouldBe(Path.Combine("/", IPathProvider.DefaultConfigFolderName));
         dataDirectory.ShouldBe("/");
-        downloadsDirectory.ShouldBe(Path.Combine("/", sut.DefaultDownloadsFolderName));
-        movieDirectory.ShouldBe(Path.Combine("/", sut.DefaultMovieFolderName));
-        tvShowsDirectory.ShouldBe(Path.Combine("/", sut.DefaultTvShowsFolderName));
-        musicDirectory.ShouldBe(Path.Combine("/", sut.DefaultMusicFolderName));
-        photosDirectory.ShouldBe(Path.Combine("/", sut.DefaultPhotosFolderName));
-        otherDirectory.ShouldBe(Path.Combine("/", sut.DefaultOtherFolderName));
-        gamesDirectory.ShouldBe(Path.Combine("/", sut.DefaultGamesFolderName));
+        downloadsDirectory.ShouldBe(Path.Combine("/", IPathProvider.DefaultDownloadsFolderName));
+        movieDirectory.ShouldBe(Path.Combine("/", IPathProvider.DefaultMovieFolderName));
+        tvShowsDirectory.ShouldBe(Path.Combine("/", IPathProvider.DefaultTvShowsFolderName));
+        musicDirectory.ShouldBe(Path.Combine("/", IPathProvider.DefaultMusicFolderName));
+        photosDirectory.ShouldBe(Path.Combine("/", IPathProvider.DefaultPhotosFolderName));
+        otherDirectory.ShouldBe(Path.Combine("/", IPathProvider.DefaultOtherFolderName));
+        gamesDirectory.ShouldBe(Path.Combine("/", IPathProvider.DefaultGamesFolderName));
     }
 
     [Test]
@@ -248,8 +250,8 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         // Arrange
         SetAppBuildInfo(x => x.RuntimeMode = "desktop");
         var sut = Sut;
-        var expectedConfigDirectory = Path.Combine(BaseDirectory.ConfigHome, sut.DefaultReaparrFolderName);
-        var expectedDataDirectory = Path.Combine(UserDirectory.DownloadDir, sut.DefaultReaparrFolderName);
+        var expectedConfigDirectory = Path.Combine(BaseDirectory.ConfigHome, IPathProvider.DefaultReaparrFolderName);
+        var expectedDataDirectory = Path.Combine(UserDirectory.DownloadDir, IPathProvider.DefaultReaparrFolderName);
 
         // Act
         var configDirectory = sut.ConfigDirectory;
@@ -260,8 +262,10 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         // Assert
         configDirectory.ShouldBe(expectedConfigDirectory);
         dataDirectory.ShouldBe(expectedDataDirectory);
-        downloadsDirectory.ShouldBe(Path.Combine(expectedDataDirectory, sut.DefaultDownloadsFolderName));
-        movieDirectory.ShouldBe(Path.Combine(expectedDataDirectory, sut.DefaultMovieFolderName));
+        downloadsDirectory.ShouldBe(
+            Path.Combine(expectedDataDirectory, IPathProvider.DefaultDownloadsFolderName)
+        );
+        movieDirectory.ShouldBe(Path.Combine(expectedDataDirectory, IPathProvider.DefaultMovieFolderName));
     }
 
     [Test]
@@ -290,7 +294,7 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         // Assert
         resolvedConfigDirectory.ShouldBe(configDirectory);
         resolvedDataDirectory.ShouldBe(dataDirectory);
-        resolvedMovieDirectory.ShouldBe(Path.Combine(dataDirectory, sut.DefaultMovieFolderName));
+        resolvedMovieDirectory.ShouldBe(Path.Combine(dataDirectory, IPathProvider.DefaultMovieFolderName));
     }
 
     [Test]
@@ -360,7 +364,7 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         tvShowsDirectory.ShouldBe(Path.Combine(dataDirectory, "TvShows"));
         musicDirectory.ShouldBe(Path.Combine(dataDirectory, "Music"));
         photosDirectory.ShouldBe(Path.Combine(dataDirectory, "Photos"));
-        otherDirectory.ShouldBe(Path.Combine(dataDirectory, "Other"));
+        otherDirectory.ShouldBe(Path.Combine(dataDirectory, IPathProvider.DefaultOtherFolderName));
         gamesDirectory.ShouldBe(Path.Combine(dataDirectory, "Games"));
     }
 
@@ -369,8 +373,8 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         {
             PlexMediaType.Movie => sut.DefaultMovieDestinationFolder,
             PlexMediaType.TvShow => sut.DefaultTvShowsDestinationFolder,
-            PlexMediaType.Music => sut.DefaultMusicDestinationFolder,
-            PlexMediaType.Photos => sut.DefaultPhotosDestinationFolder,
+            PlexMediaType.MusicArtist => sut.DefaultMusicDestinationFolder,
+            PlexMediaType.PhotoImage => sut.DefaultPhotosDestinationFolder,
             PlexMediaType.OtherVideos => sut.DefaultOtherDestinationFolder,
             PlexMediaType.Games => sut.DefaultGamesDestinationFolder,
             _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),

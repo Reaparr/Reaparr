@@ -106,6 +106,21 @@ public class UpdateScheduledDownloadLimitsCommandHandler : ICommandHandler<Updat
                             .DownloadTaskTvShowEpisodeFile.Where(x => x.DownloadStatus == DownloadStatus.Downloading)
                             .Select(x => x.PlexServer!.MachineIdentifier)
                     )
+                    .Union(
+                        dbContext
+                            .DownloadTaskMusicTrackFiles.Where(x => x.DownloadStatus == DownloadStatus.Downloading)
+                            .Select(x => x.PlexServer!.MachineIdentifier)
+                    )
+                    .Union(
+                        dbContext
+                            .DownloadTaskPhotoImageFiles.Where(x => x.DownloadStatus == DownloadStatus.Downloading)
+                            .Select(x => x.PlexServer!.MachineIdentifier)
+                    )
+                    .Union(
+                        dbContext
+                            .DownloadTaskOtherVideoFiles.Where(x => x.DownloadStatus == DownloadStatus.Downloading)
+                            .Select(x => x.PlexServer!.MachineIdentifier)
+                    )
                     .ToListAsync(cancellationToken);
 
                 var participants = new List<(string MachineIdentifier, long Cap)>(serverIds.Count);

@@ -27,6 +27,78 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
     }
 
     [Test]
+    [Arguments(PlexMediaType.Movie, PlexMediaType.Movie, PlexMediaType.None, PlexMediaType.None)]
+    [Arguments(PlexMediaType.TvShow, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode)]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        PlexMediaType.MusicArtist,
+        PlexMediaType.MusicAlbum,
+        PlexMediaType.MusicTrack
+    )]
+    [Arguments(PlexMediaType.PhotoAlbum, PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage, PlexMediaType.None)]
+    [Arguments(PlexMediaType.OtherVideos, PlexMediaType.OtherVideos, PlexMediaType.None, PlexMediaType.None)]
+    public async Task ShouldInitializeFamilyProgressItems_AndCompleteOnlyAfterConfirmedEmptyTotals(
+        PlexMediaType libraryType,
+        PlexMediaType first,
+        PlexMediaType second,
+        PlexMediaType third
+    )
+    {
+        // Arrange
+        LibrarySyncProgressDTO? capturedDto = null;
+        Mock.Mock<IProgressHubService>()
+            .Setup(x => x.SendLibraryProgressUpdateAsync(It.IsAny<LibrarySyncProgressDTO>()))
+            .Callback<LibrarySyncProgressDTO>(dto => capturedDto = dto)
+            .Returns(Task.CompletedTask);
+        var expectedTypes = new[] { first, second, third }.Where(x => x != PlexMediaType.None).ToList();
+
+        // Act
+        await Sut.StartAsync(10, libraryType, CancellationToken);
+
+        // Assert
+        capturedDto.ShouldNotBeNull();
+        capturedDto.PlexLibraryId.ShouldBe(10);
+        capturedDto.Items.Select(x => x.MediaType).ShouldBe(expectedTypes);
+        capturedDto.Items.ShouldAllBe(x => x.Received == 0 && x.Total == -1);
+        capturedDto.IsComplete.ShouldBeFalse();
+        capturedDto.Total.ShouldBe(0);
+        capturedDto.Percentage.ShouldBe(0);
+        Sut.Get(10).ShouldNotBeNull().IsComplete.ShouldBeFalse();
+        Sut.Get(10).ShouldNotBeNull().Total.ShouldBe(0);
+        Sut.Get(10).ShouldNotBeNull().Percentage.ShouldBe(0);
+
+        foreach (var mediaType in expectedTypes)
+        {
+            await Sut.UpdateItemAsync(
+                10,
+                new LibraryProgressItem
+                {
+                    MediaType = mediaType,
+                    Received = 0,
+                    Total = 0,
+                    TimeRemaining = TimeSpan.Zero,
+                },
+                CancellationToken
+            );
+            var complete = mediaType == expectedTypes[^1];
+            capturedDto.IsComplete.ShouldBe(complete);
+            capturedDto.Percentage.ShouldBe(complete ? 100 : 0);
+            Sut.Get(10).ShouldNotBeNull().IsComplete.ShouldBe(complete);
+            Sut.Get(10).ShouldNotBeNull().Percentage.ShouldBe(complete ? 100 : 0);
+        }
+
+        capturedDto.IsComplete.ShouldBeTrue();
+        capturedDto.Percentage.ShouldBe(100);
+        Sut.Get(10).ShouldNotBeNull().IsComplete.ShouldBeTrue();
+        Sut.Get(10).ShouldNotBeNull().Percentage.ShouldBe(100);
+        Mock.Mock<IProgressHubService>()
+            .Verify(
+                x => x.SendLibraryProgressUpdateAsync(It.IsAny<LibrarySyncProgressDTO>()),
+                Times.Exactly(expectedTypes.Count + 1)
+            );
+    }
+
+    [Test]
     public async Task ShouldSendProgressUpdate_WhenUpdateItemAsyncIsCalled()
     {
         // Arrange
@@ -116,6 +188,52 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
 
         Mock.Mock<IProgressHubService>()
             .Verify(x => x.SendLibraryProgressUpdateAsync(It.IsAny<LibrarySyncProgressDTO>()), Times.Exactly(4));
+    }
+
+    [Test]
+    public async Task ShouldExcludeUnknownTotalsFromAggregate_AndRemainIncomplete()
+    {
+        // Arrange
+        LibrarySyncProgressDTO? capturedDto = null;
+        Mock.Mock<IProgressHubService>()
+            .Setup(x => x.SendLibraryProgressUpdateAsync(It.IsAny<LibrarySyncProgressDTO>()))
+            .Callback<LibrarySyncProgressDTO>(dto => capturedDto = dto)
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Exactly(2));
+        await Sut.StartAsync(20, PlexMediaType.TvShow, CancellationToken);
+
+        // Act
+        await Sut.UpdateItemAsync(
+            20,
+            new LibraryProgressItem
+            {
+                MediaType = PlexMediaType.TvShow,
+                Received = 4,
+                Total = 10,
+                TimeRemaining = TimeSpan.Zero,
+            },
+            CancellationToken
+        );
+
+        // Assert
+        capturedDto.ShouldNotBeNull();
+        capturedDto.Received.ShouldBe(4);
+        capturedDto.Total.ShouldBe(10);
+        capturedDto.Percentage.ShouldBe(40);
+        capturedDto.IsComplete.ShouldBeFalse();
+        capturedDto
+            .Items.Select(x => (x.MediaType, x.Total, x.IsComplete))
+            .ShouldBe([
+                (PlexMediaType.TvShow, 10, false),
+                (PlexMediaType.Season, -1, false),
+                (PlexMediaType.Episode, -1, false),
+            ]);
+        var stored = Sut.Get(20).ShouldNotBeNull();
+        stored.Received.ShouldBe(capturedDto.Received);
+        stored.Total.ShouldBe(capturedDto.Total);
+        stored.Percentage.ShouldBe(capturedDto.Percentage);
+        stored.IsComplete.ShouldBe(capturedDto.IsComplete);
+        Mock.Mock<IProgressHubService>().Verify();
     }
 
     [Test]

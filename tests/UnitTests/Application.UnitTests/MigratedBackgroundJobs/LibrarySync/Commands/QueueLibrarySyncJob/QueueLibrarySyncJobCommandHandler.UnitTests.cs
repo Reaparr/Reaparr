@@ -677,53 +677,6 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
     }
 
     [Test]
-    public async Task ShouldOnlyQueueSupportedLibraries_WhenCommandContainsUnsupportedTypes()
-    {
-        // Arrange
-        await SetupDatabase(
-            3017,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
-
-        var dbContext = IDbContext;
-        var movieLibrary = dbContext.PlexLibraries.Select(x => new { x.Id, x.PlexServerId }).First();
-        await dbContext
-            .PlexLibraries.Where(x => x.Id == movieLibrary.Id)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SyncedAt, (DateTime?)null), CancellationToken);
-
-        var unsupportedLibrary = FakeData.GetPlexLibrary(new Seed(3017), PlexMediaType.Music).Generate();
-        unsupportedLibrary.PlexServerId = movieLibrary.PlexServerId;
-
-        await dbContext.PlexLibraries.AddAsync(unsupportedLibrary, CancellationToken);
-        await dbContext.SaveChangesAsync(CancellationToken);
-
-        var command = new QueueLibrarySyncJobCommand([movieLibrary.Id, unsupportedLibrary.Id]);
-
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok());
-
-        // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        var queueItems = await IDbContext.LibrarySyncJobQueues.IgnoreQueryFilters().ToListAsync(CancellationToken);
-        queueItems.Count.ShouldBe(1);
-        queueItems[0].PlexLibraryId.ShouldBe(movieLibrary.Id);
-        queueItems[0].Priority.ShouldBe(1);
-        Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
-    }
-
-    [Test]
     public async Task ShouldSkipRecentlySyncedLibraryButStillDispatch_WhenAnotherLibraryIsAlreadyQueued()
     {
         // Arrange
@@ -1149,47 +1102,6 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .Verify(
                 x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()),
                 Times.Once()
-            );
-    }
-
-    [Test]
-    public async Task ShouldReturnOkWithoutDispatch_WhenCommandContainsOnlyUnsupportedLibraries()
-    {
-        // Arrange
-        await SetupDatabase(
-            3021,
-            config =>
-            {
-                config.PlexServerCount = 1;
-            }
-        );
-
-        var dbContext = IDbContext;
-        var serverId = dbContext.PlexServers.Select(x => x.Id).First();
-        var unsupportedLibrary = FakeData.GetPlexLibrary(new Seed(3021), PlexMediaType.Music).Generate();
-        unsupportedLibrary.PlexServerId = serverId;
-
-        await dbContext.PlexLibraries.AddAsync(unsupportedLibrary, CancellationToken);
-        await dbContext.SaveChangesAsync(CancellationToken);
-
-        var command = new QueueLibrarySyncJobCommand([unsupportedLibrary.Id]);
-
-        // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        var savedLibrary = await dbContext
-            .PlexLibraries.AsNoTracking()
-            .FirstAsync(x => x.Id == unsupportedLibrary.Id, CancellationToken);
-        savedLibrary.Type.ShouldBe(PlexMediaType.Music);
-        var queueItems = await dbContext.LibrarySyncJobQueues.AsNoTracking().ToListAsync(CancellationToken);
-        queueItems.ShouldBeEmpty();
-        Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()),
-                Times.Never()
             );
     }
 

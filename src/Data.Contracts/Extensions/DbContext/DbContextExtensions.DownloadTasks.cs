@@ -1,5 +1,6 @@
 namespace Reaparr.Data.Contracts;
 
+// TODO Look for performance improvements in these extensions and or to clean it up. There are a lot of queries that could be optimized and reduced in number, especially when retrieving download tasks by server or getting download task keys.
 public static partial class DbContextExtensions
 {
     public static async Task<Result<string>> GetDownloadUrl(
@@ -44,6 +45,15 @@ public static partial class DbContextExtensions
             dbContext.DownloadTaskTvShowEpisodeFile.ProjectToKey(),
             dbContext.DownloadTaskMovie.ProjectToKey(),
             dbContext.DownloadTaskMovieFile.ProjectToKey(),
+            dbContext.DownloadTaskPhotoAlbums.ProjectToKey(),
+            dbContext.DownloadTaskPhotoImages.ProjectToKey(),
+            dbContext.DownloadTaskPhotoImageFiles.ProjectToKey(),
+            dbContext.DownloadTaskMusicArtists.ProjectToKey(),
+            dbContext.DownloadTaskMusicAlbums.ProjectToKey(),
+            dbContext.DownloadTaskMusicTracks.ProjectToKey(),
+            dbContext.DownloadTaskMusicTrackFiles.ProjectToKey(),
+            dbContext.DownloadTaskOtherVideos.ProjectToKey(),
+            dbContext.DownloadTaskOtherVideoFiles.ProjectToKey(),
         };
 
         foreach (var query in queries)
@@ -80,6 +90,15 @@ public static partial class DbContextExtensions
             dbContext.DownloadTaskTvShowEpisodeFile.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
             dbContext.DownloadTaskMovie.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
             dbContext.DownloadTaskMovieFile.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskPhotoAlbums.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskPhotoImages.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskPhotoImageFiles.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskMusicArtists.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskMusicAlbums.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskMusicTracks.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskMusicTrackFiles.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskOtherVideos.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
+            dbContext.DownloadTaskOtherVideoFiles.Where(x => filtered.Contains(x.Id)).ProjectToKey(),
         };
 
         var keys = new List<DownloadTaskKey>();
@@ -88,6 +107,261 @@ public static partial class DbContextExtensions
             keys.AddRange(await query.ToListAsync(cancellationToken));
 
         return keys;
+    }
+
+    public static async Task<List<DownloadTaskKey>> GetDownloadTaskKeysByStatusAsync(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<DownloadTaskKey> keys,
+        IReadOnlyCollection<DownloadStatus> statuses,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (keys.Count == 0 || statuses.Count == 0)
+            return [];
+
+        var byType = keys.ToLookup(x => x.Type);
+        var queries = new List<IQueryable<DownloadTaskKey>>();
+
+        if (byType[DownloadTaskType.Movie].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMovie.Where(x =>
+                        byType[DownloadTaskType.Movie].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MovieData].Concat(byType[DownloadTaskType.MoviePart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMovieFile.Where(x =>
+                        byType[DownloadTaskType.MovieData]
+                            .Concat(byType[DownloadTaskType.MoviePart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.TvShow].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskTvShow.Where(x =>
+                        byType[DownloadTaskType.TvShow].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.Season].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskTvShowSeason.Where(x =>
+                        byType[DownloadTaskType.Season].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.Episode].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskTvShowEpisode.Where(x =>
+                        byType[DownloadTaskType.Episode].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.EpisodeData].Concat(byType[DownloadTaskType.EpisodePart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskTvShowEpisodeFile.Where(x =>
+                        byType[DownloadTaskType.EpisodeData]
+                            .Concat(byType[DownloadTaskType.EpisodePart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.PhotoAlbum].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskPhotoAlbums.Where(x =>
+                        byType[DownloadTaskType.PhotoAlbum].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.PhotoImage].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskPhotoImages.Where(x =>
+                        byType[DownloadTaskType.PhotoImage].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.PhotoData].Concat(byType[DownloadTaskType.PhotoPart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x =>
+                        byType[DownloadTaskType.PhotoData]
+                            .Concat(byType[DownloadTaskType.PhotoPart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MusicArtist].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMusicArtists.Where(x =>
+                        byType[DownloadTaskType.MusicArtist].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MusicAlbum].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMusicAlbums.Where(x =>
+                        byType[DownloadTaskType.MusicAlbum].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MusicTrack].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMusicTracks.Where(x =>
+                        byType[DownloadTaskType.MusicTrack].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.MusicTrackData].Concat(byType[DownloadTaskType.MusicTrackPart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x =>
+                        byType[DownloadTaskType.MusicTrackData]
+                            .Concat(byType[DownloadTaskType.MusicTrackPart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.OtherVideo].Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskOtherVideos.Where(x =>
+                        byType[DownloadTaskType.OtherVideo].Select(y => y.Id).Contains(x.Id)
+                        && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (byType[DownloadTaskType.OtherVideoData].Concat(byType[DownloadTaskType.OtherVideoPart]).Any())
+            queries.Add(
+                dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x =>
+                        byType[DownloadTaskType.OtherVideoData]
+                            .Concat(byType[DownloadTaskType.OtherVideoPart])
+                            .Select(y => y.Id)
+                            .Contains(x.Id) && statuses.Contains(x.DownloadStatus)
+                    )
+                    .Select(x => x.ToKey())
+            );
+
+        if (queries.Count == 0)
+            return [];
+
+        var resultKeys = new List<DownloadTaskKey>();
+        foreach (var query in queries)
+            resultKeys.AddRange(await query.ToListAsync(cancellationToken));
+
+        return [.. resultKeys.Distinct()];
+    }
+
+    public static async Task<HashSet<string>> GetActiveDownloadDirectoriesAsync(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<DownloadTaskKey> excludedKeys,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskMovieFile,
+            DownloadTaskType.MovieData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskTvShowEpisodeFile,
+            DownloadTaskType.EpisodeData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskMusicTrackFiles,
+            DownloadTaskType.MusicTrackData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskPhotoImageFiles,
+            DownloadTaskType.PhotoData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskOtherVideoFiles,
+            DownloadTaskType.OtherVideoData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        return directories;
+    }
+
+    private static async Task AddActiveDownloadDirectoriesAsync<T>(
+        IQueryable<T> query,
+        DownloadTaskType type,
+        IReadOnlyCollection<DownloadTaskKey> excludedKeys,
+        HashSet<string> directories,
+        CancellationToken cancellationToken
+    )
+        where T : DownloadTaskFileBase
+    {
+        var excludedIds = excludedKeys.Where(x => x.Type == type).Select(x => x.Id).ToList();
+        var directoryMetas = await query
+            .Where(x =>
+                x.DownloadStatus != DownloadStatus.Completed
+                && x.DownloadStatus != DownloadStatus.Deleted
+                && (excludedIds.Count == 0 || !excludedIds.Contains(x.Id))
+            )
+            .Select(x => x.DirectoryMeta)
+            .ToListAsync(cancellationToken);
+
+        foreach (var directoryMeta in directoryMetas)
+        {
+            var directory = directoryMeta.GetDownloadDirectory(type);
+            if (!string.IsNullOrEmpty(directory))
+                directories.Add(directory);
+        }
     }
 
     public static async Task<DownloadTaskType> GetDownloadTaskTypeAsync(
@@ -116,6 +390,33 @@ public static partial class DbContextExtensions
 
         if (await dbContext.DownloadTaskMovieFile.AnyAsync(x => x.Id == guid, cancellationToken))
             return DownloadTaskType.MovieData;
+
+        if (await dbContext.DownloadTaskPhotoAlbums.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.PhotoAlbum;
+
+        if (await dbContext.DownloadTaskPhotoImages.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.PhotoImage;
+
+        if (await dbContext.DownloadTaskPhotoImageFiles.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.PhotoData;
+
+        if (await dbContext.DownloadTaskMusicArtists.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.MusicArtist;
+
+        if (await dbContext.DownloadTaskMusicAlbums.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.MusicAlbum;
+
+        if (await dbContext.DownloadTaskMusicTracks.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.MusicTrack;
+
+        if (await dbContext.DownloadTaskMusicTrackFiles.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.MusicTrackData;
+
+        if (await dbContext.DownloadTaskOtherVideos.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.OtherVideo;
+
+        if (await dbContext.DownloadTaskOtherVideoFiles.AnyAsync(x => x.Id == guid, cancellationToken))
+            return DownloadTaskType.OtherVideoData;
 
         return DownloadTaskType.None;
     }
@@ -160,58 +461,128 @@ public static partial class DbContextExtensions
             {
                 // DownloadTaskType.Movie
                 case DownloadTaskType.Movie:
-                    var downloadTaskMovie = await dbContext
-                        .DownloadTaskMovie.IncludeAll()
-                        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-                    return downloadTaskMovie?.ToGeneric() ?? null;
+                    return (
+                            await dbContext
+                                .DownloadTaskMovie.IncludeAll()
+                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                        )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.MovieData
                 case DownloadTaskType.MovieData:
                 case DownloadTaskType.MoviePart:
-                    var downloadTaskMovieFile = await dbContext
-                        .DownloadTaskMovieFile.Include(x => x.PlexServer)
-                        .Include(x => x.PlexLibrary)
-                        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-                    return downloadTaskMovieFile?.ToGeneric() ?? null;
+                    return (
+                            await dbContext
+                                .DownloadTaskMovieFile.Include(x => x.PlexServer)
+                                .Include(x => x.PlexLibrary)
+                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                        )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.TvShow
                 case DownloadTaskType.TvShow:
-                    var downloadTaskTvShow = await dbContext
-                        .DownloadTaskTvShow.Include(x => x.PlexServer)
-                        .Include(x => x.PlexLibrary)
-                        .Include(x => x.Children)
-                            .ThenInclude(x => x.Children)
-                                .ThenInclude(x => x.Children)
-                        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-                    return downloadTaskTvShow?.ToGeneric() ?? null;
+                    return (
+                            await dbContext
+                                .DownloadTaskTvShow.Include(x => x.PlexServer)
+                                .Include(x => x.PlexLibrary)
+                                .Include(x => x.Children)
+                                    .ThenInclude(x => x.Children)
+                                        .ThenInclude(x => x.Children)
+                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                        )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.TvShowSeason
                 case DownloadTaskType.Season:
-                    var downloadTaskTvShowSeason = await dbContext
-                        .DownloadTaskTvShowSeason.Include(x => x.PlexServer)
-                        .Include(x => x.PlexLibrary)
-                        .Include(x => x.Children)
-                            .ThenInclude(x => x.Children)
-                        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-                    return downloadTaskTvShowSeason?.ToGeneric() ?? null;
+                    return (
+                            await dbContext
+                                .DownloadTaskTvShowSeason.Include(x => x.PlexServer)
+                                .Include(x => x.PlexLibrary)
+                                .Include(x => x.Children)
+                                    .ThenInclude(x => x.Children)
+                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                        )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.Episode
                 case DownloadTaskType.Episode:
-                    var downloadTaskTvShowEpisode = await dbContext
-                        .DownloadTaskTvShowEpisode.Include(x => x.PlexServer)
-                        .Include(x => x.PlexLibrary)
-                        .Include(x => x.Children)
-                        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-                    return downloadTaskTvShowEpisode?.ToGeneric() ?? null;
+                    return (
+                            await dbContext
+                                .DownloadTaskTvShowEpisode.Include(x => x.PlexServer)
+                                .Include(x => x.PlexLibrary)
+                                .Include(x => x.Children)
+                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                        )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.EpisodeData
                 case DownloadTaskType.EpisodeData:
                 case DownloadTaskType.EpisodePart:
-                    var downloadTaskTvShowEpisodeFile = await dbContext
-                        .DownloadTaskTvShowEpisodeFile.Include(x => x.PlexServer)
-                        .Include(x => x.PlexLibrary)
-                        .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-                    return downloadTaskTvShowEpisodeFile?.ToGeneric() ?? null;
+                    return (
+                            await dbContext
+                                .DownloadTaskTvShowEpisodeFile.Include(x => x.PlexServer)
+                                .Include(x => x.PlexLibrary)
+                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                        )?.ToGeneric() ?? null;
+
+                case DownloadTaskType.PhotoAlbum:
+                    return (
+                        await dbContext
+                            .DownloadTaskPhotoAlbums.IncludeAll()
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
+
+                case DownloadTaskType.PhotoImage:
+                    return (
+                        await dbContext
+                            .DownloadTaskPhotoImages.IncludeAll()
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
+
+                case DownloadTaskType.PhotoData:
+                case DownloadTaskType.PhotoPart:
+                    return (
+                        await dbContext
+                            .DownloadTaskPhotoImageFiles.Include(x => x.PlexServer)
+                            .Include(x => x.PlexLibrary)
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
+
+                case DownloadTaskType.MusicArtist:
+                    return (
+                        await dbContext
+                            .DownloadTaskMusicArtists.IncludeAll()
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
+                case DownloadTaskType.MusicAlbum:
+                    return (
+                        await dbContext
+                            .DownloadTaskMusicAlbums.IncludeAll()
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
+                case DownloadTaskType.MusicTrack:
+                    return (
+                        await dbContext
+                            .DownloadTaskMusicTracks.IncludeAll()
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
+                case DownloadTaskType.MusicTrackData:
+                case DownloadTaskType.MusicTrackPart:
+                    return (
+                        await dbContext
+                            .DownloadTaskMusicTrackFiles.Include(x => x.PlexServer)
+                            .Include(x => x.PlexLibrary)
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
+                case DownloadTaskType.OtherVideo:
+                    return (
+                        await dbContext
+                            .DownloadTaskOtherVideos.IncludeAll()
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
+                case DownloadTaskType.OtherVideoData:
+                case DownloadTaskType.OtherVideoPart:
+                    return (
+                        await dbContext
+                            .DownloadTaskOtherVideoFiles.Include(x => x.PlexServer)
+                            .Include(x => x.PlexLibrary)
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric();
 
                 default:
                     return null;
@@ -296,6 +667,63 @@ public static partial class DbContextExtensions
                         .Select(x => x.DownloadStatus)
                         .FirstOrDefaultAsync(cancellationToken);
 
+                case DownloadTaskType.PhotoAlbum:
+                    return await dbContext
+                        .DownloadTaskPhotoAlbums.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                case DownloadTaskType.PhotoImage:
+                    return await dbContext
+                        .DownloadTaskPhotoImages.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                case DownloadTaskType.PhotoData:
+                case DownloadTaskType.PhotoPart:
+                    return await dbContext
+                        .DownloadTaskPhotoImageFiles.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                case DownloadTaskType.MusicArtist:
+                    return await dbContext
+                        .DownloadTaskMusicArtists.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                case DownloadTaskType.MusicAlbum:
+                    return await dbContext
+                        .DownloadTaskMusicAlbums.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                case DownloadTaskType.MusicTrack:
+                    return await dbContext
+                        .DownloadTaskMusicTracks.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                case DownloadTaskType.MusicTrackData:
+                case DownloadTaskType.MusicTrackPart:
+                    return await dbContext
+                        .DownloadTaskMusicTrackFiles.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                case DownloadTaskType.OtherVideo:
+                    return await dbContext
+                        .DownloadTaskOtherVideos.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                case DownloadTaskType.OtherVideoData:
+                case DownloadTaskType.OtherVideoPart:
+                    return await dbContext
+                        .DownloadTaskOtherVideoFiles.Where(x => x.Id == key.Id)
+                        .Select(x => x.DownloadStatus)
+                        .FirstOrDefaultAsync(cancellationToken);
+
                 default:
                     _log.Here()
                         .Error(
@@ -338,8 +766,109 @@ public static partial class DbContextExtensions
                     .DownloadTaskTvShowEpisodeFile.Include(x => x.PlexServer)
                     .Include(x => x.PlexLibrary)
                     .FirstOrDefaultAsync(x => x.Id == key.Id, cancellationToken);
+            case DownloadTaskType.PhotoData:
+            case DownloadTaskType.PhotoPart:
+                return await dbContext
+                    .DownloadTaskPhotoImageFiles.Include(x => x.PlexServer)
+                    .Include(x => x.PlexLibrary)
+                    .FirstOrDefaultAsync(x => x.Id == key.Id, cancellationToken);
+            case DownloadTaskType.MusicTrackData:
+            case DownloadTaskType.MusicTrackPart:
+                return await dbContext
+                    .DownloadTaskMusicTrackFiles.Include(x => x.PlexServer)
+                    .Include(x => x.PlexLibrary)
+                    .FirstOrDefaultAsync(x => x.Id == key.Id, cancellationToken);
+            case DownloadTaskType.OtherVideoData:
+            case DownloadTaskType.OtherVideoPart:
+                return await dbContext
+                    .DownloadTaskOtherVideoFiles.Include(x => x.PlexServer)
+                    .Include(x => x.PlexLibrary)
+                    .FirstOrDefaultAsync(x => x.Id == key.Id, cancellationToken);
+
             default:
                 return null;
+        }
+    }
+
+    public static async Task<List<DownloadTaskFileBase>> GetDownloadTaskFilesAsync(
+        this IReaparrDbContext dbContext,
+        IReadOnlyList<DownloadTaskKey> keys,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (keys.Count == 0)
+            return [];
+
+        var byType = keys.ToLookup(x => x.Type, x => x.Id);
+        var files = new List<DownloadTaskFileBase>(keys.Count);
+
+        await AddFilesAsync(dbContext.DownloadTaskMovieFile, DownloadTaskType.MovieData, DownloadTaskType.MoviePart);
+        await AddFilesAsync(
+            dbContext.DownloadTaskTvShowEpisodeFile,
+            DownloadTaskType.EpisodeData,
+            DownloadTaskType.EpisodePart
+        );
+        await AddFilesAsync(
+            dbContext.DownloadTaskPhotoImageFiles,
+            DownloadTaskType.PhotoData,
+            DownloadTaskType.PhotoPart
+        );
+        await AddFilesAsync(
+            dbContext.DownloadTaskMusicTrackFiles,
+            DownloadTaskType.MusicTrackData,
+            DownloadTaskType.MusicTrackPart
+        );
+        await AddFilesAsync(
+            dbContext.DownloadTaskOtherVideoFiles,
+            DownloadTaskType.OtherVideoData,
+            DownloadTaskType.OtherVideoPart
+        );
+
+        return files;
+
+        async Task AddFilesAsync<T>(IQueryable<T> set, DownloadTaskType dataType, DownloadTaskType partType)
+            where T : DownloadTaskFileBase
+        {
+            var ids = byType[dataType].Concat(byType[partType]).Distinct().ToList();
+            if (ids.Count == 0)
+                return;
+
+            files.AddRange(
+                await set.Where(x => ids.Contains(x.Id))
+                    .Include(x => x.PlexServer)
+                    .Include(x => x.PlexLibrary)
+                    .ToListAsync(cancellationToken)
+            );
+        }
+    }
+
+    public static async Task<List<DownloadTaskFileBase>> GetDownloadTaskFilesByStatusAsync(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<DownloadStatus> statuses,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (statuses.Count == 0)
+            return [];
+
+        var files = new List<DownloadTaskFileBase>();
+        await AddFilesAsync(dbContext.DownloadTaskMovieFile);
+        await AddFilesAsync(dbContext.DownloadTaskTvShowEpisodeFile);
+        await AddFilesAsync(dbContext.DownloadTaskPhotoImageFiles);
+        await AddFilesAsync(dbContext.DownloadTaskMusicTrackFiles);
+        await AddFilesAsync(dbContext.DownloadTaskOtherVideoFiles);
+
+        return files;
+
+        async Task AddFilesAsync<T>(IQueryable<T> set)
+            where T : DownloadTaskFileBase
+        {
+            files.AddRange(
+                await set.Where(x => statuses.Contains(x.DownloadStatus))
+                    .Include(x => x.PlexServer)
+                    .Include(x => x.PlexLibrary)
+                    .ToListAsync(cancellationToken)
+            );
         }
     }
 
@@ -368,8 +897,34 @@ public static partial class DbContextExtensions
             .Where(x => plexServerId <= 0 || x.PlexServerId == plexServerId)
             .ToListAsync(cancellationToken);
 
+        var downloadTasksMusicArtists = await dbContext
+            .DownloadTaskMusicArtists.AsTracking(
+                asTracking ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking
+            )
+            .IncludeAll()
+            .Where(x => plexServerId <= 0 || x.PlexServerId == plexServerId)
+            .ToListAsync(cancellationToken);
+
+        var downloadTasksPhotoAlbums = await dbContext
+            .DownloadTaskPhotoAlbums.AsTracking(
+                asTracking ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking
+            )
+            .IncludeAll()
+            .Where(x => plexServerId <= 0 || x.PlexServerId == plexServerId)
+            .ToListAsync(cancellationToken);
+        var downloadTasksOtherVideos = await dbContext
+            .DownloadTaskOtherVideos.AsTracking(
+                asTracking ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking
+            )
+            .IncludeAll()
+            .Where(x => plexServerId <= 0 || x.PlexServerId == plexServerId)
+            .ToListAsync(cancellationToken);
+
         downloadTasks.AddRange(downloadTasksMovies.Select(x => x.ToGeneric()));
         downloadTasks.AddRange(downloadTasksTvShows.Select(x => x.ToGeneric()));
+        downloadTasks.AddRange(downloadTasksMusicArtists.Select(x => x.ToGeneric()));
+        downloadTasks.AddRange(downloadTasksPhotoAlbums.Select(x => x.ToGeneric()));
+        downloadTasks.AddRange(downloadTasksOtherVideos.Select(x => x.ToGeneric()));
 
         // Sort by CreatedAt
         downloadTasks.Sort((x, y) => DateTime.Compare(x.CreatedAt, y.CreatedAt));
@@ -386,8 +941,7 @@ public static partial class DbContextExtensions
         var isFilteredByServer = plexServerId > 0;
 
         var rows = await dbContext
-            .DownloadTaskMovie.AsNoTracking()
-            .Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+            .DownloadTaskMovie.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
             .Select(x => new DownloadProgressRow
             {
                 Id = x.Id,
@@ -411,8 +965,7 @@ public static partial class DbContextExtensions
             })
             .Concat(
                 dbContext
-                    .DownloadTaskMovieFile.AsNoTracking()
-                    .Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                    .DownloadTaskMovieFile.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
                     .Select(x => new DownloadProgressRow
                     {
                         Id = x.Id,
@@ -437,8 +990,7 @@ public static partial class DbContextExtensions
             )
             .Concat(
                 dbContext
-                    .DownloadTaskTvShow.AsNoTracking()
-                    .Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                    .DownloadTaskTvShow.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
                     .Select(x => new DownloadProgressRow
                     {
                         Id = x.Id,
@@ -463,8 +1015,7 @@ public static partial class DbContextExtensions
             )
             .Concat(
                 dbContext
-                    .DownloadTaskTvShowSeason.AsNoTracking()
-                    .Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                    .DownloadTaskTvShowSeason.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
                     .Select(x => new DownloadProgressRow
                     {
                         Id = x.Id,
@@ -489,8 +1040,7 @@ public static partial class DbContextExtensions
             )
             .Concat(
                 dbContext
-                    .DownloadTaskTvShowEpisode.AsNoTracking()
-                    .Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                    .DownloadTaskTvShowEpisode.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
                     .Select(x => new DownloadProgressRow
                     {
                         Id = x.Id,
@@ -515,8 +1065,7 @@ public static partial class DbContextExtensions
             )
             .Concat(
                 dbContext
-                    .DownloadTaskTvShowEpisodeFile.AsNoTracking()
-                    .Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                    .DownloadTaskTvShowEpisodeFile.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
                     .Select(x => new DownloadProgressRow
                     {
                         Id = x.Id,
@@ -539,8 +1088,240 @@ public static partial class DbContextExtensions
                         FileDataTransferred = x.FileDataTransferred,
                     })
             )
+            .Concat(
+                dbContext
+                    .DownloadTaskPhotoAlbums.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                    .Select(x => new DownloadProgressRow
+                    {
+                        Id = x.Id,
+                        ParentId = null,
+                        PlexApiRatingKey = x.PlexApiRatingKey,
+                        Title = x.Title,
+                        FullTitle = x.FullTitle,
+                        MediaType = PlexMediaType.PhotoAlbum,
+                        DownloadTaskType = DownloadTaskType.PhotoAlbum,
+                        DownloadStatus = x.DownloadStatus,
+                        CreatedAt = x.CreatedAt,
+                        PlexServerId = x.PlexServerId,
+                        PlexLibraryId = x.PlexLibraryId,
+                        DataReceived = 0,
+                        DataTotal = 0,
+                        Percentage = 0,
+                        DownloadSpeed = 0,
+                        TimeRemaining = 0,
+                        FileTransferSpeed = 0,
+                        FileDataTransferred = 0,
+                    })
+            )
+            .Concat(
+                dbContext
+                    .DownloadTaskPhotoImages.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                    .Select(x => new DownloadProgressRow
+                    {
+                        Id = x.Id,
+                        ParentId = x.ParentId,
+                        PlexApiRatingKey = x.PlexApiRatingKey,
+                        Title = x.Title,
+                        FullTitle = x.FullTitle,
+                        MediaType = PlexMediaType.PhotoImage,
+                        DownloadTaskType = DownloadTaskType.PhotoImage,
+                        DownloadStatus = x.DownloadStatus,
+                        CreatedAt = x.CreatedAt,
+                        PlexServerId = x.PlexServerId,
+                        PlexLibraryId = x.PlexLibraryId,
+                        DataReceived = 0,
+                        DataTotal = 0,
+                        Percentage = 0,
+                        DownloadSpeed = 0,
+                        TimeRemaining = 0,
+                        FileTransferSpeed = 0,
+                        FileDataTransferred = 0,
+                    })
+            )
+            .Concat(
+                dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                    .Select(x => new DownloadProgressRow
+                    {
+                        Id = x.Id,
+                        ParentId = x.ParentId,
+                        PlexApiRatingKey = x.PlexApiRatingKey,
+                        Title = x.Title,
+                        FullTitle = x.FullTitle,
+                        MediaType = PlexMediaType.PhotoImage,
+                        DownloadTaskType = DownloadTaskType.PhotoData,
+                        DownloadStatus = x.DownloadStatus,
+                        CreatedAt = x.CreatedAt,
+                        PlexServerId = x.PlexServerId,
+                        PlexLibraryId = x.PlexLibraryId,
+                        DataReceived = x.DataReceived,
+                        DataTotal = x.DataTotal,
+                        Percentage = x.Percentage,
+                        DownloadSpeed = x.DownloadSpeed,
+                        TimeRemaining = x.TimeRemaining,
+                        FileTransferSpeed = x.FileTransferSpeed,
+                        FileDataTransferred = x.FileDataTransferred,
+                    })
+            )
             .OrderBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
+
+        rows.AddRange(
+            await dbContext
+                .DownloadTaskMusicArtists.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                .Select(x => new DownloadProgressRow
+                {
+                    Id = x.Id,
+                    ParentId = null,
+                    PlexApiRatingKey = x.PlexApiRatingKey,
+                    Title = x.Title,
+                    FullTitle = x.FullTitle,
+                    MediaType = PlexMediaType.MusicArtist,
+                    DownloadTaskType = DownloadTaskType.MusicArtist,
+                    DownloadStatus = x.DownloadStatus,
+                    CreatedAt = x.CreatedAt,
+                    PlexServerId = x.PlexServerId,
+                    PlexLibraryId = x.PlexLibraryId,
+                    DataReceived = 0,
+                    DataTotal = 0,
+                    Percentage = 0,
+                    DownloadSpeed = 0,
+                    TimeRemaining = 0,
+                    FileTransferSpeed = 0,
+                    FileDataTransferred = 0,
+                })
+                .ToListAsync(cancellationToken)
+        );
+        rows.AddRange(
+            await dbContext
+                .DownloadTaskMusicAlbums.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                .Select(x => new DownloadProgressRow
+                {
+                    Id = x.Id,
+                    ParentId = x.ParentId,
+                    PlexApiRatingKey = x.PlexApiRatingKey,
+                    Title = x.Title,
+                    FullTitle = x.FullTitle,
+                    MediaType = PlexMediaType.MusicAlbum,
+                    DownloadTaskType = DownloadTaskType.MusicAlbum,
+                    DownloadStatus = x.DownloadStatus,
+                    CreatedAt = x.CreatedAt,
+                    PlexServerId = x.PlexServerId,
+                    PlexLibraryId = x.PlexLibraryId,
+                    DataReceived = 0,
+                    DataTotal = 0,
+                    Percentage = 0,
+                    DownloadSpeed = 0,
+                    TimeRemaining = 0,
+                    FileTransferSpeed = 0,
+                    FileDataTransferred = 0,
+                })
+                .ToListAsync(cancellationToken)
+        );
+        rows.AddRange(
+            await dbContext
+                .DownloadTaskMusicTracks.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                .Select(x => new DownloadProgressRow
+                {
+                    Id = x.Id,
+                    ParentId = x.ParentId,
+                    PlexApiRatingKey = x.PlexApiRatingKey,
+                    Title = x.Title,
+                    FullTitle = x.FullTitle,
+                    MediaType = PlexMediaType.MusicTrack,
+                    DownloadTaskType = DownloadTaskType.MusicTrack,
+                    DownloadStatus = x.DownloadStatus,
+                    CreatedAt = x.CreatedAt,
+                    PlexServerId = x.PlexServerId,
+                    PlexLibraryId = x.PlexLibraryId,
+                    DataReceived = 0,
+                    DataTotal = 0,
+                    Percentage = 0,
+                    DownloadSpeed = 0,
+                    TimeRemaining = 0,
+                    FileTransferSpeed = 0,
+                    FileDataTransferred = 0,
+                })
+                .ToListAsync(cancellationToken)
+        );
+        rows.AddRange(
+            await dbContext
+                .DownloadTaskMusicTrackFiles.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                .Select(x => new DownloadProgressRow
+                {
+                    Id = x.Id,
+                    ParentId = x.ParentId,
+                    PlexApiRatingKey = x.PlexApiRatingKey,
+                    Title = x.Title,
+                    FullTitle = x.FullTitle,
+                    MediaType = PlexMediaType.MusicTrack,
+                    DownloadTaskType = DownloadTaskType.MusicTrackData,
+                    DownloadStatus = x.DownloadStatus,
+                    CreatedAt = x.CreatedAt,
+                    PlexServerId = x.PlexServerId,
+                    PlexLibraryId = x.PlexLibraryId,
+                    DataReceived = x.DataReceived,
+                    DataTotal = x.DataTotal,
+                    Percentage = x.Percentage,
+                    DownloadSpeed = x.DownloadSpeed,
+                    TimeRemaining = x.TimeRemaining,
+                    FileTransferSpeed = x.FileTransferSpeed,
+                    FileDataTransferred = x.FileDataTransferred,
+                })
+                .ToListAsync(cancellationToken)
+        );
+        rows.AddRange(
+            await dbContext
+                .DownloadTaskOtherVideos.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                .Select(x => new DownloadProgressRow
+                {
+                    Id = x.Id,
+                    ParentId = null,
+                    PlexApiRatingKey = x.PlexApiRatingKey,
+                    Title = x.Title,
+                    FullTitle = x.FullTitle,
+                    MediaType = PlexMediaType.OtherVideos,
+                    DownloadTaskType = DownloadTaskType.OtherVideo,
+                    DownloadStatus = x.DownloadStatus,
+                    CreatedAt = x.CreatedAt,
+                    PlexServerId = x.PlexServerId,
+                    PlexLibraryId = x.PlexLibraryId,
+                    DataReceived = 0,
+                    DataTotal = 0,
+                    Percentage = 0,
+                    DownloadSpeed = 0,
+                    TimeRemaining = 0,
+                    FileTransferSpeed = 0,
+                    FileDataTransferred = 0,
+                })
+                .ToListAsync(cancellationToken)
+        );
+        rows.AddRange(
+            await dbContext
+                .DownloadTaskOtherVideoFiles.Where(x => !isFilteredByServer || x.PlexServerId == plexServerId)
+                .Select(x => new DownloadProgressRow
+                {
+                    Id = x.Id,
+                    ParentId = x.ParentId,
+                    PlexApiRatingKey = x.PlexApiRatingKey,
+                    Title = x.Title,
+                    FullTitle = x.FullTitle,
+                    MediaType = PlexMediaType.OtherVideos,
+                    DownloadTaskType = DownloadTaskType.OtherVideoData,
+                    DownloadStatus = x.DownloadStatus,
+                    CreatedAt = x.CreatedAt,
+                    PlexServerId = x.PlexServerId,
+                    PlexLibraryId = x.PlexLibraryId,
+                    DataReceived = x.DataReceived,
+                    DataTotal = x.DataTotal,
+                    Percentage = x.Percentage,
+                    DownloadSpeed = x.DownloadSpeed,
+                    TimeRemaining = x.TimeRemaining,
+                    FileTransferSpeed = x.FileTransferSpeed,
+                    FileDataTransferred = x.FileDataTransferred,
+                })
+                .ToListAsync(cancellationToken)
+        );
 
         if (rows.Count == 0)
             return [];
@@ -578,6 +1359,9 @@ public static partial class DbContextExtensions
                     && (
                         row.DownloadTaskType == DownloadTaskType.MovieData
                         || row.DownloadTaskType == DownloadTaskType.EpisodeData
+                        || row.DownloadTaskType == DownloadTaskType.PhotoData
+                        || row.DownloadTaskType == DownloadTaskType.MusicTrackData
+                        || row.DownloadTaskType == DownloadTaskType.OtherVideoData
                     ),
                 DownloadDirectory = string.Empty,
                 Quality = VideoQuality.None,
@@ -640,10 +1424,57 @@ public static partial class DbContextExtensions
                         cancellationToken
                     );
                 break;
+            case DownloadTaskType.PhotoData:
+            case DownloadTaskType.PhotoPart:
+                await dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, progress.DownloadSpeed)
+                                .SetProperty(x => x.DataReceived, progress.DataReceived)
+                                .SetProperty(x => x.DataTotal, progress.DataTotal)
+                                .SetProperty(x => x.Percentage, progress.Percentage)
+                                .SetProperty(x => x.TimeRemaining, progress.TimeRemaining)
+                                .SetProperty(x => x.DirectDownloadSnapshot, snapshot),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.MusicTrackData:
+            case DownloadTaskType.MusicTrackPart:
+                await dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, progress.DownloadSpeed)
+                                .SetProperty(x => x.DataReceived, progress.DataReceived)
+                                .SetProperty(x => x.DataTotal, progress.DataTotal)
+                                .SetProperty(x => x.Percentage, progress.Percentage)
+                                .SetProperty(x => x.TimeRemaining, progress.TimeRemaining)
+                                .SetProperty(x => x.DirectDownloadSnapshot, snapshot),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.OtherVideoData:
+            case DownloadTaskType.OtherVideoPart:
+                await dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, progress.DownloadSpeed)
+                                .SetProperty(x => x.DataReceived, progress.DataReceived)
+                                .SetProperty(x => x.DataTotal, progress.DataTotal)
+                                .SetProperty(x => x.Percentage, progress.Percentage)
+                                .SetProperty(x => x.TimeRemaining, progress.TimeRemaining)
+                                .SetProperty(x => x.DirectDownloadSnapshot, snapshot),
+                        cancellationToken
+                    );
+                break;
             case DownloadTaskType.Movie:
             case DownloadTaskType.TvShow:
             case DownloadTaskType.Season:
             case DownloadTaskType.Episode:
+            case DownloadTaskType.PhotoAlbum:
+            case DownloadTaskType.PhotoImage:
                 _log.Here()
                     .Error(
                         "{Name} of type {Type} is not supported in {MethodName}",
@@ -702,10 +1533,66 @@ public static partial class DbContextExtensions
                         cancellationToken
                     );
                 break;
+            case DownloadTaskType.PhotoData:
+            case DownloadTaskType.PhotoPart:
+                await dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, 0)
+                                .SetProperty(x => x.DataReceived, 0)
+                                .SetProperty(x => x.Percentage, 0)
+                                .SetProperty(x => x.TimeRemaining, 0)
+                                .SetProperty(x => x.FileTransferSpeed, 0)
+                                .SetProperty(x => x.FileDataTransferred, 0)
+                                .SetProperty(x => x.CurrentFileTransferBytesOffset, 0)
+                                .SetProperty(x => x.DirectDownloadSnapshot, (DirectDownloadSnapshot?)null)
+                                .SetProperty(x => x.DownloadStatus, downloadStatus),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.MusicTrackData:
+            case DownloadTaskType.MusicTrackPart:
+                await dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, 0)
+                                .SetProperty(x => x.DataReceived, 0)
+                                .SetProperty(x => x.Percentage, 0)
+                                .SetProperty(x => x.TimeRemaining, 0)
+                                .SetProperty(x => x.FileTransferSpeed, 0)
+                                .SetProperty(x => x.FileDataTransferred, 0)
+                                .SetProperty(x => x.CurrentFileTransferBytesOffset, 0)
+                                .SetProperty(x => x.DirectDownloadSnapshot, (DirectDownloadSnapshot?)null)
+                                .SetProperty(x => x.DownloadStatus, downloadStatus),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.OtherVideoData:
+            case DownloadTaskType.OtherVideoPart:
+                await dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, 0)
+                                .SetProperty(x => x.DataReceived, 0)
+                                .SetProperty(x => x.Percentage, 0)
+                                .SetProperty(x => x.TimeRemaining, 0)
+                                .SetProperty(x => x.FileTransferSpeed, 0)
+                                .SetProperty(x => x.FileDataTransferred, 0)
+                                .SetProperty(x => x.CurrentFileTransferBytesOffset, 0)
+                                .SetProperty(x => x.DirectDownloadSnapshot, (DirectDownloadSnapshot?)null)
+                                .SetProperty(x => x.DownloadStatus, downloadStatus),
+                        cancellationToken
+                    );
+                break;
             case DownloadTaskType.Movie:
             case DownloadTaskType.TvShow:
             case DownloadTaskType.Season:
             case DownloadTaskType.Episode:
+            case DownloadTaskType.PhotoAlbum:
+            case DownloadTaskType.PhotoImage:
                 return _log.Here()
                     .ErrorResult(
                         "{Name} of type {Type} is not supported in {MethodName}",
@@ -742,6 +1629,33 @@ public static partial class DbContextExtensions
             case DownloadTaskType.EpisodePart:
                 await dbContext
                     .DownloadTaskTvShowEpisodeFile.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p => p.SetProperty(x => x.DownloadSpeed, 0).SetProperty(x => x.TimeRemaining, 0),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.PhotoData:
+            case DownloadTaskType.PhotoPart:
+                await dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p => p.SetProperty(x => x.DownloadSpeed, 0).SetProperty(x => x.TimeRemaining, 0),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.MusicTrackData:
+            case DownloadTaskType.MusicTrackPart:
+                await dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p => p.SetProperty(x => x.DownloadSpeed, 0).SetProperty(x => x.TimeRemaining, 0),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.OtherVideoData:
+            case DownloadTaskType.OtherVideoPart:
+                await dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x => x.Id == key.Id)
                     .ExecuteUpdateAsync(
                         p => p.SetProperty(x => x.DownloadSpeed, 0).SetProperty(x => x.TimeRemaining, 0),
                         cancellationToken
@@ -803,10 +1717,81 @@ public static partial class DbContextExtensions
                         cancellationToken
                     );
                 break;
+            case DownloadTaskType.PhotoData:
+            case DownloadTaskType.PhotoPart:
+                await dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.FileTransferSpeed, progress.FileTransferSpeed)
+                                .SetProperty(x => x.FileDataTransferred, progress.FileDataTransferred)
+                                .SetProperty(
+                                    x => x.CurrentFileTransferBytesOffset,
+                                    progress.CurrentFileTransferBytesOffset
+                                )
+                                .SetProperty(x => x.TimeRemaining, progress.TimeRemaining)
+                                .SetProperty(
+                                    x => x.Percentage,
+                                    x =>
+                                        x.DataTotal > 0
+                                            ? progress.CurrentFileTransferBytesOffset * 100m / x.DataTotal
+                                            : 0m
+                                ),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.MusicTrackData:
+            case DownloadTaskType.MusicTrackPart:
+                await dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.FileTransferSpeed, progress.FileTransferSpeed)
+                                .SetProperty(x => x.FileDataTransferred, progress.FileDataTransferred)
+                                .SetProperty(
+                                    x => x.CurrentFileTransferBytesOffset,
+                                    progress.CurrentFileTransferBytesOffset
+                                )
+                                .SetProperty(x => x.TimeRemaining, progress.TimeRemaining)
+                                .SetProperty(
+                                    x => x.Percentage,
+                                    x =>
+                                        x.DataTotal > 0
+                                            ? progress.CurrentFileTransferBytesOffset * 100m / x.DataTotal
+                                            : 0m
+                                ),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.OtherVideoData:
+            case DownloadTaskType.OtherVideoPart:
+                await dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x => x.Id == key.Id)
+                    .ExecuteUpdateAsync(
+                        p =>
+                            p.SetProperty(x => x.FileTransferSpeed, progress.FileTransferSpeed)
+                                .SetProperty(x => x.FileDataTransferred, progress.FileDataTransferred)
+                                .SetProperty(
+                                    x => x.CurrentFileTransferBytesOffset,
+                                    progress.CurrentFileTransferBytesOffset
+                                )
+                                .SetProperty(x => x.TimeRemaining, progress.TimeRemaining)
+                                .SetProperty(
+                                    x => x.Percentage,
+                                    x =>
+                                        x.DataTotal > 0
+                                            ? progress.CurrentFileTransferBytesOffset * 100m / x.DataTotal
+                                            : 0m
+                                ),
+                        cancellationToken
+                    );
+                break;
             case DownloadTaskType.Movie:
             case DownloadTaskType.TvShow:
             case DownloadTaskType.Season:
             case DownloadTaskType.Episode:
+            case DownloadTaskType.PhotoAlbum:
+            case DownloadTaskType.PhotoImage:
                 _log.Here()
                     .Error(
                         "{Name} of type {Type} is not supported in {MethodName}",
@@ -884,6 +1869,26 @@ public static partial class DbContextExtensions
             .DownloadTaskTvShow.Where(x => !dbContext.DownloadTaskTvShowSeason.Any(y => y.ParentId == x.Id))
             .ExecuteDeleteAsync(ct);
 
+        totalRowsDeleted += await dbContext
+            .DownloadTaskPhotoImages.Where(x => !dbContext.DownloadTaskPhotoImageFiles.Any(y => y.ParentId == x.Id))
+            .ExecuteDeleteAsync(ct);
+
+        totalRowsDeleted += await dbContext
+            .DownloadTaskPhotoAlbums.Where(x => !dbContext.DownloadTaskPhotoImages.Any(y => y.ParentId == x.Id))
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicTracks.Where(x => !dbContext.DownloadTaskMusicTrackFiles.Any(y => y.ParentId == x.Id))
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicAlbums.Where(x => !dbContext.DownloadTaskMusicTracks.Any(y => y.ParentId == x.Id))
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicArtists.Where(x => !dbContext.DownloadTaskMusicAlbums.Any(y => y.ParentId == x.Id))
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskOtherVideos.Where(x => !dbContext.DownloadTaskOtherVideoFiles.Any(y => y.ParentId == x.Id))
+            .ExecuteDeleteAsync(ct);
+
         return totalRowsDeleted;
     }
 
@@ -916,6 +1921,38 @@ public static partial class DbContextExtensions
         totalRowsDeleted += await dbContext
             .DownloadTaskTvShow.Where(x =>
                 x.PlexServerId == plexServerId && !dbContext.DownloadTaskTvShowSeason.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+
+        totalRowsDeleted += await dbContext
+            .DownloadTaskPhotoImages.Where(x =>
+                x.PlexServerId == plexServerId && !dbContext.DownloadTaskPhotoImageFiles.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+
+        totalRowsDeleted += await dbContext
+            .DownloadTaskPhotoAlbums.Where(x =>
+                x.PlexServerId == plexServerId && !dbContext.DownloadTaskPhotoImages.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicTracks.Where(x =>
+                x.PlexServerId == plexServerId && !dbContext.DownloadTaskMusicTrackFiles.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicAlbums.Where(x =>
+                x.PlexServerId == plexServerId && !dbContext.DownloadTaskMusicTracks.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicArtists.Where(x =>
+                x.PlexServerId == plexServerId && !dbContext.DownloadTaskMusicAlbums.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskOtherVideos.Where(x =>
+                x.PlexServerId == plexServerId && !dbContext.DownloadTaskOtherVideoFiles.Any(y => y.ParentId == x.Id)
             )
             .ExecuteDeleteAsync(ct);
 
@@ -958,6 +1995,39 @@ public static partial class DbContextExtensions
             )
             .ExecuteDeleteAsync(ct);
 
+        totalRowsDeleted += await dbContext
+            .DownloadTaskPhotoImages.Where(x =>
+                rootIds.Contains(x.ParentId) && !dbContext.DownloadTaskPhotoImageFiles.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+
+        totalRowsDeleted += await dbContext
+            .DownloadTaskPhotoAlbums.Where(x =>
+                rootIds.Contains(x.Id) && !dbContext.DownloadTaskPhotoImages.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicTracks.Where(x =>
+                rootIds.Contains(x.Parent!.ParentId)
+                && !dbContext.DownloadTaskMusicTrackFiles.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicAlbums.Where(x =>
+                rootIds.Contains(x.ParentId) && !dbContext.DownloadTaskMusicTracks.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskMusicArtists.Where(x =>
+                rootIds.Contains(x.Id) && !dbContext.DownloadTaskMusicAlbums.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+        totalRowsDeleted += await dbContext
+            .DownloadTaskOtherVideos.Where(x =>
+                rootIds.Contains(x.Id) && !dbContext.DownloadTaskOtherVideoFiles.Any(y => y.ParentId == x.Id)
+            )
+            .ExecuteDeleteAsync(ct);
+
         return totalRowsDeleted;
     }
 
@@ -967,6 +2037,7 @@ public static partial class DbContextExtensions
         CancellationToken ct
     )
     {
+        // TODO ugly inconsistent method, needs to be cleaned up and refactored to be more consistent with the rest of the codebase
         if (downloadTaskIds.Count == 0)
             return [];
 
@@ -1034,6 +2105,40 @@ public static partial class DbContextExtensions
                 .ToListAsync(ct);
             rootIds.UnionWith(seasonRootIds);
         }
+
+        var photoRootIds = await dbContext
+            .DownloadTaskPhotoAlbums.Where(x =>
+                downloadTaskIds.Contains(x.Id)
+                || x.Children.Any(image =>
+                    downloadTaskIds.Contains(image.Id) || image.Children.Any(file => downloadTaskIds.Contains(file.Id))
+                )
+            )
+            .Select(x => x.Id)
+            .ToListAsync(ct);
+        rootIds.UnionWith(photoRootIds);
+        rootIds.UnionWith(
+            await dbContext
+                .DownloadTaskMusicArtists.Where(x =>
+                    downloadTaskIds.Contains(x.Id)
+                    || x.Children.Any(album =>
+                        downloadTaskIds.Contains(album.Id)
+                        || album.Children.Any(track =>
+                            downloadTaskIds.Contains(track.Id)
+                            || track.Children.Any(file => downloadTaskIds.Contains(file.Id))
+                        )
+                    )
+                )
+                .Select(x => x.Id)
+                .ToListAsync(ct)
+        );
+        rootIds.UnionWith(
+            await dbContext
+                .DownloadTaskOtherVideos.Where(x =>
+                    downloadTaskIds.Contains(x.Id) || x.Children.Any(file => downloadTaskIds.Contains(file.Id))
+                )
+                .Select(x => x.Id)
+                .ToListAsync(ct)
+        );
 
         return rootIds;
     }
@@ -1140,6 +2245,62 @@ public static partial class DbContextExtensions
                     })
                     .FirstOrDefaultAsync(cancellationToken);
             }
+            case DownloadTaskType.PhotoAlbum when integration is null:
+                return key;
+            case DownloadTaskType.PhotoImage when integration is null:
+                return await dbContext
+                    .DownloadTaskPhotoImages.Where(x => x.Id == key.Id)
+                    .ProjectToParentKey()
+                    .FirstOrDefaultAsync(cancellationToken);
+            case DownloadTaskType.PhotoData when integration is null:
+            case DownloadTaskType.PhotoPart when integration is null:
+                return await dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x => x.Id == key.Id)
+                    .Select(x => new DownloadTaskKey
+                    {
+                        Id = x.Parent!.ParentId,
+                        PlexServerId = x.PlexServerId,
+                        PlexLibraryId = x.PlexLibraryId,
+                        Type = DownloadTaskType.PhotoAlbum,
+                    })
+                    .FirstOrDefaultAsync(cancellationToken);
+            case DownloadTaskType.MusicArtist when integration is null:
+            case DownloadTaskType.OtherVideo when integration is null:
+                return key;
+            case DownloadTaskType.MusicAlbum when integration is null:
+                return await dbContext
+                    .DownloadTaskMusicAlbums.Where(x => x.Id == key.Id)
+                    .ProjectToParentKey()
+                    .FirstOrDefaultAsync(cancellationToken);
+            case DownloadTaskType.MusicTrack when integration is null:
+                return await dbContext
+                    .DownloadTaskMusicTracks.Where(x => x.Id == key.Id)
+                    .Select(x => new DownloadTaskKey
+                    {
+                        Id = x.Parent!.ParentId,
+                        PlexServerId = x.PlexServerId,
+                        PlexLibraryId = x.PlexLibraryId,
+                        Type = DownloadTaskType.MusicArtist,
+                    })
+                    .FirstOrDefaultAsync(cancellationToken);
+            case DownloadTaskType.MusicTrackData when integration is null:
+            case DownloadTaskType.MusicTrackPart when integration is null:
+                return await dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x => x.Id == key.Id)
+                    .Select(x => new DownloadTaskKey
+                    {
+                        Id = x.Parent!.Parent!.ParentId,
+                        PlexServerId = x.PlexServerId,
+                        PlexLibraryId = x.PlexLibraryId,
+                        Type = DownloadTaskType.MusicArtist,
+                    })
+                    .FirstOrDefaultAsync(cancellationToken);
+            case DownloadTaskType.OtherVideoData when integration is null:
+            case DownloadTaskType.OtherVideoPart when integration is null:
+                return await dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x => x.Id == key.Id)
+                    .ProjectToParentKey()
+                    .FirstOrDefaultAsync(cancellationToken);
             default:
                 return null;
         }

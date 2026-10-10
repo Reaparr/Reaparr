@@ -1,6 +1,6 @@
 using LukeHagar.PlexAPI.SDK.Models.Components;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
-using Protocol = LukeHagar.PlexAPI.SDK.Models.Requests.Protocol;
+using Protocol = LukeHagar.PlexAPI.SDK.Models.Requests.QueryParamProtocol;
 
 namespace Reaparr.PlexApi;
 

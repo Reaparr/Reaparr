@@ -8,12 +8,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments(PlexMediaType.TvShow, "TvShow")]
     [Arguments(PlexMediaType.Season, "Season")]
     [Arguments(PlexMediaType.Episode, "Episode")]
-    [Arguments(PlexMediaType.Music, "Music")]
-    [Arguments(PlexMediaType.Artist, "Artist")]
-    [Arguments(PlexMediaType.Album, "Album")]
-    [Arguments(PlexMediaType.Song, "Song")]
+    [Arguments(PlexMediaType.MusicArtist, "MusicArtist")]
+    [Arguments(PlexMediaType.MusicAlbum, "MusicAlbum")]
+    [Arguments(PlexMediaType.MusicTrack, "MusicTrack")]
     [Arguments(PlexMediaType.PhotoAlbum, "PhotoAlbum")]
-    [Arguments(PlexMediaType.Photos, "Photos")]
+    [Arguments(PlexMediaType.PhotoImage, "PhotoImage")]
     [Arguments(PlexMediaType.OtherVideos, "OtherVideos")]
     [Arguments(PlexMediaType.Games, "Games")]
     [Arguments(PlexMediaType.Unknown, "Unknown")]
@@ -36,6 +35,7 @@ public partial class PlexMediaTypeMappersUnitTests
 
     public static IEnumerable<PlexMediaType> GetInvalidEnumValues()
     {
+        yield return (PlexMediaType)6;
         yield return (PlexMediaType)999;
         yield return (PlexMediaType)(-1);
         yield return (PlexMediaType)100;
@@ -98,12 +98,11 @@ public partial class PlexMediaTypeMappersUnitTests
         PlexMediaType.TvShow.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.TvShow));
         PlexMediaType.Season.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Season));
         PlexMediaType.Episode.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Episode));
-        PlexMediaType.Music.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Music));
-        PlexMediaType.Artist.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Artist));
-        PlexMediaType.Album.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Album));
-        PlexMediaType.Song.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Song));
+        PlexMediaType.MusicArtist.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.MusicArtist));
+        PlexMediaType.MusicAlbum.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.MusicAlbum));
+        PlexMediaType.MusicTrack.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.MusicTrack));
         PlexMediaType.PhotoAlbum.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.PhotoAlbum));
-        PlexMediaType.Photos.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Photos));
+        PlexMediaType.PhotoImage.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.PhotoImage));
         PlexMediaType.OtherVideos.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.OtherVideos));
         PlexMediaType.Games.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Games));
         PlexMediaType.Unknown.ToPlexMediaTypeString().ShouldBe(nameof(PlexMediaType.Unknown));

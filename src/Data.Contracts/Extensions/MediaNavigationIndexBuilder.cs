@@ -32,9 +32,11 @@ public static class MediaNavigationIndexBuilder
             nameof(BasePlexMedia.SortIndex) or "sortIndex" or nameof(BasePlexMedia.Title) or "title" => GetTitleLabel(
                 row.SearchTitle
             ),
-            nameof(BasePlexMedia.Year) or "year" => row.Year.ToString(CultureInfo.InvariantCulture),
+            nameof(BasePlexMedia.Year) or "year" => row.Year?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
             "quality" => row.QualityValue?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
-            nameof(BasePlexMedia.Duration) or "duration" => GetDurationLabel(row.Duration),
+            nameof(BasePlexMedia.Duration) or "duration" => row.Duration.HasValue
+                ? GetDurationLabel(row.Duration.Value)
+                : UNKNOWN_LABEL,
             nameof(BasePlexMedia.AddedAt) or "addedAt" => GetMonthLabel(row.AddedAt),
             nameof(BasePlexMedia.UpdatedAt) or "updatedAt" => row.UpdatedAt is null
                 ? UNKNOWN_LABEL

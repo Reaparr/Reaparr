@@ -29,6 +29,8 @@ public record InsertMediaMetaDataCommandResponse
 
     public int PlexLibraryId => PlexLibrary.Id;
 
+    public int PhotoClipCount { get; set; }
+
     /// <summary>
     /// The string key is the hashkey of the actor name for this <see cref="PlexLibrary"/>
     /// </summary>
@@ -91,12 +93,13 @@ public class InsertMediaMetaDataCommandHandler
                 PlexActors = syncRolesResult.Value,
                 PlexGenres = syncGenresResult.Value,
                 PlexCountries = syncCountriesResult.Value,
+                PhotoClipCount = command.LibraryMetadata.PhotoClipCount,
             }
         );
     }
 
     private async Task<Result<Dictionary<string, PlexActor>>> InsertPlexActors(
-        IReadOnlyCollection<LibraryMediaItemRoleDTO> sourceList,
+        IReadOnlyCollection<PlexActor> sourceList,
         CancellationToken ct
     )
     {
@@ -112,7 +115,6 @@ public class InsertMediaMetaDataCommandHandler
         var newPlexActors = sourceList
             .Where(x => !string.IsNullOrEmpty(x.Key) && !string.IsNullOrEmpty(x.Name))
             .DistinctBy(x => x.Key)
-            .Select(x => x.ToPlexActor())
             .ToList();
         if (newPlexActors.Count == 0)
         {
@@ -158,7 +160,7 @@ public class InsertMediaMetaDataCommandHandler
     }
 
     private async Task<Result<Dictionary<string, PlexGenre>>> InsertGenres(
-        IReadOnlyCollection<LibraryMediaItemGenreDTO> sourceList,
+        IReadOnlyCollection<PlexGenre> sourceList,
         CancellationToken ct
     )
     {
@@ -175,7 +177,7 @@ public class InsertMediaMetaDataCommandHandler
         var newPlexGenres = sourceList
             .Where(x => !string.IsNullOrEmpty(x.Key) && !string.IsNullOrEmpty(x.Name))
             .DistinctBy(x => x.Key)
-            .ToPlexGenre();
+            .ToList();
         if (newPlexGenres.Count == 0)
         {
             _log.Here().Debug("No {NameOfPlexGenre} to insert ", nameof(PlexGenre));
@@ -212,7 +214,7 @@ public class InsertMediaMetaDataCommandHandler
     }
 
     private async Task<Result<Dictionary<string, PlexCountry>>> InsertCountries(
-        IReadOnlyCollection<LibraryMediaItemCountryDTO> sourceList,
+        IReadOnlyCollection<PlexCountry> sourceList,
         CancellationToken ct
     )
     {
@@ -228,7 +230,7 @@ public class InsertMediaMetaDataCommandHandler
         var newPlexCountries = sourceList
             .Where(x => !string.IsNullOrEmpty(x.Key) && !string.IsNullOrEmpty(x.Name))
             .DistinctBy(x => x.Key)
-            .ToPlexCountry();
+            .ToList();
         if (newPlexCountries.Count == 0)
         {
             _log.Here().Debug("No {NameOfPlexCountry} to insert", nameof(PlexCountry));

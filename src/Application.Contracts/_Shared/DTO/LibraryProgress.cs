@@ -14,9 +14,9 @@ public record LibraryProgress
 
     public int Received => Items.Sum(i => i.Received);
 
-    public int Total => Items.Sum(i => i.Total);
+    public int Total => Items.Sum(i => Math.Max(i.Total, 0));
 
-    public decimal Percentage => Total == 0 ? 100 : DataFormat.GetPercentage(Received, Total);
+    public decimal Percentage => IsComplete ? 100 : Total == 0 ? 0 : DataFormat.GetPercentage(Received, Total);
 
     public DateTime TimeStamp { get; } = DateTime.UtcNow;
 

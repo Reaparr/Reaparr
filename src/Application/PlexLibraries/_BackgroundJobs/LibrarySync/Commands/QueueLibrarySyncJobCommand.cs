@@ -33,10 +33,8 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
 
     public async Task<Result> ExecuteAsync(QueueLibrarySyncJobCommand command, CancellationToken cancellationToken)
     {
-        // TODO Remove extra where clause once we support other library types
         var libraries = await _dbContext
             .PlexLibraries.Where(x => command.PlexLibraryIds.Contains(x.Id))
-            .Where(x => x.Type == PlexMediaType.Movie || x.Type == PlexMediaType.TvShow)
             .Select(x => new
             {
                 x.Id,
@@ -52,8 +50,10 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
             return Result.Ok();
         }
 
+        var eligibleLibraryIds = libraries.Select(x => x.Id).ToHashSet();
+
         var existingQueues = await _dbContext
-            .LibrarySyncJobQueues.Where(x => command.PlexLibraryIds.Contains(x.PlexLibraryId))
+            .LibrarySyncJobQueues.Where(x => eligibleLibraryIds.Contains(x.PlexLibraryId))
             .ToListAsync(cancellationToken: cancellationToken);
 
         var syncBufferCutoff = DateTime.UtcNow.AddHours(-3);
@@ -152,8 +152,8 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
                 new CheckQueuedPlexLibraryToSyncCommand(),
                 cancellationToken
             );
-            if (checkQueuedResult.IsFailed)
-                return checkQueuedResult.LogIfFailed();
+
+            return checkQueuedResult.LogIfFailed();
         }
 
         return Result.Ok();

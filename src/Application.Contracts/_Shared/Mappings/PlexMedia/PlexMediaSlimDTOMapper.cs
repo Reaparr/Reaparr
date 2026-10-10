@@ -125,4 +125,64 @@ public static class PlexMediaSlimDTOMapper
         };
 
     #endregion
+
+    public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexMusicArtist source) =>
+        Map(source, null, source.Albums.Sum(x => x.ChildCount), []);
+
+    public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexMusicAlbum source) =>
+        Map(source, source.PlexArtistId, 0, []);
+
+    public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexMusicTrack source) =>
+        Map(source, source.PlexAlbumId, 0, []);
+
+    public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexPhotoImage source) =>
+        Map(source, source.PlexPhotoAlbumId, 0, []);
+
+    public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexOtherVideo source) =>
+        Map(
+            source,
+            null,
+            0,
+            source
+                .MediaDataList.SortByQuality()
+                .Select(x => new PlexMediaQualityDTO
+                {
+                    Quality = x.Quality,
+                    MediaDataType = x.Type,
+                    DataId = x.Id,
+                    MediaId = source.Id,
+                })
+                .ToList()
+        );
+
+    public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexPhotoAlbum source) => Map(source, null, 0, []);
+
+    private static PlexMediaSlimDTO Map(
+        BasePlexMedia source,
+        int? parentId,
+        int grandChildCount,
+        List<PlexMediaQualityDTO> qualities
+    ) =>
+        new()
+        {
+            Id = source.Id,
+            PlexApiRatingKey = source.PlexApiRatingKey,
+            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
+            Title = source.Title,
+            SearchTitle = source.SearchTitle,
+            SortIndex = source.SortIndex,
+            Year = source.Year,
+            Duration = source.Duration,
+            MediaSize = source.MediaSize,
+            ChildCount = source.ChildCount,
+            GrandChildCount = grandChildCount,
+            AddedAt = source.AddedAt,
+            UpdatedAt = source.UpdatedAt,
+            PlexLibraryId = source.PlexLibraryId,
+            PlexServerId = source.PlexServerId,
+            Type = source.Type,
+            ParentId = parentId,
+            HasThumb = source.HasThumb,
+            Qualities = qualities,
+        };
 }

@@ -20,15 +20,15 @@ public static class PlexMediaTypeToApiTypeExtensions
                 return (T)Enum.ToObject(typeof(T), "season");
             case PlexMediaType.Episode:
                 return (T)Enum.ToObject(typeof(T), "episode");
-            case PlexMediaType.Artist:
+            case PlexMediaType.MusicArtist:
                 return (T)Enum.ToObject(typeof(T), "artist");
-            case PlexMediaType.Album:
+            case PlexMediaType.MusicAlbum:
                 return (T)Enum.ToObject(typeof(T), "album");
-            case PlexMediaType.Song:
+            case PlexMediaType.MusicTrack:
                 return (T)Enum.ToObject(typeof(T), "track");
             case PlexMediaType.PhotoAlbum:
                 return (T)Enum.ToObject(typeof(T), "photoalbum");
-            case PlexMediaType.Photos:
+            case PlexMediaType.PhotoImage:
                 return (T)Enum.ToObject(typeof(T), "photo");
             default:
                 throw new ArgumentOutOfRangeException(nameof(plexMediaType), plexMediaType, null);
@@ -36,6 +36,24 @@ public static class PlexMediaTypeToApiTypeExtensions
 
         return (T)Enum.ToObject(typeof(T), enumInt);
     }
+
+    /// <summary>
+    /// Converts media types to the numeric metadata IDs used by Plex content requests.
+    /// </summary>
+    public static int ToPlexMetadataTypeId(this PlexMediaType mediaType) =>
+        mediaType switch
+        {
+            PlexMediaType.Movie or PlexMediaType.OtherVideos => 1,
+            PlexMediaType.TvShow => 2,
+            PlexMediaType.Season => 3,
+            PlexMediaType.Episode => 4,
+            PlexMediaType.MusicArtist => 8,
+            PlexMediaType.MusicAlbum => 9,
+            PlexMediaType.MusicTrack => 10,
+            PlexMediaType.PhotoImage => 13,
+            PlexMediaType.PhotoAlbum => 14,
+            _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
+        };
 
     public static PlexMediaType ToPlexMediaType(this MediaType value)
     {
@@ -45,11 +63,11 @@ public static class PlexMediaTypeToApiTypeExtensions
             MediaType.TvShow => PlexMediaType.TvShow,
             MediaType.Season => PlexMediaType.Season,
             MediaType.Episode => PlexMediaType.Episode,
-            MediaType.Artist => PlexMediaType.Artist,
-            MediaType.Album => PlexMediaType.Album,
-            MediaType.Track => PlexMediaType.Song,
+            MediaType.Artist => PlexMediaType.MusicArtist,
+            MediaType.Album => PlexMediaType.MusicAlbum,
+            MediaType.Track => PlexMediaType.MusicTrack,
             MediaType.PhotoAlbum => PlexMediaType.PhotoAlbum,
-            MediaType.Photo => PlexMediaType.Photos,
+            MediaType.Photo => PlexMediaType.PhotoImage,
             _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };
     }
@@ -62,11 +80,11 @@ public static class PlexMediaTypeToApiTypeExtensions
             PlexMediaType.TvShow => MediaType.TvShow,
             PlexMediaType.Season => MediaType.Season,
             PlexMediaType.Episode => MediaType.Episode,
-            PlexMediaType.Artist => MediaType.Artist,
-            PlexMediaType.Album => MediaType.Album,
-            PlexMediaType.Song => MediaType.Track,
+            PlexMediaType.MusicArtist => MediaType.Artist,
+            PlexMediaType.MusicAlbum => MediaType.Album,
+            PlexMediaType.MusicTrack => MediaType.Track,
             PlexMediaType.PhotoAlbum => MediaType.PhotoAlbum,
-            PlexMediaType.Photos => MediaType.Photo,
+            PlexMediaType.PhotoImage => MediaType.Photo,
             _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };
     }
@@ -79,14 +97,29 @@ public static class PlexMediaTypeToApiTypeExtensions
             PlexMediaType.TvShow => MediaTypeString.TvShow,
             PlexMediaType.Season => MediaTypeString.Season,
             PlexMediaType.Episode => MediaTypeString.Episode,
-            PlexMediaType.Artist => MediaTypeString.Artist,
-            PlexMediaType.Album => MediaTypeString.Album,
-            PlexMediaType.Song => MediaTypeString.Track,
+            PlexMediaType.MusicArtist => MediaTypeString.Artist,
+            PlexMediaType.MusicAlbum => MediaTypeString.Album,
+            PlexMediaType.MusicTrack => MediaTypeString.Track,
             PlexMediaType.PhotoAlbum => MediaTypeString.PhotoAlbum,
-            PlexMediaType.Photos => MediaTypeString.Photo,
+            PlexMediaType.OtherVideos => MediaTypeString.Movie,
+            PlexMediaType.PhotoImage => MediaTypeString.Photo,
             _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };
     }
+
+    /// <summary>
+    /// Classifies library sections using their agent and scanner, independently of item type mapping.
+    /// </summary>
+    public static PlexMediaType ToPlexMediaType(this MediaTypeString value, string? agent, string? scanner) =>
+        value switch
+        {
+            MediaTypeString.Artist => PlexMediaType.MusicArtist,
+            MediaTypeString.Photo or MediaTypeString.PhotoAlbum => PlexMediaType.PhotoAlbum,
+            MediaTypeString.Movie
+                when agent is "com.plexapp.agents.none" or "tv.plex.agents.none"
+                    && scanner is "Plex Video Files Scanner" or "Plex Video Files" => PlexMediaType.OtherVideos,
+            _ => value.ToPlexMediaType(),
+        };
 
     public static PlexMediaType ToPlexMediaType(this MediaTypeString value)
     {
@@ -96,11 +129,11 @@ public static class PlexMediaTypeToApiTypeExtensions
             MediaTypeString.TvShow => PlexMediaType.TvShow,
             MediaTypeString.Season => PlexMediaType.Season,
             MediaTypeString.Episode => PlexMediaType.Episode,
-            MediaTypeString.Artist => PlexMediaType.Artist,
-            MediaTypeString.Album => PlexMediaType.Album,
-            MediaTypeString.Track => PlexMediaType.Song,
+            MediaTypeString.Artist => PlexMediaType.MusicArtist,
+            MediaTypeString.Album => PlexMediaType.MusicAlbum,
+            MediaTypeString.Track => PlexMediaType.MusicTrack,
             MediaTypeString.PhotoAlbum => PlexMediaType.PhotoAlbum,
-            MediaTypeString.Photo => PlexMediaType.Photos,
+            MediaTypeString.Photo => PlexMediaType.PhotoImage,
             _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
         };
     }

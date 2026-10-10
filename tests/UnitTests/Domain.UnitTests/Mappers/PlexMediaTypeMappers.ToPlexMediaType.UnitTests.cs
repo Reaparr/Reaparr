@@ -8,12 +8,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("TvShow", PlexMediaType.TvShow)]
     [Arguments("Season", PlexMediaType.Season)]
     [Arguments("Episode", PlexMediaType.Episode)]
-    [Arguments("Music", PlexMediaType.Music)]
-    [Arguments("Artist", PlexMediaType.Artist)]
-    [Arguments("Album", PlexMediaType.Album)]
-    [Arguments("Song", PlexMediaType.Song)]
+    [Arguments("MusicArtist", PlexMediaType.MusicArtist)]
+    [Arguments("MusicAlbum", PlexMediaType.MusicAlbum)]
+    [Arguments("MusicTrack", PlexMediaType.MusicTrack)]
     [Arguments("PhotoAlbum", PlexMediaType.PhotoAlbum)]
-    [Arguments("Photos", PlexMediaType.Photos)]
+    [Arguments("PhotoImage", PlexMediaType.PhotoImage)]
     [Arguments("OtherVideos", PlexMediaType.OtherVideos)]
     [Arguments("Games", PlexMediaType.Games)]
     [Arguments("Unknown", PlexMediaType.Unknown)]
@@ -31,11 +30,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("show", PlexMediaType.TvShow)]
     [Arguments("season", PlexMediaType.Season)]
     [Arguments("episode", PlexMediaType.Episode)]
-    [Arguments("artist", PlexMediaType.Artist)]
-    [Arguments("album", PlexMediaType.Album)]
-    [Arguments("track", PlexMediaType.Song)]
+    [Arguments("artist", PlexMediaType.MusicArtist)]
+    [Arguments("album", PlexMediaType.MusicAlbum)]
+    [Arguments("track", PlexMediaType.MusicTrack)]
     [Arguments("photoalbum", PlexMediaType.PhotoAlbum)]
-    [Arguments("photo", PlexMediaType.Photos)]
+    [Arguments("photo", PlexMediaType.PhotoImage)]
     public void ShouldConvertPlexApiStrings_WhenValidPlexApiStringProvided(string input, PlexMediaType expected)
     {
         // Act
@@ -53,6 +52,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments("randomstring")]
     [Arguments("123")]
     [Arguments("null")]
+    [Arguments("Song")]
+    [Arguments("Music")]
+    [Arguments("Album")]
+    [Arguments("Track")]
+    [Arguments("Photos")]
     public void ShouldThrowNotImplementedException_WhenInvalidStringProvided(string input)
     {
         // Act & Assert
@@ -99,11 +103,11 @@ public partial class PlexMediaTypeMappersUnitTests
             PlexMediaType.TvShow,
             PlexMediaType.Season,
             PlexMediaType.Episode,
-            PlexMediaType.Artist,
-            PlexMediaType.Album,
-            PlexMediaType.Song,
+            PlexMediaType.MusicArtist,
+            PlexMediaType.MusicAlbum,
+            PlexMediaType.MusicTrack,
             PlexMediaType.PhotoAlbum,
-            PlexMediaType.Photos,
+            PlexMediaType.PhotoImage,
         };
 
         // Act & Assert
@@ -121,7 +125,6 @@ public partial class PlexMediaTypeMappersUnitTests
     }
 
     [Test]
-    [Arguments("Music")] // Music enum exists but has no PlexApi string mapping
     [Arguments("None")] // None enum exists but has no PlexApi string mapping
     [Arguments("OtherVideos")] // OtherVideos enum exists but has no PlexApi string mapping
     [Arguments("Games")] // Games enum exists but has no PlexApi string mapping

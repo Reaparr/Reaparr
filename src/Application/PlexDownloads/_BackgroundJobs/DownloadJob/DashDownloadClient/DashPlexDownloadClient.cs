@@ -211,6 +211,39 @@ public class DashPlexDownloadClient : IPlexDownloadClient
                         cancellationToken
                     );
                 break;
+            case DownloadTaskType.MusicTrackData:
+                await _dbContext
+                    .DownloadTaskMusicTrackFiles.Where(x => x.Id == downloadTask.Id)
+                    .ExecuteUpdateAsync(
+                        patch =>
+                            patch
+                                .SetProperty(x => x.Title, normalizedFileName)
+                                .SetProperty(x => x.FileName, normalizedFileName),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.PhotoData:
+                await _dbContext
+                    .DownloadTaskPhotoImageFiles.Where(x => x.Id == downloadTask.Id)
+                    .ExecuteUpdateAsync(
+                        patch =>
+                            patch
+                                .SetProperty(x => x.Title, normalizedFileName)
+                                .SetProperty(x => x.FileName, normalizedFileName),
+                        cancellationToken
+                    );
+                break;
+            case DownloadTaskType.OtherVideoData:
+                await _dbContext
+                    .DownloadTaskOtherVideoFiles.Where(x => x.Id == downloadTask.Id)
+                    .ExecuteUpdateAsync(
+                        patch =>
+                            patch
+                                .SetProperty(x => x.Title, normalizedFileName)
+                                .SetProperty(x => x.FileName, normalizedFileName),
+                        cancellationToken
+                    );
+                break;
         }
     }
 

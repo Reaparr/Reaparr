@@ -29,7 +29,7 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
                 {
                     MediaType = PlexMediaType.Movie,
                     Received = 0,
-                    Total = 0,
+                    Total = -1,
                     TimeRemaining = TimeSpan.Zero,
                 },
             ];
@@ -42,24 +42,60 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
                 {
                     MediaType = PlexMediaType.TvShow,
                     Received = 0,
-                    Total = 0,
+                    Total = -1,
                     TimeRemaining = TimeSpan.Zero,
                 },
                 new LibraryProgressItem
                 {
                     MediaType = PlexMediaType.Season,
                     Received = 0,
-                    Total = 0,
+                    Total = -1,
                     TimeRemaining = TimeSpan.Zero,
                 },
                 new LibraryProgressItem
                 {
                     MediaType = PlexMediaType.Episode,
                     Received = 0,
-                    Total = 0,
+                    Total = -1,
                     TimeRemaining = TimeSpan.Zero,
                 },
             ];
+        }
+        else if (type == PlexMediaType.MusicArtist)
+        {
+            items = new[] { PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack }
+                .Select(mediaType => new LibraryProgressItem
+                {
+                    MediaType = mediaType,
+                    Received = 0,
+                    Total = -1,
+                    TimeRemaining = TimeSpan.Zero,
+                })
+                .ToList();
+        }
+        else if (type == PlexMediaType.PhotoAlbum)
+        {
+            items = new[] { PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage }
+                .Select(mediaType => new LibraryProgressItem
+                {
+                    MediaType = mediaType,
+                    Received = 0,
+                    Total = -1,
+                    TimeRemaining = TimeSpan.Zero,
+                })
+                .ToList();
+        }
+        else if (type == PlexMediaType.OtherVideos)
+        {
+            items = new[] { PlexMediaType.OtherVideos }
+                .Select(mediaType => new LibraryProgressItem
+                {
+                    MediaType = mediaType,
+                    Received = 0,
+                    Total = -1,
+                    TimeRemaining = TimeSpan.Zero,
+                })
+                .ToList();
         }
         else
         {

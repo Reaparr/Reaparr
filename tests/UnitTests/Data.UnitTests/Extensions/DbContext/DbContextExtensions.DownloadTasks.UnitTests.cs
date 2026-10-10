@@ -5,6 +5,568 @@ namespace Reaparr.Data.UnitTests;
 public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
 {
     [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task ShouldAssignExactHierarchyRelationships_WithoutChangingControl_WhenMappingNewDownloadTasks(
+        bool music
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            62537,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var musicRoots = await dbContext.DownloadTaskMusicArtists.IncludeAll().ToArrayAsync(CancellationToken);
+        var videoRoots = await dbContext.DownloadTaskOtherVideos.IncludeAll().ToArrayAsync(CancellationToken);
+        var musicFiles = musicRoots.SelectMany(x => x.Children).SelectMany(x => x.Children)
+            .SelectMany(x => x.Children).OrderBy(x => x.PlexApiRatingKey).ToArray();
+        var otherVideoFiles = videoRoots.SelectMany(x => x.Children).OrderBy(x => x.PlexApiRatingKey).ToArray();
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
+        DownloadTaskBase[] hierarchy = music
+            ?
+            [
+                ((DownloadTaskMusicTrackFile)target).Parent!.Parent!.Parent!,
+                ((DownloadTaskMusicTrackFile)target).Parent!.Parent!,
+                ((DownloadTaskMusicTrackFile)target).Parent!,
+                target,
+            ]
+            : [((DownloadTaskOtherVideoFile)target).Parent!, target];
+        var beforeIds = hierarchy.Select(x => x.Id).ToArray();
+        var controlScope = (control.PlexServerId, control.PlexLibraryId);
+        hierarchy.ShouldAllBe(x =>
+            x.PlexServerId == controlScope.PlexServerId && x.PlexLibraryId == controlScope.PlexLibraryId
+        );
+        ICollection<DownloadTaskBase> roots = [hierarchy[0]];
+
+        // Act
+        roots.SetRelationshipIds(99, 88);
+
+        // Assert
+        hierarchy.Select(x => (x.Id, x.PlexServerId, x.PlexLibraryId)).ShouldBe(beforeIds.Select(id => (id, 99, 88)));
+        (control.PlexServerId, control.PlexLibraryId).ShouldBe(controlScope);
+        target.ToParentKey()!.Id.ShouldBe(hierarchy[^2].Id);
+    }
+
+    [Test]
+    public async Task ShouldPersistExactMusicAndOtherVideoLogs_WhenUsingExistingBatchLogWorkflow()
+    {
+        // Arrange
+        await SetupDatabase(
+            62536,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 1;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var music = await dbContext.DownloadTaskMusicTrackFiles
+            .Include(x => x.Parent).ThenInclude(x => x!.Parent)
+            .SingleAsync(CancellationToken);
+        var video = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
+        (await dbContext.DownloadTaskTrackFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
+        (await dbContext.DownloadTaskOtherVideoFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
+        var createdAt = new DateTime(2026, 10, 5, 10, 0, 0, DateTimeKind.Utc);
+        DownloadTaskLogBase[] logs =
+        [
+            new DownloadTaskTrackFileLog
+            {
+                DownloadTaskFileId = music.Id,
+                DownloadTaskTrackId = music.ParentId,
+                DownloadTaskAlbumId = music.Parent!.ParentId,
+                DownloadTaskArtistId = music.Parent.Parent!.ParentId,
+                Message = "music-batch",
+                Status = DownloadStatus.Downloading,
+                LogLevel = NotificationLevel.Information,
+                CreatedAt = createdAt,
+            },
+            new DownloadTaskOtherVideoFileLog
+            {
+                DownloadTaskFileId = video.Id,
+                DownloadTaskOtherVideoId = video.ParentId,
+                Message = "video-batch",
+                Status = DownloadStatus.Downloading,
+                LogLevel = NotificationLevel.Information,
+                CreatedAt = createdAt,
+            },
+        ];
+
+        // Act
+        await dbContext.CreateDownloadClientLogs(logs, CancellationToken);
+
+        // Assert
+        var musicLog = await dbContext.DownloadTaskTrackFileLogs.SingleAsync(CancellationToken);
+        (
+            musicLog.DownloadTaskFileId,
+            musicLog.DownloadTaskTrackId,
+            musicLog.DownloadTaskAlbumId,
+            musicLog.DownloadTaskArtistId
+        ).ShouldBe((music.Id, music.ParentId, music.Parent.ParentId, music.Parent.Parent.ParentId));
+        (musicLog.Message, musicLog.Status, musicLog.LogLevel, musicLog.CreatedAt).ShouldBe(
+            ("music-batch", DownloadStatus.Downloading, NotificationLevel.Information, createdAt)
+        );
+        var videoLog = await dbContext.DownloadTaskOtherVideoFileLogs.SingleAsync(CancellationToken);
+        (
+            videoLog.DownloadTaskFileId,
+            videoLog.DownloadTaskOtherVideoId,
+            videoLog.Message,
+            videoLog.Status,
+            videoLog.LogLevel,
+            videoLog.CreatedAt
+        ).ShouldBe(
+            (
+                video.Id,
+                video.ParentId,
+                "video-batch",
+                DownloadStatus.Downloading,
+                NotificationLevel.Information,
+                createdAt
+            )
+        );
+        (await dbContext.DownloadTaskMovieFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
+        (await dbContext.DownloadTaskTvShowEpisodeFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
+        (await dbContext.DownloadTaskPhotoImageFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
+    }
+
+    [Test]
+    [Arguments(true, true)]
+    [Arguments(true, false)]
+    [Arguments(false, true)]
+    [Arguments(false, false)]
+    public async Task ShouldRemoveOnlyEmptyNewMediaAncestors_WhenCleaningByServerOrGlobally(bool music, bool byServer)
+    {
+        // Arrange
+        await SetupDatabase(
+            62533,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .Include(x => x.Parent).ThenInclude(x => x!.Parent).ThenInclude(x => x!.Parent)
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
+        var targetRoot = (
+            await dbContext.GetRootDownloadTaskKeyAsync(target.ToKey(), cancellationToken: CancellationToken)
+        )!;
+        var controlRoot = (
+            await dbContext.GetRootDownloadTaskKeyAsync(control.ToKey(), cancellationToken: CancellationToken)
+        )!;
+        var beforeRootIds = (await dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken))
+            .Select(x => x.Id).ToArray();
+        (await dbContext.GetDownloadTaskKeysAsync([targetRoot.Id, controlRoot.Id], CancellationToken))
+            .Select(x => x.Id)
+            .Order()
+            .ShouldBe(new[] { targetRoot.Id, controlRoot.Id }.Order());
+        if (music)
+            await dbContext
+                .DownloadTaskMusicTrackFiles.Where(x => x.Id == target.Id)
+                .ExecuteDeleteAsync(CancellationToken);
+        else
+            await dbContext
+                .DownloadTaskOtherVideoFiles.Where(x => x.Id == target.Id)
+                .ExecuteDeleteAsync(CancellationToken);
+
+        // Act
+        var count = byServer
+            ? await dbContext.DeleteOrphanedParentTasksByServerIdAsync(target.PlexServerId, CancellationToken)
+            : await dbContext.DeleteOrphanedParentTasksAsync(CancellationToken);
+
+        // Assert
+        count.ShouldBe(music ? 3 : 1);
+        (await dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken))
+            .Select(x => x.Id).Order()
+            .ShouldBe(beforeRootIds.Where(id => id != targetRoot.Id).Order());
+        (await dbContext.GetDownloadTaskKeyAsync(targetRoot.Id, CancellationToken)).ShouldBeNull();
+        (await dbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken))!.Id.ShouldBe(control.Id);
+        if (music)
+        {
+            (
+                await dbContext
+                    .DownloadTaskMusicTracks.Select(x => new { x.Id, x.ParentId })
+                    .ToListAsync(CancellationToken)
+            )
+                .Select(x => (x.Id, x.ParentId))
+                .ShouldBe([
+                    (
+                        ((DownloadTaskMusicTrackFile)control).ParentId,
+                        ((DownloadTaskMusicTrackFile)control).Parent!.ParentId
+                    ),
+                ]);
+            (await dbContext.DownloadTaskMusicAlbums.Select(x => x.ParentId).ToListAsync(CancellationToken)).ShouldBe([
+                controlRoot.Id,
+            ]);
+        }
+    }
+
+    [Test]
+    [Arguments(DownloadTaskType.MusicTrackData)]
+    [Arguments(DownloadTaskType.MusicTrackPart)]
+    [Arguments(DownloadTaskType.OtherVideoData)]
+    [Arguments(DownloadTaskType.OtherVideoPart)]
+    public async Task ShouldPersistOnlySelectedFileState_WhenSettingNewMediaStatus(DownloadTaskType type)
+    {
+        // Arrange
+        await SetupDatabase(
+            62534,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var music = type is DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart;
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
+        var key = target.ToKey() with { Type = type };
+        (await dbContext.GetDownloadStatusAsync(key)).ShouldBe(DownloadStatus.Queued);
+        (await dbContext.GetDownloadStatusAsync(control.ToKey())).ShouldBe(DownloadStatus.Queued);
+
+        // Act
+        await dbContext.SetDownloadStatus(key, DownloadStatus.Error);
+
+        // Assert
+        (await dbContext.GetDownloadStatusAsync(key)).ShouldBe(DownloadStatus.Error);
+        (await dbContext.GetDownloadStatusAsync(control.ToKey())).ShouldBe(DownloadStatus.Queued);
+        (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!
+            .ToParentKey()!
+            .Id.ShouldBe(target.ToParentKey()!.Id);
+    }
+
+    [Test]
+    [Arguments(DownloadTaskType.MusicTrackData)]
+    [Arguments(DownloadTaskType.MusicTrackPart)]
+    [Arguments(DownloadTaskType.OtherVideoData)]
+    [Arguments(DownloadTaskType.OtherVideoPart)]
+    public async Task ShouldPersistOnlySelectedFileAndAggregateItsAncestors_WhenUpdatingNewMediaProgress(
+        DownloadTaskType type
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            62531,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var music = type is DownloadTaskType.MusicTrackData or DownloadTaskType.MusicTrackPart;
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .Include(x => x.Parent).ThenInclude(x => x!.Parent).ThenInclude(x => x!.Parent)
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .Include(x => x.Parent)
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
+        var key = target.ToKey() with { Type = type };
+        var canonicalKey = target.ToKey();
+        var rootKey = music
+            ? ((DownloadTaskMusicTrackFile)target).Parent!.Parent!.Parent!.ToKey()
+            : ((DownloadTaskOtherVideoFile)target).Parent!.ToKey();
+        var ancestorKeys = music
+            ? new[]
+            {
+                ((DownloadTaskMusicTrackFile)target).Parent!.ToKey(),
+                ((DownloadTaskMusicTrackFile)target).Parent!.Parent!.ToKey(),
+                rootKey,
+            }
+            : new[] { rootKey };
+        (await dbContext.GetDownloadTaskFileAsync(canonicalKey, CancellationToken))!.DownloadStatus.ShouldBe(
+            DownloadStatus.Queued
+        );
+        (await dbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken))!.DataReceived.ShouldBe(0);
+        target.DataTotal = 1000;
+        target.DataReceived = 250;
+        target.DownloadSpeed = 50;
+        target.Percentage = 25;
+        target.TimeRemaining = 15;
+        target.FileTransferSpeed = 100;
+        target.FileDataTransferred = 500;
+        target.CurrentFileTransferBytesOffset = 500;
+        var snapshot = new DirectDownloadSnapshot
+        {
+            SaveProgress = 25,
+            Status = 1,
+            Urls = ["/file"],
+            TotalFileSize = 1000,
+            FileName = target.FileName,
+            DownloadingFileExtension = ".part",
+            Chunks = [],
+            IsSupportDownloadInRange = true,
+        };
+
+        // Act
+        await dbContext.UpdateDownloadProgress(key, target, snapshot, CancellationToken);
+        await dbContext.UpdateDownloadFileTransferProgress(key, target, CancellationToken);
+        await dbContext.SetDownloadStatus(key, DownloadStatus.Error);
+        var changed = await dbContext.DetermineDownloadStatus(key, CancellationToken);
+
+        // Assert
+        changed.ShouldBe(ancestorKeys);
+        (await dbContext.GetDownloadTaskKeyAsync(target.Id, CancellationToken)).ShouldBe(canonicalKey);
+        (await dbContext.GetDownloadTaskTypeAsync(target.Id, CancellationToken)).ShouldBe(canonicalKey.Type);
+        (await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: CancellationToken)).ShouldBe(rootKey);
+        (await dbContext.GetAffectedRootDownloadTaskIdsAsync([target.Id], CancellationToken)).ShouldBe([rootKey.Id]);
+        (await dbContext.GetDownloadableChildTaskKeys(rootKey, CancellationToken)).ShouldBe([canonicalKey]);
+        var persisted = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!;
+        (persisted.DataReceived, persisted.DataTotal, persisted.DownloadSpeed, persisted.Percentage).ShouldBe(
+            (250L, 1000L, 50L, 50m)
+        );
+        (
+            persisted.FileTransferSpeed,
+            persisted.FileDataTransferred,
+            persisted.CurrentFileTransferBytesOffset,
+            persisted.TimeRemaining
+        ).ShouldBe((100L, 500L, 500L, 15));
+        persisted.DirectDownloadSnapshot.ShouldNotBeNull();
+        (
+            persisted.DirectDownloadSnapshot.SaveProgress,
+            persisted.DirectDownloadSnapshot.TotalFileSize,
+            persisted.DirectDownloadSnapshot.FileName
+        ).ShouldBe((25d, 1000L, target.FileName));
+        persisted.DirectDownloadSnapshot.Urls.ShouldBe(["/file"]);
+        foreach (var ancestor in ancestorKeys)
+        {
+            (await dbContext.GetDownloadStatusAsync(ancestor)).ShouldBe(DownloadStatus.Error);
+            (await dbContext.GetDownloadTaskStatusAsync(ancestor, CancellationToken)).ShouldBe(DownloadStatus.Error);
+        }
+        var detail = (await dbContext.GetDownloadTaskAsync(rootKey, CancellationToken))!;
+        detail.DataTotal.ShouldBe(1000);
+        detail.DataReceived.ShouldBe(250);
+        var progress = (
+            await dbContext.GetDownloadProgressTasksByServerAsync(target.PlexServerId, CancellationToken)
+        ).Single(x => x.Id == rootKey.Id);
+        (progress.DataTotal, progress.DataReceived, progress.DownloadStatus).ShouldBe(
+            (1000L, 250L, DownloadStatus.Error)
+        );
+        var beforeReset = persisted;
+        await dbContext.ClearDownloadSpeed(key, CancellationToken);
+        persisted = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!;
+        (persisted.DownloadSpeed, persisted.TimeRemaining, persisted.FileTransferSpeed).ShouldBe((0L, 0, 100L));
+        var reset = await dbContext.ResetDownloadTaskProgress(key, DownloadStatus.Stopped, CancellationToken);
+        reset.IsSuccess.ShouldBeTrue();
+        reset.Errors.Count.ShouldBe(0);
+        persisted = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!;
+        (persisted.DataReceived, persisted.DownloadSpeed, persisted.Percentage, persisted.TimeRemaining).ShouldBe(
+            (0L, 0L, 0m, 0)
+        );
+        (persisted.FileTransferSpeed, persisted.FileDataTransferred, persisted.CurrentFileTransferBytesOffset).ShouldBe(
+            (0L, 0L, 0L)
+        );
+        persisted.DirectDownloadSnapshot.ShouldBeNull();
+        (
+            persisted.Id,
+            persisted.ToParentKey()!.Id,
+            persisted.FileName,
+            persisted.FileLocationUrl,
+            persisted.DataTotal,
+            persisted.DownloadStatus
+        ).ShouldBe(
+            (
+                target.Id,
+                beforeReset.ToParentKey()!.Id,
+                beforeReset.FileName,
+                beforeReset.FileLocationUrl,
+                1000L,
+                DownloadStatus.Stopped
+            )
+        );
+        var retained = (await dbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken))!;
+        (
+            retained.Id,
+            retained.ToParentKey()!.Id,
+            retained.DataReceived,
+            retained.DownloadStatus,
+            retained.DirectDownloadSnapshot
+        ).ShouldBe((control.Id, control.ToParentKey()!.Id, 0L, DownloadStatus.Queued, (DirectDownloadSnapshot?)null));
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task ShouldResolveEveryHierarchyKeyAndDeleteOnlySelectedEmptyRoot_WhenCleaningNewMedia(bool music)
+    {
+        // Arrange
+        await SetupDatabase(
+            62532,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
+            .Include(x => x.Parent).ThenInclude(x => x!.Parent).ThenInclude(x => x!.Parent)
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
+            .Include(x => x.Parent)
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        DownloadTaskFileBase target = music ? musicFiles[0] : otherVideoFiles[0];
+        DownloadTaskFileBase control = music ? musicFiles[1] : otherVideoFiles[1];
+        var root = music
+            ? ((DownloadTaskMusicTrackFile)target).Parent!.Parent!.Parent!.ToKey()
+            : ((DownloadTaskOtherVideoFile)target).Parent!.ToKey();
+        var controlRoot = music
+            ? ((DownloadTaskMusicTrackFile)control).Parent!.Parent!.Parent!.ToKey()
+            : ((DownloadTaskOtherVideoFile)control).Parent!.ToKey();
+        var keys = music
+            ? new[]
+            {
+                root,
+                ((DownloadTaskMusicTrackFile)target).Parent!.Parent!.ToKey(),
+                ((DownloadTaskMusicTrackFile)target).Parent!.ToKey(),
+                target.ToKey(),
+            }
+            : new[] { root, target.ToKey() };
+        var beforeRootIds = (await dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken))
+            .Select(x => x.Id).ToArray();
+        var found = await dbContext.GetDownloadTaskKeysAsync(keys.Select(x => x.Id).ToList(), CancellationToken);
+        found.OrderBy(x => x.Id).ShouldBe(keys.OrderBy(x => x.Id));
+        foreach (var key in keys)
+        {
+            (await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: CancellationToken)).ShouldBe(root);
+            (await dbContext.GetDownloadTaskAsync(key, CancellationToken))!.Id.ShouldBe(key.Id);
+            var inferred = await dbContext.GetDownloadTaskAsync(key.Id, cancellationToken: CancellationToken);
+            inferred.ShouldNotBeNull();
+            inferred.DownloadTaskType.ShouldBe(key.Type);
+            inferred.Id.ShouldBe(key.Id);
+            inferred.ParentId.ShouldBe(
+                key.Id == root.Id ? Guid.Empty : keys[Array.IndexOf(keys, key) - 1].Id
+            );
+            (await dbContext.GetDownloadableChildTaskKeys(key, CancellationToken)).ShouldBe([target.ToKey()]);
+            (await dbContext.GetDownloadTaskKeyAsync(key.Id, CancellationToken)).ShouldBe(key);
+        }
+        if (music)
+            await dbContext
+                .DownloadTaskMusicTrackFiles.Where(x => x.Id == target.Id)
+                .ExecuteDeleteAsync(CancellationToken);
+        else
+            await dbContext
+                .DownloadTaskOtherVideoFiles.Where(x => x.Id == target.Id)
+                .ExecuteDeleteAsync(CancellationToken);
+
+        // Act
+        var deleted = await dbContext.DeleteOrphanedParentTasksByRootIdsAsync([root.Id], CancellationToken);
+
+        // Assert
+        deleted.ShouldBe(music ? 3 : 1);
+        (await dbContext.GetDownloadTaskKeyAsync(root.Id, CancellationToken)).ShouldBeNull();
+        (await dbContext.GetDownloadTaskKeyAsync(controlRoot.Id, CancellationToken)).ShouldBe(controlRoot);
+        (await dbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken))!
+            .ToParentKey()!
+            .Id.ShouldBe(control.ToParentKey()!.Id);
+        (await dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken))
+            .Select(x => x.Id).Order()
+            .ShouldBe(beforeRootIds.Where(id => id != root.Id).Order());
+    }
+
+    [Test]
+    [Arguments(DownloadTaskType.MoviePart)]
+    [Arguments(DownloadTaskType.EpisodePart)]
+    public async Task ShouldPersistOnlySelectedPartStatus_WhenSettingStatus(DownloadTaskType type)
+    {
+        // Arrange
+        await SetupDatabase(
+            226687,
+            config =>
+            {
+                config.MovieDownloadTasksCount = 2;
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 2;
+            }
+        );
+        using var dbContext = IDbContext;
+        DownloadTaskFileBase target =
+            type == DownloadTaskType.MoviePart
+                ? await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id).FirstAsync(CancellationToken)
+                : await dbContext.DownloadTaskTvShowEpisodeFile.OrderBy(x => x.Id).FirstAsync(CancellationToken);
+        var statuses = dbContext
+            .DownloadTaskMovieFile.Select(x => new { x.Id, x.DownloadStatus })
+            .Concat(dbContext.DownloadTaskTvShowEpisodeFile.Select(x => new { x.Id, x.DownloadStatus }))
+            .OrderBy(x => x.Id);
+        var before = await statuses.ToListAsync(CancellationToken);
+        before.Single(x => x.Id == target.Id).DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        var key = target.ToKey() with { Type = type };
+
+        // Act
+        await dbContext.SetDownloadStatus(key, DownloadStatus.Error);
+
+        // Assert
+        var after = await statuses.ToListAsync(CancellationToken);
+        after
+            .Select(x => (x.Id, x.DownloadStatus))
+            .ShouldBe(
+                before.Select(x => (x.Id, x.Id == target.Id ? DownloadStatus.Error : x.DownloadStatus))
+            );
+    }
+
+    [Test]
     public async Task ShouldSetTheDownloadTaskParentOfTypeMovieDataToDownloadFinished_WhenTheMovieDataIsDownloadStatusIsDownloadFinished()
     {
         // Arrange
@@ -16,17 +578,27 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             }
         );
 
-        var downloadTasks = await IDbContext.DownloadTaskMovie.Include(x => x.Children).ToListAsync(CancellationToken);
-        var testDownloadTask = downloadTasks.First().Children.First();
-        await IDbContext.SetDownloadStatus(testDownloadTask.ToKey(), DownloadStatus.DownloadFinished);
+        using var dbContext = IDbContext;
+        var downloadTasks = await dbContext.DownloadTaskMovie.Include(x => x.Children).ToListAsync(CancellationToken);
+        var targetMovie = downloadTasks.First();
+        var testDownloadTask = targetMovie.Children.First();
+        var before = downloadTasks.Select(x => (x.Id, x.DownloadStatus)).OrderBy(x => x.Id).ToArray();
+        await dbContext.SetDownloadStatus(testDownloadTask.ToKey(), DownloadStatus.DownloadFinished);
 
         // Act
-        await IDbContext.DetermineDownloadStatus(testDownloadTask.ToKey(), CancellationToken);
+        var changedKeys = await dbContext.DetermineDownloadStatus(testDownloadTask.ToKey(), CancellationToken);
 
         // Assert
-        downloadTasks = await IDbContext.DownloadTaskMovie.Include(x => x.Children).ToListAsync(CancellationToken);
-
-        downloadTasks[0].DownloadStatus.ShouldBe(DownloadStatus.DownloadFinished);
+        changedKeys.ShouldBe([targetMovie.ToKey()]);
+        var after = await dbContext
+            .DownloadTaskMovie.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.DownloadStatus })
+            .ToListAsync(CancellationToken);
+        after
+            .Select(x => (x.Id, x.DownloadStatus))
+            .ShouldBe(
+                before.Select(x => (x.Id, x.Id == targetMovie.Id ? DownloadStatus.DownloadFinished : x.DownloadStatus))
+            );
     }
 
     [Test]
@@ -43,25 +615,42 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             }
         );
 
-        var downloadTasks = await IDbContext.DownloadTaskTvShow.IncludeAll().ToListAsync(CancellationToken);
-
-        var downloadTaskTvShowEpisodeFile = downloadTasks
-            .ElementAt(3)
-            .Children.ElementAt(2)
-            .Children.ElementAt(3)
-            .Children.ElementAt(0);
-
-        await IDbContext.SetDownloadStatus(downloadTaskTvShowEpisodeFile.ToKey(), DownloadStatus.Error);
+        using var dbContext = IDbContext;
+        var downloadTasks = await dbContext.DownloadTaskTvShow.IncludeAll().ToListAsync(CancellationToken);
+        var targetShow = downloadTasks.ElementAt(3);
+        var targetSeason = targetShow.Children.ElementAt(2);
+        var targetEpisode = targetSeason.Children.ElementAt(3);
+        var downloadTaskTvShowEpisodeFile = targetEpisode.Children.ElementAt(0);
+        var before = downloadTasks
+            .Cast<DownloadTaskBase>()
+            .Concat(downloadTasks.SelectMany(x => x.Children))
+            .Concat(downloadTasks.SelectMany(x => x.Children).SelectMany(x => x.Children))
+            .Select(x => (x.Id, x.DownloadStatus))
+            .OrderBy(x => x.Id)
+            .ToArray();
+        var expectedChangedKeys = new[] { targetEpisode.ToKey(), targetSeason.ToKey(), targetShow.ToKey() };
+        await dbContext.SetDownloadStatus(downloadTaskTvShowEpisodeFile.ToKey(), DownloadStatus.Error);
 
         // Act
-        await IDbContext.DetermineDownloadStatus(downloadTaskTvShowEpisodeFile.ToKey(), CancellationToken);
+        var changedKeys = await dbContext.DetermineDownloadStatus(
+            downloadTaskTvShowEpisodeFile.ToKey(),
+            CancellationToken
+        );
 
         // Assert
-        var downloadTasksDb = await IDbContext
-            .DownloadTaskTvShow.AsTracking()
-            .IncludeAll()
-            .ToListAsync(CancellationToken);
-        downloadTasksDb[3].DownloadStatus.ShouldBe(DownloadStatus.Error);
+        changedKeys.ShouldBe(expectedChangedKeys);
+        var after = await dbContext.DownloadTaskTvShow.IncludeAll().ToListAsync(CancellationToken);
+        after
+            .Cast<DownloadTaskBase>()
+            .Concat(after.SelectMany(x => x.Children))
+            .Concat(after.SelectMany(x => x.Children).SelectMany(x => x.Children))
+            .Select(x => (x.Id, x.DownloadStatus))
+            .OrderBy(x => x.Id)
+            .ShouldBe(
+                before.Select(x =>
+                    (x.Id, expectedChangedKeys.Any(key => key.Id == x.Id) ? DownloadStatus.Error : x.DownloadStatus)
+                )
+            );
     }
 
     [Test]
@@ -544,12 +1133,18 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         );
         var dbContext = IDbContext;
         var integrationId = await dbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
-        var movieFiles = await dbContext.DownloadTaskMovieFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var movieFiles = await dbContext
+            .DownloadTaskMovieFile.AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         movieFiles[0].RadarrIntegrationId = integrationId;
         await dbContext.SaveChangesAsync(CancellationToken);
 
         // Act
-        var result = await dbContext.DownloadTaskMovieFile.WhereIntegrationIs(null).Select(x => x.Id).ToListAsync(CancellationToken);
+        var result = await dbContext
+            .DownloadTaskMovieFile.WhereIntegrationIs(null)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
 
         // Assert
         result.Count.ShouldBe(2);
@@ -571,12 +1166,17 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         );
         var dbContext = IDbContext;
         var integrationId = await dbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
-        var movieFiles = await dbContext.DownloadTaskMovieFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var movieFiles = await dbContext
+            .DownloadTaskMovieFile.AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         movieFiles[0].RadarrIntegrationId = integrationId;
         await dbContext.SaveChangesAsync(CancellationToken);
 
         // Act
-        var result = await dbContext.DownloadTaskMovieFile.WhereIntegrationOwnershipMatches(null).SingleAsync(CancellationToken);
+        var result = await dbContext
+            .DownloadTaskMovieFile.WhereIntegrationOwnershipMatches(null)
+            .SingleAsync(CancellationToken);
 
         // Assert
         result.Id.ShouldBe(movieFiles[1].Id);
@@ -602,9 +1202,7 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             .RadarrIntegrations.OrderBy(x => x.Id)
             .Select(x => x.Id)
             .ToListAsync(CancellationToken);
-        var sonarrId = await dbContext
-            .SonarrIntegrations.Select(x => x.Id)
-            .SingleAsync(CancellationToken);
+        var sonarrId = await dbContext.SonarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
         var movieFiles = await dbContext
             .DownloadTaskMovieFile.AsTracking()
             .OrderBy(x => x.Id)
@@ -616,9 +1214,7 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         var identity = new IntegrationIdentity(IntegrationType.Radarr, radarrIds[0]);
 
         // Act
-        var result = await dbContext
-            .DownloadTaskMovieFile.WhereIntegrationIs(identity)
-            .SingleAsync(CancellationToken);
+        var result = await dbContext.DownloadTaskMovieFile.WhereIntegrationIs(identity).SingleAsync(CancellationToken);
 
         // Assert
         result.Id.ShouldBe(movieFiles[0].Id);
@@ -640,12 +1236,8 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var radarrId = await dbContext
-            .RadarrIntegrations.Select(x => x.Id)
-            .SingleAsync(CancellationToken);
-        var sonarrId = await dbContext
-            .SonarrIntegrations.Select(x => x.Id)
-            .SingleAsync(CancellationToken);
+        var radarrId = await dbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
+        var sonarrId = await dbContext.SonarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
         var movieFiles = await dbContext
             .DownloadTaskMovieFile.AsTracking()
             .OrderBy(x => x.Id)
@@ -656,9 +1248,7 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         var identity = new IntegrationIdentity(IntegrationType.Sonarr, sonarrId);
 
         // Act
-        var result = await dbContext
-            .DownloadTaskMovieFile.WhereIntegrationIs(identity)
-            .SingleAsync(CancellationToken);
+        var result = await dbContext.DownloadTaskMovieFile.WhereIntegrationIs(identity).SingleAsync(CancellationToken);
 
         // Assert
         result.Id.ShouldBe(movieFiles[1].Id);
@@ -684,9 +1274,7 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
             .RadarrIntegrations.OrderBy(x => x.Id)
             .Select(x => x.Id)
             .ToListAsync(CancellationToken);
-        var sonarrId = await dbContext
-            .SonarrIntegrations.Select(x => x.Id)
-            .SingleAsync(CancellationToken);
+        var sonarrId = await dbContext.SonarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
         var movieFiles = await dbContext
             .DownloadTaskMovieFile.AsTracking()
             .OrderBy(x => x.Id)

@@ -6,55 +6,107 @@ public static partial class DbContextExtensions
         this IReaparrDbContext dbContext,
         int plexApiRatingKey,
         int plexServerId,
-        PlexMediaType mediaType,
-        CancellationToken cancellationToken = default
+        PlexMediaType mediaType
     )
     {
+        Result<int> ToLookupResult(int id) =>
+            id == 0
+                ? Result.Fail<int>(
+                    $"Media with rating key {plexApiRatingKey} was not found on server {plexServerId} for type {mediaType}"
+                )
+                : Result.Ok(id);
+
         switch (mediaType)
         {
             case PlexMediaType.Movie:
             {
-                var entity = await dbContext.PlexMovies.FirstOrDefaultAsync(
-                    x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId,
-                    cancellationToken
-                );
-                if (entity is not null)
-                    return Result.Ok(entity.Id);
-
-                break;
+                var id = await dbContext
+                    .PlexMovies.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
             }
             case PlexMediaType.TvShow:
             {
-                var entity = await dbContext.PlexTvShows.FirstOrDefaultAsync(
-                    x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId,
-                    cancellationToken
-                );
-                if (entity is not null)
-                    return Result.Ok(entity.Id);
-
-                break;
+                var id = await dbContext
+                    .PlexTvShows.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
             }
             case PlexMediaType.Season:
             {
-                var entity = await dbContext.PlexTvShowSeason.FirstOrDefaultAsync(
-                    x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId,
-                    cancellationToken
-                );
-                if (entity is not null)
-                    return Result.Ok(entity.Id);
-
-                break;
+                var id = await dbContext
+                    .PlexTvShowSeason.Where(x =>
+                        x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId
+                    )
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
             }
             case PlexMediaType.Episode:
             {
-                var entity = await dbContext.PlexTvShowEpisodes.FirstOrDefaultAsync(
-                    x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId,
-                    cancellationToken
-                );
-                if (entity is not null)
-                    return Result.Ok(entity.Id);
-
-                break;
+                var id = await dbContext
+                    .PlexTvShowEpisodes.Where(x =>
+                        x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId
+                    )
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
+            }
+            case PlexMediaType.MusicArtist:
+            {
+                var id = await dbContext
+                    .PlexArtists.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
+            }
+            case PlexMediaType.MusicAlbum:
+            {
+                var id = await dbContext
+                    .PlexAlbums.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
+            }
+            case PlexMediaType.MusicTrack:
+            {
+                var id = await dbContext
+                    .PlexTracks.Where(x => x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId)
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
+            }
+            case PlexMediaType.PhotoAlbum:
+            {
+                var id = await dbContext
+                    .PlexPhotoAlbums.Where(x =>
+                        x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId
+                    )
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
+            }
+            case PlexMediaType.PhotoImage:
+            {
+                var id = await dbContext
+                    .PlexPhotoImages.Where(x =>
+                        x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId
+                    )
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
+            }
+            case PlexMediaType.OtherVideos:
+            {
+                var id = await dbContext
+                    .PlexOtherVideos.Where(x =>
+                        x.PlexApiRatingKey == plexApiRatingKey && x.PlexServerId == plexServerId
+                    )
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                return ToLookupResult(id);
             }
             default:
                 return Result.Fail(
@@ -62,13 +114,6 @@ public static partial class DbContextExtensions
                     mediaType
                 );
         }
-
-        return Result.Fail(
-            "Couldn't find a plexMediaId with key {PlexApiRatingKey}, plexServerId {PlexServerId} with type {PlexMediaType}",
-            plexApiRatingKey,
-            plexServerId,
-            mediaType
-        );
     }
 
     /// <summary>

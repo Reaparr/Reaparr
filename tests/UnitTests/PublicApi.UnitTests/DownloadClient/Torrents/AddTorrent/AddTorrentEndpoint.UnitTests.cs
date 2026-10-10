@@ -221,6 +221,71 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     }
 
     [Test]
+    [Arguments(IntegrationType.Sonarr, PlexMediaType.MusicArtist)]
+    [Arguments(IntegrationType.Radarr, PlexMediaType.MusicArtist)]
+    [Arguments(IntegrationType.Sonarr, PlexMediaType.MusicAlbum)]
+    [Arguments(IntegrationType.Radarr, PlexMediaType.MusicAlbum)]
+    [Arguments(IntegrationType.Sonarr, PlexMediaType.MusicTrack)]
+    [Arguments(IntegrationType.Radarr, PlexMediaType.MusicTrack)]
+    [Arguments(IntegrationType.Sonarr, PlexMediaType.PhotoAlbum)]
+    [Arguments(IntegrationType.Radarr, PlexMediaType.PhotoAlbum)]
+    [Arguments(IntegrationType.Sonarr, PlexMediaType.PhotoImage)]
+    [Arguments(IntegrationType.Radarr, PlexMediaType.PhotoImage)]
+    [Arguments(IntegrationType.Sonarr, PlexMediaType.OtherVideos)]
+    [Arguments(IntegrationType.Radarr, PlexMediaType.OtherVideos)]
+    [Arguments(IntegrationType.Sonarr, PlexMediaType.Movie)]
+    [Arguments(IntegrationType.Radarr, PlexMediaType.Episode)]
+    public async Task ShouldRejectUnsupportedOrOppositeFamilyWithoutCreatingTasks_WhenIntegrationUploadsTorrent(
+        IntegrationType integrationType,
+        PlexMediaType mediaType
+    )
+    {
+        // Arrange
+        await SetupDatabase(88390, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.SonarrIntegrationCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
+        var dbContext = IDbContext;
+        var integrationId = integrationType == IntegrationType.Sonarr
+            ? await dbContext.SonarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken)
+            : await dbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
+        var before = await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.ParentId, x.HashId, x.DownloadStatus })
+            .ToArrayAsync(CancellationToken);
+        before.Length.ShouldBe(1);
+        var metadata = CreateValidTorrentMetadata(mediaType);
+        var (torrentFile, torrentFileMock) = CreateMockTorrentFile(metadata, "unsupported.torrent");
+        var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
+
+        // Act
+        var response = await TestEndpointHandleAsync(
+            request,
+            integrationIdentity: new IntegrationIdentity(integrationType, integrationId)
+        );
+
+        // Assert
+        if (mediaType is PlexMediaType.Movie or PlexMediaType.Episode)
+            response.StatusCode.ShouldBe(403);
+        else
+        {
+            response.IsValid.ShouldBeFalse();
+            response.ValidationErrors.Count.ShouldBe(1);
+            response.ValidationErrors.Single().PropertyName.ShouldBe("GeneralErrors");
+            response.ValidationErrors.Single().ErrorMessage.ShouldBe("Type");
+        }
+        (await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.ParentId, x.HashId, x.DownloadStatus })
+            .ToArrayAsync(CancellationToken)).ShouldBe(before);
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<CreateDownloadTasksCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+        torrentFileMock.Verify(x => x.OpenReadStream(), Times.Once());
+    }
+
+    [Test]
     public async Task ShouldSetHashIdOnMovieDownloadTask_WhenTorrentIsMovieType()
     {
         // Arrange

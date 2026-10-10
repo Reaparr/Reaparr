@@ -8,7 +8,7 @@ public enum ReleaseSource
     /// <summary>
     /// Unknown or unspecified release source.
     /// </summary>
-    [JsonStringEnumMemberName("")]
+    [JsonStringEnumMemberName(nameof(None))]
     None = 0,
 
     /// <summary>

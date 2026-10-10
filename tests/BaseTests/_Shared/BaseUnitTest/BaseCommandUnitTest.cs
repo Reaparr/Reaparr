@@ -33,6 +33,9 @@ public abstract class BaseCommandUnitTest<TCommand> : BaseUnitTest
     /// <param name="command"> The ICommand to execute inside the handler.</param>
     protected async Task<Result> TestHandlerExecuteAsync(TCommand command)
     {
+        if ((object?)command is null)
+            return Result.Fail("Command cannot be null");
+
         var validator = GetValidator();
         var validationResult = await validator.ValidateAsync(command, CancellationToken);
         if (!validationResult.IsValid)

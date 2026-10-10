@@ -33,28 +33,29 @@ internal static class MediaOverviewExtensions
         this IReaparrDbContext context,
         MediaQueryFilter filter,
         CancellationToken cancellationToken
+    ) => await context.ResolveAllowedLibraryIdsAsync(filter, filter.MediaType, cancellationToken);
+
+    public static async Task<IReadOnlyCollection<int>> ResolveAllowedLibraryIdsAsync(
+        this IReaparrDbContext context,
+        MediaQueryFilter filter,
+        PlexMediaType libraryType,
+        CancellationToken cancellationToken
     )
     {
         if (filter.PlexLibraryId > 0)
         {
-            return await context
-                .PlexLibraries.IgnoreIsEnabledFilter()
-                .Where(x => x.Id == filter.PlexLibraryId && x.IsEnabled && x.Type == filter.MediaType)
-                .Select(x => x.Id)
-                .ToListAsync(cancellationToken);
+            return await context.PlexLibraries.IgnoreIsEnabledFilter()
+                .Where(x => x.Id == filter.PlexLibraryId && x.IsEnabled && x.Type == libraryType)
+                .Select(x => x.Id).ToListAsync(cancellationToken);
         }
 
         var libraries = context.PlexLibraries.Where(x =>
-            x.Type == filter.MediaType
-            && (!context.PlexAccounts.Any() || (x.PlexServer!.PlexAccountServers.Any() && x.PlexAccountLibraries.Any()))
-        );
-
+            x.Type == libraryType
+            && (!context.PlexAccounts.Any() || (x.PlexServer!.PlexAccountServers.Any() && x.PlexAccountLibraries.Any())));
         if (filter.FilterOwnedMedia)
             libraries = libraries.WhereIsNotOwned();
-
         if (filter.FilterOfflineMedia)
             libraries = libraries.Where(x => context.PlexServerStatuses.Any(status => status.PlexServerId == x.PlexServerId && status.IsSuccessful));
-
         return await libraries.Select(x => x.Id).ToListAsync(cancellationToken);
     }
 
@@ -100,14 +101,12 @@ internal static class MediaOverviewExtensions
             MediaCount = totalCount,
             MovieCount = filter.MediaType == PlexMediaType.Movie ? totalCount : 0,
             TvShowCount = filter.MediaType == PlexMediaType.TvShow ? totalCount : 0,
-            SeasonCount =
-                filter.MediaType == PlexMediaType.TvShow && !hasUserFilters
-                    ? totalSeasonCount
-                    : items.Sum(x => x.ChildCount),
-            EpisodeCount =
-                filter.MediaType == PlexMediaType.TvShow && !hasUserFilters
-                    ? totalEpisodeCount
-                    : items.Sum(x => x.GrandChildCount),
+            SeasonCount = filter.MediaType == PlexMediaType.TvShow
+                ? (!hasUserFilters ? totalSeasonCount : items.Sum(x => x.ChildCount))
+                : 0,
+            EpisodeCount = filter.MediaType == PlexMediaType.TvShow
+                ? (!hasUserFilters ? totalEpisodeCount : items.Sum(x => x.GrandChildCount))
+                : 0,
             TotalMovieCount = filter.MediaType == PlexMediaType.Movie ? totalCount : libraries.Sum(x => x.MovieCount),
             TotalTvShowCount =
                 filter.MediaType == PlexMediaType.TvShow ? totalCount : libraries.Sum(x => x.TvShowCount),

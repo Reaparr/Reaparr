@@ -12,7 +12,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="LukeHagar.PlexAPI.SDK" Version="0.20.7" />
+        <PackageReference Include="LukeHagar.PlexAPI.SDK" Version="0.21.0" />
     </ItemGroup>
     <ItemGroup>
         <Using Include="System.ComponentModel.DataAnnotations" />

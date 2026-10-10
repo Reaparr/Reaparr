@@ -54,6 +54,7 @@ public static partial class FakeData
         var typeToUse = mediaType ?? PlexMediaType.Movie;
 
         return _libraryMediaItemDTO
+            .Clone()
             .RuleFor(x => x.Type, _ => typeToUse)
             .RuleFor(x => x.Title, (f, x) => f.PlexMedia().MediaTitle(x.Type))
             .RuleFor(x => x.Guid, (f, x) => f.PlexMedia().Guid(x.Type))
@@ -379,6 +380,7 @@ public static partial class FakeData
     {
         var config = FakeDataConfig.FromOptions(options);
         return _libraryMediaItemMediaDTO
+            .Clone()
             .RuleFor(x => x.OptimizedForStreaming, f => f.Random.Bool())
             .RuleFor(
                 x => x.Parts,

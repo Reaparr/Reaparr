@@ -66,7 +66,7 @@ namespace Reaparr.PlexApi.UnitTests
                         VideoProfile = "high",
                         AudioProfile = "lc",
                         HasVoiceActivity = HasVoiceActivity.CreateBoolean(true),
-                        OptimizedForStreaming = true,
+                        OptimizedForStreaming = OptimizedForStreaming.One,
                         Part =
                         [
                             new Part
@@ -134,10 +134,7 @@ namespace Reaparr.PlexApi.UnitTests
                 DateTimeExtensions.FromUnixTime(sourceData.AddedAt),
                 tolerance: TimeSpan.FromSeconds(1)
             );
-            result.UpdatedAt.ShouldBe(
-                DateTimeExtensions.FromUnixTime(sourceData.UpdatedAt ?? 0),
-                tolerance: TimeSpan.FromSeconds(1)
-            );
+            result.UpdatedAt.ShouldBe(DateTimeExtensions.FromUnixTime(sourceData.UpdatedAt ?? 0));
 
             result.OriginallyAvailableAt.ShouldNotBeNull();
             result.OriginallyAvailableAt.ShouldBe(sourceData.OriginallyAvailableAt.ToString());
@@ -172,7 +169,7 @@ namespace Reaparr.PlexApi.UnitTests
             media.Bitrate.ShouldBe(sourceMedia.Bitrate!.Value);
             media.Width.ShouldBe(sourceMedia.Width!.Value);
             media.Height.ShouldBe(sourceMedia.Height!.Value);
-            media.OptimizedForStreaming.ShouldBe(sourceMedia.OptimizedForStreaming ?? false);
+            media.OptimizedForStreaming.ShouldBeTrue();
 
             // Parts
             media.Parts.Count.ShouldBe(1);
@@ -303,10 +300,7 @@ namespace Reaparr.PlexApi.UnitTests
                 DateTimeExtensions.FromUnixTime(sourceData.AddedAt),
                 tolerance: TimeSpan.FromSeconds(1)
             );
-            result.UpdatedAt.ShouldBe(
-                DateTimeExtensions.FromUnixTime(sourceData.UpdatedAt ?? 0),
-                tolerance: TimeSpan.FromSeconds(1)
-            );
+            result.UpdatedAt.ShouldBe(DateTimeExtensions.FromUnixTime(sourceData.UpdatedAt ?? 0));
 
             // Parse the string date to NodaTime.LocalDate if not null
             result.OriginallyAvailableAt.ShouldNotBeNull();
@@ -333,6 +327,46 @@ namespace Reaparr.PlexApi.UnitTests
 
             // Media list should be empty for TV show at show level
             result.Media.Count.ShouldBe(0);
+        }
+
+        [Test]
+        public void ShouldInferFullHdQuality_WhenMetadataIsNonPhotoClip()
+        {
+            // Arrange
+            var sourceData = new Metadata
+            {
+                RatingKey = "789",
+                Type = "clip",
+                Subtype = "video",
+                Title = "Other video",
+                Media = [new Media { Id = 1, VideoResolution = "1080" }],
+            };
+
+            // Act
+            var result = sourceData.ToMediaItemDTO();
+
+            // Assert
+            result.Media.Single().VideoResolution.ShouldBe(VideoQuality.FullHD);
+        }
+
+        [Test]
+        public void ShouldKeepQualityUnknown_WhenMetadataIsPhotoClip()
+        {
+            // Arrange
+            var sourceData = new Metadata
+            {
+                RatingKey = "790",
+                Type = "clip",
+                Subtype = "photo",
+                Title = "Photo clip",
+                Media = [new Media { Id = 2, VideoResolution = "1080" }],
+            };
+
+            // Act
+            var result = sourceData.ToMediaItemDTO();
+
+            // Assert
+            result.Media.Single().VideoResolution.ShouldBe(VideoQuality.Unknown);
         }
     }
 }

@@ -84,6 +84,105 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     }
 
     [Test]
+    public async Task ShouldIncludeMusicPhotoAndOtherVideoFilesAsDistinctParticipants()
+    {
+        // Arrange
+        await SetupDatabase(
+            85304,
+            config =>
+            {
+                config.PlexServerCount = 3;
+                config.PlexMusicLibraryCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var servers = await dbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var mediaTypes = new[] { PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos };
+        var taskOptions = new Action<FakeDataConfig>(config =>
+        {
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PhotoImageDownloadTasksCount = 1;
+            config.PhotoImageFileDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
+
+        for (var index = 0; index < mediaTypes.Length; index++)
+        {
+            var server = servers[index];
+            var library = await dbContext.PlexLibraries.SingleAsync(
+                x => x.PlexServerId == server.Id && x.Type == mediaTypes[index],
+                CancellationToken
+            );
+            switch (mediaTypes[index])
+            {
+                case PlexMediaType.MusicArtist:
+                {
+                    var task = FakeData.GetDownloadTaskMusicArtist(new Seed(85340), taskOptions).Generate();
+                    new[] { task }.SetRelationshipIds(server.Id, library.Id);
+                    dbContext.DownloadTaskMusicArtists.Add(task);
+                    break;
+                }
+                case PlexMediaType.PhotoAlbum:
+                {
+                    var task = FakeData.GetDownloadTaskPhotoAlbum(new Seed(85341), taskOptions).Generate();
+                    new[] { task }.SetRelationshipIds(server.Id, library.Id);
+                    dbContext.DownloadTaskPhotoAlbums.Add(task);
+                    break;
+                }
+                case PlexMediaType.OtherVideos:
+                {
+                    var task = FakeData.GetDownloadTaskOtherVideo(new Seed(85342), taskOptions).Generate();
+                    new[] { task }.SetRelationshipIds(server.Id, library.Id);
+                    dbContext.DownloadTaskOtherVideos.Add(task);
+                    break;
+                }
+            }
+        }
+
+        await dbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.DownloadTaskMusicTrackFiles.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.DownloadStatus, DownloadStatus.Downloading),
+            CancellationToken
+        );
+        await dbContext.DownloadTaskPhotoImageFiles.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.DownloadStatus, DownloadStatus.Downloading),
+            CancellationToken
+        );
+        await dbContext.DownloadTaskOtherVideoFiles.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.DownloadStatus, DownloadStatus.Downloading),
+            CancellationToken
+        );
+
+        var settings = new UserSettings();
+        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        {
+            Enabled = true,
+            Days = new() { ["Monday"] = new() { ["00:00"] = 3_000 } },
+        };
+        using var speedLimits = new DownloadSpeedLimitProvider(settings);
+        SetupDependencies(builder =>
+        {
+            builder.RegisterInstance(settings).As<IUserSettings>();
+            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+        });
+
+        // Act
+        var result = await TestHandlerExecuteAsync(
+            new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.Parse("2026-10-05T12:00:00Z"))
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        servers
+            .Select(x => speedLimits.GetEffectiveDownloadSpeedLimit(x.MachineIdentifier))
+            .ShouldBe(new long[] { 1_024_000, 1_024_000, 1_024_000 });
+    }
+
+    [Test]
     public async Task ShouldSplitOneKilobyteWithoutRoundingUp_WhenThreeServersAreDownloading()
     {
         // Arrange

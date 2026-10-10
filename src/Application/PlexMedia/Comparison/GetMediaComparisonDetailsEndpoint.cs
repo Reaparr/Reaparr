@@ -20,7 +20,7 @@ public class GetMediaComparisonDetailsEndpointRequestValidator : Validator<GetMe
     public GetMediaComparisonDetailsEndpointRequestValidator()
     {
         RuleFor(x => x.PlexMediaId).GreaterThan(0);
-        RuleFor(x => x.Type).Must(x => x is PlexMediaType.Movie or PlexMediaType.TvShow);
+        RuleFor(x => x.Type).Must(x => x.SupportsComparison());
     }
 }
 
@@ -60,6 +60,10 @@ public class GetMediaComparisonDetailsEndpoint
             ),
             PlexMediaType.TvShow => await _commandExecutor.Send(
                 new GetTvShowMediaComparisonDetailsCommand(req.PlexMediaId),
+                ct
+            ),
+            PlexMediaType.MusicArtist => await _commandExecutor.Send(
+                new GetMusicMediaComparisonDetailsCommand(req.PlexMediaId),
                 ct
             ),
             _ => Result.Fail<PlexMediaComparisonDetailsDTO>("Unsupported media type"),

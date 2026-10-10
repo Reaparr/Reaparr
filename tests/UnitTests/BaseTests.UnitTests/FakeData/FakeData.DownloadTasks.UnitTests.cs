@@ -211,6 +211,188 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
     }
 
     [Test]
+    public void MusicArtistDownloadTask_ShouldGenerateConfiguredHierarchyAndMusicFiles()
+    {
+        // Arrange
+        var seed = new Seed(24681);
+        var config = new FakeDataConfig
+        {
+            MusicAlbumDownloadTasksCount = 2,
+            MusicTrackDownloadTasksCount = 3,
+            MusicTrackFileDownloadTasksCount = 2,
+        };
+
+        // Act
+        var artist = FakeData
+            .GetDownloadTaskMusicArtist(
+                seed,
+                options =>
+                {
+                    options.MusicAlbumDownloadTasksCount = config.MusicAlbumDownloadTasksCount;
+                    options.MusicTrackDownloadTasksCount = config.MusicTrackDownloadTasksCount;
+                    options.MusicTrackFileDownloadTasksCount = config.MusicTrackFileDownloadTasksCount;
+                }
+            )
+            .Generate();
+        var files = artist.Children.SelectMany(album => album.Children).SelectMany(track => track.Children).ToList();
+
+        // Assert
+        artist.DownloadTaskType.ShouldBe(DownloadTaskType.MusicArtist);
+        artist.Children.Count.ShouldBe(config.MusicAlbumDownloadTasksCount);
+        artist.Children.ShouldAllBe(album => album.Children.Count == config.MusicTrackDownloadTasksCount);
+        files.Count.ShouldBe(
+            config.MusicAlbumDownloadTasksCount
+                * config.MusicTrackDownloadTasksCount
+                * config.MusicTrackFileDownloadTasksCount
+        );
+        artist.DataTotal.ShouldBe(files.Sum(file => file.DataTotal));
+        files.ShouldAllBe(
+            file =>
+                file.DownloadTaskType == DownloadTaskType.MusicTrackData
+                && file.Quality == VideoQuality.None
+                && file.FileName.EndsWith(".flac", StringComparison.Ordinal)
+                && file.DirectoryMeta.MusicArtistFolder == artist.Title.SanitizeFolderName()
+        );
+    }
+
+    [Test]
+    public void PhotoAlbumDownloadTask_ShouldGenerateConfiguredHierarchyAndPhotoFiles()
+    {
+        // Arrange
+        var seed = new Seed(24682);
+        var config = new FakeDataConfig
+        {
+            PhotoImageDownloadTasksCount = 2,
+            PhotoImageFileDownloadTasksCount = 3,
+        };
+
+        // Act
+        var album = FakeData
+            .GetDownloadTaskPhotoAlbum(
+                seed,
+                options =>
+                {
+                    options.PhotoImageDownloadTasksCount = config.PhotoImageDownloadTasksCount;
+                    options.PhotoImageFileDownloadTasksCount = config.PhotoImageFileDownloadTasksCount;
+                }
+            )
+            .Generate();
+        var files = album.Children.SelectMany(image => image.Children).ToList();
+
+        // Assert
+        album.DownloadTaskType.ShouldBe(DownloadTaskType.PhotoAlbum);
+        album.MediaType.ShouldBe(PlexMediaType.PhotoAlbum);
+        album.Children.Count.ShouldBe(config.PhotoImageDownloadTasksCount);
+        album.Children.ShouldAllBe(
+            image =>
+                image.DownloadTaskType == DownloadTaskType.PhotoImage
+                && image.FullTitle.StartsWith(album.FullTitle, StringComparison.Ordinal)
+                && image.Children.Count == config.PhotoImageFileDownloadTasksCount
+        );
+        files.Count.ShouldBe(config.PhotoImageDownloadTasksCount * config.PhotoImageFileDownloadTasksCount);
+        album.DataTotal.ShouldBe(files.Sum(file => file.DataTotal));
+        files.ShouldAllBe(
+            file =>
+                file.DownloadTaskType == DownloadTaskType.PhotoData
+                && file.Quality == VideoQuality.None
+                && file.FileName.EndsWith(".jpg", StringComparison.Ordinal)
+                && file.FullTitle.StartsWith(album.FullTitle, StringComparison.Ordinal)
+                && file.DirectoryMeta.PhotoAlbumFolder == album.Title.SanitizeFolderName()
+        );
+    }
+
+    [Test]
+    public void PhotoAlbumDownloadTask_ShouldUseParityFallbacks_WhenChildCountsAreNotConfigured()
+    {
+        // Arrange
+        var seed = new Seed(24683);
+
+        // Act
+        var album = FakeData.GetDownloadTaskPhotoAlbum(seed).Generate();
+        var files = album.Children.SelectMany(image => image.Children).ToList();
+
+        // Assert
+        album.Children.Count.ShouldBeInRange(1, 5);
+        album.Children.ShouldAllBe(image => image.Children.Count == 1);
+        files.Count.ShouldBe(album.Children.Count);
+        album.DataTotal.ShouldBe(files.Sum(file => file.DataTotal));
+    }
+
+    [Test]
+    public async Task MockDatabase_ShouldPersistConfiguredPhotoDownloadTaskHierarchy()
+    {
+        // Arrange
+        const int photoImageCount = 2;
+        const int photoImageFileCount = 2;
+        await SetupDatabase(
+            24684,
+            config =>
+            {
+                config.PhotoAlbumDownloadTasksCount = 1;
+                config.PhotoImageDownloadTasksCount = photoImageCount;
+                config.PhotoImageFileDownloadTasksCount = photoImageFileCount;
+            }
+        );
+        var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+
+        // Act
+        var album = await dbContext.DownloadTaskPhotoAlbums
+            .Include(x => x.Children)
+            .ThenInclude(x => x.Children)
+            .SingleAsync(CancellationToken);
+        var images = album.Children.OrderBy(x => x.Id).ToList();
+        var files = images.SelectMany(image => image.Children).OrderBy(x => x.Id).ToList();
+
+        // Assert
+        images.Count.ShouldBe(photoImageCount);
+        images.ShouldAllBe(
+            image =>
+                image.ParentId == album.Id
+                && image.PlexServerId == library.PlexServerId
+                && image.PlexLibraryId == library.Id
+                && image.Children.Count == photoImageFileCount
+        );
+        files.Count.ShouldBe(photoImageCount * photoImageFileCount);
+        files.ShouldAllBe(
+            file =>
+                images.Any(image => image.Id == file.ParentId)
+                && file.PlexServerId == library.PlexServerId
+                && file.PlexLibraryId == library.Id
+                && file.DirectoryMeta.PhotoAlbumFolder == album.Title.SanitizeFolderName()
+        );
+    }
+
+    [Test]
+    public void OtherVideoDownloadTask_ShouldGenerateConfiguredFilesWithVideoSemantics()
+    {
+        // Arrange
+        var seed = new Seed(24682);
+        var config = new FakeDataConfig { OtherVideoFileDownloadTasksCount = 2 };
+
+        // Act
+        var video = FakeData
+            .GetDownloadTaskOtherVideo(
+                seed,
+                options => options.OtherVideoFileDownloadTasksCount = config.OtherVideoFileDownloadTasksCount
+            )
+            .Generate();
+        var files = video.Children.ToList();
+
+        // Assert
+        video.DownloadTaskType.ShouldBe(DownloadTaskType.OtherVideo);
+        files.Count.ShouldBe(config.OtherVideoFileDownloadTasksCount);
+        video.DataTotal.ShouldBe(files.Sum(file => file.DataTotal));
+        files.ShouldAllBe(
+            file =>
+                file.DownloadTaskType == DownloadTaskType.OtherVideoData
+                && file.Quality == VideoQuality.FullHD
+                && file.FileName.EndsWith(".mp4", StringComparison.Ordinal)
+                && file.DirectoryMeta.OtherVideoFolder == video.Title.SanitizeFolderName()
+        );
+    }
+
+    [Test]
     public void DownloadTaskConfig_ShouldModifyFileSizeWhenConfigured()
     {
         // Arrange

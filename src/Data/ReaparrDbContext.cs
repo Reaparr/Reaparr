@@ -25,6 +25,36 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
 
     public DbSet<PlexLibrary> PlexLibraries { get; set; }
 
+    public DbSet<PlexMusicArtist> PlexArtists { get; set; }
+    public DbSet<MediaOverviewMusicArtistSnapshot> MediaOverviewMusicArtistSnapshots { get; set; }
+    public DbSet<PlexMusicAlbum> PlexAlbums { get; set; }
+    public DbSet<PlexMusicTrack> PlexTracks { get; set; }
+    public DbSet<PlexMusicTrackMediaData> PlexTrackData { get; set; }
+
+    public DbSet<PlexPhotoAlbum> PlexPhotoAlbums { get; set; }
+    public DbSet<PlexPhotoImage> PlexPhotoImages { get; set; }
+
+    public DbSet<PlexPhotoMediaData> PlexPhotoData { get; set; }
+
+    public DbSet<MediaOverviewPhotoAlbumSnapshot> MediaOverviewPhotoAlbumSnapshots { get; set; }
+
+    public DbSet<PlexOtherVideo> PlexOtherVideos { get; set; }
+    public DbSet<PlexOtherVideoMediaData> PlexOtherVideoData { get; set; }
+    public DbSet<MediaOverviewOtherVideoSnapshot> MediaOverviewOtherVideoSnapshots { get; set; }
+
+    public DbSet<DownloadTaskMusicArtist> DownloadTaskMusicArtists { get; set; }
+    public DbSet<DownloadTaskMusicAlbum> DownloadTaskMusicAlbums { get; set; }
+    public DbSet<DownloadTaskMusicTrack> DownloadTaskMusicTracks { get; set; }
+    public DbSet<DownloadTaskMusicTrackFile> DownloadTaskMusicTrackFiles { get; set; }
+    public DbSet<DownloadTaskTrackFileLog> DownloadTaskTrackFileLogs { get; set; }
+    public DbSet<DownloadTaskPhotoAlbum> DownloadTaskPhotoAlbums { get; set; }
+    public DbSet<DownloadTaskPhotoImage> DownloadTaskPhotoImages { get; set; }
+    public DbSet<DownloadTaskPhotoImageFile> DownloadTaskPhotoImageFiles { get; set; }
+    public DbSet<DownloadTaskPhotoImageFileLog> DownloadTaskPhotoImageFileLogs { get; set; }
+    public DbSet<DownloadTaskOtherVideo> DownloadTaskOtherVideos { get; set; }
+    public DbSet<DownloadTaskOtherVideoFile> DownloadTaskOtherVideoFiles { get; set; }
+    public DbSet<DownloadTaskOtherVideoFileLog> DownloadTaskOtherVideoFileLogs { get; set; }
+
     public DbSet<PlexLibraryAccessHistoryEvent> PlexLibraryAccessHistoryEvents { get; set; }
 
     public DbSet<PlexActor> PlexActors { get; set; }
@@ -103,6 +133,18 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
 
     public DbSet<PlexTvShowCountries> PlexTvShowCountries { get; set; }
 
+    public DbSet<PlexMusicArtistActors> PlexMusicArtistActors { get; set; }
+
+    public DbSet<PlexMusicArtistGenres> PlexMusicArtistGenres { get; set; }
+
+    public DbSet<PlexMusicArtistCountries> PlexMusicArtistCountries { get; set; }
+
+    public DbSet<PlexOtherVideoActors> PlexOtherVideoActors { get; set; }
+
+    public DbSet<PlexOtherVideoGenres> PlexOtherVideoGenres { get; set; }
+
+    public DbSet<PlexOtherVideoCountries> PlexOtherVideoCountries { get; set; }
+
     #region Comparison
 
     public DbSet<PlexComparisonState> PlexComparisonScopes { get; set; }
@@ -114,6 +156,12 @@ public sealed class ReaparrDbContext : DbContext, IReaparrDbContext, IReaparrDbC
     public DbSet<PlexSeasonComparison> PlexSeasonComparisons { get; set; }
 
     public DbSet<PlexEpisodeComparison> PlexEpisodeComparisons { get; set; }
+
+    public DbSet<PlexMusicArtistComparison> PlexMusicArtistComparisons { get; set; }
+
+    public DbSet<PlexMusicAlbumComparison> PlexMusicAlbumComparisons { get; set; }
+
+    public DbSet<PlexMusicTrackComparison> PlexMusicTrackComparisons { get; set; }
 
     #endregion
 

@@ -73,12 +73,17 @@ public static partial class FakeData
                         MovieFolder = x.Title,
                         TvShowFolder = string.Empty,
                         SeasonFolder = string.Empty,
+                        MusicArtistFolder = string.Empty,
+                        MusicAlbumFolder = string.Empty,
+                        PhotoAlbumFolder = string.Empty,
+                        OtherVideoFolder = string.Empty,
                         KeepCompletedInDownloadFolder = false,
                     }
             )
             .RuleFor(x => x.DirectDownloadSnapshot, _ => null)
             .RuleFor(x => x.DownloadClientType, _ => PlexDownloadClientType.Direct);
     }
+
 
     private static string ToDefaultDestinationLocation(this PlexMediaType type)
     {
@@ -89,10 +94,11 @@ public static partial class FakeData
             PlexMediaType.TvShow => "/TvShows",
             PlexMediaType.Season => "/TvShows",
             PlexMediaType.Episode => "/TvShows",
-            PlexMediaType.Music => "/Music",
-            PlexMediaType.Album => "/Music",
-            PlexMediaType.Song => "/Music",
-            PlexMediaType.Photos => "/Photos",
+            PlexMediaType.MusicArtist => "/Music",
+            PlexMediaType.MusicAlbum => "/Music",
+            PlexMediaType.MusicTrack => "/Music",
+            PlexMediaType.PhotoAlbum => "/Photos",
+            PlexMediaType.PhotoImage => "/Photos",
             PlexMediaType.OtherVideos => "/Videos",
             PlexMediaType.Games => "/Games",
             _ => "/Downloads",

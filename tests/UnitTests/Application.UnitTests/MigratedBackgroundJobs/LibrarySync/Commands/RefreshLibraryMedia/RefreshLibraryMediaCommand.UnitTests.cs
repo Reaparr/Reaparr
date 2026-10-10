@@ -80,6 +80,7 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     [Test]
     [Arguments(PlexMediaType.Movie)]
     [Arguments(PlexMediaType.TvShow)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
     public async Task ShouldReturnOkResult_WhenLibraryIsSynced(PlexMediaType libraryType)
     {
         // Arrange
@@ -90,6 +91,7 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
                 config.PlexServerCount = 1;
                 config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
                 config.PlexTvShowLibraryCount = libraryType == PlexMediaType.TvShow ? 1 : 0;
+                config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
             }
         );
 
@@ -123,6 +125,13 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
             case PlexMediaType.TvShow:
                 Mock.SetupCommand(It.IsAny<RefreshPlexTvShowLibraryCommand>).ReturnsAsync(Result.Ok(updatedLibrary));
                 break;
+
+            case PlexMediaType.PhotoAlbum:
+                Mock.SetupCommand(() => It.Is<RefreshPlexPhotoLibraryCommand>(c =>
+                        c.LibraryMetadata.PlexLibrary == updatedLibrary && !c.ForceMediaRefresh))
+                    .ReturnsAsync(Result.Ok(updatedLibrary))
+                    .Verifiable(Times.Once());
+                break;
         }
 
         // Act
@@ -131,6 +140,14 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Type.ShouldBe(libraryType);
+        if (libraryType == PlexMediaType.PhotoAlbum)
+            Mock.Mock<ICommandExecutor>().Verify(
+                x => x.Send(
+                    It.Is<RefreshPlexPhotoLibraryCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary),
+                    It.IsAny<CancellationToken>()),
+                Times.Once());
 
         var dbLibrary = await IDbContext
             .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)

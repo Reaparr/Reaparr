@@ -24,11 +24,11 @@ public static class PlexMediaTypeMappers
             2 => PlexMediaType.TvShow,
             3 => PlexMediaType.Season,
             4 => PlexMediaType.Episode,
-            5 => PlexMediaType.Artist,
-            6 => PlexMediaType.Album,
-            7 => PlexMediaType.Song,
-            8 => PlexMediaType.PhotoAlbum,
-            9 => PlexMediaType.Photos,
+            8 => PlexMediaType.MusicArtist,
+            9 => PlexMediaType.MusicAlbum,
+            10 => PlexMediaType.MusicTrack,
+            13 => PlexMediaType.PhotoImage,
+            14 => PlexMediaType.PhotoAlbum,
             _ => throw new ArgumentOutOfRangeException(nameof(apiType), $"Unknown media type value: {apiType}"),
         };
     }
@@ -40,11 +40,11 @@ public static class PlexMediaTypeMappers
             PlexMediaType.TvShow => MediaType.TvShow,
             PlexMediaType.Season => MediaType.Season,
             PlexMediaType.Episode => MediaType.Episode,
-            PlexMediaType.Artist => MediaType.Artist,
-            PlexMediaType.Album => MediaType.Album,
-            PlexMediaType.Song => MediaType.Track,
+            PlexMediaType.MusicArtist => MediaType.Artist,
+            PlexMediaType.MusicAlbum => MediaType.Album,
+            PlexMediaType.MusicTrack => MediaType.Track,
             PlexMediaType.PhotoAlbum => MediaType.PhotoAlbum,
-            PlexMediaType.Photos => MediaType.Photo,
+            PlexMediaType.PhotoImage => MediaType.Photo,
             _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unsupported PlexMediaType"),
         };
 }

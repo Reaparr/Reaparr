@@ -57,7 +57,14 @@ public class GetAllMediaByTypeRequestValidator : Validator<GetAllMediaByTypeRequ
     public GetAllMediaByTypeRequestValidator()
     {
         RuleFor(x => x.MediaType)
-            .Must(type => type is PlexMediaType.TvShow or PlexMediaType.Movie)
+            .Must(type =>
+                type
+                    is PlexMediaType.TvShow
+                        or PlexMediaType.Movie
+                        or PlexMediaType.MusicArtist
+                        or PlexMediaType.PhotoAlbum
+                        or PlexMediaType.OtherVideos
+            )
             .WithMessage(x => $"Media type {x.MediaType} is not allowed.");
         RuleFor(x => x.PlexLibraryId).GreaterThanOrEqualTo(0).When(x => x.PlexLibraryId.HasValue);
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1).When(x => x.Page.HasValue);
@@ -66,7 +73,23 @@ public class GetAllMediaByTypeRequestValidator : Validator<GetAllMediaByTypeRequ
         RuleFor(x => x.GenreId).GreaterThan(0).When(x => x.GenreId.HasValue);
         RuleFor(x => x.RoleId).GreaterThan(0).When(x => x.RoleId.HasValue);
         RuleFor(x => x.QualityId).GreaterThan(0).When(x => x.QualityId.HasValue);
+        RuleFor(x => x.CountryId).Null().When(x => x.MediaType == PlexMediaType.PhotoAlbum);
+        RuleFor(x => x.RoleId).Null().When(x => x.MediaType == PlexMediaType.PhotoAlbum);
+        RuleFor(x => x.GenreId).Null().When(x => x.MediaType == PlexMediaType.PhotoAlbum);
+        RuleFor(x => x.QualityId).Null().When(x => x.MediaType == PlexMediaType.PhotoAlbum);
         RuleFor(x => x.ComparisonState).IsInEnum().When(x => x.ComparisonState.HasValue);
+        RuleFor(x => x.ComparisonState).Null().When(x => !x.MediaType.SupportsComparison());
+        RuleFor(x => x.ComparisonState)
+            .Must(x =>
+                x
+                    is null
+                        or PlexMediaComparisonState.NotCompared
+                        or PlexMediaComparisonState.Pending
+                        or PlexMediaComparisonState.Owned
+                        or PlexMediaComparisonState.Missing
+                        or PlexMediaComparisonState.Partial
+            )
+            .When(x => x.MediaType == PlexMediaType.MusicArtist);
     }
 }
 

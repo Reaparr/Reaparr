@@ -314,6 +314,8 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseUnitTest<DeleteDownlo
                 config.PlexServerCount = 1;
                 config.TvShowCount = 1;
                 config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
@@ -421,6 +423,8 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseUnitTest<DeleteDownlo
                 config.MovieDownloadTasksCount = 1;
                 config.TvShowCount = 1;
                 config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
             }
         );
         var dbContext = IDbContext;
@@ -463,5 +467,84 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseUnitTest<DeleteDownlo
         directory.Exists(moviesCategoryFolder).ShouldBeTrue(); // Movies/ stopRoot — must survive
         directory.Exists(tvShowsCategoryFolder).ShouldBeTrue(); // TvShows/ stopRoot — must survive
         directory.Exists(downloadRoot).ShouldBeTrue(); // download root — must survive
+    }
+
+    [Test]
+    [Arguments(DownloadTaskType.MusicTrackData, "Music", "empty")]
+    [Arguments(DownloadTaskType.PhotoData, "Photos", "empty")]
+    [Arguments(DownloadTaskType.OtherVideoData, "OtherVideos", "empty")]
+    [Arguments(DownloadTaskType.MusicTrackData, "Music", "active")]
+    [Arguments(DownloadTaskType.PhotoData, "Photos", "active")]
+    [Arguments(DownloadTaskType.OtherVideoData, "OtherVideos", "active")]
+    [Arguments(DownloadTaskType.MusicTrackData, "Music", "unrelated")]
+    [Arguments(DownloadTaskType.PhotoData, "Photos", "unrelated")]
+    [Arguments(DownloadTaskType.OtherVideoData, "OtherVideos", "unrelated")]
+    public async Task ShouldPreserveNewFamilyCategoryRoots_WhenCleaningTaskFiles(
+        DownloadTaskType taskType,
+        string category,
+        string remainingContent
+    )
+    {
+        await SetupDatabase(
+            84015,
+            config =>
+            {
+                config.MusicArtistDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
+                config.MusicAlbumDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
+                config.MusicTrackDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 2 : 0;
+                config.MusicTrackFileDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
+                config.PhotoAlbumDownloadTasksCount = taskType == DownloadTaskType.PhotoData ? 1 : 0;
+                config.PhotoImageDownloadTasksCount = taskType == DownloadTaskType.PhotoData ? 2 : 0;
+                config.PhotoImageFileDownloadTasksCount = taskType == DownloadTaskType.PhotoData ? 1 : 0;
+                config.OtherVideoDownloadTasksCount = taskType == DownloadTaskType.OtherVideoData ? 2 : 0;
+                config.OtherVideoFileDownloadTasksCount = taskType == DownloadTaskType.OtherVideoData ? 1 : 0;
+            }
+        );
+        var dbContext = IDbContext;
+        List<DownloadTaskFileBase> tasks =
+        [
+            .. await dbContext.DownloadTaskMusicTrackFiles.ToListAsync(CancellationToken),
+            .. await dbContext.DownloadTaskPhotoImageFiles.ToListAsync(CancellationToken),
+            .. await dbContext.DownloadTaskOtherVideoFiles.ToListAsync(CancellationToken),
+        ];
+        var target = tasks[0];
+        var control = tasks[1];
+        control.DirectoryMeta.OtherVideoFolder = target.DirectoryMeta.OtherVideoFolder;
+        control.DownloadStatus = remainingContent == "active" ? DownloadStatus.Downloading : DownloadStatus.Completed;
+        dbContext.Entry(control).State = EntityState.Modified;
+        await dbContext.SaveChangesAsync(CancellationToken);
+        control.DownloadDirectory.ShouldBe(target.DownloadDirectory);
+
+        var plainPath = target.DownloadFilePath.RemoveReapTempSuffix();
+        var categoryRoot = Path.Combine(target.DirectoryMeta.DownloadRootPath, category);
+        var unrelatedPath = Path.Combine(target.DownloadDirectory, "unrelated.bin");
+        byte[] unrelatedBytes = [99, 100];
+        SetupFileSystem(fs =>
+        {
+            fs.AddFile(target.DownloadFilePath, new MockFileData(new byte[] { 1, 2, 3 }));
+            fs.AddFile(plainPath, new MockFileData(new byte[] { 4, 5, 6 }));
+            if (remainingContent == "unrelated")
+                fs.AddFile(unrelatedPath, new MockFileData(unrelatedBytes));
+        });
+
+        var result = await Sut.ExecuteAsync(new DeleteDownloadTaskFilesCommand([target.ToKey()]), CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+        var fileSystem = Mock.Container.Resolve<IFileSystem>();
+        fileSystem.File.Exists(target.DownloadFilePath).ShouldBeFalse();
+        fileSystem.File.Exists(plainPath).ShouldBeFalse();
+        fileSystem.Directory.Exists(categoryRoot).ShouldBeTrue();
+        fileSystem.Directory.Exists(target.DirectoryMeta.DownloadRootPath).ShouldBeTrue();
+        fileSystem.Directory.Exists(target.DownloadDirectory).ShouldBe(remainingContent != "empty");
+        if (remainingContent == "empty" && taskType == DownloadTaskType.MusicTrackData)
+            fileSystem.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBeFalse();
+        if (remainingContent == "unrelated")
+            fileSystem.File.ReadAllBytes(unrelatedPath).ShouldBe(unrelatedBytes);
+
+        var persistedControl = await IDbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken);
+        persistedControl.ShouldNotBeNull();
+        persistedControl.DownloadStatus.ShouldBe(control.DownloadStatus);
+        persistedControl.FileName.ShouldBe(control.FileName);
+        persistedControl.DirectoryMeta.ShouldBe(control.DirectoryMeta);
     }
 }

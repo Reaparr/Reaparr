@@ -139,4 +139,58 @@ public static partial class DbContextExtensions
                 CancellationToken.None
             );
     }
+
+    public static Task SetMusicMediaMetrics(
+        this IReaparrDbContext dbContext,
+        int plexLibraryId,
+        int artistCount,
+        int albumCount,
+        int trackCount,
+        long mediaSize,
+        CancellationToken ct = default
+    ) =>
+        dbContext
+            .PlexLibraries.Where(x => x.Id == plexLibraryId)
+            .ExecuteUpdateAsync(
+                p =>
+                    p.SetProperty(x => x.MusicArtistCount, artistCount)
+                        .SetProperty(x => x.MusicAlbumCount, albumCount)
+                        .SetProperty(x => x.MusicTrackCount, trackCount)
+                        .SetProperty(x => x.MediaSize, mediaSize),
+                ct
+            );
+
+    public static Task SetPhotoMediaMetrics(
+        this IReaparrDbContext dbContext,
+        int plexLibraryId,
+        int albumCount,
+        int photoCount,
+        int clipCount,
+        long mediaSize,
+        CancellationToken ct = default
+    ) =>
+        dbContext
+            .PlexLibraries.Where(x => x.Id == plexLibraryId)
+            .ExecuteUpdateAsync(
+                p =>
+                    p.SetProperty(x => x.PhotoAlbumCount, albumCount)
+                        .SetProperty(x => x.PhotoImageCount, photoCount)
+                        .SetProperty(x => x.PhotoClipCount, clipCount)
+                        .SetProperty(x => x.MediaSize, mediaSize),
+                ct
+            );
+
+    public static Task SetOtherVideoMediaMetrics(
+        this IReaparrDbContext dbContext,
+        int plexLibraryId,
+        int videoCount,
+        long mediaSize,
+        CancellationToken ct = default
+    ) =>
+        dbContext
+            .PlexLibraries.Where(x => x.Id == plexLibraryId)
+            .ExecuteUpdateAsync(
+                p => p.SetProperty(x => x.OtherVideoCount, videoCount).SetProperty(x => x.MediaSize, mediaSize),
+                ct
+            );
 }

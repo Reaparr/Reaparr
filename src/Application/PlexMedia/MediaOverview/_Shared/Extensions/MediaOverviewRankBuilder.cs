@@ -2,33 +2,65 @@ using NaturalSort.Extension;
 
 namespace Reaparr.Application;
 
-public static class MediaOverviewRankBuilder
+public static partial class MediaOverviewRankBuilder
 {
     private static readonly IComparer<string> _titleComparer = StringComparison.OrdinalIgnoreCase.WithNaturalSort();
 
-    public static List<MediaOverviewMovieSnapshot> AssignRanks(this List<MediaOverviewMovieSnapshot> snapshots)
+    private static List<TSnapshot> AssignRanks<TSnapshot>(
+        List<TSnapshot> snapshots,
+        IReadOnlyDictionary<int, MediaOverviewRankValue> values,
+        Func<TSnapshot, int> getId
+    )
+        where TSnapshot : BaseMediaOverviewSnapshot
     {
         var permutation = Enumerable.Range(0, snapshots.Count).ToArray();
-        AssignRank(snapshots, permutation, CompareMovieTitle, static (x, rank) => x.TitleRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Year, right.Year, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.YearRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.AddedAt, right.AddedAt, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.AddedAtRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.UpdatedAt, right.UpdatedAt, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.UpdatedAtRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Duration, right.Duration, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.DurationRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.MediaSize, right.MediaSize, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.MediaSizeRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Quality, right.Quality, left.PlexMovieId, right.PlexMovieId), static (x, rank) => x.QualityRank = rank);
-        return snapshots;
-    }
-
-    public static List<MediaOverviewTvShowSnapshot> AssignRanks(this List<MediaOverviewTvShowSnapshot> snapshots)
-    {
-        var permutation = Enumerable.Range(0, snapshots.Count).ToArray();
-        AssignRank(snapshots, permutation, CompareTvShowTitle, static (x, rank) => x.TitleRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Year, right.Year, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.YearRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.AddedAt, right.AddedAt, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.AddedAtRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.UpdatedAt, right.UpdatedAt, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.UpdatedAtRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Duration, right.Duration, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.DurationRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.MediaSize, right.MediaSize, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.MediaSizeRank = rank);
-        AssignRank(snapshots, permutation, static (left, right) => Compare(left.Quality, right.Quality, left.PlexTvShowId, right.PlexTvShowId), static (x, rank) => x.QualityRank = rank);
+        AssignRank(
+            snapshots,
+            permutation,
+            (left, right) =>
+                Compare(
+                    values[getId(left)].SearchTitle,
+                    values[getId(right)].SearchTitle,
+                    getId(left),
+                    getId(right),
+                    _titleComparer
+                ),
+            static (x, rank) => x.TitleRank = rank
+        );
+        AssignRank(
+            snapshots,
+            permutation,
+            (left, right) => Compare(values[getId(left)].Year, values[getId(right)].Year, getId(left), getId(right)),
+            static (x, rank) => x.YearRank = rank
+        );
+        AssignRank(
+            snapshots,
+            permutation,
+            (left, right) =>
+                Compare(values[getId(left)].AddedAt, values[getId(right)].AddedAt, getId(left), getId(right)),
+            static (x, rank) => x.AddedAtRank = rank
+        );
+        AssignRank(
+            snapshots,
+            permutation,
+            (left, right) =>
+                Compare(values[getId(left)].UpdatedAt, values[getId(right)].UpdatedAt, getId(left), getId(right)),
+            static (x, rank) => x.UpdatedAtRank = rank
+        );
+        AssignRank(
+            snapshots,
+            permutation,
+            (left, right) =>
+                Compare(values[getId(left)].Duration, values[getId(right)].Duration, getId(left), getId(right)),
+            static (x, rank) => x.DurationRank = rank
+        );
+        AssignRank(
+            snapshots,
+            permutation,
+            (left, right) =>
+                Compare(values[getId(left)].MediaSize, values[getId(right)].MediaSize, getId(left), getId(right)),
+            static (x, rank) => x.MediaSizeRank = rank
+        );
         return snapshots;
     }
 
@@ -44,15 +76,18 @@ public static class MediaOverviewRankBuilder
             setRank(snapshots[permutation[rank]], rank);
     }
 
-    private static int CompareMovieTitle(MediaOverviewMovieSnapshot left, MediaOverviewMovieSnapshot right) =>
-        Compare(left.SearchTitle, right.SearchTitle, left.PlexMovieId, right.PlexMovieId, _titleComparer);
-
-    private static int CompareTvShowTitle(MediaOverviewTvShowSnapshot left, MediaOverviewTvShowSnapshot right) =>
-        Compare(left.SearchTitle, right.SearchTitle, left.PlexTvShowId, right.PlexTvShowId, _titleComparer);
-
     private static int Compare<T>(T left, T right, int leftId, int rightId, IComparer<T>? comparer = null)
     {
         var result = (comparer ?? Comparer<T>.Default).Compare(left, right);
         return result != 0 ? result : leftId.CompareTo(rightId);
     }
 }
+
+public sealed record MediaOverviewRankValue(
+    string SearchTitle,
+    int? Year,
+    DateTime AddedAt,
+    DateTime? UpdatedAt,
+    int? Duration,
+    long MediaSize
+);

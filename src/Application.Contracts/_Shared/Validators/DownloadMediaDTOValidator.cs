@@ -22,6 +22,12 @@ public class DownloadMediaDTOValidator : AbstractValidator<DownloadMediaDTO>
                     case PlexMediaType.TvShow:
                     case PlexMediaType.Season:
                     case PlexMediaType.Episode:
+                    case PlexMediaType.PhotoAlbum:
+                    case PlexMediaType.PhotoImage:
+                    case PlexMediaType.MusicArtist:
+                    case PlexMediaType.MusicAlbum:
+                    case PlexMediaType.MusicTrack:
+                    case PlexMediaType.OtherVideos:
                         return true;
                     default:
                         return false;

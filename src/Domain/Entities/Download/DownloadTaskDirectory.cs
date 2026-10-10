@@ -1,5 +1,6 @@
 namespace Reaparr.Domain;
 
+// TODO find a better method than using a json record for all these folders
 public record DownloadTaskDirectory
 {
     public required string DownloadRootPath { get; set; }
@@ -12,6 +13,14 @@ public record DownloadTaskDirectory
 
     public required string SeasonFolder { get; set; }
 
-    // Optional per-task override; when true, keep completed files in the download folder
+    public required string MusicArtistFolder { get; set; }
+
+    public required string MusicAlbumFolder { get; set; }
+
+    public required string PhotoAlbumFolder { get; set; }
+
+    public required string OtherVideoFolder { get; set; }
+
     public required bool KeepCompletedInDownloadFolder { get; set; }
+
 }

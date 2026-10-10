@@ -1,6 +1,6 @@
 namespace Reaparr.Application.Contracts;
 
-public static class PlexMediaExtensions
+public static partial class PlexMediaExtensions
 {
     public static DownloadTaskMovie MapToDownloadTask(
         this PlexMovie plexMovie,
@@ -154,6 +154,10 @@ public static class PlexMediaExtensions
                 MovieFolder = plexMovie.Title.SanitizeFolderName(),
                 TvShowFolder = string.Empty,
                 SeasonFolder = string.Empty,
+                MusicArtistFolder = string.Empty,
+                MusicAlbumFolder = string.Empty,
+                PhotoAlbumFolder = string.Empty,
+                OtherVideoFolder = string.Empty,
                 KeepCompletedInDownloadFolder = keepCompletedInDownloadFolder,
             },
             Parent = null,
@@ -209,6 +213,10 @@ public static class PlexMediaExtensions
                 MovieFolder = string.Empty,
                 TvShowFolder = plexTvShowEpisode.TvShow.Title.SanitizeFolderName(),
                 SeasonFolder = plexTvShowEpisode.TvShowSeason.Title.SanitizeFolderName(),
+                MusicArtistFolder = string.Empty,
+                MusicAlbumFolder = string.Empty,
+                PhotoAlbumFolder = string.Empty,
+                OtherVideoFolder = string.Empty,
                 KeepCompletedInDownloadFolder = keepCompletedInDownloadFolder,
             },
             Parent = null,

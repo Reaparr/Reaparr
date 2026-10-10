@@ -58,7 +58,7 @@ public record LibraryMediaItemDTO
 
     public required DateTime AddedAt { get; init; }
 
-    public required DateTime UpdatedAt { get; init; }
+    public required DateTime? UpdatedAt { get; init; }
 
     public required string OriginallyAvailableAt { get; init; }
 

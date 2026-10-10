@@ -141,34 +141,17 @@ public partial class FakePlexApiData
         Seed seed,
         PlexMediaType type,
         Action<PlexApiDataConfig>? options = null
-    )
-    {
-        string GetPlexMediaType() =>
-            type switch
-            {
-                PlexMediaType.Movie => "movie",
-                PlexMediaType.TvShow => "show",
-                PlexMediaType.Season => "season",
-                PlexMediaType.Episode => "episode",
-                PlexMediaType.Artist => "artist",
-                PlexMediaType.Album => "album",
-                PlexMediaType.Song => "track",
-                PlexMediaType.PhotoAlbum => "photoalbum",
-                PlexMediaType.Photos => "photo",
-                _ => throw new InvalidOperationException($"Invalid PlexMediaType: {type} value."),
-            };
-
-        return _getLibraryItemsMetadata
+    ) =>
+        _getLibraryItemsMetadata
             .UseSeed(seed.Next())
             .FinishWith(
                 (f, x) =>
                 {
-                    x.Type = GetPlexMediaType();
+                    x.Type = type.ToPlexApiString();
                     x.Media = [GetPlexMedium(seed, options).Generate()];
                     x.Guid = f.PlexMedia().Guid(type);
                 }
             );
-    }
 
     public static Faker<Media> GetPlexMedium(Seed seed, Action<PlexApiDataConfig>? options = null)
     {

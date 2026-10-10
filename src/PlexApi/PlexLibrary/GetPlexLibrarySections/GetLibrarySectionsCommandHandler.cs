@@ -52,7 +52,7 @@ public class GetLibrarySectionsCommandHandler : ICommandHandler<GetLibrarySectio
                     "Plex server: {PlexServerName} returned an empty response when libraries were requested",
                     connection.PlexServer?.Name
                 );
-            return response.ToResult();
+            return Result.Fail("Plex returned no library section collection").LogError();
         }
 
         var directories = response.Value.Object.MediaContainer.Directory;
@@ -61,7 +61,7 @@ public class GetLibrarySectionsCommandHandler : ICommandHandler<GetLibrarySectio
             .Select(x => new PlexLibrary
             {
                 Id = 0,
-                Type = x.Type.ToString().ToPlexMediaType(),
+                Type = x.Type.ToPlexMediaType(x.Agent, x.Scanner),
                 Title = x.Title!,
                 Key = x.Key!,
                 CreatedAt = DateTimeExtensions.FromUnixTime(x.CreatedAt),

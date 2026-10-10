@@ -5,7 +5,13 @@ public class CreateDownloadTasksCommandValidator : AbstractValidator<CreateDownl
     public CreateDownloadTasksCommandValidator()
     {
         RuleFor(x => x).NotNull();
-        RuleFor(x => x.Request).NotNull().DependentRules(() => RuleFor(x => x.Request.DownloadMedias).NotEmpty());
+        RuleFor(x => x.Request)
+            .NotNull()
+            .DependentRules(() =>
+            {
+                RuleFor(x => x.Request.DownloadMedias).NotEmpty();
+                RuleForEach(x => x.Request.DownloadMedias).NotNull().SetValidator(new DownloadMediaDTOValidator());
+            });
     }
 }
 
@@ -15,7 +21,6 @@ public class CreateDownloadTasksCommandHandler
     private readonly ICommandExecutor _commandExecutor;
     private readonly IEventPublisher _eventPublisher;
     private readonly INotificationHubService _notificationHubService;
-    private bool _generatedTasks;
 
     public CreateDownloadTasksCommandHandler(
         ICommandExecutor commandExecutor,
@@ -41,9 +46,8 @@ public class CreateDownloadTasksCommandHandler
         {
             var result = await _commandExecutor.Send(new GenerateDownloadTaskMoviesCommand(request), cancellationToken);
             if (result.IsFailed)
-                return result.LogError();
+                return result.LogIfFailed();
             report += result.Value;
-            _generatedTasks = true;
         }
 
         if (downloadMedias.Any(x => x.Type == PlexMediaType.TvShow))
@@ -53,9 +57,8 @@ public class CreateDownloadTasksCommandHandler
                 cancellationToken
             );
             if (result.IsFailed)
-                return result.LogError();
+                return result.LogIfFailed();
             report += result.Value;
-            _generatedTasks = true;
         }
 
         if (downloadMedias.Any(x => x.Type == PlexMediaType.Season))
@@ -65,9 +68,8 @@ public class CreateDownloadTasksCommandHandler
                 cancellationToken
             );
             if (result.IsFailed)
-                return result.LogError();
+                return result.LogIfFailed();
             report += result.Value;
-            _generatedTasks = true;
         }
 
         if (downloadMedias.Any(x => x.Type == PlexMediaType.Episode))
@@ -77,12 +79,77 @@ public class CreateDownloadTasksCommandHandler
                 cancellationToken
             );
             if (result.IsFailed)
-                return result.LogError();
+                return result.LogIfFailed();
             report += result.Value;
-            _generatedTasks = true;
         }
 
-        if (_generatedTasks)
+        if (downloadMedias.Any(x => x.Type == PlexMediaType.MusicArtist))
+        {
+            var result = await _commandExecutor.Send(
+                new GenerateDownloadTaskMusicArtistsCommand(request),
+                cancellationToken
+            );
+            if (result.IsFailed)
+                return result.LogIfFailed();
+            report += result.Value;
+        }
+
+        if (downloadMedias.Any(x => x.Type == PlexMediaType.MusicAlbum))
+        {
+            var result = await _commandExecutor.Send(
+                new GenerateDownloadTaskMusicAlbumsCommand(request),
+                cancellationToken
+            );
+            if (result.IsFailed)
+                return result.LogIfFailed();
+            report += result.Value;
+        }
+
+        if (downloadMedias.Any(x => x.Type == PlexMediaType.MusicTrack))
+        {
+            var result = await _commandExecutor.Send(
+                new GenerateDownloadTaskMusicTracksCommand(request),
+                cancellationToken
+            );
+            if (result.IsFailed)
+                return result.LogIfFailed();
+            report += result.Value;
+        }
+
+        if (downloadMedias.Any(x => x.Type == PlexMediaType.PhotoAlbum))
+        {
+            var result = await _commandExecutor.Send(
+                new GenerateDownloadTaskPhotoAlbumsCommand(request),
+                cancellationToken
+            );
+            if (result.IsFailed)
+                return result.LogIfFailed();
+            report += result.Value;
+        }
+
+        if (downloadMedias.Any(x => x.Type == PlexMediaType.PhotoImage))
+        {
+            var result = await _commandExecutor.Send(
+                new GenerateDownloadTaskPhotoImagesCommand(request),
+                cancellationToken
+            );
+            if (result.IsFailed)
+                return result.LogIfFailed();
+            report += result.Value;
+        }
+
+        if (downloadMedias.Any(x => x.Type == PlexMediaType.OtherVideos))
+        {
+            var result = await _commandExecutor.Send(
+                new GenerateDownloadTaskOtherVideosCommand(request),
+                cancellationToken
+            );
+            if (result.IsFailed)
+                return result.LogIfFailed();
+            report += result.Value;
+        }
+
+        if (report.Total > 0)
         {
             // Notify the DownloadQueue to check for new tasks in the PlexSevers with new DownloadTasks
             var uniquePlexServers = request

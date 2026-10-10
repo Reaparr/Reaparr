@@ -6,6 +6,7 @@ public static partial class PlexMediaDTOMapper
         new()
         {
             Id = source.Id,
+            ParentId = null,
             TvShowId = default,
             TvShowSeasonId = default,
             MediaData = source.MediaDataList.ToDTO(),

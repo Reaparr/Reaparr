@@ -21,6 +21,28 @@ public interface IReaparrDbContext : IDisposable
 
     DbSet<PlexLibrary> PlexLibraries { get; }
 
+    DbSet<PlexPhotoAlbum> PlexPhotoAlbums { get; }
+    DbSet<PlexPhotoImage> PlexPhotoImages { get; }
+    DbSet<PlexPhotoMediaData> PlexPhotoData { get; }
+    DbSet<MediaOverviewPhotoAlbumSnapshot> MediaOverviewPhotoAlbumSnapshots { get; }
+
+    DbSet<PlexOtherVideo> PlexOtherVideos { get; }
+    DbSet<PlexOtherVideoMediaData> PlexOtherVideoData { get; }
+    DbSet<MediaOverviewOtherVideoSnapshot> MediaOverviewOtherVideoSnapshots { get; }
+
+    DbSet<DownloadTaskMusicArtist> DownloadTaskMusicArtists { get; }
+    DbSet<DownloadTaskMusicAlbum> DownloadTaskMusicAlbums { get; }
+    DbSet<DownloadTaskMusicTrack> DownloadTaskMusicTracks { get; }
+    DbSet<DownloadTaskMusicTrackFile> DownloadTaskMusicTrackFiles { get; }
+    DbSet<DownloadTaskTrackFileLog> DownloadTaskTrackFileLogs { get; }
+    DbSet<DownloadTaskPhotoAlbum> DownloadTaskPhotoAlbums { get; }
+    DbSet<DownloadTaskPhotoImage> DownloadTaskPhotoImages { get; }
+    DbSet<DownloadTaskPhotoImageFile> DownloadTaskPhotoImageFiles { get; }
+    DbSet<DownloadTaskPhotoImageFileLog> DownloadTaskPhotoImageFileLogs { get; }
+    DbSet<DownloadTaskOtherVideo> DownloadTaskOtherVideos { get; }
+    DbSet<DownloadTaskOtherVideoFile> DownloadTaskOtherVideoFiles { get; }
+    DbSet<DownloadTaskOtherVideoFileLog> DownloadTaskOtherVideoFileLogs { get; }
+
     DbSet<PlexLibraryAccessHistoryEvent> PlexLibraryAccessHistoryEvents { get; }
 
     #region PlexMedia
@@ -56,7 +78,22 @@ public interface IReaparrDbContext : IDisposable
     DbSet<PlexTvShowEpisode> PlexTvShowEpisodes { get; }
 
     DbSet<PlexTvShowEpisodeMediaData> PlexTvShowEpisodeData { get; }
+
     DbSet<MediaOverviewTvShowSnapshot> MediaOverviewTvShowSnapshots { get; }
+
+    #endregion
+
+    #region PlexMusic
+
+    DbSet<PlexMusicArtist> PlexArtists { get; }
+
+    DbSet<MediaOverviewMusicArtistSnapshot> MediaOverviewMusicArtistSnapshots { get; }
+
+    DbSet<PlexMusicAlbum> PlexAlbums { get; }
+
+    DbSet<PlexMusicTrack> PlexTracks { get; }
+
+    DbSet<PlexMusicTrackMediaData> PlexTrackData { get; }
 
     #endregion
 
@@ -118,6 +155,18 @@ public interface IReaparrDbContext : IDisposable
 
     DbSet<PlexTvShowCountries> PlexTvShowCountries { get; }
 
+    DbSet<PlexMusicArtistActors> PlexMusicArtistActors { get; }
+
+    DbSet<PlexMusicArtistGenres> PlexMusicArtistGenres { get; }
+
+    DbSet<PlexMusicArtistCountries> PlexMusicArtistCountries { get; }
+
+    DbSet<PlexOtherVideoActors> PlexOtherVideoActors { get; }
+
+    DbSet<PlexOtherVideoGenres> PlexOtherVideoGenres { get; }
+
+    DbSet<PlexOtherVideoCountries> PlexOtherVideoCountries { get; }
+
     #endregion
 
     #region Comparison
@@ -131,6 +180,12 @@ public interface IReaparrDbContext : IDisposable
     DbSet<PlexSeasonComparison> PlexSeasonComparisons { get; }
 
     DbSet<PlexEpisodeComparison> PlexEpisodeComparisons { get; }
+
+    DbSet<PlexMusicArtistComparison> PlexMusicArtistComparisons { get; }
+
+    DbSet<PlexMusicAlbumComparison> PlexMusicAlbumComparisons { get; }
+
+    DbSet<PlexMusicTrackComparison> PlexMusicTrackComparisons { get; }
 
     #endregion
 

@@ -45,7 +45,7 @@ public class RefreshLibraryMediaCommandHandler : ICommandHandler<RefreshLibraryM
         );
 
         if (syncLibraryMediaResult.IsFailed)
-            return syncLibraryMediaResult.ToResult();
+            return syncLibraryMediaResult.ToResult().LogIfFailed();
 
         return await PersistLibraryMediaAsync(command, syncLibraryMediaResult.Value, ct);
     }
@@ -61,8 +61,9 @@ public class RefreshLibraryMediaCommandHandler : ICommandHandler<RefreshLibraryM
             new InsertMediaMetaDataCommand(libraryMetadata),
             ct
         );
+
         if (insertPlexLibraryMediaMetaDataResult.IsFailed)
-            return insertPlexLibraryMediaMetaDataResult.LogError();
+            return insertPlexLibraryMediaMetaDataResult.ToResult().LogIfFailed();
 
         // Phase 3: Add relations to the metadata such as Country, Actors and Genres for the library
         var syncPlexLibraryMediaMetaDataResult = await _commandExecutor.Send(
@@ -71,7 +72,7 @@ public class RefreshLibraryMediaCommandHandler : ICommandHandler<RefreshLibraryM
         );
 
         if (syncPlexLibraryMediaMetaDataResult.IsFailed)
-            return syncPlexLibraryMediaMetaDataResult.LogError();
+            return syncPlexLibraryMediaMetaDataResult.LogIfFailed();
 
         // Phase 4: Continue with retrieving the rest of the media such as seasons/episodes based on the media type
         var newPlexLibrary = libraryMetadata.Library;
@@ -91,23 +92,32 @@ public class RefreshLibraryMediaCommandHandler : ICommandHandler<RefreshLibraryM
                 ),
                 ct
             ),
-            _ => Result.Ok(newPlexLibrary),
+            PlexMediaType.MusicArtist => await _commandExecutor.Send(
+                new RefreshPlexMusicLibraryCommand(
+                    insertPlexLibraryMediaMetaDataResult.Value,
+                    command.ForceMediaRefresh
+                ),
+                ct
+            ),
+            PlexMediaType.PhotoAlbum => await _commandExecutor.Send(
+                new RefreshPlexPhotoLibraryCommand(
+                    insertPlexLibraryMediaMetaDataResult.Value,
+                    command.ForceMediaRefresh
+                ),
+                ct
+            ),
+            PlexMediaType.OtherVideos => await _commandExecutor.Send(
+                new RefreshPlexOtherVideoLibraryCommand(
+                    insertPlexLibraryMediaMetaDataResult.Value,
+                    command.ForceMediaRefresh
+                ),
+                ct
+            ),
+            _ => Result.Fail($"Unsupported Plex library family: {newPlexLibrary.Type}"),
         };
 
-        if (newPlexLibrary.Type is not (PlexMediaType.Movie or PlexMediaType.TvShow))
-        {
-            _log.Here()
-                .Warning(
-                    "Library type {LibraryType} is currently not supported by Reaparr. Coming from library with id: {LibraryId}",
-                    newPlexLibrary.Type,
-                    command.PlexLibraryId
-                );
-
-            return Result.Ok(newPlexLibrary);
-        }
-
         if (refreshLibraryResult.IsFailed)
-            return refreshLibraryResult;
+            return refreshLibraryResult.LogIfFailed();
 
         var syncedAt = DateTime.UtcNow;
         await _dbContext

@@ -67,6 +67,21 @@ public class MediaNavigationIndexBuilderUnitTests
     }
 
     [Test]
+    [Arguments("year")]
+    [Arguments("duration")]
+    public void ShouldUseUnknownLabel_WhenNullableSortValueIsMissing(string sortField)
+    {
+        // Arrange
+        var rows = new[] { CreateRow(year: null, duration: null) };
+
+        // Act
+        var result = MediaNavigationIndexBuilder.Build(rows, sortField);
+
+        // Assert
+        result.Select(x => (x.Label, x.Index)).ShouldBe([("#", 0)]);
+    }
+
+    [Test]
     public void ShouldBuildDateNavigationIndexes_WhenRowsAreSortedByAddedAt()
     {
         // Arrange
@@ -104,9 +119,9 @@ public class MediaNavigationIndexBuilderUnitTests
 
     private static MediaNavigationIndexRow CreateRow(
         string? title = "Title",
-        int year = 2000,
+        int? year = 2000,
         int? qualityValue = 1080,
-        int duration = 0,
+        int? duration = 0,
         DateTime? addedAt = null,
         DateTime? updatedAt = null,
         long mediaSize = 0

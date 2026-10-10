@@ -124,73 +124,22 @@ public abstract class DownloadTaskFileBase : DownloadTaskBase, IDownloadTaskProg
     public override DownloadTaskType DownloadTaskType => DownloadTaskType.None;
 
     [NotMapped]
-    public string DestinationFilePath => Path.Join(DestinationDirectory, FileName);
+    public string DestinationFilePath => this.GetDestinationFilePath();
 
     [NotMapped]
-    public string DownloadFilePath => Path.Combine(DownloadDirectory, FileName.AddReaparrTempSuffixToFileName());
+    public string DownloadFilePath => this.GetDownloadFilePath();
+
+    [NotMapped]
+    public string DownloadDirectory => this.GetDownloadDirectory();
+
+    [NotMapped]
+    public string DestinationDirectory => this.GetDestinationDirectory();
 
     [NotMapped]
     public DownloadTaskPhase DownloadTaskPhase => DownloadStatus.ToDownloadTaskPhase();
 
     [NotMapped]
     public long Speed => DownloadTaskPhaseExtensions.Speed(DownloadTaskPhase, this, this);
-
-    /// <summary>
-    /// Gets the download directory appended to the MediaPath e.g: [DownloadPath]/[TvShow]/[Season]/ or  [DownloadPath]/[Movie]/.
-    /// </summary>
-    [NotMapped]
-    public string DownloadDirectory
-    {
-        get
-        {
-            if (DirectoryMeta.DownloadRootPath == string.Empty)
-                return string.Empty;
-
-            switch (DownloadTaskType)
-            {
-                case DownloadTaskType.MovieData:
-                    return Path.Combine(DirectoryMeta.DownloadRootPath, "Movies", DirectoryMeta.MovieFolder);
-                case DownloadTaskType.EpisodeData:
-                    return Path.Combine(
-                        DirectoryMeta.DownloadRootPath,
-                        "TvShows",
-                        DirectoryMeta.TvShowFolder,
-                        DirectoryMeta.SeasonFolder
-                    );
-                default:
-                    Result.Fail<string>($"Invalid DownloadTaskType of type: {DownloadTaskType}").LogError();
-                    return string.Empty;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Gets the destination directory appended to the MediaPath e.g: [DestinationPath]/[TvShow]/[Season]/ or  [DestinationPath]/[Movie]/.
-    /// </summary>
-    [NotMapped]
-    public string DestinationDirectory
-    {
-        get
-        {
-            if (DirectoryMeta.DestinationRootPath == string.Empty)
-                return string.Empty;
-
-            switch (DownloadTaskType)
-            {
-                case DownloadTaskType.MovieData:
-                    return Path.Combine(DirectoryMeta.DestinationRootPath, DirectoryMeta.MovieFolder);
-                case DownloadTaskType.EpisodeData:
-                    return Path.Combine(
-                        DirectoryMeta.DestinationRootPath,
-                        DirectoryMeta.TvShowFolder,
-                        DirectoryMeta.SeasonFolder
-                    );
-                default:
-                    Result.Fail<string>($"Invalid DownloadTaskType of type: {DownloadTaskType}").LogError();
-                    return string.Empty;
-            }
-        }
-    }
 
     public override string ToString() =>
         $"[MoveDownloadFileProgress {Title} - {Percentage:F2}% - {DataFormat.FormatSpeedString(Speed)} - {DataFormat.FormatSizeString(DownloadTaskPhase == DownloadTaskPhase.FileTransfer ? FileDataTransferred : DataReceived)} / {DataFormat.FormatSizeString(DataTotal)} - {DataFormat.FormatTimeSpanString(TimeSpan.FromSeconds(TimeRemaining))}]";

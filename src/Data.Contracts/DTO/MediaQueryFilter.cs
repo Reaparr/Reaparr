@@ -13,6 +13,8 @@ public record MediaQueryFilter
     /// </summary>
     public required int PlexLibraryId { get; init; }
 
+    public int? ParentId { get; init; }
+
     public required bool FilterOfflineMedia { get; init; }
 
     public required bool FilterOwnedMedia { get; init; }
@@ -36,6 +38,7 @@ public record MediaQueryFilter
             '\n',
             $"MediaType={MediaType}",
             $"PlexLibraryId={PlexLibraryId}",
+            $"ParentId={ParentId?.ToString() ?? string.Empty}",
             $"FilterOfflineMedia={FilterOfflineMedia}",
             $"FilterOwnedMedia={FilterOwnedMedia}",
             $"ComparisonState={ComparisonState?.ToString() ?? string.Empty}",

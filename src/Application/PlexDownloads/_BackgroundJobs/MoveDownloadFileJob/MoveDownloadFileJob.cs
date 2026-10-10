@@ -56,7 +56,7 @@ public class MoveDownloadFileJob : IJob
                 queueResult.LogError();
         }
 
-        var executionResult = await Result.Try(async Task () =>
+        var executionResult = await Result.Try(async Task<Result> () =>
         {
             _log.Here()
                 .Information(
@@ -70,7 +70,7 @@ public class MoveDownloadFileJob : IJob
             if (currentTask is null)
             {
                 ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogWarning();
-                return;
+                return Result.Ok();
             }
 
             if (
@@ -85,7 +85,7 @@ public class MoveDownloadFileJob : IJob
                         currentTask.DownloadStatus
                     );
                 await QueueNextAsync();
-                return;
+                return Result.Ok();
             }
 
             var moveResult = await Result.Try(() =>
@@ -101,14 +101,13 @@ public class MoveDownloadFileJob : IJob
                         nameof(downloadTaskKey),
                         downloadTaskKey.Id
                     );
-                return;
+                return moveResult;
             }
 
             if (moveResult.IsFailed)
             {
                 _log.Here().Error("Failed to move all files for {DownloadTaskKey}", downloadTaskKey);
-                await QueueNextAsync();
-                return;
+                return moveResult;
             }
 
             var downloadTaskResult = await Result.Try(() =>
@@ -118,16 +117,13 @@ public class MoveDownloadFileJob : IJob
             if (downloadTaskResult.IsFailed)
             {
                 downloadTaskResult.LogError();
-                await QueueNextAsync();
-                return;
+                return downloadTaskResult.ToResult();
             }
 
             var downloadTask = downloadTaskResult.Value;
             if (downloadTask is null)
             {
-                ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogError();
-                await QueueNextAsync();
-                return;
+                return ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogError();
             }
 
             if (downloadTask.DownloadStatus is DownloadStatus.MoveFinished)
@@ -154,18 +150,18 @@ public class MoveDownloadFileJob : IJob
                             downloadTaskKey
                         );
                     await QueueNextAsync();
-                    return;
+                    return cleanupResult;
                 }
 
                 if (cleanupResult.IsFailed)
                 {
                     cleanupResult.LogError();
-                    await QueueNextAsync();
-                    return;
+                    return cleanupResult;
                 }
             }
 
             await QueueNextAsync();
+            return Result.Ok();
         });
 
         if (executionResult.IsCancelled)

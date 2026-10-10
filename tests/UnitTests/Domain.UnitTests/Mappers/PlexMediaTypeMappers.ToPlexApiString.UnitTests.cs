@@ -7,11 +7,11 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments(PlexMediaType.TvShow, "show")]
     [Arguments(PlexMediaType.Season, "season")]
     [Arguments(PlexMediaType.Episode, "episode")]
-    [Arguments(PlexMediaType.Artist, "artist")]
-    [Arguments(PlexMediaType.Album, "album")]
-    [Arguments(PlexMediaType.Song, "track")]
+    [Arguments(PlexMediaType.MusicArtist, "artist")]
+    [Arguments(PlexMediaType.MusicAlbum, "album")]
+    [Arguments(PlexMediaType.MusicTrack, "track")]
     [Arguments(PlexMediaType.PhotoAlbum, "photoalbum")]
-    [Arguments(PlexMediaType.Photos, "photo")]
+    [Arguments(PlexMediaType.PhotoImage, "photo")]
     public void ShouldConvertEnumToPlexApiString_WhenValidEnumValueProvided(PlexMediaType input, string expected)
     {
         // Act
@@ -23,13 +23,13 @@ public partial class PlexMediaTypeMappersUnitTests
 
     [Test]
     [Arguments(PlexMediaType.None)]
-    [Arguments(PlexMediaType.Music)]
     [Arguments(PlexMediaType.OtherVideos)]
     [Arguments(PlexMediaType.Games)]
     [Arguments(PlexMediaType.Unknown)]
     [Arguments((PlexMediaType)999)]
     [Arguments((PlexMediaType)(-1))]
     [Arguments((PlexMediaType)100)]
+    [Arguments((PlexMediaType)6)]
     public void ShouldThrowNotImplementedException_WhenUnsupportedEnumValueProvided(PlexMediaType input)
     {
         // Act & Assert
@@ -46,11 +46,11 @@ public partial class PlexMediaTypeMappersUnitTests
             { PlexMediaType.TvShow, "show" },
             { PlexMediaType.Season, "season" },
             { PlexMediaType.Episode, "episode" },
-            { PlexMediaType.Artist, "artist" },
-            { PlexMediaType.Album, "album" },
-            { PlexMediaType.Song, "track" },
+            { PlexMediaType.MusicArtist, "artist" },
+            { PlexMediaType.MusicAlbum, "album" },
+            { PlexMediaType.MusicTrack, "track" },
             { PlexMediaType.PhotoAlbum, "photoalbum" },
-            { PlexMediaType.Photos, "photo" },
+            { PlexMediaType.PhotoImage, "photo" },
         };
 
         // Act & Assert
@@ -77,11 +77,11 @@ public partial class PlexMediaTypeMappersUnitTests
             PlexMediaType.TvShow,
             PlexMediaType.Season,
             PlexMediaType.Episode,
-            PlexMediaType.Artist,
-            PlexMediaType.Album,
-            PlexMediaType.Song,
+            PlexMediaType.MusicArtist,
+            PlexMediaType.MusicAlbum,
+            PlexMediaType.MusicTrack,
             PlexMediaType.PhotoAlbum,
-            PlexMediaType.Photos,
+            PlexMediaType.PhotoImage,
         };
 
         // Act & Assert
@@ -109,11 +109,11 @@ public partial class PlexMediaTypeMappersUnitTests
         PlexMediaType.TvShow.ToPlexApiString().ShouldBe("show");
         PlexMediaType.Season.ToPlexApiString().ShouldBe("season");
         PlexMediaType.Episode.ToPlexApiString().ShouldBe("episode");
-        PlexMediaType.Artist.ToPlexApiString().ShouldBe("artist");
-        PlexMediaType.Album.ToPlexApiString().ShouldBe("album");
-        PlexMediaType.Song.ToPlexApiString().ShouldBe("track"); // Note: Song maps to "track"
+        PlexMediaType.MusicArtist.ToPlexApiString().ShouldBe("artist");
+        PlexMediaType.MusicAlbum.ToPlexApiString().ShouldBe("album");
+        PlexMediaType.MusicTrack.ToPlexApiString().ShouldBe("track");
         PlexMediaType.PhotoAlbum.ToPlexApiString().ShouldBe("photoalbum");
-        PlexMediaType.Photos.ToPlexApiString().ShouldBe("photo");
+        PlexMediaType.PhotoImage.ToPlexApiString().ShouldBe("photo");
     }
 
     [Test]
@@ -140,7 +140,6 @@ public partial class PlexMediaTypeMappersUnitTests
         var unsupportedEnumValues = new[]
         {
             PlexMediaType.None,
-            PlexMediaType.Music,
             PlexMediaType.OtherVideos,
             PlexMediaType.Games,
             PlexMediaType.Unknown,

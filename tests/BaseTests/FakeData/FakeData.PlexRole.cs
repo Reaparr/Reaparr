@@ -8,6 +8,8 @@ public static partial class FakeData
         .RuleFor(x => x.Name, f => f.Name.FullName())
         .RuleFor(x => x.Key, f => f.Random.Hash(24))
         .Ignore(x => x.PlexLibraries)
+        .Ignore(x => x.PlexMusicArtistActors)
+        .Ignore(x => x.PlexOtherVideoActors)
         .Ignore(x => x.PlexMovieActors)
         .Ignore(x => x.PlexTvShowActors);
 

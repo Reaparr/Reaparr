@@ -52,6 +52,12 @@ public class CreateDownloadTasksEndpoint : Endpoint<CreateDownloadTasksEndpointR
                 TvShows = report.TvShows,
                 Seasons = report.Seasons,
                 Episodes = report.Episodes,
+                PhotoAlbums = report.PhotoAlbums,
+                PhotoImages = report.PhotoImages,
+                MusicArtists = report.MusicArtists,
+                MusicAlbums = report.MusicAlbums,
+                MusicTracks = report.MusicTracks,
+                OtherVideos = report.OtherVideos,
             },
             ct
         );

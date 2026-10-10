@@ -45,10 +45,12 @@ public class PauseDownloadTaskCommandHandler : ICommandHandler<PauseDownloadTask
             return ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), command.DownloadTaskGuid).LogError();
 
         var downloadTasks = await _dbContext.GetDownloadableChildTaskKeys(key, cancellationToken);
+        var filesById = (await _dbContext.GetDownloadTaskFilesAsync(downloadTasks, cancellationToken)).ToDictionary(x =>
+            x.Id
+        );
         foreach (var downloadTaskKey in downloadTasks)
         {
-            var downloadTask = await _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, cancellationToken);
-            if (downloadTask is null)
+            if (!filesById.TryGetValue(downloadTaskKey.Id, out var downloadTask))
             {
                 ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogError();
                 continue;
@@ -109,6 +111,12 @@ public class PauseDownloadTaskCommandHandler : ICommandHandler<PauseDownloadTask
                 );
                 if (resetMoveProgressResult.IsFailed)
                     return resetMoveProgressResult.LogIfFailed();
+
+                await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
+                    downloadTaskKey,
+                    command.AutoPause ? DownloadStatus.AutoMovePaused : DownloadStatus.MovePaused,
+                    cancellationToken
+                );
 
                 continue;
             }

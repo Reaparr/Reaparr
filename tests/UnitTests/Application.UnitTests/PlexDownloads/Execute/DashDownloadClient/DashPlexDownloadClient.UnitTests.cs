@@ -871,7 +871,15 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     }
 
     [Test]
-    public async Task ShouldCreateDashOutputUsingMkvFilePathAndNormalizedFileName()
+    [Arguments(DownloadTaskType.MovieData, "mp4")]
+    [Arguments(DownloadTaskType.EpisodeData, "mp4")]
+    [Arguments(DownloadTaskType.MusicTrackData, "flac")]
+    [Arguments(DownloadTaskType.PhotoData, "jpg")]
+    [Arguments(DownloadTaskType.OtherVideoData, "avi")]
+    public async Task ShouldCreateDashOutputUsingMkvFilePathAndNormalizedFileName(
+        DownloadTaskType taskType,
+        string originalExtension
+    )
     {
         await SetupDatabase(
             12006,
@@ -879,12 +887,38 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
             {
                 config.PlexServerCount = 1;
                 config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
+                config.MovieDownloadTasksCount = 2;
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 2;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PhotoAlbumDownloadTasksCount = 2;
+                config.PhotoImageDownloadTasksCount = 1;
+                config.PhotoImageFileDownloadTasksCount = 1;
+                config.OtherVideoDownloadTasksCount = 2;
+                config.OtherVideoFileDownloadTasksCount = 1;
             }
         );
 
-        var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
-        var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
+        var dbContext = IDbContext;
+        List<DownloadTaskFileBase> downloadTasks =
+        [
+            .. await dbContext.DownloadTaskMovieFile.ToListAsync(CancellationToken),
+            .. await dbContext.DownloadTaskTvShowEpisodeFile.ToListAsync(CancellationToken),
+            .. await dbContext.DownloadTaskMusicTrackFiles.ToListAsync(CancellationToken),
+            .. await dbContext.DownloadTaskPhotoImageFiles.ToListAsync(CancellationToken),
+            .. await dbContext.DownloadTaskOtherVideoFiles.ToListAsync(CancellationToken),
+        ];
+        var downloadTask = downloadTasks.First(x => x.DownloadTaskType == taskType);
+        downloadTask.FileName = $"Sample.Release.1080p.BluRay.x264.{originalExtension}";
+        downloadTask.Title = "Original title";
+        dbContext.Entry(downloadTask).State = EntityState.Modified;
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var key = downloadTask.ToKey();
+        var serverMachineIdentifier = await dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
 
         SetupSpeedLimit(serverMachineIdentifier, 0);
         SetupCommandExecutor();
@@ -928,20 +962,34 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
 
         var sut = CreateSut(dashWrapperMock);
 
-        var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
+        var result = await sut.Start(key, CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         capturedOptions.ShouldNotBeNull();
 
-        var expectedNormalizedName = DashOutputFileNameCleaner.NormalizeForDashOutput(
-            downloadTask.FileName,
-            VideoQuality.SD
-        );
+        const string expectedNormalizedName = "Sample.Release.WEB-DL.480p.mkv";
         var expectedFinalPath = Path.Combine(downloadTask.DownloadDirectory, expectedNormalizedName);
 
         capturedOptions!.Output.ShouldBe(expectedFinalPath);
         capturedOptions.Output.EndsWith(".mkv", StringComparison.OrdinalIgnoreCase).ShouldBeTrue();
         capturedOptions.Output.ShouldContain("480p");
+
+        var persistedTask = await IDbContext.GetDownloadTaskFileAsync(key, CancellationToken);
+        persistedTask.ShouldNotBeNull();
+        persistedTask.FileName.ShouldBe(expectedNormalizedName);
+        persistedTask.Title.ShouldBe(expectedNormalizedName);
+        persistedTask.DownloadFilePath.RemoveReapTempSuffix().ShouldBe(expectedFinalPath);
+        persistedTask.DestinationFilePath.ShouldBe(
+            Path.Combine(downloadTask.DestinationDirectory, expectedNormalizedName)
+        );
+
+        foreach (var control in downloadTasks.Where(x => x.Id != key.Id || x.DownloadTaskType != taskType))
+        {
+            var persistedControl = await IDbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken);
+            persistedControl.ShouldNotBeNull();
+            persistedControl.FileName.ShouldBe(control.FileName);
+            persistedControl.Title.ShouldBe(control.Title);
+        }
         Mock.Mock<ICommandExecutor>()
             .Verify(
                 x => x.Send(It.IsAny<ICommand<Result<GetTranscodeUrlResult>>>(), It.IsAny<CancellationToken>()),

@@ -14,4 +14,8 @@ public class PlexActor : BaseEntity
     public ICollection<PlexMovie> PlexMovieActors { get; set; } = [];
 
     public ICollection<PlexTvShow> PlexTvShowActors { get; set; } = [];
+
+    public ICollection<PlexMusicArtist> PlexMusicArtistActors { get; set; } = [];
+
+    public ICollection<PlexOtherVideo> PlexOtherVideoActors { get; set; } = [];
 }
