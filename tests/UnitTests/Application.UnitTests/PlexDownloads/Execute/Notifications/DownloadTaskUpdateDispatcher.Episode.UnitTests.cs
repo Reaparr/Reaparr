@@ -156,7 +156,7 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         (await predicate()).ShouldBeTrue();
     }
     [Test]
-    public async Task ShouldIncludeSeasonAndTvShowInPatch_WhenEpisodeStatusChanges()
+    public async Task ShouldPersistCompletedEpisodeSnapshot_WhenSiblingEpisodeProgressArrivesBeforeFlush()
     {
         await SetupDatabase(
             84335,
