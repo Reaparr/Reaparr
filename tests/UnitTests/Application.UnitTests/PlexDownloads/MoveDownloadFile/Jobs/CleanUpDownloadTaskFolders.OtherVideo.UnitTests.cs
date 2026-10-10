@@ -21,6 +21,7 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         var file = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
         file.DirectoryMeta.DownloadRootPath = paths.DefaultDownloadsDestinationFolder;
+        file.DirectoryMeta.OtherVideoFolder = "shared/file";
         file.DownloadStatus = DownloadStatus.Completed;
         dbContext.Entry(file).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -40,6 +41,7 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         var fs = Mock.Container.Resolve<IFileSystem>();
         fs.Directory.Exists(file.DownloadDirectory).ShouldBe(containsFile);
         fs.Directory.Exists(Path.GetDirectoryName(file.DownloadDirectory)!).ShouldBe(containsFile);
+        fs.Directory.Exists(file.DirectoryMeta.GetDownloadCategoryDirectory(file.DownloadTaskType)).ShouldBeTrue();
         if (containsFile)
             fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
         (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(file.Id);
@@ -351,6 +353,7 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.OtherVideoFolder = "shared/file";
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -398,6 +401,7 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.OtherVideoFolder = "shared/file";
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -450,6 +454,7 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.OtherVideoFolder = "shared/file";
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;

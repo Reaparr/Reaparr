@@ -73,6 +73,10 @@ public class GetAllMediaByTypeRequestValidator : Validator<GetAllMediaByTypeRequ
         RuleFor(x => x.GenreId).GreaterThan(0).When(x => x.GenreId.HasValue);
         RuleFor(x => x.RoleId).GreaterThan(0).When(x => x.RoleId.HasValue);
         RuleFor(x => x.QualityId).GreaterThan(0).When(x => x.QualityId.HasValue);
+        RuleFor(x => x.CountryId).Null().When(x => x.MediaType == PlexMediaType.PhotoAlbum);
+        RuleFor(x => x.RoleId).Null().When(x => x.MediaType == PlexMediaType.PhotoAlbum);
+        RuleFor(x => x.GenreId).Null().When(x => x.MediaType == PlexMediaType.PhotoAlbum);
+        RuleFor(x => x.QualityId).Null().When(x => x.MediaType == PlexMediaType.PhotoAlbum);
         RuleFor(x => x.ComparisonState).IsInEnum().When(x => x.ComparisonState.HasValue);
         RuleFor(x => x.ComparisonState).Null().When(x => !x.MediaType.SupportsComparison());
         RuleFor(x => x.ComparisonState)

@@ -56,37 +56,71 @@ public class InvalidateLibraryComparisonJobsCommandHandler
             .Select(x => x.JobKey)
             .ToList();
 
-        var result = await _scheduler.DeleteBatchJobs(jobKeysToDelete, cancellationToken);
-        if (result.IsFailed)
-            return result;
-
-        var comparisonResult = await _dbContext.ExecuteTransactionAsync(async (ctx, ct) =>
+        var executingJobKeys = (await _scheduler.GetCurrentlyExecutingJobs(cancellationToken))
+            .Select(x => x.JobDetail.Key)
+            .ToHashSet();
+        foreach (var runningJobKey in jobKeysToDelete.Where(executingJobKeys.Contains))
         {
-            await ctx.PlexMovieComparisons
-                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
-                .ExecuteDeleteAsync(ct);
-            await ctx.PlexTvShowComparisons
-                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
-                .ExecuteDeleteAsync(ct);
-            await ctx.PlexSeasonComparisons
-                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
-                .ExecuteDeleteAsync(ct);
-            await ctx.PlexEpisodeComparisons
-                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
-                .ExecuteDeleteAsync(ct);
-            await ctx.PlexMusicArtistComparisons
-                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
-                .ExecuteDeleteAsync(ct);
-            await ctx.PlexMusicAlbumComparisons
-                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
-                .ExecuteDeleteAsync(ct);
-            await ctx.PlexMusicTrackComparisons
-                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
-                .ExecuteDeleteAsync(ct);
-            await ctx.PlexComparisonScopes
-                .Where(x => affectedLibraryIds.Contains(x.OwnedPlexLibraryId) || affectedLibraryIds.Contains(x.RemotePlexLibraryId))
-                .ExecuteDeleteAsync(ct);
-        }, cancellationToken);
+            var cancellationResult = await _scheduler.CancelJob(runningJobKey, cancellationToken);
+            cancellationResult.LogIfFailed();
+        }
+
+        var result = await _scheduler.DeleteBatchJobs(jobKeysToDelete, cancellationToken);
+
+        var comparisonResult = await _dbContext.ExecuteTransactionAsync(
+            async (ctx, ct) =>
+            {
+                await ctx
+                    .PlexMovieComparisons.Where(x =>
+                        affectedLibraryIds.Contains(x.OwnedPlexLibraryId)
+                        || affectedLibraryIds.Contains(x.RemotePlexLibraryId)
+                    )
+                    .ExecuteDeleteAsync(ct);
+                await ctx
+                    .PlexTvShowComparisons.Where(x =>
+                        affectedLibraryIds.Contains(x.OwnedPlexLibraryId)
+                        || affectedLibraryIds.Contains(x.RemotePlexLibraryId)
+                    )
+                    .ExecuteDeleteAsync(ct);
+                await ctx
+                    .PlexSeasonComparisons.Where(x =>
+                        affectedLibraryIds.Contains(x.OwnedPlexLibraryId)
+                        || affectedLibraryIds.Contains(x.RemotePlexLibraryId)
+                    )
+                    .ExecuteDeleteAsync(ct);
+                await ctx
+                    .PlexEpisodeComparisons.Where(x =>
+                        affectedLibraryIds.Contains(x.OwnedPlexLibraryId)
+                        || affectedLibraryIds.Contains(x.RemotePlexLibraryId)
+                    )
+                    .ExecuteDeleteAsync(ct);
+                await ctx
+                    .PlexMusicArtistComparisons.Where(x =>
+                        affectedLibraryIds.Contains(x.OwnedPlexLibraryId)
+                        || affectedLibraryIds.Contains(x.RemotePlexLibraryId)
+                    )
+                    .ExecuteDeleteAsync(ct);
+                await ctx
+                    .PlexMusicAlbumComparisons.Where(x =>
+                        affectedLibraryIds.Contains(x.OwnedPlexLibraryId)
+                        || affectedLibraryIds.Contains(x.RemotePlexLibraryId)
+                    )
+                    .ExecuteDeleteAsync(ct);
+                await ctx
+                    .PlexMusicTrackComparisons.Where(x =>
+                        affectedLibraryIds.Contains(x.OwnedPlexLibraryId)
+                        || affectedLibraryIds.Contains(x.RemotePlexLibraryId)
+                    )
+                    .ExecuteDeleteAsync(ct);
+                await ctx
+                    .PlexComparisonScopes.Where(x =>
+                        affectedLibraryIds.Contains(x.OwnedPlexLibraryId)
+                        || affectedLibraryIds.Contains(x.RemotePlexLibraryId)
+                    )
+                    .ExecuteDeleteAsync(ct);
+            },
+            cancellationToken
+        );
         if (comparisonResult.IsFailed)
             return comparisonResult;
 

@@ -6,6 +6,7 @@ public class MediaOverviewOtherVideoSnapshotConfiguration
     public override void Configure(EntityTypeBuilder<MediaOverviewOtherVideoSnapshot> builder)
     {
         base.Configure(builder);
+        builder.HasIndex(x => new { x.PlexLibraryId, x.QualityRank });
 
         builder
             .HasOne(x => x.PlexOtherVideo)

@@ -24,6 +24,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         dbContext.DownloadTaskPhotoAlbums.Add(album);
         var paths = Mock.Container.Resolve<IPathProvider>();
         file.DirectoryMeta.DownloadRootPath = paths.DefaultDownloadsDestinationFolder;
+        file.DirectoryMeta.PhotoAlbumFolder = "shared/file";
         file.DownloadStatus = DownloadStatus.Completed;
         await dbContext.SaveChangesAsync(CancellationToken);
         SetupFileSystem(fs =>
@@ -42,6 +43,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         var fs = Mock.Container.Resolve<IFileSystem>();
         fs.Directory.Exists(file.DownloadDirectory).ShouldBe(containsFile);
         fs.Directory.Exists(Path.GetDirectoryName(file.DownloadDirectory)!).ShouldBe(containsFile);
+        fs.Directory.Exists(file.DirectoryMeta.GetDownloadCategoryDirectory(file.DownloadTaskType)).ShouldBeTrue();
         if (containsFile)
             fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
         (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(file.Id);
@@ -371,6 +373,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         }
         dbContext.DownloadTaskPhotoAlbums.Add(album);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.PhotoAlbumFolder = "shared/file";
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
         Mock.Mock<IPath>()
@@ -420,6 +423,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         }
         dbContext.DownloadTaskPhotoAlbums.Add(album);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.PhotoAlbumFolder = "shared/file";
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
         Mock.Mock<IPath>()
@@ -474,6 +478,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         }
         dbContext.DownloadTaskPhotoAlbums.Add(album);
         target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.PhotoAlbumFolder = "shared/file";
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
         Mock.Mock<IPath>()

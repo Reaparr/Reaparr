@@ -85,8 +85,7 @@ public class CheckPlexLibrariesForUpdatesJob : IJob
         }
 
         var outdatedLibraryIds = await _dbContext
-            .PlexLibraries.AsNoTracking()
-            .Where(x => serversWithTokenMappings.Contains(x.PlexServerId) && x.Outdated && x.Type.IsRootType())
+            .PlexLibraries.Where(x => serversWithTokenMappings.Contains(x.PlexServerId) && x.Outdated)
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
 

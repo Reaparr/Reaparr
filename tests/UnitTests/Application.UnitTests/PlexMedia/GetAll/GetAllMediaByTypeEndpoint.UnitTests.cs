@@ -76,6 +76,34 @@ public class GetAllMediaByTypeEndpointUnitTests
     }
 
     [Test]
+    [Arguments(1, null, null, null, nameof(GetAllMediaByTypeRequest.CountryId))]
+    [Arguments(null, 1, null, null, nameof(GetAllMediaByTypeRequest.RoleId))]
+    [Arguments(null, null, 1, null, nameof(GetAllMediaByTypeRequest.GenreId))]
+    [Arguments(null, null, null, 1, nameof(GetAllMediaByTypeRequest.QualityId))]
+    public void ShouldRejectUnsupportedPhotoAlbumFilters_WhenValidatingRequest(
+        int? countryId,
+        int? roleId,
+        int? genreId,
+        int? qualityId,
+        string propertyName
+    )
+    {
+        var result = new GetAllMediaByTypeRequestValidator().Validate(
+            new GetAllMediaByTypeRequest
+            {
+                MediaType = PlexMediaType.PhotoAlbum,
+                CountryId = countryId,
+                RoleId = roleId,
+                GenreId = genreId,
+                QualityId = qualityId,
+            }
+        );
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.Select(x => x.PropertyName).ShouldBe([propertyName]);
+    }
+
+    [Test]
     public void ShouldRejectNonPositiveFriendlyFilterIdsButAllowAllMediaComparisonState_WhenValidatingRequest()
     {
         var validator = new GetAllMediaByTypeRequestValidator();
