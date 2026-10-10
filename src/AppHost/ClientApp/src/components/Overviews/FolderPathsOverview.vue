@@ -325,7 +325,7 @@ function saveDisplayName(id: number, value: string) {
   min-height: 44px;
 }
 
-@media (max-width: $breakpoint-xs-max) {
+@media (max-width: $breakpoint-sm-max) {
   .folder-path-tabs {
     min-height: 48px;
 
@@ -343,6 +343,9 @@ function saveDisplayName(id: number, value: string) {
       margin-right: 0;
     }
   }
+}
+
+@media (max-width: $breakpoint-xs-max) {
 
   .folder-path-row {
     margin: 0.75rem 0.5rem;

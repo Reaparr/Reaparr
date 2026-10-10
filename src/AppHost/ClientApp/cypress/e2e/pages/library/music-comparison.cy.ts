@@ -227,6 +227,10 @@ describe('Actual Music comparison frontend integration', () => {
 			cy.getPageData();
 			visibleCy(`comparison-chip-${PlexMediaComparisonState.Partial}`).click();
 			cy.wait('@musicComparison').its('response.statusCode').should('eq', 500);
+			cy.getCy('alert-dialog').should('be.visible').within(() => {
+				cy.getCy('close-alert-dialog').click();
+			});
+			cy.getCy('alert-dialog').should('not.exist');
 			cy.getCy('media-comparison-details-error').should('be.visible').and('have.attr', 'role', 'alert');
 			visibleCy('media-comparison-details-dialog-download-button').should('be.disabled');
 			cy.then(() => {
@@ -251,6 +255,7 @@ describe('Actual Music comparison frontend integration', () => {
 				state.details.rows[0]!.title = 'Fresh album response';
 			});
 			visibleCy(`comparison-chip-${PlexMediaComparisonState.Partial}`).click();
+			cy.wait('@musicComparison');
 			cy.getCy('media-comparison-details-table').should('contain.text', 'Fresh album response');
 			cy.then(() => state.releaseDetails!());
 			cy.getCy('media-comparison-details-table').should('contain.text', 'Fresh album response').and('not.contain.text', 'Stale album response');

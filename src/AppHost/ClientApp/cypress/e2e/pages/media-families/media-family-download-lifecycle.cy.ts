@@ -201,14 +201,14 @@ function visitDetail(family: Family, state: WorkflowState) {
 	cy.get('h1').should('be.visible').and('have.text', state.root.title);
 }
 
-function openConfirmation(phone = false) {
+function openConfirmation(phone = false, waitForVisible = true) {
 	if (phone) {
 		visibleCy('media-overview-bar-mobile-menu').click();
 		visibleCy('media-overview-bar-mobile-download-button').click();
 	} else {
 		visibleCy('media-overview-bar-download-button').click();
 	}
-	cy.getCy('download-confirmation-dialog').should('be.visible');
+	cy.getCy('download-confirmation-dialog').should(waitForVisible ? 'be.visible' : 'exist');
 }
 
 function assertCommand(state: WorkflowState, type: PlexMediaType, id: number, qualities: DownloadMediaDTO['qualities'] = []) {
@@ -453,8 +453,13 @@ describe('Photos download and lifecycle parity', () => {
 				state.previewFailures = 1;
 				visitDetail('photos', state);
 				cy.getCy('photo-album-checkbox').click();
-				openConfirmation(phone);
+				openConfirmation(phone, false);
 				cy.wait('@preview').its('response.statusCode').should('eq', 500);
+				cy.getCy('alert-dialog').should('be.visible').within(() => {
+					cy.getCy('close-alert-dialog').click();
+				});
+				cy.getCy('alert-dialog').should('not.exist');
+				cy.getCy('download-confirmation-dialog').should('be.visible');
 				cy.getCy('download-confirmation-error').should('be.visible').and('have.attr', 'role', 'alert');
 				submit().should('be.disabled');
 				cy.then(() => {
@@ -470,6 +475,7 @@ describe('Photos download and lifecycle parity', () => {
 				assertPreview(assertCommand(state, PlexMediaType.PhotoAlbum, state.root.id), state.root);
 				cy.getCy('download-confirmation-error').should('not.exist');
 				cy.getCy('download-confirmation-cancel').should('be.visible').click();
+				cy.getCy('download-confirmation-dialog').should('not.exist');
 				cy.then(() => {
 					state.holdNextPreview = true;
 					state.releasePreview = undefined;
