@@ -115,8 +115,8 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 		},
 		getDefaultFolderPaths: computed(() =>
 			state.folderPaths.filter((x) =>
-				x.isDefault &&
-				[
+				x.isDefault
+				&& [
 					FolderType.DownloadFolder,
 					FolderType.MovieFolder,
 					FolderType.TvShowFolder,
