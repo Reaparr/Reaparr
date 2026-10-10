@@ -16,6 +16,13 @@ const request = (type: PlexMediaType): CreateDownloadTasksRequest => ({
 	}],
 });
 
+const familyReport = (counts: Partial<DownloadTaskCreationReportDTO>): DownloadTaskCreationReportDTO => ({
+	movies: 0, tvShows: 0, seasons: 0, episodes: 0,
+	musicArtists: 0, musicAlbums: 0, musicTracks: 0,
+	photoAlbums: 0, photoImages: 0, otherVideos: 0, total: 0,
+	...counts,
+});
+
 describe('translateDownloadNotification()', () => {
 	beforeAll(() => {
 		baseSetup();
@@ -67,5 +74,80 @@ describe('translateDownloadNotification()', () => {
 		const report = generateResultDTO({ movies: 0, tvShows, seasons, episodes } as DownloadTaskCreationReportDTO);
 
 		expect(translateDownloadNotification(report, request(PlexMediaType.None))).toBe(message);
+	});
+
+	test.each([
+		[PlexMediaType.MusicArtist, 'musicArtists', 'music artist', 'music artists'],
+		[PlexMediaType.MusicAlbum, 'musicAlbums', 'music album', 'music albums'],
+		[PlexMediaType.MusicTrack, 'musicTracks', 'music track', 'music tracks'],
+		[PlexMediaType.PhotoAlbum, 'photoAlbums', 'photo album', 'photo albums'],
+		[PlexMediaType.PhotoImage, 'photoImages', 'photo', 'photos'],
+		[PlexMediaType.OtherVideos, 'otherVideos', 'other video', 'other videos'],
+	] as const)('Should translate singular and plural %s creation counts', (type, field, singular, plural) => {
+		// Arrange
+		const single = generateResultDTO(familyReport({ [field]: 1 }));
+		const multiple = generateResultDTO(familyReport({ [field]: 2 }));
+		const multipleRequest = request(type);
+		multipleRequest.downloadMedias[0]!.mediaIds = [1, 2];
+
+		// Act
+		const singleMessage = translateDownloadNotification(single, request(type));
+		const multipleMessage = translateDownloadNotification(multiple, multipleRequest);
+
+		// Assert
+		expect(singleMessage).toBe(`Downloading 1 ${singular}`);
+		expect(multipleMessage).toBe(`Downloading 2 ${plural}`);
+	});
+
+	test.each([
+		[PlexMediaType.MusicArtist, { musicArtists: 2, musicAlbums: 4, musicTracks: 20 }, 'Downloading 2 music artists'],
+		[PlexMediaType.MusicAlbum, { musicAlbums: 2, musicTracks: 10 }, 'Downloading 2 music albums'],
+		[PlexMediaType.PhotoAlbum, { photoAlbums: 2, photoImages: 10 }, 'Downloading 2 photo albums'],
+	] as const)('Should count the selected %s hierarchy without inflating it with descendants', (type, counts, expected) => {
+		// Arrange
+		const report = generateResultDTO(familyReport(counts));
+		const downloadRequest = request(type);
+		downloadRequest.downloadMedias[0]!.mediaIds = [1, 2];
+
+		// Act
+		const message = translateDownloadNotification(report, downloadRequest);
+
+		// Assert
+		expect(message).toBe(expected);
+	});
+
+	test.each([
+		[PlexMediaType.MusicAlbum, { musicArtists: 1, musicAlbums: 1, musicTracks: 10 }, 'Downloading 1 music album'],
+		[PlexMediaType.MusicTrack, { musicArtists: 1, musicAlbums: 1, musicTracks: 1 }, 'Downloading 1 music track'],
+		[PlexMediaType.PhotoImage, { photoAlbums: 1, photoImages: 1 }, 'Downloading 1 photo'],
+	] as const)('Should preserve a single %s request intent when ancestors are reported', (type, counts, expected) => {
+		// Arrange
+		const report = generateResultDTO(familyReport(counts));
+
+		// Act
+		const message = translateDownloadNotification(report, request(type));
+
+		// Assert
+		expect(message).toBe(expected);
+	});
+
+	test.each([
+		[PlexMediaType.MusicAlbum, { musicArtists: 1, musicAlbums: 2, musicTracks: 10 }, 'Downloading 2 music albums'],
+		[PlexMediaType.MusicTrack, { musicArtists: 1, musicAlbums: 1, musicTracks: 2 }, 'Downloading 2 music tracks'],
+		[PlexMediaType.PhotoImage, { photoAlbums: 1, photoImages: 2 }, 'Downloading 2 photos'],
+	] as const)('Should preserve plural %s request intent when ancestors are reported', (type, counts, expected) => {
+		// Arrange
+		const report = generateResultDTO(familyReport(counts));
+		const downloadRequest = request(type);
+		downloadRequest.downloadMedias[0]!.mediaIds = [1, 2];
+
+		// Act & Assert
+		expect(translateDownloadNotification(report, downloadRequest)).toBe(expected);
+
+		downloadRequest.downloadMedias = [
+			{ ...downloadRequest.downloadMedias[0]!, mediaIds: [1] },
+			{ ...downloadRequest.downloadMedias[0]!, mediaIds: [2] },
+		];
+		expect(translateDownloadNotification(report, downloadRequest)).toBe(expected);
 	});
 });

@@ -27,6 +27,12 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 			askDownloadMovieConfirmation: true,
 			askDownloadSeasonConfirmation: true,
 			askDownloadTvShowConfirmation: true,
+			askDownloadMusicArtistConfirmation: true,
+			askDownloadMusicAlbumConfirmation: true,
+			askDownloadMusicTrackConfirmation: true,
+			askDownloadPhotoAlbumConfirmation: true,
+			askDownloadPhotoImageConfirmation: true,
+			askDownloadOtherVideosConfirmation: true,
 		},
 		dateTimeSettings: {
 			longDateFormat: 'EEEE, dd MMMM yyyy',
@@ -37,6 +43,9 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 		},
 		displaySettings: {
 			movieViewMode: ViewMode.Poster, tvShowViewMode: ViewMode.Poster, allOverviewViewMode: PlexMediaType.TvShow,
+			musicArtistViewMode: ViewMode.Poster,
+			photoAlbumViewMode: ViewMode.Poster,
+			otherVideosViewMode: ViewMode.Poster,
 		},
 		downloadManagerSettings: {
 			downloadSegments: 4, keepCompletedInDownloadFolder: false, downloadSchedule: { enabled: false, days: {} },
@@ -124,17 +133,44 @@ export const useSettingsStore = defineStore(StoreNames.SettingsStore, () => {
 				case PlexMediaType.TvShow:
 					state.displaySettings.tvShowViewMode = viewMode;
 					break;
-				default: Log.error('Could not set view mode for type' + type);
+				case PlexMediaType.MusicArtist:
+					state.displaySettings.musicArtistViewMode = viewMode;
+					break;
+				case PlexMediaType.PhotoAlbum:
+					state.displaySettings.photoAlbumViewMode = viewMode;
+					break;
+				case PlexMediaType.OtherVideos:
+					state.displaySettings.otherVideosViewMode = viewMode;
+					break;
+				default:
+					Log.error('Could not set view mode for type' + type);
 			}
 		},
 		getServerSettings: (machineIdentifier?: string) => machineIdentifier ? state.serverSettings.data.find((user) => user.machineIdentifier === machineIdentifier) : null,
 		isConfirmationEnabled: (type: PlexMediaType) => {
 			switch (type) {
-				case PlexMediaType.Movie: return state.confirmationSettings.askDownloadMovieConfirmation;
-				case PlexMediaType.TvShow: return state.confirmationSettings.askDownloadTvShowConfirmation;
-				case PlexMediaType.Season: return state.confirmationSettings.askDownloadSeasonConfirmation;
-				case PlexMediaType.Episode: return state.confirmationSettings.askDownloadEpisodeConfirmation;
-				default: return true;
+				case PlexMediaType.Movie:
+					return state.confirmationSettings.askDownloadMovieConfirmation;
+				case PlexMediaType.TvShow:
+					return state.confirmationSettings.askDownloadTvShowConfirmation;
+				case PlexMediaType.Season:
+					return state.confirmationSettings.askDownloadSeasonConfirmation;
+				case PlexMediaType.Episode:
+					return state.confirmationSettings.askDownloadEpisodeConfirmation;
+				case PlexMediaType.MusicArtist:
+					return state.confirmationSettings.askDownloadMusicArtistConfirmation;
+				case PlexMediaType.MusicAlbum:
+					return state.confirmationSettings.askDownloadMusicAlbumConfirmation;
+				case PlexMediaType.MusicTrack:
+					return state.confirmationSettings.askDownloadMusicTrackConfirmation;
+				case PlexMediaType.PhotoAlbum:
+					return state.confirmationSettings.askDownloadPhotoAlbumConfirmation;
+				case PlexMediaType.PhotoImage:
+					return state.confirmationSettings.askDownloadPhotoImageConfirmation;
+				case PlexMediaType.OtherVideos:
+					return state.confirmationSettings.askDownloadOtherVideosConfirmation;
+				default:
+					return true;
 			}
 		},
 		$reset() {

@@ -107,15 +107,29 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 		getFolderPath: (id: number): FolderPathDTO | undefined =>
 			state.folderPaths.find((x) => x.id === id),
 		getFolderPathOptions: (type: PlexMediaType): FolderPathDTO[] => {
-			if (type === PlexMediaType.Movie || type === PlexMediaType.TvShow) {
+			if (type === PlexMediaType.Movie || type === PlexMediaType.TvShow || type === PlexMediaType.MusicArtist || type === PlexMediaType.PhotoAlbum || type === PlexMediaType.OtherVideos) {
 				return state.folderPaths.filter((x) => x.mediaType === type);
 			}
 
 			return state.folderPaths;
 		},
-		getDefaultFolderPaths: computed(() => state.folderPaths.filter((x) => x.id === 1 || x.id === 2 || x.id === 3)),
+		getDefaultFolderPaths: computed(() =>
+			state.folderPaths.filter((x) =>
+				x.isDefault
+				&& [
+					FolderType.DownloadFolder,
+					FolderType.MovieFolder,
+					FolderType.TvShowFolder,
+					FolderType.MusicFolder,
+					FolderType.PhotosFolder,
+					FolderType.OtherVideosFolder,
+				].includes(x.folderType),
+			),
+		),
 		areDefaultFolderPathsValid: computed(() =>
-			get(getters.getDefaultFolderPaths).every((x: FolderPathDTO) => x.isValid),
+			state.folderPaths
+				.filter((x) => x.isDefault && [FolderType.DownloadFolder, FolderType.MovieFolder, FolderType.TvShowFolder].includes(x.folderType))
+				.every((x: FolderPathDTO) => x.isValid),
 		),
 		getFolderPathsGroups: (onlyDefaults: boolean): IFolderPathGroup[] => {
 			const { t } = useI18n();
@@ -148,6 +162,21 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 					header: t('components.folder-paths-overview.tv-show.header'),
 					mediaType: PlexMediaType.TvShow,
 					folderType: FolderType.TvShowFolder,
+				},
+				{
+					header: t('components.folder-paths-overview.music.header'),
+					mediaType: PlexMediaType.MusicArtist,
+					folderType: FolderType.MusicFolder,
+				},
+				{
+					header: t('components.folder-paths-overview.photos.header'),
+					mediaType: PlexMediaType.PhotoAlbum,
+					folderType: FolderType.PhotosFolder,
+				},
+				{
+					header: t('components.folder-paths-overview.other-videos.header'),
+					mediaType: PlexMediaType.OtherVideos,
+					folderType: FolderType.OtherVideosFolder,
 				},
 			];
 

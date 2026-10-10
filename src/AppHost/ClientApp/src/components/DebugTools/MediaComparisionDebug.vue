@@ -9,6 +9,7 @@
 				text-align="center">
 				<MediaComparisonStateButton
 					:comparison-state="comparisonState"
+					:media-type="PlexMediaType.Movie"
 					dense
 					show-tooltip />
 			</QCol>
@@ -18,6 +19,7 @@
 				text-align="center">
 				<MediaComparisonStateButton
 					:comparison-state="comparisonState"
+					:media-type="PlexMediaType.Movie"
 					show-tooltip />
 			</QCol>
 
@@ -26,6 +28,7 @@
 				text-align="center">
 				<MediaComparisonStateButton
 					:comparison-state="comparisonState"
+					:media-type="PlexMediaType.Movie"
 					show-label />
 			</QCol>
 		</QRow>
@@ -33,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { PlexMediaComparisonState } from '@dto';
+import { PlexMediaComparisonState, PlexMediaType } from '@dto';
 
 const comparisonStates: PlexMediaComparisonState[] = [
 	PlexMediaComparisonState.NotCompared,

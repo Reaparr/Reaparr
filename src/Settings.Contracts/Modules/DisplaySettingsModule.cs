@@ -10,6 +10,9 @@ public record DisplaySettingsModule
         {
             TvShowViewMode = ViewMode.Poster,
             MovieViewMode = ViewMode.Poster,
+            MusicArtistViewMode = ViewMode.Poster,
+            PhotoAlbumViewMode = ViewMode.Poster,
+            OtherVideosViewMode = ViewMode.Poster,
             AllOverviewViewMode = PlexMediaType.Movie,
         };
 
@@ -20,6 +23,24 @@ public record DisplaySettingsModule
     } = ViewMode.Poster;
 
     public required ViewMode MovieViewMode
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = ViewMode.Poster;
+
+    public ViewMode MusicArtistViewMode
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = ViewMode.Poster;
+
+    public ViewMode PhotoAlbumViewMode
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = ViewMode.Poster;
+
+    public ViewMode OtherVideosViewMode
     {
         get;
         set => SetProperty(ref field, value);

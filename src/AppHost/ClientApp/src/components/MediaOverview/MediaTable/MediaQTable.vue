@@ -32,9 +32,13 @@
 							@click.stop="onRowAction(row, { command: 'download' })" />
 					</div>
 					<div class="media-q-table-card__metadata">
-						<MediaQuality :qualities="row.qualities" />
+						<MediaQuality
+							v-if="supportsVideoQuality(row.type)"
+							:qualities="row.qualities" />
 						<MediaComparisonStateButton
+							v-if="supportsComparison(row.type)"
 							:comparison-state="getPlexMediaComparisonState(row)"
+							:media-type="row.type"
 							show-tooltip
 							dense
 							rounded
@@ -58,14 +62,18 @@
 			<!-- Media Quality	-->
 			<template #body-cell-quality="{ row }: { row: PlexMediaSlimDTO }">
 				<q-td class="text-eclipse">
-					<MediaQuality :qualities="row.qualities" />
+					<MediaQuality
+						v-if="supportsVideoQuality(row.type)"
+						:qualities="row.qualities" />
 				</q-td>
 			</template>
 			<!-- Comparison State -->
 			<template #body-cell-comparisonState="{ row }: { row: PlexMediaSlimDTO }">
 				<q-td class="text-center">
 					<MediaComparisonStateButton
+						v-if="supportsComparison(row.type)"
 						:comparison-state="getPlexMediaComparisonState(row)"
+						:media-type="row.type"
 						show-tooltip
 						dense
 						rounded
@@ -136,6 +144,7 @@ import { get } from '@vueuse/core';
 import Convert from '@class/Convert';
 import { ButtonType } from '@enums';
 import type { DownloadMediaDTO, PlexMediaSlimDTO } from '@dto';
+import { PlexMediaType } from '@dto';
 import type { ISelection } from '@interfaces';
 import { getMediaTableColumns } from '@composables/mediaTableColumns';
 import {
@@ -170,7 +179,13 @@ const getSelected = computed((): PlexMediaSlimDTO[] => {
 const qTableProps = computed((): QTableProps => {
 	return {
 		rows: [],
-		columns: mediaTableColumns.map((x) => {
+		columns: mediaTableColumns.filter((column) => {
+			if (column.field === 'quality')
+				return props.rows.some((row) => supportsVideoQuality(row.type));
+			if (column.field === 'comparisonState')
+				return props.rows.some((row) => supportsComparison(row.type));
+			return true;
+		}).map((x) => {
 			return {
 				label: x.label,
 				field: x.field,
@@ -182,6 +197,14 @@ const qTableProps = computed((): QTableProps => {
 		}),
 	};
 });
+
+function supportsVideoQuality(type: PlexMediaType): boolean {
+	return [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode, PlexMediaType.OtherVideos].includes(type);
+}
+
+function supportsComparison(type: PlexMediaType): boolean {
+	return [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.Season, PlexMediaType.Episode, PlexMediaType.MusicArtist].includes(type);
+}
 
 function isRowSelected(rowId: number): boolean {
 	return (props.selection?.keys ?? []).includes(rowId);

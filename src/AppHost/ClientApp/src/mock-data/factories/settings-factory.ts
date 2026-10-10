@@ -31,6 +31,9 @@ export function generateSettingsModel({
 			movieViewMode: ViewMode.Poster,
 			tvShowViewMode: ViewMode.Poster,
 			allOverviewViewMode: PlexMediaType.Movie,
+			musicArtistViewMode: ViewMode.Poster,
+			photoAlbumViewMode: ViewMode.Poster,
+			otherVideosViewMode: ViewMode.Poster,
 		},
 		downloadManagerSettings: {
 			downloadSegments: 4,
@@ -58,6 +61,12 @@ export function generateSettingsModel({
 			askDownloadMovieConfirmation: true,
 			askDownloadSeasonConfirmation: true,
 			askDownloadTvShowConfirmation: true,
+			askDownloadMusicArtistConfirmation: true,
+			askDownloadMusicAlbumConfirmation: true,
+			askDownloadMusicTrackConfirmation: true,
+			askDownloadPhotoAlbumConfirmation: true,
+			askDownloadPhotoImageConfirmation: true,
+			askDownloadOtherVideosConfirmation: true,
 		},
 		serverSettings: {
 			data: plexServers.map((x) => {

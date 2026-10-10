@@ -65,12 +65,18 @@ import type { ISelection } from '@interfaces';
 import {
 	triggerBoxHighlight,
 	waitForElement,
-	useMediaOverviewStore,
 } from '#imports';
+import { useMediaOverviewStore } from '@store';
 import { getMediaTableColumns } from '~/composables/mediaTableColumns';
 
 const mediaOverviewStore = useMediaOverviewStore();
-const mediaTableColumns = getMediaTableColumns();
+const mediaTableColumns = computed(() => getMediaTableColumns().filter((column) => {
+	if (column.field === 'quality')
+		return mediaOverviewStore.getSupportsVideoQuality;
+	if (column.field === 'comparisonState')
+		return mediaOverviewStore.getSupportsComparison;
+	return true;
+}));
 type QScrollInstance = {
 	getScrollTarget: () => HTMLElement | null;
 };

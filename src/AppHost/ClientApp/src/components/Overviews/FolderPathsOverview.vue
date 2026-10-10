@@ -178,6 +178,15 @@ function addFolderPath(folderGroup: IFolderPathGroup): void {
 		case FolderType.TvShowFolder:
 			displayName = t('components.folder-paths-overview.tv-show.default-name');
 			break;
+		case FolderType.MusicFolder:
+			displayName = t('components.folder-paths-overview.music.default-name');
+			break;
+		case FolderType.PhotosFolder:
+			displayName = t('components.folder-paths-overview.photos.default-name');
+			break;
+		case FolderType.OtherVideosFolder:
+			displayName = t('components.folder-paths-overview.other-videos.default-name');
+			break;
 		default:
 			throw new Error(`Unknown folder type: ${folderGroup.folderType}`);
 	}
@@ -251,6 +260,24 @@ function toTranslation(type: FolderType): IHelp {
 				text: t('help.settings.paths.tv-show-folder.text'),
 				title: t('help.settings.paths.tv-show-folder.title'),
 			};
+		case FolderType.MusicFolder:
+			return {
+				label: t('help.settings.paths.music-folder.label'),
+				text: t('help.settings.paths.music-folder.text'),
+				title: t('help.settings.paths.music-folder.title'),
+			};
+		case FolderType.PhotosFolder:
+			return {
+				label: t('help.settings.paths.photos-folder.label'),
+				text: t('help.settings.paths.photos-folder.text'),
+				title: t('help.settings.paths.photos-folder.title'),
+			};
+		case FolderType.OtherVideosFolder:
+			return {
+				label: t('help.settings.paths.other-videos-folder.label'),
+				text: t('help.settings.paths.other-videos-folder.text'),
+				title: t('help.settings.paths.other-videos-folder.title'),
+			};
 		default:
 			throw new Error('FolderType not supported');
 	}
@@ -298,7 +325,7 @@ function saveDisplayName(id: number, value: string) {
   min-height: 44px;
 }
 
-@media (max-width: $breakpoint-xs-max) {
+@media (max-width: $breakpoint-sm-max) {
   .folder-path-tabs {
     min-height: 48px;
 
@@ -316,6 +343,9 @@ function saveDisplayName(id: number, value: string) {
       margin-right: 0;
     }
   }
+}
+
+@media (max-width: $breakpoint-xs-max) {
 
   .folder-path-row {
     margin: 0.75rem 0.5rem;

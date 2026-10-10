@@ -33,6 +33,65 @@
             "saturday": "Samedi",
             "sunday": "Dimanche"
         },
+        "music-media-list": {
+            "select-artist": "Sélectionner l’artiste {title}",
+            "select-album": "Sélectionner l’album {title}",
+            "select-track": "Sélectionner la piste {title}",
+            "selected-count": "{count} sélectionnés",
+            "track-count": "{count} pistes",
+            "disc-label": "Disque {number}",
+            "unknown-disc": "Disque non précisé",
+            "no-tracks": "Aucune piste trouvée",
+            "no-albums": "Aucun album trouvé"
+        },
+        "music-details": {
+            "album-count": "Albums",
+            "track-count": "Pistes",
+            "duration": "Durée",
+            "size": "Taille",
+            "year": "Année",
+            "originally-available": "Première disponibilité",
+            "added-at": "Ajout",
+            "updated-at": "Mise à jour",
+            "load-error": "Impossible de charger cet artiste",
+            "invalid-route": "Bibliothèque musicale ou artiste invalide."
+        },
+        "photo-media-list": {
+            "select-album": "Sélectionner l’album {title}",
+            "select-asset": "Sélectionner l’élément {title}",
+            "selected-count": "{count} sélectionnés",
+            "reset-selection": "Réinitialiser la sélection",
+            "empty": "Aucune image ni aucun clip trouvé dans cet album."
+        },
+        "photo-details": {
+            "asset-count": "Éléments",
+            "size": "Taille totale",
+            "originally-available": "Première disponibilité",
+            "added-at": "Ajout",
+            "updated-at": "Mise à jour",
+            "loading": "Chargement de l’album photo…",
+            "load-error": "Impossible de charger cet album photo.",
+            "invalid-route": "Bibliothèque photo ou album invalide.",
+            "retry": "Réessayer"
+        },
+        "other-video-media-list": {
+            "originals": "Versions originales",
+            "select-video": "Sélectionner la vidéo {title}",
+            "selected-count": "{count} sélectionnés",
+            "empty": "Aucun fichier original disponible."
+        },
+        "other-video-details": {
+            "duration": "Durée",
+            "size": "Taille totale",
+            "file-count": "Fichiers",
+            "year": "Année",
+            "originally-available": "Première disponibilité",
+            "added-at": "Ajout",
+            "updated-at": "Mise à jour",
+            "loading": "Chargement de la vidéo…",
+            "load-error": "Impossible de charger cette vidéo.",
+            "invalid-route": "Bibliothèque vidéo ou vidéo invalide."
+        },
         "account-card": {
             "invalid-account": "L'objet de compte n'était pas valide"
         },
@@ -103,6 +162,8 @@
         },
         "download-confirmation": {
             "description": "Reaparr commencera à télécharger les éléments suivants",
+            "preview-error": "Impossible de charger l’aperçu du téléchargement. Réessayez.",
+            "retry": "Réessayer",
             "total-size": "Taille Total:",
             "columns": {
                 "file-size": "Taille du fichier",
@@ -166,6 +227,7 @@
                 "details-column-remote-quality": "Available quality",
                 "details-column-owned-quality": "Current quality",
                 "details-no-actionable-rows": "No actionable comparison rows were returned for this media item.",
+                "details-load-error": "Impossible de charger les détails de comparaison. Réessayez.",
                 "download-selected": "Download selected"
             }
         },
@@ -204,6 +266,18 @@
             "tv-show": {
                 "header": "Dossier séries",
                 "default-name": "Chemin du dossier de l'émission télévisée"
+            },
+            "music": {
+                "header": "Dossiers de musique",
+                "default-name": "Chemin du dossier de musique"
+            },
+            "photos": {
+                "header": "Dossiers de photos",
+                "default-name": "Chemin du dossier de photos"
+            },
+            "other-videos": {
+                "header": "Dossiers des autres vidéos",
+                "default-name": "Chemin du dossier des autres vidéos"
             }
         },
         "server-dialog": {
@@ -389,7 +463,14 @@
         "media-overview-bar": {
             "all-media-mode": {
                 "movies": "Tous les films",
-                "tv-shows": "Toutes les émissions de télévision"
+                "tv-shows": "Toutes les émissions de télévision",
+                "music": "Toute la musique",
+                "photos": "Toutes les photos",
+                "other-videos": "Toutes les autres vidéos"
+            },
+            "view-mode": {
+                "poster": "Vue affiches",
+                "table": "Vue tableau"
             }
         },
         "media-options-dialog": {
@@ -403,7 +484,12 @@
         "media-overview-bar-header": {
             "details": "Détails de la vue des médias",
             "movies-metadata": "{movieCount} Films - {fileSize} ",
-            "tv-shows-metadata": "{tvShowCount} Séries TV - {seasonCount} Saisons - {episodeCount} Épisodes - {fileSize} "
+            "tv-shows-metadata": "{tvShowCount} Séries TV - {seasonCount} Saisons - {episodeCount} Épisodes - {fileSize} ",
+            "music-metadata": "{artistCount} Artistes - {fileSize}",
+            "music-detail-metadata": "{albumCount} Albums - {trackCount} Pistes - {fileSize}",
+            "photos-metadata": "{albumCount} Albums - {fileSize}",
+            "photo-detail-metadata": "{assetCount} Éléments - {fileSize}",
+            "other-videos-metadata": "{videoCount} Vidéos - {fileSize}"
         },
         "discord-invite-dialog": {
             "discord-invite-button-text": "Rejoignez le Discord Reaparr!",
@@ -550,6 +636,11 @@
         }
     },
     "general": {
+        "labels": {
+            "original": "Original",
+            "automatic-original": "Automatique (par défaut)",
+            "select-original": "Sélectionner un original pour {title}"
+        },
         "comparison": {
             "comparison-missing": "Manquant",
             "comparison-higher-quality": "Qualité supérieure disponible",
@@ -654,6 +745,12 @@
             "auto-paused": "Pause automatique"
         },
         "download-notification": {
+            "music-artist": "Téléchargement de {count} artiste musical | Téléchargement de {count} artistes musicaux",
+            "music-album": "Téléchargement de {count} album musical | Téléchargement de {count} albums musicaux",
+            "music-track": "Téléchargement de {count} piste musicale | Téléchargement de {count} pistes musicales",
+            "photo-album": "Téléchargement de {count} album photo | Téléchargement de {count} albums photo",
+            "photo-image": "Téléchargement de {count} photo | Téléchargement de {count} photos",
+            "other-video": "Téléchargement de {count} autre vidéo | Téléchargement de {count} autres vidéos",
             "movie": "Téléchargement de {count} film | Téléchargement de {count} films",
             "tv-show": "Téléchargement de {count} série TV | Téléchargement de {count} séries TV",
             "season": "Téléchargement de {count} saison | Téléchargement de {count} saisons",
@@ -901,6 +998,36 @@
                         "text": "Une fenêtre contextuelle de confirmation doit-elle s'afficher lorsqu'un film est sur le point d'être téléchargé ?",
                         "title": "Demander confirmation du téléchargement du film"
                     },
+                    "download-music-artist-confirmation": {
+                        "label": "Confirmer les téléchargements d’artistes",
+                        "text": "Faut-il afficher une confirmation avant de télécharger la musique d’un artiste ?",
+                        "title": "Confirmer les téléchargements d’artistes"
+                    },
+                    "download-music-album-confirmation": {
+                        "label": "Confirmer les téléchargements d’albums musicaux",
+                        "text": "Faut-il afficher une confirmation avant de télécharger un album musical ?",
+                        "title": "Confirmer les téléchargements d’albums musicaux"
+                    },
+                    "download-music-track-confirmation": {
+                        "label": "Confirmer les téléchargements de pistes",
+                        "text": "Faut-il afficher une confirmation avant de télécharger une piste musicale ?",
+                        "title": "Confirmer les téléchargements de pistes"
+                    },
+                    "download-photo-album-confirmation": {
+                        "label": "Confirmer les téléchargements d’albums photo",
+                        "text": "Faut-il afficher une confirmation avant de télécharger un album photo ?",
+                        "title": "Confirmer les téléchargements d’albums photo"
+                    },
+                    "download-photo-image-confirmation": {
+                        "label": "Confirmer les téléchargements de photos et clips",
+                        "text": "Faut-il afficher une confirmation avant de télécharger une photo ou un clip ?",
+                        "title": "Confirmer les téléchargements de photos et clips"
+                    },
+                    "download-other-videos-confirmation": {
+                        "label": "Confirmer les téléchargements d’autres vidéos",
+                        "text": "Faut-il afficher une confirmation avant de télécharger une autre vidéo ?",
+                        "title": "Confirmer les téléchargements d’autres vidéos"
+                    },
                     "download-season-confirmation": {
                         "label": "Demander confirmation du téléchargement de la saison",
                         "text": "Une fenêtre contextuelle de confirmation doit-elle s'afficher lorsqu'une saison est sur le point d'être téléchargée ?",
@@ -977,6 +1104,21 @@
                     "label": "Chemin de séries TV par défaut",
                     "text": "Le dossier par défaut des séries quant aucun dossier personnalisé n'a été sélectionné.",
                     "title": "Dossier des série"
+                },
+                "music-folder": {
+                    "label": "Chemin de musique par défaut",
+                    "text": "Le dossier par défaut de la musique lorsqu'aucune destination personnalisée n'a été sélectionnée.",
+                    "title": "Dossier de musique"
+                },
+                "photos-folder": {
+                    "label": "Chemin de photos par défaut",
+                    "text": "Le dossier par défaut des photos et des vidéos des photothèques lorsqu'aucune destination personnalisée n'a été sélectionnée.",
+                    "title": "Dossier de photos"
+                },
+                "other-videos-folder": {
+                    "label": "Chemin des autres vidéos par défaut",
+                    "text": "Le dossier par défaut des autres vidéos lorsqu'aucune destination personnalisée n'a été sélectionnée.",
+                    "title": "Dossier des autres vidéos"
                 }
             },
             "integrations": {
@@ -1095,19 +1237,21 @@
             "return-link": "Retourner à la page d'accueil"
         },
         "music": {
-            "music-id": {
-                "header": "La bibliothèque Musique n'est malheureusement pas encore supporté :("
-            },
             "index": {
-                "header": "La bibliothèque Musique n'est malheureusement pas encore supporté :("
+                "header": "Musique",
+                "sub-header": "Sélectionnez une bibliothèque musicale pour parcourir les artistes, les albums et les pistes."
             }
         },
         "photos": {
-            "photo-id": {
-                "header": "Les bibliothèques de photos ne sont malheureusement pas encore prises en charge :("
-            },
             "index": {
-                "header": "Les bibliothèques de photos ne sont malheureusement pas encore prises en charge :("
+                "header": "Photos",
+                "sub-header": "Sélectionnez une bibliothèque photo pour parcourir les albums, les images et les clips."
+            }
+        },
+        "other-videos": {
+            "index": {
+                "header": "Autres vidéos",
+                "sub-header": "Sélectionnez une bibliothèque d’autres vidéos pour parcourir les vidéos individuelles."
             }
         },
         "settings": {

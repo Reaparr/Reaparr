@@ -1,7 +1,31 @@
-import { DownloadTaskType, FolderType, NotificationLevel, PlexMediaType } from '@dto';
+import { DownloadTaskType, FolderType, NotificationLevel, PlexMediaType, type PlexMediaSlimDTO } from '@dto';
 import { ButtonType } from '@enums';
 
 export const Convert = {
+	mediaTypeToDetailsPath(mediaItem: Pick<PlexMediaSlimDTO, 'type' | 'plexLibraryId' | 'id'>): string | null {
+		let family: string;
+		switch (mediaItem.type) {
+			case PlexMediaType.Movie:
+				family = 'movies';
+				break;
+			case PlexMediaType.TvShow:
+				family = 'tvshows';
+				break;
+			case PlexMediaType.MusicArtist:
+				family = 'music';
+				break;
+			case PlexMediaType.PhotoAlbum:
+				family = 'photos';
+				break;
+			case PlexMediaType.OtherVideos:
+				family = 'other-videos';
+				break;
+			default:
+				return null;
+		}
+		return `/${family}/${mediaItem.plexLibraryId}/details/${mediaItem.id}`;
+	},
+
 	buttonTypeToIcon(type: ButtonType): string {
 		switch (type) {
 			case ButtonType.Download:
@@ -81,14 +105,15 @@ export const Convert = {
 				return 'mdi-movie-open';
 			case PlexMediaType.Movie:
 				return 'mdi-filmstrip';
-			case PlexMediaType.Music:
-			case PlexMediaType.Artist:
-			case PlexMediaType.Album:
-			case PlexMediaType.Song:
+			case PlexMediaType.MusicArtist:
+			case PlexMediaType.MusicAlbum:
+			case PlexMediaType.MusicTrack:
 				return 'mdi-music';
-			case PlexMediaType.Photos:
 			case PlexMediaType.PhotoAlbum:
+			case PlexMediaType.PhotoImage:
 				return 'mdi-image';
+			case PlexMediaType.OtherVideos:
+				return 'mdi-video';
 			default:
 				return 'mdi-help-circle-outline';
 		}
@@ -106,17 +131,12 @@ export const Convert = {
 				return FolderType.MovieFolder;
 			case PlexMediaType.OtherVideos:
 				return FolderType.OtherVideosFolder;
-			case PlexMediaType.Music:
+			case PlexMediaType.MusicArtist:
+			case PlexMediaType.MusicAlbum:
+			case PlexMediaType.MusicTrack:
 				return FolderType.MusicFolder;
-			case PlexMediaType.Artist:
-				return FolderType.MusicFolder;
-			case PlexMediaType.Album:
-				return FolderType.MusicFolder;
-			case PlexMediaType.Song:
-				return FolderType.MusicFolder;
-			case PlexMediaType.Photos:
-				return FolderType.PhotosFolder;
 			case PlexMediaType.PhotoAlbum:
+			case PlexMediaType.PhotoImage:
 				return FolderType.PhotosFolder;
 			case PlexMediaType.Games:
 				return FolderType.GamesVideosFolder;
@@ -134,6 +154,24 @@ export const Convert = {
 				return PlexMediaType.Season;
 			case DownloadTaskType.Episode:
 				return PlexMediaType.Episode;
+			case DownloadTaskType.MusicArtist:
+				return PlexMediaType.MusicArtist;
+			case DownloadTaskType.MusicAlbum:
+				return PlexMediaType.MusicAlbum;
+			case DownloadTaskType.MusicTrack:
+			case DownloadTaskType.MusicTrackData:
+			case DownloadTaskType.MusicTrackPart:
+				return PlexMediaType.MusicTrack;
+			case DownloadTaskType.PhotoAlbum:
+				return PlexMediaType.PhotoAlbum;
+			case DownloadTaskType.PhotoImage:
+			case DownloadTaskType.PhotoData:
+			case DownloadTaskType.PhotoPart:
+				return PlexMediaType.PhotoImage;
+			case DownloadTaskType.OtherVideo:
+			case DownloadTaskType.OtherVideoData:
+			case DownloadTaskType.OtherVideoPart:
+				return PlexMediaType.OtherVideos;
 			default:
 				return PlexMediaType.Unknown;
 		}
@@ -148,6 +186,18 @@ export const Convert = {
 				return DownloadTaskType.Season;
 			case PlexMediaType.Episode:
 				return DownloadTaskType.Episode;
+			case PlexMediaType.MusicArtist:
+				return DownloadTaskType.MusicArtist;
+			case PlexMediaType.MusicAlbum:
+				return DownloadTaskType.MusicAlbum;
+			case PlexMediaType.MusicTrack:
+				return DownloadTaskType.MusicTrack;
+			case PlexMediaType.PhotoAlbum:
+				return DownloadTaskType.PhotoAlbum;
+			case PlexMediaType.PhotoImage:
+				return DownloadTaskType.PhotoImage;
+			case PlexMediaType.OtherVideos:
+				return DownloadTaskType.OtherVideo;
 			default:
 				return DownloadTaskType.None;
 		}

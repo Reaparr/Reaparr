@@ -33,6 +33,65 @@
             "saturday": "Saturday",
             "sunday": "Sunday"
         },
+        "music-media-list": {
+            "select-artist": "Select artist {title}",
+            "select-album": "Select album {title}",
+            "select-track": "Select track {title}",
+            "selected-count": "{count} selected",
+            "track-count": "{count} tracks",
+            "disc-label": "Disc {number}",
+            "unknown-disc": "Unspecified disc",
+            "no-tracks": "No tracks found",
+            "no-albums": "No albums found"
+        },
+        "music-details": {
+            "album-count": "Albums",
+            "track-count": "Tracks",
+            "duration": "Duration",
+            "size": "Size",
+            "year": "Year",
+            "originally-available": "Originally available",
+            "added-at": "Added",
+            "updated-at": "Updated",
+            "load-error": "Unable to load this artist",
+            "invalid-route": "Invalid music library or artist."
+        },
+        "photo-media-list": {
+            "select-album": "Select album {title}",
+            "select-asset": "Select asset {title}",
+            "selected-count": "{count} selected",
+            "reset-selection": "Reset selection",
+            "empty": "No images or clips found in this album."
+        },
+        "photo-details": {
+            "asset-count": "Assets",
+            "size": "Total size",
+            "originally-available": "Originally available",
+            "added-at": "Added",
+            "updated-at": "Updated",
+            "loading": "Loading photo album…",
+            "load-error": "Unable to load this photo album.",
+            "invalid-route": "Invalid photo library or album.",
+            "retry": "Retry"
+        },
+        "other-video-media-list": {
+            "originals": "Original versions",
+            "select-video": "Select video {title}",
+            "selected-count": "{count} selected",
+            "empty": "No original files available."
+        },
+        "other-video-details": {
+            "duration": "Duration",
+            "size": "Total size",
+            "file-count": "Files",
+            "year": "Year",
+            "originally-available": "Originally available",
+            "added-at": "Added",
+            "updated-at": "Updated",
+            "loading": "Loading video…",
+            "load-error": "Unable to load this video.",
+            "invalid-route": "Invalid video library or video."
+        },
         "account-card": {
             "invalid-account": "Account object was invalid"
         },
@@ -103,6 +162,8 @@
         },
         "download-confirmation": {
             "description": "Reaparr will start downloading the following",
+            "preview-error": "Unable to load the download preview. Please retry.",
+            "retry": "Retry",
             "total-size": "Total size:",
             "columns": {
                 "file-size": "File size",
@@ -166,6 +227,7 @@
                 "details-column-remote-quality": "Available quality",
                 "details-column-owned-quality": "Current quality",
                 "details-no-actionable-rows": "No actionable comparison rows were returned for this media item.",
+                "details-load-error": "Unable to load comparison details. Please retry.",
                 "download-selected": "Download selected"
             }
         },
@@ -204,6 +266,18 @@
             "tv-show": {
                 "header": "TV-Show Paths",
                 "default-name": "Tv-show Folder Path"
+            },
+            "music": {
+                "header": "Music Paths",
+                "default-name": "Music Folder Path"
+            },
+            "photos": {
+                "header": "Photos Paths",
+                "default-name": "Photos Folder Path"
+            },
+            "other-videos": {
+                "header": "Other Videos Paths",
+                "default-name": "Other Videos Folder Path"
             }
         },
         "server-dialog": {
@@ -389,7 +463,14 @@
         "media-overview-bar": {
             "all-media-mode": {
                 "movies": "All Movies",
-                "tv-shows": "All TV-Shows"
+                "tv-shows": "All TV-Shows",
+                "music": "All Music",
+                "photos": "All Photos",
+                "other-videos": "All Other Videos"
+            },
+            "view-mode": {
+                "poster": "Poster View",
+                "table": "Table View"
             }
         },
         "media-options-dialog": {
@@ -403,7 +484,12 @@
         "media-overview-bar-header": {
             "details": "Media overview details",
             "movies-metadata": "{movieCount} Movies - {fileSize} ",
-            "tv-shows-metadata": "{tvShowCount} TV Shows - {seasonCount} Seasons - {episodeCount} Episodes - {fileSize} "
+            "tv-shows-metadata": "{tvShowCount} TV Shows - {seasonCount} Seasons - {episodeCount} Episodes - {fileSize} ",
+            "music-metadata": "{artistCount} Artists - {fileSize}",
+            "music-detail-metadata": "{albumCount} Albums - {trackCount} Tracks - {fileSize}",
+            "photos-metadata": "{albumCount} Albums - {fileSize}",
+            "photo-detail-metadata": "{assetCount} Assets - {fileSize}",
+            "other-videos-metadata": "{videoCount} Videos - {fileSize}"
         },
         "discord-invite-dialog": {
             "discord-invite-button-text": "Join the Reaparr Discord!",
@@ -550,6 +636,11 @@
         }
     },
     "general": {
+        "labels": {
+            "original": "Original",
+            "automatic-original": "Automatic (default)",
+            "select-original": "Select an original for {title}"
+        },
         "comparison": {
             "comparison-missing": "Missing",
             "comparison-higher-quality": "Higher quality available",
@@ -654,6 +745,12 @@
             "auto-paused": "Auto Paused"
         },
         "download-notification": {
+            "music-artist": "Downloading {count} music artist | Downloading {count} music artists",
+            "music-album": "Downloading {count} music album | Downloading {count} music albums",
+            "music-track": "Downloading {count} music track | Downloading {count} music tracks",
+            "photo-album": "Downloading {count} photo album | Downloading {count} photo albums",
+            "photo-image": "Downloading {count} photo | Downloading {count} photos",
+            "other-video": "Downloading {count} other video | Downloading {count} other videos",
             "movie": "Downloading {count} movie | Downloading {count} movies",
             "tv-show": "Downloading {count} TV show | Downloading {count} TV shows",
             "season": "Downloading {count} season | Downloading {count} seasons",
@@ -901,6 +998,36 @@
                         "text": "Should a confirmation pop-up be shown when a movie is about to be downloaded?",
                         "title": "Ask Download Movie Confirmation"
                     },
+                    "download-music-artist-confirmation": {
+                        "label": "Ask Download Music Artist Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading an artist's music?",
+                        "title": "Ask Download Music Artist Confirmation"
+                    },
+                    "download-music-album-confirmation": {
+                        "label": "Ask Download Music Album Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading a music album?",
+                        "title": "Ask Download Music Album Confirmation"
+                    },
+                    "download-music-track-confirmation": {
+                        "label": "Ask Download Music Track Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading a music track?",
+                        "title": "Ask Download Music Track Confirmation"
+                    },
+                    "download-photo-album-confirmation": {
+                        "label": "Ask Download Photo Album Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading a photo album?",
+                        "title": "Ask Download Photo Album Confirmation"
+                    },
+                    "download-photo-image-confirmation": {
+                        "label": "Ask Download Photo Image Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading a photo image or clip?",
+                        "title": "Ask Download Photo Image Confirmation"
+                    },
+                    "download-other-videos-confirmation": {
+                        "label": "Ask Download Other Videos Confirmation",
+                        "text": "Should a confirmation pop-up be shown before downloading an Other Videos item?",
+                        "title": "Ask Download Other Videos Confirmation"
+                    },
                     "download-season-confirmation": {
                         "label": "Ask Download Season Confirmation",
                         "text": "Should a confirmation pop-up be shown when a season is about to be downloaded?",
@@ -977,6 +1104,21 @@
                     "label": "Default TV Show Path",
                     "text": "The default path of TV-Show when no custom destination has been selected.",
                     "title": "TV-Show Path"
+                },
+                "music-folder": {
+                    "label": "Default Music Path",
+                    "text": "The default path for music when no custom destination has been selected.",
+                    "title": "Music Path"
+                },
+                "photos-folder": {
+                    "label": "Default Photos Path",
+                    "text": "The default path for photos and photo-library clips when no custom destination has been selected.",
+                    "title": "Photos Path"
+                },
+                "other-videos-folder": {
+                    "label": "Default Other Videos Path",
+                    "text": "The default path for Other Videos when no custom destination has been selected.",
+                    "title": "Other Videos Path"
                 }
             },
             "integrations": {
@@ -1095,19 +1237,21 @@
             "return-link": "Go back to home page"
         },
         "music": {
-            "music-id": {
-                "header": "Music Libraries are unfortunately not yet supported :("
-            },
             "index": {
-                "header": "Music Libraries are unfortunately not yet supported :("
+                "header": "Music",
+                "sub-header": "Select a Music library to browse artists, albums and tracks."
             }
         },
         "photos": {
-            "photo-id": {
-                "header": "Photo Libraries are unfortunately not yet supported :("
-            },
             "index": {
-                "header": "Photo Libraries are unfortunately not yet supported :("
+                "header": "Photos",
+                "sub-header": "Select a Photos library to browse albums, images and clips."
+            }
+        },
+        "other-videos": {
+            "index": {
+                "header": "Other Videos",
+                "sub-header": "Select an Other Videos library to browse individual videos."
             }
         },
         "settings": {

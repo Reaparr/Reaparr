@@ -363,7 +363,6 @@ public static partial class DbContextExtensions
                 directories.Add(directory);
         }
     }
-
     public static async Task<DownloadTaskType> GetDownloadTaskTypeAsync(
         this IReaparrDbContext dbContext,
         Guid guid,

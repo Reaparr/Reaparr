@@ -323,6 +323,7 @@ const getDownloadTableColumns: QTreeTableColumn[] = [
 	{
 		header: t('components.downloads-table.columns.title'),
 		field: 'title',
+		headerStyle: 'width: 240px;',
 	},
 	{
 		header: t('components.downloads-table.columns.status'),

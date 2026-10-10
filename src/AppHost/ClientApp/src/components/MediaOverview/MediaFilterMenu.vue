@@ -146,6 +146,7 @@
 							<q-item-section>
 								<MediaComparisonStateButton
 									:comparison-state="comparisonState.value"
+									:media-type="mediaOverviewStore.getMediaType"
 									show-label
 									dense
 									flat
@@ -202,7 +203,23 @@ const menuItems = computed((): { text: string; type: MediaMetaDataTypes }[] => [
 		text: t('components.media-filter-menu.meta-data.comparison-state'),
 		type: MediaMetaDataTypes.ComparisonState,
 	},
-]);
+].filter((item) => {
+	const isMovieOrTv = [PlexMediaType.Movie, PlexMediaType.TvShow].includes(mediaOverviewStore.getMediaType);
+	switch (item.type) {
+		case MediaMetaDataTypes.Quality:
+			return mediaOverviewStore.getSupportsVideoQuality && (isMovieOrTv || mediaOverviewStore.availableQualityIds.length > 0);
+		case MediaMetaDataTypes.ComparisonState:
+			return mediaOverviewStore.getSupportsComparison;
+		case MediaMetaDataTypes.Country:
+			return isMovieOrTv || mediaOverviewStore.availableCountryIds.length > 0;
+		case MediaMetaDataTypes.Genres:
+			return isMovieOrTv || mediaOverviewStore.availableGenreIds.length > 0;
+		case MediaMetaDataTypes.Roles:
+			return isMovieOrTv || mediaOverviewStore.availableRoleIds.length > 0;
+		default:
+			return false;
+	}
+}));
 
 const isOwnedLibrary = computed(() => {
 	if (mediaOverviewStore.allMediaMode)
@@ -213,6 +230,16 @@ const isOwnedLibrary = computed(() => {
 });
 
 const possibleComparisonStates = computed((): PlexMediaComparisonState[] => {
+	if (mediaOverviewStore.getMediaType === PlexMediaType.MusicArtist) {
+		return [
+			PlexMediaComparisonState.NotCompared,
+			PlexMediaComparisonState.Owned,
+			PlexMediaComparisonState.Pending,
+			PlexMediaComparisonState.Partial,
+			...(get(isOwnedLibrary) ? [] : [PlexMediaComparisonState.Missing]),
+		];
+	}
+
 	const baseStates = [
 		PlexMediaComparisonState.NotCompared,
 		PlexMediaComparisonState.Owned,

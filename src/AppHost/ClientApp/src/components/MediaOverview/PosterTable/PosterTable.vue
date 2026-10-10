@@ -56,12 +56,13 @@ import { useVirtualizer } from '@tanstack/vue-virtual';
 
 import { get, set, useCssVar, useElementBounding } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
-import { PlexMediaType } from '@dto';
-import type { PlexMediaSlimDTO } from '@dto';
+import type { PlexMediaType, PlexMediaSlimDTO } from '@dto';
 import { sendMediaOverviewDownloadCommand } from '@composables/event-bus';
 import { triggerBoxHighlight } from '@composables/animations';
 import { waitForElement } from '@composables';
-import { useRouter, useMediaOverviewStore } from '#imports';
+import { useRouter } from '#imports';
+import { useMediaOverviewStore } from '@store';
+import Convert from '@class/Convert';
 
 const mediaOverviewStore = useMediaOverviewStore();
 
@@ -158,9 +159,10 @@ function getRowItems(rowIndex: number): { item: PlexMediaSlimDTO | null; index: 
 
 // Throttled scroll-index persistence — avoids DOM queries + BCR calls on every scroll tick.
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let navigatingToDetails = false;
 
 function persistScrollIndex() {
-	if (persistTimer)
+	if (persistTimer || navigatingToDetails)
 		return;
 
 	persistTimer = setTimeout(() => {
@@ -274,26 +276,23 @@ async function highlightPendingMedia() {
 	}
 }
 
-function onOpenMediaDetails(mediaItem: PlexMediaSlimDTO) {
-	mediaOverviewStore.setPendingMediaHighlight(mediaItem.id, mediaOverviewStore.libraryId);
-	if (mediaItem.type === PlexMediaType.Movie) {
-		router.push({
-			name: 'movies-libraryId-details-movieId',
-			params: {
-				libraryId: mediaItem.plexLibraryId.toString(),
-				movieId: mediaItem.id.toString(),
-			},
-		});
+async function onOpenMediaDetails(mediaItem: PlexMediaSlimDTO) {
+	const path = Convert.mediaTypeToDetailsPath(mediaItem);
+	if (!path)
 		return;
+	navigatingToDetails = true;
+	if (persistTimer) {
+		clearTimeout(persistTimer);
+		persistTimer = null;
 	}
-
-	router.push({
-		name: 'tvshows-libraryId-details-tvShowId',
-		params: {
-			libraryId: mediaItem.plexLibraryId.toString(),
-			tvShowId: mediaItem.id.toString(),
-		},
-	});
+	mediaOverviewStore.setPendingMediaHighlight(mediaItem.id, mediaOverviewStore.libraryId);
+	try {
+		// Flush any scroll-query replacement queued before the details action.
+		await nextTick();
+		await router.push(path);
+	} finally {
+		navigatingToDetails = false;
+	}
 }
 
 // Throttled page-prefetch during scrolling — avoids firing HTTP requests on every scroll tick.
@@ -358,6 +357,11 @@ onMounted(() => {
 		// Scroll immediately for responsiveness, then prefetch nearby pages in background
 		scrollToIndex(index, highlight);
 	}));
+});
+
+onBeforeUnmount(() => {
+	if (persistTimer)
+		clearTimeout(persistTimer);
 });
 </script>
 

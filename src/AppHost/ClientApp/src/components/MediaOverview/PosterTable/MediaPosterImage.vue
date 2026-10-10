@@ -1,5 +1,5 @@
 <template>
-	<QGlowContainer>
+	<QGlowContainer :style="{ '--media-thumbnail-width': `${thumbWidth}px`, '--media-thumbnail-height': `${thumbHeight}px` }">
 		<q-skeleton
 			v-if="loading"
 			class="media-poster-skeleton"
@@ -25,6 +25,8 @@
 								:media-item="mediaItem"
 								:actions="actions"
 								:all-media-mode="allMediaMode"
+								:thumb-width="thumbWidth"
+								:thumb-height="thumbHeight"
 								@download="$emit('download', $event)"
 								@open-media-details="$emit('open-media-details')" />
 						</div>
@@ -36,6 +38,8 @@
 							:actions="actions"
 							:media-item="mediaItem"
 							:all-media-mode="allMediaMode"
+							:thumb-width="thumbWidth"
+							:thumb-height="thumbHeight"
 							@download="$emit('download', $event)"
 							@open-media-details="$emit('open-media-details')" />
 					</template>
@@ -48,6 +52,8 @@
 				:actions="actions"
 				:media-item="mediaItem"
 				:all-media-mode="allMediaMode"
+				:thumb-width="thumbWidth"
+				:thumb-height="thumbHeight"
 				@download="$emit('download', $event)"
 				@open-media-details="$emit('open-media-details')" />
 		</template>
@@ -147,18 +153,18 @@ onUnmounted(() => {
 
 .media-poster-skeleton {
   @extend .background-sm;
-  width: 200px;
-  height: 300px;
+  width: var(--media-thumbnail-width, 200px);
+  height: var(--media-thumbnail-height, 300px);
   padding: 0;
 }
 
 .media-poster {
   @extend .background-sm;
 
-  width: 200px;
+  width: var(--media-thumbnail-width, 200px);
 
   &--image {
-    height: 300px;
+    height: var(--media-thumbnail-height, 300px);
     padding: 0;
   }
 

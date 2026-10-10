@@ -63,7 +63,7 @@
 						<QCol>
 							<template v-if="mediaOverviewStore.getMediaViewMode === ViewMode.Table">
 								<MediaTable
-									:disable-hover-click="mediaOverviewStore.getMediaType !== PlexMediaType.TvShow"
+									:disable-hover-click="mediaOverviewStore.getMediaType === PlexMediaType.Movie"
 									is-scrollable />
 							</template>
 
@@ -130,7 +130,7 @@
 			<!-- Media Selection Dialog -->
 			<MediaSelectionDialog />
 			<!-- Media Comparison Details Dialog -->
-			<MediaComparisonDetailsDialog />
+			<MediaComparisonDetailsDialog v-if="mediaOverviewStore.getSupportsComparison" />
 			<!-- Media Options Dialog -->
 			<MediaOptionsDialog @closed="onOptionsClosed" />
 			<!-- Loading overlay -->

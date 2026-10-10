@@ -16,6 +16,10 @@ public record PlexMediaDTO : PlexMediaSlimDTO
 
     public required DateTime? OriginallyAvailableAt { get; set; }
 
+    public required int? DiscNumber { get; set; }
+
+    public required int? TrackNumber { get; set; }
+
     public required int TvShowId { get; set; }
 
     public required int TvShowSeasonId { get; set; }

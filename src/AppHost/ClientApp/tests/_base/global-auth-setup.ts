@@ -1,5 +1,6 @@
 import MockAdapter from 'axios-mock-adapter';
 import axios from 'axios';
+import { ViewMode } from '@dto';
 
 // Install a global axios mock before any tests run
 const mock = new MockAdapter(axios, { onNoMatch: 'throwException' });
@@ -70,6 +71,12 @@ mock.onGet(settingsMatcher).reply(200, ok({
 		askDownloadMovieConfirmation: true,
 		askDownloadSeasonConfirmation: true,
 		askDownloadTvShowConfirmation: true,
+		askDownloadMusicArtistConfirmation: true,
+		askDownloadMusicAlbumConfirmation: true,
+		askDownloadMusicTrackConfirmation: true,
+		askDownloadPhotoAlbumConfirmation: true,
+		askDownloadPhotoImageConfirmation: true,
+		askDownloadOtherVideosConfirmation: true,
 	},
 	dateTimeSettings: {
 		longDateFormat: 'EEEE, dd MMMM yyyy',
@@ -82,6 +89,9 @@ mock.onGet(settingsMatcher).reply(200, ok({
 		movieViewMode: 0,
 		tvShowViewMode: 0,
 		allOverviewViewMode: 1,
+		musicArtistViewMode: ViewMode.Poster,
+		photoAlbumViewMode: ViewMode.Poster,
+		otherVideosViewMode: ViewMode.Poster,
 	},
 	downloadManagerSettings: {
 		downloadSegments: 4,

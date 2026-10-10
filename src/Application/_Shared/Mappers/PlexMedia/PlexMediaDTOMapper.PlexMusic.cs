@@ -36,6 +36,8 @@ public static partial class PlexMediaDTOMapper
             Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             Children = source.Albums.OrderBy(x => x.SortIndex).ThenBy(x => x.Id).Select(x => x.ToDTO()).ToList(),
+            DiscNumber = null,
+            TrackNumber = null,
         };
 
     public static PlexMediaDTO ToDTO(this PlexMusicAlbum source) =>
@@ -72,6 +74,8 @@ public static partial class PlexMediaDTOMapper
             Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             Children = source.Tracks.OrderBy(x => x.SortIndex).ThenBy(x => x.Id).Select(x => x.ToDTO()).ToList(),
+            DiscNumber = null,
+            TrackNumber = null,
         };
 
     public static PlexMediaDTO ToDTO(this PlexMusicTrack source) =>
@@ -117,6 +121,8 @@ public static partial class PlexMediaDTOMapper
             ContentRating = source.ContentRating,
             Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
+            DiscNumber = source.DiscNumber,
+            TrackNumber = source.TrackNumber,
             Children = [],
         };
 

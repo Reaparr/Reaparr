@@ -45,6 +45,8 @@ public static partial class PlexMediaDTOMapper
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             Children = [],
             PlexApiMetaDataKey = source.PlexApiMetaDataKey,
+            DiscNumber = null,
+            TrackNumber = null,
         };
 
     public static List<PlexMediaDataDTO> ToDTO(this ICollection<PlexMovieMediaData> source) =>

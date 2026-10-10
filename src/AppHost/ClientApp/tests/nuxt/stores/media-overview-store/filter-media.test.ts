@@ -3,11 +3,14 @@ import { createPinia, setActivePinia } from 'pinia';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import {
 	generatePlexMediaSlims,
+	generatePlexMedia,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
 } from '@mock';
-import { useMediaOverviewStore } from '@store';
-import { PlexMediaType } from '@dto';
+import { useMediaOverviewStore, useSettingsStore } from '@store';
+import { PlexMediaComparisonState, PlexMediaType, VideoQuality } from '@dto';
+import { MediaSortField, SortDirection } from '@enums';
+import { flushPromises } from '@vue/test-utils';
 
 describe('MediaOverviewStore - Filter / Search', () => {
 	let { mock } = baseVars();
@@ -152,5 +155,80 @@ describe('MediaOverviewStore - Filter / Search', () => {
 		// Assert
 		expect(store.filterQuery).toBe('matrix');
 		expect(store.getMediaItems.length).toBe(secondResponse.mediaCount);
+	});
+
+	for (const family of [PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum]) {
+		test(`Should remove stale Movie upgrade filters and quality sorting when browsing ${family}`, async () => {
+			// Arrange
+			const settings = useSettingsStore();
+			settings.displaySettings.allOverviewViewMode = PlexMediaType.Movie;
+			const store = useMediaOverviewStore();
+			mock.onGet(/\/api\/PlexLibrary\/0\/metadata/).reply(200, generateResultDTO({
+				mediaCount: 1, countryCount: 0, genreCount: 0, roleCount: 0, qualityCount: 0,
+				countries: [], genres: [], roles: [], qualities: [],
+			}));
+			mock.onGet('/api/PlexMedia').reply((request) => {
+				const type = request.params.mediaType as PlexMediaType;
+				const unsupported = type !== PlexMediaType.Movie && (
+					request.params.qualityId
+					|| [PlexMediaComparisonState.HigherQuality, PlexMediaComparisonState.PartialAndHigherQuality].includes(request.params.comparisonState)
+					|| (type === PlexMediaType.PhotoAlbum && request.params.comparisonState)
+					|| request.params.sort.startsWith('quality:')
+				);
+				const item = generatePlexMedia({
+					config: { seed: 625 }, partialData: { id: 100, type, plexLibraryId: 4, plexServerId: 3, title: 'Root item' },
+				});
+				const response = generatePlexMediaStatisticsDTO(unsupported ? [] : [item]);
+				response.totalCount = response.mediaCount;
+				response.queryHash = `${type}-${request.params.sort}`;
+				return [200, generateResultDTO(response)];
+			});
+			await subscribeSpyTo(store.setQualityFilter(1080)).onComplete();
+			await subscribeSpyTo(store.setComparisonStateFilter(PlexMediaComparisonState.HigherQuality)).onComplete();
+			store.toggleSortMedia(MediaSortField.Quality);
+			await flushPromises();
+
+			// Act
+			settings.displaySettings.allOverviewViewMode = family;
+			await subscribeSpyTo(store.initializeLibrary(0)).onComplete();
+
+			// Assert
+			expect(store.getMediaItems.map((item) => item.type)).toEqual([family]);
+			expect(store.metadata.qualityId).toBe(0);
+			expect(store.metadata.comparisonState).toBeNull();
+			expect(store.getActiveSort).toEqual({ field: MediaSortField.Title, sort: SortDirection.Asc });
+			expect(store.getFilterChips).toEqual([]);
+		});
+	}
+
+	test('Should retain Other Videos quality filtering without sending a comparison filter', async () => {
+		// Arrange
+		useSettingsStore().displaySettings.allOverviewViewMode = PlexMediaType.OtherVideos;
+		const store = useMediaOverviewStore();
+		const videos = [VideoQuality.FullHD, VideoQuality.HD].map((quality, index) => generatePlexMedia({
+			config: { seed: 625 },
+			partialData: {
+				id: 11 + index, type: PlexMediaType.OtherVideos, plexLibraryId: 5, plexServerId: 3,
+				qualities: [{ dataId: 100 + index, mediaId: 11 + index, mediaDataType: PlexMediaType.OtherVideos, quality }],
+			},
+		}));
+		mock.onGet('/api/PlexMedia').reply((request) => {
+			const items = request.params.comparisonState ? [] : request.params.qualityId === 1080 ? videos.slice(0, 1) : videos;
+			const response = generatePlexMediaStatisticsDTO(items);
+			response.totalCount = items.length;
+			response.queryHash = `other-${request.params.qualityId ?? 'all'}`;
+			return [200, generateResultDTO(response)];
+		});
+		await subscribeSpyTo(store.refreshMediaData()).onComplete();
+		expect(store.getMediaItems.map((item) => item.id)).toEqual([11, 12]);
+
+		// Act
+		await subscribeSpyTo(store.setQualityFilter(1080)).onComplete();
+		await subscribeSpyTo(store.setComparisonStateFilter(PlexMediaComparisonState.NotCompared)).onComplete();
+
+		// Assert
+		expect(store.getMediaItems.map((item) => item.id)).toEqual([11]);
+		expect(store.getMediaItems[0]?.qualities[0]?.quality).toBe(VideoQuality.FullHD);
+		expect(store.metadata.comparisonState).toBeNull();
 	});
 });

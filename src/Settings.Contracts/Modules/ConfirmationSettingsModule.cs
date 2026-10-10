@@ -12,6 +12,12 @@ public record ConfirmationSettingsModule
             AskDownloadTvShowConfirmation = true,
             AskDownloadSeasonConfirmation = true,
             AskDownloadEpisodeConfirmation = true,
+            AskDownloadMusicArtistConfirmation = true,
+            AskDownloadMusicAlbumConfirmation = true,
+            AskDownloadMusicTrackConfirmation = true,
+            AskDownloadPhotoAlbumConfirmation = true,
+            AskDownloadPhotoImageConfirmation = true,
+            AskDownloadOtherVideosConfirmation = true,
         };
 
     /// <summary>
@@ -45,6 +51,42 @@ public record ConfirmationSettingsModule
     /// Indicates whether to ask for confirmation before downloading an episode.
     /// </summary>
     public required bool AskDownloadEpisodeConfirmation
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = true;
+
+    public bool AskDownloadMusicArtistConfirmation
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = true;
+
+    public bool AskDownloadMusicAlbumConfirmation
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = true;
+
+    public bool AskDownloadMusicTrackConfirmation
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = true;
+
+    public bool AskDownloadPhotoAlbumConfirmation
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = true;
+
+    public bool AskDownloadPhotoImageConfirmation
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = true;
+
+    public bool AskDownloadOtherVideosConfirmation
     {
         get;
         set => SetProperty(ref field, value);

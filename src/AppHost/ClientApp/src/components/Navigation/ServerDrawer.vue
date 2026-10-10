@@ -143,7 +143,7 @@ function hasLibraryAccess(serverId: number, libraryId: number): boolean {
 }
 
 function isActiveLibrary(libraryId: number): boolean {
-	const currentLibraryId = route.params.libraryId;
+	const currentLibraryId = route.params.libraryId ?? route.params.id;
 	return currentLibraryId !== undefined && Number(currentLibraryId) === libraryId;
 }
 
@@ -174,20 +174,21 @@ function isServerSyncing(serverId: number): boolean {
 function openMediaPage(library: PlexLibraryDTO): void {
 	switch (library.type) {
 		case PlexMediaType.Movie:
-		case PlexMediaType.OtherVideos:
 			router.push(`/movies/${library.id}`);
+			break;
+		case PlexMediaType.OtherVideos:
+			router.push(`/other-videos/${library.id}`);
 			break;
 		case PlexMediaType.TvShow:
 			router.push(`/tvshows/${library.id}`);
 			break;
-		case PlexMediaType.Music:
-		case PlexMediaType.Artist:
-		case PlexMediaType.Album:
-		case PlexMediaType.Song:
+		case PlexMediaType.MusicArtist:
+		case PlexMediaType.MusicAlbum:
+		case PlexMediaType.MusicTrack:
 			router.push(`/music/${library.id}`);
 			break;
-		case PlexMediaType.Photos:
 		case PlexMediaType.PhotoAlbum:
+		case PlexMediaType.PhotoImage:
 			router.push(`/photos/${library.id}`);
 			break;
 		default:

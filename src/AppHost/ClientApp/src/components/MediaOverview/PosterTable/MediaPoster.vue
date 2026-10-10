@@ -80,6 +80,21 @@
 										align="center"
 										size="subtitle1" />
 									<QText
+										v-if="mediaType === PlexMediaType.MusicArtist"
+										:value="`${$t('components.music-details.album-count')}: ${mediaItem.childCount}`"
+										align="center"
+										size="subtitle1" />
+									<QText
+										v-if="mediaType === PlexMediaType.MusicArtist"
+										:value="`${$t('components.music-details.track-count')}: ${mediaItem.grandChildCount}`"
+										align="center"
+										size="subtitle1" />
+									<QText
+										v-if="mediaType === PlexMediaType.PhotoAlbum"
+										:value="`${$t('components.photo-details.asset-count')}: ${mediaItem.childCount}`"
+										align="center"
+										size="subtitle1" />
+									<QText
 										v-if="mediaOverviewStore.allMediaMode"
 										align="center"
 										size="subtitle1"
@@ -114,8 +129,10 @@
 
 					<!-- Comparison State Button (always visible, rendered outside image element) -->
 					<MediaComparisonStateButton
+						v-if="supportsComparison"
 						class="comparison-state-button"
 						:comparison-state="getPlexMediaComparisonState(mediaItem)"
+						:media-type="mediaType"
 						show-tooltip
 						dense
 						:clickable="comparisonBadgeClickable"
@@ -153,6 +170,7 @@
 			</div>
 
 			<MediaQuality
+				v-if="supportsVideoQuality"
 				class="media-poster-quality-bar"
 				:qualities="mediaItem.qualities"
 				clickable
@@ -210,6 +228,7 @@ import {
 	useLibraryStore,
 } from '@store';
 import { getPlexMediaComparisonState } from '@composables';
+import Convert from '@class/Convert';
 
 const mediaOverviewStore = useMediaOverviewStore();
 const mediaStore = useMediaStore();
@@ -240,9 +259,14 @@ const mobileMenuVisible = shallowRef(false);
 
 const mediaType = computed(() => props.mediaItem?.type ?? PlexMediaType.Unknown);
 
-const hasDetailsAction = computed(() => get(mediaType) === PlexMediaType.TvShow || get(mediaType) === PlexMediaType.Movie);
+const hasDetailsAction = computed(() => Convert.mediaTypeToDetailsPath(props.mediaItem) !== null);
+const supportsComparison = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist].includes(get(mediaType)));
+const supportsVideoQuality = computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.OtherVideos].includes(get(mediaType)));
 
 const comparisonBadgeClickable = computed(() => {
+	if (get(mediaType) === PlexMediaType.MusicArtist)
+		return [PlexMediaComparisonState.Missing, PlexMediaComparisonState.Partial].includes(getPlexMediaComparisonState(props.mediaItem));
+
 	return [
 		PlexMediaComparisonState.Missing,
 		PlexMediaComparisonState.HigherQuality,

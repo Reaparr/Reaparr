@@ -48,6 +48,8 @@ public static partial class PlexMediaDTOMapper
             Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             Children = [],
+            DiscNumber = null,
+            TrackNumber = null,
         };
 
     public static List<PlexMediaDataDTO> ToDTO(this ICollection<PlexOtherVideoMediaData> source) =>

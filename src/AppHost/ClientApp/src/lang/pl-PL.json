@@ -33,6 +33,65 @@
             "saturday": "Sobota",
             "sunday": "Niedziela"
         },
+        "music-media-list": {
+            "select-artist": "Wybierz wykonawcę {title}",
+            "select-album": "Wybierz album {title}",
+            "select-track": "Wybierz utwór {title}",
+            "selected-count": "Wybrano: {count}",
+            "track-count": "Utwory: {count}",
+            "disc-label": "Płyta {number}",
+            "unknown-disc": "Nieokreślona płyta",
+            "no-tracks": "Nie znaleziono utworów",
+            "no-albums": "Nie znaleziono albumów"
+        },
+        "music-details": {
+            "album-count": "Albumy",
+            "track-count": "Utwory",
+            "duration": "Czas trwania",
+            "size": "Rozmiar",
+            "year": "Rok",
+            "originally-available": "Pierwsza dostępność",
+            "added-at": "Dodano",
+            "updated-at": "Zaktualizowano",
+            "load-error": "Nie można wczytać tego wykonawcy",
+            "invalid-route": "Nieprawidłowa biblioteka muzyczna lub wykonawca."
+        },
+        "photo-media-list": {
+            "select-album": "Wybierz album {title}",
+            "select-asset": "Wybierz element {title}",
+            "selected-count": "Wybrano: {count}",
+            "reset-selection": "Wyczyść wybór",
+            "empty": "W tym albumie nie znaleziono obrazów ani klipów."
+        },
+        "photo-details": {
+            "asset-count": "Elementy",
+            "size": "Łączny rozmiar",
+            "originally-available": "Pierwsza dostępność",
+            "added-at": "Dodano",
+            "updated-at": "Zaktualizowano",
+            "loading": "Wczytywanie albumu zdjęć…",
+            "load-error": "Nie można wczytać tego albumu zdjęć.",
+            "invalid-route": "Nieprawidłowa biblioteka zdjęć lub album.",
+            "retry": "Spróbuj ponownie"
+        },
+        "other-video-media-list": {
+            "originals": "Wersje oryginalne",
+            "select-video": "Wybierz film {title}",
+            "selected-count": "Wybrano: {count}",
+            "empty": "Brak oryginalnych plików."
+        },
+        "other-video-details": {
+            "duration": "Czas trwania",
+            "size": "Łączny rozmiar",
+            "file-count": "Pliki",
+            "year": "Rok",
+            "originally-available": "Pierwsza dostępność",
+            "added-at": "Dodano",
+            "updated-at": "Zaktualizowano",
+            "loading": "Wczytywanie filmu…",
+            "load-error": "Nie można wczytać tego filmu.",
+            "invalid-route": "Nieprawidłowa biblioteka filmów lub film."
+        },
         "account-card": {
             "invalid-account": "Obiekt konta był nieprawidłowy"
         },
@@ -103,6 +162,8 @@
         },
         "download-confirmation": {
             "description": "Reaparr rozpocznie pobieranie następujących plików",
+            "preview-error": "Nie można wczytać podglądu pobierania. Spróbuj ponownie.",
+            "retry": "Spróbuj ponownie",
             "total-size": "Całkowity rozmiar:",
             "columns": {
                 "file-size": "Rozmiar pliku",
@@ -166,6 +227,7 @@
                 "details-column-remote-quality": "Available quality",
                 "details-column-owned-quality": "Current quality",
                 "details-no-actionable-rows": "No actionable comparison rows were returned for this media item.",
+                "details-load-error": "Nie można wczytać szczegółów porównania. Spróbuj ponownie.",
                 "download-selected": "Download selected"
             }
         },
@@ -204,6 +266,18 @@
             "tv-show": {
                 "header": "Ścieżki seriali",
                 "default-name": "Ścieżka folderu serialu"
+            },
+            "music": {
+                "header": "Ścieżki muzyki",
+                "default-name": "Ścieżka folderu muzyki"
+            },
+            "photos": {
+                "header": "Ścieżki zdjęć",
+                "default-name": "Ścieżka folderu zdjęć"
+            },
+            "other-videos": {
+                "header": "Ścieżki innych filmów",
+                "default-name": "Ścieżka folderu innych filmów"
             }
         },
         "server-dialog": {
@@ -389,7 +463,14 @@
         "media-overview-bar": {
             "all-media-mode": {
                 "movies": "Wszystkie filmy",
-                "tv-shows": "Wszystkie programy telewizyjne"
+                "tv-shows": "Wszystkie programy telewizyjne",
+                "music": "Cała muzyka",
+                "photos": "Wszystkie zdjęcia",
+                "other-videos": "Wszystkie pozostałe filmy"
+            },
+            "view-mode": {
+                "poster": "Widok plakatów",
+                "table": "Widok tabeli"
             }
         },
         "media-options-dialog": {
@@ -403,7 +484,12 @@
         "media-overview-bar-header": {
             "details": "Szczegóły przeglądu multimediów",
             "movies-metadata": "{movieCount} Filmy - {fileSize} ",
-            "tv-shows-metadata": "{tvShowCount} Programy telewizyjne - {seasonCount} Sezony - {episodeCount} Odcinki - {fileSize} "
+            "tv-shows-metadata": "{tvShowCount} Programy telewizyjne - {seasonCount} Sezony - {episodeCount} Odcinki - {fileSize} ",
+            "music-metadata": "Wykonawcy: {artistCount} - {fileSize}",
+            "music-detail-metadata": "Albumy: {albumCount} - Utwory: {trackCount} - {fileSize}",
+            "photos-metadata": "Albumy: {albumCount} - {fileSize}",
+            "photo-detail-metadata": "Elementy: {assetCount} - {fileSize}",
+            "other-videos-metadata": "Filmy: {videoCount} - {fileSize}"
         },
         "discord-invite-dialog": {
             "discord-invite-button-text": "Dołącz do Reaparr Discord!",
@@ -550,6 +636,11 @@
         }
     },
     "general": {
+        "labels": {
+            "original": "Oryginał",
+            "automatic-original": "Automatycznie (domyślnie)",
+            "select-original": "Wybierz oryginał dla {title}"
+        },
         "comparison": {
             "comparison-missing": "Zaginiony",
             "comparison-higher-quality": "Dostępna wyższa jakość",
@@ -654,6 +745,12 @@
             "auto-paused": "Automatyczne wstrzymanie"
         },
         "download-notification": {
+            "music-artist": "Pobieranie {count} wykonawcy | Pobieranie {count} wykonawców | Pobieranie {count} wykonawców",
+            "music-album": "Pobieranie {count} albumu muzycznego | Pobieranie {count} albumów muzycznych | Pobieranie {count} albumów muzycznych",
+            "music-track": "Pobieranie {count} utworu muzycznego | Pobieranie {count} utworów muzycznych | Pobieranie {count} utworów muzycznych",
+            "photo-album": "Pobieranie {count} albumu zdjęć | Pobieranie {count} albumów zdjęć | Pobieranie {count} albumów zdjęć",
+            "photo-image": "Pobieranie {count} zdjęcia | Pobieranie {count} zdjęć | Pobieranie {count} zdjęć",
+            "other-video": "Pobieranie {count} innego filmu | Pobieranie {count} innych filmów | Pobieranie {count} innych filmów",
             "movie": "Pobieranie {count} filmu | Pobieranie {count} filmów | Pobieranie {count} filmów",
             "tv-show": "Pobieranie {count} serialu | Pobieranie {count} seriali | Pobieranie {count} seriali",
             "season": "Pobieranie {count} sezonu | Pobieranie {count} sezonów | Pobieranie {count} sezonów",
@@ -901,6 +998,36 @@
                         "text": "Czy powinno być wyświetlane okno potwierdzenia, gdy film ma być pobrany?",
                         "title": "Potwierdzenie pobrania filmu"
                     },
+                    "download-music-artist-confirmation": {
+                        "label": "Potwierdzenie pobrania muzyki wykonawcy",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem muzyki wykonawcy?",
+                        "title": "Potwierdzenie pobrania muzyki wykonawcy"
+                    },
+                    "download-music-album-confirmation": {
+                        "label": "Potwierdzenie pobrania albumu muzycznego",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem albumu muzycznego?",
+                        "title": "Potwierdzenie pobrania albumu muzycznego"
+                    },
+                    "download-music-track-confirmation": {
+                        "label": "Potwierdzenie pobrania utworu",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem utworu muzycznego?",
+                        "title": "Potwierdzenie pobrania utworu"
+                    },
+                    "download-photo-album-confirmation": {
+                        "label": "Potwierdzenie pobrania albumu zdjęć",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem albumu zdjęć?",
+                        "title": "Potwierdzenie pobrania albumu zdjęć"
+                    },
+                    "download-photo-image-confirmation": {
+                        "label": "Potwierdzenie pobrania zdjęcia lub klipu",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem zdjęcia lub klipu?",
+                        "title": "Potwierdzenie pobrania zdjęcia lub klipu"
+                    },
+                    "download-other-videos-confirmation": {
+                        "label": "Potwierdzenie pobrania innych filmów",
+                        "text": "Czy wyświetlić potwierdzenie przed pobraniem innego filmu?",
+                        "title": "Potwierdzenie pobrania innych filmów"
+                    },
                     "download-season-confirmation": {
                         "label": "Zapytaj o potwierdzenie pobrania sezonu",
                         "text": "Czy powinno być wyświetlane okno potwierdzenia, gdy sezon ma być pobrany?",
@@ -977,6 +1104,21 @@
                     "label": "Domyślna ścieżka programów telewizyjnych",
                     "text": "Domyślna ścieżka seriali w przypadku, gdy nie wybrano żadnego niestandardowego miejsca docelowego.",
                     "title": "Ścieżka Seriali"
+                },
+                "music-folder": {
+                    "label": "Domyślna ścieżka muzyki",
+                    "text": "Domyślna ścieżka muzyki, gdy nie wybrano niestandardowego miejsca docelowego.",
+                    "title": "Ścieżka muzyki"
+                },
+                "photos-folder": {
+                    "label": "Domyślna ścieżka zdjęć",
+                    "text": "Domyślna ścieżka zdjęć i filmów z bibliotek zdjęć, gdy nie wybrano niestandardowego miejsca docelowego.",
+                    "title": "Ścieżka zdjęć"
+                },
+                "other-videos-folder": {
+                    "label": "Domyślna ścieżka innych filmów",
+                    "text": "Domyślna ścieżka innych filmów, gdy nie wybrano niestandardowego miejsca docelowego.",
+                    "title": "Ścieżka innych filmów"
                 }
             },
             "integrations": {
@@ -1095,19 +1237,21 @@
             "return-link": "Wróć do strony głównej"
         },
         "music": {
-            "music-id": {
-                "header": "Biblioteki muzyczne niestety nie są jeszcze obsługiwane :("
-            },
             "index": {
-                "header": "Biblioteki muzyczne niestety nie są jeszcze obsługiwane :("
+                "header": "Muzyka",
+                "sub-header": "Wybierz bibliotekę muzyczną, aby przeglądać wykonawców, albumy i utwory."
             }
         },
         "photos": {
-            "photo-id": {
-                "header": "Biblioteki zdjęć niestety nie są jeszcze obsługiwane :("
-            },
             "index": {
-                "header": "Biblioteki zdjęć niestety nie są jeszcze obsługiwane :("
+                "header": "Zdjęcia",
+                "sub-header": "Wybierz bibliotekę zdjęć, aby przeglądać albumy, obrazy i klipy."
+            }
+        },
+        "other-videos": {
+            "index": {
+                "header": "Pozostałe filmy",
+                "sub-header": "Wybierz bibliotekę pozostałych filmów, aby przeglądać pojedyncze filmy."
             }
         },
         "settings": {

@@ -65,6 +65,12 @@ export interface CheckAllConnectionStatusUpdateDTO {
 export interface ConfirmationSettingsDTO {
   askDownloadEpisodeConfirmation: boolean;
   askDownloadMovieConfirmation: boolean;
+  askDownloadMusicAlbumConfirmation: boolean;
+  askDownloadMusicArtistConfirmation: boolean;
+  askDownloadMusicTrackConfirmation: boolean;
+  askDownloadOtherVideosConfirmation: boolean;
+  askDownloadPhotoAlbumConfirmation: boolean;
+  askDownloadPhotoImageConfirmation: boolean;
   askDownloadSeasonConfirmation: boolean;
   askDownloadTvShowConfirmation: boolean;
 }
@@ -199,6 +205,9 @@ export enum DesktopMessageType {
 export interface DisplaySettingsDTO {
   allOverviewViewMode: PlexMediaType;
   movieViewMode: ViewMode;
+  musicArtistViewMode: ViewMode;
+  otherVideosViewMode: ViewMode;
+  photoAlbumViewMode: ViewMode;
   tvShowViewMode: ViewMode;
 }
 
@@ -370,6 +379,18 @@ export interface DownloadTaskCreationReportDTO {
   /** @format int32 */
   movies: number;
   /** @format int32 */
+  musicAlbums: number;
+  /** @format int32 */
+  musicArtists: number;
+  /** @format int32 */
+  musicTracks: number;
+  /** @format int32 */
+  otherVideos: number;
+  /** @format int32 */
+  photoAlbums: number;
+  /** @format int32 */
+  photoImages: number;
+  /** @format int32 */
   seasons: number;
   /** @format int32 */
   total: number;
@@ -446,6 +467,18 @@ export enum DownloadTaskType {
   Episode = "Episode",
   EpisodeData = "EpisodeData",
   EpisodePart = "EpisodePart",
+  MusicArtist = "MusicArtist",
+  MusicAlbum = "MusicAlbum",
+  MusicTrack = "MusicTrack",
+  MusicTrackData = "MusicTrackData",
+  MusicTrackPart = "MusicTrackPart",
+  PhotoAlbum = "PhotoAlbum",
+  PhotoImage = "PhotoImage",
+  PhotoData = "PhotoData",
+  PhotoPart = "PhotoPart",
+  OtherVideo = "OtherVideo",
+  OtherVideoData = "OtherVideoData",
+  OtherVideoPart = "OtherVideoPart",
 }
 
 export interface ErrorDTO {
@@ -993,6 +1026,8 @@ export interface PlexMediaDTO {
   comparisonId: number;
   contentRating?: string | null;
   /** @format int32 */
+  discNumber?: number | null;
+  /** @format int32 */
   duration: number;
   /** @format int32 */
   grandChildCount: number;
@@ -1006,6 +1041,8 @@ export interface PlexMediaDTO {
   mediaSize: number;
   /** @format date-time */
   originallyAvailableAt?: string | null;
+  /** @format int32 */
+  parentId?: number | null;
   /** @format int32 */
   plexApiMetaDataKey: number;
   /** @format int32 */
@@ -1023,6 +1060,8 @@ export interface PlexMediaDTO {
   studio: string;
   summary: string;
   title: string;
+  /** @format int32 */
+  trackNumber?: number | null;
   /** @format int32 */
   tvShowId: number;
   /** @format int32 */
@@ -1101,6 +1140,8 @@ export interface PlexMediaSlimDTO {
   /** @format int64 */
   mediaSize: number;
   /** @format int32 */
+  parentId?: number | null;
+  /** @format int32 */
   plexApiMetaDataKey: number;
   /** @format int32 */
   plexApiRatingKey: number;
@@ -1164,12 +1205,11 @@ export enum PlexMediaType {
   TvShow = "TvShow",
   Season = "Season",
   Episode = "Episode",
-  Music = "Music",
-  Artist = "Artist",
-  Album = "Album",
-  Song = "Song",
+  MusicArtist = "MusicArtist",
+  MusicAlbum = "MusicAlbum",
+  MusicTrack = "MusicTrack",
   PhotoAlbum = "PhotoAlbum",
-  Photos = "Photos",
+  PhotoImage = "PhotoImage",
   OtherVideos = "OtherVideos",
   Games = "Games",
   Unknown = "Unknown",
