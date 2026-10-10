@@ -94,3 +94,67 @@ Only record checks actually executed for each fix. Prior audit results are not a
 - **Annotation 17:** Changed `src/Application/PlexDownloads/_BackgroundJobs/MoveDownloadFileJob/MoveDownloadFileJob.cs` and strengthened the existing parameterized assertions in `tests/UnitTests/Application.UnitTests/PlexDownloads/MoveDownloadFile/Jobs/MoveDownloadFileJob.UnitTests.cs`. The job now returns handled move, reload, cleanup, and not-found results through the outer `Result.Try` boundary; failed outcomes set Quartz's failed result and queue once, cancellation sets Quartz's cancelled result, and normal/unauthorized/no-task paths remain successful no-ops. Targeted completion and incomplete-move methods passed. The full class reached 62 successes and one unrelated existing `Sequence contains more than one element` failure in `ShouldLeaveFilesAndStatusUnchanged_WhenQueuedJobIsNotAuthorizedToMove` at line 641; that failure was unchanged before and after this fix.
 - **Annotation 18:** Changed `src/Data.Contracts/Extensions/DbContext/DbContextExtensions.PlexMedia.cs`. All supported media-type branches now convert a missing ID `0` into a typed failed result while retaining the existing rating-key plus server predicates. `ShouldResolveExactSourceIdentityAndRejectWrongServer_WhenLookingUpNewMedia`, `ShouldFindMovieId_WhenMediaKeyExists`, `ShouldFindTvShowId_WhenMediaKeyExists`, and `ShouldFail_WhenMediaNotFound` passed.
 - Rider reported no errors for the changed production and test files; the final affected backend build succeeded with no retained problems. The complete media lookup test class passed. No endpoint, frontend, schema, or user-data changes were made; no commits created.
+
+## Rebased review feedback — pn-bd7a69
+
+These items record the user's feedback on the review of `f521fbd1baa5800f7b2bae8b8f0234ff0625a333...7e8a8a064288e80f1539b08031c667da114835ad`. They are pending implementation, not claims about the current worktree. Recheck each finding against current source before changing it; leave already-correct behavior unchanged. The review protocol above still applies.
+
+### Approved implementation TODOs
+
+1. [x] **Feedback 2 withdrawn.** The user confirms that stored libraries always have valid types. No root-type admission filter is required or approved.
+2. [x] **Feedback 3 — Migrate enum text without changing folder paths.** Backfill only the persisted media-type enum text for existing `FolderPaths`: `Music` to `MusicArtist`, and `Photos` to `PhotoAlbum`. Preserve directory strings, including `/Music` and `/Photos`, row IDs, custom paths, and default directory names. Do not rename or move directories or add general runtime enum aliases. Verify upgrade and fresh-database reads and exact preservation of directory-path values.
+3. [x] **Feedback 4 — Scheduled bandwidth membership.** Include Music Track, Photo Image, and Other Video file tables in `UpdateScheduledDownloadLimitsCommand.cs` participant discovery. Preserve per-server deduplication, manual caps, and the existing allocation policy. Verify new-family-only servers and mixed-family/mixed-server allocations under a finite schedule.
+4. [x] **Feedback 5 — Quiesce comparisons before invalidating persisted results.** In `InvalidateLibraryComparisonJobsCommand.cs`, use the existing cancellation-and-wait path for every affected queued or running job before deleting comparison rows and scopes. Preserve cancellation/failure handling; do not delete results after unsuccessful cancellation or scheduler deletion. Verify that an in-flight ownership-change comparison cannot repopulate invalidated state after the command completes.
+5. [x] **Feedback 7 — Reject unsupported PhotoAlbum filters.** Update the existing `GetAllMediaByTypeEndpoint.cs` validation to reject country, actor, genre, and quality filters that cannot apply to `PhotoAlbum`, rather than silently dropping them. Preserve supported PhotoAlbum queries and Movie/TV filtering. Verify rejection responses and exact results for supported controls.
+6. [x] **Feedback 8 — Preserve category roots during move cleanup.** Stop `CleanUpDownloadTaskFolders.cs` at category roots for Photo and Other Video files; retain the existing eligible media-folder cleanup and Music/Movie/TV behavior. Use isolated filesystem regressions to verify root preservation, active siblings, and unrelated file bytes.
+7. [x] **Feedback 9 — Movie dispatcher test constructor.** Supply the existing `ICommandExecutor` and `IDownloadTaskScheduler` mocks in `DownloadTaskUpdateDispatcher.Movie.UnitTests.cs`. Preserve the delayed-context pause regression and verify the affected dispatcher tests.
+8. [x] **Feedback 10 — Invalid-payload move-job expectations.** Correct both invalid-payload queue expectations in `MoveDownloadFileJob.UnitTests.cs` to match the existing early failure return. Do not change production queue behavior to satisfy stale assertions. Verify invalid payload, missing task with valid payload, normal completion, and failure-path controls.
+9. [x] **Feedback 11 — OtherVideos fallback assertion.** Update the remaining `"Other"` expectation in `PathProvider.UnitTests.cs` to `"OtherVideos"`. Verify both Docker data-path cases and existing dedicated-path overrides; do not change Music or Photos directory names.
+10. [x] **Feedback 12 — Bound deletion directory-protection queries.** Replace the unrestricted full-queue hierarchy load in `DeleteDownloadTaskFilesCommandHandler.cs` with bounded active-directory candidate queries and only the required projections. Preserve protection for shared physical paths across media families and servers. Verify single-file deletion, active siblings without files yet, unrelated queues, and existing root boundaries.
+11. [x] **Feedback 13 — Bound per-file cleanup queries.** Avoid materializing every active full file entity in `CleanUpDownloadTaskFolders.cs` for each completed file. Constrain candidate queries and project only what directory protection requires; retain cross-family and cross-server shared-path protection. Verify active-sibling behavior and that repeated cleanup does not fetch unrelated full file rows.
+12. [x] **Feedback 14 — Other Videos quality-pagination index.** Add the `(PlexLibraryId, QualityRank)` index in `MediaOverviewOtherVideoSnapshotConfiguration.cs` using the existing configuration pattern. Generate the matching migration and model snapshot through the documented EF migration tooling. Verify the generated index and quality-sorted page results; do not claim measured speedups without measurements.
+
+### Historical verification claims; not current regression proof
+
+- `FolderPathMediaTypeMigrationUnitTests` passed upgrade and fresh-database cases; migration `20261009200009_NormalizeFolderPathMediaTypesAndAddOtherVideoQualityIndex` preserves IDs and directories, and its designer/model snapshot contain the `(PlexLibraryId, QualityRank)` index.
+- Scheduled bandwidth, comparison invalidation, PhotoAlbum validation, move-file expectations, and Other Video quality paging tests passed.
+- Cleanup, deletion, dispatcher, and path-provider test classes passed, including cross-family/shared-directory protections and category-root retention.
+- Rider diagnostics reported no errors for changed files, and the affected solution build completed successfully with no retained problems.
+
+### Feedback 6 — Sorting clarification; no implementation approval
+
+The finding is about different ordering rules, not lost media or a required directory-name change. In the reviewed target, a library-specific direct query defaults to persisted `SortIndex`; explicit `Title` ordering uses `Title`. The snapshot resolver aliases those sorts onto the cached branch that uses `TitleRank`, which is built from `SearchTitle`.
+
+Illustrative records, not observed user data:
+
+| Record | SortIndex | Title | SearchTitle |
+| --- | --- | --- | --- |
+| A | 1 | The Zebra | Zebra |
+| B | 2 | The Apple | Apple |
+| C | 3 | Banana | Banana |
+
+For ascending order:
+
+- Direct default / `SortIndex`: A, B, C.
+- Direct explicit `Title`: C, B, A.
+- Cached `TitleRank` / `SearchTitle`: B, C, A.
+
+With page size one, the default first page changes from A to B when the same request starts using the snapshot. The records remain present; ordering and page membership change. This specifically concerns the new-family sort parity finding, not the separately tracked mixed warm/cold omission issue #681.
+
+The conservative proposed fix is to preserve the current direct-query semantics and bypass the cached path for any sort without an equivalent snapshot rank. Introducing distinct persisted ranks or unifying the sort meanings is not approved by this feedback. No sorting implementation TODO has been added.
+
+## Current feedback — pn-ed84c2
+
+Approved implementation is limited to comparison quiescence (feedback 5), invalid-payload move-job expectations (feedback 10), and candidate-bounded deletion and cleanup queries (feedback 12–13). Duplicate annotations refer to these same four changes.
+
+The root-filtering finding is withdrawn under the user's valid-library-type invariant. Sorting feedback 6 requests clarification only: identical library-specific requests can switch from persisted `SortIndex` order to cached `SearchTitle` rank order after snapshot warmup, changing page membership without losing records. No sorting changes are approved.
+
+Current verification uses actual TUnit execution through the .NET Tools MCP server and its TRX reports, not the dedicated test MCP's inconsistent pass summaries. Comparison invalidation passed 7/7, candidate-directory queries passed 55/55, move-job controls passed 63/63, deletion passed 21/21, and all cleanup families passed 110/110: 256 executed, 256 passed, none failed or skipped. Both affected test projects were compiled through MCP `Run` with `noBuild: false`. Rider reported zero errors in all ten edited code files. TRX reports are under `/tmp/reaparr-pn-ed84c2/`.
+
+The directory helper uses a parameterized scalar-ID subquery followed by the normal EF metadata projection: these TPC-derived file entities reject entity `FromSqlRaw` queries. Candidate parameters are batched without limiting matching siblings. Unicode comparisons use the existing per-connection SQLite registration path with `StringComparer.OrdinalIgnoreCase`. No migration or index was added; the JSON path predicate can still scan table rows.
+
+The invalid-payload fixture now supplies malformed JSON. An empty job-data map deserializes to a default payload and therefore does not exercise the existing payload-error early return. Both queue expectations are `Times.Never()`; production queue behavior remains unchanged.
+
+Directory metadata is JSON-converted without a snapshot comparer, so fixtures explicitly mark edited entities modified before saving. The deletion fixture isolates unrelated queue metadata in a different physical directory: Music tracks and Photo images can share the same parent directory despite different task IDs.
+
+Verification limits: Linux only; no full solution test run or measured performance comparison. Candidate filtering bounds materialization, not SQLite JSON predicate scanning. Comparison quiescence covers discovered affected jobs; independent new scheduling after discovery is not serialized by this change.
