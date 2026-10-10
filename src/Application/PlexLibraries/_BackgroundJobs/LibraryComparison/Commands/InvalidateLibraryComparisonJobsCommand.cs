@@ -62,7 +62,8 @@ public class InvalidateLibraryComparisonJobsCommandHandler
         foreach (var runningJobKey in jobKeysToDelete.Where(executingJobKeys.Contains))
         {
             var cancellationResult = await _scheduler.CancelJob(runningJobKey, cancellationToken);
-            cancellationResult.LogIfFailed();
+            if (cancellationResult.IsCancelled || cancellationResult.IsFailed)
+                return cancellationResult.LogIfFailed();
         }
 
         var result = await _scheduler.DeleteBatchJobs(jobKeysToDelete, cancellationToken);
