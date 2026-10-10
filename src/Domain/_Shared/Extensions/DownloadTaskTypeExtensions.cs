@@ -4,7 +4,9 @@ public static class DownloadTaskTypeExtensions
 {
     public static bool IsDataOrPart(this DownloadTaskType downloadTaskType) =>
         downloadTaskType
-            is DownloadTaskType.PhotoData
+            is DownloadTaskType.EpisodeData
+                or DownloadTaskType.EpisodePart
+                or DownloadTaskType.PhotoData
                 or DownloadTaskType.PhotoPart
                 or DownloadTaskType.MusicTrackData
                 or DownloadTaskType.MusicTrackPart

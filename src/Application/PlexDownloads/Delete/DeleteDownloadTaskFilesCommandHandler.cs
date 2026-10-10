@@ -67,18 +67,9 @@ public class DeleteDownloadTaskFilesCommandHandler : ICommandHandler<DeleteDownl
         var activeDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (allFileTasks.Count > 0)
         {
-            var deletingFileKeys = allFileTasks.Select(x => x.ToKey()).ToHashSet();
-            var downloadTasks = await _dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: cancellationToken);
-            activeDirectories.UnionWith(
-                downloadTasks
-                    .Flatten(x => x.Children)
-                    .Where(x =>
-                        x.IsDownloadable
-                        && !deletingFileKeys.Contains(x.ToKey())
-                        && x.DownloadStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted)
-                        && !string.IsNullOrEmpty(x.DownloadDirectory)
-                    )
-                    .Select(x => x.DownloadDirectory)
+            activeDirectories = await _dbContext.GetActiveDownloadDirectoriesAsync(
+                allFileTasks.Select(x => x.ToKey()).ToHashSet(),
+                cancellationToken
             );
         }
 

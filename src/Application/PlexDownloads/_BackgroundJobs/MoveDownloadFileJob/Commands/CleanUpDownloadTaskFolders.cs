@@ -57,23 +57,21 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
             return Result.Ok();
         }
 
-        // Remove the empty media folder without touching active sibling downloads.
-        var result = DeleteDirectoryFromFilePath(filePath);
+        var protectedCategoryDirectory = downloadTask.DirectoryMeta.GetDownloadCategoryDirectory(
+            downloadTask.DownloadTaskType
+        );
+
+        // Remove empty media folders without crossing the category root or active sibling downloads.
+        var result = DeleteDirectoryFromFilePath(filePath, protectedCategoryDirectory);
         if (result.IsFailed)
             return result;
 
-        if (
-            downloadTask.DownloadTaskType
-            is DownloadTaskType.EpisodeData
-                or DownloadTaskType.MusicTrackData
-                or DownloadTaskType.PhotoData
-                or DownloadTaskType.OtherVideoData
-        )
-        {
-            var deleteResult = DeleteDirectoryFromFilePath(downloadTask.DownloadDirectory);
-            if (deleteResult.IsFailed)
-                return deleteResult;
-        }
+        if (!downloadTask.DownloadTaskType.IsDataOrPart())
+            return Result.Ok();
+
+        var deleteResult = DeleteDirectoryFromFilePath(downloadTask.DownloadDirectory, protectedCategoryDirectory);
+        if (deleteResult.IsFailed)
+            return deleteResult;
 
         return Result.Ok();
     }
@@ -83,59 +81,14 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
         CancellationToken cancellationToken
     )
     {
-        var activeMovieTasks = await _dbContext
-            .DownloadTaskMovieFile.Where(x =>
-                (downloadTask.DownloadTaskType != DownloadTaskType.MovieData || x.Id != downloadTask.Id)
-                && x.DownloadStatus != DownloadStatus.Completed
-                && x.DownloadStatus != DownloadStatus.Deleted
-            )
-            .ToListAsync(cancellationToken);
-        var hasActiveMovieTasks = activeMovieTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory);
-        if (hasActiveMovieTasks)
-            return true;
-
-        var activeEpisodeTasks = await _dbContext
-            .DownloadTaskTvShowEpisodeFile.Where(x =>
-                (downloadTask.DownloadTaskType != DownloadTaskType.EpisodeData || x.Id != downloadTask.Id)
-                && x.DownloadStatus != DownloadStatus.Completed
-                && x.DownloadStatus != DownloadStatus.Deleted
-            )
-            .ToListAsync(cancellationToken);
-
-        if (activeEpisodeTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory))
-            return true;
-
-        var activePhotoTasks = await _dbContext
-            .DownloadTaskPhotoImageFiles.Where(x =>
-                (downloadTask.DownloadTaskType != DownloadTaskType.PhotoData || x.Id != downloadTask.Id)
-                && x.DownloadStatus != DownloadStatus.Completed
-                && x.DownloadStatus != DownloadStatus.Deleted
-            )
-            .ToListAsync(cancellationToken);
-        if (activePhotoTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory))
-            return true;
-
-        var activeMusicTasks = await _dbContext
-            .DownloadTaskMusicTrackFiles.Where(x =>
-                (downloadTask.DownloadTaskType != DownloadTaskType.MusicTrackData || x.Id != downloadTask.Id)
-                && x.DownloadStatus != DownloadStatus.Completed
-                && x.DownloadStatus != DownloadStatus.Deleted
-            )
-            .ToListAsync(cancellationToken);
-        if (activeMusicTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory))
-            return true;
-
-        var activeOtherVideoTasks = await _dbContext
-            .DownloadTaskOtherVideoFiles.Where(x =>
-                (downloadTask.DownloadTaskType != DownloadTaskType.OtherVideoData || x.Id != downloadTask.Id)
-                && x.DownloadStatus != DownloadStatus.Completed
-                && x.DownloadStatus != DownloadStatus.Deleted
-            )
-            .ToListAsync(cancellationToken);
-        return activeOtherVideoTasks.Any(x => x.DownloadDirectory == downloadTask.DownloadDirectory);
+        var activeDirectories = await _dbContext.GetActiveDownloadDirectoriesAsync(
+            [downloadTask.ToKey()],
+            cancellationToken
+        );
+        return activeDirectories.Contains(downloadTask.DownloadDirectory);
     }
 
-    private Result DeleteDirectoryFromFilePath(string filePath)
+    private Result DeleteDirectoryFromFilePath(string filePath, string? protectedDirectory = null)
     {
         var directoryNameResult = Result.Try(() => _path.GetDirectoryName(filePath));
 
@@ -146,6 +99,9 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
             return ResultExtensions.IsEmpty(nameof(directoryNameResult.Value)).LogError();
 
         var parentDirectory = directoryNameResult.Value;
+
+        if (IsAtOrAboveProtectedDirectory(parentDirectory, protectedDirectory))
+            return Result.Ok();
 
         if (!_directory.Exists(parentDirectory))
             return Result.Ok();
@@ -176,5 +132,24 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
             );
 
         return Result.Ok();
+    }
+
+    private static bool IsAtOrAboveProtectedDirectory(string directory, string? protectedDirectory)
+    {
+        if (string.IsNullOrEmpty(protectedDirectory))
+            return false;
+
+        var normalizedDirectory = Path
+            .GetFullPath(directory)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var normalizedProtectedDirectory = Path
+            .GetFullPath(protectedDirectory)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        return string.Equals(normalizedDirectory, normalizedProtectedDirectory, StringComparison.OrdinalIgnoreCase)
+            || normalizedProtectedDirectory.StartsWith(
+                normalizedDirectory + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase
+            );
     }
 }

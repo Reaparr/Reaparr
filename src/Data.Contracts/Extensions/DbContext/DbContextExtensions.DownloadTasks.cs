@@ -292,6 +292,78 @@ public static partial class DbContextExtensions
         return [.. resultKeys.Distinct()];
     }
 
+    public static async Task<HashSet<string>> GetActiveDownloadDirectoriesAsync(
+        this IReaparrDbContext dbContext,
+        IReadOnlyCollection<DownloadTaskKey> excludedKeys,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskMovieFile,
+            DownloadTaskType.MovieData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskTvShowEpisodeFile,
+            DownloadTaskType.EpisodeData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskMusicTrackFiles,
+            DownloadTaskType.MusicTrackData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskPhotoImageFiles,
+            DownloadTaskType.PhotoData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        await AddActiveDownloadDirectoriesAsync(
+            dbContext.DownloadTaskOtherVideoFiles,
+            DownloadTaskType.OtherVideoData,
+            excludedKeys,
+            directories,
+            cancellationToken
+        );
+        return directories;
+    }
+
+    private static async Task AddActiveDownloadDirectoriesAsync<T>(
+        IQueryable<T> query,
+        DownloadTaskType type,
+        IReadOnlyCollection<DownloadTaskKey> excludedKeys,
+        HashSet<string> directories,
+        CancellationToken cancellationToken
+    )
+        where T : DownloadTaskFileBase
+    {
+        var excludedIds = excludedKeys.Where(x => x.Type == type).Select(x => x.Id).ToList();
+        var directoryMetas = await query
+            .Where(x =>
+                x.DownloadStatus != DownloadStatus.Completed
+                && x.DownloadStatus != DownloadStatus.Deleted
+                && (excludedIds.Count == 0 || !excludedIds.Contains(x.Id))
+            )
+            .Select(x => x.DirectoryMeta)
+            .ToListAsync(cancellationToken);
+
+        foreach (var directoryMeta in directoryMetas)
+        {
+            var directory = directoryMeta.GetDownloadDirectory(type);
+            if (!string.IsNullOrEmpty(directory))
+                directories.Add(directory);
+        }
+    }
+
     public static async Task<DownloadTaskType> GetDownloadTaskTypeAsync(
         this IReaparrDbContext dbContext,
         Guid guid,
