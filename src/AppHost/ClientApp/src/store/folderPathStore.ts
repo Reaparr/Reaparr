@@ -113,9 +113,23 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 
 			return state.folderPaths;
 		},
-		getDefaultFolderPaths: computed(() => state.folderPaths.filter((x) => x.id >= 1 && x.id <= 6)),
+		getDefaultFolderPaths: computed(() =>
+			state.folderPaths.filter((x) =>
+				x.isDefault &&
+				[
+					FolderType.DownloadFolder,
+					FolderType.MovieFolder,
+					FolderType.TvShowFolder,
+					FolderType.MusicFolder,
+					FolderType.PhotosFolder,
+					FolderType.OtherVideosFolder,
+				].includes(x.folderType),
+			),
+		),
 		areDefaultFolderPathsValid: computed(() =>
-			state.folderPaths.filter((x) => x.id === 1 || x.id === 2 || x.id === 3).every((x: FolderPathDTO) => x.isValid),
+			state.folderPaths
+				.filter((x) => x.isDefault && [FolderType.DownloadFolder, FolderType.MovieFolder, FolderType.TvShowFolder].includes(x.folderType))
+				.every((x: FolderPathDTO) => x.isValid),
 		),
 		getFolderPathsGroups: (onlyDefaults: boolean): IFolderPathGroup[] => {
 			const { t } = useI18n();
