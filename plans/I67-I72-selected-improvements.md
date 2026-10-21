@@ -15,7 +15,7 @@ Reject canonical role changes and incompatible edits of assigned integration/lib
 Removed obsolete parent equality; retained server/library/photo-type guards. No backend parent/version changes. Nine component regressions, the existing real endpoint null-parent DTO case, targeted lint, and all15 Firefox lifecycle workflows passed. Shared-member album switches reset selection, and leaf/album payloads compose with I67. Self-review and CodeScene precommit gate passed. Browser proof uses isolated responses, not live Plex. Ready for local commit.
 
 ## I70 — First connection check
-Assign returned status when existing status is null; retain unrelated/deleted rows and failure/loading behavior. Store regression and browser first-check green without reload. Self-review and CodeScene gates.
+Assign the complete returned status on the existing row, including null-to-first-check transitions; preserve unrelated/deleted rows and failure/loading behavior. Four store regressions, targeted lint and the Firefox first-check workflow passed. The row turns green, then red on a later failure, without a connection-list refresh. Initial browser fixture navigation and lint layout were corrected, not production behavior. Self-review passed; CodeScene10.0 on all three source files. Ready for final gate and local commit.
 
 ## I71 — Selective torrent reads
 Push requested hash restriction into movie/episode queries without changing ownership/category/status/path semantics. No indexes/projection overhaul/category-collation change. SQLite materialization and exact wire proof for one/list/all/no-match/mixed-case and controls. Independent query/protocol review and CodeScene gates.
@@ -27,4 +27,4 @@ Share existing in-memory chooser with current query-loading caller; list endpoin
 No live Plex/Arr, benchmarks or packaging claim. Hosted HTTP uses isolated test fixtures; browser UI uses isolated API responses. I67 Rider startup/API generation, C# diagnostics, frontend typecheck/lint and targeted tests exercised successfully. Native frontend language server unavailable. Final-phase-only validation: no pre-fix red run under host rules. Required failures pause commit/queue.
 
 ## Execution
-I67 committed locally `9742401f5`; I68 committed locally `ab564961a`. I69 active; I70–I72 queued and untouched. No push. Runtime claims use isolated fixtures, not live Plex/Arr.
+I67 committed locally `9742401f5`; I68 `ab564961a`; I69 `4e2de3071`. I70 active; I71–I72 queued and untouched. No push. Runtime claims use isolated fixtures, not live Plex/Arr.
