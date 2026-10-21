@@ -122,6 +122,7 @@ public class Program
         }
 
         await app.StartAsync(cancellationToken);
+        Task? hostShutdownTask = null;
         try
         {
             var appRuntimeInfo = services.GetRequiredService<IAppRuntimeInfo>();
@@ -143,6 +144,8 @@ public class Program
 
             _log.Here().Debug("Starting the Reaparr desktop single-instance listener");
             var desktopMode = services.GetRequiredService<IDesktopMode>();
+            // Observe host shutdown before entering the blocking native window loop.
+            hostShutdownTask = app.WaitForShutdownAsync(cancellationToken);
             var listenerResult = singleInstanceCoordinator.StartListener(
                 ct =>
                 {
@@ -163,7 +166,15 @@ public class Program
         }
         finally
         {
-            await app.StopAsync(cancellationToken);
+            if (hostShutdownTask is null)
+            {
+                await app.StopAsync(cancellationToken);
+            }
+            else
+            {
+                app.Lifetime.StopApplication();
+                await hostShutdownTask;
+            }
         }
     }
 

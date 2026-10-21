@@ -28,6 +28,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         var result = await Program.RunDesktopLifecycleAsync(app, CancellationToken);
 
         // Assert
+        result.Errors.Count.ShouldBe(0);
         result.IsSuccess.ShouldBeTrue();
         hostProbe.StartCalls.ShouldBe(0);
         hostProbe.StopCalls.ShouldBe(0);
@@ -64,6 +65,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         hostProbe.StartCalls.ShouldBe(1);
         hostProbe.StopCalls.ShouldBe(1);
         coordinator.Verify();
@@ -93,6 +95,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
 
         // Assert
         result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
         hostProbe.StartCalls.ShouldBe(1);
         hostProbe.StopCalls.ShouldBe(1);
         coordinator.Verify();
@@ -126,6 +129,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         // Assert
         result.IsFailed.ShouldBeTrue();
         hostProbe.StartCalls.ShouldBe(1);
+        result.Errors.Count.ShouldBe(1);
         hostProbe.StopCalls.ShouldBe(1);
         coordinator.Verify();
         desktopMode.Verify();
@@ -133,36 +137,59 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldNotShowWindowFromSingleInstanceListenerDuringPrimaryStartup()
+    public async Task ShouldStopHostBeforeDesktopWaitCompletes_WhenApplicationShutdownIsRequested()
     {
         // Arrange
         var hostProbe = new HostProbe();
+        var windowWaitStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseWindowWait = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var applicationStopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancellationToken = CancellationToken;
+        var deadline = TimeSpan.FromSeconds(10);
         var desktopMode = new Mock<IDesktopMode>(MockBehavior.Strict);
         var coordinator = new Mock<IDesktopSingleInstanceCoordinator>(MockBehavior.Strict);
-        var app = CreateApp(hostProbe, desktopMode.Object, coordinator.Object);
+        await using var app = CreateApp(hostProbe, desktopMode.Object, coordinator.Object);
+        using var stoppedRegistration = app.Lifetime.ApplicationStopped.Register(() => applicationStopped.TrySetResult());
 
         coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true).Verifiable(Times.Once());
         coordinator
-            .Setup(x =>
-                x.StartListener(It.IsAny<Func<CancellationToken, Task<Result>>>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.StartListener(It.IsAny<Func<CancellationToken, Task<Result>>>(), cancellationToken))
             .Returns(Result.Ok())
             .Verifiable(Times.Once());
+        desktopMode.Setup(x => x.StartAsync(cancellationToken)).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
         desktopMode
-            .Setup(x => x.StartAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok())
-            .Verifiable(Times.Once());
-        desktopMode
-            .Setup(x => x.WaitForExitAsync(It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask)
+            .Setup(x => x.WaitForExitAsync(cancellationToken))
+            .Returns(() =>
+            {
+                windowWaitStarted.TrySetResult();
+                releaseWindowWait.Task.GetAwaiter().GetResult();
+                return Task.CompletedTask;
+            })
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Program.RunDesktopLifecycleAsync(app, CancellationToken);
+        var lifecycle = Task.Run(() => Program.RunDesktopLifecycleAsync(app, cancellationToken), cancellationToken);
+        Result result;
+        try
+        {
+            await windowWaitStarted.Task.WaitAsync(deadline, cancellationToken);
+            app.Lifetime.StopApplication();
+            await applicationStopped.Task.WaitAsync(deadline, cancellationToken);
 
-        // Assert
+            // Assert: cleanup must finish while the native window wait is still blocked.
+            hostProbe.StartCalls.ShouldBe(1);
+            hostProbe.StopCalls.ShouldBe(1);
+            app.Lifetime.ApplicationStopped.IsCancellationRequested.ShouldBeTrue();
+            lifecycle.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            releaseWindowWait.TrySetResult();
+            result = await lifecycle.WaitAsync(deadline, cancellationToken);
+        }
+
         result.IsSuccess.ShouldBeTrue();
-        hostProbe.StartCalls.ShouldBe(1);
+        result.Errors.Count.ShouldBe(0);
         hostProbe.StopCalls.ShouldBe(1);
         coordinator.Verify();
         desktopMode.Verify();
