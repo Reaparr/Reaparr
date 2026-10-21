@@ -16,6 +16,11 @@ describe('Desktop update availability refresh', () => {
 				hub.publish(messageType, payload);
 			}),
 		);
+		cy.intercept({ url: '**/api/**', middleware: true }, (request) => {
+			request.on('before:response', (response) => {
+				response.headers['x-reaparr-platform'] = 'desktop';
+			});
+		});
 	});
 
 	it('Should check once and show the published version and release notes', () => {
@@ -43,11 +48,6 @@ describe('Desktop update availability refresh', () => {
 		let checkCalls = 0;
 
 		cy.basePageSetup({ isLoggedIn: true, plexAccountCount: 0, plexServerCount: 0 }).then(() => {
-			cy.intercept({ url: '**/api/**', middleware: true }, (request) => {
-				request.on('before:response', (response) => {
-					response.headers['x-reaparr-platform'] = 'desktop';
-				});
-			});
 			cy.intercept('GET', UpdatePaths.checkForUpdateEndpoint(), (request) => {
 				checkCalls++;
 				request.reply({
@@ -77,6 +77,31 @@ describe('Desktop update availability refresh', () => {
 				cy.get('.update-dialog__tab-version').should('have.length', 1).and('have.text', availableUpdate.newestVersion);
 				cy.get('.update-dialog__notes').should('contain.text', releaseNote.notes);
 				cy.contains('button', 'Download').should('be.visible');
+			});
+		});
+	});
+
+	it('Should show the target version of an available update without release notes', () => {
+		const availableUpdate = {
+			currentVersion: '1.0.0',
+			newestVersion: '1.0.2',
+			isUpdateAvailable: true,
+			releaseNotes: [],
+		};
+		cy.basePageSetup({ isLoggedIn: true, plexAccountCount: 0, plexServerCount: 0 }).then(() => {
+			cy.intercept('GET', UpdatePaths.checkForUpdateEndpoint(), {
+				statusCode: 200, body: generateResultDTO(availableUpdate),
+			}).as('checkUpdate');
+			cy.visit(route('/settings/ui'));
+			cy.wait('@checkUpdate');
+			cy.getPageData();
+			cy.get('.app-bar .update-button').filter(':visible').should('have.class', 'update-button--pulse').click();
+
+			cy.getCy('updatedialog-cy').should('be.visible').within(() => {
+				cy.get('.update-dialog__title-versions').should('contain.text', availableUpdate.newestVersion).and('not.contain.text', '?');
+				cy.get('.update-dialog__tab-version').should('not.exist');
+				cy.get('.update-dialog__notes').should('not.exist');
+				cy.contains('button', 'Download').should('be.visible').and('not.be.disabled');
 			});
 		});
 	});

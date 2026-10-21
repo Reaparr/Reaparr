@@ -3,9 +3,11 @@ import { createApp, nextTick, type App } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { Quasar } from 'quasar';
 import UpdateAvailableDialog from '@components/Dialogs/UpdateAvailableDialog.vue';
+import messages from '@/lang/en-US.json';
 
 const { updateStore } = vi.hoisted(() => ({
 	updateStore: {
+		newestVersion: '1.2.3',
 		releaseNotes: [{ version: '1.2.3', releaseDate: '2026-10-04T00:00:00Z', notes: '# Fixed\n\nRelease details.', isDevRelease: false }],
 		hasUpdateAvailable: true,
 		isApplyingUpdate: false,
@@ -30,22 +32,44 @@ vi.mock('@components/Common/QCardDialog.vue', () => ({
 
 describe('UpdateAvailableDialog', () => {
 	let app: App;
+	const releaseNotes = updateStore.releaseNotes;
 
 	afterEach(() => {
 		app?.unmount();
+		updateStore.releaseNotes = releaseNotes;
+		updateStore.newestVersion = '1.2.3';
 	});
 
-	test('Should render release notes as markdown', async () => {
-		// Arrange / Act
+	async function renderDialog() {
 		const container = document.createElement('div');
 		app = createApp(UpdateAvailableDialog)
 			.use(Quasar)
-			.use(createI18n({ legacy: false, missingWarn: false, fallbackWarn: false }));
+			.use(createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': messages }, missingWarn: false, fallbackWarn: false }));
 		app.mount(container);
 		await nextTick();
+		return container;
+	}
+
+	test('Should render release notes as markdown', async () => {
+		// Arrange / Act
+		const container = await renderDialog();
 
 		// Assert
 		expect(container.querySelector('.update-dialog__notes h1')?.textContent).toBe('Fixed');
 		expect(container.querySelector('.update-dialog__notes p')?.textContent).toBe('Release details.');
+	});
+
+	test('Should show the supplied target version when release notes are unavailable', async () => {
+		// Arrange
+		updateStore.newestVersion = '1.2.4';
+		updateStore.releaseNotes = [];
+
+		// Act
+		const container = await renderDialog();
+
+		// Assert
+		expect(container.querySelector('.update-dialog__title-versions')?.textContent).toContain('1.2.4');
+		expect(container.querySelector('.update-dialog__title-versions')?.textContent).not.toContain('?');
+		expect(container.querySelector('.update-dialog__notes')).toBeNull();
 	});
 });

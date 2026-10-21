@@ -79,6 +79,7 @@ describe('UpdateStore refresh notification consumer', () => {
 		// Assert
 		expect(mock.history.get.filter((request) => request.url === UpdatePaths.checkForUpdateEndpoint())).toHaveLength(1);
 		expect(updateStore.isUpdateAvailable).toBe(false);
+		expect(updateStore.newestVersion).toBe('1.0.0');
 		expect(updateStore.releaseNotes).toEqual([]);
 
 		// Act
@@ -90,6 +91,7 @@ describe('UpdateStore refresh notification consumer', () => {
 		// Assert
 		expect(mock.history.get.filter((request) => request.url === UpdatePaths.checkForUpdateEndpoint())).toHaveLength(1);
 		expect(updateStore.isUpdateAvailable).toBe(true);
+		expect(updateStore.newestVersion).toBe('1.0.1');
 		expect(updateStore.releaseNotes).toEqual(releaseNotes);
 	});
 
@@ -116,6 +118,7 @@ describe('UpdateStore refresh notification consumer', () => {
 
 		// Assert
 		expect(store.isUpdateAvailable).toBe(true);
+		expect(store.newestVersion).toBe('1.0.1');
 		expect(store.releaseNotes).toEqual(releaseNotes);
 
 		// Act
@@ -125,6 +128,7 @@ describe('UpdateStore refresh notification consumer', () => {
 		// Assert
 		expect(failedCheck.getValues().map((result) => result.isSuccess)).toEqual([false]);
 		expect(store.isUpdateAvailable).toBe(true);
+		expect(store.newestVersion).toBe('1.0.1');
 		expect(store.releaseNotes).toEqual(releaseNotes);
 
 		// Act
@@ -132,8 +136,16 @@ describe('UpdateStore refresh notification consumer', () => {
 
 		// Assert
 		expect(store.isUpdateAvailable).toBe(false);
+		expect(store.newestVersion).toBe('1.0.0');
 		expect(store.releaseNotes).toEqual([]);
 		expect(mock.history.get.map((request) => request.url)).toEqual([path, path, path]);
+
+		// Act
+		store.$reset();
+
+		// Assert
+		expect(store.newestVersion).toBe('?');
+		expect(store.isUpdateAvailable).toBe(false);
 	});
 });
 
