@@ -375,6 +375,25 @@ it('Music mixed selections require confirmation when the track preference is ena
 	});
 });
 
+it('Music Back recovers from an invalid library and retains a valid library for an invalid artist', () => {
+	setupFamily('music').then((state) => {
+		cy.visit(route(`/music/Infinity/details/${state.root.id}`));
+		cy.getPageData();
+		cy.getCy('music-details-error').should('contain.text', 'Invalid music library or artist.');
+		cy.get('@familyDetail.all').should('have.length', 0);
+		cy.getCy('music-details-error').contains('button', 'Back').click();
+		cy.location('pathname').should('equal', '/music');
+
+		cy.visit(route(`/music/${state.libraryId}/details/not-an-id`));
+		cy.getPageData();
+		cy.getCy('music-details-error').should('contain.text', 'Invalid music library or artist.');
+		cy.getCy('music-details-error').contains('button', 'Back').click();
+		cy.location('pathname').should('equal', `/music/${state.libraryId}`);
+		cy.contains('.media-poster-card', state.root.title).should('be.visible');
+		cy.get('@familyDetail.all').should('have.length', 0);
+	});
+});
+
 for (const destination of ['default', 'override', 'custom'] as const) {
 	it(`Other Videos downloads selected original parts using the ${destination} family destination and retains its queue lifecycle`, () => {
 		cy.viewport(destination === 'custom' ? 320 : 1280, destination === 'custom' ? 568 : 800);

@@ -210,19 +210,31 @@ describe('Music artist details page', () => {
 		expect(wrapper.get('.media-title').text()).toBe('Artist');
 	});
 
-	test('Should reject invalid direct-navigation IDs without requesting media', async () => {
+	test.each([
+		{ library: 'not-an-id', destination: '/music' },
+		{ library: '2.5', destination: '/music' },
+		{ library: 'Infinity', destination: '/music' },
+		{ library: '9007199254740992', destination: '/music' },
+		{ library: '0', destination: '/music' },
+		{ library: '-1', destination: '/music' },
+		{ library: '1', destination: '/music/1' },
+		{ library: '4', destination: '/music/4' },
+	])('Should recover to $destination from an invalid artist route with library=$library', async ({ library, destination }) => {
 		// Arrange
+		route.params.id = library;
 		route.params.artistId = 'not-an-id';
 		const request = vi.spyOn(useMediaStore(), 'getMediaDataDetailById');
 
 		// Act
 		const wrapper = await render();
+		const routerPush = vi.spyOn(useRouter(), 'push').mockResolvedValue(undefined);
+		await wrapper.get('button').trigger('click');
 
 		// Assert
 		expect(request).not.toHaveBeenCalled();
 		expect(wrapper.get('[data-cy="music-details-error"]').text()).toContain('Invalid music library or artist.');
 		expect(wrapper.find('[data-cy="music-media-list-empty"]').exists()).toBe(false);
-		expect(wrapper.get('button').text()).toContain('Back');
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith(destination);
 	});
 	test.each([
 		[PlexMediaType.MusicArtist, 'ask-download-music-artist-confirmation'],
