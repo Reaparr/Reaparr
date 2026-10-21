@@ -128,7 +128,7 @@
 				v-if="supportsMediaQuality"
 				class="media-poster-quality-bar"
 				:qualities="mediaItem.qualities"
-				clickable
+				:clickable="mediaType !== PlexMediaType.MusicArtist"
 				@download="onDownload" />
 			<QLoadingOverlay :loading="loading" />
 		</template>
@@ -233,6 +233,9 @@ const comparisonBadgeClickable = computed(() => {
 });
 
 function onDownload(mediaQualities: PlexMediaQualityDTO[]) {
+	if (get(mediaType) === PlexMediaType.MusicArtist && mediaQualities.length > 0)
+		return;
+
 	const downloadCommand: DownloadMediaDTO = {
 		...toDownloadMedia(props.mediaItem)[0]!,
 		qualities: mediaQualities,

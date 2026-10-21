@@ -214,9 +214,10 @@ function selectMediaTableRow(containerCy: string, title: string) {
 	});
 }
 
-function assertPreview(command: DownloadMediaDTO | DownloadMediaDTO[], media: PlexMediaDTO, noQuality = true) {
+function assertPreview(state: WorkflowState, command: DownloadMediaDTO | DownloadMediaDTO[], media: PlexMediaDTO, noQuality = true) {
 	cy.wait('@preview').its('request.body').should('deep.equal', {
 		downloadMedias: Array.isArray(command) ? command : [command],
+		destinationFolderPathId: state.defaultFolder.id,
 		customDestinationFolderPath: '',
 	});
 	cy.getCy('download-confirmation-dialog').within(() => {
@@ -322,7 +323,7 @@ for (const scope of ['artist', 'album', 'track'] as const) {
 			cy.getCy(`music-album-${album.id}`).find('[data-cy="media-q-table-mobile-card"], tbody tr').filter(`:contains("${track.title}")`).find('[role="checkbox"]').should('have.attr', 'aria-checked', 'true');
 			openConfirmation(scope === 'track');
 			const command = assertCommand(state, target.type, target.id);
-			assertPreview(command, target);
+			assertPreview(state, command, target);
 			cy.getCy('download-confirmation-dialog').should('contain.text', state.defaultFolder.directory);
 			if (scope === 'album') chooseDestination(state);
 			createAndOpenQueue(state, command, target, scope === 'album' ? state.overrideFolder.id : state.defaultFolder.id);
@@ -360,7 +361,7 @@ it('Music mixed selections require confirmation when the track preference is ena
 		selectMediaTableRow(`music-album-${otherAlbum.id}`, track.title);
 		openConfirmation();
 		const commands = [assertCommand(state, album.type, album.id), assertCommand(state, track.type, track.id)];
-		assertPreview(commands, album);
+		assertPreview(state, commands, album);
 		cy.getCy(`column-title-preview-${track.id}`).should('be.visible').and('have.text', track.title);
 		cy.then(() => expect(state.createCount).to.equal(0));
 
@@ -394,6 +395,31 @@ it('Music Back recovers from an invalid library and retains a valid library for 
 	});
 });
 
+it('Music poster quality labels do not filter downloads and the normal artist action still confirms', () => {
+	cy.viewport(320, 568);
+	setupFamily('music').then((state) => {
+		state.root.qualities = [{
+			mediaId: state.root.id, dataId: -1, mediaDataType: PlexMediaType.MusicArtist,
+			audioQuality: AudioQuality.FLAC16Bit441KHz, videoQuality: VideoQuality.None,
+		}];
+		cy.visit(route(`/music/${state.libraryId}`));
+		cy.getPageData();
+		cy.contains('.media-poster-card', state.root.title).find('.media-poster-quality-bar .q-chip')
+			.should('be.visible').and('contain.text', 'FLAC 16-bit 44.1 kHz')
+			.and('not.have.class', 'q-chip--clickable').click();
+		cy.get('@preview.all').should('have.length', 0);
+		cy.get('@create.all').should('have.length', 0);
+
+		cy.getCy('media-poster-menu-trigger').click();
+		cy.getCy('media-poster-menu-download').click();
+		cy.getCy('download-confirmation-dialog').should('be.visible');
+		const command = assertCommand(state, PlexMediaType.MusicArtist, state.root.id);
+		assertPreview(state, command, state.root);
+		cy.then(() => expect(state.createCount).to.equal(0));
+		createAndOpenQueue(state, command, state.root);
+	});
+});
+
 for (const destination of ['default', 'override', 'custom'] as const) {
 	it(`Other Videos downloads selected original parts using the ${destination} family destination and retains its queue lifecycle`, () => {
 		cy.viewport(destination === 'custom' ? 320 : 1280, destination === 'custom' ? 568 : 800);
@@ -417,7 +443,7 @@ for (const destination of ['default', 'override', 'custom'] as const) {
 				mediaId: state.root.id, dataId: part.id, mediaDataType: PlexMediaType.OtherVideos, audioQuality: AudioQuality.None, videoQuality: part.videoQuality,
 			}]));
 			openConfirmation(destination === 'custom');
-			assertPreview(commands, state.root, false);
+			assertPreview(state, commands, state.root, false);
 			cy.getCy('download-confirmation-dialog').should('contain.text', state.defaultFolder.directory);
 			if (destination === 'override') chooseDestination(state);
 			if (destination === 'custom') {

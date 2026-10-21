@@ -1,7 +1,7 @@
 import { headers, route } from '@fixtures';
 import { generatePlexMedia, generateResultDTO, generateSupportedSorts } from '@mock';
 import { PlexLibraryPaths, PlexMediaPaths } from '@api/api-paths';
-import { AudioQuality, PlexMediaType, VideoQuality } from '@dto';
+import { AudioQuality, FolderType, PlexMediaType, VideoQuality } from '@dto';
 
 it('keeps multipart Other Video root downloads automatic instead of forcing the first version', () => {
 	// Arrange
@@ -23,7 +23,7 @@ it('keeps multipart Other Video root downloads automatic instead of forcing the 
 				count: 1,
 			})),
 		},
-	}).then(({ config, plexLibraries }) => {
+	}).then(({ config, plexLibraries, folderPaths }) => {
 		const library = { ...plexLibraries[0]!, type: PlexMediaType.OtherVideos };
 		const media = generatePlexMedia({
 			config,
@@ -90,7 +90,7 @@ it('keeps multipart Other Video root downloads automatic instead of forcing the 
 		cy.getCy('media-overview-bar-download-button').filter(':visible').click();
 
 		// Assert
-		cy.wait('@automaticPreview').its('request.body').should('deep.equal', { downloadMedias: expectedCommands, customDestinationFolderPath: '' });
+		cy.wait('@automaticPreview').its('request.body').should('deep.equal', { downloadMedias: expectedCommands, destinationFolderPathId: folderPaths.find((folder) => folder.folderType === FolderType.OtherVideosFolder)!.id, customDestinationFolderPath: '' });
 		cy.getCy('download-confirmation-dialog').should('be.visible').and('contain.text', media.title);
 	});
 });

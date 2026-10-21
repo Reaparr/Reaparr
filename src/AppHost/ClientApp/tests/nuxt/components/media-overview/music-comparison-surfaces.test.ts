@@ -5,7 +5,7 @@ import { defineComponent } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { baseSetup } from '@services-test-base';
 import { generatePlexMedia, generatePlexLibrary, generatePlexServer, generateSupportedSorts, Seed } from '@mock';
-import { PlexMediaComparisonState, PlexMediaType } from '@dto';
+import { AudioQuality, PlexMediaComparisonState, PlexMediaType, VideoQuality } from '@dto';
 import { MediaMetaDataTypes } from '@enums';
 import { useDialogStore, useLibraryStore, useMediaOverviewStore, useServerStore, useSettingsStore } from '@store';
 import MediaComparisonStateButton from '@/components/Common/MediaComparisonStateButton.vue';
@@ -40,6 +40,48 @@ describe('Music comparison overview surfaces', () => {
 			},
 		});
 	}
+
+	test('Should keep artist quality labels informational while preserving the normal artist download', async () => {
+		// Arrange
+		const mediaItem = item(PlexMediaType.MusicArtist);
+		mediaItem.qualities = [{
+			mediaId: mediaItem.id, dataId: -1, mediaDataType: mediaItem.type,
+			audioQuality: AudioQuality.FLAC16Bit441KHz, videoQuality: VideoQuality.None,
+		}];
+		const wrapper = await mountSuspended(MediaPoster, { props: { mediaItem }, global: { plugins: plugins() } });
+		mounted.push(wrapper);
+		const quality = wrapper.get('.media-poster-quality-bar');
+
+		// Act / Assert
+		expect(quality.text()).toContain('FLAC 16-bit 44.1 kHz');
+		expect(quality.find('.q-chip--clickable').exists()).toBe(false);
+		await quality.get('.q-chip').trigger('click');
+		expect(wrapper.emitted('download')).toBeUndefined();
+		await wrapper.get('.media-poster--actions button').trigger('click');
+		expect(wrapper.emitted('download')).toEqual([[[expect.objectContaining({
+			type: PlexMediaType.MusicArtist, mediaIds: [100], plexLibraryId: 4, plexServerId: 2, qualities: [],
+		})]]]);
+	});
+
+	test.each([PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.OtherVideos])('Should retain explicit video quality downloads for %s posters', async (type) => {
+		// Arrange
+		const mediaItem = item(type);
+		const quality = {
+			mediaId: mediaItem.id, dataId: 401, mediaDataType: type,
+			audioQuality: AudioQuality.None, videoQuality: VideoQuality.FullHD,
+		};
+		mediaItem.qualities = [quality];
+		const wrapper = await mountSuspended(MediaPoster, { props: { mediaItem }, global: { plugins: plugins() } });
+		mounted.push(wrapper);
+
+		// Act
+		await wrapper.get('.media-poster-quality-bar .q-chip--clickable').trigger('click');
+
+		// Assert
+		expect(wrapper.emitted('download')).toEqual([[[expect.objectContaining({
+			type, mediaIds: [100], plexLibraryId: 4, plexServerId: 2, qualities: [quality],
+		})]]]);
+	});
 
 	test.each([3, 5])('Should open actual artist-scoped comparison from Music poster state %s', async (comparisonId) => {
 		// Arrange
