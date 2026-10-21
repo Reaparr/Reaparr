@@ -224,7 +224,7 @@ describe('Global API error pipeline', () => {
 				expect(response?.statusCode).to.equal(401);
 			});
 			cy.url().should('eq', route('/login'));
-			cy.getCy('login-submit-button').should('be.visible');
+			cy.getCy('login-submit-button').should('be.visible').and('be.enabled');
 			cy.getCy('alert-dialog').should('not.exist');
 			cy.getCy('live-log-viewer').should('not.exist');
 			cy.getCy(`server-drawer-item-${oldServer.id}`).should('not.exist');
@@ -240,7 +240,7 @@ describe('Global API error pipeline', () => {
 			cy.wait('@sessionLogin').its('response.statusCode').should('eq', 200);
 			cy.wait('@expiredSetupLibrary').its('response.statusCode').should('eq', 401);
 			cy.url().should('eq', route('/login'));
-			cy.getCy('login-submit-button').should('be.visible');
+			cy.getCy('login-submit-button').should('be.visible').and('be.enabled');
 			cy.getCy('alert-dialog').should('not.exist');
 
 			cy.getCy('login-username-input').clear().type('admin');

@@ -1,9 +1,48 @@
 import { route } from '@fixtures';
-import { AuthenticationPaths } from '@api-urls';
+import { AuthenticationPaths, SettingsPaths } from '@api-urls';
 import { generateFailedResultDTO, generateResultDTO } from '@mock';
-import type { AppUserLoginEndpointRequest } from '@dto';
+import type { AppUserLoginEndpointRequest, SettingsModelDTO } from '@dto';
+
+function holdLoginInitialization(settings: SettingsModelDTO) {
+	let loginRequests = 0;
+	let initializationRequested = false;
+	const loginResponses: Array<() => void> = [];
+	const initializationResponses: Array<() => void> = [];
+	cy.intercept('POST', AuthenticationPaths.appUserLoginEndpoint(), (request) => {
+		loginRequests++;
+		return new Promise<void>((resolve) => {
+			loginResponses.push(() => {
+				request.reply(200, generateResultDTO<AppUserLoginEndpointRequest>({
+					username: 'admin', password: 'password', rememberMe: true,
+				}));
+				resolve();
+			});
+		});
+	}).as('loginSuccess');
+	cy.intercept({ method: 'GET', url: SettingsPaths.getUserSettingsEndpoint(), times: 1 }, (request) => {
+		initializationRequested = true;
+		return new Promise<void>((resolve) => {
+			initializationResponses.push(() => {
+				request.reply(200, generateResultDTO(settings));
+				resolve();
+			});
+		});
+	}).as('loginInitialization');
+	return {
+		get loginRequests() { return loginRequests; },
+		get initializationRequested() { return initializationRequested; },
+		releaseLogin: () => loginResponses.splice(0).forEach((reply) => reply()),
+		releaseInitialization: () => initializationResponses.splice(0).forEach((reply) => reply()),
+	};
+}
 
 describe('sign-in-process', () => {
+	let releasePending: (() => void) | undefined;
+	afterEach(() => {
+		releasePending?.();
+		releasePending = undefined;
+	});
+
 	it('Should redirect to the login page when not logged in and then to the home page when logged in', () => {
 		cy.basePageSetup({
 			plexServerCount: 1,
@@ -15,17 +54,14 @@ describe('sign-in-process', () => {
 
 		cy.visit(route('/'));
 		cy.url().should('eq', route('/login'));
+		cy.getCy('login-submit-button').should('be.visible');
 
-		cy.getPageData().then(() => {
-			// Login
-			cy.intercept('POST', AuthenticationPaths.appUserLoginEndpoint(), {
-				statusCode: 200,
-				body: generateResultDTO<AppUserLoginEndpointRequest>({
-					username: 'admin',
-					password: 'password',
-					rememberMe: false,
-				}),
-			}).as('loginSuccess');
+		cy.getPageData().then(({ settings }) => {
+			const responses = holdLoginInitialization(settings);
+			releasePending = () => {
+				responses.releaseLogin();
+				responses.releaseInitialization();
+			};
 			cy.interceptAuthenticationStatus(true);
 
 			// Type credentials
@@ -33,7 +69,18 @@ describe('sign-in-process', () => {
 			cy.getCy('login-password-input').type('password');
 			cy.getCy('login-remember-me-input').click();
 			cy.getCy('login-submit-button').click();
-			cy.wait('@loginSuccess');
+			cy.getCy('login-submit-button').should('be.disabled').click({ force: true });
+			cy.getCy('login-username-input').should('be.disabled');
+			cy.getCy('login-password-input').should('be.disabled');
+			cy.getCy('login-remember-me-input').should('have.attr', 'aria-disabled', 'true');
+			cy.then(() => expect(responses.loginRequests).to.equal(1));
+			cy.then(() => responses.releaseLogin());
+			cy.wait('@loginSuccess').its('response.statusCode').should('equal', 200);
+			cy.wrap(null).should(() => expect(responses.initializationRequested).to.equal(true));
+			cy.getCy('login-submit-button').should('be.disabled').click({ force: true });
+			cy.then(() => expect(responses.loginRequests).to.equal(1));
+			cy.then(() => responses.releaseInitialization());
+			cy.wait('@loginInitialization').its('response.statusCode').should('equal', 200);
 
 			cy.url().should('eq', route('/'));
 		});
