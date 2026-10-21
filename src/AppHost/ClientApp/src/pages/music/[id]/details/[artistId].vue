@@ -176,7 +176,7 @@ listenMediaOverviewDownloadCommand((command) => {
 		|| ![PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack].includes(item.type)))
 		return;
 	if (!first) return;
-	if (settingsStore.isConfirmationEnabled(first.type)) {
+	if (command.some((item) => settingsStore.isConfirmationEnabled(item.type))) {
 		dialogStore.openMediaConfirmationDownloadDialog(command);
 	} else {
 		downloadStore.downloadMedia({

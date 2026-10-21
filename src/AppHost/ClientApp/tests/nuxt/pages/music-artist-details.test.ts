@@ -254,4 +254,39 @@ describe('Music artist details page', () => {
 		expect(useSettingsStore().confirmationSettings.askDownloadMovieConfirmation).toBe(true);
 		expect(useSettingsStore().confirmationSettings.askDownloadTvShowConfirmation).toBe(true);
 	});
+
+	test.each([
+		{ album: false, track: true, reverse: false, confirm: true },
+		{ album: true, track: false, reverse: false, confirm: true },
+		{ album: false, track: true, reverse: true, confirm: true },
+		{ album: true, track: false, reverse: true, confirm: true },
+		{ album: false, track: false, reverse: false, confirm: false },
+		{ album: true, track: true, reverse: false, confirm: true },
+	])('Should respect mixed music confirmation with album=$album track=$track reverse=$reverse', async ({ album, track, reverse, confirm }) => {
+		// Arrange
+		const settings = useSettingsStore().confirmationSettings;
+		settings.askDownloadMusicAlbumConfirmation = album;
+		settings.askDownloadMusicTrackConfirmation = track;
+		vi.spyOn(useMediaStore(), 'getMediaDataDetailById').mockReturnValue(of(artist()));
+		const open = vi.spyOn(useDialogStore(), 'openMediaConfirmationDownloadDialog');
+		const download = vi.spyOn(useDownloadStore(), 'downloadMedia').mockImplementation(() => undefined);
+		await render();
+		const command = [PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack].map((type, index) => ({
+			type, mediaIds: [20 + index], plexServerId: 2, plexLibraryId: 4,
+			qualities: [], selectionKind: toDownloadSelectionKind(type), keepCompletedInDownloadFolder: false,
+		}));
+		if (reverse) command.reverse();
+
+		// Act
+		sendMediaOverviewDownloadCommand(command);
+
+		// Assert
+		if (confirm) {
+			expect(open).toHaveBeenCalledExactlyOnceWith(command);
+			expect(download).not.toHaveBeenCalled();
+		} else {
+			expect(open).not.toHaveBeenCalled();
+			expect(download).toHaveBeenCalledExactlyOnceWith({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
+		}
+	});
 });

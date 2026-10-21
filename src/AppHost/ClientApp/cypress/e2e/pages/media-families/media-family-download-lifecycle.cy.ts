@@ -5,7 +5,7 @@ import { PlexLibraryPaths, PlexMediaPaths, SettingsPaths } from '@api/api-paths'
 import {
 	DownloadStatus, DownloadTaskType, FileSystemEntityType, FolderType, MessageTypes, PlexMediaType, VideoQuality, AudioQuality,
 	type DownloadMediaDTO, type DownloadPreviewContainerDTO, type DownloadPreviewDTO, type DownloadProgressDTO,
-	type DownloadTaskCreationReportDTO, type FolderPathDTO, type PlexMediaDTO, type PlexMediaStatisticsDTO,
+	type DownloadTaskCreationReportDTO, type FolderPathDTO, type PlexMediaDTO, type PlexMediaStatisticsDTO, type SettingsModelDTO,
 	type ServerDownloadProgressDTO,
 } from '@dto';
 import { toDownloadSelectionKind } from '@composables/conversion';
@@ -23,6 +23,7 @@ type Family = keyof typeof families;
 
 interface WorkflowState {
 	root: PlexMediaDTO;
+	settings: SettingsModelDTO;
 	libraryId: number;
 	serverId: number;
 	defaultFolder: FolderPathDTO;
@@ -114,7 +115,7 @@ function setupFamily(family: Family) {
 			folderType: families[family].folderType, isDefault, isValid: true,
 		});
 		const state: WorkflowState = {
-			root, libraryId: library.id, serverId: library.plexServerId,
+			root, settings, libraryId: library.id, serverId: library.plexServerId,
 			defaultFolder: folder(81, 'Default', true), overrideFolder: folder(82, 'Archive', false),
 			preview: { previews: [], totalSize: 0, expanded: {} }, queue: { id: library.plexServerId, downloadableTasksCount: 0, downloads: [] },
 			createdDownloads: [], previewFailures: 0, holdNextPreview: false, createCount: 0,
@@ -169,15 +170,15 @@ function setupFamily(family: Family) {
 		cy.intercept('POST', '**/api/Download/create', (request) => {
 			state.createCount++;
 			state.queue.downloads = Cypress._.cloneDeep(state.createdDownloads);
-			state.queue.downloadableTasksCount = 1;
+			state.queue.downloadableTasksCount = state.createdDownloads.length;
 			const report: DownloadTaskCreationReportDTO = {
 				movies: 0, tvShows: 0, seasons: 0, episodes: 0, musicArtists: 0, musicAlbums: 0, musicTracks: 0,
-				photoFolders: 0, photoImages: 0, otherVideos: 0, total: 1,
+				photoFolders: 0, photoImages: 0, otherVideos: 0, total: state.createdDownloads.length,
 			};
 			const counts = { [PlexMediaType.PhotoAlbum]: 'photoFolders', [PlexMediaType.PhotoImage]: 'photoImages',
 				[PlexMediaType.MusicArtist]: 'musicArtists', [PlexMediaType.MusicAlbum]: 'musicAlbums', [PlexMediaType.MusicTrack]: 'musicTracks', [PlexMediaType.OtherVideos]: 'otherVideos' } as const;
-			const type = state.createdDownloads[0]!.mediaType as keyof typeof counts;
-			report[counts[type]] = 1;
+			for (const item of state.createdDownloads)
+				report[counts[item.mediaType as keyof typeof counts]]++;
 			request.reply(reply(report));
 		}).as('create');
 		return cy.wrap(state);
@@ -339,6 +340,40 @@ for (const scope of ['artist', 'album', 'track'] as const) {
 		});
 	});
 }
+
+it('Music mixed selections require confirmation when the track preference is enabled', () => {
+	cy.viewport(1280, 800);
+	setupFamily('music').then((state) => {
+		state.settings.confirmationSettings.askDownloadMusicAlbumConfirmation = false;
+		state.settings.confirmationSettings.askDownloadMusicTrackConfirmation = true;
+		const album = state.root.children[0]!;
+		const otherAlbum = state.root.children[1]!;
+		const track = otherAlbum.children[0]!;
+		selectPreview(state, album);
+		state.preview.previews.push(previewNode(track));
+		state.preview.totalSize += track.mediaSize;
+		state.createdDownloads.push(queueNode(track));
+		visitDetail('music', state);
+
+		cy.getCy(`music-album-checkbox-${album.id}`).click();
+		cy.getCy(`music-album-${otherAlbum.id}`).find('.q-expansion-item__container > .q-item').first().click();
+		selectMediaTableRow(`music-album-${otherAlbum.id}`, track.title);
+		openConfirmation();
+		const commands = [assertCommand(state, album.type, album.id), assertCommand(state, track.type, track.id)];
+		assertPreview(commands, album);
+		cy.getCy(`column-title-preview-${track.id}`).should('be.visible').and('have.text', track.title);
+		cy.then(() => expect(state.createCount).to.equal(0));
+
+		createAndOpenQueue(state, commands, album);
+		queueCy(`column-title-${taskId(track.id)}`).should('have.text', track.title);
+		queueCy(`column-status-${taskId(track.id)}`).should('have.text', 'Queued');
+		cy.reload();
+		cy.getPageData();
+		queueCy(`column-title-${taskId(album.id)}`).should('have.text', album.title);
+		queueCy(`column-title-${taskId(track.id)}`).should('have.text', track.title);
+		cy.then(() => expect(state.createCount).to.equal(1));
+	});
+});
 
 for (const destination of ['default', 'override', 'custom'] as const) {
 	it(`Other Videos downloads selected original parts using the ${destination} family destination and retains its queue lifecycle`, () => {
