@@ -54,6 +54,7 @@ it('keeps multipart Other Video root downloads automatic instead of forcing the 
 			plexLibraryId: library.id,
 			plexServerId: library.plexServerId,
 			qualities: [{ mediaId: media.id, dataId: part.id, mediaDataType: PlexMediaType.OtherVideos, videoQuality: part.videoQuality, audioQuality: AudioQuality.None }],
+			selectionKind: null,
 			keepCompletedInDownloadFolder: false,
 		}));
 		const metadata = { countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 1, supportedSorts: generateSupportedSorts(library.type) };
@@ -89,7 +90,7 @@ it('keeps multipart Other Video root downloads automatic instead of forcing the 
 		cy.getCy('media-overview-bar-download-button').filter(':visible').click();
 
 		// Assert
-		cy.wait('@automaticPreview').its('request.body.downloadMedias').should('deep.equal', expectedCommands);
+		cy.wait('@automaticPreview').its('request.body').should('deep.equal', { downloadMedias: expectedCommands, customDestinationFolderPath: '' });
 		cy.getCy('download-confirmation-dialog').should('be.visible').and('contain.text', media.title);
 	});
 });

@@ -66,12 +66,15 @@ describe('OtherVideoMediaList - individual video selection', () => {
 		const wrapper = await render();
 		const commands = captureDownloads();
 		const mediaTable = wrapper.findComponent({ name: 'MediaQTable' });
+		// Assert
+		expect(wrapper.text()).toContain('Full HD (1080p)');
+		expect(wrapper.text()).toContain('4K (2160p)');
 		mediaTable.vm.$emit('selection', { indexKey: 20, keys: [30], allSelected: null });
 
 		// Act
 		useMediaOverviewBarDownloadCommandBus().emit('download');
 
-		// Assert
+		expect(commands[0]![0]!.selectionKind).toBeNull();
 		expect(commands[0]?.[0]?.qualities).toEqual([
 			{ mediaId: 20, dataId: 30, mediaDataType: PlexMediaType.OtherVideos, videoQuality: VideoQuality.UHD_4K, audioQuality: AudioQuality.None },
 		]);
@@ -80,7 +83,7 @@ describe('OtherVideoMediaList - individual video selection', () => {
 		mediaTable.vm.$emit('selection', { indexKey: 20, keys: [10], allSelected: null });
 		useMediaOverviewBarDownloadCommandBus().emit('download');
 
-		// Assert
+		expect(commands[1]![0]!.selectionKind).toBeNull();
 		expect(commands[1]?.[0]?.qualities).toEqual([
 			{ mediaId: 20, dataId: 10, mediaDataType: PlexMediaType.OtherVideos, videoQuality: VideoQuality.FullHD, audioQuality: AudioQuality.None },
 		]);

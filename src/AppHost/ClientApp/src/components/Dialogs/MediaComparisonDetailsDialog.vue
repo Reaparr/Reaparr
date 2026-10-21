@@ -223,6 +223,7 @@ import type { QTreeTableColumn } from '@props';
 import { QTreeTableColumnType } from '@props';
 import { useDialogStore, useLibraryStore, useMediaStore, useServerStore, useSettingsStore } from '@store';
 import { getPlexMediaComparisonState, getPlexMediaComparisonStateFromId } from '@composables';
+import { toDownloadSelectionKind } from '@composables/conversion';
 import type { TreeNode } from 'primevue/treenode';
 import type { TreeTableSelectionKeys } from 'primevue/treetable';
 import { omit, uniqueId, uniqBy } from 'lodash-es';
@@ -431,6 +432,7 @@ function downloadRows(rows: IComparisonDetailsRow[]) {
 function toDownloadMediaCommand(row: IComparisonDetailsRow): DownloadMediaDTO {
 	return {
 		type: row.type,
+		selectionKind: toDownloadSelectionKind(row.type),
 		mediaIds: [row.plexMediaId],
 		plexLibraryId: row.plexLibraryId,
 		plexServerId: row.plexServerId,

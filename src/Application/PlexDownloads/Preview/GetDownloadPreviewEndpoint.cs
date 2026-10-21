@@ -6,6 +6,7 @@ public class GetDownloadPreviewEndpointRequestValidator : Validator<DownloadPrev
     {
         RuleFor(x => x).NotNull();
         RuleFor(x => x.DownloadMedias).NotEmpty();
+        RuleForEach(x => x.DownloadMedias).NotNull().SetValidator(new DownloadMediaDTOValidator());
     }
 }
 

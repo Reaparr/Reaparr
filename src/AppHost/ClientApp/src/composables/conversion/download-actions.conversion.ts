@@ -9,14 +9,19 @@ import {
 } from '@dto';
 import { useSettingsStore } from '@store';
 
+export function toDownloadSelectionKind(type: PlexMediaType): PhotoItemKind | null {
+	switch (type) {
+		case PlexMediaType.PhotoAlbum:
+			return PhotoItemKind.Album;
+		case PlexMediaType.PhotoImage:
+			return PhotoItemKind.Asset;
+		default:
+			return null;
+	}
+}
+
 export function toDownloadMedia(mediaItem: PlexMediaDTO | PlexMediaSlimDTO): DownloadMediaDTO[] {
 	const settingsStore = useSettingsStore();
-	let selectionKind: PhotoItemKind | undefined;
-	if (mediaItem.type === PlexMediaType.PhotoAlbum) {
-		selectionKind = PhotoItemKind.Album;
-	} else if (mediaItem.type === PlexMediaType.PhotoImage) {
-		selectionKind = PhotoItemKind.Asset;
-	}
 	return [
 		{
 			mediaIds: [mediaItem.id],
@@ -24,7 +29,7 @@ export function toDownloadMedia(mediaItem: PlexMediaDTO | PlexMediaSlimDTO): Dow
 			plexServerId: mediaItem.plexServerId,
 			plexLibraryId: mediaItem.plexLibraryId,
 			qualities: mediaItem.qualities,
-			...(selectionKind === undefined ? {} : { selectionKind }),
+			selectionKind: toDownloadSelectionKind(mediaItem.type),
 			keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
 		},
 	];

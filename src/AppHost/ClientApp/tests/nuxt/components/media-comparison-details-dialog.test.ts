@@ -97,8 +97,8 @@ function action(wrapper: VueWrapper, title: string) {
 }
 
 const expectedTracks = [
-	{ type: PlexMediaType.MusicTrack, mediaIds: [8], plexServerId: 3, plexLibraryId: 4, qualities: [], keepCompletedInDownloadFolder: false },
-	{ type: PlexMediaType.MusicTrack, mediaIds: [8], plexServerId: 5, plexLibraryId: 6, qualities: [], keepCompletedInDownloadFolder: false },
+	{ type: PlexMediaType.MusicTrack, mediaIds: [8], plexServerId: 3, plexLibraryId: 4, selectionKind: null, qualities: [], keepCompletedInDownloadFolder: false },
+	{ type: PlexMediaType.MusicTrack, mediaIds: [8], plexServerId: 5, plexLibraryId: 6, selectionKind: null, qualities: [], keepCompletedInDownloadFolder: false },
 ];
 
 describe('MediaComparisonDetailsDialog - missing Music leaves and request lifetime', () => {
@@ -254,7 +254,7 @@ describe('MediaComparisonDetailsDialog - missing Music leaves and request lifeti
 
 		// Assert
 		const expected = [{
-			type: PlexMediaType.MusicTrack, mediaIds: [81], plexServerId: 3, plexLibraryId: 4,
+			type: PlexMediaType.MusicTrack, mediaIds: [81], plexServerId: 3, plexLibraryId: 4, selectionKind: null,
 			keepCompletedInDownloadFolder: false,
 			qualities: [{
 				mediaId: 81, dataId: 812, mediaDataType: PlexMediaType.MusicTrack,

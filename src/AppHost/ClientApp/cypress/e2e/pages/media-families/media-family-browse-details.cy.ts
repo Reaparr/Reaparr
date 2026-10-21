@@ -45,6 +45,14 @@ function createRoots(type: PlexMediaType, config: MockConfig, libraryId: number,
 			});
 			root.childCount = root.children.length;
 			root.grandChildCount = root.children.reduce((count, album) => count + album.childCount, 0);
+		} else if (type === PlexMediaType.PhotoAlbum) {
+			root.children = Array.from({ length: 20 }, (_, index) => {
+				const asset = create(root.id + 10 + index, PlexMediaType.PhotoImage, `Holiday asset ${index + 1}`, root.id);
+				const isClip = index === 19;
+				asset.mediaData = [{ id: asset.id, plexApiMediaId: asset.id, plexApiPartId: asset.id, fileName: isClip ? `${'holiday-original-recording-'.repeat(8)}.mp4` : `holiday-${index + 1}.jpg`, audioCodec: isClip ? 'aac' : '', audioQuality: AudioQuality.None, videoCodec: isClip ? 'h264' : '', videoQuality: VideoQuality.Unknown, duration: isClip ? 6000 : 0, size: 1024 }];
+				return asset;
+			});
+			root.childCount = root.children.length;
 		} else {
 			const resolution = root.id === 100 ? VideoQuality.FullHD : VideoQuality.HD;
 			root.mediaData = [

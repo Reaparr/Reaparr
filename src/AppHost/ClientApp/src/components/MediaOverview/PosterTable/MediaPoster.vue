@@ -184,7 +184,7 @@ import {
 	useSettingsStore,
 	useLibraryStore,
 } from '@store';
-import { getPlexMediaComparisonState } from '@composables';
+import { getPlexMediaComparisonState, toDownloadMedia } from '@composables';
 import Convert from '@class/Convert';
 import MediaPosterCard from './MediaPosterCard.vue';
 
@@ -234,13 +234,8 @@ const comparisonBadgeClickable = computed(() => {
 
 function onDownload(mediaQualities: PlexMediaQualityDTO[]) {
 	const downloadCommand: DownloadMediaDTO = {
-		type: get(mediaType),
-		mediaIds: [props.mediaItem.id],
-
-		plexLibraryId: props.mediaItem.plexLibraryId,
-		plexServerId: props.mediaItem.plexServerId,
+		...toDownloadMedia(props.mediaItem)[0]!,
 		qualities: mediaQualities,
-		keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
 	};
 
 	emit('download', [downloadCommand]);

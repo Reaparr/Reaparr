@@ -4,7 +4,7 @@ import { PlexLibraryPaths, PlexMediaPaths } from '@api/api-paths';
 import { getPlexMediaComparisonState, getPlexMediaComparisonStateId } from '@composables';
 import {
 	AudioQuality, FolderType, JobStatus, JobTypes, PlexMediaComparisonState, PlexMediaType, VideoQuality,
-	type DownloadMediaDTO, type LibraryComparisonCompletedDTO, type PlexMediaComparisonDetailsDTO,
+	type DownloadPreviewRequest, type LibraryComparisonCompletedDTO, type PlexMediaComparisonDetailsDTO,
 	type PlexMediaComparisonDetailsRowDTO, type PlexMediaDTO, type PlexMediaStatisticsDTO,
 } from '@dto';
 
@@ -113,7 +113,7 @@ function setupMusic(owned = false) {
 			request.reply(response);
 		}).as('musicComparison');
 		cy.intercept('POST', '**/api/Download/preview', (request) => {
-			const commands = request.body.downloadMedias as DownloadMediaDTO[];
+			const { downloadMedias: commands } = request.body as DownloadPreviewRequest;
 			const previews = commands.flatMap((command) => command.mediaIds.map((id) => ({ key: `music-${id}`, title: id === 112 ? 'Missing track' : 'Missing album track', type: command.type, children: [], size: 2048, qualities: [] })));
 			request.reply({ statusCode: 200, body: generateResultDTO({ previews, totalSize: previews.length * 2048, expanded: {} }), ...headers });
 		}).as('musicPreview');
@@ -132,9 +132,10 @@ function expandAlbum(title: string) {
 }
 
 function assertMissingPreview(libraryId: number, serverId: number, ids: number[]) {
-	cy.wait('@musicPreview').its('request.body.downloadMedias').should((commands: DownloadMediaDTO[]) => {
+	cy.wait('@musicPreview').its('request.body').should(({ downloadMedias: commands, customDestinationFolderPath }: DownloadPreviewRequest) => {
+		expect(customDestinationFolderPath).to.equal('');
 		expect(commands.flatMap((command) => command.mediaIds).sort()).to.deep.equal([...ids].sort());
-		for (const command of commands) expect(command).to.deep.equal({ mediaIds: command.mediaIds, type: PlexMediaType.MusicTrack, plexLibraryId: libraryId, plexServerId: serverId, qualities: [], keepCompletedInDownloadFolder: false });
+		for (const command of commands) expect(command).to.deep.equal({ mediaIds: command.mediaIds, type: PlexMediaType.MusicTrack, plexLibraryId: libraryId, plexServerId: serverId, qualities: [], selectionKind: null, keepCompletedInDownloadFolder: false });
 	});
 	cy.getCy('download-confirmation-dialog').should('be.visible').and('contain.text', '/owned/music/default');
 	cy.getCy('download-confirmation-dialog').find('[data-cy^="column-qualities-"]').should('not.exist');

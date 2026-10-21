@@ -12,6 +12,7 @@ const request = (type: PlexMediaType): CreateDownloadTasksRequest => ({
 		plexLibraryId: 1,
 		plexServerId: 1,
 		qualities: [],
+		selectionKind: null,
 		type,
 	}],
 });

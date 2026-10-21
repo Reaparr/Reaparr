@@ -50,10 +50,9 @@ import { get, set } from '@vueuse/core';
 import type { DownloadMediaDTO, PlexMediaDTO, PlexMediaQualityDTO, PlexMediaSlimDTO } from '@dto';
 import { AudioQuality, PlexMediaType } from '@dto';
 import type { ISelection } from '@interfaces';
-import { useMediaOverviewStore, useSettingsStore } from '@store';
+import { toDownloadMedia } from '@composables/conversion';
 import { sendMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
 
-const settingsStore = useSettingsStore();
 const mediaOverviewStore = useMediaOverviewStore();
 const { t } = useI18n();
 
@@ -119,16 +118,10 @@ function onSelection(payload: ISelection) {
 }
 
 function toMoviePartDownloadMedia(row: PlexMediaSlimDTO): DownloadMediaDTO[] {
-	return [
-		{
-			mediaIds: [props.mediaItem.id],
-			type: PlexMediaType.Movie,
-			plexServerId: props.mediaItem.plexServerId,
-			plexLibraryId: props.mediaItem.plexLibraryId,
-			qualities: row.qualities,
-			keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
-		},
-	];
+	return toDownloadMedia(props.mediaItem).map((command) => ({
+		...command,
+		qualities: row.qualities,
+	}));
 }
 
 watch(selectedCount, () => {

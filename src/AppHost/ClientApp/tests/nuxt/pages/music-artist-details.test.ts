@@ -9,6 +9,7 @@ import { PlexMediaType } from '@dto';
 import { baseSetup } from '@services-test-base';
 import { useDialogStore, useDownloadStore, useMediaStore, useSettingsStore } from '@store';
 import { resetMediaOverviewCommandsBus, sendMediaOverviewDownloadCommand } from '@/composables/event-bus';
+import { toDownloadSelectionKind } from '@composables/conversion';
 import ConfirmationSection from '@/components/Views/Settings/ConfirmationSection.vue';
 import MusicArtistDetails from '@/pages/music/[id]/details/[artistId].vue';
 import { createI18n } from 'vue-i18n';
@@ -238,7 +239,7 @@ describe('Music artist details page', () => {
 			stubs: { QSection: { template: '<section><slot /></section>' }, HelpGroup: { template: '<div><slot /></div>' }, HelpRow: { template: '<div><slot /></div>' } },
 		} });
 		mounted.push(settings);
-		const command = [{ type, mediaIds: [12], plexServerId: 2, plexLibraryId: 4, qualities: [], keepCompletedInDownloadFolder: false }];
+		const command = [{ type, mediaIds: [12], plexServerId: 2, plexLibraryId: 4, qualities: [], selectionKind: toDownloadSelectionKind(type), keepCompletedInDownloadFolder: false }];
 		sendMediaOverviewDownloadCommand(command);
 		expect(open).toHaveBeenCalledExactlyOnceWith(command);
 		open.mockClear();

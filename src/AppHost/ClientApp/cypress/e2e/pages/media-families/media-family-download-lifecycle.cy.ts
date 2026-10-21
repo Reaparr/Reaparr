@@ -8,6 +8,7 @@ import {
 	type DownloadTaskCreationReportDTO, type FolderPathDTO, type PlexMediaDTO, type PlexMediaStatisticsDTO,
 	type ServerDownloadProgressDTO,
 } from '@dto';
+import { toDownloadSelectionKind } from '@composables/conversion';
 
 const visibleCy = (selector: string) => cy.getCy(selector).filter(':visible').first();
 const queueCy = (selector: string) => cy.get('.download-table-desktop, .download-cards')
@@ -143,6 +144,10 @@ function setupFamily(family: Family) {
 		cy.intercept('GET', PlexMediaPaths.getMediaDetailByIdEndpoint(root.id, { type: root.type }), reply(root)).as('familyDetail');
 		cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => request.reply(reply([state.queue]))).as('queue');
 		cy.intercept('POST', '**/api/Download/preview', (request) => {
+			if (request.body.downloadMedias[0]?.type === PlexMediaType.PhotoImage) {
+				request.alias = 'imagePreview';
+				state.releasePreview?.();
+			}
 			if (state.previewFailures > 0) {
 				state.previewFailures--;
 				request.reply({ statusCode: 500, body: { ...generateResultDTO(null), isSuccess: false, statusCode: 500, errors: [{ message: 'Preview unavailable', reasons: [] }] }, ...headers });
@@ -169,7 +174,8 @@ function setupFamily(family: Family) {
 				movies: 0, tvShows: 0, seasons: 0, episodes: 0, musicArtists: 0, musicAlbums: 0, musicTracks: 0,
 				photoFolders: 0, photoImages: 0, otherVideos: 0, total: 1,
 			};
-			const counts = { [PlexMediaType.MusicArtist]: 'musicArtists', [PlexMediaType.MusicAlbum]: 'musicAlbums', [PlexMediaType.MusicTrack]: 'musicTracks', [PlexMediaType.OtherVideos]: 'otherVideos' } as const;
+			const counts = { [PlexMediaType.PhotoAlbum]: 'photoFolders', [PlexMediaType.PhotoImage]: 'photoImages',
+				[PlexMediaType.MusicArtist]: 'musicArtists', [PlexMediaType.MusicAlbum]: 'musicAlbums', [PlexMediaType.MusicTrack]: 'musicTracks', [PlexMediaType.OtherVideos]: 'otherVideos' } as const;
 			const type = state.createdDownloads[0]!.mediaType as keyof typeof counts;
 			report[counts[type]] = 1;
 			request.reply(reply(report));
@@ -195,7 +201,7 @@ function openConfirmation(phone = false, waitForVisible = true) {
 }
 
 function assertCommand(state: WorkflowState, type: PlexMediaType, id: number, qualities: DownloadMediaDTO['qualities'] = []) {
-	return { mediaIds: [id], type, plexLibraryId: state.libraryId, plexServerId: state.serverId, qualities, keepCompletedInDownloadFolder: false };
+	return { mediaIds: [id], type, plexLibraryId: state.libraryId, plexServerId: state.serverId, qualities, selectionKind: toDownloadSelectionKind(type), keepCompletedInDownloadFolder: false };
 }
 
 function selectMediaTableRow(containerCy: string, title: string) {
@@ -208,7 +214,10 @@ function selectMediaTableRow(containerCy: string, title: string) {
 }
 
 function assertPreview(command: DownloadMediaDTO | DownloadMediaDTO[], media: PlexMediaDTO, noQuality = true) {
-	cy.wait('@preview').its('request.body.downloadMedias').should('deep.equal', Array.isArray(command) ? command : [command]);
+	cy.wait('@preview').its('request.body').should('deep.equal', {
+		downloadMedias: Array.isArray(command) ? command : [command],
+		customDestinationFolderPath: '',
+	});
 	cy.getCy('download-confirmation-dialog').within(() => {
 		cy.getCy(`column-title-preview-${media.id}`).should('be.visible').and('have.text', media.title);
 		cy.getCy(`column-dataTotal-preview-${media.id}`).should('be.visible').and('have.text', prettyBytes(media.mediaSize, { locale: 'en-US' }));
@@ -291,6 +300,199 @@ function assertAction(item: DownloadProgressDTO, action: string) {
 	cy.wait(`@${action}`).its('request.url').should('include', `/api/Download/${action}/${item.id}`);
 }
 
+describe('Photos download and lifecycle parity', () => {
+	it('keeps comparison and quality UI absent and downloads the album with its canonical type and Photos default', () => {
+		cy.viewport(1280, 800);
+		setupFamily('photos').then((state) => {
+			cy.visit(route(`/photos/${state.libraryId}`));
+			cy.getPageData();
+			cy.contains('.media-poster-card', state.root.title).should('be.visible').find('[data-cy^="comparison-chip-"]').should('not.exist');
+			visibleCy('media-overview-filter-btn').click();
+			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.ComparisonState}`).should('not.exist');
+			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.Quality}`).should('not.exist');
+			cy.get('body').type('{esc}');
+			// Photos uses poster mode; its overview root download is the whole album.
+			cy.viewport(320, 568);
+			cy.contains('.media-poster-card', state.root.title).find('[data-cy="media-poster-menu-trigger"]').should('be.visible').click();
+			cy.getCy('media-poster-menu-download').should('be.visible').click();
+			cy.getCy('download-confirmation-dialog').should('be.visible');
+			const command = assertCommand(state, PlexMediaType.PhotoAlbum, state.root.id);
+			assertPreview(command, state.root);
+			cy.getCy('download-confirmation-dialog').should('contain.text', state.defaultFolder.directory);
+			cy.viewport(1280, 800);
+			createAndOpenQueue(state, command, state.root);
+			cy.get('@pageData').then((data) => {
+				const { config } = data as unknown as { config: MockConfig };
+				const item = state.queue.downloads[0]!;
+				installLifecycle(state, item, DownloadTaskType.PhotoFolder, config);
+				assertTaskDetails(state, item, DownloadTaskType.PhotoFolder);
+			});
+			cy.reload();
+			cy.getPageData();
+			queueCy(`column-title-${taskId(state.root.id)}`).should('have.text', 'Holiday album');
+		});
+	});
+
+	it('downloads one image on a phone without an album duplicate and uses the selected Photos destination', () => {
+		cy.viewport(320, 568);
+		setupFamily('photos').then((state) => {
+			const image = state.root.children[0]!;
+			selectPreview(state, image);
+			visitDetail('photos', state);
+			cy.getCy(`photo-asset-checkbox-${image.id}`).click();
+			cy.getCy('photo-selected-count').should('contain.text', '1');
+			openConfirmation(true);
+			const command = assertCommand(state, PlexMediaType.PhotoImage, image.id);
+			assertPreview(command, image);
+			chooseDestination(state);
+			createAndOpenQueue(state, command, image, state.overrideFolder.id);
+			cy.getCy('download-mobile-list').should('be.visible').and('contain.text', image.title);
+			visibleCy(`column-actions-start-${taskId(image.id)}`).should('have.attr', 'aria-label', `Start: ${image.title}`);
+		});
+	});
+
+	it('selects a multipart clip original by owning PhotoImage and representative DataId while the album takes precedence', () => {
+		cy.viewport(320, 568);
+		setupFamily('photos').then((state) => {
+			const clip = state.root.children.at(-1)!;
+			selectPreview(state, clip);
+			visitDetail('photos', state);
+			scrollToAsset(clip.id);
+			assertPhoneOriginal(`photo-original-${clip.id}-11901`);
+			cy.getCy(`photo-original-${clip.id}-11901`).should('be.visible').click();
+			cy.getCy(`photo-asset-${clip.id}`).find('[role="radio"]').should('have.length', 3);
+			cy.getCy(`photo-asset-${clip.id}`).should('contain.text', 'holiday-clip-part-1.mp4').and('contain.text', 'holiday-clip-part-2.mp4');
+			cy.getCy(`photo-asset-checkbox-${clip.id}`).click();
+			openConfirmation(true);
+			const clipCommand = assertCommand(state, PlexMediaType.PhotoImage, clip.id, [{ mediaId: clip.id, dataId: 11901, mediaDataType: PlexMediaType.PhotoImage, audioQuality: AudioQuality.None, videoQuality: VideoQuality.FullHD }]);
+			assertPreview(clipCommand, clip);
+			createAndOpenQueue(state, clipCommand, clip);
+			visitDetail('photos', state);
+			scrollToAsset(clip.id);
+			cy.getCy(`photo-original-${clip.id}-11901`).click();
+			cy.getCy(`photo-asset-checkbox-${clip.id}`).click();
+			cy.then(() => selectPreview(state, state.root));
+			cy.getCy('photo-album-checkbox').scrollIntoView().click();
+			cy.getCy('photo-album-checkbox').should('have.attr', 'aria-checked', 'true');
+			openConfirmation(true);
+			const command = assertCommand(state, PlexMediaType.PhotoAlbum, state.root.id, [{ mediaId: clip.id, dataId: 11901, mediaDataType: PlexMediaType.PhotoImage, audioQuality: AudioQuality.None, videoQuality: VideoQuality.FullHD }]);
+			assertPreview(command, state.root);
+			cy.getCy(`column-title-preview-${clip.id}`).scrollIntoView().should('have.text', clip.title);
+			createAndOpenQueue(state, command, state.root);
+		});
+	});
+
+	it('renders Photos queue titles and progress and sends GUID actions plus canonical PhotoImage log keys through the lifecycle', () => {
+		cy.viewport(1280, 800);
+		setupFamily('photos').then((state) => {
+			const image = state.root.children[0]!;
+			const item = queueNode(image);
+			state.queue.downloads = [item];
+			cy.get('@pageData').then((data) => {
+				const { config } = data as unknown as { config: MockConfig };
+				installLifecycle(state, item, DownloadTaskType.PhotoImage, config);
+			});
+			cy.visit(route('/downloads'));
+			cy.getPageData();
+			queueCy(`column-title-${item.id}`).should('have.text', image.title);
+			assertTaskDetails(state, item, DownloadTaskType.PhotoImage);
+			assertAction(item, 'start');
+			publishStatus(state, item, DownloadStatus.Downloading, 25);
+			queueCy(`column-percentage-${item.id}`).should('have.text', '25%');
+			queueCy(`column-dataReceived-${item.id}`).should('have.text', '256 B');
+			assertAction(item, 'pause');
+			publishStatus(state, item, DownloadStatus.Paused, 25);
+			assertAction(item, 'start');
+			publishStatus(state, item, DownloadStatus.Downloading, 50);
+			assertAction(item, 'stop');
+			publishStatus(state, item, DownloadStatus.Stopped, 50);
+			assertAction(item, 'start');
+			publishStatus(state, item, DownloadStatus.Completed, 100);
+			assertAction(item, 'restart');
+			publishStatus(state, item, DownloadStatus.Restarting);
+			publishStatus(state, item, DownloadStatus.Completed, 100);
+			cy.reload();
+			cy.getPageData();
+			queueCy(`column-title-${item.id}`).should('have.text', image.title);
+			queueCy(`column-status-${item.id}`).should('have.text', DownloadStatus.Completed);
+			queueCy(`column-actions-clear-${item.id}`).click();
+			cy.wait('@clear');
+			cy.wait('@queue');
+			cy.getCy(`column-title-${item.id}`).should('not.exist');
+			cy.reload();
+			cy.getPageData();
+			cy.getCy(`column-title-${item.id}`).should('not.exist');
+		});
+	});
+
+	for (const [width, height] of [[1280, 800], [320, 568]] as const) {
+		it(`disables failed and pending previews, retries and ignores a cancelled stale album preview at ${width}px`, () => {
+			const phone = width === 320;
+			cy.viewport(width, height);
+			setupFamily('photos').then((state) => {
+				state.previewFailures = 1;
+				visitDetail('photos', state);
+				cy.getCy('photo-album-checkbox').click();
+				openConfirmation(phone, false);
+				cy.wait('@preview').its('response.statusCode').should('eq', 500);
+				cy.getCy('alert-dialog').should('be.visible').within(() => {
+					cy.getCy('close-alert-dialog').click();
+				});
+				cy.getCy('alert-dialog').should('not.exist');
+				cy.getCy('download-confirmation-dialog').should('be.visible');
+				cy.getCy('download-confirmation-error').should('be.visible').and('have.attr', 'role', 'alert');
+				submit().should('be.disabled');
+				cy.then(() => {
+					state.holdNextPreview = true;
+				});
+				cy.getCy('download-confirmation-retry').should('be.visible').click();
+				cy.wrap(null).should(() => {
+					expect(state.releasePreview).to.be.a('function');
+					expect(state.createCount).to.equal(0);
+				});
+				submit().should('be.disabled');
+				cy.then(() => state.releasePreview!());
+				assertPreview(assertCommand(state, PlexMediaType.PhotoAlbum, state.root.id), state.root);
+				cy.getCy('download-confirmation-error').should('not.exist');
+				cy.getCy('download-confirmation-cancel').should('be.visible').click();
+				cy.getCy('download-confirmation-dialog').should('not.exist');
+				cy.then(() => {
+					state.holdNextPreview = true;
+					state.releasePreview = undefined;
+				});
+				openConfirmation(phone);
+				cy.wrap(null).should(() => expect(state.releasePreview).to.be.a('function'));
+				submit().should('be.disabled');
+				cy.getCy('download-confirmation-cancel').should('be.visible').and(($button) => {
+					if (phone) {
+						const rect = $button[0]!.getBoundingClientRect();
+						expect(rect.width).to.be.at.least(44);
+						expect(rect.height).to.be.at.least(44);
+					}
+				}).click();
+				cy.getCy('download-confirmation-dialog').should('not.exist');
+				cy.getCy('photo-album-checkbox').click();
+				const image = state.root.children[0]!;
+				cy.then(() => selectPreview(state, image));
+				cy.getCy(`photo-asset-checkbox-${image.id}`).click();
+				openConfirmation(phone);
+				const command = assertCommand(state, PlexMediaType.PhotoImage, image.id);
+				cy.wait('@imagePreview').its('request.body').should('deep.equal', {
+					downloadMedias: [command],
+					customDestinationFolderPath: '',
+				});
+				cy.getCy('download-confirmation-error').should('not.exist');
+				cy.getCy(`column-title-preview-${state.root.id}`).should('not.exist');
+				cy.getCy(`column-title-preview-${image.id}`).should('be.visible').and('have.text', image.title);
+				createAndOpenQueue(state, command, image);
+				cy.document().should((document) => {
+					expect(document.documentElement.scrollWidth).to.equal(document.documentElement.clientWidth);
+				});
+				cy.then(() => expect(state.createCount).to.equal(1));
+			});
+		});
+	}
+});
 for (const scope of ['artist', 'album', 'track'] as const) {
 	it(`Music ${scope} uses current table rows and ancestor precedence with the matching family destination`, () => {
 		cy.viewport(scope === 'track' ? 320 : 1280, scope === 'track' ? 568 : 800);
