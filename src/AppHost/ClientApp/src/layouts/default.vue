@@ -105,6 +105,7 @@ nuxtApp.hook('page:finish', () => {
 	set(pageLoading, false);
 	if (authStore.isLoggedIn) {
 		setTimeout(() => {
+			if (!authStore.isLoggedIn) return;
 			if (settingsStore.generalSettings.firstTimeSetup && !route.fullPath.includes('setup')) {
 				router.push('/setup');
 			} else if (!settingsStore.generalSettings.hasBeenInvitedToDiscord && !route.fullPath.includes('setup')) {

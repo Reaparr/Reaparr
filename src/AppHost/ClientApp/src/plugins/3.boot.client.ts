@@ -1,6 +1,6 @@
 import Log from 'consola';
-import Axios from 'axios';
-import { useAlertStore, useGlobalStore, useLocalizationStore } from '@store';
+import Axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
+import { useAlertStore, useAuthenticationStore, useGlobalStore, useLocalizationStore } from '@store';
 import { showErrorNotification } from '@composables/notification';
 import { canSendDesktopMessage, sendDesktopMessage } from '@composables/desktop-message-hub';
 import { DesktopMessageType } from '@dto';
@@ -45,10 +45,51 @@ export default defineNuxtPlugin((nuxtApp) => {
 	});
 });
 
+function backendApiUrl(config: AxiosRequestConfig | undefined, backendUrl: URL): URL | null {
+	if (!config) return null;
+	try {
+		const url = new URL(Axios.getUri(config), backendUrl);
+		return url.origin === backendUrl.origin && /^\/api(?:\/|$)/.test(url.pathname) ? url : null;
+	} catch {
+		return null;
+	}
+}
+
+function createUnauthorizedSessionHandler(backendUrl: URL, router: Router): (config?: AxiosRequestConfig) => Promise<void> {
+	let operation: Promise<void> | null = null;
+	return async (config) => {
+		if (!backendApiUrl(config, backendUrl)) return;
+		if (!operation) {
+			const reset = useAuthenticationStore().isLoggedIn ? useGlobalStore().resetSession() : Promise.resolve();
+			operation = reset
+				.then(() => router.push('/login'))
+				.then(() => undefined)
+				.finally(() => {
+					operation = null;
+				});
+		}
+		await operation;
+	};
+}
+
+function isConnectivityFailure(error: AxiosError): boolean {
+	if (error.response) return false;
+	if (error.request) return true;
+	switch (error.code) {
+		case 'ERR_NETWORK':
+		case 'ECONNABORTED':
+		case 'ETIMEDOUT':
+			return true;
+		default:
+			return error.message === 'Network Error';
+	}
+}
+
 export function setupAxios(appConfig: IAppConfig, router: Router, t: (key: string) => string) {
 	const backendUrl = new URL(appConfig.baseUrl);
 	Axios.defaults.baseURL = appConfig.baseUrl;
 	Axios.defaults.withCredentials = true;
+	const endUnauthorizedSession = createUnauthorizedSessionHandler(backendUrl, router);
 
 	// Source: https://github.com/axios/axios/issues/41#issuecomment-484546457
 	// Now error resolves in catch block rather than then block.
@@ -61,7 +102,8 @@ export function setupAxios(appConfig: IAppConfig, router: Router, t: (key: strin
 			useGlobalStore().setAppPlatform(config.headers['x-reaparr-platform']);
 			return config;
 		},
-		(error) => {
+		async (error) => {
+			if (Axios.isCancel(error) || error.config?.signal?.aborted) return Promise.reject(error);
 			const status = error.response?.status;
 
 			if (error.response?.headers) {
@@ -69,27 +111,17 @@ export function setupAxios(appConfig: IAppConfig, router: Router, t: (key: strin
 				useGlobalStore().setAppPlatform(error.response.headers['x-reaparr-platform']);
 			}
 
-			// Redirect to log-in on 401 Unauthorized
 			if (status === 401) {
-				router.push('/login');
+				await endUnauthorizedSession(error.config);
 			}
 
 			if (Axios.isAxiosError(error) && error.config && !Axios.isCancel(error) && !error.config.handleErrorsLocally) {
 				const isHttpError = status >= 400 && status <= 599 && status !== 401;
-				const isConnectivityError = !error.response && (
-					error.request || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED'
-					|| error.code === 'ETIMEDOUT' || error.message === 'Network Error'
-				);
+				const isConnectivityError = isConnectivityFailure(error);
 
 				if (isHttpError || isConnectivityError) {
-					let url: URL;
-					try {
-						url = new URL(Axios.getUri(error.config), backendUrl);
-					} catch {
-						return Promise.reject(error);
-					}
-
-					if (url.origin === backendUrl.origin && /^\/api(?:\/|$)/.test(url.pathname)) {
+					const url = backendApiUrl(error.config, backendUrl);
+					if (url) {
 						if (isConnectivityError) {
 							showErrorNotification(t('components.alert-dialog.connection-failed'));
 						} else {

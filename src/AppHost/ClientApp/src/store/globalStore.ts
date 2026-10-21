@@ -5,6 +5,7 @@ import type { Subject, Observable } from 'rxjs';
 import { catchError, ReplaySubject, forkJoin, of } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
 import type IAppConfig from '@class/IAppConfig';
+import { suspendApiRequests } from '@/types/api/base/ApiPipes';
 import { StoreNames, type ISetupResult } from '@interfaces';
 import {
 	useAccountStore,
@@ -48,6 +49,42 @@ export const useGlobalStore = defineStore(StoreNames.GlobalStore, () => {
 	};
 
 	const state = reactive<IAppConfigStoreState>(cloneDeep(defaultState));
+	let resetOperation: Promise<void> | null = null;
+
+	async function resetSessionState(): Promise<void> {
+		const resumeApiRequests = suspendApiRequests();
+		try {
+			useAuthenticationStore().$reset();
+			try {
+				await useSignalrStore().resetSession();
+			} catch (error) {
+				Log.error('Failed to stop SignalR connections during session reset', error);
+			}
+			useAccountDialogStore().$reset();
+			useAccountStore().$reset();
+			useAlertStore().$reset();
+			useBackgroundJobsStore().$reset();
+			useDialogStore().$reset();
+			useDownloadStore().$reset();
+			useFolderPathStore().$reset();
+			useHelpStore().$reset();
+			useLibraryStore().$reset();
+			useLocalizationStore().$reset();
+			useLogsStore().$reset();
+			useMediaOverviewStore().$reset();
+			useMediaStore().$reset();
+			usePhotoBrowsingStore().$reset();
+			useNotificationsStore().$reset();
+			useServerConnectionStore().$reset();
+			useServerStore().$reset();
+			useSettingsStore().$reset();
+			useUpdateStore().$reset();
+			useIntegrationStore().$reset();
+		} finally {
+			resumeApiRequests();
+			state.pageReadyObservable.next(true);
+		}
+	}
 
 	const actions = {
 		setupServices({ config }: { config: IAppConfig }): Observable<ISetupResult[]> {
@@ -124,33 +161,11 @@ export const useGlobalStore = defineStore(StoreNames.GlobalStore, () => {
 			Log.info('Reaparr App Platform:', platform);
 			state.platform = platform;
 		},
-		async resetSession(): Promise<void> {
-			try {
-				await useSignalrStore().resetSession();
-			} catch (error) {
-				Log.error('Failed to stop SignalR connections during session reset', error);
-			}
-			useAccountDialogStore().$reset();
-			useAccountStore().$reset();
-			useAlertStore().$reset();
-			useAuthenticationStore().$reset();
-			useBackgroundJobsStore().$reset();
-			useDialogStore().$reset();
-			useDownloadStore().$reset();
-			useFolderPathStore().$reset();
-			useHelpStore().$reset();
-			useLibraryStore().$reset();
-			useLocalizationStore().$reset();
-			useLogsStore().$reset();
-			useMediaOverviewStore().$reset();
-			useMediaStore().$reset();
-			usePhotoBrowsingStore().$reset();
-			useNotificationsStore().$reset();
-			useServerConnectionStore().$reset();
-			useServerStore().$reset();
-			useSettingsStore().$reset();
-			useUpdateStore().$reset();
-			useIntegrationStore().$reset();
+		resetSession(): Promise<void> {
+			resetOperation ??= resetSessionState().finally(() => {
+				resetOperation = null;
+			});
+			return resetOperation;
 		},
 	};
 	const getters = {
