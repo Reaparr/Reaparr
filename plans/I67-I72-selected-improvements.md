@@ -18,7 +18,7 @@ Removed obsolete parent equality; retained server/library/photo-type guards. No 
 Assign the complete returned status on the existing row, including null-to-first-check transitions; preserve unrelated/deleted rows and failure/loading behavior. Four store regressions, targeted lint and the Firefox first-check workflow passed. The row turns green, then red on a later failure, without a connection-list refresh. Initial browser fixture navigation and lint layout were corrected, not production behavior. Self-review passed; CodeScene10.0 on all three source files. Ready for final gate and local commit.
 
 ## I71 — Selective torrent reads
-Push requested hash restriction into movie/episode queries without changing ownership/category/status/path semantics. No indexes/projection overhaul/category-collation change. SQLite materialization and exact wire proof for one/list/all/no-match/mixed-case and controls. Independent query/protocol review and CodeScene gates.
+Moved the normalized hash filter into both SQLite task queries; kept ownership, in-memory category comparison, status and paths unchanged. Six row-read cases passed: single hash1/0 or0/1, two-family list1/1, no match0/0, all/omitted20/20. Existing19 category/status/ownership cases and one authenticated hosted workflow with five wire requests passed. No latency benchmark, index or schema claim. Independent query and proof reviews approved. Test import/fixture complexity corrected; both test files10.0 and final CodeScene gate passed (pre-existing production status-map complexity unchanged). Ready for local commit.
 
 ## I72 — Preloaded connection selection
 Share existing in-memory chooser with current query-loading caller; list endpoint uses preloaded graph. Preserve priority and failure semantics. SQLite bounded read counts and exact selection matrix; independent shared-policy review and CodeScene gates.
@@ -27,4 +27,4 @@ Share existing in-memory chooser with current query-loading caller; list endpoin
 No live Plex/Arr, benchmarks or packaging claim. Hosted HTTP uses isolated test fixtures; browser UI uses isolated API responses. I67 Rider startup/API generation, C# diagnostics, frontend typecheck/lint and targeted tests exercised successfully. Native frontend language server unavailable. Final-phase-only validation: no pre-fix red run under host rules. Required failures pause commit/queue.
 
 ## Execution
-I67 committed locally `9742401f5`; I68 `ab564961a`; I69 `4e2de3071`. I70 active; I71–I72 queued and untouched. No push. Runtime claims use isolated fixtures, not live Plex/Arr.
+I67 committed locally `9742401f5`; I68 `ab564961a`; I69 `4e2de3071`; I70 `409e3f699`. I71 active; I72 queued and untouched. No push. Runtime claims use isolated fixtures, not live Plex/Arr.

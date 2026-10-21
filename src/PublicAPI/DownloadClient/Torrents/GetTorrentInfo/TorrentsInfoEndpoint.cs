@@ -133,7 +133,7 @@ public sealed class TorrentsInfoEndpoint : Endpoint<TorrentsInfoEndpointRequest,
         var categoryFilter = NormalizeCategory(req.Category);
         var integration = HttpContext.GetIntegrationIdentity();
 
-        // Query all download tasks that have a HashId (Sonarr/Radarr tracking id)
+        // Restrict requested hashes before materializing download tasks and their related rows.
         using var dbContext = await _dbContextFactory.CreateAsync();
 
         var nonOwnedServerIds = dbContext.PlexServers.WhereIsNotOwned().Select(x => x.Id);
@@ -141,6 +141,7 @@ public sealed class TorrentsInfoEndpoint : Endpoint<TorrentsInfoEndpointRequest,
         var episodeFilesTask = dbContext
             .DownloadTaskTvShowEpisodeFile.WhereIntegrationIsOrUnowned(integration)
             .Where(x => x.HashId != null && nonOwnedServerIds.Contains(x.PlexServerId))
+            .Where(x => hashesFilter == null || hashesFilter.Contains(x.HashId!.ToLower()))
             .Include(x => x.Parent)
             .Include(x => x.SonarrIntegration)
             .Include(x => x.RadarrIntegration)
@@ -149,6 +150,7 @@ public sealed class TorrentsInfoEndpoint : Endpoint<TorrentsInfoEndpointRequest,
         var movieFilesTask = dbContext
             .DownloadTaskMovieFile.WhereIntegrationIsOrUnowned(integration)
             .Where(x => x.HashId != null && nonOwnedServerIds.Contains(x.PlexServerId))
+            .Where(x => hashesFilter == null || hashesFilter.Contains(x.HashId!.ToLower()))
             .Include(x => x.Parent)
             .Include(x => x.RadarrIntegration)
             .Include(x => x.SonarrIntegration)
@@ -157,11 +159,11 @@ public sealed class TorrentsInfoEndpoint : Endpoint<TorrentsInfoEndpointRequest,
         await Task.WhenAll(episodeFilesTask, movieFilesTask);
 
         var episodeInfos = episodeFilesTask
-            .Result.Where(x => MatchesFilters(x, hashesFilter, categoryFilter))
+            .Result.Where(x => MatchesCategory(x, categoryFilter))
             .Select(MapToTorrentInfo)
             .ToList();
         var movieInfos = movieFilesTask
-            .Result.Where(x => MatchesFilters(x, hashesFilter, categoryFilter))
+            .Result.Where(x => MatchesCategory(x, categoryFilter))
             .Select(MapToTorrentInfo)
             .ToList();
 
@@ -253,11 +255,8 @@ public sealed class TorrentsInfoEndpoint : Endpoint<TorrentsInfoEndpointRequest,
         return category;
     }
 
-    private bool MatchesFilters(DownloadTaskFileBase file, HashSet<string>? hashesFilter, string? categoryFilter)
+    private bool MatchesCategory(DownloadTaskFileBase file, string? categoryFilter)
     {
-        if (hashesFilter is not null && !hashesFilter.Contains(file.HashId ?? string.Empty))
-            return false;
-
         if (categoryFilter is null)
             return true;
 
