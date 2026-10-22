@@ -69,8 +69,7 @@ public class RefreshPlexTvShowLibraryParentIdentityUnitTests : BaseCommandUnitTe
             .Setup(x => x.Send(It.Is<ScheduleOptimizeDatabaseJobCommand>(c => c.ChangedItemCount == 0), CancellationToken))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.TvShow))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()

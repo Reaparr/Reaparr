@@ -75,7 +75,11 @@ public class RefreshPlexMusicLibraryCommandHandler
 
         if (albumMetadataResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, albumMetadataResult.ToResult(), cancellationToken);
+            await _librarySyncProgressStore.UpdateErrorAsync(
+                plexLibraryId,
+                albumMetadataResult.ToResult(),
+                cancellationToken
+            );
             return albumMetadataResult.ToResult().LogError();
         }
 
@@ -137,7 +141,10 @@ public class RefreshPlexMusicLibraryCommandHandler
             );
             optimizationAfterFailure.LogIfFailed();
             var rebuildAfterFailure = await Result.Try(() =>
-                _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), finalizationToken)
+                _commandExecutor.Send(
+                    new QueueMediaOverviewRebuildCommand(PlexMediaType.MusicArtist),
+                    finalizationToken
+                )
             );
             rebuildAfterFailure.LogIfFailed();
             var progressAfterFailure = await Result.Try(async Task () =>
@@ -185,7 +192,10 @@ public class RefreshPlexMusicLibraryCommandHandler
             },
             cancellationToken
         );
-        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        var rebuildResult = await _commandExecutor.Send(
+            new QueueMediaOverviewRebuildCommand(PlexMediaType.MusicArtist),
+            cancellationToken
+        );
         rebuildResult.LogIfFailed();
 
         _log.Here()
@@ -240,7 +250,6 @@ public class RefreshPlexMusicLibraryCommandHandler
                     }
 
                     album.ChildCount = album.Tracks.Count;
-                    album.TrackCount = album.Tracks.Count;
                     album.Duration = album.Tracks.Sum(x => x.Duration);
                     album.MediaSize = album.Tracks.Sum(x => x.MediaSize);
                     artist.Albums.Add(album);

@@ -116,6 +116,10 @@ public class RestartDownloadTaskCommandSourceScopeUnitTests : BaseCommandUnitTes
         BasePlexMediaData competingSource;
         BasePlexMedia originalMedia;
         BasePlexMedia competingMedia;
+        string originalFullTitle = string.Empty;
+        string originalMovieTitle = string.Empty;
+        string originalTvShowTitle = string.Empty;
+        string originalSeasonTitle = string.Empty;
         DownloadTaskBase root;
         DownloadTaskFileBase target;
         DownloadTaskFileBase control;
@@ -127,7 +131,10 @@ public class RestartDownloadTaskCommandSourceScopeUnitTests : BaseCommandUnitTes
             competingSource = sources[0];
             source = sources[1];
             competingMedia = sources[0].PlexMovie!;
-            originalMedia = sources[1].PlexMovie!;
+            var originalMovie = sources[1].PlexMovie!;
+            originalMedia = originalMovie;
+            originalFullTitle = originalMovie.FullTitle;
+            originalMovieTitle = originalMovie.Title;
             var tasks = await dbContext.DownloadTaskMovie.AsTracking().Include(x => x.Children)
                 .OrderBy(x => x.Id).ToArrayAsync(CancellationToken);
             root = tasks[1];
@@ -143,7 +150,11 @@ public class RestartDownloadTaskCommandSourceScopeUnitTests : BaseCommandUnitTes
             competingSource = sources[0];
             source = sources[1];
             competingMedia = sources[0].PlexTvShowEpisode!;
-            originalMedia = sources[1].PlexTvShowEpisode!;
+            var originalEpisode = sources[1].PlexTvShowEpisode!;
+            originalMedia = originalEpisode;
+            originalFullTitle = originalEpisode.FullTitle;
+            originalTvShowTitle = originalEpisode.TvShow!.Title;
+            originalSeasonTitle = originalEpisode.TvShowSeason!.Title;
             var tasks = await dbContext.DownloadTaskTvShow.AsTracking().Include(x => x.Children)
                 .ThenInclude(x => x.Children).ThenInclude(x => x.Children)
                 .OrderBy(x => x.Id).ToArrayAsync(CancellationToken);
@@ -231,14 +242,13 @@ public class RestartDownloadTaskCommandSourceScopeUnitTests : BaseCommandUnitTes
         if (!originalMissing)
         {
             after.VideoQuality.ShouldBe(source.VideoQuality);
-            after.FullTitle.ShouldBe($"{originalMedia.FullTitle}/original-source.mkv");
+            after.FullTitle.ShouldBe($"{originalFullTitle}/original-source.mkv");
             if (family == PlexMediaType.Movie)
-                after.DirectoryMeta.MovieFolder.ShouldBe(originalMedia.Title.SanitizeFolderName());
+                after.DirectoryMeta.MovieFolder.ShouldBe(originalMovieTitle.SanitizeFolderName());
             else
             {
-                var episode = (PlexTvShowEpisode)originalMedia;
-                after.DirectoryMeta.TvShowFolder.ShouldBe(episode.TvShow!.Title.SanitizeFolderName());
-                after.DirectoryMeta.SeasonFolder.ShouldBe(episode.TvShowSeason!.Title.SanitizeFolderName());
+                after.DirectoryMeta.TvShowFolder.ShouldBe(originalTvShowTitle.SanitizeFolderName());
+                after.DirectoryMeta.SeasonFolder.ShouldBe(originalSeasonTitle.SanitizeFolderName());
             }
         }
         var retained = (await dbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken))!;

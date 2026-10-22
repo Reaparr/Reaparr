@@ -128,6 +128,144 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
     }
 
     [Test]
+    public async Task ShouldKeepInsertedPhotosSearchable()
+    {
+        // Arrange
+        var (library, searchHandler) = await ArrangePhotoSearchFixtureAsync();
+        var initial = CreateMetadata(
+            library,
+            [new SourceRoot("/fixture/photos", null)],
+            [
+                CreateFile(280, 380, "/fixture/photos/summer.jpg", "Summer Sunset.jpg"),
+                CreateFile(281, 381, "/fixture/photos/delete.jpg", "Delete Me.jpg"),
+            ],
+            [],
+            []
+        );
+
+        // Act
+        var sync = await TestHandlerExecuteAsync<CrudPhotosReport>(new SyncPlexPhotosCommand(initial));
+        var insertedId = await GetPhotoIdAsync(280);
+        var deletedId = await GetPhotoIdAsync(281);
+        var summerSearch = await SearchPhotoAssetsAsync(searchHandler, "summer");
+        var deleteSearch = await SearchPhotoAssetsAsync(searchHandler, "delete");
+
+        // Assert
+        sync.IsSuccess.ShouldBeTrue(sync.ToString());
+        sync.Errors.Count.ShouldBe(0);
+        sync.Value.CreatedPhotos.ShouldBe(2);
+        summerSearch.IsSuccess.ShouldBeTrue(summerSearch.ToString());
+        summerSearch.Errors.Count.ShouldBe(0);
+        (summerSearch.Value.TotalCount, summerSearch.Value.TotalBytes).ShouldBe((1, 20L));
+        summerSearch.Value.Items.Select(x => x.Id).ShouldBe([insertedId]);
+        deleteSearch.IsSuccess.ShouldBeTrue(deleteSearch.ToString());
+        deleteSearch.Errors.Count.ShouldBe(0);
+        (deleteSearch.Value.TotalCount, deleteSearch.Value.TotalBytes).ShouldBe((1, 20L));
+        deleteSearch.Value.Items.Select(x => x.Id).ShouldBe([deletedId]);
+    }
+
+    [Test]
+    public async Task ShouldKeepUpdatedPhotoSearchableWithStableIdentity()
+    {
+        // Arrange
+        var (library, searchHandler) = await ArrangePhotoSearchFixtureAsync();
+        var initial = CreateMetadata(
+            library,
+            [new SourceRoot("/fixture/photos", null)],
+            [CreateFile(280, 380, "/fixture/photos/summer.jpg", "Summer Sunset.jpg")],
+            [],
+            []
+        );
+
+        // Act
+        var initialSync = await TestHandlerExecuteAsync<CrudPhotosReport>(new SyncPlexPhotosCommand(initial));
+        var beforeId = await GetPhotoIdAsync(280);
+        var beforeSearch = await SearchPhotoAssetsAsync(searchHandler, "summer");
+        var updated = CreateMetadata(
+            library,
+            [new SourceRoot("/fixture/photos", null)],
+            [CreateFile(280, 380, "/fixture/photos/winter.jpg", "Winter Sunset.jpg")],
+            [],
+            []
+        );
+
+        var updateSync = await TestHandlerExecuteAsync<CrudPhotosReport>(
+            new SyncPlexPhotosCommand(updated)
+        );
+        var afterId = await GetPhotoIdAsync(280);
+        var oldTitleSearch = await SearchPhotoAssetsAsync(searchHandler, "summer");
+        var newTitleSearch = await SearchPhotoAssetsAsync(searchHandler, "winter");
+
+        // Assert
+        initialSync.IsSuccess.ShouldBeTrue(initialSync.ToString());
+        initialSync.Errors.Count.ShouldBe(0);
+        initialSync.Value.CreatedPhotos.ShouldBe(1);
+        beforeSearch.IsSuccess.ShouldBeTrue(beforeSearch.ToString());
+        beforeSearch.Errors.Count.ShouldBe(0);
+        (beforeSearch.Value.TotalCount, beforeSearch.Value.TotalBytes).ShouldBe((1, 20L));
+        beforeSearch.Value.Items.Select(x => x.Id).ShouldBe([beforeId]);
+        updateSync.IsSuccess.ShouldBeTrue(updateSync.ToString());
+        updateSync.Errors.Count.ShouldBe(0);
+        updateSync.Value.UpdatedPhotos.ShouldBe(1);
+        afterId.ShouldBe(beforeId);
+        oldTitleSearch.IsSuccess.ShouldBeTrue(oldTitleSearch.ToString());
+        oldTitleSearch.Errors.Count.ShouldBe(0);
+        (oldTitleSearch.Value.TotalCount, oldTitleSearch.Value.TotalBytes).ShouldBe((0, 0L));
+        oldTitleSearch.Value.Items.ShouldBeEmpty();
+        newTitleSearch.IsSuccess.ShouldBeTrue(newTitleSearch.ToString());
+        newTitleSearch.Errors.Count.ShouldBe(0);
+        (newTitleSearch.Value.TotalCount, newTitleSearch.Value.TotalBytes).ShouldBe((1, 20L));
+        newTitleSearch.Value.Items.Select(x => x.Id).ShouldBe([afterId]);
+    }
+
+    [Test]
+    public async Task ShouldRemoveDeletedPhotoFromSearchResults()
+    {
+        // Arrange
+        var (library, searchHandler) = await ArrangePhotoSearchFixtureAsync();
+        var initial = CreateMetadata(
+            library,
+            [new SourceRoot("/fixture/photos", null)],
+            [CreateFile(281, 381, "/fixture/photos/delete.jpg", "Delete Me.jpg")],
+            [],
+            []
+        );
+
+        // Act
+        var initialSync = await TestHandlerExecuteAsync<CrudPhotosReport>(new SyncPlexPhotosCommand(initial));
+        var deletedId = await GetPhotoIdAsync(281);
+        var beforeSearch = await SearchPhotoAssetsAsync(searchHandler, "delete");
+        var reduced = CreateMetadata(
+            library,
+            [new SourceRoot("/fixture/photos", null)],
+            [],
+            [],
+            []
+        );
+
+        var deleteSync = await TestHandlerExecuteAsync<CrudPhotosReport>(
+            new SyncPlexPhotosCommand(reduced)
+        );
+        var afterSearch = await SearchPhotoAssetsAsync(searchHandler, "delete");
+
+        // Assert
+        initialSync.IsSuccess.ShouldBeTrue(initialSync.ToString());
+        initialSync.Errors.Count.ShouldBe(0);
+        initialSync.Value.CreatedPhotos.ShouldBe(1);
+        beforeSearch.IsSuccess.ShouldBeTrue(beforeSearch.ToString());
+        beforeSearch.Errors.Count.ShouldBe(0);
+        (beforeSearch.Value.TotalCount, beforeSearch.Value.TotalBytes).ShouldBe((1, 20L));
+        beforeSearch.Value.Items.Select(x => x.Id).ShouldBe([deletedId]);
+        deleteSync.IsSuccess.ShouldBeTrue(deleteSync.ToString());
+        deleteSync.Errors.Count.ShouldBe(0);
+        deleteSync.Value.DeletedPhotos.ShouldBe(1);
+        afterSearch.IsSuccess.ShouldBeTrue(afterSearch.ToString());
+        afterSearch.Errors.Count.ShouldBe(0);
+        (afterSearch.Value.TotalCount, afterSearch.Value.TotalBytes).ShouldBe((0, 0L));
+        afterSearch.Value.Items.ShouldBeEmpty();
+    }
+
+    [Test]
     public async Task ShouldPreserveCatalogAndSyncCompletion_WhenPhotoReconciliationFails()
     {
         // Arrange
@@ -388,6 +526,28 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             .ShouldBe(beforeLibrary);
     }
 
+    private async Task<(PlexLibrary Library, SearchPhotoAssetsQueryHandler SearchHandler)> ArrangePhotoSearchFixtureAsync()
+    {
+        await SetupDatabase(73010, x => x.PlexPhotoLibraryCount = 1);
+        var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
+        return (library, Mock.Create<SearchPhotoAssetsQueryHandler>());
+    }
+
+    private Task<int> GetPhotoIdAsync(int ratingKey) =>
+        IDbContext.PlexPhotoMediaData
+            .Where(x => x.PlexApiRatingKey == ratingKey)
+            .Select(x => x.Id)
+            .SingleAsync(CancellationToken);
+
+    private Task<Result<PhotoAssetPageDTO>> SearchPhotoAssetsAsync(
+        SearchPhotoAssetsQueryHandler searchHandler,
+        string searchTerm
+    ) =>
+        searchHandler.ExecuteAsync(
+            new SearchPhotoAssetsQuery(searchTerm, 1, 100),
+            CancellationToken
+        );
+
     private static InsertMediaMetaDataCommandResponse CreateMetadata(
         PlexLibrary databaseLibrary,
         IReadOnlyList<SourceRoot> roots,
@@ -501,13 +661,12 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             Title = title,
             SearchTitle = title.ToSearchTitle(),
             Summary = null,
-            PlexApiMetaDataKey = ratingKey,
             HasThumb = false,
             AddedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             UpdatedAt = null,
         };
 
-    private static PlexPhotoMediaData CreateFile(int ratingKey, int partId, string sourcePath) =>
+    private static PlexPhotoMediaData CreateFile(int ratingKey, int partId, string sourcePath, string? title = null) =>
         new()
         {
             Id = 0,
@@ -517,10 +676,9 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             PlexApiMediaId = partId + 1000,
             PlexApiPartId = partId,
             AssetKind = PhotoAssetKind.Image,
-            Title = $"{ratingKey}.jpg",
-            SearchTitle = $"{ratingKey}.jpg",
+            Title = title ?? $"{ratingKey}.jpg",
+            SearchTitle = (title ?? $"{ratingKey}.jpg").ToSearchTitle(),
             Summary = null,
-            PlexApiMetaDataKey = ratingKey,
             HasThumb = false,
             AddedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             UpdatedAt = null,

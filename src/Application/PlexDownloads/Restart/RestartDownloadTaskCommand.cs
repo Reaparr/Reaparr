@@ -460,7 +460,8 @@ public class RestartDownloadTaskCommandHandler : ICommandHandler<RestartDownload
             .Select(x => new
             {
                 FileName = x.OriginalFilename.GetFileName(),
-                FullTitle = x.PlexTrack!.FullTitle,
+                FullTitle =
+                    $"{x.PlexTrack!.PlexAlbum!.PlexArtist!.Title}/{x.PlexTrack.PlexAlbum.Title}/{x.PlexTrack.Title}",
                 x.Key,
                 x.Size,
                 Quality = x.VideoQuality,
@@ -471,20 +472,7 @@ public class RestartDownloadTaskCommandHandler : ICommandHandler<RestartDownload
             .FirstOrDefaultAsync(cancellationToken);
 
         if (source is null)
-        {
-            await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
-                downloadTaskKey,
-                DownloadStatus.SourceUnavailable,
-                cancellationToken
-            );
-            await _dbContext.CreateDownloadClientLog(
-                downloadTaskKey,
-                NotificationLevel.Information,
-                DownloadStatus.SourceUnavailable,
-                $"Could not find the original source media for download task \"{downloadTaskKey}\" with title \"{downloadTask.FullTitle}\""
-            );
-            return Result.Fail("Could not find the original source media").LogError();
-        }
+            return await HandleUnavailableMusicSourceAsync(downloadTaskKey, downloadTask, cancellationToken);
 
         var result = await Result.Try(async Task () =>
         {
@@ -532,6 +520,26 @@ public class RestartDownloadTaskCommandHandler : ICommandHandler<RestartDownload
         return Result.Ok();
     }
 
+    private async Task<Result> HandleUnavailableMusicSourceAsync(
+        DownloadTaskKey downloadTaskKey,
+        DownloadTaskMusicTrackFile downloadTask,
+        CancellationToken cancellationToken
+    )
+    {
+        await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
+            downloadTaskKey,
+            DownloadStatus.SourceUnavailable,
+            cancellationToken
+        );
+        await _dbContext.CreateDownloadClientLog(
+            downloadTaskKey,
+            NotificationLevel.Information,
+            DownloadStatus.SourceUnavailable,
+            $"Could not find the original source media for download task \"{downloadTaskKey}\" with title \"{downloadTask.FullTitle}\""
+        );
+        return Result.Fail("Could not find the original source media").LogError();
+    }
+
     private async Task<Result> RefreshOtherVideoDownloadTask(
         DownloadTaskKey downloadTaskKey,
         CancellationToken cancellationToken
@@ -555,7 +563,7 @@ public class RestartDownloadTaskCommandHandler : ICommandHandler<RestartDownload
             .Select(x => new
             {
                 FileName = x.OriginalFilename.GetFileName(),
-                FullTitle = x.PlexOtherVideo!.FullTitle,
+                FullTitle = x.PlexOtherVideo!.Title,
                 x.Key,
                 x.Size,
                 Quality = x.VideoQuality,

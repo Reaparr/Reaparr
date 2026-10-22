@@ -77,7 +77,10 @@ public class RefreshPlexOtherVideoLibraryCommandHandler
             },
             cancellationToken
         );
-        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        var rebuildResult = await _commandExecutor.Send(
+            new QueueMediaOverviewRebuildCommand(PlexMediaType.OtherVideos),
+            cancellationToken
+        );
         rebuildResult.LogIfFailed();
 
         _log.Here()

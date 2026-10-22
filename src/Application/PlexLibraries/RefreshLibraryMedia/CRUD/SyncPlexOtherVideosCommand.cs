@@ -213,7 +213,7 @@ public class SyncPlexOtherVideosCommandHandler
         foreach (var video in videos)
         foreach (var actor in video.Actors)
             if (metadata.PlexActors.TryGetValue(actor.Key, out var stored) && keys.Add((stored.Id, video.Id)))
-                rows.Add(new PlexOtherVideoActors(stored.Id, metadata.PlexLibraryId, video.Id));
+                rows.Add(new PlexOtherVideoActors(stored.Id, video.Id));
 
         return await Result.Try(async Task () =>
         {
@@ -240,7 +240,7 @@ public class SyncPlexOtherVideosCommandHandler
         foreach (var video in videos)
         foreach (var genre in video.Genres)
             if (metadata.PlexGenresVideo.TryGetValue(genre.Key, out var stored) && keys.Add((stored.Id, video.Id)))
-                rows.Add(new PlexOtherVideoGenres(stored.Id, metadata.PlexLibraryId, video.Id));
+                rows.Add(new PlexOtherVideoGenres(stored.Id, video.Id));
 
         return await Result.Try(async Task () =>
         {
@@ -267,7 +267,7 @@ public class SyncPlexOtherVideosCommandHandler
         foreach (var video in videos)
         foreach (var country in video.Countries)
             if (metadata.PlexCountries.TryGetValue(country.Key, out var stored) && keys.Add((stored.Id, video.Id)))
-                rows.Add(new PlexOtherVideoCountries(stored.Id, metadata.PlexLibraryId, video.Id));
+                rows.Add(new PlexOtherVideoCountries(stored.Id, video.Id));
 
         return await Result.Try(async Task () =>
         {

@@ -81,7 +81,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Setup(x => x.Send(It.Is<ScheduleOptimizeDatabaseJobCommand>(c => c.ChangedItemCount == report.ChangedItemCount), CancellationToken))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum)).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.UpdateItemAsync(
                 library.Id,
@@ -189,8 +189,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             ))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
@@ -269,8 +268,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             ))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
@@ -331,8 +329,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             ))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
@@ -442,7 +439,6 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             Title = "Album",
             SearchTitle = "album",
             Summary = null,
-            PlexApiMetaDataKey = ratingKey,
             HasThumb = false,
             AddedAt = DateTime.UtcNow,
             UpdatedAt = null,
@@ -461,7 +457,6 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             Title = "file.jpg",
             SearchTitle = "file.jpg",
             Summary = null,
-            PlexApiMetaDataKey = ratingKey,
             HasThumb = false,
             AddedAt = DateTime.UtcNow,
             UpdatedAt = null,

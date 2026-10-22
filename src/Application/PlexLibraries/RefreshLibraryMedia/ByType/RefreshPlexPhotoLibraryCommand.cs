@@ -94,7 +94,7 @@ public class RefreshPlexPhotoLibraryCommandHandler : ICommandHandler<RefreshPlex
         imageProgressResult.LogIfFailed();
 
         var rebuildResult = await Result.Try(() =>
-            _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct)
+            _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum), ct)
         );
         rebuildResult.LogIfFailed();
 

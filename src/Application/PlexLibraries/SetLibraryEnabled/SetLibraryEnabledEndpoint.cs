@@ -101,7 +101,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         if (queueResult.IsFailed)
             return queueResult.LogIfFailed();
 
-        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(plexLibrary.Type), ct);
         rebuildResult.LogIfFailed();
 
         // Notify frontend
@@ -191,7 +191,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         _log.Here()
             .Information("Purged {Count} media items from library {PlexLibraryId}", deleteResult.Value, plexLibrary.Id);
 
-        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
+        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(plexLibrary.Type), ct);
         rebuildResult.LogIfFailed();
 
         // Notify frontend

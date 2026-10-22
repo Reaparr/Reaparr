@@ -191,7 +191,10 @@ public class RefreshPlexTvShowLibraryCommandHandler
                 plexLibrary.Id
             );
 
-        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        var rebuildResult = await _commandExecutor.Send(
+            new QueueMediaOverviewRebuildCommand(PlexMediaType.TvShow),
+            cancellationToken
+        );
         rebuildResult.LogIfFailed();
 
         // Refresh the PlexLibrary from the database to ensure we have the latest data

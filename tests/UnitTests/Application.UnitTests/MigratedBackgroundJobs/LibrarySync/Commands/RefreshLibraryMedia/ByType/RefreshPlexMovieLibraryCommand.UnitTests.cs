@@ -28,7 +28,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
 
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.Movie))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
@@ -80,7 +80,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
 
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.Movie))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
@@ -123,7 +123,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.Movie))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
@@ -180,7 +180,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok(new CrudMoviesReport()));
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.Movie))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })

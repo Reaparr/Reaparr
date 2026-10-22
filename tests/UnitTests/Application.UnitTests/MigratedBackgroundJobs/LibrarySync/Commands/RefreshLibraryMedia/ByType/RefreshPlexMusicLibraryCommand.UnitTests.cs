@@ -31,7 +31,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         library.Albums.Add(album);
         library.Tracks.Add(track);
         var artistState = (artist.ChildCount, artist.Duration, artist.MediaSize);
-        var albumState = (album.ChildCount, album.TrackCount, album.Duration, album.MediaSize);
+        var albumState = (album.ChildCount, album.Duration, album.MediaSize);
         var response = new InsertMediaMetaDataCommandResponse(library);
         Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
             c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
@@ -92,7 +92,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         album.PlexArtist.ShouldBeSameAs(artist);
         track.PlexAlbum.ShouldBeSameAs(album);
         (artist.ChildCount, artist.Duration, artist.MediaSize).ShouldBe(artistState);
-        (album.ChildCount, album.TrackCount, album.Duration, album.MediaSize).ShouldBe(albumState);
+        (album.ChildCount, album.Duration, album.MediaSize).ShouldBe(albumState);
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
@@ -413,7 +413,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.MusicArtist))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
@@ -481,7 +481,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         albums.ShouldAllBe(x => x.PlexArtist == artist);
         track.PlexAlbum.ShouldBeSameAs(albums[0]);
         albums[1].Tracks.ShouldBeEmpty();
-        (albums[0].TrackCount, albums[0].Duration, albums[0].MediaSize).ShouldBe((1, track.Duration, track.MediaSize));
+        (albums[0].ChildCount, albums[0].Duration, albums[0].MediaSize).ShouldBe((1, track.Duration, track.MediaSize));
         (artist.ChildCount, artist.Duration, artist.MediaSize).ShouldBe((2, track.Duration, track.MediaSize));
         Mock.Mock<ILibrarySyncProgressStore>()
             .Verify(

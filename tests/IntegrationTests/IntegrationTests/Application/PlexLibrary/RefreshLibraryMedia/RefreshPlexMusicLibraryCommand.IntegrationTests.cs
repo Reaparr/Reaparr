@@ -121,10 +121,9 @@ public class RefreshPlexMusicLibraryCommandIntegrationTests : BaseIntegrationTes
         (artists.Count, albums.Count, tracks.Count, originals.Count).ShouldBe((2, 4, 8, 8));
         var albumCountryLinks = await firstContext
             .PlexMusicAlbumCountries.OrderBy(x => x.PlexMusicAlbumId).ThenBy(x => x.CountryId)
-            .Select(x => new { x.PlexLibraryId, x.PlexMusicAlbumId, x.CountryId })
+            .Select(x => new { x.PlexMusicAlbumId, x.CountryId })
             .ToListAsync(CancellationToken);
         albumCountryLinks.Count.ShouldBe(albums.Count * 2);
-        albumCountryLinks.Select(x => x.PlexLibraryId).Distinct().ShouldBe([library.Id]);
         albumCountryLinks.GroupBy(x => x.PlexMusicAlbumId).ShouldAllBe(x => x.Count() == 2);
         albumCountryLinks
             .Select(x => x.PlexMusicAlbumId)
@@ -195,7 +194,7 @@ public class RefreshPlexMusicLibraryCommandIntegrationTests : BaseIntegrationTes
         (
             await repeatedContext
                 .PlexMusicAlbumCountries.OrderBy(x => x.PlexMusicAlbumId).ThenBy(x => x.CountryId)
-                .Select(x => new { x.PlexLibraryId, x.PlexMusicAlbumId, x.CountryId })
+                .Select(x => new { x.PlexMusicAlbumId, x.CountryId })
                 .ToListAsync(CancellationToken)
         ).ShouldBe(albumCountryLinks);
     }

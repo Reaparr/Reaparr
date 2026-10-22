@@ -101,7 +101,10 @@ public class RefreshPlexMovieLibraryCommandHandler
             cancellationToken
         );
 
-        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        var rebuildResult = await _commandExecutor.Send(
+            new QueueMediaOverviewRebuildCommand(PlexMediaType.Movie),
+            cancellationToken
+        );
         rebuildResult.LogIfFailed();
 
         // Refresh the PlexLibrary from the database to ensure we have the latest data

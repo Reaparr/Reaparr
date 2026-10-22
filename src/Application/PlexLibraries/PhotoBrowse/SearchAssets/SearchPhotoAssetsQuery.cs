@@ -78,8 +78,16 @@ public sealed class SearchPhotoAssetsQueryHandler
         foreach (var term in terms)
             assets = assets.Where(x => x.SearchTitle.Contains(term));
 
-        var totalCount = await assets.CountAsync(cancellationToken);
-        var totalBytes = await assets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
+        var aggregate = await assets
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                TotalBytes = group.Sum(x => (long?)x.Size),
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        var totalCount = aggregate?.TotalCount ?? 0;
+        var totalBytes = aggregate?.TotalBytes ?? 0L;
         var ordered = PhotoBrowseQuerySupport.IsDescending(query.Sort)
             ? assets.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
             : assets.OrderBy(x => x.Title).ThenBy(x => x.Id);

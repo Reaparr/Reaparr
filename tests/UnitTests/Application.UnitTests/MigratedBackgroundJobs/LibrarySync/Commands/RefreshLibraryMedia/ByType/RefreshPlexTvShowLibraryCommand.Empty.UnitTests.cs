@@ -56,9 +56,9 @@ public class RefreshPlexTvShowLibraryCommandEmptyUnitTests : BaseCommandUnitTest
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.Is<ScheduleOptimizeDatabaseJobCommand>(c => c.ChangedItemCount == 3), CancellationToken))
             .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.TvShow))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.UpdateItemAsync(target.Id, It.IsAny<LibraryProgressItem>(), CancellationToken))
             .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => progress.Add(item))

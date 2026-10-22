@@ -41,7 +41,7 @@ public class SetLibraryEnabledEndpointUnitTests
             .Setup(x => x.Send(It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == target.Id), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum)).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.Is<List<RefreshDataType>>(types =>
                 types.SequenceEqual(new[] { RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus })
@@ -92,7 +92,7 @@ public class SetLibraryEnabledEndpointUnitTests
             ), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum)).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x => x.SendRefreshNotificationAsync(It.Is<List<RefreshDataType>>(types =>
                 types.SequenceEqual(new[] { RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus })
@@ -155,7 +155,6 @@ public class SetLibraryEnabledEndpointUnitTests
             Title = $"Album {ratingKey}",
             SearchTitle = $"album {ratingKey}",
             Summary = null,
-            PlexApiMetaDataKey = ratingKey,
             HasThumb = false,
             AddedAt = DateTime.UtcNow,
             UpdatedAt = null,
@@ -174,7 +173,6 @@ public class SetLibraryEnabledEndpointUnitTests
             Title = $"file-{ratingKey}.jpg",
             SearchTitle = $"file-{ratingKey}.jpg",
             Summary = null,
-            PlexApiMetaDataKey = ratingKey,
             HasThumb = false,
             AddedAt = DateTime.UtcNow,
             UpdatedAt = null,

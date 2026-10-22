@@ -110,4 +110,63 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
         accentTerm.Value.TotalCount.ShouldBe(2);
         shortTerm.Has400BadRequestError().ShouldBeTrue();
     }
+
+    [Test]
+    public async Task ShouldPreserveSubstringAllTermAndTwoCharacterSearchSemantics()
+    {
+        // Arrange
+        await SetupDatabase(71016, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
+        var dbContext = IDbContext;
+        var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var searchTitles = new[] { "alpha beta gamma", "alphabet betamax", "alpha only", "cafe resume" };
+        for (var index = 0; index < searchTitles.Length; index++)
+        {
+            var assetId = assets[index].Id;
+            var searchTitle = searchTitles[index];
+            await dbContext.PlexPhotoMediaData
+                .Where(x => x.Id == assetId)
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, searchTitle), CancellationToken);
+        }
+
+        // Act
+        var substring = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new SearchPhotoAssetsQuery("pha", 1, 100)
+        );
+        var allTerms = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new SearchPhotoAssetsQuery("alpha beta", 1, 100)
+        );
+        var twoCharacter = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new SearchPhotoAssetsQuery("ha", 1, 100)
+        );
+        var punctuation = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new SearchPhotoAssetsQuery("Café, résumé!", 1, 100)
+        );
+
+        // Assert
+        substring.IsSuccess.ShouldBeTrue();
+        substring.Errors.Count.ShouldBe(0);
+        substring.Value.TotalCount.ShouldBe(3);
+        substring.Value.TotalBytes.ShouldBe(assets.Take(3).Sum(x => x.Size));
+        substring.Value.Items.Select(x => x.Id).OrderBy(x => x).ShouldBe(assets.Take(3).Select(x => x.Id).OrderBy(x => x));
+
+        allTerms.IsSuccess.ShouldBeTrue();
+        allTerms.Errors.Count.ShouldBe(0);
+        allTerms.Value.TotalCount.ShouldBe(2);
+        allTerms.Value.Items.Select(x => x.Id).OrderBy(x => x).ShouldBe(assets.Take(2).Select(x => x.Id).OrderBy(x => x));
+
+        twoCharacter.IsSuccess.ShouldBeTrue();
+        twoCharacter.Errors.Count.ShouldBe(0);
+        twoCharacter.Value.TotalCount.ShouldBe(3);
+        twoCharacter.Value.Items.Select(x => x.Id).OrderBy(x => x).ShouldBe(assets.Take(3).Select(x => x.Id).OrderBy(x => x));
+
+        punctuation.IsSuccess.ShouldBeTrue();
+        punctuation.Errors.Count.ShouldBe(0);
+        punctuation.Value.TotalCount.ShouldBe(1);
+        punctuation.Value.Items.Select(x => x.Id).ShouldBe([assets[3].Id]);
+    }
 }
