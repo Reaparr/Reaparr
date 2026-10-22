@@ -1351,8 +1351,6 @@ export interface PlexMediaDTO {
   /** @format double */
   rating: number;
   recordLabel?: string | null;
-  /** @format date-time */
-  releaseDate?: string | null;
   searchTitle: string;
   /** @format int32 */
   sortIndex: number;

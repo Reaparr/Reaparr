@@ -188,12 +188,12 @@ describe('MusicMediaList hierarchy selection', () => {
 		return commands;
 	}
 
-	test('Should render supplied album record label and release date metadata', async () => {
+	test('Should render supplied album record label and originally available date metadata', async () => {
 		// Arrange
 		const item = artistFixture();
 		Object.assign(item.children[0]!, {
 			recordLabel: 'Example Records',
-			releaseDate: '2020-04-12T00:00:00Z',
+			originallyAvailableAt: '2020-04-12T00:00:00Z',
 		});
 
 		// Act
