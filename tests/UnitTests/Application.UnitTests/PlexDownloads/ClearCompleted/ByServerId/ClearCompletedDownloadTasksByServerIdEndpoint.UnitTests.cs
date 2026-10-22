@@ -11,7 +11,7 @@ public class ClearCompletedDownloadTasksByServerIdEndpointUnitTests
         {
             config.PlexServerCount = 2;
             config.PlexMovieLibraryCount = 1;
-            config.MovieDownloadTasksCount = 2;
+            config.MovieDownloadTasksCount = 3;
         });
         var dbContext = IDbContext;
         var tasks = await dbContext.DownloadTaskMovie.AsTracking().Include(x => x.Children)
@@ -19,6 +19,10 @@ public class ClearCompletedDownloadTasksByServerIdEndpointUnitTests
         var targetServerId = tasks[0].PlexServerId;
         var removed = tasks[0];
         var active = tasks.First(x => x.PlexServerId == targetServerId && x.Id != removed.Id);
+        var foreign = tasks[2];
+        var foreignLibrary = await dbContext.PlexLibraries
+            .Where(x => x.Type == PlexMediaType.Movie && x.PlexServerId != targetServerId).SingleAsync(CancellationToken);
+        new[] { foreign }.SetRelationshipIds(foreignLibrary.PlexServerId, foreignLibrary.Id);
         tasks.SetDownloadStatus(DownloadStatus.Completed);
         new[] { active }.SetDownloadStatus(DownloadStatus.Queued);
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -26,6 +30,8 @@ public class ClearCompletedDownloadTasksByServerIdEndpointUnitTests
         var expectedFiles = tasks.Where(x => x.Id != removed.Id).SelectMany(x => x.Children).Select(x => x.Id).Order().ToArray();
         var beforeRoots = await dbContext.DownloadTaskMovie.Select(x => x.Id).OrderBy(x => x).ToArrayAsync(CancellationToken);
         beforeRoots.ShouldBe(tasks.Select(x => x.Id).Order().ToArray());
+        (await dbContext.DownloadTaskMovie.Select(x => x.PlexServerId).Distinct().OrderBy(x => x).ToArrayAsync(CancellationToken))
+            .ShouldBe(new[] { targetServerId, foreignLibrary.PlexServerId }.Order().ToArray());
         Guid[]? rootsAtNotification = null;
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.Is<ClearCompletedDownloadTasksByServerIdCommand>(c => c.PlexServerId == targetServerId), It.IsAny<CancellationToken>()))
