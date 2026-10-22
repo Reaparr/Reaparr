@@ -89,27 +89,39 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
     public async Task<List<DownloadTaskKey>> GetCurrentlyMovingKeysByServer(int plexServerId)
     {
         var keysById = new Dictionary<Guid, DownloadTaskKey>();
+        var capturedJobKeys = new HashSet<JobKey>();
         var contexts = await _scheduler.GetCurrentlyExecutingJobs(CancellationToken.None);
         foreach (var context in contexts.Where(x => x.JobDetail.Key.Group == nameof(JobTypes.MoveDownloadFileJob)))
         {
             var key = context.MergedJobDataMap.GetPayload<MoveDownloadFileJobPayload>()?.DownloadTaskKey;
-            if (key is not null)
-                keysById[key.Id] = key;
+            if (key is null)
+                continue;
+
+            keysById[key.Id] = key;
+            capturedJobKeys.Add(context.JobDetail.Key);
         }
 
         var jobKeys = await _scheduler.GetJobKeys(JobTypes.MoveDownloadFileJob, CancellationToken.None);
         foreach (var jobKey in jobKeys)
         {
-            if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
+            if (capturedJobKeys.Contains(jobKey))
                 continue;
 
-            var key = (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))
-                ?.JobDataMap.GetPayload<MoveDownloadFileJobPayload>()
-                ?.DownloadTaskKey;
+            var key = await GetActiveStoredKey(jobKey);
             if (key is not null)
                 keysById[key.Id] = key;
         }
 
         return keysById.Values.Where(x => x.PlexServerId == plexServerId).ToList();
+    }
+
+    private async ValueTask<DownloadTaskKey?> GetActiveStoredKey(JobKey jobKey)
+    {
+        if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
+            return null;
+
+        return (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))?.JobDataMap
+            .GetPayload<MoveDownloadFileJobPayload>()
+            ?.DownloadTaskKey;
     }
 }
