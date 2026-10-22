@@ -1351,25 +1351,30 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		invalidateCachedContexts(new Set(libraryIds));
 		if (!state.active) return;
 		const eligible = libraryIds.filter((libraryId) => eligibleLibraryIds.has(libraryId));
-		refreshInspectionFor(eligible);
 		for (const libraryId of eligible.filter(queueAffectsContext)) pendingRefreshLibraries.add(libraryId);
 		flushPendingRefresh();
 	}
 
-	function refreshInspectionFor(libraryIds: number[]): void {
+	function refreshInspectionFor(libraryIds: number[]): Observable<PhotoAssetInspectionDTO | null> {
+		if (!state.active) return of(null);
 		const identity = state.inspectionIdentity;
-		if (!state.dialog.open || !identity || !libraryIds.includes(identity.libraryId)) return;
-		requestInspectionPage(identity, state.inspectionAlbums?.page ?? 1).subscribe();
+		if (!state.dialog.open || !identity || !libraryIds.includes(identity.libraryId)) return of(null);
+		return requestInspectionPage(identity, 1);
 	}
 
 	function flushPendingRefresh(): void {
 		if (refreshInFlight || pendingRefreshLibraries.size === 0) return;
+		const libraryIds = [...pendingRefreshLibraries];
 		pendingRefreshLibraries.clear();
 		refreshInFlight = true;
-		actions.loadCurrent(true).pipe(finalize(() => {
-			refreshInFlight = false;
-			flushPendingRefresh();
-		})).subscribe();
+		actions.loadCurrent(true).pipe(
+			// Forced catalog reads replace the browse cancellation scope; refresh inspection afterwards.
+			switchMap(() => refreshInspectionFor(libraryIds)),
+			finalize(() => {
+				refreshInFlight = false;
+				flushPendingRefresh();
+			}),
+		).subscribe();
 	}
 
 	function observeQueueCompletion(queue: LibrarySyncJobQueueDTO): boolean {
@@ -1834,8 +1839,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			tap(({ value, statusCode }) => {
 				if (generation !== inspectionGeneration || session !== sessionGeneration || state.inspectionIdentity?.libraryId !== identity.libraryId || state.inspectionIdentity?.assetId !== identity.assetId) return;
 				if (value) {
-					state.dialog.asset = value;
 					state.inspectionAlbums = appendMembershipPage(state.inspectionAlbums, value.albums, page);
+					state.dialog.asset = { ...value, albums: state.inspectionAlbums };
 					state.dialog.error = false;
 					return;
 				}
@@ -1862,7 +1867,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	}
 
 	function appendMembershipPage(current: PhotoAlbumSummaryPageDTO | null, next: PhotoAlbumSummaryPageDTO, page: number): PhotoAlbumSummaryPageDTO {
-		const items = [...(current?.items ?? []), ...(next?.items ?? [])];
+		const items = page === 1 ? next.items : [...(current?.items ?? []), ...next.items];
 		const deduped = uniqBy(items, (item) => `${item.plexServerId}:${item.plexLibraryId}:${item.id}`);
 		return {
 			items: deduped,
