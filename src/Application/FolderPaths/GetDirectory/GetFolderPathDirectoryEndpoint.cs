@@ -70,6 +70,19 @@ public class GetFolderPathDirectoryEndpoint : Endpoint<GetFolderPathDirectoryReq
     {
         _log.Here().Debug("Looking up path: {Query}", query);
 
+        if (!string.IsNullOrWhiteSpace(query) && _directory.Exists(query))
+        {
+            if (allowFoldersWithoutTrailingSlashes)
+                return GetFileSystemResults(query, includeFiles);
+
+            var lastSeparatorIndex = query.LastIndexOf(_path.DirectorySeparatorChar);
+            var path = query.Substring(0, lastSeparatorIndex + 1);
+
+            if (lastSeparatorIndex != -1)
+                return GetFileSystemResults(path, includeFiles);
+        }
+
+        // If a path is invalid return root file system
         var defaultResult = new FileSystemResult
         {
             Directories = _diskProvider
@@ -128,23 +141,6 @@ public class GetFolderPathDirectoryEndpoint : Endpoint<GetFolderPathDirectoryReq
             Parent = "",
             Current = null,
         };
-
-        // If a path is invalid return root file system
-        if (string.IsNullOrWhiteSpace(query))
-            return Result.Ok(defaultResult);
-
-        var directoryExists = _directory.Exists(query);
-        if (!directoryExists)
-            return Result.Ok(defaultResult);
-
-        if (allowFoldersWithoutTrailingSlashes)
-            return GetFileSystemResults(query, includeFiles);
-
-        var lastSeparatorIndex = query.LastIndexOf(_path.DirectorySeparatorChar);
-        var path = query.Substring(0, lastSeparatorIndex + 1);
-
-        if (lastSeparatorIndex != -1)
-            return GetFileSystemResults(path, includeFiles);
 
         return Result.Ok(defaultResult);
     }
