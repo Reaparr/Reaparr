@@ -128,4 +128,23 @@ public class SortTypeExtensionsUnitTests
         // Assert
         act.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("sortType");
     }
+
+    [Test]
+    [Arguments(SortDirection.Asc, "\"asc\"")]
+    [Arguments(SortDirection.Desc, "\"desc\"")]
+    [Arguments(SortDirection.NoSort, "\"no-sort\"")]
+    public void ShouldUseFrontendDirectionNames_WhenSerializingAndDeserializingSortDirection(
+        SortDirection direction,
+        string json
+    )
+    {
+        // Arrange
+        // Act
+        var serialized = JsonSerializer.Serialize(direction);
+        var deserialized = JsonSerializer.Deserialize<SortDirection>(json);
+
+        // Assert
+        serialized.ShouldBe(json);
+        deserialized.ShouldBe(direction);
+    }
 }

@@ -63,7 +63,7 @@ public sealed class GetPhotoSourceRootsEndpoint : Endpoint<GetPhotoSourceRootsRe
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
                 sort.Field,
-                sort.Descending
+                sort.Direction
             ),
             ct
         );

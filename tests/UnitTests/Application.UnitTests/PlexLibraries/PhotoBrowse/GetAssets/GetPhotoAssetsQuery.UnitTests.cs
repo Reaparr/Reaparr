@@ -1,4 +1,5 @@
 using NaturalSort.Extension;
+using SortDirection = Reaparr.Domain.SortDirection;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -136,7 +137,7 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
             new GetPhotoAssetsQuery(null, 1, 1, SortType.Title)
         );
         var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 1, SortType.Title, true)
+            new GetPhotoAssetsQuery(null, 1, 1, SortType.Title, SortDirection.Desc)
         );
         var emptyPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAssetsQuery(null, 100, 2, SortType.Title)
@@ -149,6 +150,9 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
         );
         var invalidSort = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAssetsQuery(null, 1, 1, (SortType)999)
+        );
+        var invalidDirection = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new GetPhotoAssetsQuery(null, 1, 1, SortType.Title, (SortDirection)999)
         );
 
         // Assert
@@ -167,22 +171,26 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
         invalidSort.IsFailed.ShouldBeTrue();
         invalidSort.Errors.Count.ShouldBe(2);
         invalidSort.Has400BadRequestError().ShouldBeTrue();
+        invalidDirection.IsFailed.ShouldBeTrue();
+        invalidDirection.Errors.Count.ShouldBe(2);
+        invalidDirection.Has400BadRequestError().ShouldBeTrue();
     }
 
     [Test]
-    [Arguments(SortType.Title, false, new[] { 1, 3, 2, 0 })]
-    [Arguments(SortType.Title, true, new[] { 0, 2, 3, 1 })]
-    [Arguments(SortType.AddedAt, false, new[] { 1, 0, 3, 2 })]
-    [Arguments(SortType.AddedAt, true, new[] { 2, 3, 0, 1 })]
-    [Arguments(SortType.UpdatedAt, false, new[] { 0, 2, 1, 3 })]
-    [Arguments(SortType.UpdatedAt, true, new[] { 3, 1, 2, 0 })]
-    [Arguments(SortType.Duration, false, new[] { 0, 3, 1, 2 })]
-    [Arguments(SortType.Duration, true, new[] { 2, 1, 3, 0 })]
-    [Arguments(SortType.MediaSize, false, new[] { 2, 0, 3, 1 })]
-    [Arguments(SortType.MediaSize, true, new[] { 1, 3, 0, 2 })]
+    [Arguments(SortType.Title, SortDirection.Asc, new[] { 1, 3, 2, 0 })]
+    [Arguments(SortType.Title, SortDirection.Desc, new[] { 0, 2, 3, 1 })]
+    [Arguments(SortType.AddedAt, SortDirection.Asc, new[] { 1, 0, 3, 2 })]
+    [Arguments(SortType.AddedAt, SortDirection.Desc, new[] { 2, 3, 0, 1 })]
+    [Arguments(SortType.UpdatedAt, SortDirection.Asc, new[] { 0, 2, 1, 3 })]
+    [Arguments(SortType.UpdatedAt, SortDirection.Desc, new[] { 3, 1, 2, 0 })]
+    [Arguments(SortType.Duration, SortDirection.Asc, new[] { 0, 3, 1, 2 })]
+    [Arguments(SortType.Duration, SortDirection.Desc, new[] { 2, 1, 3, 0 })]
+    [Arguments(SortType.MediaSize, SortDirection.Asc, new[] { 2, 0, 3, 1 })]
+    [Arguments(SortType.MediaSize, SortDirection.Desc, new[] { 1, 3, 0, 2 })]
+    [Arguments(SortType.MediaSize, SortDirection.NoSort, new[] { 2, 0, 3, 1 })]
     public async Task ShouldApplySharedSortFieldsBeforePagingWithNullsAndTies(
         SortType sort,
-        bool descending,
+        SortDirection direction,
         int[] expectedOrder
     )
     {
@@ -222,10 +230,10 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
         // Act
         var firstPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 2, sort, descending)
+            new GetPhotoAssetsQuery(null, 1, 2, sort, direction)
         );
         var secondPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 2, 2, sort, descending)
+            new GetPhotoAssetsQuery(null, 2, 2, sort, direction)
         );
 
         // Assert
@@ -307,13 +315,13 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
         // Act
         var scoped = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(library.Id, 1, 100, SortType.Title, false, true)
+            new GetPhotoAssetsQuery(library.Id, 1, 100, SortType.Title, SortDirection.Asc, true)
         );
         var aggregate = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAssetsQuery(null, 1, 100, SortType.Title)
         );
         var invalidAggregate = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 100, SortType.Title, false, true)
+            new GetPhotoAssetsQuery(null, 1, 100, SortType.Title, SortDirection.Asc, true)
         );
 
         // Assert

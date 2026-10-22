@@ -1,3 +1,5 @@
+using SortDirection = Reaparr.Domain.SortDirection;
+
 namespace Reaparr.Application.UnitTests;
 
 public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumMembersQuery>
@@ -68,7 +70,7 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
             new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, SortType.Title)
         );
         var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, SortType.Title, true)
+            new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, SortType.Title, SortDirection.Desc)
         );
         var invalidSort = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, (SortType)999)
@@ -96,6 +98,21 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
         invalidSort.IsFailed.ShouldBeTrue();
         invalidSort.Errors.Count.ShouldBe(2);
         invalidSort.Has400BadRequestError().ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldRejectUndefinedDirectionBeforeLoadingAlbumMembers()
+    {
+        // Arrange
+        var query = new GetPhotoAlbumMembersQuery(1, 1, Direction: (SortDirection)999);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(query);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(2);
+        result.Has400BadRequestError().ShouldBeTrue();
     }
 
     [Test]

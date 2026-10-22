@@ -5,10 +5,10 @@ namespace Reaparr.Application;
 
 internal static class MediaOverviewExtensions
 {
-    public static (SortType Field, bool Descending)? ResolveSort(this QueryOptions options)
+    public static Sort? ResolveSort(this QueryOptions options)
     {
         if (options.Sort.Count == 0)
-            return (SortType.Title, false);
+            return new Sort(SortType.Title, SortDirection.Asc);
 
         if (options.Sort.Count != 1)
             return null;
@@ -16,7 +16,7 @@ internal static class MediaOverviewExtensions
         var sort = options.Sort[0];
         return SortTypeExtensions.TryParse(sort.Field, out var sortType)
             && sortType is not SortType.ComparisonState
-            ? (sortType, sort.Descending)
+            ? new Sort(sortType, sort.Descending ? SortDirection.Desc : SortDirection.Asc)
             : null;
     }
 
@@ -38,7 +38,7 @@ internal static class MediaOverviewExtensions
     }
 
     public static QueryOptions BuildSortOptions(
-        (SortType Field, bool Descending) sort,
+        Sort sort,
         string titleField,
         string idField,
         string? mediaSizeField = null
@@ -52,8 +52,8 @@ internal static class MediaOverviewExtensions
             _ => sort.Field.ToQueryField(),
         };
         var options = new QueryOptions();
-        options.Sort.Add(new SortNode { Field = field, Descending = sort.Descending });
-        options.Sort.Add(new SortNode { Field = idField, Descending = sort.Descending });
+        options.Sort.Add(new SortNode { Field = field, Descending = sort.Direction == SortDirection.Desc });
+        options.Sort.Add(new SortNode { Field = idField, Descending = sort.Direction == SortDirection.Desc });
         return options;
     }
 

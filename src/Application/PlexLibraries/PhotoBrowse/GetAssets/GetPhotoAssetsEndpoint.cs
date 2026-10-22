@@ -75,7 +75,7 @@ public sealed class GetPhotoAssetsEndpoint : Endpoint<GetPhotoAssetsRequest, Pho
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
                 sort.Field,
-                sort.Descending,
+                sort.Direction,
                 req.UnmappedOnly ?? false
             ),
             ct

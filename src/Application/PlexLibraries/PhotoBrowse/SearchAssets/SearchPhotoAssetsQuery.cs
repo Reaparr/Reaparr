@@ -7,7 +7,7 @@ public sealed record SearchPhotoAssetsQuery(
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
     SortType Sort = SortType.Title,
-    bool Descending = false
+    SortDirection Direction = SortDirection.Asc
 ) : ICommand<Result<PhotoAssetPageDTO>>;
 
 public sealed class SearchPhotoAssetsQueryValidator : AbstractValidator<SearchPhotoAssetsQuery>
@@ -17,6 +17,7 @@ public sealed class SearchPhotoAssetsQueryValidator : AbstractValidator<SearchPh
         RuleFor(x => x.Query).NotEmpty().Must(x => !string.IsNullOrWhiteSpace(x));
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
+        RuleFor(x => x.Direction).IsInEnum();
         RuleFor(x => x.Sort)
             .Must(sort =>
                 sort is SortType.Title
@@ -100,7 +101,7 @@ public sealed class SearchPhotoAssetsQueryHandler
         var totalCount = aggregate?.TotalCount ?? 0;
         var totalBytes = aggregate?.TotalBytes ?? 0L;
         var sortOptions = MediaOverviewExtensions.BuildSortOptions(
-            (query.Sort, query.Descending),
+            new Sort(query.Sort, query.Direction),
             nameof(PlexMediaSlimDTO.Title),
             nameof(PlexMediaSlimDTO.Id),
             nameof(PlexMediaSlimDTO.MediaSize)

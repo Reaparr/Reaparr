@@ -10,7 +10,7 @@ public sealed record GetPhotoFolderChildrenQuery(
     int AssetPage = 1,
     int AssetPageSize = MediaQueryFilter.MaximumPageSize,
     SortType Sort = SortType.Title,
-    bool Descending = false
+    SortDirection Direction = SortDirection.Asc
 ) : ICommand<Result<PhotoFolderChildrenDTO>>;
 
 public sealed class GetPhotoFolderChildrenQueryValidator : AbstractValidator<GetPhotoFolderChildrenQuery>
@@ -23,6 +23,7 @@ public sealed class GetPhotoFolderChildrenQueryValidator : AbstractValidator<Get
         RuleFor(x => x.FolderPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
         RuleFor(x => x.AssetPage).GreaterThan(0);
         RuleFor(x => x.AssetPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
+        RuleFor(x => x.Direction).IsInEnum();
         RuleFor(x => x.Sort)
             .Equal(SortType.Title)
             .WithMessage("Photo folders support title sorting only.");
@@ -155,7 +156,7 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         );
         var folderCount = await childFolders.CountAsync(cancellationToken);
         var folderOptions = MediaOverviewExtensions.BuildSortOptions(
-            (query.Sort, query.Descending),
+            new Sort(query.Sort, query.Direction),
             nameof(PlexPhotoFolder.Title),
             nameof(PlexPhotoFolder.Id)
         );
@@ -203,7 +204,7 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         var assetCount = await directAssets.CountAsync(cancellationToken);
         var assetBytes = await directAssets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
         var assetOptions = MediaOverviewExtensions.BuildSortOptions(
-            (query.Sort, query.Descending),
+            new Sort(query.Sort, query.Direction),
             nameof(PlexMediaSlimDTO.Title),
             nameof(PlexMediaSlimDTO.Id),
             nameof(PlexMediaSlimDTO.MediaSize)

@@ -86,7 +86,7 @@ public sealed class GetPhotoFolderChildrenEndpoint : Endpoint<GetPhotoFolderChil
                 req.AssetPage ?? 1,
                 req.AssetPageSize ?? MediaQueryFilter.MaximumPageSize,
                 sort.Field,
-                sort.Descending
+                sort.Direction
             ),
             ct
         );

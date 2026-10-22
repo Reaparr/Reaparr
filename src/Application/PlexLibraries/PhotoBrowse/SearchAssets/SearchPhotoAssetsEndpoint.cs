@@ -68,7 +68,7 @@ public sealed class SearchPhotoAssetsEndpoint : Endpoint<SearchPhotoAssetsReques
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
                 sort.Field,
-                sort.Descending
+                sort.Direction
             ),
             ct
         );

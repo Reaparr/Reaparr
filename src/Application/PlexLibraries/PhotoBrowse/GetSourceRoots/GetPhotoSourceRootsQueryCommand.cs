@@ -7,7 +7,7 @@ public sealed record GetPhotoSourceRootsQueryCommand(
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
     SortType Sort = SortType.Title,
-    bool Descending = false
+    SortDirection Direction = SortDirection.Asc
 ) : ICommand<Result<PhotoFolderPageDTO>>;
 
 public sealed class GetPhotoSourceRootsQueryCommandValidator : AbstractValidator<GetPhotoSourceRootsQueryCommand>
@@ -17,6 +17,7 @@ public sealed class GetPhotoSourceRootsQueryCommandValidator : AbstractValidator
         RuleFor(x => x.PlexLibraryId).GreaterThan(0);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
+        RuleFor(x => x.Direction).IsInEnum();
         RuleFor(x => x.Sort)
             .Equal(SortType.Title)
             .WithMessage("Photo folders support title sorting only.");
@@ -53,7 +54,7 @@ public sealed class GetPhotoSourceRootsQueryCommandHandler
         var totalCount = await roots.CountAsync(cancellationToken);
 
         var options = MediaOverviewExtensions.BuildSortOptions(
-            (queryCommand.Sort, queryCommand.Descending),
+            new Sort(queryCommand.Sort, queryCommand.Direction),
             nameof(PlexPhotoFolder.Title),
             nameof(PlexPhotoFolder.Id)
         );

@@ -1,4 +1,5 @@
 using FlexQuery.NET.Models;
+using SortDirection = Reaparr.Domain.SortDirection;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -262,13 +263,13 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        var descending = sort.EndsWith(":desc", StringComparison.Ordinal);
+        var direction = sort.EndsWith(":desc", StringComparison.Ordinal) ? SortDirection.Desc : SortDirection.Asc;
         var qualitySort = sort.StartsWith("videoQuality:", StringComparison.Ordinal);
         int expectedFirstId;
         if (qualitySort)
-            expectedFirstId = descending ? movies[0].Id : movies[^1].Id;
+            expectedFirstId = direction == SortDirection.Desc ? movies[0].Id : movies[^1].Id;
         else
-            expectedFirstId = descending ? movies[^1].Id : movies[0].Id;
+            expectedFirstId = direction == SortDirection.Desc ? movies[^1].Id : movies[0].Id;
         result.Value.Items.Select(x => x.Id).ShouldBe([expectedFirstId]);
         result.Value.NavigationIndexes.ShouldNotBeEmpty();
         result.Value.NavigationIndexes[0].Index.ShouldBe(0);

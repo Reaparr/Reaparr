@@ -4,19 +4,19 @@ internal static class MediaOverviewSnapshotQueryExtensions
 {
     public static IQueryable<TSnapshot> ApplyRankOrder<TSnapshot>(
         this IQueryable<TSnapshot> snapshots,
-        (SortType Field, bool Descending) sort
+        Sort sort
     )
         where TSnapshot : BaseMediaOverviewSnapshot
     {
         var rankPropertyName = ResolveRankProperty(sort.Field);
-        return sort.Descending
+        return sort.Direction == SortDirection.Desc
             ? snapshots.OrderByDescending(snapshot => EF.Property<int>(snapshot, rankPropertyName))
             : snapshots.OrderBy(snapshot => EF.Property<int>(snapshot, rankPropertyName));
     }
 
     public static IQueryable<MediaNavigationIndexRow> SelectNavigationRows(
         this IQueryable<MediaOverviewOtherVideoSnapshot> snapshots,
-        (SortType Field, bool Descending) sort
+        Sort sort
     )
     {
         var rankPropertyName = ResolveRankProperty(sort.Field);
@@ -35,7 +35,7 @@ internal static class MediaOverviewSnapshotQueryExtensions
 
     public static IQueryable<MediaNavigationIndexRow> SelectNavigationRows<TSnapshot>(
         this IQueryable<TSnapshot> snapshots,
-        (SortType Field, bool Descending) sort
+        Sort sort
     )
         where TSnapshot : BaseMediaOverviewSnapshot
     {

@@ -1,3 +1,5 @@
+using SortDirection = Reaparr.Domain.SortDirection;
+
 namespace Reaparr.Data.UnitTests;
 
 public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
@@ -19,17 +21,17 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
     ];
 
     [Test]
-    [Arguments(SortType.Duration, false, new[] { "0–10 min", "10–20 min", "20–30 min" })]
-    [Arguments(SortType.Duration, true, new[] { "20–30 min", "10–20 min", "0–10 min" })]
-    [Arguments(SortType.AddedAt, false, new[] { "2026-01", "2026-02", "2026-03" })]
-    [Arguments(SortType.AddedAt, true, new[] { "2026-03", "2026-02", "2026-01" })]
-    [Arguments(SortType.UpdatedAt, false, new[] { "#", "2026-02", "2026-03" })]
-    [Arguments(SortType.UpdatedAt, true, new[] { "2026-03", "2026-02", "#" })]
-    [Arguments(SortType.MediaSize, false, new[] { "0–1 GB", "1–2 GB", "2–3 GB" })]
-    [Arguments(SortType.MediaSize, true, new[] { "2–3 GB", "1–2 GB", "0–1 GB" })]
+    [Arguments(SortType.Duration, SortDirection.Asc, new[] { "0–10 min", "10–20 min", "20–30 min" })]
+    [Arguments(SortType.Duration, SortDirection.Desc, new[] { "20–30 min", "10–20 min", "0–10 min" })]
+    [Arguments(SortType.AddedAt, SortDirection.Asc, new[] { "2026-01", "2026-02", "2026-03" })]
+    [Arguments(SortType.AddedAt, SortDirection.Desc, new[] { "2026-03", "2026-02", "2026-01" })]
+    [Arguments(SortType.UpdatedAt, SortDirection.Asc, new[] { "#", "2026-02", "2026-03" })]
+    [Arguments(SortType.UpdatedAt, SortDirection.Desc, new[] { "2026-03", "2026-02", "#" })]
+    [Arguments(SortType.MediaSize, SortDirection.Asc, new[] { "0–1 GB", "1–2 GB", "2–3 GB" })]
+    [Arguments(SortType.MediaSize, SortDirection.Desc, new[] { "2–3 GB", "1–2 GB", "0–1 GB" })]
     public async Task ShouldReturnFilteredBucketOrdinalsFromSqlite(
         SortType sortType,
-        bool descending,
+        SortDirection direction,
         string[] expectedLabels
     )
     {
@@ -39,12 +41,34 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
         var rows = CreateNavigationRows(dbContext.MediaOverviewOtherVideoSnapshots, filteredVideoId);
 
         // Act
-        var result = await MediaNavigationIndexBuilder.BuildAsync(rows, (sortType, descending), CancellationToken);
+        var result = await MediaNavigationIndexBuilder.BuildAsync(rows, new Sort(sortType, direction), CancellationToken);
 
         // Assert
         result
             .Select(x => (x.Label, x.Index))
             .ShouldBe(new[] { (expectedLabels[0], 0), (expectedLabels[1], 1), (expectedLabels[2], 3) });
+    }
+
+    [Test]
+    public async Task ShouldPreserveRequestedField_WhenDefaultingNoSortNavigationToAscending()
+    {
+        // Arrange
+        var filteredVideoId = await SetupSnapshotDatabaseAsync();
+        using var dbContext = IDbContext;
+        var rows = CreateNavigationRows(dbContext.MediaOverviewOtherVideoSnapshots, filteredVideoId)
+            .Where(x => x.SearchTitle != "Bravo Two");
+
+        // Act
+        var result = await MediaNavigationIndexBuilder.BuildAsync(
+            rows,
+            new Sort(SortType.MediaSize, SortDirection.NoSort),
+            CancellationToken
+        );
+
+        // Assert
+        result
+            .Select(x => (x.Label, x.Index))
+            .ShouldBe(new[] { ("0–1 GB", 0), ("1–2 GB", 1), ("2–3 GB", 2) });
     }
 
     private async Task<int> SetupSnapshotDatabaseAsync()

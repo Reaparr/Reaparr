@@ -7,7 +7,7 @@ public sealed record GetPhotoAssetsQuery(
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
     SortType Sort = SortType.Title,
-    bool Descending = false,
+    SortDirection Direction = SortDirection.Asc,
     bool UnmappedOnly = false
 ) : ICommand<Result<PhotoAssetPageDTO>>;
 
@@ -18,6 +18,7 @@ public sealed class GetPhotoAssetsQueryValidator : AbstractValidator<GetPhotoAss
         RuleFor(x => x.PlexLibraryId).GreaterThan(0).When(x => x.PlexLibraryId.HasValue);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
+        RuleFor(x => x.Direction).IsInEnum();
         RuleFor(x => x.Sort)
             .Must(sort =>
                 sort is SortType.Title
@@ -99,7 +100,7 @@ public sealed class GetPhotoAssetsQueryHandler : ICommandHandler<GetPhotoAssetsQ
         var totalCount = await assets.CountAsync(cancellationToken);
         var totalBytes = await assets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
         var sortOptions = MediaOverviewExtensions.BuildSortOptions(
-            (query.Sort, query.Descending),
+            new Sort(query.Sort, query.Direction),
             nameof(PlexMediaSlimDTO.Title),
             nameof(PlexMediaSlimDTO.Id),
             nameof(PlexMediaSlimDTO.MediaSize)

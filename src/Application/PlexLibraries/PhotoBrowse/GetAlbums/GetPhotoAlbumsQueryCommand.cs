@@ -7,7 +7,7 @@ public sealed record GetPhotoAlbumsQueryCommand(
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
     SortType Sort = SortType.Title,
-    bool Descending = false
+    SortDirection Direction = SortDirection.Asc
 ) : ICommand<Result<PhotoAlbumPageDTO>>;
 
 public sealed class GetPhotoAlbumsQueryCommandValidator : AbstractValidator<GetPhotoAlbumsQueryCommand>
@@ -17,6 +17,7 @@ public sealed class GetPhotoAlbumsQueryCommandValidator : AbstractValidator<GetP
         RuleFor(x => x.PlexLibraryId).GreaterThan(0).When(x => x.PlexLibraryId.HasValue);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
+        RuleFor(x => x.Direction).IsInEnum();
         RuleFor(x => x.Sort)
             .Must(sort =>
                 sort is SortType.Title
@@ -101,7 +102,7 @@ public sealed class GetPhotoAlbumsQueryCommandHandler
     )
     {
         var sortOptions = MediaOverviewExtensions.BuildSortOptions(
-            (queryCommand.Sort, queryCommand.Descending),
+            new Sort(queryCommand.Sort, queryCommand.Direction),
             nameof(PlexMediaSlimDTO.Title),
             nameof(PlexMediaSlimDTO.Id),
             nameof(PlexMediaSlimDTO.MediaSize)

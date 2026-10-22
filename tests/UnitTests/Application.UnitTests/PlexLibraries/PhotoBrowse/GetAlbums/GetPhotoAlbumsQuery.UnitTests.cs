@@ -1,3 +1,5 @@
+using SortDirection = Reaparr.Domain.SortDirection;
+
 namespace Reaparr.Application.UnitTests;
 
 public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQueryCommand>
@@ -38,10 +40,13 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
             new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title)
         );
         var descending = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
-            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title, true)
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title, SortDirection.Desc)
         );
         var invalidSort = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
             new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, (SortType)999)
+        );
+        var invalidDirection = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title, (SortDirection)999)
         );
 
         // Assert
@@ -58,6 +63,9 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
         invalidSort.IsFailed.ShouldBeTrue();
         invalidSort.Errors.Count.ShouldBe(2);
         invalidSort.Has400BadRequestError().ShouldBeTrue();
+        invalidDirection.IsFailed.ShouldBeTrue();
+        invalidDirection.Errors.Count.ShouldBe(2);
+        invalidDirection.Has400BadRequestError().ShouldBeTrue();
         result.Value.TotalAssetBytes.ShouldBe(
             await dbContext
                 .PlexPhotoMediaData.Where(x => x.PlexLibraryId == libraries[0].Id)
@@ -67,19 +75,20 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
     }
 
     [Test]
-    [Arguments(SortType.Title, false, new[] { 1, 3, 2, 0 })]
-    [Arguments(SortType.Title, true, new[] { 0, 2, 3, 1 })]
-    [Arguments(SortType.AddedAt, false, new[] { 1, 0, 3, 2 })]
-    [Arguments(SortType.AddedAt, true, new[] { 2, 3, 0, 1 })]
-    [Arguments(SortType.UpdatedAt, false, new[] { 0, 2, 1, 3 })]
-    [Arguments(SortType.UpdatedAt, true, new[] { 3, 1, 2, 0 })]
-    [Arguments(SortType.Duration, false, new[] { 0, 3, 1, 2 })]
-    [Arguments(SortType.Duration, true, new[] { 2, 1, 3, 0 })]
-    [Arguments(SortType.MediaSize, false, new[] { 2, 0, 3, 1 })]
-    [Arguments(SortType.MediaSize, true, new[] { 1, 3, 0, 2 })]
+    [Arguments(SortType.Title, SortDirection.Asc, new[] { 1, 3, 2, 0 })]
+    [Arguments(SortType.Title, SortDirection.Desc, new[] { 0, 2, 3, 1 })]
+    [Arguments(SortType.AddedAt, SortDirection.Asc, new[] { 1, 0, 3, 2 })]
+    [Arguments(SortType.AddedAt, SortDirection.Desc, new[] { 2, 3, 0, 1 })]
+    [Arguments(SortType.UpdatedAt, SortDirection.Asc, new[] { 0, 2, 1, 3 })]
+    [Arguments(SortType.UpdatedAt, SortDirection.Desc, new[] { 3, 1, 2, 0 })]
+    [Arguments(SortType.Duration, SortDirection.Asc, new[] { 0, 3, 1, 2 })]
+    [Arguments(SortType.Duration, SortDirection.Desc, new[] { 2, 1, 3, 0 })]
+    [Arguments(SortType.MediaSize, SortDirection.Asc, new[] { 2, 0, 3, 1 })]
+    [Arguments(SortType.MediaSize, SortDirection.Desc, new[] { 1, 3, 0, 2 })]
+    [Arguments(SortType.MediaSize, SortDirection.NoSort, new[] { 2, 0, 3, 1 })]
     public async Task ShouldApplyAggregateAndDateSortFieldsBeforePaging(
         SortType sort,
-        bool descending,
+        SortDirection direction,
         int[] expectedOrder
     )
     {
@@ -88,10 +97,10 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
 
         // Act
         var firstPage = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
-            new GetPhotoAlbumsQueryCommand(libraryId, 1, 2, sort, descending)
+            new GetPhotoAlbumsQueryCommand(libraryId, 1, 2, sort, direction)
         );
         var secondPage = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
-            new GetPhotoAlbumsQueryCommand(libraryId, 2, 2, sort, descending)
+            new GetPhotoAlbumsQueryCommand(libraryId, 2, 2, sort, direction)
         );
 
         // Assert

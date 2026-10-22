@@ -74,7 +74,7 @@ public sealed class GetPhotoAlbumMembersEndpoint : Endpoint<GetPhotoAlbumMembers
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
                 sort.Field,
-                sort.Descending
+                sort.Direction
             ),
             ct
         );

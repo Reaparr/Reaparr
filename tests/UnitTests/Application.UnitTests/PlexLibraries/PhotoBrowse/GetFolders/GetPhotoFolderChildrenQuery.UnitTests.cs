@@ -1,3 +1,5 @@
+using SortDirection = Reaparr.Domain.SortDirection;
+
 namespace Reaparr.Application.UnitTests;
 
 public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhotoFolderChildrenQuery>
@@ -105,7 +107,7 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
                 1,
                 100,
                 SortType.Title,
-                true
+                SortDirection.Desc
             )
         );
         var invalidSort = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
@@ -145,6 +147,21 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         invalidSort.IsFailed.ShouldBeTrue();
         invalidSort.Errors.Count.ShouldBe(2);
         invalidSort.Has400BadRequestError().ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldRejectUndefinedDirectionBeforeLoadingFolderChildren()
+    {
+        // Arrange
+        var query = new GetPhotoFolderChildrenQuery(1, 1, Direction: (SortDirection)999);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(query);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(2);
+        result.Has400BadRequestError().ShouldBeTrue();
     }
 
     private async Task<ScaledFolderFixture> ArrangeScaledFolderFixtureAsync()

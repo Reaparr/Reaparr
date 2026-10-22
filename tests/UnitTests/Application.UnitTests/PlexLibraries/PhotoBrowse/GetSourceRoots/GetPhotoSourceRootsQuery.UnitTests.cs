@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using SortDirection = Reaparr.Domain.SortDirection;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -178,7 +179,7 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
             new GetPhotoSourceRootsQueryCommand(library.Id, 2, 100, SortType.Title)
         );
         var descendingPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, SortType.Title, true)
+            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, SortType.Title, SortDirection.Desc)
         );
         var invalidSort = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
             new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, (SortType)999)
@@ -206,5 +207,20 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
         invalidSort.IsFailed.ShouldBeTrue();
         invalidSort.Errors.Count.ShouldBe(2);
         invalidSort.Has400BadRequestError().ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldRejectUndefinedDirectionBeforeLoadingSourceRoots()
+    {
+        // Arrange
+        var query = new GetPhotoSourceRootsQueryCommand(1, Direction: (SortDirection)999);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(query);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(2);
+        result.Has400BadRequestError().ShouldBeTrue();
     }
 }

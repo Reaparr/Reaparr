@@ -1,5 +1,6 @@
 using FlexQuery.NET.Models;
 using FlexQuery.NET.Parsers;
+using SortDirection = Reaparr.Domain.SortDirection;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -15,7 +16,7 @@ public class MediaOverviewExtensionsUnitTests
         var result = options.ResolveSort();
 
         result.ShouldNotBeNull();
-        result.Value.ShouldBe((SortType.Title, false));
+        result.Value.ShouldBe(new Sort(SortType.Title, SortDirection.Asc));
     }
 
     [Test]
@@ -32,7 +33,7 @@ public class MediaOverviewExtensionsUnitTests
         var result = options.ResolveSort();
 
         result.ShouldNotBeNull();
-        result.Value.ShouldBe((expectedField, true));
+        result.Value.ShouldBe(new Sort(expectedField, SortDirection.Desc));
     }
 
     [Test]
@@ -50,15 +51,15 @@ public class MediaOverviewExtensionsUnitTests
     }
 
     [Test]
-    [Arguments("sortIndex:asc", SortType.Title, false)]
-    [Arguments("addedAt:desc", SortType.AddedAt, true)]
-    [Arguments("updatedAt:asc", SortType.UpdatedAt, false)]
-    [Arguments("duration:desc", SortType.Duration, true)]
-    [Arguments("mediaSize:asc", SortType.MediaSize, false)]
+    [Arguments("sortIndex:asc", SortType.Title, SortDirection.Asc)]
+    [Arguments("addedAt:desc", SortType.AddedAt, SortDirection.Desc)]
+    [Arguments("updatedAt:asc", SortType.UpdatedAt, SortDirection.Asc)]
+    [Arguments("duration:desc", SortType.Duration, SortDirection.Desc)]
+    [Arguments("mediaSize:asc", SortType.MediaSize, SortDirection.Asc)]
     public void ShouldResolveCanonicalWireSort_WhenParsedThroughSharedOptions(
         string value,
         SortType expectedField,
-        bool expectedDescending
+        SortDirection expectedDirection
     )
     {
         // Arrange
@@ -68,7 +69,7 @@ public class MediaOverviewExtensionsUnitTests
         var result = options.ResolveSort();
 
         // Assert
-        result.ShouldBe((expectedField, expectedDescending));
+        result.ShouldBe(new Sort(expectedField, expectedDirection));
     }
 
     [Test]

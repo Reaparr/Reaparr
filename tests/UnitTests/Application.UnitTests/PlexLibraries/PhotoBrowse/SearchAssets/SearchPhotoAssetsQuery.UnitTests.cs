@@ -1,3 +1,5 @@
+using SortDirection = Reaparr.Domain.SortDirection;
+
 namespace Reaparr.Application.UnitTests;
 
 public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAssetsQuery>
@@ -61,7 +63,7 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
             new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title)
         );
         var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title, true)
+            new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title, SortDirection.Desc)
         );
         var invalidSort = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new SearchPhotoAssetsQuery("cross-library-search", 1, 100, (SortType)999)
@@ -81,6 +83,21 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
         invalidSort.IsFailed.ShouldBeTrue();
         invalidSort.Errors.Count.ShouldBe(2);
         invalidSort.Has400BadRequestError().ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldRejectUndefinedDirectionBeforeSearchingAssets()
+    {
+        // Arrange
+        var query = new SearchPhotoAssetsQuery("photo", Direction: (SortDirection)999);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(query);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(2);
+        result.Has400BadRequestError().ShouldBeTrue();
     }
  
     [Test]

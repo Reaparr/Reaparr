@@ -93,7 +93,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             allowedLibraryIds.Contains(snapshot.PlexLibraryId)
             && candidates.Any(tvShow => tvShow.Id == snapshot.PlexTvShowId)
         );
-        var orderedSnapshots = ApplyOrder(snapshots, sort.Value.Field, sort.Value.Descending);
+        var orderedSnapshots = ApplyOrder(snapshots, sort.Value.Field, sort.Value.Direction);
         var ids = await orderedSnapshots
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
@@ -260,26 +260,16 @@ public sealed class GetMediaOverviewTvShowCommandHandler
     private static IQueryable<MediaOverviewTvShowSnapshot> ApplyOrder(
         IQueryable<MediaOverviewTvShowSnapshot> query,
         SortType sortType,
-        bool descending
+        SortDirection direction
     ) =>
         sortType switch
         {
-            SortType.Year => descending ? query.OrderByDescending(x => x.YearRank) : query.OrderBy(x => x.YearRank),
-            SortType.AddedAt => descending
-                ? query.OrderByDescending(x => x.AddedAtRank)
-                : query.OrderBy(x => x.AddedAtRank),
-            SortType.UpdatedAt => descending
-                ? query.OrderByDescending(x => x.UpdatedAtRank)
-                : query.OrderBy(x => x.UpdatedAtRank),
-            SortType.Duration => descending
-                ? query.OrderByDescending(x => x.DurationRank)
-                : query.OrderBy(x => x.DurationRank),
-            SortType.MediaSize => descending
-                ? query.OrderByDescending(x => x.MediaSizeRank)
-                : query.OrderBy(x => x.MediaSizeRank),
-            SortType.VideoQuality => descending
-                ? query.OrderByDescending(x => x.QualityRank)
-                : query.OrderBy(x => x.QualityRank),
-            _ => descending ? query.OrderByDescending(x => x.TitleRank) : query.OrderBy(x => x.TitleRank),
+            SortType.Year => query.ApplyOrderBy(direction, x => x.YearRank),
+            SortType.AddedAt => query.ApplyOrderBy(direction, x => x.AddedAtRank),
+            SortType.UpdatedAt => query.ApplyOrderBy(direction, x => x.UpdatedAtRank),
+            SortType.Duration => query.ApplyOrderBy(direction, x => x.DurationRank),
+            SortType.MediaSize => query.ApplyOrderBy(direction, x => x.MediaSizeRank),
+            SortType.VideoQuality => query.ApplyOrderBy(direction, x => x.QualityRank),
+            _ => query.ApplyOrderBy(direction, x => x.TitleRank),
         };
 }

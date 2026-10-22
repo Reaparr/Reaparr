@@ -28,7 +28,7 @@ public static class MediaNavigationIndexBuilder
 
     public static Task<List<MediaNavigationIndexDTO>> BuildAsync(
         IQueryable<MediaNavigationIndexRow> rows,
-        (SortType Field, bool Descending) sort,
+        Sort sort,
         CancellationToken cancellationToken
     ) =>
         sort.Field switch
@@ -93,17 +93,17 @@ public static class MediaNavigationIndexBuilder
     private static async Task<List<MediaNavigationIndexDTO>> BuildGroupedAsync<TKey>(
         IQueryable<MediaNavigationIndexRow> rows,
         (Expression<Func<MediaNavigationIndexRow, TKey>> Key, Func<TKey, string> Label) bucket,
-        (SortType Field, bool Descending) sort,
+        Sort sort,
         CancellationToken cancellationToken
     )
     {
-        var groups = sort.Descending
+        var groups = sort.Direction == SortDirection.Desc
             ? rows.GroupBy(bucket.Key)
                 .Select(group => new { Key = group.Key, FirstRank = group.Max(row => row.SortRank) })
             : rows.GroupBy(bucket.Key)
                 .Select(group => new { Key = group.Key, FirstRank = group.Min(row => row.SortRank) });
 
-        var positionedGroups = sort.Descending
+        var positionedGroups = sort.Direction == SortDirection.Desc
             ? groups.Select(group => new NavigationGroupResult<TKey>(
                 group.Key,
                 group.FirstRank,
@@ -117,7 +117,7 @@ public static class MediaNavigationIndexBuilder
 
         var materialized = await positionedGroups.ToListAsync(cancellationToken);
         return (
-            sort.Descending
+            sort.Direction == SortDirection.Desc
                 ? materialized.OrderByDescending(group => group.FirstRank)
                 : materialized.OrderBy(group => group.FirstRank)
         )

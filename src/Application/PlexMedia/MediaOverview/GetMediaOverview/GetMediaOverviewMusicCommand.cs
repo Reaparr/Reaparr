@@ -217,7 +217,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
 
     private static Task<List<MediaNavigationIndexDTO>> BuildNavigationIndexesAsync(
         IQueryable<MediaOverviewMusicArtistSnapshot> snapshots,
-        (SortType Field, bool Descending) sort,
+        Sort sort,
         CancellationToken cancellationToken
     )
     {
