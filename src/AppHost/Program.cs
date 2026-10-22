@@ -109,7 +109,8 @@ public class Program
 
     internal static async Task<Result> RunDesktopLifecycleAsync(
         WebApplication app,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        Action<Uri>? openBrowser = null
     )
     {
         var services = app.Services;
@@ -128,17 +129,12 @@ public class Program
             var appRuntimeInfo = services.GetRequiredService<IAppRuntimeInfo>();
             if (appRuntimeInfo.IsDesktopEmbeddedDisabled)
             {
-                var browserUri = ResolveBrowserUri(app);
-                _log.Here()
-                    .Warning(
-                        "Embedded desktop window mode disabled via {EnvVar}. Launching browser-only mode at {Uri}",
-                        EnvKeys.DesktopEmbeddedDisabled,
-                        browserUri
-                    );
+                hostShutdownTask = app.WaitForShutdownAsync(cancellationToken);
+                var browserResult = StartBrowserOnlyMode(app, singleInstanceCoordinator, openBrowser, cancellationToken);
+                if (browserResult.IsFailed)
+                    return browserResult;
 
-                Process.Start(new ProcessStartInfo(browserUri.AbsoluteUri) { UseShellExecute = true });
-
-                await app.WaitForShutdownAsync(cancellationToken);
+                await hostShutdownTask;
                 return Result.Ok();
             }
 
@@ -176,6 +172,37 @@ public class Program
                 await hostShutdownTask;
             }
         }
+    }
+
+    private static Result StartBrowserOnlyMode(
+        WebApplication app,
+        IDesktopSingleInstanceCoordinator coordinator,
+        Action<Uri>? openBrowser,
+        CancellationToken cancellationToken
+    )
+    {
+        var browserUri = ResolveBrowserUri(app);
+        _log.Here()
+            .Warning(
+                "Embedded desktop window mode disabled via {EnvVar}. Launching browser-only mode at {Uri}",
+                EnvKeys.DesktopEmbeddedDisabled,
+                browserUri
+            );
+
+        openBrowser ??= static uri => Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        var listenerResult = coordinator.StartListener(
+            _ =>
+            {
+                openBrowser(browserUri);
+                return Task.FromResult(Result.Ok());
+            },
+            cancellationToken
+        );
+        if (listenerResult.IsFailed)
+            return listenerResult;
+
+        openBrowser(browserUri);
+        return Result.Ok();
     }
 
     private static Uri ResolveBrowserUri(WebApplication app)

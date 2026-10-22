@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -74,13 +75,21 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldStopHostAndReturnFailure_WhenListenerStartupFails()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldStopHostAndReturnFailure_WhenListenerStartupFails(bool embeddedDisabled)
     {
         // Arrange
         var hostProbe = new HostProbe();
         var desktopMode = new Mock<IDesktopMode>(MockBehavior.Strict);
         var coordinator = new Mock<IDesktopSingleInstanceCoordinator>(MockBehavior.Strict);
-        var app = CreateApp(hostProbe, desktopMode.Object, coordinator.Object);
+        var browserRequests = new List<Uri>();
+        await using var app = CreateApp(
+            hostProbe,
+            desktopMode.Object,
+            coordinator.Object,
+            new MockAppRuntimeInfo { IsDesktopEmbeddedDisabled = embeddedDisabled }
+        );
 
         coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true).Verifiable(Times.Once());
         coordinator
@@ -91,7 +100,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Program.RunDesktopLifecycleAsync(app, CancellationToken);
+        var result = await Program.RunDesktopLifecycleAsync(app, CancellationToken, browserRequests.Add);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -100,6 +109,84 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         hostProbe.StopCalls.ShouldBe(1);
         coordinator.Verify();
         desktopMode.Verify(x => x.StartAsync(It.IsAny<CancellationToken>()), Times.Never);
+        browserRequests.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task ShouldReopenBrowserAndStopHost_WhenBrowserOnlyPrimaryReceivesRelaunchSignal()
+    {
+        // Arrange
+        var hostProbe = new HostProbe();
+        var firstOpen = new TaskCompletionSource<Uri>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var nextOpen = new TaskCompletionSource<Uri>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var browserRequests = new ConcurrentQueue<Uri>();
+        var deadline = TimeSpan.FromSeconds(10);
+        var cancellationToken = CancellationToken;
+        var desktopMode = new Mock<IDesktopMode>(MockBehavior.Strict);
+        var coordinator = new Mock<IDesktopSingleInstanceCoordinator>(MockBehavior.Strict);
+        using var pipe = new DesktopSingleInstanceCoordinator(
+            Log,
+            new MockAppRuntimeInfo(),
+            $"Reaparr.Desktop.Browser.Tests.{Guid.NewGuid():N}"
+        );
+        await using var app = CreateApp(
+            hostProbe,
+            desktopMode.Object,
+            coordinator.Object,
+            new MockAppRuntimeInfo { IsDesktopEmbeddedDisabled = true, IsDevelopmentEnvironment = false }
+        );
+
+        coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true).Verifiable(Times.Once());
+        coordinator
+            .Setup(x => x.StartListener(It.IsAny<Func<CancellationToken, Task<Result>>>(), cancellationToken))
+            .Returns((Func<CancellationToken, Task<Result>> onSignal, CancellationToken token) =>
+                pipe.StartListener(onSignal, token)
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        var lifecycle = Program.RunDesktopLifecycleAsync(
+            app,
+            cancellationToken,
+            uri =>
+            {
+                browserRequests.Enqueue(uri);
+                if (!firstOpen.TrySetResult(uri))
+                    nextOpen.TrySetResult(uri);
+            }
+        );
+        Result result;
+        try
+        {
+            var initialUri = await firstOpen.Task.WaitAsync(deadline, cancellationToken);
+            var expectedUri = new Uri(app.Urls.Single());
+            initialUri.ShouldBe(expectedUri);
+            browserRequests.ToArray().ShouldBe([expectedUri]);
+            nextOpen.Task.IsCompleted.ShouldBeFalse();
+            var signalResult = await pipe.SignalPrimaryInstanceAsync(cancellationToken);
+            var reopenedUri = await nextOpen.Task.WaitAsync(deadline, cancellationToken);
+
+            // Assert
+            signalResult.IsSuccess.ShouldBeTrue();
+            signalResult.Errors.Count.ShouldBe(0);
+            reopenedUri.ShouldBe(expectedUri);
+            browserRequests.ToArray().ShouldBe([expectedUri, expectedUri]);
+            lifecycle.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            app.Lifetime.StopApplication();
+            result = await lifecycle.WaitAsync(deadline, cancellationToken);
+        }
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        hostProbe.StartCalls.ShouldBe(1);
+        hostProbe.StopCalls.ShouldBe(1);
+        coordinator.Verify();
+        desktopMode.Verify(x => x.StartAsync(It.IsAny<CancellationToken>()), Times.Never);
+        desktopMode.Verify(x => x.ShowMainWindowAsync(It.IsAny<CancellationToken>()), Times.Never);
+        desktopMode.Verify(x => x.WaitForExitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -199,7 +286,8 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
     private static WebApplication CreateApp(
         HostProbe hostProbe,
         IDesktopMode desktopMode,
-        IDesktopSingleInstanceCoordinator coordinator
+        IDesktopSingleInstanceCoordinator coordinator,
+        IAppRuntimeInfo? appRuntimeInfo = null
     )
     {
         var builder = WebApplication.CreateSlimBuilder();
@@ -207,7 +295,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         builder.Services.AddSingleton<IHostedService>(hostProbe);
         builder.Services.AddSingleton(desktopMode);
         builder.Services.AddSingleton(coordinator);
-        builder.Services.AddSingleton<IAppRuntimeInfo>(new MockAppRuntimeInfo());
+        builder.Services.AddSingleton<IAppRuntimeInfo>(appRuntimeInfo ?? new MockAppRuntimeInfo());
         return builder.Build();
     }
 
