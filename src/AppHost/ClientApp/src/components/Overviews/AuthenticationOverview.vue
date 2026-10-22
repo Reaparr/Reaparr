@@ -5,6 +5,7 @@
 		:text="$t('help.settings.accounts.app-username.text')">
 		<q-input
 			v-model="authStore.username"
+			:disable="loading"
 			:rules="getUsernameRules"
 			color="red"
 			full-width
@@ -23,6 +24,7 @@
 		<PasswordInputField
 			v-model="authStore.password"
 			v-model:has-focus="passwordInputFocus"
+			:disable="loading"
 			hide-mask-button
 			show-strength
 			name="reaparr-password"
@@ -44,6 +46,7 @@
 		:label="$t('help.settings.accounts.app-confirm-password.label')">
 		<PasswordInputField
 			v-model="authStore.confirmPassword"
+			:disable="loading"
 			hide-mask-button
 			cy="app-confirm-password-input"
 			@blur="confirmPasswordLostFocus = true" />
@@ -70,7 +73,7 @@
 			:is-validated="isValid"
 			:loading="loading"
 			:label="$t('general.commands.save')"
-			:disabled="!authStore.canUpdateCredentials"
+			:disabled="loading || !authStore.canUpdateCredentials"
 			@click="onUpdateCredentials" />
 	</HelpRow>
 </template>
@@ -79,13 +82,14 @@
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthenticationStore } from '@store';
-import { set } from '@vueuse/core';
+import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
+import { finalize } from 'rxjs';
 
 const { t } = useI18n();
 const authStore = useAuthenticationStore();
 
-const loading = ref(false);
+const loading = ref(true);
 const isValid = ref(false);
 const passwordInputFocus = ref(false);
 const confirmPasswordLostFocus = ref(false);
@@ -98,21 +102,26 @@ const getUsernameRules = computed(() => [
 ]);
 
 function onUpdateCredentials() {
+	if (get(loading) || !authStore.canUpdateCredentials) return;
 	set(loading, true);
 	set(isValid, false);
-	useSubscription(authStore.updateCredentials().subscribe({
+	useSubscription(authStore.updateCredentials().pipe(
+		finalize(() => set(loading, false)),
+	).subscribe({
 		next: (result) => {
-			set(loading, false);
 			set(isValid, result.isSuccess);
 		},
 		error: () => {
-			set(loading, false);
 			set(isValid, false);
 		},
 	}));
 }
 
 onMounted(() =>
-	useSubscription(authStore.refreshCredentials().subscribe()),
+	useSubscription(authStore.refreshCredentials().pipe(
+		finalize(() => set(loading, false)),
+	).subscribe({
+		error: () => set(isValid, false),
+	})),
 );
 </script>
