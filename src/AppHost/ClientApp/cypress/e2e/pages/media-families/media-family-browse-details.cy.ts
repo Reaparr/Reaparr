@@ -1,8 +1,9 @@
 import { headers, route } from '@fixtures';
 import { generatePlexMedia, generateResultDTO, type MockConfig } from '@mock';
 import { PlexLibraryPaths, PlexMediaPaths, SettingsPaths } from '@api/api-paths';
-import { MediaMetaDataTypes, MediaSortField } from '@enums';
-import { AudioQuality, PlexMediaType, VideoQuality, ViewMode, type PlexMediaDTO, type PlexMediaMetadataDTO, type PlexMediaStatisticsDTO, type SettingsModelDTO } from '@dto';
+import { MediaMetaDataTypes } from '@enums';
+import { AudioQuality, PlexMediaType, SortType, VideoQuality, ViewMode, type PlexMediaDTO, type PlexMediaMetadataDTO, type PlexMediaStatisticsDTO, type SettingsModelDTO } from '@dto';
+import { getFlexSortField } from '@composables';
 
 const families = [
 	{ type: PlexMediaType.MusicArtist, path: 'music', name: 'Music', viewField: 'musicArtistViewMode' },
@@ -197,7 +198,7 @@ for (const family of families) {
 			cy.get('.media-poster-card').should('have.length', 2).first().should('contain.text', 'Acoustic collection');
 			assertViewPersistence(family);
 			cy.getCy('media-overview-sort-btn').click();
-			cy.getCy(`sort-option-${MediaSortField.Year}-btn`).click();
+			cy.getCy(`sort-option-${getFlexSortField(SortType.Year)}-btn`).click();
 			cy.get('.media-poster-card').first().should('contain.text', 'Synth collection');
 			cy.getCy('media-overview-filter-btn').filter(':visible').click();
 			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.ComparisonState}`).should(family.type === PlexMediaType.MusicArtist ? 'be.visible' : 'not.exist');

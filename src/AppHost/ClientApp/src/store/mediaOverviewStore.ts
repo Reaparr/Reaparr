@@ -12,17 +12,21 @@ import {
 	PlexMediaType,
 	ViewMode,
 	type LibraryComparisonCompletedDTO,
+	SortType,
+	SortDirection,
 } from '@dto';
 import type { IMediaOverviewSort } from '@composables/event-bus';
-import { MediaSortField, SortDirection } from '@enums';
 import { type IMetaDataMediaFilter, type ISelection, type ISortOption, StoreNames } from '@interfaces';
 import { plexLibraryApi, plexMediaApi } from '@api';
 import { defaultIfEmpty, map, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { BehaviorSubject, defer, finalize, forkJoin, type Observable, of, Subject } from 'rxjs';
 import { useLibraryStore, useSettingsStore } from '@store';
 import {
-	buildFlexSortDsl,
+	createDefaultMediaOverviewSort,
 	getVideoQualityColor,
+	parseFlexSortDsl,
+	serializeFlexSortDsl,
+	toggleMediaOverviewSort,
 	translateVideoQuality,
 } from '@composables';
 import { useSubscription } from '@vueuse/rxjs';
@@ -69,7 +73,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		pageSize: 100,
 		totalCount: 0,
 		itemsLength: 0,
-		sortedState: { field: MediaSortField.Title, sort: SortDirection.Asc },
+		sortedState: createDefaultMediaOverviewSort(),
 		scrollDict: new Map<string, number>([['#', 0]]),
 		selection: { keys: [], allSelected: false, indexKey: 0 },
 		downloadButtonVisible: false,
@@ -250,7 +254,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 					if (!get(getters.getSupportsVideoQuality)) {
 						state.metadata.qualityId = 0;
 						set(qualityIdQuery, undefined);
-						if (state.sortedState.field === MediaSortField.Quality) {
+						if (state.sortedState.field === SortType.VideoQuality) {
 							state.sortedState = cloneDeep(defaultState.sortedState);
 							set(sortQuery, undefined);
 						}
@@ -502,7 +506,6 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			const qualityId = Number(get(qualityIdQuery));
 			const comparisonState = String(get(comparisonStateQuery)).trim();
 			const scrollIndex = Number(get(scrollIndexQuery));
-			const sort = String(get(sortQuery)).trim();
 
 			if (search) {
 				state.filterQuery = search;
@@ -535,14 +538,10 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				state.currentScrollIndex = scrollIndex;
 			}
 
-			const [sortField, sortDirection] = sort.split(':');
-			const validSortFields = Object.values(MediaSortField);
-			const validSortDirections = [SortDirection.Asc, SortDirection.Desc];
-			if (validSortFields.includes(sortField as MediaSortField) && validSortDirections.includes(sortDirection as SortDirection)) {
-				state.sortedState = {
-					field: sortField as MediaSortField,
-					sort: sortDirection as SortDirection,
-				};
+			const routeSort = get(sortQuery);
+			const parsedSort = parseFlexSortDsl(typeof routeSort === 'string' ? routeSort.trim() || undefined : undefined);
+			if (parsedSort) {
+				state.sortedState = parsedSort;
 			}
 		},
 		changeAllMediaOverviewType(mediaType: PlexMediaType) {
@@ -578,7 +577,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			} as ISelection);
 		},
 		clearSort() {
-			state.sortedState = { field: MediaSortField.Title, sort: SortDirection.Asc };
+			state.sortedState = createDefaultMediaOverviewSort();
 			set(sortQuery, undefined);
 			return actions.refreshMediaData();
 		},
@@ -607,16 +606,12 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		clearFilter(): Observable<PlexMediaStatisticsDTO | null> {
 			return actions.setFilterQuery('');
 		},
-		toggleSortMedia(field: MediaSortField) {
-			if (state.sortedState.field === field) {
-				state.sortedState.sort = state.sortedState.sort === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
-			} else {
-				state.sortedState = { field, sort: SortDirection.Asc };
-			}
+		toggleSortMedia(field: SortType) {
+			state.sortedState = toggleMediaOverviewSort(state.sortedState, field);
 
 			// If default sort then undefined
 			const sort = get(getters.getSortDSL);
-			set(sortQuery, sort !== 'sortIndex:asc' ? sort : undefined);
+			set(sortQuery, sort !== serializeFlexSortDsl(createDefaultMediaOverviewSort()) ? sort : undefined);
 			useSubscription(actions.refreshMediaData().subscribe());
 		},
 		$reset() {
@@ -904,30 +899,36 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			if (state.sortedState.sort === SortDirection.NoSort) {
 				return false;
 			}
-			return !(state.sortedState.field === MediaSortField.Title && state.sortedState.sort === SortDirection.Asc);
+			return !(state.sortedState.field === SortType.Title && state.sortedState.sort === SortDirection.Asc);
 		}),
-		getSortOptions: (): ISortOption[] => {
+		getSortOptions: (
+			supportedFields?: readonly SortType[],
+			activeSort: IMediaOverviewSort = state.sortedState,
+		): ISortOption[] => {
 			const { $i18n } = useNuxtApp();
 			const { t } = $i18n;
 			const options: ISortOption[] = [
-				{ field: MediaSortField.Title, label: t('general.sort.title'), direction: SortDirection.NoSort },
-				{ field: MediaSortField.Year, label: t('general.sort.year'), direction: SortDirection.NoSort },
-				{ field: MediaSortField.AddedAt, label: t('general.sort.added-at'), direction: SortDirection.NoSort },
-				{ field: MediaSortField.UpdatedAt, label: t('general.sort.updated-at'), direction: SortDirection.NoSort },
-				{ field: MediaSortField.Duration, label: t('general.sort.duration'), direction: SortDirection.NoSort },
-				{ field: MediaSortField.MediaSize, label: t('general.sort.size'), direction: SortDirection.NoSort },
+				{ field: SortType.Title, label: t('general.sort.title'), direction: SortDirection.NoSort },
+				{ field: SortType.Year, label: t('general.sort.year'), direction: SortDirection.NoSort },
+				{ field: SortType.AddedAt, label: t('general.sort.added-at'), direction: SortDirection.NoSort },
+				{ field: SortType.UpdatedAt, label: t('general.sort.updated-at'), direction: SortDirection.NoSort },
+				{ field: SortType.Duration, label: t('general.sort.duration'), direction: SortDirection.NoSort },
+				{ field: SortType.MediaSize, label: t('general.sort.size'), direction: SortDirection.NoSort },
 			];
 			if (get(getters.getSupportsVideoQuality)) {
-				options.push({ field: MediaSortField.Quality, label: t('general.sort.quality'), direction: SortDirection.NoSort });
+				options.push({ field: SortType.VideoQuality, label: t('general.sort.quality'), direction: SortDirection.NoSort });
 			}
 
-			for (const option of options) {
-				if (option.field === state.sortedState.field) {
-					option.direction = state.sortedState.sort;
+			const visibleOptions = supportedFields === undefined
+				? options
+				: options.filter((option) => supportedFields.includes(option.field));
+			for (const option of visibleOptions) {
+				if (option.field === activeSort.field) {
+					option.direction = activeSort.sort;
 				}
 			}
 
-			return options;
+			return visibleOptions;
 		},
 		getGenres: computed(() => sortBy(
 			state.metadataList.genres.filter((x) => state.availableGenreIds.includes(x.id)),
@@ -1019,12 +1020,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			return result;
 		}),
 		getSortDSL: computed((): string => {
-			return buildFlexSortDsl([
-				{
-					field: state.sortedState.field,
-					direction: state.sortedState.sort === SortDirection.Desc ? 'desc' : 'asc',
-				},
-			]) ?? '';
+			return serializeFlexSortDsl(state.sortedState);
 		}),
 	};
 

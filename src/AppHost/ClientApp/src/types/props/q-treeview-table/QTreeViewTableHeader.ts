@@ -1,9 +1,9 @@
-import type { MediaSortField, SortDirection } from '@enums';
+import type { SortDirection, SortType } from '@dto';
 
 export interface QTreeViewTableHeader {
 	label: string;
 	field: string;
-	sortField?: MediaSortField;
+	sortField?: SortType;
 	width?: number;
 	type?: 'title' | 'duration' | 'file-size' | 'file-speed' | 'date' | 'actions' | 'datetime' | 'percentage' | 'index' | 'media-quality';
 	sortable?: boolean;

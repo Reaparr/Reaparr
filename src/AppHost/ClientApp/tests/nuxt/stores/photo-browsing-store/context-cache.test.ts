@@ -7,17 +7,18 @@ import { generateLibrarySyncJobQueue, generatePlexAccount, generatePlexLibrary, 
 import { plexPhotoApi } from '@api';
 import { useAccountStore, useLibraryStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
 import {
-	LibrarySyncJobStatus, PhotoAssetKind, PhotoItemKind, PlexMediaType,
+	LibrarySyncJobStatus, PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType,
 	type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO,
 	type PhotoFolderBrowseDTO, type PhotoFolderChildrenDTO,
 } from '@dto';
 import type { ResultDTO } from '@interfaces';
-import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
 
 const owner = {};
 const route = (overrides: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({
-	mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: 'title:asc', ...overrides,
+	mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort(), ...overrides,
 });
+const titleDescending = toggleMediaOverviewSort(createDefaultMediaOverviewSort(), SortType.Title);
 const asset = (id: number, libraryId = 7): PhotoAssetBrowseDTO => ({
 	id, plexServerId: 1, plexLibraryId: libraryId, plexServerName: 'Server', plexLibraryTitle: 'Photos', title: `Asset ${id}`,
 	assetKind: PhotoAssetKind.Image, container: 'jpg', originalFilename: `${id}.jpg`, hasThumbnail: false,
@@ -118,10 +119,10 @@ describe('PhotoBrowsingStore - context cache', () => {
 	test('Should isolate identical asset IDs by library and sort while reusing each visited context', async () => {
 		// Arrange
 		const request = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockImplementation((query) =>
-			of(generateResultDTO({ ...assetsPage(query?.plexLibraryId ?? 7), items: [asset(query?.sort === 'title:desc' ? 2 : 1, query?.plexLibraryId ?? 7)] })));
+			of(generateResultDTO({ ...assetsPage(query?.plexLibraryId ?? 7), items: [asset(query?.sort === 'sortIndex:desc' ? 2 : 1, query?.plexLibraryId ?? 7)] })));
 		const first = route({ view: 'assets' });
 		const otherLibrary = route({ view: 'assets', libraryId: 8 });
-		const descending = route({ view: 'assets', sort: 'title:desc' });
+		const descending = route({ view: 'assets', sort: titleDescending });
 		await activate(first);
 		await activate(otherLibrary);
 		await activate(descending);

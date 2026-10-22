@@ -2241,6 +2241,28 @@ export interface SonarrIntegrationDTO {
   url: string;
 }
 
+export interface Sort {
+  direction: SortDirection;
+  field: SortType;
+}
+
+export enum SortDirection {
+  Asc = "Asc",
+  Desc = "Desc",
+  NoSort = "NoSort",
+}
+
+export enum SortType {
+  Title = "Title",
+  Year = "Year",
+  AddedAt = "AddedAt",
+  UpdatedAt = "UpdatedAt",
+  Duration = "Duration",
+  MediaSize = "MediaSize",
+  VideoQuality = "VideoQuality",
+  ComparisonState = "ComparisonState",
+}
+
 export interface SuccessDTO {
   message: string;
   metadata: Record<string, any>;

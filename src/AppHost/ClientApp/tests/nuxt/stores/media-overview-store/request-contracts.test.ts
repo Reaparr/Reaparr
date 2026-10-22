@@ -13,11 +13,12 @@ import { useMediaOverviewStore, useSettingsStore } from '@store';
 import {
 	PlexMediaComparisonState,
 	PlexMediaType,
+	SortDirection,
+	SortType,
 	type PlexLibraryDTO,
 	type PlexMediaSlimDTO,
 	type PlexMediaStatisticsDTO,
 } from '@dto';
-import { MediaSortField, SortDirection } from '@enums/mediaSortField';
 
 describe('MediaOverviewStore - Request Contracts', () => {
 	let { mock } = baseVars();
@@ -157,7 +158,7 @@ describe('MediaOverviewStore - Request Contracts', () => {
 	test('Should send the current sort DSL in media request params', async () => {
 		// Arrange
 		const store = useMediaOverviewStore();
-		store.sortedState = { field: MediaSortField.Year, sort: SortDirection.Desc };
+		store.sortedState = { field: SortType.Year, sort: SortDirection.Desc };
 		mockMediaResponse();
 
 		// Act
@@ -168,24 +169,27 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		expect(lastMediaRequest().params.sort).toBe('year:desc');
 	});
 
-	test('Should send the videoQuality sort token when quality sorting is selected and restored from the route', async () => {
+	test.each([
+		{ field: SortType.VideoQuality, token: 'videoQuality' },
+		{ field: SortType.ComparisonState, token: 'comparisonState' },
+	])('Should preserve $token sorting when restored from the route and toggled', async ({ field, token }) => {
 		// Arrange
 		const sortQuery = useRouteQuery<string>('sort', '');
-		set(sortQuery, 'videoQuality:desc');
+		set(sortQuery, `${token}:desc`);
 		const store = useMediaOverviewStore();
 		store.applyRouteQueryState();
 		const restoredSort = { ...store.sortedState };
 		mockMediaResponse();
 
 		// Act
-		store.toggleSortMedia(MediaSortField.Quality);
+		store.toggleSortMedia(field);
 		await flushPromises();
 
 		// Assert
-		expect(restoredSort).toEqual({ field: MediaSortField.Quality, sort: SortDirection.Desc });
-		expect(store.sortedState).toEqual({ field: MediaSortField.Quality, sort: SortDirection.Asc });
-		expect(lastMediaRequest().params.sort).toBe('videoQuality:asc');
-		expect(get(sortQuery)).toBe('videoQuality:asc');
+		expect(restoredSort).toEqual({ field, sort: SortDirection.Desc });
+		expect(store.sortedState).toEqual({ field, sort: SortDirection.Asc });
+		expect(lastMediaRequest().params.sort).toBe(`${token}:asc`);
+		expect(get(sortQuery)).toBe(`${token}:asc`);
 	});
 
 	test('Should preserve load failure state when media response fails', async () => {

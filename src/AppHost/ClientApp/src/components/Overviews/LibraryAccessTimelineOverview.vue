@@ -89,6 +89,8 @@ import { Subject } from 'rxjs';
 import { orderBy } from 'lodash-es';
 import { useLibraryAccessTimelineStore, useLibraryStore, useServerStore } from '@store';
 import type { LibraryAccessTimelineZoomPreset } from '@store';
+import { SortDirection } from '@dto';
+import { getSortOrder } from '@composables';
 
 const { t } = useI18n();
 const serverStore = useServerStore();
@@ -130,7 +132,7 @@ const serverOptions = computed(() => orderBy(
 		value: server.id,
 	})),
 	[(option) => option.label.toLocaleLowerCase(), (option) => option.value],
-	['asc', 'asc'],
+	[getSortOrder(SortDirection.Asc), getSortOrder(SortDirection.Asc)],
 ));
 
 const libraryOptions = computed(() => {
@@ -150,7 +152,7 @@ const libraryOptions = computed(() => {
 			value: library.id,
 		})),
 		[(option) => option.label.toLocaleLowerCase(), (option) => option.value],
-		['asc', 'asc'],
+		[getSortOrder(SortDirection.Asc), getSortOrder(SortDirection.Asc)],
 	);
 });
 

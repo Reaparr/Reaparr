@@ -4,11 +4,12 @@ import { reactive, computed, toRefs } from 'vue';
 import { tap, map } from 'rxjs/operators';
 import type { Observable } from 'rxjs';
 import { throwError } from 'rxjs';
-import { type FolderPathDTO, FolderType, PlexMediaType } from '@dto';
+import { type FolderPathDTO, FolderType, PlexMediaType, SortDirection } from '@dto';
 import { StoreNames, type ISetupResult, type IFolderPathGroup, type ResultDTO } from '@interfaces';
 import { folderPathApi } from '@api';
 import { useI18n } from 'vue-i18n';
 import { cloneDeep, orderBy } from 'lodash-es';
+import { getSortOrder } from '@composables';
 
 interface IFolderPathStoreState {
 	folderPaths: FolderPathDTO[];
@@ -184,7 +185,7 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 				paths: orderBy(
 					state.folderPaths.filter((x) => x.folderType === definition.folderType),
 					['isDefault'],
-					['desc'],
+					getSortOrder(SortDirection.Desc),
 				),
 				isFolderDeletable: true,
 				isFolderNameEditable: true,

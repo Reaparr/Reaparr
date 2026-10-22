@@ -114,7 +114,7 @@
 
 <script setup lang="ts">
 import Log from 'consola';
-import { type PlexLibraryDTO, PlexMediaType } from '@dto';
+import { SortDirection, type PlexLibraryDTO, PlexMediaType } from '@dto';
 import { useSubscription } from '@vueuse/rxjs';
 import { tap } from 'rxjs/operators';
 import {
@@ -125,6 +125,7 @@ import {
 	useAccountStore,
 } from '@store';
 import { orderBy } from 'lodash-es';
+import { getSortOrder } from '@composables';
 import { useI18n } from '#imports';
 
 const { t } = useI18n();
@@ -151,7 +152,7 @@ function filterLibraries(plexServerId: number): PlexLibraryDTO[] {
 	return orderBy(
 		libraryStore.getLibrariesByServerId(plexServerId),
 		[(library) => getLibraryTypeSortOrder(library.type), (library) => libraryStore.getLibraryName(library.id).toLocaleLowerCase()],
-		['asc', 'asc'],
+		[getSortOrder(SortDirection.Asc), getSortOrder(SortDirection.Asc)],
 	);
 }
 

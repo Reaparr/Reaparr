@@ -7,6 +7,7 @@ import { plexPhotoApi } from '@api';
 import { PhotoAssetKind, PlexMediaType, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PlexLibraryDTO } from '@dto';
 import { useLibraryStore, useMediaStore, usePhotoBrowsingStore } from '@store';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort } from '@composables';
 
 describe('PhotoBrowsingStore - bounded viewer sequence', () => {
 	const owner = {};
@@ -18,7 +19,7 @@ describe('PhotoBrowsingStore - bounded viewer sequence', () => {
 	});
 
 	const route = (partial: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({
-		mode: 'library', libraryId: 7, view: 'assets', folderId: null, searchQuery: '', sort: 'title:asc', ...partial,
+		mode: 'library', libraryId: 7, view: 'assets', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort(), ...partial,
 	});
 	const asset = (id: number, assetKind = PhotoAssetKind.Image): PhotoAssetBrowseDTO => ({
 		id, plexServerId: 1, plexLibraryId: 7, plexServerName: 'Server', plexLibraryTitle: 'Photos', title: `Asset ${id}`,

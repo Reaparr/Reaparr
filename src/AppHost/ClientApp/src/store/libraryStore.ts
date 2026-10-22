@@ -14,7 +14,7 @@ import {
 } from '@dto';
 import { StoreNames, type IServerStats, type ISetupResult } from '@interfaces';
 import { plexLibraryApi } from '@api';
-import { RefreshDataType } from '@dto';
+import { RefreshDataType, SortDirection } from '@dto';
 import { LibrarySyncWaitingReason } from '@enums';
 import {
 	useBackgroundJobsStore,
@@ -26,6 +26,7 @@ import {
 } from '@store';
 import { cloneDeep, orderBy } from 'lodash-es';
 import Log from 'consola';
+import { getSortOrder } from '@composables';
 
 interface ILibraryStoreState {
 	libraries: PlexLibraryDTO[];
@@ -262,7 +263,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 					library.plexServerId === plexServerId
 					&& (library.type === PlexMediaType.Movie || library.type === PlexMediaType.TvShow)),
 				[(library) => library.type === PlexMediaType.Movie ? 0 : 1, (library) => getters.getLibraryName(library.id).toLocaleLowerCase()],
-				['asc', 'asc'],
+				getSortOrder(SortDirection.Asc),
 			);
 			let mediaSize = 0;
 			let movieCount = 0;

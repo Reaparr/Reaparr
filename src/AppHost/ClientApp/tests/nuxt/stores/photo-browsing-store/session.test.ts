@@ -9,6 +9,7 @@ import type { PhotoAlbumBrowseDTO, PhotoAlbumPageDTO, PlexLibraryDTO, RefreshDat
 import { useLibraryStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
 import type { ResultDTO } from '@interfaces';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort } from '@composables';
 
 describe('PhotoBrowsingStore - photo session lifecycle', () => {
 	const owner = {};
@@ -19,7 +20,7 @@ describe('PhotoBrowsingStore - photo session lifecycle', () => {
 		vi.restoreAllMocks();
 	});
 
-	const route: IPhotoBrowseActivation = { mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: 'title:asc' };
+const route: IPhotoBrowseActivation = { mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort() };
 
 	test('preserves selection while navigating within Photos and clears it only when leaving Photos', () => {
 		const store = usePhotoBrowsingStore();

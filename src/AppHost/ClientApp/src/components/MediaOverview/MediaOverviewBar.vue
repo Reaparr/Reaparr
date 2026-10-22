@@ -96,21 +96,21 @@
 						<q-list>
 							<!--	Clear Sort	-->
 							<q-item
-								v-if="isSorted && !photoMode"
+								v-if="isSorted"
 								clickable
-								cy="sort-clear-btn"
+								data-cy="sort-clear-btn"
 								@click="clearSort()">
 								<q-item-section avatar>
 									<q-icon name="mdi-sort-variant-remove" />
 								</q-item-section>
 								<q-item-section>{{ $t('general.sort.clear') }}</q-item-section>
 							</q-item>
-							<q-separator v-if="isSorted && !photoMode" />
+							<q-separator v-if="isSorted" />
 							<!--	Sort options	-->
 							<q-item
 								v-for="option in sortOptions"
 								:key="option.field"
-								:data-cy="`sort-option-${option.field}-btn`"
+								:data-cy="`sort-option-${getFlexSortField(option.field)}-btn`"
 								clickable
 								style="min-width: 200px"
 								@click="changeSort(option.field)">
@@ -251,22 +251,22 @@
 								self="top right">
 								<q-list style="min-width: 220px">
 									<q-item
-										v-if="isSorted && !photoMode"
+										v-if="isSorted"
 										v-close-popup
 										clickable
-										cy="sort-clear-btn"
+										data-cy="sort-clear-btn"
 										@click="clearSort()">
 										<q-item-section avatar>
 											<q-icon name="mdi-sort-variant-remove" />
 										</q-item-section>
 										<q-item-section>{{ $t('general.sort.clear') }}</q-item-section>
 									</q-item>
-									<q-separator v-if="isSorted && !photoMode" />
+									<q-separator v-if="isSorted" />
 									<q-item
 										v-for="option in sortOptions"
 										:key="option.field"
 										v-close-popup
-										:data-cy="`sort-option-${option.field}-btn`"
+										:data-cy="`sort-option-${getFlexSortField(option.field)}-btn`"
 										clickable
 										@click="changeSort(option.field)">
 										<q-item-section avatar>
@@ -352,25 +352,19 @@
 
 <script lang="ts" setup>
 import type { PlexMediaDTO } from '@dto';
-import { PlexMediaType, ViewMode } from '@dto';
-import { SortDirection } from '@enums';
-import type { MediaSortField } from '@enums';
-import type { IMediaOverviewBarActions } from '@interfaces';
+import { PlexMediaType, SortDirection, SortType, ViewMode } from '@dto';
+import type { IMediaOverviewBarActions, ISortOption } from '@interfaces';
+import type { IMediaOverviewSort } from '@composables/event-bus';
+import { MEDIA_OVERVIEW_SORT_FIELDS, createDefaultMediaOverviewSort, getFlexSortField, toggleMediaOverviewSort } from '@composables';
 import { useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
 import { useLibraryStore, useMediaOverviewStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
-import type { PhotoBrowseSort, PhotoBrowseView } from '@/store/photoBrowsingStore';
+import type { PhotoBrowseView } from '@/store/photoBrowsingStore';
 import { useSubscription } from '@vueuse/rxjs';
 import { get } from '@vueuse/core';
 
 type ViewOption = {
 	label: string;
 	viewMode: ViewMode | PhotoBrowseView;
-};
-
-type SortOption = {
-	field: MediaSortField | 'title';
-	label: string;
-	direction: SortDirection;
 };
 
 const mediaOverviewStore = useMediaOverviewStore();
@@ -397,7 +391,7 @@ const emit = defineEmits<{
 	(e: 'action', payload: IMediaOverviewBarActions): void;
 	(e: 'photo-view', value: PhotoBrowseView): void;
 	(e: 'photo-search', value: string): void;
-	(e: 'photo-sort', value: PhotoBrowseSort): void;
+	(e: 'photo-sort', value: IMediaOverviewSort): void;
 	(e: 'photo-download' | 'photo-clear-selection'): void;
 	(e: 'photo-family-change', value: PlexMediaType): void;
 }>();
@@ -416,9 +410,12 @@ const showClearSelectionButton = computed(() => props.photoMode && photoStore.se
 const showSelectionButton = computed(() => !props.photoMode && mediaOverviewStore.showSelectionButton);
 const showRefreshButton = computed(() => !props.detailMode && (props.photoMode ? props.libraryId > 0 : !mediaOverviewStore.allMediaMode));
 const showMediaOptionsButton = computed(() => !props.photoMode && !props.detailMode && mediaOverviewStore.allMediaMode);
-const isSorted = computed(() => props.photoMode
-	? photoStore.sort === 'title:desc'
-	: mediaOverviewStore.getIsSorted);
+const isSorted = computed(() => {
+	if (props.photoMode) {
+		return photoStore.sort.field !== SortType.Title || photoStore.sort.sort === SortDirection.Desc;
+	}
+	return mediaOverviewStore.getIsSorted;
+});
 
 function isSelected(viewMode: ViewMode | PhotoBrowseView): boolean {
 	if (viewMode === ViewMode.Poster || viewMode === ViewMode.Table) {
@@ -433,22 +430,23 @@ const activeSortIcon = computed((): string => {
 	if (!get(isSorted)) {
 		return 'mdi-sort';
 	}
-	if (props.photoMode) {
-		return 'mdi-sort-ascending';
-	}
-	const sort = mediaOverviewStore.getActiveSort.sort;
+	const sort = props.photoMode ? photoStore.sort.sort : mediaOverviewStore.getActiveSort.sort;
 	return sort === SortDirection.Asc ? 'mdi-sort-descending' : 'mdi-sort-ascending';
 });
 
-const sortOptions = computed((): SortOption[] => {
-	if (props.photoMode) {
-		return [{
-			field: 'title',
-			label: t('general.sort.title'),
-			direction: photoStore.sort === 'title:asc' ? SortDirection.Asc : SortDirection.Desc,
-		}];
+const sortOptions = computed((): ISortOption[] => {
+	let supportedFields: readonly SortType[] | undefined;
+	if (!props.photoMode) {
+		supportedFields = undefined;
+	} else if (photoStore.searchQuery.trim() || photoStore.view !== 'folders') {
+		supportedFields = MEDIA_OVERVIEW_SORT_FIELDS;
+	} else {
+		supportedFields = [SortType.Title];
 	}
-	return mediaOverviewStore.getSortOptions();
+	return mediaOverviewStore.getSortOptions(
+		supportedFields,
+		props.photoMode ? photoStore.sort : undefined,
+	);
 });
 
 const viewOptions = computed((): ViewOption[] => {
@@ -486,17 +484,19 @@ function download(): void {
 }
 
 function clearSort(): void {
-	if (!props.photoMode) {
-		useSubscription(mediaOverviewStore.clearSort().subscribe());
-	}
-}
-
-function changeSort(field: MediaSortField | 'title'): void {
 	if (props.photoMode) {
-		emit('photo-sort', photoStore.sort === 'title:asc' ? 'title:desc' : 'title:asc');
+		emit('photo-sort', createDefaultMediaOverviewSort());
 		return;
 	}
-	mediaOverviewStore.toggleSortMedia(field as MediaSortField);
+	useSubscription(mediaOverviewStore.clearSort().subscribe());
+}
+
+function changeSort(field: SortType): void {
+	if (props.photoMode) {
+		emit('photo-sort', toggleMediaOverviewSort(photoStore.sort, field));
+		return;
+	}
+	mediaOverviewStore.toggleSortMedia(field);
 }
 
 function changeView(viewMode: ViewMode | PhotoBrowseView): void {

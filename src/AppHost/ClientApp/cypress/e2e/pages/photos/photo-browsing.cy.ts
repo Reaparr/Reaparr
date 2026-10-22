@@ -45,7 +45,7 @@ function setupPhotoApi(assets: PhotoAssetBrowseDTO[] = [asset]) {
 	const pageReply = (items: PhotoAssetBrowseDTO[], request: { url: string }) => {
 		const query = new URL(request.url).searchParams;
 		const page = Number(query.get('page') ?? 1);
-		const sorted = query.get('sort') === 'title:desc' ? [...items].reverse() : items;
+		const sorted = query.get('sort')?.endsWith(':desc') ? [...items].reverse() : items;
 		return generateResultDTO({
 			items: sorted.slice((page - 1) * 100, page * 100), page, pageSize: 100,
 			totalCount: items.length, totalBytes: items.reduce((total, item) => total + item.size, 0),
@@ -168,8 +168,10 @@ describe('Photos browsing', () => {
 	it('returns to the originating aggregate state and searches globally from an album', () => {
 		setupPage();
 		setupPhotoApi();
-		cy.visit(route('/photos?sort=title:desc'));
-		cy.wait('@photoAlbums');
+		cy.visit(route('/photos?sort=sortIndex:desc'));
+		cy.wait('@photoAlbums').its('request.url').should((url) => {
+			expect(new URL(url).searchParams.get('sort')).to.equal('sortIndex:desc');
+		});
 		cy.getCy('media-overview-bar-header').click();
 		cy.getCy('media-overview-type-selector').filter(':visible').should('be.visible');
 		cy.getCy(`media-overview-type-${PlexMediaType.Movie}`).filter(':visible').should('be.visible');
@@ -180,7 +182,7 @@ describe('Photos browsing', () => {
 		cy.getCy('photo-overview-list').should('contain.text', 'Beach photo');
 		cy.getCy('photo-album-back').click();
 		cy.location('pathname').should('eq', '/photos');
-		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal('title:desc'));
+		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal('sortIndex:desc'));
 		cy.getCy('photo-album-41-301').click();
 		cy.location('pathname').should('eq', `/photos/${libraryId}/details/${albumId}`);
 		cy.getCy('photo-overview-list').should('contain.text', 'Beach photo');
@@ -221,6 +223,27 @@ describe('Photos browsing', () => {
 		cy.location('search').should('contain', 'view=albums');
 		cy.getCy('photo-album-41-301').should('contain.text', 'Summer trip');
 	});
+	it('sorts photo assets by date and size with the shared sort DSL', () => {
+		setupPage();
+		setupPhotoApi();
+		cy.visit(route(`/photos/${libraryId}?view=assets`));
+		cy.wait('@photoAssets');
+
+		cy.getCy('media-overview-sort-btn').click();
+		cy.getCy('sort-option-addedAt-btn').click();
+		cy.wait('@photoAssets').its('request.url').should((url) => {
+			expect(new URL(url).searchParams.get('sort')).to.equal('addedAt:asc');
+		});
+		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal('addedAt:asc'));
+
+		cy.getCy('media-overview-sort-btn').click();
+		cy.getCy('sort-option-mediaSize-btn').click();
+		cy.wait('@photoAssets').its('request.url').should((url) => {
+			expect(new URL(url).searchParams.get('sort')).to.equal('mediaSize:asc');
+		});
+		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal('mediaSize:asc'));
+	});
+
 
 	it('switches shared photo display modes while retaining multiple scoped assets and selection', () => {
 		setupPage();

@@ -8,10 +8,11 @@ import { plexPhotoApi } from '@api';
 import { useAccountStore, useLibraryStore, useMediaStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
 import { LibrarySyncJobStatus, PhotoAssetKind, PlexMediaType, type PhotoAssetBrowseDTO } from '@dto';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort } from '@composables';
 
 const owner = {};
 const route = (libraryId = 7): IPhotoBrowseActivation => ({
-	mode: 'library', libraryId, view: 'assets', folderId: null, searchQuery: '', sort: 'title:asc',
+	mode: 'library', libraryId, view: 'assets', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort(),
 });
 const asset = (id: number, libraryId = 7): PhotoAssetBrowseDTO => ({
 	id, plexServerId: 1, plexLibraryId: libraryId, plexServerName: 'Server', plexLibraryTitle: 'Photos', title: `Asset ${id}`,

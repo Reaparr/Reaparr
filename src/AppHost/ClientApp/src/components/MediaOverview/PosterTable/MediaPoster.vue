@@ -99,26 +99,26 @@
 			v-if="mediaOverviewStore.getIsSorted"
 			#sort>
 			<QFileSize
-				v-if="mediaOverviewStore.getActiveSort.field === MediaSortField.MediaSize"
+				v-if="mediaOverviewStore.getActiveSort.field === SortType.MediaSize"
 				:size="mediaItem.mediaSize"
 				align="center" />
 			<QDuration
-				v-else-if="mediaOverviewStore.getActiveSort.field === MediaSortField.Duration"
+				v-else-if="mediaOverviewStore.getActiveSort.field === SortType.Duration"
 				:value="mediaItem.duration"
 				align="center"
 				short />
 			<QDateTime
-				v-else-if="mediaOverviewStore.getActiveSort.field === MediaSortField.AddedAt"
+				v-else-if="mediaOverviewStore.getActiveSort.field === SortType.AddedAt"
 				:text="mediaItem.addedAt"
 				align="center"
 				short-date />
 			<QDateTime
-				v-else-if="mediaOverviewStore.getActiveSort.field === MediaSortField.UpdatedAt"
+				v-else-if="mediaOverviewStore.getActiveSort.field === SortType.UpdatedAt"
 				:text="mediaItem.updatedAt ?? ''"
 				align="center"
 				short-date />
 			<QText
-				v-else-if="mediaOverviewStore.getActiveSort.field === MediaSortField.Year"
+				v-else-if="mediaOverviewStore.getActiveSort.field === SortType.Year"
 				:value="mediaItem.year"
 				align="center" />
 		</template>
@@ -174,9 +174,8 @@
 <script setup lang="ts">
 import { get, set } from '@vueuse/core';
 import type { Subscription } from 'rxjs';
-import { PlexMediaComparisonState, PlexMediaType } from '@dto';
+import { PlexMediaComparisonState, PlexMediaType, SortType } from '@dto';
 import type { DownloadMediaDTO, PlexMediaQualityDTO, PlexMediaSlimDTO } from '@dto';
-import { MediaSortField } from '@enums';
 import {
 	useDialogStore,
 	useMediaOverviewStore,

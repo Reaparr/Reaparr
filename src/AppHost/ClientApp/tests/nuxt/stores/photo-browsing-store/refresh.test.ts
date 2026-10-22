@@ -8,6 +8,7 @@ import { plexPhotoApi } from '@api';
 import { LibrarySyncJobStatus, PlexMediaType, RefreshDataType, type PhotoAlbumBrowseDTO, type PhotoAlbumPageDTO, type PhotoAssetBrowseDTO, type PlexLibraryDTO } from '@dto';
 import { useAccountStore, useLibraryStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
 import type { ResultDTO } from '@interfaces';
+import { createDefaultMediaOverviewSort } from '@composables';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 
 describe('PhotoBrowsingStore - refresh and eligibility lifecycle', () => {
@@ -23,7 +24,7 @@ describe('PhotoBrowsingStore - refresh and eligibility lifecycle', () => {
 
 	const library = { id: 7, plexServerId: 1, type: PlexMediaType.PhotoAlbum, isEnabled: true } as PlexLibraryDTO;
 	const route = (partial: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({
-		mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: 'title:asc', ...partial,
+		mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort(), ...partial,
 	});
 	const album = (id: number): PhotoAlbumBrowseDTO => ({
 		id, plexServerId: 1, plexLibraryId: 7, plexServerName: 'Server', plexLibraryTitle: 'Photos', title: `Album ${id}`,

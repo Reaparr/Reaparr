@@ -154,9 +154,11 @@
 import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 import { DialogType } from '@enums';
-import { LibrarySyncJobStatus, PhotoItemKind, PlexMediaType, type DownloadMediaDTO, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoFolderBrowseDTO } from '@dto';
+import { LibrarySyncJobStatus, PhotoItemKind, PlexMediaType, SortType, type DownloadMediaDTO, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoFolderBrowseDTO } from '@dto';
 import type { IMediaOverviewBarActions } from '@interfaces';
-import type { IPhotoBrowseActivation, IPhotoSelector, PhotoBrowseSort, PhotoBrowseView, PhotoOverviewItem } from '@/store/photoBrowsingStore';
+import type { IMediaOverviewSort } from '@composables/event-bus';
+import { MEDIA_OVERVIEW_SORT_FIELDS, createDefaultMediaOverviewSort, parseFlexSortDsl, serializeFlexSortDsl } from '@composables';
+import type { IPhotoBrowseActivation, IPhotoSelector, PhotoBrowseView, PhotoOverviewItem } from '@/store/photoBrowsingStore';
 import { useDialogStore, useDownloadStore, useGlobalStore, useLibraryStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
 
 const props = withDefaults(defineProps<{
@@ -203,12 +205,16 @@ function scalarQuery(name: string): string | undefined {
 
 const parsedRoute = computed<IPhotoBrowseActivation | null>(() => {
 	const viewValue = scalarQuery('view') ?? 'albums';
-	const sortValue = scalarQuery('sort') ?? 'title:asc';
 	const view = (['albums', 'folders', 'assets'] as const).find((choice) => choice === viewValue);
-	const sort = (['title:asc', 'title:desc'] as const).find((choice) => choice === sortValue);
 	const query = route.query.q;
-	if (!view || !sort || (query !== undefined && typeof query !== 'string')) return null;
-
+	if (!view || (query !== undefined && typeof query !== 'string')) return null;
+	const searchQuery = query ?? '';
+	const effectiveView: PhotoBrowseView = props.albumId ? 'assets' : view;
+	const supportedSortFields: readonly SortType[] = effectiveView === 'folders' && !searchQuery.trim()
+		? [SortType.Title]
+		: MEDIA_OVERVIEW_SORT_FIELDS;
+	const sort = parseFlexSortDsl(scalarQuery('sort'), supportedSortFields);
+	if (!sort) return null;
 	const folderValue = scalarQuery('folderId');
 	let folderId: number | null = null;
 	if (folderValue !== undefined) {
@@ -218,7 +224,7 @@ const parsedRoute = computed<IPhotoBrowseActivation | null>(() => {
 	}
 
 	const libraryId = props.libraryId ?? 0;
-	if (libraryId <= 0 && view === 'folders') return null;
+	if (libraryId <= 0 && effectiveView === 'folders') return null;
 	let mode: IPhotoBrowseActivation['mode'] = 'aggregate';
 	if (props.albumId) mode = 'album';
 	else if (libraryId > 0) mode = 'library';
@@ -226,9 +232,9 @@ const parsedRoute = computed<IPhotoBrowseActivation | null>(() => {
 		mode,
 		libraryId,
 		albumId: props.albumId,
-		view: props.albumId ? 'assets' : view,
+		view: effectiveView,
 		folderId,
-		searchQuery: query ?? '',
+		searchQuery,
 		sort,
 	};
 });
@@ -249,7 +255,7 @@ const rangeContextKey = computed(() => [
 	photoStore.folderId ?? '',
 	photoStore.view,
 	photoStore.searchQuery,
-	photoStore.sort,
+	serializeFlexSortDsl(photoStore.sort),
 ].join(':'));
 const restoreScrollIndex = shallowRef(photoStore.scrollIndex);
 const showFolderBreadcrumbs = computed(() => photoStore.mode === 'library' && photoStore.view === 'folders' && !photoStore.searchQuery && photoStore.breadcrumbs.length > 0);
@@ -264,7 +270,11 @@ function syncRoute(): void {
 		return;
 	}
 	if (get(shouldRedirectToFolders)) {
-		updateQuery({ view: 'folders', folderId: null }, true);
+		updateQuery({
+			view: 'folders',
+			folderId: null,
+			...(context.sort.field !== SortType.Title ? { sort: null } : {}),
+		}, true);
 		return;
 	}
 	const activation = photoStore.activate(context, owner);
@@ -293,15 +303,26 @@ function cleanPhotoQuery(): Record<string, string | (string | null)[] | null | u
 }
 
 function changeView(view: PhotoBrowseView): void {
-	updateQuery({ view, folderId: view === 'folders' ? scalarQuery('folderId') : null });
+	const currentSort = get(parsedRoute)?.sort ?? photoStore.sort;
+	const searchQuery = scalarQuery('q')?.trim() ?? '';
+	const resetSort = view === 'folders' && !searchQuery && currentSort.field !== SortType.Title;
+	updateQuery({
+		view,
+		folderId: view === 'folders' ? scalarQuery('folderId') : null,
+		...(resetSort ? { sort: null } : {}),
+	});
 }
 
 function changeSearch(value: string): void {
-	updateQuery({ q: value.trim() || null }, true);
+	const query = value.trim();
+	const context = get(parsedRoute);
+	const resetSort = !query && context?.view === 'folders' && context.sort.field !== SortType.Title;
+	updateQuery({ q: query || null, ...(resetSort ? { sort: null } : {}) }, true);
 }
 
-function changeSort(sort: PhotoBrowseSort): void {
-	updateQuery({ sort });
+function changeSort(sort: IMediaOverviewSort): void {
+	const defaultSort = createDefaultMediaOverviewSort();
+	updateQuery({ sort: sort.field === defaultSort.field && sort.sort === defaultSort.sort ? null : serializeFlexSortDsl(sort) });
 }
 
 function openFolder(folderId: number): void {

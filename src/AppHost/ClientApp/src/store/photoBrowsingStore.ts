@@ -47,12 +47,13 @@ import {
 } from '@dto';
 import { PhotoAssetKind, PhotoItemKind } from '@dto';
 import { StoreNames, type ISetupResult, type ResultDTO } from '@interfaces';
+import type { IMediaOverviewSort } from '@composables/event-bus';
+import { createDefaultMediaOverviewSort, serializeFlexSortDsl } from '@composables';
 import { plexPhotoApi } from '@api';
 import { useAccountStore, useLibraryStore, useMediaStore, useServerStore, useSettingsStore, useSignalrStore } from '@store';
 
 export type PhotoBrowseView = 'albums' | 'folders' | 'assets';
 export type PhotoBrowseMode = 'aggregate' | 'library' | 'album';
-export type PhotoBrowseSort = 'title:asc' | 'title:desc';
 
 export interface IPhotoBrowseRoute {
 	mode: PhotoBrowseMode;
@@ -61,7 +62,7 @@ export interface IPhotoBrowseRoute {
 	view: PhotoBrowseView;
 	folderId?: number | null;
 	searchQuery: string;
-	sort: PhotoBrowseSort;
+	sort: IMediaOverviewSort;
 }
 
 export type IPhotoBrowseActivation = IPhotoBrowseRoute;
@@ -122,7 +123,7 @@ interface IPhotoBrowsingState {
 	albumId: number | null;
 	view: PhotoBrowseView;
 	folderId: number | null;
-	sort: PhotoBrowseSort;
+	sort: IMediaOverviewSort;
 	searchQuery: string;
 	searchOrigin: IPhotoBrowseRoute | null;
 	albums: IPhotoPageState<PhotoAlbumBrowseDTO>;
@@ -219,7 +220,7 @@ const createDefaultState = (): IPhotoBrowsingState => ({
 	albumId: null,
 	view: 'albums',
 	folderId: null,
-	sort: 'title:asc',
+	sort: createDefaultMediaOverviewSort(),
 	searchQuery: '',
 	searchOrigin: null,
 	albums: createPage<PhotoAlbumBrowseDTO>(),
@@ -795,7 +796,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			route.albumId ?? 0,
 			route.view,
 			route.folderId ?? 0,
-			route.sort,
+			serializeFlexSortDsl(route.sort),
 			route.searchQuery.trim(),
 		].join(':');
 	}
@@ -1544,7 +1545,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		if (!force && loadedPages.albums.has(page)) return of(undefined);
 		state.albums.loading = true;
 		const libraryId = context.mode === 'aggregate' ? 0 : context.libraryId;
-		const query = { page, size: PAGE_SIZE, sort: context.sort, ...(libraryId > 0 ? { plexLibraryId: libraryId } : {}) };
+		const query = { page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort), ...(libraryId > 0 ? { plexLibraryId: libraryId } : {}) };
 		return plexPhotoApi.getPhotoAlbumsEndpoint(query, photoBrowseRequestParams).pipe(
 			takeUntil(rangeCanceller),
 			map((response) => ({ value: apiValue<PhotoAlbumPageDTO>(response), statusCode: response.statusCode })),
@@ -1570,13 +1571,14 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		context: PhotoBrowseReadContext,
 		page: number,
 	): Observable<ApiResult<PhotoAssetPageDTO>> {
+		const sort = serializeFlexSortDsl(context.sort);
 		switch (surface) {
 			case 'search':
-				return plexPhotoApi.searchPhotoAssetsEndpoint({ q: context.searchQuery, page, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams);
+				return plexPhotoApi.searchPhotoAssetsEndpoint({ q: context.searchQuery, page, size: PAGE_SIZE, sort }, photoBrowseRequestParams);
 			case 'albumMembers':
-				return plexPhotoApi.getPhotoAlbumMembersEndpoint(context.libraryId, context.albumId!, { page, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams);
+				return plexPhotoApi.getPhotoAlbumMembersEndpoint(context.libraryId, context.albumId!, { page, size: PAGE_SIZE, sort }, photoBrowseRequestParams);
 			default:
-				return plexPhotoApi.getPhotoAssetsEndpoint({ page, size: PAGE_SIZE, sort: context.sort, ...(context.mode === 'aggregate' ? {} : { plexLibraryId: context.libraryId }) }, photoBrowseRequestParams);
+				return plexPhotoApi.getPhotoAssetsEndpoint({ page, size: PAGE_SIZE, sort, ...(context.mode === 'aggregate' ? {} : { plexLibraryId: context.libraryId }) }, photoBrowseRequestParams);
 		}
 	}
 
@@ -1606,7 +1608,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	function requestRootsPage(context: PhotoBrowseReadContext, page: number, force: boolean, generation: number, rangeCanceller: Subject<void>): Observable<void> {
 		if (!force && loadedPages.folders.has(page)) return of(undefined);
 		state.folders.loading = true;
-		return plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams).pipe(
+		return plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort) }, photoBrowseRequestParams).pipe(
 			takeUntil(rangeCanceller),
 			map((response) => ({ value: apiValue<PhotoFolderPageDTO>(response), statusCode: response.statusCode })),
 			tap(({ value, statusCode }) => {
@@ -1629,7 +1631,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	function requestUnmappedAssetsPage(context: PhotoBrowseReadContext, page: number, force: boolean, generation: number, rangeCanceller: Subject<void>): Observable<void> {
 		if (!force && loadedPages.folderAssets.has(page)) return of(undefined);
 		state.folderAssets.loading = true;
-		const query = { page, size: PAGE_SIZE, sort: context.sort, plexLibraryId: context.libraryId, unmappedOnly: true };
+		const query = { page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort), plexLibraryId: context.libraryId, unmappedOnly: true };
 		return plexPhotoApi.getPhotoAssetsEndpoint(query, photoBrowseRequestParams).pipe(
 			takeUntil(rangeCanceller),
 			map((response) => ({ value: apiValue<PhotoAssetPageDTO>(response), statusCode: response.statusCode })),
@@ -1656,7 +1658,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		if (!force && folderAlreadyLoaded && assetsAlreadyLoaded) return of(undefined);
 		state.folders.loading = true;
 		state.folderAssets.loading = true;
-		const query = { folderPage, folderSize: PAGE_SIZE, assetPage, assetSize: PAGE_SIZE, sort: context.sort };
+		const query = { folderPage, folderSize: PAGE_SIZE, assetPage, assetSize: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort) };
 		return plexPhotoApi.getPhotoFolderChildrenEndpoint(context.libraryId, context.folderId!, query, photoBrowseRequestParams).pipe(
 			takeUntil(rangeCanceller),
 			map((response) => ({ value: apiValue<PhotoFolderChildrenDTO>(response), statusCode: response.statusCode })),
@@ -2032,7 +2034,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 	function selectionPageRequest(surface: 'albums' | 'assets' | 'search' | 'albumMembers', context: PhotoBrowseReadContext, page: number): Observable<PageDTO> {
 		const request = surface === 'albums'
-			? plexPhotoApi.getPhotoAlbumsEndpoint({ page, size: PAGE_SIZE, sort: context.sort, ...(context.mode === 'aggregate' ? {} : { plexLibraryId: context.libraryId }) }, photoBrowseRequestParams)
+			? plexPhotoApi.getPhotoAlbumsEndpoint({ page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort), ...(context.mode === 'aggregate' ? {} : { plexLibraryId: context.libraryId }) }, photoBrowseRequestParams)
 			: assetPageRequest(surface, context, page);
 		return requestSelectionPage(request as Observable<ApiResult<PageDTO>>);
 	}
@@ -2044,7 +2046,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			const assets = enumerateUnmappedAssets(context);
 			return forkJoin([folders, assets]).pipe(map(([folderPages, assetPages]) => [...folderPages, ...assetPages]));
 		}
-		const first = requestSelectionPage(plexPhotoApi.getPhotoFolderChildrenEndpoint(context.libraryId, context.folderId!, { folderPage: 1, folderSize: PAGE_SIZE, assetPage: 1, assetSize: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderChildrenDTO>>);
+		const sort = serializeFlexSortDsl(context.sort);
+		const first = requestSelectionPage(plexPhotoApi.getPhotoFolderChildrenEndpoint(context.libraryId, context.folderId!, { folderPage: 1, folderSize: PAGE_SIZE, assetPage: 1, assetSize: PAGE_SIZE, sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderChildrenDTO>>);
 		return first.pipe(
 			switchMap((firstPage) => {
 				const folderCount = Math.ceil(firstPage.folders.totalCount / PAGE_SIZE);
@@ -2057,7 +2060,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 						folderSize: PAGE_SIZE,
 						assetPage: page <= assetCount ? page : 1,
 						assetSize: PAGE_SIZE,
-						sort: context.sort,
+						sort,
 					}, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderChildrenDTO>>)),
 					toArray(),
 					map((remaining) => [firstPage, ...remaining]),
@@ -2067,13 +2070,14 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	}
 
 	function enumerateRootFolders(context: PhotoBrowseReadContext): Observable<PhotoFolderPageDTO[]> {
-		const first = requestSelectionPage(plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page: 1, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderPageDTO>>);
-		return pageSequence(first, (page) => requestSelectionPage(plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderPageDTO>>));
+		const sort = serializeFlexSortDsl(context.sort);
+		const first = requestSelectionPage(plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page: 1, size: PAGE_SIZE, sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderPageDTO>>);
+		return pageSequence(first, (page) => requestSelectionPage(plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page, size: PAGE_SIZE, sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderPageDTO>>));
 	}
 
 	function enumerateUnmappedAssets(context: PhotoBrowseReadContext): Observable<PhotoAssetPageDTO[]> {
 		const requestPage = (page: number) => {
-			const query = { page, size: PAGE_SIZE, sort: context.sort, plexLibraryId: context.libraryId, unmappedOnly: true };
+			const query = { page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort), plexLibraryId: context.libraryId, unmappedOnly: true };
 			return requestSelectionPage(plexPhotoApi.getPhotoAssetsEndpoint(query, photoBrowseRequestParams) as Observable<ApiResult<PhotoAssetPageDTO>>);
 		};
 		return pageSequence(requestPage(1), requestPage);

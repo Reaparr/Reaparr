@@ -1,9 +1,11 @@
 import { orderBy } from 'lodash-es';
 import type { BaseResultDTO, PlexServerConnectionDTO } from '@dto';
+import { SortDirection } from '@dto';
+import { getSortOrder } from './useFlexQueryDsl';
 
 export function sortPlexServerConnections(connections: PlexServerConnectionDTO[]) {
 	const keysOrder: (keyof PlexServerConnectionDTO)[] = ['local', 'isPlexTvConnection'];
-	return orderBy(connections, keysOrder, ['asc', 'asc']);
+	return orderBy(connections, keysOrder, getSortOrder(SortDirection.Asc));
 }
 
 export function waitForElement(parentElement: HTMLElement | null, selector: string, intervalMs: number = 100): Promise<HTMLElement | null> {

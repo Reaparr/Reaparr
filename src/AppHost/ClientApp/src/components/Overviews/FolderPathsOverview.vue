@@ -118,11 +118,11 @@
 <script lang="ts" setup>
 import { get, set } from '@vueuse/core';
 import { finalize } from 'rxjs';
-import { type FolderPathDTO, FolderType } from '@dto';
+import { SortDirection, type FolderPathDTO, FolderType } from '@dto';
 import type { IFolderPathGroup, IHelp, ResultDTO } from '@interfaces';
 import { DialogType, ValidationLevel } from '@enums';
 import { kebabCase, orderBy } from 'lodash-es';
-import { formatErrorResponse } from '@composables/common';
+import { getSortOrder } from '@composables';
 import { showErrorNotification, useI18n } from '#imports';
 import { useDialogStore, useFolderPathStore } from '@store';
 import { useSubscription } from '@vueuse/rxjs';
@@ -164,7 +164,7 @@ const visibleFolderPaths = computed(() => {
 	return orderBy(
 		folderPathStore.folderPaths.filter((folderPath) => folderPath.folderType === get(activeFolderType)),
 		['isDefault'],
-		['desc'],
+		[getSortOrder(SortDirection.Desc)],
 	);
 });
 

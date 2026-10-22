@@ -4,8 +4,9 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import { DOMWrapper, flushPromises } from '@vue/test-utils';
 import { baseSetup } from '@services-test-base';
-import { PhotoItemKind, PlexMediaType, ViewMode } from '@dto';
+import { PhotoItemKind, PlexMediaType, SortType, ViewMode } from '@dto';
 import { useLibraryStore, useMediaOverviewStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
+import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
 import { generatePlexLibrary, Seed } from '@mock';
 import messages from '@/lang/en-US.json';
 import MediaOverviewBar from '@/components/MediaOverview/MediaOverviewBar.vue';
@@ -29,7 +30,8 @@ describe('MediaOverviewBar - photo mode', () => {
 		// Arrange
 		const photoStore = usePhotoBrowsingStore();
 		photoStore.view = 'albums';
-		photoStore.sort = 'title:asc';
+		const defaultSort = createDefaultMediaOverviewSort();
+		photoStore.sort = defaultSort;
 		const wrapper = await mountSuspended(MediaOverviewBar, {
 			attachTo: document.body,
 			props: { photoMode: true, libraryId: 4 },
@@ -46,12 +48,38 @@ describe('MediaOverviewBar - photo mode', () => {
 		await wrapper.get('[data-cy="view-mode-assets-btn"]').trigger('click');
 		await wrapper.get('[data-cy="media-overview-sort-btn"]').trigger('click');
 		await flushPromises();
-		await wrapper.get('[data-cy="sort-option-title-btn"]').trigger('click');
+		await wrapper.get('[data-cy="sort-option-sortIndex-btn"]').trigger('click');
 
 		// Assert
 		expect(wrapper.emitted('photo-view')).toEqual([['assets']]);
-		expect(wrapper.emitted('photo-sort')).toEqual([['title:desc']]);
+		expect(wrapper.emitted('photo-sort')).toEqual([[toggleMediaOverviewSort(defaultSort, SortType.Title)]]);
 		expect(wrapper.find('[data-cy="sort-option-year-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-cy="sort-option-addedAt-btn"]').exists()).toBe(true);
+		expect(wrapper.find('[data-cy="sort-option-updatedAt-btn"]').exists()).toBe(true);
+		expect(wrapper.find('[data-cy="sort-option-duration-btn"]').exists()).toBe(true);
+		expect(wrapper.find('[data-cy="sort-option-mediaSize-btn"]').exists()).toBe(true);
+	});
+	test('clears a non-default photo sort through the shared sort menu', async () => {
+		// Arrange
+		const photoStore = usePhotoBrowsingStore();
+		photoStore.view = 'assets';
+		const defaultSort = createDefaultMediaOverviewSort();
+		photoStore.sort = toggleMediaOverviewSort(defaultSort, SortType.Title);
+		const wrapper = await mountSuspended(MediaOverviewBar, {
+			props: { photoMode: true, libraryId: 4 },
+			global: {
+				plugins: [pinia, i18n()],
+				stubs: { teleport: true, QMediaTypeIcon: true },
+			},
+		});
+		mounted.push(wrapper);
+
+		// Act
+		await wrapper.get('[data-cy="media-overview-sort-btn"]').trigger('click');
+		await wrapper.get('[data-cy="sort-clear-btn"]').trigger('click');
+
+		// Assert
+		expect(wrapper.emitted('photo-sort')).toEqual([[defaultSort]]);
 	});
 
 	test('renders shared photo selection actions and emits download and clear commands', async () => {

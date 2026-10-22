@@ -1,7 +1,7 @@
-import type { SortDirection, MediaSortField } from '@enums';
+import type { SortDirection, SortType } from '@dto';
 
 export interface ISortOption {
-	field: MediaSortField;
+	field: SortType;
 	label: string;
 	direction: SortDirection;
 }

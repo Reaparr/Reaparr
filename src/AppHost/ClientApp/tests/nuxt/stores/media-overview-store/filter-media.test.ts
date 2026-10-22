@@ -10,8 +10,7 @@ import {
 	generateResultDTO,
 } from '@mock';
 import { useMediaOverviewStore, useSettingsStore } from '@store';
-import { AudioQuality, PlexMediaComparisonState, PlexMediaType, VideoQuality } from '@dto';
-import { MediaSortField, SortDirection } from '@enums';
+import { AudioQuality, PlexMediaComparisonState, PlexMediaType, SortDirection, SortType, VideoQuality } from '@dto';
 import { flushPromises } from '@vue/test-utils';
 
 describe('MediaOverviewStore - Filter / Search', () => {
@@ -197,7 +196,7 @@ describe('MediaOverviewStore - Filter / Search', () => {
 			});
 			await subscribeSpyTo(store.setQualityFilter(1080)).onComplete();
 			await subscribeSpyTo(store.setComparisonStateFilter(PlexMediaComparisonState.HigherQuality)).onComplete();
-			store.toggleSortMedia(MediaSortField.Quality);
+			store.toggleSortMedia(SortType.VideoQuality);
 			await flushPromises();
 
 			// Act
@@ -208,7 +207,7 @@ describe('MediaOverviewStore - Filter / Search', () => {
 			expect(store.getMediaItems.map((item) => item.type)).toEqual([family]);
 			expect(store.metadata.qualityId).toBe(0);
 			expect(store.metadata.comparisonState).toBeNull();
-			expect(store.getActiveSort).toEqual({ field: MediaSortField.Title, sort: SortDirection.Asc });
+			expect(store.getActiveSort).toEqual({ field: SortType.Title, sort: SortDirection.Asc });
 			expect(store.getFilterChips).toEqual([]);
 		});
 	}

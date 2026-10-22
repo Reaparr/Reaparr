@@ -7,6 +7,7 @@ import { plexPhotoApi } from '@api';
 import { PhotoAssetKind, PhotoItemKind, PlexMediaType, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
 import { useLibraryStore, usePhotoBrowsingStore } from '@store';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort } from '@composables';
 
 describe('PhotoBrowsingStore - complete-result selection', () => {
 	const owner = {};
@@ -24,7 +25,7 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 	});
 
 	const route = (partial: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({
-		mode: 'library', libraryId: 7, view: 'assets', folderId: null, searchQuery: '', sort: 'title:asc', ...partial,
+		mode: 'library', libraryId: 7, view: 'assets', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort(), ...partial,
 	});
 
 	const asset = (id: number, libraryId = 7): PhotoAssetBrowseDTO => ({
@@ -48,8 +49,8 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
 		await subscribeSpyTo(store.selectAll(true)).onComplete();
 
-		expect(request).toHaveBeenCalledWith({ page: 2, size: 100, sort: 'title:asc', plexLibraryId: 7 }, expect.any(Object));
-		expect(request).toHaveBeenCalledWith({ page: 3, size: 100, sort: 'title:asc', plexLibraryId: 7 }, expect.any(Object));
+		expect(request).toHaveBeenCalledWith({ page: 2, size: 100, sort: 'sortIndex:asc', plexLibraryId: 7 }, expect.any(Object));
+		expect(request).toHaveBeenCalledWith({ page: 3, size: 100, sort: 'sortIndex:asc', plexLibraryId: 7 }, expect.any(Object));
 		expect(store.selectedSelectors.map((selector) => selector.id)).toEqual([1, 2, 201]);
 		expect(store.allVisibleSelected).toBe(true);
 		expect(store.overviewItemAt(200)).toBeNull();
