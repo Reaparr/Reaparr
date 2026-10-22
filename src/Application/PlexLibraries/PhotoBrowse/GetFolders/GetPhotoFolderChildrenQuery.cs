@@ -7,7 +7,8 @@ public sealed record GetPhotoFolderChildrenQuery(
     int FolderPageSize = MediaQueryFilter.MaximumPageSize,
     int AssetPage = 1,
     int AssetPageSize = MediaQueryFilter.MaximumPageSize,
-    string Sort = "title:asc"
+    SortType Sort = SortType.Title,
+    bool Descending = false
 ) : ICommand<Result<PhotoFolderChildrenDTO>>;
 
 public sealed class GetPhotoFolderChildrenQueryValidator : AbstractValidator<GetPhotoFolderChildrenQuery>
@@ -20,7 +21,7 @@ public sealed class GetPhotoFolderChildrenQueryValidator : AbstractValidator<Get
         RuleFor(x => x.FolderPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
         RuleFor(x => x.AssetPage).GreaterThan(0);
         RuleFor(x => x.AssetPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort);
+        RuleFor(x => x.Sort).Equal(SortType.Title);
         RuleFor(x => x)
             .Must(x =>
                 (long)(x.FolderPage - 1) * x.FolderPageSize <= int.MaxValue
@@ -149,7 +150,7 @@ public sealed class GetPhotoFolderChildrenQueryHandler
             && x.ParentId == folder.Id
         );
         var folderCount = await childFolders.CountAsync(cancellationToken);
-        var orderedFolders = PhotoBrowseQuerySupport.IsDescending(query.Sort)
+        var orderedFolders = query.Descending
             ? childFolders.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
             : childFolders.OrderBy(x => x.Title).ThenBy(x => x.Id);
         var rows = await orderedFolders
@@ -194,7 +195,7 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         );
         var assetCount = await directAssets.CountAsync(cancellationToken);
         var assetBytes = await directAssets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
-        var orderedAssets = PhotoBrowseQuerySupport.IsDescending(query.Sort)
+        var orderedAssets = query.Descending
             ? directAssets.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
             : directAssets.OrderBy(x => x.Title).ThenBy(x => x.Id);
         var assetIds = await orderedAssets

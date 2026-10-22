@@ -32,6 +32,9 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
             .OrderBy(x => x)
             .ToListAsync(CancellationToken);
         expectedIds.Count.ShouldBeGreaterThan(0);
+        await dbContext.PlexPhotoMediaData
+            .Where(x => expectedIds.Contains(x.Id))
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.Title, "Album member"), CancellationToken);
         var inactiveAssetId = expectedIds[0];
         var inactiveRoot = new PlexPhotoFolder
         {
@@ -62,12 +65,20 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, "title:asc")
+            new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, SortType.Title)
+        );
+        var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, SortType.Title, true)
+        );
+        var invalidSort = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, (SortType)999)
         );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
+        descending.IsSuccess.ShouldBeTrue();
+        descending.Errors.Count.ShouldBe(0);
         result.Value.TotalCount.ShouldBe(expectedIds.Count);
         result.Value.Items.Select(x => x.Id).Distinct().Count().ShouldBe(result.Value.Items.Count);
         result.Value.Items.ShouldAllBe(x => x.PlexLibraryId == library.Id);
@@ -79,8 +90,12 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
                     .ThenBy(x => x.Id)
                     .Select(x => x.Id)
             );
+        descending.Value.Items.Select(x => x.Id).ShouldBe(expectedIds.OrderByDescending(x => x));
         result.Value.Items.Select(x => x.Id).ShouldAllBe(id => expectedIds.Contains(id));
         result.Value.Items.Single(x => x.Id == inactiveAssetId).SourceRootTitle.ShouldBe(inactiveRoot.Title);
+        invalidSort.IsFailed.ShouldBeTrue();
+        invalidSort.Errors.Count.ShouldBe(2);
+        invalidSort.Has400BadRequestError().ShouldBeTrue();
     }
 
     [Test]

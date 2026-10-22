@@ -3,22 +3,22 @@ namespace Reaparr.Application.UnitTests;
 public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
 {
     [Test]
-    [Arguments(nameof(BasePlexMedia.SortIndex), false, new[] { "B", "C", "A" })]
-    [Arguments(nameof(BasePlexMedia.SortIndex), true, new[] { "A", "C", "B" })]
-    [Arguments(nameof(PlexMediaSlimDTO.Year), false, new[] { "C", "A", "B" })]
-    [Arguments(nameof(PlexMediaSlimDTO.Year), true, new[] { "B", "A", "C" })]
-    [Arguments(nameof(BasePlexMedia.VideoQuality), false, new[] { "A", "C", "B" })]
-    [Arguments(nameof(BasePlexMedia.VideoQuality), true, new[] { "B", "C", "A" })]
-    [Arguments(nameof(BasePlexMedia.AddedAt), false, new[] { "B", "C", "A" })]
-    [Arguments(nameof(BasePlexMedia.AddedAt), true, new[] { "A", "C", "B" })]
-    [Arguments(nameof(BasePlexMedia.UpdatedAt), false, new[] { "A", "C", "B" })]
-    [Arguments(nameof(BasePlexMedia.UpdatedAt), true, new[] { "B", "C", "A" })]
-    [Arguments(nameof(BasePlexMedia.Duration), false, new[] { "B", "A", "C" })]
-    [Arguments(nameof(BasePlexMedia.Duration), true, new[] { "C", "A", "B" })]
-    [Arguments(nameof(BasePlexMedia.MediaSize), false, new[] { "C", "B", "A" })]
-    [Arguments(nameof(BasePlexMedia.MediaSize), true, new[] { "A", "B", "C" })]
+    [Arguments(SortType.Title, false, new[] { "B", "C", "A" })]
+    [Arguments(SortType.Title, true, new[] { "A", "C", "B" })]
+    [Arguments(SortType.Year, false, new[] { "C", "A", "B" })]
+    [Arguments(SortType.Year, true, new[] { "B", "A", "C" })]
+    [Arguments(SortType.VideoQuality, false, new[] { "A", "C", "B" })]
+    [Arguments(SortType.VideoQuality, true, new[] { "B", "C", "A" })]
+    [Arguments(SortType.AddedAt, false, new[] { "B", "C", "A" })]
+    [Arguments(SortType.AddedAt, true, new[] { "A", "C", "B" })]
+    [Arguments(SortType.UpdatedAt, false, new[] { "A", "C", "B" })]
+    [Arguments(SortType.UpdatedAt, true, new[] { "B", "C", "A" })]
+    [Arguments(SortType.Duration, false, new[] { "B", "A", "C" })]
+    [Arguments(SortType.Duration, true, new[] { "C", "A", "B" })]
+    [Arguments(SortType.MediaSize, false, new[] { "C", "B", "A" })]
+    [Arguments(SortType.MediaSize, true, new[] { "A", "B", "C" })]
     public async Task ShouldOrderOtherVideoRanksThroughSqlite(
-        string sortField,
+        SortType sortType,
         bool descending,
         string[] expectedLabels
     )
@@ -26,7 +26,7 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         // Arrange
         await ArrangeOtherVideoSnapshotsAsync();
         var snapshots = IDbContext.MediaOverviewOtherVideoSnapshots;
-        var sort = (sortField, descending);
+        var sort = (sortType, descending);
 
         // Act
         var orderedLabels = await snapshots
@@ -39,22 +39,22 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
     }
 
     [Test]
-    [Arguments(nameof(BasePlexMedia.SortIndex), false, new[] { "B", "C", "A" })]
-    [Arguments(nameof(BasePlexMedia.SortIndex), true, new[] { "A", "C", "B" })]
-    [Arguments(nameof(PlexMediaSlimDTO.Year), false, new[] { "2002", "2000", "2001" })]
-    [Arguments(nameof(PlexMediaSlimDTO.Year), true, new[] { "2001", "2000", "2002" })]
-    [Arguments(nameof(BasePlexMedia.VideoQuality), false, new[] { "480", "2160", "720" })]
-    [Arguments(nameof(BasePlexMedia.VideoQuality), true, new[] { "720", "2160", "480" })]
-    [Arguments(nameof(BasePlexMedia.AddedAt), false, new[] { "2026-02", "2026-03", "2026-01" })]
-    [Arguments(nameof(BasePlexMedia.AddedAt), true, new[] { "2026-01", "2026-03", "2026-02" })]
-    [Arguments(nameof(BasePlexMedia.UpdatedAt), false, new[] { "#", "2026-03", "2026-02" })]
-    [Arguments(nameof(BasePlexMedia.UpdatedAt), true, new[] { "2026-02", "2026-03", "#" })]
-    [Arguments(nameof(BasePlexMedia.Duration), false, new[] { "20–30 min", "10–20 min", "30–40 min" })]
-    [Arguments(nameof(BasePlexMedia.Duration), true, new[] { "30–40 min", "10–20 min", "20–30 min" })]
-    [Arguments(nameof(BasePlexMedia.MediaSize), false, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
-    [Arguments(nameof(BasePlexMedia.MediaSize), true, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
+    [Arguments(SortType.Title, false, new[] { "B", "C", "A" })]
+    [Arguments(SortType.Title, true, new[] { "A", "C", "B" })]
+    [Arguments(SortType.Year, false, new[] { "2002", "2000", "2001" })]
+    [Arguments(SortType.Year, true, new[] { "2001", "2000", "2002" })]
+    [Arguments(SortType.VideoQuality, false, new[] { "480", "2160", "720" })]
+    [Arguments(SortType.VideoQuality, true, new[] { "720", "2160", "480" })]
+    [Arguments(SortType.AddedAt, false, new[] { "2026-02", "2026-03", "2026-01" })]
+    [Arguments(SortType.AddedAt, true, new[] { "2026-01", "2026-03", "2026-02" })]
+    [Arguments(SortType.UpdatedAt, false, new[] { "#", "2026-03", "2026-02" })]
+    [Arguments(SortType.UpdatedAt, true, new[] { "2026-02", "2026-03", "#" })]
+    [Arguments(SortType.Duration, false, new[] { "20–30 min", "10–20 min", "30–40 min" })]
+    [Arguments(SortType.Duration, true, new[] { "30–40 min", "10–20 min", "20–30 min" })]
+    [Arguments(SortType.MediaSize, false, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
+    [Arguments(SortType.MediaSize, true, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
     public async Task ShouldBuildOtherVideoNavigationIndexesFromTranslatedRows(
-        string sortField,
+        SortType sortType,
         bool descending,
         string[] expectedLabels
     )
@@ -62,7 +62,7 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         // Arrange
         await ArrangeOtherVideoSnapshotsAsync();
         var snapshots = IDbContext.MediaOverviewOtherVideoSnapshots;
-        var sort = (sortField, descending);
+        var sort = (sortType, descending);
         var navigationRows = snapshots.SelectNavigationRows(sort);
 
         // Act
@@ -81,14 +81,14 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
             ]
         );
         projectedRows.Select(x => x.SortRank).ShouldBe(
-            sortField switch
+            sortType switch
             {
-                nameof(PlexMediaSlimDTO.Year) => new[] { 1, 2, 0 },
-                nameof(BasePlexMedia.VideoQuality) => new[] { 0, 2, 1 },
-                nameof(BasePlexMedia.AddedAt) => new[] { 2, 0, 1 },
-                nameof(BasePlexMedia.UpdatedAt) => new[] { 0, 2, 1 },
-                nameof(BasePlexMedia.Duration) => new[] { 1, 0, 2 },
-                nameof(BasePlexMedia.MediaSize) => new[] { 2, 1, 0 },
+                SortType.Year => new[] { 1, 2, 0 },
+                SortType.VideoQuality => new[] { 0, 2, 1 },
+                SortType.AddedAt => new[] { 2, 0, 1 },
+                SortType.UpdatedAt => new[] { 0, 2, 1 },
+                SortType.Duration => new[] { 1, 0, 2 },
+                SortType.MediaSize => new[] { 2, 1, 0 },
                 _ => new[] { 2, 0, 1 },
             }
         );
@@ -96,18 +96,18 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
     }
 
     [Test]
-    [Arguments(nameof(BasePlexMedia.SortIndex), false, new[] { "B", "C", "A" })]
-    [Arguments(nameof(BasePlexMedia.SortIndex), true, new[] { "A", "C", "B" })]
-    [Arguments(nameof(BasePlexMedia.AddedAt), false, new[] { "2026-02", "2026-03", "2026-01" })]
-    [Arguments(nameof(BasePlexMedia.AddedAt), true, new[] { "2026-01", "2026-03", "2026-02" })]
-    [Arguments(nameof(BasePlexMedia.UpdatedAt), false, new[] { "#", "2026-03", "2026-02" })]
-    [Arguments(nameof(BasePlexMedia.UpdatedAt), true, new[] { "2026-02", "2026-03", "#" })]
-    [Arguments(nameof(BasePlexMedia.Duration), false, new[] { "20–30 min", "10–20 min", "30–40 min" })]
-    [Arguments(nameof(BasePlexMedia.Duration), true, new[] { "30–40 min", "10–20 min", "20–30 min" })]
-    [Arguments(nameof(BasePlexMedia.MediaSize), false, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
-    [Arguments(nameof(BasePlexMedia.MediaSize), true, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
+    [Arguments(SortType.Title, false, new[] { "B", "C", "A" })]
+    [Arguments(SortType.Title, true, new[] { "A", "C", "B" })]
+    [Arguments(SortType.AddedAt, false, new[] { "2026-02", "2026-03", "2026-01" })]
+    [Arguments(SortType.AddedAt, true, new[] { "2026-01", "2026-03", "2026-02" })]
+    [Arguments(SortType.UpdatedAt, false, new[] { "#", "2026-03", "2026-02" })]
+    [Arguments(SortType.UpdatedAt, true, new[] { "2026-02", "2026-03", "#" })]
+    [Arguments(SortType.Duration, false, new[] { "20–30 min", "10–20 min", "30–40 min" })]
+    [Arguments(SortType.Duration, true, new[] { "30–40 min", "10–20 min", "20–30 min" })]
+    [Arguments(SortType.MediaSize, false, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
+    [Arguments(SortType.MediaSize, true, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
     public async Task ShouldBuildPhotoNavigationIndexesWithCommonRanksThroughSqlite(
-        string sortField,
+        SortType sortType,
         bool descending,
         string[] expectedLabels
     )
@@ -115,7 +115,7 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         // Arrange
         await ArrangePhotoSnapshotsAsync();
         var snapshots = IDbContext.MediaOverviewPhotoAlbumSnapshots;
-        var sort = (sortField, descending);
+        var sort = (sortType, descending);
         var navigationRows = snapshots.SelectNavigationRows(sort);
 
         // Act
@@ -134,12 +134,12 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
             ]
         );
         projectedRows.Select(x => x.SortRank).ShouldBe(
-            sortField switch
+            sortType switch
             {
-                nameof(BasePlexMedia.AddedAt) => new[] { 2, 0, 1 },
-                nameof(BasePlexMedia.UpdatedAt) => new[] { 0, 2, 1 },
-                nameof(BasePlexMedia.Duration) => new[] { 1, 0, 2 },
-                nameof(BasePlexMedia.MediaSize) => new[] { 2, 1, 0 },
+                SortType.AddedAt => new[] { 2, 0, 1 },
+                SortType.UpdatedAt => new[] { 0, 2, 1 },
+                SortType.Duration => new[] { 1, 0, 2 },
+                SortType.MediaSize => new[] { 2, 1, 0 },
                 _ => new[] { 2, 0, 1 },
             }
         );

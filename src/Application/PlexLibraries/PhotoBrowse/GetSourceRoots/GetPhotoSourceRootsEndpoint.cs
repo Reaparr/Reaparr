@@ -51,12 +51,14 @@ public sealed class GetPhotoSourceRootsEndpoint : Endpoint<GetPhotoSourceRootsRe
 
     public override async Task HandleAsync(GetPhotoSourceRootsRequest req, CancellationToken ct)
     {
+        var sort = req.Sort.ParseSort();
         var result = await _commandExecutor.Send(
             new GetPhotoSourceRootsQueryCommand(
                 req.PlexLibraryId,
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
-                req.Sort ?? "title:asc"
+                sort.Sort,
+                sort.Descending
             ),
             ct
         );

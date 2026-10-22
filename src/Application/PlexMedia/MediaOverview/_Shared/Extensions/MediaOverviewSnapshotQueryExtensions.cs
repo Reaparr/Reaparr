@@ -4,7 +4,7 @@ internal static class MediaOverviewSnapshotQueryExtensions
 {
     public static IQueryable<TSnapshot> ApplyRankOrder<TSnapshot>(
         this IQueryable<TSnapshot> snapshots,
-        (string Field, bool Descending) sort
+        (SortType Field, bool Descending) sort
     )
         where TSnapshot : BaseMediaOverviewSnapshot
     {
@@ -16,7 +16,7 @@ internal static class MediaOverviewSnapshotQueryExtensions
 
     public static IQueryable<MediaNavigationIndexRow> SelectNavigationRows(
         this IQueryable<MediaOverviewOtherVideoSnapshot> snapshots,
-        (string Field, bool Descending) sort
+        (SortType Field, bool Descending) sort
     )
     {
         var rankPropertyName = ResolveRankProperty(sort.Field);
@@ -35,7 +35,7 @@ internal static class MediaOverviewSnapshotQueryExtensions
 
     public static IQueryable<MediaNavigationIndexRow> SelectNavigationRows(
         this IQueryable<MediaOverviewPhotoAlbumSnapshot> snapshots,
-        (string Field, bool Descending) sort
+        (SortType Field, bool Descending) sort
     )
     {
         var rankPropertyName = ResolveRankProperty(sort.Field);
@@ -52,15 +52,15 @@ internal static class MediaOverviewSnapshotQueryExtensions
         });
     }
 
-    private static string ResolveRankProperty(string field) =>
-        field switch
+    private static string ResolveRankProperty(SortType sortType) =>
+        sortType switch
         {
-            nameof(PlexMediaSlimDTO.Year) => nameof(MediaOverviewOtherVideoSnapshot.YearRank),
-            nameof(BasePlexMedia.AddedAt) => nameof(BaseMediaOverviewSnapshot.AddedAtRank),
-            nameof(BasePlexMedia.UpdatedAt) => nameof(BaseMediaOverviewSnapshot.UpdatedAtRank),
-            nameof(BasePlexMedia.Duration) => nameof(BaseMediaOverviewSnapshot.DurationRank),
-            nameof(BasePlexMedia.MediaSize) => nameof(BaseMediaOverviewSnapshot.MediaSizeRank),
-            nameof(BasePlexMedia.VideoQuality) => nameof(MediaOverviewOtherVideoSnapshot.QualityRank),
+            SortType.Year => nameof(MediaOverviewOtherVideoSnapshot.YearRank),
+            SortType.AddedAt => nameof(BaseMediaOverviewSnapshot.AddedAtRank),
+            SortType.UpdatedAt => nameof(BaseMediaOverviewSnapshot.UpdatedAtRank),
+            SortType.Duration => nameof(BaseMediaOverviewSnapshot.DurationRank),
+            SortType.MediaSize => nameof(BaseMediaOverviewSnapshot.MediaSizeRank),
+            SortType.VideoQuality => nameof(MediaOverviewOtherVideoSnapshot.QualityRank),
             _ => nameof(BaseMediaOverviewSnapshot.TitleRank),
         };
 }

@@ -55,13 +55,15 @@ public sealed class GetPhotoAlbumMembersEndpoint : Endpoint<GetPhotoAlbumMembers
 
     public override async Task HandleAsync(GetPhotoAlbumMembersRequest req, CancellationToken ct)
     {
+        var sort = PhotoBrowseQuerySupport.ParseSort(req.Sort);
         var result = await _commandExecutor.Send(
             new GetPhotoAlbumMembersQuery(
                 req.PlexLibraryId,
                 req.AlbumId,
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
-                req.Sort ?? "title:asc"
+                sort.Sort,
+                sort.Descending
             ),
             ct
         );

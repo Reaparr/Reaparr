@@ -5,7 +5,8 @@ public sealed record GetPhotoAlbumMembersQuery(
     int AlbumId,
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
-    string Sort = "title:asc"
+    SortType Sort = SortType.Title,
+    bool Descending = false
 ) : ICommand<Result<PhotoAssetPageDTO>>;
 
 public sealed class GetPhotoAlbumMembersQueryValidator : AbstractValidator<GetPhotoAlbumMembersQuery>
@@ -16,7 +17,7 @@ public sealed class GetPhotoAlbumMembersQueryValidator : AbstractValidator<GetPh
         RuleFor(x => x.AlbumId).GreaterThan(0);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort);
+        RuleFor(x => x.Sort).Equal(SortType.Title);
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -97,7 +98,7 @@ public sealed class GetPhotoAlbumMembersQueryHandler
         var totalBytes = await memberships
             .Select(x => (long?)x.PlexPhotoMediaData!.Size)
             .SumAsync(cancellationToken) ?? 0L;
-        var ordered = PhotoBrowseQuerySupport.IsDescending(query.Sort)
+        var ordered = query.Descending
             ? memberships.OrderByDescending(x => x.PlexPhotoMediaData!.Title).ThenByDescending(x => x.PlexPhotoMediaDataId)
             : memberships.OrderBy(x => x.PlexPhotoMediaData!.Title).ThenBy(x => x.PlexPhotoMediaDataId);
         var assetIds = await ordered

@@ -35,7 +35,13 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
-            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, "title:asc")
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title)
+        );
+        var descending = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title, true)
+        );
+        var invalidSort = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, (SortType)999)
         );
 
         // Assert
@@ -46,6 +52,12 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
         result.Value.TotalCount.ShouldBe(albums.Count);
         result.Value.Items.Select(x => x.Id).ShouldBe(albums.Take(2).Select(x => x.Id));
         result.Value.Items.ShouldAllBe(x => x.PlexLibraryId == libraries[0].Id);
+        descending.IsSuccess.ShouldBeTrue();
+        descending.Errors.Count.ShouldBe(0);
+        descending.Value.Items.Select(x => x.Id).ShouldBe(albums.OrderByDescending(x => x.Id).Take(2).Select(x => x.Id));
+        invalidSort.IsFailed.ShouldBeTrue();
+        invalidSort.Errors.Count.ShouldBe(2);
+        invalidSort.Has400BadRequestError().ShouldBeTrue();
         result.Value.TotalAssetBytes.ShouldBe(
             await dbContext
                 .PlexPhotoMediaData.Where(x => x.PlexLibraryId == libraries[0].Id)

@@ -42,7 +42,7 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
-            new GetPhotoFolderChildrenQuery(library.Id, root.Id, 1, 1, 1, 1, "title:asc")
+            new GetPhotoFolderChildrenQuery(library.Id, root.Id, 1, 1, 1, 1, SortType.Title)
         );
 
         // Assert
@@ -62,7 +62,7 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
 
         // Act on the child page to prove direct assets and ancestry are separate from recursive totals.
         var childResult = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
-            new GetPhotoFolderChildrenQuery(library.Id, child.Id, 1, 1, 1, 1, "title:asc")
+            new GetPhotoFolderChildrenQuery(library.Id, child.Id, 1, 1, 1, 1, SortType.Title)
         );
 
         // Assert
@@ -80,6 +80,11 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
     {
         // Arrange
         var fixture = await ArrangeScaledFolderFixtureAsync();
+        var expectedFolderIds = await IDbContext
+            .PlexPhotoFolders.Where(x => x.ParentId == fixture.Root.Id)
+            .OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
 
         // Act
         var deepResult = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
@@ -90,6 +95,29 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         );
         var secondPage = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
             new GetPhotoFolderChildrenQuery(fixture.LibraryId, fixture.Root.Id, 2, 100, 1, 100)
+        );
+        var descendingPage = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
+            new GetPhotoFolderChildrenQuery(
+                fixture.LibraryId,
+                fixture.Root.Id,
+                1,
+                100,
+                1,
+                100,
+                SortType.Title,
+                true
+            )
+        );
+        var invalidSort = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
+            new GetPhotoFolderChildrenQuery(
+                fixture.LibraryId,
+                fixture.Root.Id,
+                1,
+                100,
+                1,
+                100,
+                (SortType)999
+            )
         );
 
         // Assert
@@ -106,10 +134,17 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         firstPage.Errors.Count.ShouldBe(0);
         firstPage.Value.Folders.TotalCount.ShouldBe(121);
         firstPage.Value.Folders.Items.Count.ShouldBe(100);
+        firstPage.Value.Folders.Items.Select(x => x.Id).ShouldBe(expectedFolderIds.Take(100));
         secondPage.IsSuccess.ShouldBeTrue();
         secondPage.Errors.Count.ShouldBe(0);
         secondPage.Value.Folders.TotalCount.ShouldBe(121);
         secondPage.Value.Folders.Items.Count.ShouldBe(21);
+        descendingPage.IsSuccess.ShouldBeTrue();
+        descendingPage.Errors.Count.ShouldBe(0);
+        descendingPage.Value.Folders.Items.Select(x => x.Id).ShouldBe(expectedFolderIds.OrderByDescending(x => x).Take(100));
+        invalidSort.IsFailed.ShouldBeTrue();
+        invalidSort.Errors.Count.ShouldBe(2);
+        invalidSort.Has400BadRequestError().ShouldBeTrue();
     }
 
     private async Task<ScaledFolderFixture> ArrangeScaledFolderFixtureAsync()
@@ -140,7 +175,7 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
                 PlexLibraryId = root.PlexLibraryId,
                 ParentId = parentId,
                 RelativePath = $"level-{depth}",
-                Title = $"Level {depth}",
+                Title = "Sibling",
                 RootIdentityKey = null,
                 SourceRootPath = null,
                 PlexApiLocationId = null,
@@ -158,7 +193,7 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
                 PlexLibraryId = root.PlexLibraryId,
                 ParentId = root.Id,
                 RelativePath = $"sibling-{index}",
-                Title = $"Sibling {index}",
+                Title = "Sibling",
                 RootIdentityKey = null,
                 SourceRootPath = null,
                 PlexApiLocationId = null,

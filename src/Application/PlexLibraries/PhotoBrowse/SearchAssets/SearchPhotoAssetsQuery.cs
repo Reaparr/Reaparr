@@ -4,7 +4,8 @@ public sealed record SearchPhotoAssetsQuery(
     string Query,
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
-    string Sort = "title:asc"
+    SortType Sort = SortType.Title,
+    bool Descending = false
 ) : ICommand<Result<PhotoAssetPageDTO>>;
 
 public sealed class SearchPhotoAssetsQueryValidator : AbstractValidator<SearchPhotoAssetsQuery>
@@ -14,7 +15,7 @@ public sealed class SearchPhotoAssetsQueryValidator : AbstractValidator<SearchPh
         RuleFor(x => x.Query).NotEmpty().Must(x => !string.IsNullOrWhiteSpace(x));
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort);
+        RuleFor(x => x.Sort).Equal(SortType.Title);
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -88,7 +89,7 @@ public sealed class SearchPhotoAssetsQueryHandler
             .FirstOrDefaultAsync(cancellationToken);
         var totalCount = aggregate?.TotalCount ?? 0;
         var totalBytes = aggregate?.TotalBytes ?? 0L;
-        var ordered = PhotoBrowseQuerySupport.IsDescending(query.Sort)
+        var ordered = query.Descending
             ? assets.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
             : assets.OrderBy(x => x.Title).ThenBy(x => x.Id);
         var assetIds = await ordered

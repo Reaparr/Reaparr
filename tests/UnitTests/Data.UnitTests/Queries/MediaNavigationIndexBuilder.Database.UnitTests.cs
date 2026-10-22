@@ -19,16 +19,16 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
     ];
 
     [Test]
-    [Arguments(nameof(BaseMediaOverviewSnapshot.Duration), false, new[] { "0–10 min", "10–20 min", "20–30 min" })]
-    [Arguments(nameof(BaseMediaOverviewSnapshot.Duration), true, new[] { "20–30 min", "10–20 min", "0–10 min" })]
-    [Arguments(nameof(BaseMediaOverviewSnapshot.AddedAt), false, new[] { "2026-01", "2026-02", "2026-03" })]
-    [Arguments(nameof(BaseMediaOverviewSnapshot.AddedAt), true, new[] { "2026-03", "2026-02", "2026-01" })]
-    [Arguments(nameof(BaseMediaOverviewSnapshot.UpdatedAt), false, new[] { "#", "2026-02", "2026-03" })]
-    [Arguments(nameof(BaseMediaOverviewSnapshot.UpdatedAt), true, new[] { "2026-03", "2026-02", "#" })]
-    [Arguments(nameof(BaseMediaOverviewSnapshot.MediaSize), false, new[] { "0–1 GB", "1–2 GB", "2–3 GB" })]
-    [Arguments(nameof(BaseMediaOverviewSnapshot.MediaSize), true, new[] { "2–3 GB", "1–2 GB", "0–1 GB" })]
+    [Arguments(SortType.Duration, false, new[] { "0–10 min", "10–20 min", "20–30 min" })]
+    [Arguments(SortType.Duration, true, new[] { "20–30 min", "10–20 min", "0–10 min" })]
+    [Arguments(SortType.AddedAt, false, new[] { "2026-01", "2026-02", "2026-03" })]
+    [Arguments(SortType.AddedAt, true, new[] { "2026-03", "2026-02", "2026-01" })]
+    [Arguments(SortType.UpdatedAt, false, new[] { "#", "2026-02", "2026-03" })]
+    [Arguments(SortType.UpdatedAt, true, new[] { "2026-03", "2026-02", "#" })]
+    [Arguments(SortType.MediaSize, false, new[] { "0–1 GB", "1–2 GB", "2–3 GB" })]
+    [Arguments(SortType.MediaSize, true, new[] { "2–3 GB", "1–2 GB", "0–1 GB" })]
     public async Task ShouldReturnFilteredBucketOrdinalsFromSqlite(
-        string sortField,
+        SortType sortType,
         bool descending,
         string[] expectedLabels
     )
@@ -39,7 +39,7 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
         var rows = CreateNavigationRows(dbContext.MediaOverviewOtherVideoSnapshots, filteredVideoId);
 
         // Act
-        var result = await MediaNavigationIndexBuilder.BuildAsync(rows, (sortField, descending), CancellationToken);
+        var result = await MediaNavigationIndexBuilder.BuildAsync(rows, (sortType, descending), CancellationToken);
 
         // Assert
         result

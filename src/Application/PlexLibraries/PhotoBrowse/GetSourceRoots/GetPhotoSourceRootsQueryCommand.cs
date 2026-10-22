@@ -4,7 +4,8 @@ public sealed record GetPhotoSourceRootsQueryCommand(
     int PlexLibraryId,
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
-    string Sort = "title:asc"
+    SortType Sort = SortType.Title,
+    bool Descending = false
 ) : ICommand<Result<PhotoFolderPageDTO>>;
 
 public sealed class GetPhotoSourceRootsQueryCommandValidator : AbstractValidator<GetPhotoSourceRootsQueryCommand>
@@ -14,7 +15,7 @@ public sealed class GetPhotoSourceRootsQueryCommandValidator : AbstractValidator
         RuleFor(x => x.PlexLibraryId).GreaterThan(0);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort);
+        RuleFor(x => x.Sort).Equal(SortType.Title);
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -45,7 +46,7 @@ public sealed class GetPhotoSourceRootsQueryCommandHandler
             x.PlexLibraryId == queryCommand.PlexLibraryId && x.ParentId == null && x.IsActive == true
         );
         var totalCount = await roots.CountAsync(cancellationToken);
-        var ordered = PhotoBrowseQuerySupport.IsDescending(queryCommand.Sort)
+        var ordered = queryCommand.Descending
             ? roots.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
             : roots.OrderBy(x => x.Title).ThenBy(x => x.Id);
         var rootRows = await ordered

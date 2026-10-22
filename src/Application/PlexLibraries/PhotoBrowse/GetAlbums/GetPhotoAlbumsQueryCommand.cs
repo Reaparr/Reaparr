@@ -4,7 +4,8 @@ public sealed record GetPhotoAlbumsQueryCommand(
     int? PlexLibraryId,
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
-    string Sort = "title:asc"
+    SortType Sort = SortType.Title,
+    bool Descending = false
 ) : ICommand<Result<PhotoAlbumPageDTO>>;
 
 public sealed class GetPhotoAlbumsQueryCommandValidator : AbstractValidator<GetPhotoAlbumsQueryCommand>
@@ -14,7 +15,7 @@ public sealed class GetPhotoAlbumsQueryCommandValidator : AbstractValidator<GetP
         RuleFor(x => x.PlexLibraryId).GreaterThan(0).When(x => x.PlexLibraryId.HasValue);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort);
+        RuleFor(x => x.Sort).Equal(SortType.Title);
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -88,7 +89,7 @@ public sealed class GetPhotoAlbumsQueryCommandHandler
         CancellationToken cancellationToken
     )
     {
-        var ordered = PhotoBrowseQuerySupport.IsDescending(queryCommand.Sort)
+        var ordered = queryCommand.Descending
             ? albums.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
             : albums.OrderBy(x => x.Title).ThenBy(x => x.Id);
         return await ordered

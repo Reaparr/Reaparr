@@ -50,8 +50,15 @@ public sealed class SearchPhotoAssetsEndpoint : Endpoint<SearchPhotoAssetsReques
 
     public override async Task HandleAsync(SearchPhotoAssetsRequest req, CancellationToken ct)
     {
+        var sort = req.Sort.ParseSort();
         var result = await _commandExecutor.Send(
-            new SearchPhotoAssetsQuery(req.Query ?? string.Empty, req.Page ?? 1, req.PageSize ?? MediaQueryFilter.MaximumPageSize, req.Sort ?? "title:asc"),
+            new SearchPhotoAssetsQuery(
+                req.Query ?? string.Empty,
+                req.Page ?? 1,
+                req.PageSize ?? MediaQueryFilter.MaximumPageSize,
+                sort.Sort,
+                sort.Descending
+            ),
             ct
         );
         await Send.FluentResult(result, ct);

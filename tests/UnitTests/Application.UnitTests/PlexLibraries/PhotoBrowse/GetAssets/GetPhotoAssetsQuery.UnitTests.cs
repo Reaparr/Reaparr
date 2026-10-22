@@ -12,10 +12,10 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 100, "title:asc")
+            new GetPhotoAssetsQuery(null, 1, 100, SortType.Title)
         );
         var scopedResult = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(fixture.LibraryId, 1, 100, "title:asc")
+            new GetPhotoAssetsQuery(fixture.LibraryId, 1, 100, SortType.Title)
         );
 
         // Assert
@@ -133,29 +133,40 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
         // Act
         var ascending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 1, "title:asc")
+            new GetPhotoAssetsQuery(null, 1, 1, SortType.Title)
         );
         var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 1, "title:desc")
+            new GetPhotoAssetsQuery(null, 1, 1, SortType.Title, true)
         );
         var emptyPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 100, 2, "title:asc")
+            new GetPhotoAssetsQuery(null, 100, 2, SortType.Title)
         );
         var invalidSize = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, MediaQueryFilter.MaximumPageSize + 1, "title:asc")
+            new GetPhotoAssetsQuery(null, 1, MediaQueryFilter.MaximumPageSize + 1, SortType.Title)
         );
         var overflowPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, int.MaxValue, MediaQueryFilter.MaximumPageSize, "title:asc")
+            new GetPhotoAssetsQuery(null, int.MaxValue, MediaQueryFilter.MaximumPageSize, SortType.Title)
+        );
+        var invalidSort = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new GetPhotoAssetsQuery(null, 1, 1, (SortType)999)
         );
 
         // Assert
+        ascending.IsSuccess.ShouldBeTrue();
+        ascending.Errors.Count.ShouldBe(0);
+        descending.IsSuccess.ShouldBeTrue();
+        descending.Errors.Count.ShouldBe(0);
         ascending.Value.Items.Select(x => x.Id).ShouldBe([assets[0].Id]);
         descending.Value.Items.Select(x => x.Id).ShouldBe([assets[^1].Id]);
         emptyPage.IsSuccess.ShouldBeTrue();
+        emptyPage.Errors.Count.ShouldBe(0);
         emptyPage.Value.Items.ShouldBeEmpty();
         emptyPage.Value.TotalCount.ShouldBe(assets.Count);
         invalidSize.Has400BadRequestError().ShouldBeTrue();
         overflowPage.Has400BadRequestError().ShouldBeTrue();
+        invalidSort.IsFailed.ShouldBeTrue();
+        invalidSort.Errors.Count.ShouldBe(2);
+        invalidSort.Has400BadRequestError().ShouldBeTrue();
     }
 
     [Test]
@@ -226,13 +237,13 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
         // Act
         var scoped = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(library.Id, 1, 100, "title:asc", true)
+            new GetPhotoAssetsQuery(library.Id, 1, 100, SortType.Title, false, true)
         );
         var aggregate = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 100, "title:asc")
+            new GetPhotoAssetsQuery(null, 1, 100, SortType.Title)
         );
         var invalidAggregate = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 100, "title:asc", true)
+            new GetPhotoAssetsQuery(null, 1, 100, SortType.Title, false, true)
         );
 
         // Assert

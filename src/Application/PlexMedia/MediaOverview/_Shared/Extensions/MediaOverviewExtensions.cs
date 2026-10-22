@@ -4,29 +4,19 @@ namespace Reaparr.Application;
 
 internal static class MediaOverviewExtensions
 {
-    public static (string Field, bool Descending)? ResolveSort(this QueryOptions options)
+    public static (SortType Field, bool Descending)? ResolveSort(this QueryOptions options)
     {
         if (options.Sort.Count == 0)
-            return (nameof(BasePlexMedia.SortIndex), false);
+            return (SortType.Title, false);
 
         if (options.Sort.Count != 1)
             return null;
 
         var sort = options.Sort[0];
-        return sort.Field.ToLowerInvariant() switch
-        {
-            "sortindex" or "title" or "sorttitle" or "searchtitle" => (
-                nameof(BasePlexMedia.SortIndex),
-                sort.Descending
-            ),
-            "year" => (nameof(PlexMediaSlimDTO.Year), sort.Descending),
-            "addedat" => (nameof(BasePlexMedia.AddedAt), sort.Descending),
-            "updatedat" => (nameof(BasePlexMedia.UpdatedAt), sort.Descending),
-            "duration" => (nameof(BasePlexMedia.Duration), sort.Descending),
-            "mediasize" => (nameof(BasePlexMedia.MediaSize), sort.Descending),
-            "videoquality" => (nameof(BasePlexMedia.VideoQuality), sort.Descending),
-            _ => null,
-        };
+        return SortTypeExtensions.TryParse(sort.Field, out var sortType)
+            && sortType is not SortType.ComparisonState
+            ? (sortType, sort.Descending)
+            : null;
     }
 
     public static async Task<IReadOnlyCollection<int>> ResolveAllowedLibraryIdsAsync(

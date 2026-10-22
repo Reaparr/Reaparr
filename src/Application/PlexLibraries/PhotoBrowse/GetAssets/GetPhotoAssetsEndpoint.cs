@@ -57,12 +57,14 @@ public sealed class GetPhotoAssetsEndpoint : Endpoint<GetPhotoAssetsRequest, Pho
 
     public override async Task HandleAsync(GetPhotoAssetsRequest req, CancellationToken ct)
     {
+        var sort = PhotoBrowseQuerySupport.ParseSort(req.Sort);
         var result = await _commandExecutor.Send(
             new GetPhotoAssetsQuery(
                 req.PlexLibraryId,
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
-                req.Sort ?? "title:asc",
+                sort.Sort,
+                sort.Descending,
                 req.UnmappedOnly ?? false
             ),
             ct

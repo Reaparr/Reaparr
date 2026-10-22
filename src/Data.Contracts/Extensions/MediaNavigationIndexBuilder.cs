@@ -8,16 +8,15 @@ public static class MediaNavigationIndexBuilder
     private const string UNKNOWN_LABEL = "#";
     private const long BYTES_PER_GIGABYTE = 1_000_000_000;
 
-    public static List<MediaNavigationIndexDTO> Build(IEnumerable<MediaNavigationIndexRow> rows, string? sortField)
+    public static List<MediaNavigationIndexDTO> Build(IEnumerable<MediaNavigationIndexRow> rows, SortType sortType)
     {
         var result = new List<MediaNavigationIndexDTO>();
         var seenLabels = new HashSet<string>(StringComparer.Ordinal);
-        var field = NormalizeSortField(sortField);
 
         var index = 0;
         foreach (var row in rows)
         {
-            var label = GetLabel(row, field);
+            var label = GetLabel(row, sortType);
             if (seenLabels.Add(label))
                 result.Add(new MediaNavigationIndexDTO { Label = label, Index = index });
 
@@ -29,23 +28,21 @@ public static class MediaNavigationIndexBuilder
 
     public static Task<List<MediaNavigationIndexDTO>> BuildAsync(
         IQueryable<MediaNavigationIndexRow> rows,
-        (string? Field, bool Descending) sort,
+        (SortType Field, bool Descending) sort,
         CancellationToken cancellationToken
-    )
-    {
-        var field = NormalizeSortField(sort.Field);
-        return field switch
+    ) =>
+        sort.Field switch
         {
-            "year" or "videoquality" => BuildGroupedAsync(
+            SortType.Year or SortType.VideoQuality => BuildGroupedAsync<int?>(
                 rows,
                 (
-                    field == "year" ? row => row.Year : row => row.QualityValue,
+                    sort.Field == SortType.Year ? row => row.Year : row => row.QualityValue,
                     static value => value?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL
                 ),
                 sort,
                 cancellationToken
             ),
-            "duration" => BuildGroupedAsync(
+            SortType.Duration => BuildGroupedAsync(
                 rows,
                 (
                     row => row.Duration.HasValue ? Math.Max(0, row.Duration.Value) / 600 : (int?)null,
@@ -54,10 +51,10 @@ public static class MediaNavigationIndexBuilder
                 sort,
                 cancellationToken
             ),
-            "addedat" or "updatedat" => BuildGroupedAsync(
+            SortType.AddedAt or SortType.UpdatedAt => BuildGroupedAsync<int?>(
                 rows,
                 (
-                    field == "addedat"
+                    sort.Field == SortType.AddedAt
                         ? row => row.AddedAt.Year * 100 + row.AddedAt.Month
                         : row =>
                             row.UpdatedAt.HasValue
@@ -76,7 +73,7 @@ public static class MediaNavigationIndexBuilder
                 sort,
                 cancellationToken
             ),
-            "mediasize" => BuildGroupedAsync(
+            SortType.MediaSize => BuildGroupedAsync(
                 rows,
                 (
                     row => Math.Max(0L, row.MediaSize) / BYTES_PER_GIGABYTE,
@@ -92,12 +89,11 @@ public static class MediaNavigationIndexBuilder
                 cancellationToken
             ),
         };
-    }
 
     private static async Task<List<MediaNavigationIndexDTO>> BuildGroupedAsync<TKey>(
         IQueryable<MediaNavigationIndexRow> rows,
         (Expression<Func<MediaNavigationIndexRow, TKey>> Key, Func<TKey, string> Label) bucket,
-        (string? Field, bool Descending) sort,
+        (SortType Field, bool Descending) sort,
         CancellationToken cancellationToken
     )
     {
@@ -129,21 +125,18 @@ public static class MediaNavigationIndexBuilder
             .ToList();
     }
 
-    private static string NormalizeSortField(string? sortField) =>
-        string.IsNullOrWhiteSpace(sortField) ? "sortindex" : sortField.Trim().ToLowerInvariant();
-
-    private static string GetLabel(MediaNavigationIndexRow row, string sortField) =>
-        sortField switch
+    private static string GetLabel(MediaNavigationIndexRow row, SortType sortType) =>
+        sortType switch
         {
-            "sortindex" or "title" => GetTitleLabel(row.SearchTitle),
-            "year" => row.Year?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
-            "videoquality" => row.QualityValue?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
-            "duration" => row.Duration.HasValue ? GetDurationLabel(row.Duration.Value) : UNKNOWN_LABEL,
-            "addedat" => row.AddedAt.ToString("yyyy-MM", CultureInfo.InvariantCulture),
-            "updatedat" => row.UpdatedAt is null
+            SortType.Title => GetTitleLabel(row.SearchTitle),
+            SortType.Year => row.Year?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
+            SortType.VideoQuality => row.QualityValue?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
+            SortType.Duration => row.Duration.HasValue ? GetDurationLabel(row.Duration.Value) : UNKNOWN_LABEL,
+            SortType.AddedAt => row.AddedAt.ToString("yyyy-MM", CultureInfo.InvariantCulture),
+            SortType.UpdatedAt => row.UpdatedAt is null
                 ? UNKNOWN_LABEL
                 : row.UpdatedAt.Value.ToString("yyyy-MM", CultureInfo.InvariantCulture),
-            "mediasize" => GetMediaSizeLabel(row.MediaSize),
+            SortType.MediaSize => GetMediaSizeLabel(row.MediaSize),
             _ => GetTitleLabel(row.SearchTitle),
         };
 

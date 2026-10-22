@@ -1,3 +1,4 @@
+using System.Text.Json;
 using NaturalSort.Extension;
 
 namespace Reaparr.IntegrationTests;
@@ -74,6 +75,7 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         await AssertMembersAsync(fixture);
         await AssertInspectionAsync(fixture);
         await AssertSearchAsync(fixture);
+        await AssertInvalidSortAsync(fixture);
         await AssertDisabledLibraryAsync(fixture);
     }
 
@@ -122,6 +124,20 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
                 PageSize = 2,
             }
         );
+        var descendingResponse = await fixture.Client.GETAsync<
+            GetPhotoAssetsEndpoint,
+            GetPhotoAssetsRequest,
+            ResultDTO<PhotoAssetPageDTO>
+        >(
+            new GetPhotoAssetsRequest
+            {
+                PlexLibraryId = fixture.Library.Id,
+                Page = 1,
+                PageSize = 2,
+                Sort = "title:desc",
+            }
+        );
+        var descendingValue = AssertSuccess(descendingResponse.Response.StatusCode, descendingResponse.Result);
         var value = AssertSuccess(response.Response.StatusCode, response.Result);
         value.Items.Count.ShouldBe(Math.Min(2, fixture.Assets.Count));
         value.TotalCount.ShouldBe(fixture.Assets.Count);
@@ -134,6 +150,13 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
                 .Select(x => x.Id)
         );
         value.Items.ShouldAllBe(x => x.SourceRootTitle == fixture.Root.Title);
+        descendingValue.Items.Select(x => x.Id).ShouldBe(
+            fixture.Assets
+                .OrderByDescending(x => x.Title, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
+                .ThenByDescending(x => x.Id)
+                .Take(2)
+                .Select(x => x.Id)
+        );
     }
 
     private async Task AssertRootsAsync(BrowseFixture fixture)
@@ -240,6 +263,21 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         value.Items.Select(x => x.Id).Distinct().Count().ShouldBe(
             value.Items.Count
         );
+    }
+
+    private async Task AssertInvalidSortAsync(BrowseFixture fixture)
+    {
+        using var response = await fixture.Client.GetAsync(
+            $"{ApiRoutes.PlexPhotoController}/assets?plexLibraryId={fixture.Library.Id}&sort=sortIndex:asc",
+            CancellationToken
+        );
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(CancellationToken));
+        var result = document.RootElement;
+        result.GetProperty("isSuccess").GetBoolean().ShouldBeFalse();
+        result.GetProperty("errors").GetArrayLength().ShouldBe(1);
+        result.GetProperty("successes").GetArrayLength().ShouldBe(0);
+        result.TryGetProperty("value", out _).ShouldBeFalse();
     }
 
     private async Task AssertDisabledLibraryAsync(BrowseFixture fixture)

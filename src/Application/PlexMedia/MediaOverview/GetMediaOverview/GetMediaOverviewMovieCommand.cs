@@ -180,7 +180,7 @@ public sealed class GetMediaOverviewMovieCommandHandler
         result.NavigationIndexes = await BuildNavigationIndexesAsync(
             orderedSnapshots,
             context.PlexMovies,
-            options.Sort.FirstOrDefault()?.Field,
+            sort.Value.Field,
             cancellationToken
         );
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
@@ -220,7 +220,7 @@ public sealed class GetMediaOverviewMovieCommandHandler
     private static async Task<List<MediaNavigationIndexDTO>> BuildNavigationIndexesAsync(
         IQueryable<MediaOverviewMovieSnapshot> orderedSnapshots,
         IQueryable<PlexMovie> movies,
-        string? sortField,
+        SortType sortType,
         CancellationToken cancellationToken
     )
     {
@@ -242,7 +242,7 @@ public sealed class GetMediaOverviewMovieCommandHandler
                     }
             )
             .ToListAsync(cancellationToken);
-        return MediaNavigationIndexBuilder.Build(navigationRows, sortField);
+        return MediaNavigationIndexBuilder.Build(navigationRows, sortType);
     }
 
     private void LogPhase(MediaQueryFilter filter, string phase, TimeSpan elapsed, int rowCount) =>
@@ -260,27 +260,27 @@ public sealed class GetMediaOverviewMovieCommandHandler
 
     private static IQueryable<MediaOverviewMovieSnapshot> ApplyOrder(
         IQueryable<MediaOverviewMovieSnapshot> query,
-        string field,
+        SortType sortType,
         bool descending
     ) =>
-        field switch
+        sortType switch
         {
-            nameof(PlexMediaSlimDTO.Year) => descending
+            SortType.Year => descending
                 ? query.OrderByDescending(x => x.YearRank)
                 : query.OrderBy(x => x.YearRank),
-            nameof(BasePlexMedia.AddedAt) => descending
+            SortType.AddedAt => descending
                 ? query.OrderByDescending(x => x.AddedAtRank)
                 : query.OrderBy(x => x.AddedAtRank),
-            nameof(BasePlexMedia.UpdatedAt) => descending
+            SortType.UpdatedAt => descending
                 ? query.OrderByDescending(x => x.UpdatedAtRank)
                 : query.OrderBy(x => x.UpdatedAtRank),
-            nameof(BasePlexMedia.Duration) => descending
+            SortType.Duration => descending
                 ? query.OrderByDescending(x => x.DurationRank)
                 : query.OrderBy(x => x.DurationRank),
-            nameof(BasePlexMedia.MediaSize) => descending
+            SortType.MediaSize => descending
                 ? query.OrderByDescending(x => x.MediaSizeRank)
                 : query.OrderBy(x => x.MediaSizeRank),
-            nameof(BasePlexMedia.VideoQuality) => descending
+            SortType.VideoQuality => descending
                 ? query.OrderByDescending(x => x.QualityRank)
                 : query.OrderBy(x => x.QualityRank),
             _ => descending ? query.OrderByDescending(x => x.TitleRank) : query.OrderBy(x => x.TitleRank),

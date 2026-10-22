@@ -24,7 +24,10 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
         var searchTitle = "cross-library-search".ToSearchTitle();
         await dbContext.PlexPhotoMediaData
             .Where(x => selectedIds.Contains(x.Id))
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, searchTitle), CancellationToken);
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.SearchTitle, searchTitle).SetProperty(y => y.Title, "Cross library"),
+                CancellationToken
+            );
         var inactiveAsset = assets.Single(x => x.Id == selectedIds[0]);
         var inactiveRoot = new PlexPhotoFolder
         {
@@ -55,17 +58,29 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("cross-library-search", 1, 100, "title:asc")
+            new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title)
+        );
+        var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title, true)
+        );
+        var invalidSort = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new SearchPhotoAssetsQuery("cross-library-search", 1, 100, (SortType)999)
         );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
+        descending.IsSuccess.ShouldBeTrue();
+        descending.Errors.Count.ShouldBe(0);
         result.Value.TotalCount.ShouldBe(2);
         result.Value.Items.Select(x => x.Id).Distinct().Count().ShouldBe(2);
-        result.Value.Items.Select(x => x.Id).OrderBy(x => x).ShouldBe(selectedIds.OrderBy(x => x));
+        result.Value.Items.Select(x => x.Id).ShouldBe(selectedIds.OrderBy(x => x));
+        descending.Value.Items.Select(x => x.Id).ShouldBe(selectedIds.OrderByDescending(x => x));
         result.Value.Items.Select(x => x.PlexLibraryId).Distinct().Count().ShouldBeGreaterThan(1);
         result.Value.Items.Single(x => x.Id == inactiveAsset.Id).SourceRootTitle.ShouldBe(inactiveRoot.Title);
+        invalidSort.IsFailed.ShouldBeTrue();
+        invalidSort.Errors.Count.ShouldBe(2);
+        invalidSort.Has400BadRequestError().ShouldBeTrue();
     }
  
     [Test]
