@@ -32,9 +32,9 @@ Reaparr is a cross-platform Plex media downloader hosted on GitHub: https://gith
 
 ---
 
-## CodeScene safeguards
+## CodeScene
 
-- After completing the related implementation and test edits, run `code_health_review` on every changed source file.
+- Use the CodeScene MCP tools for Code Health checks. After completing the related implementation and test edits, run `code_health_review` on every changed source file.
 - Address introduced Code Health regressions within the approved scope, then repeat the affected review and confirm the result with `code_health_score`.
 - Before committing, run `pre_commit_code_health_safeguard` and require it to pass. Report unavailable checks or out-of-scope findings as blockers rather than expanding the change.
 - Code Health supplements behavioral tests and technical review; it does not replace them or authorize commits.
