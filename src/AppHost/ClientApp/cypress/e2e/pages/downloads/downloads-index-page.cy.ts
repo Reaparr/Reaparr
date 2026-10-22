@@ -154,6 +154,36 @@ describe('Downloads page', () => {
 			cy.getCy('download-details-dialog-download-url').should('contain.text', downloadTask.downloadUrl);
 		});
 	});
+	it('Should remove completed rows cleared elsewhere while retaining active rows after notification', () => {
+		cy.basePageSetup({
+			seed: 47095, plexAccountCount: 1, plexServerCount: 1, plexMovieLibraryCount: 1, movieDownloadTask: 2,
+		}).then((data) => {
+			const queue = cloneDeep(data.serverDownloadProgress);
+			const removed = queue[0]!.downloads[0]!;
+			const active = queue[0]!.downloads[1]!;
+			removed.status = DownloadStatus.Completed;
+			active.status = DownloadStatus.Queued;
+			cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => {
+				request.reply({ statusCode: 200, body: generateResultDTO(queue) });
+			}).as('recipientQueue');
+			cy.visit(route('/downloads'));
+			cy.getCy(`column-status-${removed.id}`).first().scrollIntoView().should('have.text', DownloadStatus.Completed);
+			cy.getCy(`column-status-${active.id}`).first().scrollIntoView().should('have.text', DownloadStatus.Queued);
+
+			// Another client completes the clear; this browser receives only its notification.
+			cy.then(() => {
+				queue[0]!.downloads = [active];
+			});
+			cy.hubPublish('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
+			cy.wait('@recipientQueue');
+			cy.getCy(`column-title-${removed.id}`).should('not.exist');
+			cy.getCy(`column-status-${active.id}`).first().scrollIntoView().should('have.text', DownloadStatus.Queued);
+			cy.reload();
+			cy.wait('@recipientQueue');
+			cy.getCy(`column-title-${removed.id}`).should('not.exist');
+			cy.getCy(`column-status-${active.id}`).first().scrollIntoView().should('have.text', DownloadStatus.Queued);
+		});
+	});
 	it('Should retain failed clear and delete actions and recover through retry and reload', () => {
 		cy.viewport(1280, 800);
 		cy.basePageSetup({

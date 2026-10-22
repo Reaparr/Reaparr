@@ -14,10 +14,15 @@ public class ClearCompletedDownloadTasksByServerIdEndpoint
     : Endpoint<ClearCompletedDownloadTasksByServerIdEndpointRequest, ResultDTO<CountResponseDTO>>
 {
     private readonly ICommandExecutor _commandExecutor;
+    private readonly INotificationHubService _notificationHubService;
 
-    public ClearCompletedDownloadTasksByServerIdEndpoint(ICommandExecutor commandExecutor)
+    public ClearCompletedDownloadTasksByServerIdEndpoint(
+        ICommandExecutor commandExecutor,
+        INotificationHubService notificationHubService
+    )
     {
         _commandExecutor = commandExecutor;
+        _notificationHubService = notificationHubService;
     }
 
     public override void Configure()
@@ -36,12 +41,13 @@ public class ClearCompletedDownloadTasksByServerIdEndpoint
             new ClearCompletedDownloadTasksByServerIdCommand(req.PlexServerId),
             ct
         );
-        if (result.IsFailed)
+        if (result.IsCancelledOrFailed)
         {
             await Send.FluentResult(result.ToResult(), ct);
             return;
         }
 
+        await _notificationHubService.SendRefreshNotificationAsync(RefreshDataType.DownloadTasks);
         await Send.FluentResult(Result.Ok(new CountResponseDTO(result.Value)), ct);
     }
 }
