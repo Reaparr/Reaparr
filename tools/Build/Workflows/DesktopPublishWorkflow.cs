@@ -106,6 +106,7 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
                 [
                     "publish",
                     _paths.AppHostProject,
+                    "--no-restore",
                     $"-p:PublishProfile={runtime.PublishProfile}",
                     $"-p:Version={settings.Version}",
                     $"-p:InformationalVersion={settings.InformationalVersion}",
@@ -113,10 +114,6 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
                     "-p:CSharpier_Bypass=true",
                 ]
             );
-        }
-
-        if (!settings.DryRun)
-        {
             var sourceDirectory = GetFrontendPublicDirectory(settings);
             if (!_fileSystem.Directory.Exists(sourceDirectory))
                 return Result.Fail<int>($"Generated frontend output directory was not found at '{sourceDirectory}'.");
