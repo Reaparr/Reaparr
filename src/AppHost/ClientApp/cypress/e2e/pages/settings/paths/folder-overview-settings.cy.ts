@@ -104,6 +104,18 @@ function installPendingDirectoryLookup() {
 	cy.intercept('GET', '**/api/FolderPath/directory*', (request) => {
 		const directory = request.query.path;
 		if (typeof directory !== 'string') throw new Error('Expected a directory lookup path');
+		if (directory === '/failed') {
+			request.alias = 'failedDirectory';
+			request.reply({
+				statusCode: 500,
+				body: generateFailedResultDTO({
+					statusCode: 500,
+					errors: [{ message: 'Directory lookup unavailable', reasons: [], metadata: {} }],
+				}),
+				...headers,
+			});
+			return;
+		}
 		if (directory === '/pending') {
 			request.on('before:response', () => {
 				pending = true;
@@ -156,7 +168,7 @@ describe('Change Folder Paths', () => {
 		cy.getPageData().then(() => cy.correctDefaultFolderPaths());
 	});
 
-	it('saves only the current resolved writable directory after pending and read-only lookups', () => {
+	it('keeps lookup progress nonblocking and saves only the latest resolved writable directory', () => {
 		cy.getPageData().then(() => {
 			const lookup = installPendingDirectoryLookup();
 			releaseDirectoryLookup = lookup.release;
@@ -164,20 +176,33 @@ describe('Change Folder Paths', () => {
 			cy.getCy(`folder-path-tab-${type}`).click();
 			cy.getCy(`default-${type}-edit-button`).click();
 			cy.getCy('directory-browser-confirm-button').should('be.visible').and('not.be.disabled');
+			cy.getCy('directory-browser-path-field').find('.q-spinner').should('not.exist');
 
 			cy.get('.q-dialog .dialog-container-top-row input').clear().type('/pending');
 			cy.wrap(null).should(() => expect(lookup.pending).to.equal(true));
+			cy.getCy('directory-browser-path-field').find('.q-spinner').should('be.visible');
+			cy.getCy('directory-browser-path-field').find('input').should('have.attr', 'aria-busy', 'true');
 			cy.getCy('directory-browser-confirm-button').should('be.disabled').click({ force: true });
 			cy.getCy('directory-browser-row-return').should('not.exist');
 			cy.get('.q-dialog .dialog-container-top-row input').should('not.be.disabled').and('not.have.attr', 'readonly');
 			cy.get('@saveFolderPath.all').should('have.length', 0);
 
+			cy.getCy('directory-browser-path-field').find('input').clear().type('/failed');
+			cy.wait('@failedDirectory').its('response.statusCode').should('equal', 500);
+			cy.getCy('directory-browser-path-field').find('.q-spinner').should('not.exist');
+			cy.getCy('alert-dialog').should('be.visible').and('contain.text', 'Directory lookup unavailable');
+			cy.getCy('close-alert-dialog').click();
+			cy.getCy('directory-browser-confirm-button').should('be.disabled');
+
 			cy.get('.q-dialog .dialog-container-top-row input').clear().type('/read-only');
 			cy.wait('@readOnlyDirectory').its('response.statusCode').should('equal', 200);
+			cy.getCy('directory-browser-path-field').find('.q-spinner').should('not.exist');
+			cy.getCy('directory-browser-path-field').find('input').should('have.attr', 'aria-busy', 'false');
 			cy.getCy('directory-browser-row-return').should('be.visible');
 			cy.getCy('directory-browser-confirm-button').should('be.disabled');
 			cy.then(() => lookup.release());
 			cy.get('.q-dialog .dialog-container-top-row input').should('have.value', '/read-only');
+			cy.getCy('directory-browser-path-field').find('.q-spinner').should('not.exist');
 			cy.getCy('directory-browser-confirm-button').should('be.disabled').click({ force: true });
 			cy.get('@saveFolderPath.all').should('have.length', 0);
 
@@ -187,6 +212,10 @@ describe('Change Folder Paths', () => {
 			cy.wait('@saveFolderPath').its('request.body').should('deep.include', {
 				directory: '/verified', folderType: FolderType.MovieFolder, isDefault: true,
 			});
+			cy.getCy(`default-${type}-input`).should('have.value', '/verified');
+			cy.reload();
+			cy.wait('@getFolderPaths');
+			cy.getCy(`folder-path-tab-${type}`).click();
 			cy.getCy(`default-${type}-input`).should('have.value', '/verified');
 		});
 	});

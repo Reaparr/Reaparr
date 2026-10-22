@@ -34,10 +34,12 @@
 						</q-tooltip>
 					</q-icon>
 				</QCol>
-				<QCol>
+				<QCol data-cy="directory-browser-path-field">
 					<PTextField
 						:model-value="currentPath"
 						:readonly="saving"
+						:loading="isLookupPending"
+						:aria-busy="isLookupPending"
 						outlined
 						color="red"
 						:placeholder="t('components.directory-browser.no-path')"
@@ -149,6 +151,7 @@ const currentPath = ref('');
 const currentPathModel = ref<FileSystemModelDTO | null>(null);
 const parentPath = ref('');
 const isLoading = ref(true);
+const isLookupPending = ref(false);
 const items = ref<FileSystemModelDTO[]>([]);
 const directoryRequests = new Subscription();
 let currentRequest: Subscription | undefined;
@@ -274,6 +277,7 @@ function updateCurrentPath(newPath: string | undefined): void {
 
 function requestDirectories(newPath?: string): void {
 	invalidateLookup();
+	set(isLookupPending, true);
 
 	if (!newPath) {
 		Log.warn(`path was invalid "${newPath}" setting to default empty root file-system view`);
@@ -290,7 +294,10 @@ function requestDirectories(newPath?: string): void {
 
 	currentRequest = folderPathApi
 		.getFolderPathDirectoryEndpoint({ path: newPath })
-		.pipe(finalize(() => set(isLoading, false)))
+		.pipe(finalize(() => {
+			set(isLookupPending, false);
+			set(isLoading, false);
+		}))
 		.subscribe({
 			next: ({ isSuccess, value }) => {
 				if (isSuccess && value) {

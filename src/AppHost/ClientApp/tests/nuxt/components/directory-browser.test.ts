@@ -266,6 +266,48 @@ describe('DirectoryBrowser', () => {
 		}
 	});
 
+	test('Should keep path editing nonblocking and progress owned by the latest pending lookup', async () => {
+		// Arrange
+		const wrapper = await render({ saving: false, errorMessage: '' });
+		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
+		await flushPromises();
+		const older = deferredDirectoryResponse();
+		const newer = deferredDirectoryResponse();
+		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
+		mock.resetHandlers();
+		mock.onGet(endpoint).replyOnce(() => older.response)
+			.onGet(endpoint).replyOnce(() => newer.response);
+
+		try {
+			// Act: replacing a pending lookup keeps the input available and busy.
+			await wrapper.get('input').setValue('/older');
+			await vi.waitFor(() => expect(mock.history.get).toHaveLength(2));
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('true');
+			expect(wrapper.get('input').attributes('readonly')).toBeUndefined();
+			expect(wrapper.getComponent(CardDialog).attributes('aria-busy')).toBe('false');
+			await wrapper.get('input').setValue('/newer');
+			await vi.waitFor(() => expect(mock.history.get).toHaveLength(3));
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('true');
+			older.reply([200, generateResultDTO(directoryResult('/older'))]);
+			await flushPromises();
+
+			// Assert: completing an obsolete lookup cannot stop the current progress.
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('true');
+			expect(wrapper.get('input').element.value).toBe('/newer');
+			expect(wrapper.find('[data-cy="directory-browser-row-0"]').exists()).toBe(false);
+			expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeDefined();
+			newer.reply([200, generateResultDTO(directoryResult('/newer'))]);
+			await flushPromises();
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('false');
+			expect(wrapper.get('[data-cy="directory-browser-row-0"]').text()).toContain('newer-child');
+			expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeUndefined();
+		} finally {
+			older.reply([200, generateResultDTO(directoryResult('/older'))]);
+			newer.reply([200, generateResultDTO(directoryResult('/newer'))]);
+			await flushPromises();
+		}
+	});
+
 	test('Should release a failed first load and allow correction to a writable directory', async () => {
 		// Arrange
 		const wrapper = await render({ saving: false, errorMessage: '' });
@@ -278,6 +320,7 @@ describe('DirectoryBrowser', () => {
 		// Act and assert: failure leaves no permissions and releases the first-load overlay.
 		await flushPromises();
 		expect(wrapper.getComponent(CardDialog).attributes('aria-busy')).toBe('false');
+		expect(wrapper.get('input').attributes('aria-busy')).toBe('false');
 		expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeDefined();
 		expect(wrapper.find('[data-cy="directory-browser-row-0"]').exists()).toBe(false);
 		expect(wrapper.get('input').attributes('readonly')).toBeUndefined();
@@ -299,10 +342,13 @@ describe('DirectoryBrowser', () => {
 		const reopened = { ...folderPath, id: 8, displayName: 'Other destination', directory: '/new-dialog' };
 		dialog.vm.$emit('opened', folderPath);
 		await vi.waitFor(() => expect(mock.history.get).toHaveLength(1));
+		expect(wrapper.get('input').attributes('aria-busy')).toBe('true');
 
 		try {
 			// Act: close and reopen before the old read-only response arrives.
 			dialog.vm.$emit('closed');
+			await flushPromises();
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('false');
 			wrapper.getComponent({ name: 'ConfirmButton' }).vm.$emit('click');
 			expect(wrapper.emitted('confirm')).toBeUndefined();
 			dialog.vm.$emit('opened', reopened);
@@ -313,6 +359,7 @@ describe('DirectoryBrowser', () => {
 			// Assert
 			expect(wrapper.get('input').element.value).toBe('/new-dialog');
 			expect(wrapper.get('[data-cy="directory-browser-row-0"]').text()).toContain('new-dialog-child');
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('false');
 			expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeUndefined();
 			await wrapper.get('[data-cy="directory-browser-confirm-button"]').trigger('click');
 			expect(wrapper.emitted('confirm')).toEqual([[reopened]]);
