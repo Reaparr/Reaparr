@@ -87,17 +87,17 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 					if (downloadTaskIds.length > 0) {
 						return downloadApi
 							.clearCompletedDownloadTasksByDownloadTaskIdEndpoint(downloadTaskIds)
-							.pipe(switchMap(actions.fetchDownloadList));
+							.pipe(switchMap(refreshAfterSuccessfulCommand));
 					}
 
 					return downloadApi
 						.clearCompletedDownloadTasksByServerIdEndpoint(plexServerId!)
-						.pipe(switchMap(actions.fetchDownloadList));
+						.pipe(switchMap(refreshAfterSuccessfulCommand));
 				}
 				case DownloadActions.Delete:
 					return downloadApi
 						.deleteDownloadTaskEndpoint(downloadTaskIds)
-						.pipe(switchMap(actions.fetchDownloadList));
+						.pipe(switchMap(refreshAfterSuccessfulCommand));
 				case DownloadActions.Stop:
 					return downloadApi.stopDownloadTaskEndpoint(id);
 				case DownloadActions.Restart:
@@ -264,6 +264,10 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 	};
 
 	const downloadNodeIndexCache = new WeakMap<DownloadProgressDTO[], Map<string, DownloadProgressDTO>>();
+
+	function refreshAfterSuccessfulCommand(result: BaseResultDTO): Observable<BaseResultDTO> {
+		return result.isSuccess ? actions.fetchDownloadList() : of(result);
+	}
 
 	function findNodeById(nodes: DownloadProgressDTO[], id: string): DownloadProgressDTO | null {
 		for (const node of nodes) {

@@ -1,8 +1,8 @@
 import { cloneDeep } from 'lodash-es';
 import prettyBytes from 'pretty-bytes';
 import { route } from '@fixtures';
-import { DownloadStatus, MessageTypes, RefreshDataType } from '@dto';
-import { generateResultDTO } from '@mock';
+import { DownloadStatus, MessageTypes, RefreshDataType, type DownloadProgressDTO } from '@dto';
+import { generateFailedResultDTO, generateResultDTO } from '@mock';
 
 const getVisibleCy = (selector: string) => cy.getCy(selector).filter(':visible').first();
 
@@ -152,6 +152,75 @@ describe('Downloads page', () => {
 			cy.getCy('download-details-dialog-download-path').should('contain.text', downloadTask.downloadDirectory);
 			cy.getCy('download-details-dialog-destination-path').should('contain.text', downloadTask.destinationDirectory);
 			cy.getCy('download-details-dialog-download-url').should('contain.text', downloadTask.downloadUrl);
+		});
+	});
+	it('Should retain failed clear and delete actions and recover through retry and reload', () => {
+		cy.viewport(1280, 800);
+		cy.basePageSetup({
+			seed: 47094, plexAccountCount: 1, plexServerCount: 1, plexMovieLibraryCount: 1, movieDownloadTask: 2,
+		}).then((data) => {
+			const queue = cloneDeep(data.serverDownloadProgress);
+			const completed = queue[0]!.downloads[0]!;
+			const retained = queue[0]!.downloads[1]!;
+			const setStatus = (item: DownloadProgressDTO, status: DownloadStatus) => {
+				item.status = status;
+				for (const child of item.children ?? []) setStatus(child, status);
+			};
+			setStatus(completed, DownloadStatus.Completed);
+			setStatus(retained, DownloadStatus.Stopped);
+			cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => {
+				request.reply({ statusCode: 200, body: generateResultDTO(queue) });
+			}).as('queue');
+			const failure = generateFailedResultDTO({
+				statusCode: 503, errors: [{ message: 'Download mutation unavailable', reasons: [], metadata: {} }],
+			});
+			let clearAttempts = 0;
+			cy.intercept('DELETE', `**/api/Download/clear/${queue[0]!.id}`, (request) => {
+				if (++clearAttempts === 1) {
+					request.reply({ statusCode: 503, body: failure });
+					return;
+				}
+				queue[0]!.downloads = [retained];
+				request.reply({ statusCode: 200, body: generateResultDTO({ count: 1 }) });
+			}).as('clear');
+			let deleteAttempts = 0;
+			cy.intercept('DELETE', '**/api/Download/delete', (request) => {
+				expect(request.body).to.deep.equal([retained.id]);
+				if (++deleteAttempts === 1) {
+					request.reply({ statusCode: 503, body: failure });
+					return;
+				}
+				queue[0]!.downloads = [];
+				request.reply({ statusCode: 200, body: generateResultDTO(null) });
+			}).as('delete');
+
+			cy.visit(route('/downloads'));
+			getVisibleCy(`column-status-${completed.id}`).should('have.text', DownloadStatus.Completed);
+			cy.getCy('clear-completed-by-server-button').first().scrollIntoView().should('be.visible').click();
+			cy.getCy('confirmation-dialog-confirmation-button').click();
+			cy.wait('@clear').its('response.statusCode').should('equal', 503);
+			cy.getCy('alert-dialog').should('contain.text', 'Download mutation unavailable');
+			cy.getCy('close-alert-dialog').click();
+			cy.getCy('confirmation-dialog').should('be.visible');
+			cy.getCy(`column-title-${completed.id}`).should('exist');
+			cy.getCy('confirmation-dialog-confirmation-button').should('not.be.disabled').click();
+			cy.wait('@clear').its('response.statusCode').should('equal', 200);
+			cy.getCy('confirmation-dialog').should('not.exist');
+			cy.getCy(`column-title-${completed.id}`).should('not.exist');
+			cy.getCy(`column-title-${retained.id}`).first().scrollIntoView().should('be.visible').and('have.text', retained.title);
+
+			cy.getCy(`column-actions-delete-${retained.id}`).first().scrollIntoView().should('be.visible').click();
+			cy.wait('@delete').its('response.statusCode').should('equal', 503);
+			cy.getCy('alert-dialog').should('contain.text', 'Download mutation unavailable');
+			cy.getCy('close-alert-dialog').click();
+			cy.getCy(`column-title-${retained.id}`).first().scrollIntoView().should('be.visible').and('have.text', retained.title);
+			cy.getCy(`column-actions-delete-${retained.id}`).first().scrollIntoView().should('not.be.disabled').click();
+			cy.wait('@delete').its('response.statusCode').should('equal', 200);
+			cy.getCy(`column-title-${retained.id}`).should('not.exist');
+			cy.reload();
+			cy.wait('@queue');
+			cy.getCy(`column-title-${completed.id}`).should('not.exist');
+			cy.getCy(`column-title-${retained.id}`).should('not.exist');
 		});
 	});
 });
