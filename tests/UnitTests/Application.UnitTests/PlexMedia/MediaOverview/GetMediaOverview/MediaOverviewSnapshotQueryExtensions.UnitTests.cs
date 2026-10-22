@@ -3,36 +3,49 @@ namespace Reaparr.Application.UnitTests;
 public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
 {
     [Test]
-    [Arguments(SortType.Title, false, new[] { "B", "C", "A" })]
-    [Arguments(SortType.Title, true, new[] { "A", "C", "B" })]
-    [Arguments(SortType.Year, false, new[] { "C", "A", "B" })]
-    [Arguments(SortType.Year, true, new[] { "B", "A", "C" })]
-    [Arguments(SortType.VideoQuality, false, new[] { "A", "C", "B" })]
-    [Arguments(SortType.VideoQuality, true, new[] { "B", "C", "A" })]
-    [Arguments(SortType.AddedAt, false, new[] { "B", "C", "A" })]
-    [Arguments(SortType.AddedAt, true, new[] { "A", "C", "B" })]
-    [Arguments(SortType.UpdatedAt, false, new[] { "A", "C", "B" })]
-    [Arguments(SortType.UpdatedAt, true, new[] { "B", "C", "A" })]
-    [Arguments(SortType.Duration, false, new[] { "B", "A", "C" })]
-    [Arguments(SortType.Duration, true, new[] { "C", "A", "B" })]
-    [Arguments(SortType.MediaSize, false, new[] { "C", "B", "A" })]
-    [Arguments(SortType.MediaSize, true, new[] { "A", "B", "C" })]
-    public async Task ShouldOrderOtherVideoRanksThroughSqlite(
+    [Arguments(PlexMediaType.OtherVideos, SortType.Title, false, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.Title, true, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.Year, false, new[] { "C", "A", "B" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.Year, true, new[] { "B", "A", "C" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.VideoQuality, false, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.VideoQuality, true, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.AddedAt, false, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.AddedAt, true, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.UpdatedAt, false, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.UpdatedAt, true, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.Duration, false, new[] { "B", "A", "C" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.Duration, true, new[] { "C", "A", "B" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.MediaSize, false, new[] { "C", "B", "A" })]
+    [Arguments(PlexMediaType.OtherVideos, SortType.MediaSize, true, new[] { "A", "B", "C" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.Title, false, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.Title, true, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.AddedAt, false, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.AddedAt, true, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.UpdatedAt, false, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.UpdatedAt, true, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.Duration, false, new[] { "B", "A", "C" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.Duration, true, new[] { "C", "A", "B" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.MediaSize, false, new[] { "C", "B", "A" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.MediaSize, true, new[] { "A", "B", "C" })]
+    public async Task ShouldOrderSnapshotRanksThroughSqlite(
+        PlexMediaType mediaType,
         SortType sortType,
         bool descending,
         string[] expectedLabels
     )
     {
         // Arrange
-        await ArrangeOtherVideoSnapshotsAsync();
-        var snapshots = IDbContext.MediaOverviewOtherVideoSnapshots;
+        if (mediaType == PlexMediaType.MusicArtist)
+            await ArrangeMusicSnapshotsAsync();
+        else
+            await ArrangeOtherVideoSnapshotsAsync();
         var sort = (sortType, descending);
 
         // Act
-        var orderedLabels = await snapshots
-            .ApplyRankOrder(sort)
-            .Select(x => x.NavigationTitleLabel)
-            .ToListAsync(CancellationToken);
+        var labels = mediaType == PlexMediaType.MusicArtist
+            ? IDbContext.MediaOverviewMusicArtistSnapshots.ApplyRankOrder(sort).Select(x => x.NavigationTitleLabel)
+            : IDbContext.MediaOverviewOtherVideoSnapshots.ApplyRankOrder(sort).Select(x => x.NavigationTitleLabel);
+        var orderedLabels = await labels.ToListAsync(CancellationToken);
 
         // Assert
         orderedLabels.ShouldBe(expectedLabels);
@@ -96,27 +109,42 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
     }
 
     [Test]
-    [Arguments(SortType.Title, false, new[] { "B", "C", "A" })]
-    [Arguments(SortType.Title, true, new[] { "A", "C", "B" })]
-    [Arguments(SortType.AddedAt, false, new[] { "2026-02", "2026-03", "2026-01" })]
-    [Arguments(SortType.AddedAt, true, new[] { "2026-01", "2026-03", "2026-02" })]
-    [Arguments(SortType.UpdatedAt, false, new[] { "#", "2026-03", "2026-02" })]
-    [Arguments(SortType.UpdatedAt, true, new[] { "2026-02", "2026-03", "#" })]
-    [Arguments(SortType.Duration, false, new[] { "20–30 min", "10–20 min", "30–40 min" })]
-    [Arguments(SortType.Duration, true, new[] { "30–40 min", "10–20 min", "20–30 min" })]
-    [Arguments(SortType.MediaSize, false, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
-    [Arguments(SortType.MediaSize, true, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
-    public async Task ShouldBuildPhotoNavigationIndexesWithCommonRanksThroughSqlite(
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.Title, false, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.Title, true, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.AddedAt, false, new[] { "2026-02", "2026-03", "2026-01" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.AddedAt, true, new[] { "2026-01", "2026-03", "2026-02" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.UpdatedAt, false, new[] { "#", "2026-03", "2026-02" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.UpdatedAt, true, new[] { "2026-02", "2026-03", "#" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.Duration, false, new[] { "20–30 min", "10–20 min", "30–40 min" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.Duration, true, new[] { "30–40 min", "10–20 min", "20–30 min" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.MediaSize, false, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
+    [Arguments(PlexMediaType.PhotoAlbum, SortType.MediaSize, true, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.Title, false, new[] { "B", "C", "A" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.Title, true, new[] { "A", "C", "B" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.AddedAt, false, new[] { "2026-02", "2026-03", "2026-01" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.AddedAt, true, new[] { "2026-01", "2026-03", "2026-02" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.UpdatedAt, false, new[] { "#", "2026-03", "2026-02" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.UpdatedAt, true, new[] { "2026-02", "2026-03", "#" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.Duration, false, new[] { "20–30 min", "10–20 min", "30–40 min" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.Duration, true, new[] { "30–40 min", "10–20 min", "20–30 min" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.MediaSize, false, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
+    [Arguments(PlexMediaType.MusicArtist, SortType.MediaSize, true, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
+    public async Task ShouldBuildCommonNavigationIndexesWithTranslatedRanksThroughSqlite(
+        PlexMediaType mediaType,
         SortType sortType,
         bool descending,
         string[] expectedLabels
     )
     {
         // Arrange
-        await ArrangePhotoSnapshotsAsync();
-        var snapshots = IDbContext.MediaOverviewPhotoAlbumSnapshots;
+        if (mediaType == PlexMediaType.MusicArtist)
+            await ArrangeMusicSnapshotsAsync();
+        else
+            await ArrangePhotoSnapshotsAsync();
         var sort = (sortType, descending);
-        var navigationRows = snapshots.SelectNavigationRows(sort);
+        var navigationRows = mediaType == PlexMediaType.MusicArtist
+            ? IDbContext.MediaOverviewMusicArtistSnapshots.SelectNavigationRows(sort)
+            : IDbContext.MediaOverviewPhotoAlbumSnapshots.SelectNavigationRows(sort);
 
         // Act
         var projectedRows = await navigationRows
@@ -144,6 +172,49 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
             }
         );
         indexes.Select(x => (x.Label, x.Index)).ShouldBe(expectedLabels.Select((label, index) => (label, index)));
+    }
+
+    private async Task ArrangeMusicSnapshotsAsync()
+    {
+        await SetupDatabase(
+            84207,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistCount = 3;
+            }
+        );
+        var dbContext = IDbContext;
+        var artists = await dbContext.PlexMusicArtists
+            .OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.PlexLibraryId })
+            .ToListAsync(CancellationToken);
+        artists.Count.ShouldBe(3);
+        var searchTitles = new[] { "alpha", "bravo", "charlie" };
+        var titleRanks = new[] { 2, 0, 1 };
+        var updatedRanks = new[] { 0, 2, 1 };
+        var durationRanks = new[] { 1, 0, 2 };
+        var sizeRanks = new[] { 2, 1, 0 };
+        for (var index = 0; index < artists.Count; index++)
+        {
+            dbContext.MediaOverviewMusicArtistSnapshots.Add(new MediaOverviewMusicArtistSnapshot
+            {
+                PlexArtistId = artists[index].Id,
+                PlexLibraryId = artists[index].PlexLibraryId,
+                SearchTitle = searchTitles[index],
+                NavigationTitleLabel = ((char)('A' + index)).ToString(),
+                Duration = (index + 1) * 600,
+                AddedAt = new DateTime(2026, index + 1, 1),
+                UpdatedAt = index == 0 ? null : new DateTime(2026, index + 1, 20),
+                MediaSize = (index + 1) * 1_000_000_000L,
+                TitleRank = titleRanks[index],
+                AddedAtRank = titleRanks[index],
+                UpdatedAtRank = updatedRanks[index],
+                DurationRank = durationRanks[index],
+                MediaSizeRank = sizeRanks[index],
+            });
+        }
+        await dbContext.SaveChangesAsync(CancellationToken);
     }
 
     private async Task ArrangeOtherVideoSnapshotsAsync()

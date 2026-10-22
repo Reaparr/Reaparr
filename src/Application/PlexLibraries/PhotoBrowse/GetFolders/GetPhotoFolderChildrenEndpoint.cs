@@ -38,7 +38,6 @@ public sealed class GetPhotoFolderChildrenRequestValidator : Validator<GetPhotoF
         RuleFor(x => x.AssetPageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
             .When(x => x.AssetPageSize.HasValue);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort).When(x => x.Sort is not null);
         RuleFor(x => x)
             .Must(x =>
                 (long)((x.FolderPage ?? 1) - 1) * (x.FolderPageSize ?? MediaQueryFilter.MaximumPageSize) <= int.MaxValue
@@ -71,7 +70,7 @@ public sealed class GetPhotoFolderChildrenEndpoint : Endpoint<GetPhotoFolderChil
 
     public override async Task HandleAsync(GetPhotoFolderChildrenRequest req, CancellationToken ct)
     {
-        var sort = req.Sort.ParseSort();
+        var sort = req.Sort.ParsePhotoSort();
         var result = await _commandExecutor.Send(
             new GetPhotoFolderChildrenQuery(
                 req.PlexLibraryId,

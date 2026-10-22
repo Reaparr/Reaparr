@@ -26,7 +26,6 @@ public sealed class GetPhotoAlbumMembersRequestValidator : Validator<GetPhotoAlb
         RuleFor(x => x.AlbumId).GreaterThan(0);
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize).When(x => x.PageSize.HasValue);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort).When(x => x.Sort is not null);
         RuleFor(x => x)
             .Must(x => (long)((x.Page ?? 1) - 1) * (x.PageSize ?? MediaQueryFilter.MaximumPageSize) <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -55,7 +54,7 @@ public sealed class GetPhotoAlbumMembersEndpoint : Endpoint<GetPhotoAlbumMembers
 
     public override async Task HandleAsync(GetPhotoAlbumMembersRequest req, CancellationToken ct)
     {
-        var sort = PhotoBrowseQuerySupport.ParseSort(req.Sort);
+        var sort = req.Sort.ParsePhotoSort();
         var result = await _commandExecutor.Send(
             new GetPhotoAlbumMembersQuery(
                 req.PlexLibraryId,

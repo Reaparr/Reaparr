@@ -33,10 +33,11 @@ internal static class MediaOverviewSnapshotQueryExtensions
         });
     }
 
-    public static IQueryable<MediaNavigationIndexRow> SelectNavigationRows(
-        this IQueryable<MediaOverviewPhotoAlbumSnapshot> snapshots,
+    public static IQueryable<MediaNavigationIndexRow> SelectNavigationRows<TSnapshot>(
+        this IQueryable<TSnapshot> snapshots,
         (SortType Field, bool Descending) sort
     )
+        where TSnapshot : BaseMediaOverviewSnapshot
     {
         var rankPropertyName = ResolveRankProperty(sort.Field);
         return snapshots.Select(snapshot => new MediaNavigationIndexRow

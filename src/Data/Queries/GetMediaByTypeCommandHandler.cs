@@ -468,7 +468,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             {
                 foreach (var sort in options.Sort)
                 {
-                    if (sort.Field is nameof(BasePlexMedia.SortIndex) or "sortIndex")
+                    if (sort.Field == SortType.Title.ToQueryField())
                         sort.Field = nameof(PlexMediaSlimDTO.Title);
                 }
                 if (options.Sort.Count == 0)
@@ -572,30 +572,28 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
     )
     {
         options = WithServerLibraryScope(options, allowedPlexLibraryIds, filter.PlexLibraryId);
+        foreach (var sort in options.Sort)
+        {
+            if (SortTypeExtensions.TryParse(sort.Field, out var sortType))
+                sort.Field = sortType.ToQueryField();
+        }
 
         if (filter.MediaType is PlexMediaType.MusicArtist or PlexMediaType.MusicTrack || filter.MediaType.IsPhotoType())
         {
-            options.Sort.RemoveAll(static sort =>
-                string.Equals(sort.Field, nameof(PlexMediaSlimDTO.Year), StringComparison.OrdinalIgnoreCase));
+            options.Sort.RemoveAll(static sort => sort.Field == SortType.Year.ToQueryField());
         }
 
         if (filter.MediaType.IsMusicType() || filter.MediaType.IsPhotoType())
         {
-            options.Sort.RemoveAll(static sort =>
-                string.Equals(sort.Field, "quality", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(sort.Field, nameof(BasePlexMedia.VideoQuality), StringComparison.OrdinalIgnoreCase)
-            );
-        }
-        else
-        {
-            options.Sort.ForEach(static sort =>
-            {
-                if (string.Equals(sort.Field, "quality", StringComparison.OrdinalIgnoreCase))
-                    sort.Field = nameof(BasePlexMedia.VideoQuality);
-            });
+            options.Sort.RemoveAll(static sort => sort.Field == SortType.VideoQuality.ToQueryField());
         }
 
-        ApplyDefaultMediaSort(options, filter.PlexLibraryId);
+        if (options.Sort.Count > 0 || filter.PlexLibraryId == 0) { }
+        else
+        {
+            options.Sort.Add(new SortNode { Field = SortType.Title.ToQueryField(), Descending = false });
+        }
+
         NormalizeAllLibrarySort(options, filter.PlexLibraryId);
         return options;
     }
@@ -668,7 +666,12 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
         CancellationToken ct
     )
     {
-        SetNavigationIndexes(response, await rows.ToListAsync(ct), options);
+        var materializedRows = await rows.ToListAsync(ct);
+        var sort = options.Sort.FirstOrDefault();
+        response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+            materializedRows,
+            sort is not null && SortTypeExtensions.TryParse(sort.Field, out var sortType) ? sortType : SortType.Title
+        );
     }
 
     private async Task<Result> ApplyComparisonStateAsync(
@@ -697,7 +700,11 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
         QueryOptions options
     )
     {
-        response.NavigationIndexes = MediaNavigationIndexBuilder.Build(rows, options.Sort.FirstOrDefault()?.Field);
+        var sort = options.Sort.FirstOrDefault();
+        response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+            rows,
+            sort is not null && SortTypeExtensions.TryParse(sort.Field, out var sortType) ? sortType : SortType.Title
+        );
     }
 
     private static List<PlexMediaSlimDTO> ApplyDtoPaging(List<PlexMediaSlimDTO> items, int page, int pageSize)
@@ -714,16 +721,10 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             return;
 
         foreach (var sort in options.Sort)
-            if (string.Equals(sort.Field, nameof(BasePlexMedia.SortIndex), StringComparison.OrdinalIgnoreCase))
+        {
+            if (sort.Field == SortType.Title.ToQueryField())
                 sort.Field = nameof(BasePlexMedia.SearchTitle);
-    }
-
-    private void ApplyDefaultMediaSort(QueryOptions options, int plexLibraryId)
-    {
-        if (options.Sort.Count > 0 || plexLibraryId == 0)
-            return;
-
-        options.Sort.Add(new SortNode { Field = nameof(BasePlexMedia.SortIndex), Descending = false });
+        }
     }
 
     private async Task SetCounts(

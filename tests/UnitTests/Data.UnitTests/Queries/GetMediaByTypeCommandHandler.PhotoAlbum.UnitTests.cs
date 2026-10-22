@@ -16,46 +16,70 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
     )
     {
         // Arrange
-        await SetupDatabase(73101, cfg =>
-        {
-            cfg.PlexServerCount = 1;
-            cfg.PlexPhotoLibraryCount = 2;
-            cfg.PhotoAlbumCount = 6;
-            cfg.PhotoCount = 2;
-            cfg.PhotoClipCount = 1;
-        });
+        await SetupDatabase(
+            73101,
+            cfg =>
+            {
+                cfg.PlexServerCount = 1;
+                cfg.PlexPhotoLibraryCount = 2;
+                cfg.PhotoAlbumCount = 6;
+                cfg.PhotoCount = 2;
+                cfg.PhotoClipCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var libraryIds = await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
+        var libraryIds = await dbContext
+            .PlexLibraries.OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
         libraryIds.Count.ShouldBe(2);
         var targetLibraryId = libraryIds[0];
-        var targetAlbums = await dbContext.PlexPhotoAlbums
-            .Where(x => x.PlexLibraryId == targetLibraryId)
+        var targetAlbums = await dbContext
+            .PlexPhotoAlbums.Where(x => x.PlexLibraryId == targetLibraryId)
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
         targetAlbums.Count.ShouldBe(6);
-        var memberships = await dbContext.PlexPhotoAlbumMemberships
-            .Where(x => x.PlexPhotoAlbum!.PlexLibraryId == targetLibraryId)
+        var memberships = await dbContext
+            .PlexPhotoAlbumMemberships.Where(x => x.PlexPhotoAlbum!.PlexLibraryId == targetLibraryId)
             .OrderBy(x => x.PlexPhotoAlbumId)
             .ThenBy(x => x.PlexPhotoMediaDataId)
             .Select(x => new { x.PlexPhotoAlbumId, x.PlexPhotoMediaDataId })
             .ToListAsync(CancellationToken);
-        memberships.Select(x => x.PlexPhotoAlbumId)
-            .ShouldBe(targetAlbums.SelectMany(x => new[] { x.Id, x.Id, x.Id }));
+        memberships.Select(x => x.PlexPhotoAlbumId).ShouldBe(targetAlbums.SelectMany(x => new[] { x.Id, x.Id, x.Id }));
         for (var index = 0; index < targetAlbums.Count; index++)
         {
             var albumId = targetAlbums[index].Id;
             var title = index == 0 ? "excluded" : $"target-{index}";
-            await dbContext.PlexPhotoAlbums.Where(x => x.Id == albumId)
-                .ExecuteUpdateAsync(x => x.SetProperty(y => y.Title, title)
-                    .SetProperty(y => y.SearchTitle, title), CancellationToken);
-            var fileIds = memberships.Where(x => x.PlexPhotoAlbumId == albumId).Select(x => x.PlexPhotoMediaDataId).ToList();
-            await dbContext.PlexPhotoMediaData.Where(x => fileIds.Contains(x.Id))
-                .ExecuteUpdateAsync(x => x.SetProperty(y => y.Size, (index + 1) * 100L)
-                    .SetProperty(y => y.Duration, (int?)((index + 1) * 100)), CancellationToken);
+            await dbContext
+                .PlexPhotoAlbums.Where(x => x.Id == albumId)
+                .ExecuteUpdateAsync(
+                    x => x.SetProperty(y => y.Title, title).SetProperty(y => y.SearchTitle, title),
+                    CancellationToken
+                );
+            var fileIds = memberships
+                .Where(x => x.PlexPhotoAlbumId == albumId)
+                .Select(x => x.PlexPhotoMediaDataId)
+                .ToList();
+            await dbContext
+                .PlexPhotoMediaData.Where(x => fileIds.Contains(x.Id))
+                .ExecuteUpdateAsync(
+                    x =>
+                        x.SetProperty(y => y.Size, (index + 1) * 100L)
+                            .SetProperty(y => y.Duration, (int?)((index + 1) * 100)),
+                    CancellationToken
+                );
         }
-        var controlBefore = await dbContext.PlexPhotoMediaData
-            .Where(x => x.PlexLibraryId == libraryIds[1]).OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.Size, x.Duration, x.Title }).ToListAsync(CancellationToken);
+        var controlBefore = await dbContext
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == libraryIds[1])
+            .OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.Size,
+                x.Duration,
+                x.Title,
+            })
+            .ToListAsync(CancellationToken);
         var command = new GetMediaByTypeCommand
         {
             Filter = new MediaQueryFilter
@@ -82,22 +106,60 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
         result.Errors.Count.ShouldBe(0);
         var response = result.Value;
         (response.QueryHash, response.Page, response.PageSize).ShouldBe((command.Filter.QueryHash, 2, 2));
-        (response.TotalCount, response.MediaCount, response.MediaSize, response.TotalMediaSize).ShouldBe((5, 5, 6000L, 6000L));
-        response.Items.Select(x => new { x.Id, x.Title, x.MediaSize, x.Duration, x.ChildCount, x.Type, x.PlexLibraryId })
-            .ShouldBe(
-            [
-                new { Id = targetAlbums[firstIndex].Id, Title = $"target-{firstIndex}", MediaSize = (firstIndex + 1) * 300L,
-                    Duration = (firstIndex + 1) * 300, ChildCount = 3, Type = PlexMediaType.PhotoAlbum, PlexLibraryId = targetLibraryId },
-                new { Id = targetAlbums[secondIndex].Id, Title = $"target-{secondIndex}", MediaSize = (secondIndex + 1) * 300L,
-                    Duration = (secondIndex + 1) * 300, ChildCount = 3, Type = PlexMediaType.PhotoAlbum, PlexLibraryId = targetLibraryId },
+        (response.TotalCount, response.MediaCount, response.MediaSize, response.TotalMediaSize).ShouldBe(
+            (5, 5, 6000L, 6000L)
+        );
+        response
+            .Items.Select(x => new
+            {
+                x.Id,
+                x.Title,
+                x.MediaSize,
+                x.Duration,
+                x.ChildCount,
+                x.Type,
+                x.PlexLibraryId,
+            })
+            .ShouldBe([
+                new
+                {
+                    Id = targetAlbums[firstIndex].Id,
+                    Title = $"target-{firstIndex}",
+                    MediaSize = (firstIndex + 1) * 300L,
+                    Duration = (firstIndex + 1) * 300,
+                    ChildCount = 3,
+                    Type = PlexMediaType.PhotoAlbum,
+                    PlexLibraryId = targetLibraryId,
+                },
+                new
+                {
+                    Id = targetAlbums[secondIndex].Id,
+                    Title = $"target-{secondIndex}",
+                    MediaSize = (secondIndex + 1) * 300L,
+                    Duration = (secondIndex + 1) * 300,
+                    ChildCount = 3,
+                    Type = PlexMediaType.PhotoAlbum,
+                    PlexLibraryId = targetLibraryId,
+                },
             ]);
         response.Items.Select(x => x.SortIndex).ShouldBe([3, 4]);
         response.Items.Select(x => x.ParentId).ShouldBe(new int?[] { null, null });
         response.Items.SelectMany(x => x.Qualities).ShouldBeEmpty();
         response.Qualities.ShouldBeEmpty();
         (response.MovieCount, response.TvShowCount, response.SeasonCount, response.EpisodeCount).ShouldBe((0, 0, 0, 0));
-        (await dbContext.PlexPhotoMediaData.Where(x => x.PlexLibraryId == libraryIds[1]).OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.Size, x.Duration, x.Title }).ToListAsync(CancellationToken)).ShouldBe(controlBefore);
+        (
+            await dbContext
+                .PlexPhotoMediaData.Where(x => x.PlexLibraryId == libraryIds[1])
+                .OrderBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.Size,
+                    x.Duration,
+                    x.Title,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(controlBefore);
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
@@ -126,15 +188,22 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
         dbContext.PlexPhotoAlbums.AddRange(albums);
         dbContext.PlexPhotoMediaData.AddRange(files);
         await dbContext.SaveChangesAsync(CancellationToken);
-        dbContext.PlexPhotoAlbumMemberships.AddRange(albums.Select(album => new PlexPhotoAlbumMembership
-        {
-            PlexPhotoAlbumId = album.Id,
-            PlexPhotoMediaDataId = files[0].Id,
-        }));
+        dbContext.PlexPhotoAlbumMemberships.AddRange(
+            albums.Select(album => new PlexPhotoAlbumMembership
+            {
+                PlexPhotoAlbumId = album.Id,
+                PlexPhotoMediaDataId = files[0].Id,
+            })
+        );
         await dbContext.SaveChangesAsync(CancellationToken);
-        (await dbContext.PlexPhotoAlbumMemberships.OrderBy(x => x.PlexPhotoAlbumId)
-            .Select(x => new { x.PlexPhotoAlbumId, x.PlexPhotoMediaDataId }).ToListAsync(CancellationToken))
-            .ShouldBe(albums.OrderBy(x => x.Id).Select(x => new { PlexPhotoAlbumId = x.Id, PlexPhotoMediaDataId = files[0].Id }));
+        (
+            await dbContext
+                .PlexPhotoAlbumMemberships.OrderBy(x => x.PlexPhotoAlbumId)
+                .Select(x => new { x.PlexPhotoAlbumId, x.PlexPhotoMediaDataId })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(
+            albums.OrderBy(x => x.Id).Select(x => new { PlexPhotoAlbumId = x.Id, PlexPhotoMediaDataId = files[0].Id })
+        );
         var request = new GetMediaByTypeCommand
         {
             Filter = new MediaQueryFilter
@@ -154,8 +223,24 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         (result.Value.TotalCount, result.Value.MediaSize, result.Value.TotalMediaSize).ShouldBe((2, 321L, 321L));
-        result.Value.Items.OrderBy(x => x.Id).Select(x => new { x.Id, x.MediaSize, x.ChildCount })
-            .ShouldBe(albums.OrderBy(x => x.Id).Select(x => new { x.Id, MediaSize = 321L, ChildCount = 1 }));
+        result
+            .Value.Items.OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.MediaSize,
+                x.ChildCount,
+            })
+            .ShouldBe(
+                albums
+                    .OrderBy(x => x.Id)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        MediaSize = 321L,
+                        ChildCount = 1,
+                    })
+            );
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
