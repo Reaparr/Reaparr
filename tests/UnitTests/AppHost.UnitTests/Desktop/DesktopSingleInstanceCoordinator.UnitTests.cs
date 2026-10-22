@@ -1,3 +1,4 @@
+using System.Text;
 using Reaparr.Environment;
 
 namespace Reaparr.AppHost.UnitTests;
@@ -136,6 +137,79 @@ public class DesktopSingleInstanceCoordinatorUnitTests : BaseUnitTest<DesktopSin
 
         // Assert
         result.IsFailed.ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldAcceptCompleteRelaunchSignal_WhenStreamReturnsOneBytePerRead()
+    {
+        // Arrange
+        using var stream = new FragmentedSignalStream("show");
+
+        // Act
+        var isRelaunch = await DesktopSingleInstanceCoordinator.IsRelaunchSignalAsync(stream, CancellationToken);
+
+        // Assert
+        isRelaunch.ShouldBeTrue();
+    }
+
+    [Test]
+    [Arguments("")]
+    [Arguments("sho")]
+    [Arguments("shox")]
+    public async Task ShouldRejectRelaunchSignal_WhenMessageIsEmptyTruncatedOrInvalid(string message)
+    {
+        // Arrange
+        using var stream = new FragmentedSignalStream(message);
+
+        // Act
+        var isRelaunch = await DesktopSingleInstanceCoordinator.IsRelaunchSignalAsync(stream, CancellationToken);
+
+        // Assert
+        isRelaunch.ShouldBeFalse();
+    }
+
+    [Test]
+    public async Task ShouldHonorCancellation_WhenRelaunchSignalReadIsPending()
+    {
+        // Arrange
+        using var stream = new WaitingSignalStream();
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
+        var deadline = TimeSpan.FromSeconds(10);
+
+        // Act
+        var read = DesktopSingleInstanceCoordinator.IsRelaunchSignalAsync(stream, cancelled.Token).AsTask();
+        await stream.ReadStarted.Task.WaitAsync(deadline, CancellationToken);
+        read.IsCompleted.ShouldBeFalse();
+        cancelled.Cancel();
+        var exception = await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await read.WaitAsync(deadline, CancellationToken)
+        );
+
+        // Assert
+        exception.CancellationToken.ShouldBe(cancelled.Token);
+    }
+
+    private sealed class FragmentedSignalStream(string message) : MemoryStream(Encoding.UTF8.GetBytes(message))
+    {
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default
+        ) => base.ReadAsync(buffer[..Math.Min(buffer.Length, 1)], cancellationToken);
+    }
+
+    private sealed class WaitingSignalStream : MemoryStream
+    {
+        public TaskCompletionSource ReadStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default
+        )
+        {
+            ReadStarted.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
     }
 
     private DesktopSingleInstanceCoordinator CreateSut(
