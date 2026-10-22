@@ -1,4 +1,4 @@
-import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
+import { describe, beforeAll, beforeEach, test, expect, vi, type Mock } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { HubConnectionState } from '@microsoft/signalr';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
@@ -9,13 +9,15 @@ import {
 } from '@mock';
 import { useDownloadStore, useSignalrStore } from '@store';
 
-type HubName = 'progress' | 'download' | 'notifications';
+type HubName = 'progress' | 'download' | 'notifications' | 'logs';
 
 interface MockHub {
 	state: HubConnectionState;
 	handlers: Map<string, (data: unknown) => void>;
 	on: ReturnType<typeof vi.fn>;
 	start: ReturnType<typeof vi.fn>;
+	off: Mock;
+	stop: Mock;
 }
 
 const { hubConnections } = vi.hoisted(() => ({
@@ -47,6 +49,7 @@ describe('SignalrStore - Download MessagePack conversion', () => {
 		hubConnections.set('progress', createHub());
 		hubConnections.set('download', createHub());
 		hubConnections.set('notifications', createHub());
+		hubConnections.set('logs', createHub());
 	});
 
 	test('Should convert MessagePack download patch tuple and forward patch when DownloadPatch message is received', async () => {
@@ -229,14 +232,17 @@ describe('SignalrStore - Download MessagePack conversion', () => {
 function createHub(state = HubConnectionState.Disconnected) {
 	const handlers = new Map<string, (data: unknown) => void>();
 
-	return {
+	const hub: MockHub = {
 		state,
 		handlers,
 		on: vi.fn((event: string, callback: (data: unknown) => void) => {
 			handlers.set(event, callback);
 		}),
-		start: vi.fn(async () => Promise.resolve()),
+		off: vi.fn((event: string) => { handlers.delete(event); }),
+		start: vi.fn(async () => { hub.state = HubConnectionState.Connected; }),
+		stop: vi.fn(async () => { hub.state = HubConnectionState.Disconnected; }),
 	};
+	return hub;
 }
 
 function emitHubMessage(hubName: string, messageType: MessageTypes, payload: unknown): void {

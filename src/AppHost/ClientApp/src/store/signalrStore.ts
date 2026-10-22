@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
-import type { Observable } from 'rxjs';
+import type { Observable, Subscription } from 'rxjs';
 import { from, of, tap, Subject } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, take } from 'rxjs/operators';
 import Log from 'consola';
@@ -80,6 +80,8 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 	let logHubConnection: HubConnection | null;
 	let connectionOperation: Promise<void> = Promise.resolve();
 	let setupOperation: Promise<void> | null = null;
+	let downloadRecovery: Subscription | null = null;
+	let activeDownloadConnection: HubConnection | null = null;
 
 	const actions = {
 		setup(): Observable<ISetupResult> {
@@ -180,24 +182,13 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 	};
 
 	function setupSubscriptions(): void {
-		const downloadStore = useDownloadStore();
 		const backgroundStore = useBackgroundJobsStore();
 		const notificationsStore = useNotificationsStore();
 		const libraryStore = useLibraryStore();
 
 		logHubConnection?.on('LogEvent', (data: LiveLogEventDTO) => state.logEventSubject.next(data));
 
-		downloadHubConnection?.on(MessageTypes.ServerDownloadProgress, (rawData: ServerDownloadProgressMessagePackDTO | ServerDownloadProgressMessagePackTuple) => {
-			Log.debug(rawData);
-			if (Array.isArray(rawData)) {
-				downloadStore.updateServerDownloadProgress(toServerDownloadProgressDTO(rawData));
-			} else {
-				downloadStore.updateServerDownloadProgress(rawData);
-			}
-		});
-
-		// This uses SignalR MessagePack to compress the updates
-		downloadHubConnection?.on(MessageTypes.DownloadPatch, (rawData: DownloadPatchMessagePackTuple) => downloadStore.updateDownloadPatch(toDownloadPatchDTO(rawData)));
+		setupDownloadSubscriptions();
 
 		progressHubConnection?.on(MessageTypes.LibraryProgress, (data: LibrarySyncProgressDTO) => libraryStore.updateLibraryProgress(data));
 
@@ -219,6 +210,37 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 			if (notificationHubConnection !== notificationConnection || notificationConnection?.state !== HubConnectionState.Connected) return;
 			libraryStore.refreshLibrarySyncStatus().subscribe();
 		});
+	}
+
+	function setupDownloadSubscriptions(): void {
+		const downloadStore = useDownloadStore();
+		const connection = downloadHubConnection;
+		if (!connection) return;
+		activeDownloadConnection = connection;
+		connection.on(MessageTypes.ServerDownloadProgress, handleDownloadProgress);
+		connection.on(MessageTypes.DownloadPatch, handleDownloadPatch);
+		connection.onreconnected?.(() => recoverDownloadQueue(connection));
+
+		function handleDownloadProgress(rawData: ServerDownloadProgressMessagePackDTO | ServerDownloadProgressMessagePackTuple): void {
+			if (activeDownloadConnection !== connection) return;
+			Log.debug(rawData);
+			if (Array.isArray(rawData)) {
+				downloadStore.updateServerDownloadProgress(toServerDownloadProgressDTO(rawData));
+			} else {
+				downloadStore.updateServerDownloadProgress(rawData);
+			}
+		}
+
+		function handleDownloadPatch(rawData: DownloadPatchMessagePackTuple): void {
+			if (activeDownloadConnection !== connection) return;
+			downloadStore.updateDownloadPatch(toDownloadPatchDTO(rawData));
+		}
+	}
+
+	function recoverDownloadQueue(connection: HubConnection): void {
+		if (activeDownloadConnection !== connection || connection.state !== HubConnectionState.Connected) return;
+		downloadRecovery?.unsubscribe();
+		downloadRecovery = useDownloadStore().reconcileAfterReconnect().subscribe();
 	}
 
 	function updateState<T>(propertyName: keyof ISignalRStoreState, newObject: T, idName: keyof T): void {
@@ -286,6 +308,9 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 	// region Start / Stop Hub Connections
 	async function stopHubConnections(): Promise<void> {
 		const connections = [progressHubConnection, downloadHubConnection, notificationHubConnection, logHubConnection];
+		activeDownloadConnection = null;
+		downloadRecovery?.unsubscribe();
+		downloadRecovery = null;
 		for (const connection of connections) {
 			if (!connection) continue;
 			connection.off('LogEvent');

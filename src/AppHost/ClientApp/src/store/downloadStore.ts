@@ -1,9 +1,9 @@
 import Log from 'consola';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, computed, toRefs } from 'vue';
-import { concatMap, map, switchMap, tap } from 'rxjs/operators';
+import { concatMap, finalize, map, switchMap, tap } from 'rxjs/operators';
 import type { Observable } from 'rxjs';
-import { of } from 'rxjs';
+import { defer, of } from 'rxjs';
 import { clone, cloneDeep, flatMapDeep, keyBy, merge, sum, values } from 'lodash-es';
 import {
 	type BaseResultDTO,
@@ -29,12 +29,17 @@ interface IDownloadsStoreState {
 	latestPatchSequenceByServer: Record<number, number>;
 }
 
+interface PendingDownloadSnapshot {
+	patches: DownloadPatchMessagePackDTO[];
+}
+
 export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 	const defaultState: IDownloadsStoreState = {
 		serverDownloads: [], selected: [], latestPatchSequenceByServer: {},
 	};
 
 	const state = reactive<IDownloadsStoreState>(cloneDeep(defaultState));
+	let pendingSnapshot: PendingDownloadSnapshot | null = null;
 
 	const signalRStore = useSignalrStore();
 	const serverStore = useServerStore();
@@ -57,11 +62,22 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
          * Fetch the download list from the API.
          */
 		fetchDownloadList() {
-			return downloadApi.getAllDownloadTasksEndpoint().pipe(tap((downloads) => {
-				if (downloads.isSuccess) {
-					state.serverDownloads = downloads.value ?? [];
-				}
-			}));
+			return defer(() => {
+				const snapshot: PendingDownloadSnapshot = { patches: pendingSnapshot?.patches ?? [] };
+				pendingSnapshot = snapshot;
+				return downloadApi.getAllDownloadTasksEndpoint().pipe(
+					tap((downloads) => finishSnapshot(snapshot, downloads.isSuccess ? downloads.value ?? [] : null, downloads.isSuccess)),
+					finalize(() => finishSnapshot(snapshot, null, false)),
+				);
+			});
+		},
+		reconcileAfterReconnect() {
+			return defer(() => {
+				// Sequence numbers belong to the server process that produced this connection.
+				pendingSnapshot = null;
+				state.latestPatchSequenceByServer = {};
+				return actions.fetchDownloadList();
+			});
 		},
 		executeDownloadCommand(action: DownloadActions, downloadTaskIds: string[], plexServerId?: number): Observable<BaseResultDTO> {
 			if (downloadTaskIds.length === 0 && action !== DownloadActions.Clear) {
@@ -132,53 +148,11 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 		},
 		updateDownloadPatch(patch: DownloadPatchMessagePackDTO): void {
 			if (!patch) return;
-
 			const latest = state.latestPatchSequenceByServer[patch.serverId] ?? 0;
 			if (patch.sequence <= latest) return;
-
 			state.latestPatchSequenceByServer[patch.serverId] = patch.sequence;
-
-			const serverIndex = state.serverDownloads.findIndex((x) => x.id === patch.serverId);
-			if (serverIndex === -1) {
-				actions.fetchDownloadList().subscribe();
-				return;
-			}
-
-			const serverDownload = state.serverDownloads[serverIndex]!;
-			const downloads = serverDownload.downloads ?? [];
-			if (patch.upserts.length === 0) {
-				if (patch.deletedIds.length > 0) removeDeletedInPlace(downloads, new Set(patch.deletedIds));
-				downloadNodeIndexCache.delete(downloads);
-				return;
-			}
-
-			const nodeIndex = getDownloadNodeIndex(downloads);
-			const deletedNodeIds = getDeletedNodeIds(nodeIndex, patch.deletedIds);
-
-			if (patch.upserts.some((upsert) => !nodeIndex.has(upsert.id) || deletedNodeIds.has(upsert.id))) {
-				actions.fetchDownloadList().subscribe();
-				return;
-			}
-
-			if (deletedNodeIds.size > 0) {
-				removeDeletedInPlace(downloads, deletedNodeIds);
-				for (const id of deletedNodeIds) nodeIndex.delete(id);
-			}
-
-			for (const upsert of patch.upserts) {
-				const existingNode = nodeIndex.get(upsert.id);
-				if (!existingNode) {
-					actions.fetchDownloadList().subscribe();
-					return;
-				}
-
-				existingNode.status = upsert.status;
-				existingNode.percentage = upsert.percentage;
-				existingNode.dataReceived = upsert.dataReceived;
-				existingNode.dataTotal = upsert.dataTotal;
-				existingNode.downloadSpeed = upsert.downloadSpeed;
-				existingNode.timeRemaining = upsert.timeRemaining;
-			}
+			pendingSnapshot?.patches.push(patch);
+			if (!applyDownloadPatch(patch) && !pendingSnapshot) actions.fetchDownloadList().subscribe();
 		},
 		previewDownload(request: DownloadPreviewRequest): Observable<DownloadPreviewContainerDTO | null> {
 			return downloadApi.getDownloadPreviewEndpoint(request).pipe(map((response) => {
@@ -259,6 +233,7 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 			});
 		},
 		$reset() {
+			pendingSnapshot = null;
 			Object.assign(state, cloneDeep(defaultState));
 		},
 	};
@@ -267,6 +242,46 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 
 	function refreshAfterSuccessfulCommand(result: BaseResultDTO): Observable<BaseResultDTO> {
 		return result.isSuccess ? actions.fetchDownloadList() : of(result);
+	}
+
+	function finishSnapshot(snapshot: PendingDownloadSnapshot, downloads: ServerDownloadProgressDTO[] | null, refreshUnknown: boolean): void {
+		if (pendingSnapshot !== snapshot) return;
+		pendingSnapshot = null;
+		if (downloads !== null) state.serverDownloads = downloads;
+		let missingNodes = false;
+		for (const patch of snapshot.patches) {
+			if (!applyDownloadPatch(patch)) missingNodes = true;
+		}
+		// Preserve the existing unknown-node refresh, but never retry a failed/cancelled snapshot.
+		if (missingNodes && refreshUnknown) actions.fetchDownloadList().subscribe();
+	}
+
+	function applyDownloadPatch(patch: DownloadPatchMessagePackDTO): boolean {
+		const server = state.serverDownloads.find((item) => item.id === patch.serverId);
+		if (!server) return false;
+		const downloads = server.downloads ?? [];
+		if (patch.upserts.length === 0) {
+			if (patch.deletedIds.length > 0) removeDeletedInPlace(downloads, new Set(patch.deletedIds));
+			downloadNodeIndexCache.delete(downloads);
+			return true;
+		}
+		const nodeIndex = getDownloadNodeIndex(downloads);
+		const deletedNodeIds = getDeletedNodeIds(nodeIndex, patch.deletedIds);
+		if (patch.upserts.some((upsert) => !nodeIndex.has(upsert.id) || deletedNodeIds.has(upsert.id))) return false;
+		if (deletedNodeIds.size > 0) {
+			removeDeletedInPlace(downloads, deletedNodeIds);
+			for (const id of deletedNodeIds) nodeIndex.delete(id);
+		}
+		for (const upsert of patch.upserts) {
+			const existing = nodeIndex.get(upsert.id)!;
+			existing.status = upsert.status;
+			existing.percentage = upsert.percentage;
+			existing.dataReceived = upsert.dataReceived;
+			existing.dataTotal = upsert.dataTotal;
+			existing.downloadSpeed = upsert.downloadSpeed;
+			existing.timeRemaining = upsert.timeRemaining;
+		}
+		return true;
 	}
 
 	function findNodeById(nodes: DownloadProgressDTO[], id: string): DownloadProgressDTO | null {

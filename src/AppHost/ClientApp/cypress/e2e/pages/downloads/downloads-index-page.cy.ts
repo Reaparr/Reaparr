@@ -1,10 +1,23 @@
 import { cloneDeep } from 'lodash-es';
 import prettyBytes from 'pretty-bytes';
+import { HubConnectionState } from '@microsoft/signalr';
 import { route } from '@fixtures';
 import { DownloadStatus, MessageTypes, RefreshDataType, type DownloadProgressDTO } from '@dto';
-import { generateFailedResultDTO, generateResultDTO } from '@mock';
+import { generateFailedResultDTO, generateResultDTO, toDownloadPatchMessagePackTuple } from '@mock';
 
 const getVisibleCy = (selector: string) => cy.getCy(selector).filter(':visible').first();
+
+function installReconnectFixture(autWindow: Window) {
+	const mocks: Window['cypress-signalr-mock']['mocks'] = [];
+	mocks.push = (...hubs) => {
+		for (const hub of hubs) {
+			Object.assign(hub, { state: HubConnectionState.Connected });
+			hub.onreconnected = (callback) => hub.on('FixtureReconnect', () => callback('fixture-connection'));
+		}
+		return Array.prototype.push.apply(mocks, hubs);
+	};
+	autWindow['cypress-signalr-mock'] = { mocks };
+}
 
 describe('Downloads page', () => {
 	beforeEach(() => {
@@ -251,6 +264,66 @@ describe('Downloads page', () => {
 			cy.wait('@queue');
 			cy.getCy(`column-title-${completed.id}`).should('not.exist');
 			cy.getCy(`column-title-${retained.id}`).should('not.exist');
+		});
+	});
+	it('Should recover missed queue changes without overwriting a reconnect patch and still clear completed rows', () => {
+		cy.basePageSetup({
+			seed: 47098, plexAccountCount: 1, plexServerCount: 1, plexMovieLibraryCount: 1, movieDownloadTask: 2,
+		}).then((data) => {
+			const queue = cloneDeep(data.serverDownloadProgress);
+			const current = queue[0]!.downloads[0]!;
+			const removed = queue[0]!.downloads[1]!;
+			for (const task of queue[0]!.downloads) {
+				task.children = [];
+				task.status = DownloadStatus.Stopped;
+			}
+			const held = Promise.withResolvers<null>();
+			let requests = 0;
+			cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => {
+				const response = generateResultDTO(cloneDeep(queue));
+				if (++requests === 2) return held.promise.then(() => request.reply({ statusCode: 200, body: response }));
+				request.reply({ statusCode: 200, body: response });
+			}).as('recoveryQueue');
+			cy.visit(route('/downloads'), { onBeforeLoad: installReconnectFixture });
+			cy.wait('@recoveryQueue');
+			cy.getCy(`column-status-${current.id}`).first().should('have.text', DownloadStatus.Stopped);
+			const patch = {
+				serverId: queue[0]!.id, sequence: 99, deletedIds: [], upserts: [{
+					id: current.id, parentId: '', status: DownloadStatus.Downloading, percentage: 75,
+					dataReceived: 75, dataTotal: 100, downloadSpeed: 0, timeRemaining: 0,
+				}],
+			};
+			cy.hubPublish('download', MessageTypes.DownloadPatch, toDownloadPatchMessagePackTuple(patch));
+			cy.getCy(`column-status-${current.id}`).first().should('have.text', DownloadStatus.Downloading);
+			cy.then(() => {
+				queue[0]!.downloads = [current];
+				current.status = DownloadStatus.Paused;
+			});
+			cy.hubPublish('download', 'FixtureReconnect', null);
+			cy.wrap(null).should(() => expect(requests).to.equal(2));
+			cy.then(() => {
+				patch.sequence = 1;
+				patch.upserts[0]!.status = DownloadStatus.Completed;
+				return cy.hubPublish('download', MessageTypes.DownloadPatch, toDownloadPatchMessagePackTuple(patch));
+			});
+			cy.getCy(`column-status-${current.id}`).first().should('have.text', DownloadStatus.Completed);
+			cy.then(() => held.resolve(null));
+			cy.wait('@recoveryQueue');
+			cy.getCy(`column-title-${removed.id}`).should('not.exist');
+			cy.getCy(`column-status-${current.id}`).first().should('have.text', DownloadStatus.Completed);
+			cy.intercept('DELETE', `**/api/Download/clear/${queue[0]!.id}`, (request) => {
+				queue[0]!.downloads = [];
+				request.reply({ statusCode: 200, body: generateResultDTO({ count: 1 }) });
+			}).as('clearRecoveredQueue');
+			cy.getCy('clear-completed-by-server-button').first().scrollIntoView().click();
+			cy.getCy('confirmation-dialog-confirmation-button').click();
+			cy.wait('@clearRecoveredQueue');
+			cy.hubPublish('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
+			cy.getCy('confirmation-dialog').should('not.exist');
+			cy.getCy(`column-title-${current.id}`).should('not.exist');
+			cy.reload();
+			cy.wait('@recoveryQueue');
+			cy.getCy(`column-title-${current.id}`).should('not.exist');
 		});
 	});
 });
