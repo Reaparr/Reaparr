@@ -82,6 +82,34 @@ Deferred proposals, requests for details, and unanswered questions do not belong
 - **Affected code:** `src/AppHost/ClientApp/src/store/settingsStore.ts`; autosave and browser regression tests.
 - **Reason:** Not provided.
 
+## I74 — 2026-10-21 — Make account deletion and cleanup atomic
+
+- **Problem:** Cancellation or a database failure after deleting a Plex account can leave server/library cleanup unfinished; retrying the missing account returns before cleanup.
+- **Proposed fix:** Wrap account, access-link, and orphan database deletion in the existing transaction helper, with notifications and overview rebuild after commit.
+- **Affected code:** `src/Application/PlexAccounts/Delete/DeletePlexAccountByIdEndpoint.cs`; account-deletion rollback and cancellation regression tests.
+- **Reason:** Not provided.
+
+## I75 — 2026-10-21 — Remove disabled orphan libraries during account deletion
+
+- **Problem:** Deleting the last account with access to a disabled library can leave that library behind when another account keeps its parent server accessible.
+- **Proposed fix:** Ignore the enabled-library filter in the existing orphan cleanup, while preserving every library that still has an account reference.
+- **Affected code:** `src/Application/PlexAccounts/Delete/DeletePlexAccountByIdEndpoint.cs`; disabled-library cleanup and retained-reference regression tests.
+- **Reason:** Not provided.
+
+## I77 — 2026-10-21 — Preserve live notifications during startup history loading
+
+- **Problem:** A delayed startup history response can overwrite notifications already received through the live connection, hiding them until another setup or reload.
+- **Proposed fix:** Merge notifications received during the pending snapshot into its result, deduplicating IDs without retaining stale pre-request rows.
+- **Affected code:** `src/AppHost/ClientApp/src/store/notificationsStore.ts`; notification startup and live-delivery regression tests.
+- **Reason:** Not provided.
+
+## I88 — 2026-10-22 — Forget old Arr resource IDs when switching servers
+
+- **Problem:** Changing an integration's server URL retains external resource IDs from the previous Arr instance, so setup or deletion can send requests for those IDs to the new instance.
+- **Proposed fix:** Clear the external download-client and indexer IDs when the normalized server URL changes, preserving API-key-only changes and the current name-based resource adoption.
+- **Affected code:** `src/Application/Integrations/Radarr/UpdateRadarrIntegration/UpdateRadarrIntegrationEndpoint.cs`; `src/Application/Integrations/Sonarr/UpdateSonarrIntegration/UpdateSonarrIntegrationEndpoint.cs`; setup/delete consumers and target-change regression tests.
+- **Reason:** Not provided.
+
 ## Record format
 
 For each denial, record:
