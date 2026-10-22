@@ -6,7 +6,7 @@
 		button-align="between"
 		:type="{} as FolderPathDTO"
 		@opened="open"
-		@closed="emit('closed')">
+		@closed="onClosed">
 		<template #title>
 			{{ dialogTitle }}
 		</template>
@@ -136,6 +136,7 @@ import { folderPathApi } from '@api';
 import { DialogType } from '@enums';
 import { useDialogStore } from '@store';
 import { cloneDeep } from 'lodash-es';
+import { finalize, Subscription } from 'rxjs';
 
 const { t } = useI18n();
 const props = defineProps<{
@@ -149,6 +150,9 @@ const currentPathModel = ref<FileSystemModelDTO | null>(null);
 const parentPath = ref('');
 const isLoading = ref(true);
 const items = ref<FileSystemModelDTO[]>([]);
+const directoryRequests = new Subscription();
+let currentRequest: Subscription | undefined;
+useSubscription(directoryRequests);
 const returnRow = ref<FileSystemModelDTO>({
 	name: '...',
 	path: '..',
@@ -216,19 +220,36 @@ function open(data: FolderPathDTO): void {
 		return;
 	}
 	selectedPath = cloneDeep(selectedPath);
+	currentRequest?.unsubscribe();
+	set(isLoading, true);
 	set(path, selectedPath);
 	set(currentPath, selectedPath.directory);
 	emit('opened', selectedPath);
 	requestDirectories(selectedPath.directory);
 }
 
+function invalidateLookup(): void {
+	currentRequest?.unsubscribe();
+	currentRequest = undefined;
+	set(currentPathModel, null);
+	set(items, []);
+	set(parentPath, '');
+}
+
+function onClosed(): void {
+	invalidateLookup();
+	set(isLoading, false);
+	emit('closed');
+}
+
 function cancel(): void {
+	invalidateLookup();
 	emit('cancel');
 	dialogStore.closeDialog(DialogType.DirectoryBrowserDialog);
 }
 
 function confirm(): void {
-	if (props.saving) {
+	if (props.saving || !get(isCurrentWritable)) {
 		return;
 	}
 
@@ -252,9 +273,7 @@ function updateCurrentPath(newPath: string | undefined): void {
 }
 
 function requestDirectories(newPath?: string): void {
-	if (props.saving) {
-		return;
-	}
+	invalidateLookup();
 
 	if (!newPath) {
 		Log.warn(`path was invalid "${newPath}" setting to default empty root file-system view`);
@@ -269,20 +288,20 @@ function requestDirectories(newPath?: string): void {
 		});
 	}
 
-	useSubscription(
-		folderPathApi
-			.getFolderPathDirectoryEndpoint({
-				path: newPath,
-			})
-			.subscribe(({ isSuccess, value }) => {
+	currentRequest = folderPathApi
+		.getFolderPathDirectoryEndpoint({ path: newPath })
+		.pipe(finalize(() => set(isLoading, false)))
+		.subscribe({
+			next: ({ isSuccess, value }) => {
 				if (isSuccess && value) {
 					set(items, value.directories);
 					set(currentPathModel, value.current ?? null);
 					set(parentPath, value.parent);
-					set(isLoading, false);
 				}
-			}),
-	);
+			},
+			error: (error) => Log.error('Directory lookup failed', error),
+		});
+	directoryRequests.add(currentRequest);
 }
 
 function directoryNavigate(dataRow: FileSystemModelDTO): void {
@@ -291,6 +310,7 @@ function directoryNavigate(dataRow: FileSystemModelDTO): void {
 	}
 
 	if (dataRow.path === '..') {
+		if (!get(currentPathModel)) return;
 		const parentPathValue = get(parentPath);
 		requestDirectories(parentPathValue);
 		set(currentPath, parentPathValue);

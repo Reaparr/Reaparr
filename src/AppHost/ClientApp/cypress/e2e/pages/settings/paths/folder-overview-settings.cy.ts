@@ -1,7 +1,7 @@
 import { headers, route } from '@fixtures';
 import { generateFailedResultDTO, generateResultDTO } from '@mock';
 import { FolderPathPaths } from '@api/api-paths';
-import { FolderType, PlexMediaType, type FolderPathDTO } from '@dto';
+import { FileSystemEntityType, FolderType, PlexMediaType, type FileSystemDTO, type FolderPathDTO } from '@dto';
 import { kebabCase } from 'lodash-es';
 
 const newFamilies = [
@@ -78,6 +78,56 @@ function setupPathsPage() {
 	cy.visit(route('/settings/paths'));
 }
 
+function directoryLookupResult(directory: string, writable: boolean): FileSystemDTO {
+	return {
+		current: directory
+			? {
+					name: directory.split('/').at(-1) || '/',
+					path: directory,
+					type: FileSystemEntityType.Folder,
+					extension: '',
+					size: 0,
+					lastModified: '',
+					hasReadPermission: true,
+					hasWritePermission: writable,
+				}
+			: null,
+		directories: [],
+		files: [],
+		parent: '/',
+	};
+}
+
+function installPendingDirectoryLookup() {
+	let pending = false;
+	const releases: Array<() => void> = [];
+	cy.intercept('GET', '**/api/FolderPath/directory*', (request) => {
+		const directory = request.query.path;
+		if (typeof directory !== 'string') throw new Error('Expected a directory lookup path');
+		if (directory === '/pending') {
+			request.on('before:response', () => {
+				pending = true;
+				return new Promise<void>((resolve) => {
+					releases.push(resolve);
+				});
+			});
+		} else if (directory === '/read-only') {
+			request.alias = 'readOnlyDirectory';
+		} else if (directory === '/verified') {
+			request.alias = 'verifiedDirectory';
+		}
+		request.reply({
+			statusCode: 200,
+			body: generateResultDTO(directoryLookupResult(directory, directory !== '/read-only')),
+			...headers,
+		});
+	});
+	return {
+		get pending() { return pending; },
+		release: () => releases.splice(0).forEach((resolve) => resolve()),
+	};
+}
+
 function chooseRootDirectory(directory: string) {
 	cy.getCy('directory-browser-rows').within(() => cy.contains('tr', directory).click());
 	cy.getCy('directory-browser-confirm-button').click();
@@ -92,12 +142,53 @@ function assertTouchControl(selector: string) {
 }
 
 describe('Change Folder Paths', () => {
+	let releaseDirectoryLookup: (() => void) | undefined;
+	afterEach(() => {
+		releaseDirectoryLookup?.();
+		releaseDirectoryLookup = undefined;
+	});
+
 	beforeEach(() => {
 		setupPathsPage();
 	});
 
 	it('sets the correct destination for each default folder with the directory browser', () => {
 		cy.getPageData().then(() => cy.correctDefaultFolderPaths());
+	});
+
+	it('saves only the current resolved writable directory after pending and read-only lookups', () => {
+		cy.getPageData().then(() => {
+			const lookup = installPendingDirectoryLookup();
+			releaseDirectoryLookup = lookup.release;
+			const type = kebabCase(FolderType.MovieFolder);
+			cy.getCy(`folder-path-tab-${type}`).click();
+			cy.getCy(`default-${type}-edit-button`).click();
+			cy.getCy('directory-browser-confirm-button').should('be.visible').and('not.be.disabled');
+
+			cy.get('.q-dialog .dialog-container-top-row input').clear().type('/pending');
+			cy.wrap(null).should(() => expect(lookup.pending).to.equal(true));
+			cy.getCy('directory-browser-confirm-button').should('be.disabled').click({ force: true });
+			cy.getCy('directory-browser-row-return').should('not.exist');
+			cy.get('.q-dialog .dialog-container-top-row input').should('not.be.disabled').and('not.have.attr', 'readonly');
+			cy.get('@saveFolderPath.all').should('have.length', 0);
+
+			cy.get('.q-dialog .dialog-container-top-row input').clear().type('/read-only');
+			cy.wait('@readOnlyDirectory').its('response.statusCode').should('equal', 200);
+			cy.getCy('directory-browser-row-return').should('be.visible');
+			cy.getCy('directory-browser-confirm-button').should('be.disabled');
+			cy.then(() => lookup.release());
+			cy.get('.q-dialog .dialog-container-top-row input').should('have.value', '/read-only');
+			cy.getCy('directory-browser-confirm-button').should('be.disabled').click({ force: true });
+			cy.get('@saveFolderPath.all').should('have.length', 0);
+
+			cy.get('.q-dialog .dialog-container-top-row input').clear().type('/verified');
+			cy.wait('@verifiedDirectory').its('response.statusCode').should('equal', 200);
+			cy.getCy('directory-browser-confirm-button').should('not.be.disabled').click();
+			cy.wait('@saveFolderPath').its('request.body').should('deep.include', {
+				directory: '/verified', folderType: FolderType.MovieFolder, isDefault: true,
+			});
+			cy.getCy(`default-${type}-input`).should('have.value', '/verified');
+		});
 	});
 
 	it('creates each new media destination and manages a custom music destination through reloads', () => {
