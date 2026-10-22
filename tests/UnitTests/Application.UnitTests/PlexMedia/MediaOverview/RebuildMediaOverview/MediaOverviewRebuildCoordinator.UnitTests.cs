@@ -98,8 +98,8 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         var now = DateTimeOffset.UtcNow;
 
         // Act
-        var firstRequest = coordinator.RequestRebuild(now);
-        var secondRequest = coordinator.RequestRebuild(now);
+        var firstRequest = coordinator.RequestRebuild(null, now);
+        var secondRequest = coordinator.RequestRebuild(null, now);
 
         // Assert
         firstRequest.ShouldBeTrue();
@@ -112,16 +112,16 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         // Arrange
         var coordinator = new MediaOverviewRebuildCoordinator();
         var completedAt = DateTimeOffset.UtcNow;
-        coordinator.RequestRebuild(completedAt).ShouldBeTrue();
-        coordinator.BeginRebuild(completedAt).ShouldBeTrue();
+        coordinator.RequestRebuild(null, completedAt).ShouldBeTrue();
+        coordinator.BeginRebuild(completedAt).ShouldNotBeNull();
 
         // Act
         var followUpRequired = coordinator.CompleteRebuild(succeeded: true, completedAt);
-        var withinCooldown = coordinator.RequestRebuild(completedAt.AddMinutes(14).AddSeconds(59));
-        var atCooldownBoundary = coordinator.RequestRebuild(completedAt.AddMinutes(15));
+        var withinCooldown = coordinator.RequestRebuild(null, completedAt.AddMinutes(14).AddSeconds(59));
+        var atCooldownBoundary = coordinator.RequestRebuild(null, completedAt.AddMinutes(15));
 
         // Assert
-        followUpRequired.ShouldBeFalse();
+        followUpRequired.ShouldBeNull();
         withinCooldown.ShouldBeFalse();
         atCooldownBoundary.ShouldBeTrue();
     }
@@ -132,19 +132,19 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         // Arrange
         var coordinator = new MediaOverviewRebuildCoordinator();
         var now = DateTimeOffset.UtcNow;
-        coordinator.RequestRebuild(now).ShouldBeTrue();
-        coordinator.BeginRebuild(now).ShouldBeTrue();
+        coordinator.RequestRebuild(null, now).ShouldBeTrue();
+        coordinator.BeginRebuild(now).ShouldNotBeNull();
 
         // Act
-        var firstRequest = coordinator.RequestRebuild(now);
-        var secondRequest = coordinator.RequestRebuild(now);
+        var firstRequest = coordinator.RequestRebuild(null, now);
+        var secondRequest = coordinator.RequestRebuild(null, now);
         var shouldTriggerFollowUp = coordinator.CompleteRebuild(succeeded: false, now);
 
         // Assert
         firstRequest.ShouldBeFalse();
         secondRequest.ShouldBeFalse();
-        shouldTriggerFollowUp.ShouldBeTrue();
-        coordinator.RequestRebuild(now).ShouldBeFalse();
+        shouldTriggerFollowUp.ShouldNotBeNull();
+        coordinator.RequestRebuild(null, now).ShouldBeFalse();
     }
 
     [Test]
@@ -153,13 +153,78 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         // Arrange
         var coordinator = new MediaOverviewRebuildCoordinator();
         var now = DateTimeOffset.UtcNow;
-        coordinator.RequestRebuild(now).ShouldBeTrue();
+        coordinator.RequestRebuild(null, now).ShouldBeTrue();
 
         // Act
         coordinator.CancelPendingRebuild();
-        var retryRequest = coordinator.RequestRebuild(now);
+        var retryRequest = coordinator.RequestRebuild(null, now);
 
         // Assert
         retryRequest.ShouldBeTrue();
+    }
+
+    [Test]
+    public void ShouldKeepDistinctMediaTypes_WhenRequestsArriveBeforeAndDuringRebuild()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = DateTimeOffset.UtcNow;
+        coordinator.RequestRebuild(PlexMediaType.Movie, now).ShouldBeTrue();
+        coordinator.RequestRebuild(PlexMediaType.MusicArtist, now).ShouldBeFalse();
+
+        // Act
+        var firstScope = coordinator.BeginRebuild(now);
+        coordinator.RequestRebuild(PlexMediaType.PhotoAlbum, now).ShouldBeFalse();
+        var followUpScope = coordinator.CompleteRebuild(succeeded: true, now);
+
+        // Assert
+        firstScope.ShouldNotBeNull();
+        firstScope.RebuildAll.ShouldBeFalse();
+        firstScope.MediaTypes.OrderBy(x => x).ShouldBe(new[] { PlexMediaType.Movie, PlexMediaType.MusicArtist }.OrderBy(x => x));
+        followUpScope.ShouldNotBeNull();
+        followUpScope.RebuildAll.ShouldBeFalse();
+        followUpScope.MediaTypes.ShouldBe(new[] { PlexMediaType.PhotoAlbum });
+    }
+
+    [Test]
+    public async Task ShouldRetainEveryPendingMediaType_WhenRequestsArriveDuringActiveRebuild()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = DateTimeOffset.UtcNow;
+        coordinator.RequestRebuild(PlexMediaType.Movie, now).ShouldBeTrue();
+        coordinator.BeginRebuild(now).ShouldNotBeNull();
+
+        // Act
+        var requestResults = await Task.WhenAll(
+            MediaOverviewRebuildCoordinator.AllMediaTypes.Select(
+                mediaType => Task.Run(() => coordinator.RequestRebuild(mediaType, now))
+            )
+        );
+        var followUpScope = coordinator.CompleteRebuild(succeeded: false, now);
+
+        // Assert
+        requestResults.ShouldAllBe(triggered => !triggered);
+        followUpScope.ShouldNotBeNull();
+        followUpScope.RebuildAll.ShouldBeFalse();
+        followUpScope.MediaTypes.OrderBy(x => x).ShouldBe(MediaOverviewRebuildCoordinator.AllMediaTypes.OrderBy(x => x));
+    }
+
+    [Test]
+    public void ShouldPromotePendingSpecificRequestToGlobalRequest()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = DateTimeOffset.UtcNow;
+        coordinator.RequestRebuild(PlexMediaType.Movie, now).ShouldBeTrue();
+        coordinator.RequestRebuild(null, now).ShouldBeFalse();
+
+        // Act
+        var scope = coordinator.BeginRebuild(now);
+
+        // Assert
+        scope.ShouldNotBeNull();
+        scope.RebuildAll.ShouldBeTrue();
+        scope.MediaTypes.ShouldBe(MediaOverviewRebuildCoordinator.AllMediaTypes);
     }
 }

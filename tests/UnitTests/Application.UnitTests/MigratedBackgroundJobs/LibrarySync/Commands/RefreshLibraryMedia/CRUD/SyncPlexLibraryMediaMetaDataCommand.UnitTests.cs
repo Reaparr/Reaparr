@@ -168,9 +168,9 @@ public class SyncPlexLibraryMediaMetaDataCommandUnitTests : BaseCommandUnitTest<
             BEGIN SELECT RAISE(ABORT, 'Identical actors must not be inserted'); END;
             CREATE TRIGGER reject_actor_delete BEFORE DELETE ON PlexLibraryActors
             BEGIN SELECT RAISE(ABORT, 'Identical actors must not be deleted'); END;
-            CREATE TRIGGER reject_video_genre_insert BEFORE INSERT ON PlexLibraryGenres
+            CREATE TRIGGER reject_video_genre_insert BEFORE INSERT ON PlexLibraryGenresVideo
             BEGIN SELECT RAISE(ABORT, 'Identical video genres must not be inserted'); END;
-            CREATE TRIGGER reject_video_genre_delete BEFORE DELETE ON PlexLibraryGenres
+            CREATE TRIGGER reject_video_genre_delete BEFORE DELETE ON PlexLibraryGenresVideo
             BEGIN SELECT RAISE(ABORT, 'Identical video genres must not be deleted'); END;
             CREATE TRIGGER reject_audio_genre_insert BEFORE INSERT ON PlexLibraryGenresAudio
             BEGIN SELECT RAISE(ABORT, 'Identical audio genres must not be inserted'); END;

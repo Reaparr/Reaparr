@@ -45,7 +45,7 @@ public sealed class GetMediaOverviewPhotoCommandHandler
         var filter = command.Filter;
         var options = QueryOptionsParser.Parse(filter.Parameters);
         var sort = options.ResolveSort();
-        if (sort is null || sort.Value.Field == nameof(BasePlexMedia.VideoQuality))
+        if (sort is null || sort.Value.Field is nameof(BasePlexMedia.VideoQuality) or nameof(PlexMediaSlimDTO.Year))
         {
             var mediaResult = await _commandExecutor.Send(
                 new GetMediaByTypeCommand { Filter = filter },
@@ -94,7 +94,7 @@ public sealed class GetMediaOverviewPhotoCommandHandler
             allowedLibraryIds.Contains(snapshot.PlexLibraryId)
             && candidates.Any(photoAlbum => photoAlbum.Id == snapshot.PlexPhotoAlbumId)
         );
-        var orderedSnapshots = ApplyOrder(snapshots, sort.Value.Field, sort.Value.Descending);
+        var orderedSnapshots = snapshots.ApplyRankOrder(sort.Value);
         var ids = await orderedSnapshots
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
@@ -103,10 +103,16 @@ public sealed class GetMediaOverviewPhotoCommandHandler
         LogPhase(filter, "PageIds", stopwatch.Elapsed, ids.Count);
         stopwatch.Restart();
         var totalCount = await snapshots.CountAsync(cancellationToken);
-        var mediaSize = await context.PlexPhotoMediaData
-            .Where(file => file.AlbumMemberships.Any(edge =>
-                snapshots.Any(snapshot => snapshot.PlexPhotoAlbumId == edge.PlexPhotoAlbumId)))
-            .SumAsync(file => file.Size, cancellationToken);
+        // Assets may belong to several matching albums; count each physical asset only once.
+        var mediaSize = await context
+            .PlexPhotoMediaData.Where(asset =>
+                context.PlexPhotoAlbumMemberships.Any(membership =>
+                    membership.PlexPhotoMediaDataId == asset.Id
+                    && snapshots.Any(snapshot => snapshot.PlexPhotoAlbumId == membership.PlexPhotoAlbumId)
+                )
+            )
+            .SumAsync(asset => asset.Size, cancellationToken);
+
         LogPhase(filter, "Aggregate", stopwatch.Elapsed, totalCount);
         stopwatch.Restart();
         var items = await context
@@ -114,6 +120,7 @@ public sealed class GetMediaOverviewPhotoCommandHandler
             .ProjectToMediaSlimDTO()
             .ToListAsync(cancellationToken);
         items = items.RestorePageOrder(ids);
+
         LogPhase(filter, "Items", stopwatch.Elapsed, items.Count);
         stopwatch.Restart();
 
@@ -126,29 +133,16 @@ public sealed class GetMediaOverviewPhotoCommandHandler
             mediaSize,
             cancellationToken
         );
-        var navigationRows = await orderedSnapshots
-            .Join(
-                context.PlexPhotoAlbums.ProjectToMediaSlimDTO(),
-                snapshot => snapshot.PlexPhotoAlbumId,
-                photoAlbum => photoAlbum.Id,
-                (_, photoAlbum) =>
-                    new MediaNavigationIndexRow(
-                        photoAlbum.SearchTitle,
-                        photoAlbum.Year,
-                        null,
-                        photoAlbum.Duration,
-                        photoAlbum.AddedAt,
-                        photoAlbum.UpdatedAt,
-                        photoAlbum.MediaSize
-                    )
-            )
-            .ToListAsync(cancellationToken);
-        result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+        var navigationRows = snapshots.SelectNavigationRows(sort.Value);
+        result.NavigationIndexes = await MediaNavigationIndexBuilder.BuildAsync(
             navigationRows,
-            options.Sort.FirstOrDefault()?.Field
+            sort.Value,
+            cancellationToken
         );
+
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
+
         LogPhase(filter, "Metadata", stopwatch.Elapsed, items.Count);
         result.Qualities = items
             .SelectMany(x => x.Qualities)
@@ -171,29 +165,4 @@ public sealed class GetMediaOverviewPhotoCommandHandler
                 rowCount,
                 elapsed.TotalMilliseconds
             );
-
-    private static IQueryable<MediaOverviewPhotoAlbumSnapshot> ApplyOrder(
-        IQueryable<MediaOverviewPhotoAlbumSnapshot> query,
-        string field,
-        bool descending
-    ) =>
-        field switch
-        {
-            nameof(BasePlexMedia.Year) => descending
-                ? query.OrderByDescending(x => x.YearRank)
-                : query.OrderBy(x => x.YearRank),
-            nameof(BasePlexMedia.AddedAt) => descending
-                ? query.OrderByDescending(x => x.AddedAtRank)
-                : query.OrderBy(x => x.AddedAtRank),
-            nameof(BasePlexMedia.UpdatedAt) => descending
-                ? query.OrderByDescending(x => x.UpdatedAtRank)
-                : query.OrderBy(x => x.UpdatedAtRank),
-            nameof(BasePlexMedia.Duration) => descending
-                ? query.OrderByDescending(x => x.DurationRank)
-                : query.OrderBy(x => x.DurationRank),
-            nameof(BasePlexMedia.MediaSize) => descending
-                ? query.OrderByDescending(x => x.MediaSizeRank)
-                : query.OrderBy(x => x.MediaSizeRank),
-            _ => descending ? query.OrderByDescending(x => x.TitleRank) : query.OrderBy(x => x.TitleRank),
-        };
 }
