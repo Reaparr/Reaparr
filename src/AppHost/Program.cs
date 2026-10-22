@@ -130,7 +130,12 @@ public class Program
             if (appRuntimeInfo.IsDesktopEmbeddedDisabled)
             {
                 hostShutdownTask = app.WaitForShutdownAsync(cancellationToken);
-                var browserResult = StartBrowserOnlyMode(app, singleInstanceCoordinator, openBrowser, cancellationToken);
+                var browserResult = StartBrowserOnlyMode(
+                    ResolveBrowserUri(app.Urls, appRuntimeInfo),
+                    singleInstanceCoordinator,
+                    openBrowser,
+                    cancellationToken
+                );
                 if (browserResult.IsFailed)
                     return browserResult;
 
@@ -175,13 +180,12 @@ public class Program
     }
 
     private static Result StartBrowserOnlyMode(
-        WebApplication app,
+        Uri browserUri,
         IDesktopSingleInstanceCoordinator coordinator,
         Action<Uri>? openBrowser,
         CancellationToken cancellationToken
     )
     {
-        var browserUri = ResolveBrowserUri(app);
         _log.Here()
             .Warning(
                 "Embedded desktop window mode disabled via {EnvVar}. Launching browser-only mode at {Uri}",
@@ -205,11 +209,14 @@ public class Program
         return Result.Ok();
     }
 
-    private static Uri ResolveBrowserUri(WebApplication app)
+    internal static Uri ResolveBrowserUri(IEnumerable<string> serverAddresses, IAppRuntimeInfo appRuntimeInfo)
     {
-        var serverAddress = app.Urls.FirstOrDefault();
+        if (appRuntimeInfo.IsDevelopmentEnvironment)
+            return new Uri("http://localhost:3000/");
+
+        var serverAddress = serverAddresses.FirstOrDefault();
         if (string.IsNullOrWhiteSpace(serverAddress))
-            return new Uri($"http://localhost:{_appRuntimeInfo.AppPort}/");
+            return new Uri($"http://localhost:{appRuntimeInfo.AppPort}/");
 
         var uri = new Uri(serverAddress);
         if (uri.Host is "0.0.0.0" or "::" or "[::]")

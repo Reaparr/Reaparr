@@ -113,7 +113,9 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldReopenBrowserAndStopHost_WhenBrowserOnlyPrimaryReceivesRelaunchSignal()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldReopenBrowserAndStopHost_WhenBrowserOnlyPrimaryReceivesRelaunchSignal(bool development)
     {
         // Arrange
         var hostProbe = new HostProbe();
@@ -133,7 +135,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             hostProbe,
             desktopMode.Object,
             coordinator.Object,
-            new MockAppRuntimeInfo { IsDesktopEmbeddedDisabled = true, IsDevelopmentEnvironment = false }
+            new MockAppRuntimeInfo { IsDesktopEmbeddedDisabled = true, IsDevelopmentEnvironment = development }
         );
 
         coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true).Verifiable(Times.Once());
@@ -159,7 +161,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         try
         {
             var initialUri = await firstOpen.Task.WaitAsync(deadline, cancellationToken);
-            var expectedUri = new Uri(app.Urls.Single());
+            var expectedUri = new Uri(development ? "http://localhost:3000/" : app.Urls.Single());
             initialUri.ShouldBe(expectedUri);
             browserRequests.ToArray().ShouldBe([expectedUri]);
             nextOpen.Task.IsCompleted.ShouldBeFalse();
@@ -187,6 +189,31 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         desktopMode.Verify(x => x.StartAsync(It.IsAny<CancellationToken>()), Times.Never);
         desktopMode.Verify(x => x.ShowMainWindowAsync(It.IsAny<CancellationToken>()), Times.Never);
         desktopMode.Verify(x => x.WaitForExitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    [Arguments(true, "http://127.0.0.1:45000", 6001, "http://localhost:3000/")]
+    [Arguments(true, null, 6001, "http://localhost:3000/")]
+    [Arguments(false, "http://127.0.0.1:45000", 6001, "http://127.0.0.1:45000/")]
+    [Arguments(false, null, 6001, "http://localhost:6001/")]
+    [Arguments(false, "http://0.0.0.0:45000", 6001, "http://localhost:45000/")]
+    [Arguments(false, "http://[::]:45000", 6001, "http://localhost:45000/")]
+    public void ShouldResolveBrowserUri_WhenEnvironmentAndBoundAddressDiffer(
+        bool development,
+        string? boundAddress,
+        int fallbackPort,
+        string expectedUri
+    )
+    {
+        // Arrange
+        string[] serverAddresses = boundAddress is null ? [] : [boundAddress];
+        var runtimeInfo = new MockAppRuntimeInfo { IsDevelopmentEnvironment = development, AppPort = fallbackPort };
+
+        // Act
+        var browserUri = Program.ResolveBrowserUri(serverAddresses, runtimeInfo);
+
+        // Assert
+        browserUri.AbsoluteUri.ShouldBe(expectedUri);
     }
 
     [Test]
