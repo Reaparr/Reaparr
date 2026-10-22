@@ -114,15 +114,27 @@ internal sealed class DesktopLaunchBuildCommandHandler : ICommandHandler<Desktop
             );
         }
 
-        var appImage = _fileSystem
-            .Directory.EnumerateFiles(artifactDirectory, "*.AppImage", SearchOption.TopDirectoryOnly)
-            .OrderByDescending(path => _fileSystem.File.GetLastWriteTimeUtc(path))
-            .ThenBy(path => path, StringComparer.Ordinal)
-            .FirstOrDefault();
-
-        if (appImage is null)
+        string appImage;
+        using (
+            var appImages = _fileSystem
+                .Directory.EnumerateFiles(artifactDirectory, "*.AppImage", SearchOption.TopDirectoryOnly)
+                .GetEnumerator()
+        )
         {
-            return Result.Fail<int>($"No packaged Linux artifact (*.AppImage) was found in '{artifactDirectory}'.");
+            if (!appImages.MoveNext())
+            {
+                return Result.Fail<int>(
+                    $"No packaged Linux artifact (*.AppImage) was found in '{artifactDirectory}'."
+                );
+            }
+
+            appImage = appImages.Current;
+            if (appImages.MoveNext())
+            {
+                return Result.Fail<int>(
+                    $"Multiple packaged Linux artifacts (*.AppImage) were found in '{artifactDirectory}'. Use a directory containing exactly one top-level AppImage."
+                );
+            }
         }
 
         _log.Here()
