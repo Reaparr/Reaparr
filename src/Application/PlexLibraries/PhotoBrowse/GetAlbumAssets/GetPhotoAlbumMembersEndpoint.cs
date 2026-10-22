@@ -1,3 +1,6 @@
+using FlexQuery.NET.Models;
+using FlexQuery.NET.Parsers;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoAlbumMembersRequest
@@ -26,6 +29,15 @@ public sealed class GetPhotoAlbumMembersRequestValidator : Validator<GetPhotoAlb
         RuleFor(x => x.AlbumId).GreaterThan(0);
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize).When(x => x.PageSize.HasValue);
+        RuleFor(x => x.Sort)
+            .Must(sort => sort.IsSupportedSort(
+                SortType.Title,
+                SortType.AddedAt,
+                SortType.UpdatedAt,
+                SortType.Duration,
+                SortType.MediaSize
+            ))
+            .WithMessage("Unsupported photo album member sort.");
         RuleFor(x => x)
             .Must(x => (long)((x.Page ?? 1) - 1) * (x.PageSize ?? MediaQueryFilter.MaximumPageSize) <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -54,14 +66,14 @@ public sealed class GetPhotoAlbumMembersEndpoint : Endpoint<GetPhotoAlbumMembers
 
     public override async Task HandleAsync(GetPhotoAlbumMembersRequest req, CancellationToken ct)
     {
-        var sort = req.Sort.ParsePhotoSort();
+        var sort = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = req.Sort }).ResolveSort()!.Value;
         var result = await _commandExecutor.Send(
             new GetPhotoAlbumMembersQuery(
                 req.PlexLibraryId,
                 req.AlbumId,
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
-                sort.Sort,
+                sort.Field,
                 sort.Descending
             ),
             ct

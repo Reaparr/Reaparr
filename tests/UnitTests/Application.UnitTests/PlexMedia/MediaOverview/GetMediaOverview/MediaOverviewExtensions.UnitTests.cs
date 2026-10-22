@@ -1,4 +1,5 @@
 using FlexQuery.NET.Models;
+using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -47,6 +48,45 @@ public class MediaOverviewExtensionsUnitTests
         // Assert
         result.ShouldBeNull();
     }
+
+    [Test]
+    [Arguments("sortIndex:asc", SortType.Title, false)]
+    [Arguments("addedAt:desc", SortType.AddedAt, true)]
+    [Arguments("updatedAt:asc", SortType.UpdatedAt, false)]
+    [Arguments("duration:desc", SortType.Duration, true)]
+    [Arguments("mediaSize:asc", SortType.MediaSize, false)]
+    public void ShouldResolveCanonicalWireSort_WhenParsedThroughSharedOptions(
+        string value,
+        SortType expectedField,
+        bool expectedDescending
+    )
+    {
+        // Arrange
+        var options = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = value });
+
+        // Act
+        var result = options.ResolveSort();
+
+        // Assert
+        result.ShouldBe((expectedField, expectedDescending));
+    }
+
+    [Test]
+    public void ShouldRejectUnsupportedSortValuesAtTheSharedBoundary()
+    {
+        // Arrange
+
+        // Act
+        var unknown = "unknown:asc".IsSupportedSort(SortType.Title, SortType.AddedAt);
+        var unsupported = "year:asc".IsSupportedSort(SortType.Title, SortType.AddedAt);
+        var multiple = "title:asc,addedAt:desc".IsSupportedSort(SortType.Title, SortType.AddedAt);
+
+        // Assert
+        unknown.ShouldBeFalse();
+        unsupported.ShouldBeFalse();
+        multiple.ShouldBeFalse();
+    }
+
 
     [Test]
     public void ShouldReturnNull_WhenRecognizedSortTypeHasNoOverviewRank()

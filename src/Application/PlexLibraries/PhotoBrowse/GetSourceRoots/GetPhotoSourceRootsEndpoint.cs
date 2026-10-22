@@ -1,3 +1,6 @@
+using FlexQuery.NET.Models;
+using FlexQuery.NET.Parsers;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoSourceRootsRequest
@@ -22,6 +25,9 @@ public sealed class GetPhotoSourceRootsRequestValidator : Validator<GetPhotoSour
         RuleFor(x => x.PlexLibraryId).GreaterThan(0);
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize).When(x => x.PageSize.HasValue);
+        RuleFor(x => x.Sort)
+            .Must(sort => sort.IsSupportedSort(SortType.Title))
+            .WithMessage("Photo folders support title sorting only.");
         RuleFor(x => x)
             .Must(x => (long)((x.Page ?? 1) - 1) * (x.PageSize ?? MediaQueryFilter.MaximumPageSize) <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -50,13 +56,13 @@ public sealed class GetPhotoSourceRootsEndpoint : Endpoint<GetPhotoSourceRootsRe
 
     public override async Task HandleAsync(GetPhotoSourceRootsRequest req, CancellationToken ct)
     {
-        var sort = req.Sort.ParsePhotoSort();
+        var sort = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = req.Sort }).ResolveSort()!.Value;
         var result = await _commandExecutor.Send(
             new GetPhotoSourceRootsQueryCommand(
                 req.PlexLibraryId,
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
-                sort.Sort,
+                sort.Field,
                 sort.Descending
             ),
             ct

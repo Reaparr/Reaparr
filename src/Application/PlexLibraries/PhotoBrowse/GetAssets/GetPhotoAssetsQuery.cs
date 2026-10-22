@@ -1,3 +1,5 @@
+using FlexQuery.NET;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoAssetsQuery(
@@ -16,7 +18,15 @@ public sealed class GetPhotoAssetsQueryValidator : AbstractValidator<GetPhotoAss
         RuleFor(x => x.PlexLibraryId).GreaterThan(0).When(x => x.PlexLibraryId.HasValue);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Equal(SortType.Title);
+        RuleFor(x => x.Sort)
+            .Must(sort =>
+                sort is SortType.Title
+                or SortType.AddedAt
+                or SortType.UpdatedAt
+                or SortType.Duration
+                or SortType.MediaSize
+            )
+            .WithMessage("Unsupported photo asset sort.");
         RuleFor(x => x)
             .Must(x => !x.UnmappedOnly || x.PlexLibraryId.HasValue)
             .WithMessage("Unmapped-only assets require an explicit photo library.");
@@ -88,9 +98,13 @@ public sealed class GetPhotoAssetsQueryHandler : ICommandHandler<GetPhotoAssetsQ
 
         var totalCount = await assets.CountAsync(cancellationToken);
         var totalBytes = await assets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
-        var ordered = query.Descending
-            ? assets.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
-            : assets.OrderBy(x => x.Title).ThenBy(x => x.Id);
+        var sortOptions = MediaOverviewExtensions.BuildSortOptions(
+            (query.Sort, query.Descending),
+            nameof(PlexMediaSlimDTO.Title),
+            nameof(PlexMediaSlimDTO.Id),
+            nameof(PlexMediaSlimDTO.MediaSize)
+        );
+        var ordered = assets.ProjectToMediaSlimDTO().ApplySort(sortOptions);
         var assetIds = await ordered
             .Skip(PhotoBrowseQuerySupport.GetSkip(query.Page, query.PageSize))
             .Take(query.PageSize)

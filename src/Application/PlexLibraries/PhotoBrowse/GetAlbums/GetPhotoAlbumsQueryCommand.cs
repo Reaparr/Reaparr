@@ -1,3 +1,5 @@
+using FlexQuery.NET;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoAlbumsQueryCommand(
@@ -15,7 +17,15 @@ public sealed class GetPhotoAlbumsQueryCommandValidator : AbstractValidator<GetP
         RuleFor(x => x.PlexLibraryId).GreaterThan(0).When(x => x.PlexLibraryId.HasValue);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Equal(SortType.Title);
+        RuleFor(x => x.Sort)
+            .Must(sort =>
+                sort is SortType.Title
+                or SortType.AddedAt
+                or SortType.UpdatedAt
+                or SortType.Duration
+                or SortType.MediaSize
+            )
+            .WithMessage("Unsupported photo album sort.");
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -44,8 +54,9 @@ public sealed class GetPhotoAlbumsQueryCommandHandler
 
         var allowed = scopeResult.Value.LibraryIds;
         var albums = context.PlexPhotoAlbums.Where(x => allowed.Contains(x.PlexLibraryId));
+        var albumRowsQuery = albums.ProjectToMediaSlimDTO();
         var totalCount = await albums.CountAsync(cancellationToken);
-        var albumIds = await LoadAlbumIdsAsync(albums, queryCommand, cancellationToken);
+        var albumIds = await LoadAlbumIdsAsync(albumRowsQuery, queryCommand, cancellationToken);
         var totalAssetBytes = await LoadTotalAssetBytesAsync(context, albums, allowed, cancellationToken);
         var metrics = await LoadAlbumMetricsAsync(context, albumIds, cancellationToken);
         var albumRows = await context
@@ -84,14 +95,18 @@ public sealed class GetPhotoAlbumsQueryCommandHandler
     }
 
     private static async Task<List<int>> LoadAlbumIdsAsync(
-        IQueryable<PlexPhotoAlbum> albums,
+        IQueryable<PlexMediaSlimDTO> albums,
         GetPhotoAlbumsQueryCommand queryCommand,
         CancellationToken cancellationToken
     )
     {
-        var ordered = queryCommand.Descending
-            ? albums.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
-            : albums.OrderBy(x => x.Title).ThenBy(x => x.Id);
+        var sortOptions = MediaOverviewExtensions.BuildSortOptions(
+            (queryCommand.Sort, queryCommand.Descending),
+            nameof(PlexMediaSlimDTO.Title),
+            nameof(PlexMediaSlimDTO.Id),
+            nameof(PlexMediaSlimDTO.MediaSize)
+        );
+        var ordered = albums.ApplySort(sortOptions);
         return await ordered
             .Skip(PhotoBrowseQuerySupport.GetSkip(queryCommand.Page, queryCommand.PageSize))
             .Take(queryCommand.PageSize)

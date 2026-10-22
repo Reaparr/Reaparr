@@ -170,6 +170,76 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     }
 
     [Test]
+    [Arguments(SortType.Title, false, new[] { 1, 3, 2, 0 })]
+    [Arguments(SortType.Title, true, new[] { 0, 2, 3, 1 })]
+    [Arguments(SortType.AddedAt, false, new[] { 1, 0, 3, 2 })]
+    [Arguments(SortType.AddedAt, true, new[] { 2, 3, 0, 1 })]
+    [Arguments(SortType.UpdatedAt, false, new[] { 0, 2, 1, 3 })]
+    [Arguments(SortType.UpdatedAt, true, new[] { 3, 1, 2, 0 })]
+    [Arguments(SortType.Duration, false, new[] { 0, 3, 1, 2 })]
+    [Arguments(SortType.Duration, true, new[] { 2, 1, 3, 0 })]
+    [Arguments(SortType.MediaSize, false, new[] { 2, 0, 3, 1 })]
+    [Arguments(SortType.MediaSize, true, new[] { 1, 3, 0, 2 })]
+    public async Task ShouldApplySharedSortFieldsBeforePagingWithNullsAndTies(
+        SortType sort,
+        bool descending,
+        int[] expectedOrder
+    )
+    {
+        // Arrange
+        await SetupDatabase(71012, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
+        var dbContext = IDbContext;
+        var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).Take(4).ToListAsync(CancellationToken);
+        var date = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var values = new (int? Duration, long Size, DateTime AddedAt, DateTime? UpdatedAt)[]
+        {
+            (null, 200, date.AddDays(1), null),
+            (10, 400, date, date.AddDays(1)),
+            (10, 100, date.AddDays(3), date),
+            (null, 300, date.AddDays(2), date.AddDays(2)),
+        };
+        var titles = new[] { "Zulu", "Alpha", "Charlie", "Bravo" };
+        for (var index = 0; index < assets.Count; index++)
+        {
+            var value = values[index];
+            await dbContext.PlexPhotoMediaData
+                .Where(x => x.Id == assets[index].Id)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(x => x.Title, titles[index])
+                        .SetProperty(x => x.Duration, value.Duration)
+                        .SetProperty(x => x.Size, value.Size)
+                        .SetProperty(x => x.AddedAt, value.AddedAt)
+                        .SetProperty(x => x.UpdatedAt, value.UpdatedAt),
+                    CancellationToken
+                );
+        }
+
+        // Act
+        var firstPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new GetPhotoAssetsQuery(null, 1, 2, sort, descending)
+        );
+        var secondPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
+            new GetPhotoAssetsQuery(null, 2, 2, sort, descending)
+        );
+
+        // Assert
+        firstPage.IsSuccess.ShouldBeTrue();
+        firstPage.Errors.Count.ShouldBe(0);
+        secondPage.IsSuccess.ShouldBeTrue();
+        secondPage.Errors.Count.ShouldBe(0);
+        firstPage.Value.TotalCount.ShouldBe(4);
+        secondPage.Value.TotalCount.ShouldBe(4);
+        firstPage.Value.Items.Select(x => x.Id).ShouldBe(expectedOrder.Take(2).Select(index => assets[index].Id));
+        secondPage.Value.Items.Select(x => x.Id).ShouldBe(expectedOrder.Skip(2).Select(index => assets[index].Id));
+    }
+
+    [Test]
     public async Task ShouldExcludeDisabledServersFromAggregateAndRejectExplicitRequests()
     {
         // Arrange

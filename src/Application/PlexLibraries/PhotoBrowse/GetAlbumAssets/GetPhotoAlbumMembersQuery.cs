@@ -1,3 +1,5 @@
+using FlexQuery.NET;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoAlbumMembersQuery(
@@ -17,7 +19,15 @@ public sealed class GetPhotoAlbumMembersQueryValidator : AbstractValidator<GetPh
         RuleFor(x => x.AlbumId).GreaterThan(0);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Equal(SortType.Title);
+        RuleFor(x => x.Sort)
+            .Must(sort =>
+                sort is SortType.Title
+                or SortType.AddedAt
+                or SortType.UpdatedAt
+                or SortType.Duration
+                or SortType.MediaSize
+            )
+            .WithMessage("Unsupported photo album member sort.");
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -89,23 +99,24 @@ public sealed class GetPhotoAlbumMembersQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var memberships = context.PlexPhotoAlbumMemberships.Where(x =>
-            x.PlexPhotoAlbumId == query.AlbumId
-            && x.PlexPhotoMediaData!.PlexLibraryId == query.PlexLibraryId
-            && x.PlexPhotoMediaData.PlexServerId == libraryServerId
+        var assets = context.PlexPhotoMediaData.Where(x =>
+            x.PlexLibraryId == query.PlexLibraryId
+            && x.PlexServerId == libraryServerId
+            && x.AlbumMemberships.Any(membership => membership.PlexPhotoAlbumId == query.AlbumId)
         );
-        var totalCount = await memberships.Select(x => x.PlexPhotoMediaDataId).Distinct().CountAsync(cancellationToken);
-        var totalBytes = await memberships
-            .Select(x => (long?)x.PlexPhotoMediaData!.Size)
-            .SumAsync(cancellationToken) ?? 0L;
-        var ordered = query.Descending
-            ? memberships.OrderByDescending(x => x.PlexPhotoMediaData!.Title).ThenByDescending(x => x.PlexPhotoMediaDataId)
-            : memberships.OrderBy(x => x.PlexPhotoMediaData!.Title).ThenBy(x => x.PlexPhotoMediaDataId);
+        var totalCount = await assets.CountAsync(cancellationToken);
+        var totalBytes = await assets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
+        var sortOptions = MediaOverviewExtensions.BuildSortOptions(
+            (query.Sort, query.Descending),
+            nameof(PlexMediaSlimDTO.Title),
+            nameof(PlexMediaSlimDTO.Id),
+            nameof(PlexMediaSlimDTO.MediaSize)
+        );
+        var ordered = assets.ProjectToMediaSlimDTO().ApplySort(sortOptions);
         var assetIds = await ordered
             .Skip(PhotoBrowseQuerySupport.GetSkip(query.Page, query.PageSize))
             .Take(query.PageSize)
-            .Select(x => x.PlexPhotoMediaDataId)
-            .Distinct()
+            .Select(x => x.Id)
             .ToListAsync(cancellationToken);
 
         return (totalCount, totalBytes, assetIds);

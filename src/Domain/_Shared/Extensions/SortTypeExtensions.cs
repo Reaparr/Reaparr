@@ -32,34 +32,6 @@ public static class SortTypeExtensions
         return false;
     }
 
-    public static bool TryParsePhotoSort(
-        this string? value,
-        out (SortType Sort, bool Descending) parsed
-    )
-    {
-        switch (value)
-        {
-            case null:
-            case "title:asc":
-                parsed = (SortType.Title, false);
-                return true;
-            case "title:desc":
-                parsed = (SortType.Title, true);
-                return true;
-            default:
-                parsed = default;
-                return false;
-        }
-    }
-
-    public static (SortType Sort, bool Descending) ParsePhotoSort(this string? value)
-    {
-        if (value.TryParsePhotoSort(out var parsed))
-            return parsed;
-
-        throw new ArgumentOutOfRangeException(nameof(value), value, "Unsupported photo sort.");
-    }
-
     public static string ToQueryField(this SortType sortType) => sortType switch
     {
         SortType.Title => nameof(BasePlexMedia.SortIndex),

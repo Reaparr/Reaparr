@@ -52,55 +52,6 @@ public class SortTypeExtensionsUnitTests
     }
 
     [Test]
-    [Arguments(null, SortType.Title, false)]
-    [Arguments("title:asc", SortType.Title, false)]
-    [Arguments("title:desc", SortType.Title, true)]
-    public void ShouldResolveCanonicalPhotoSort_WhenParsingPhotoSort(
-        string? value,
-        SortType expectedSort,
-        bool expectedDescending
-    )
-    {
-        // Arrange
-
-        // Act
-        var accepted = value.TryParsePhotoSort(out var parsed);
-        var result = value.ParsePhotoSort();
-
-        // Assert
-        accepted.ShouldBeTrue();
-        parsed.Sort.ShouldBe(expectedSort);
-        parsed.Descending.ShouldBe(expectedDescending);
-        result.ShouldBe(parsed);
-    }
-
-    [Test]
-    [Arguments("")]
-    [Arguments(" ")]
-    [Arguments("title:ASC")]
-    [Arguments(" title:asc")]
-    [Arguments("title:asc ")]
-    [Arguments("sortIndex")]
-    [Arguments("sortIndex:asc")]
-    [Arguments("year")]
-    [Arguments("year:asc")]
-    [Arguments("0")]
-    [Arguments("1")]
-    public void ShouldRejectNonCanonicalPhotoSort_WhenParsingPhotoSort(string value)
-    {
-        // Arrange
-
-        // Act
-        var accepted = value.TryParsePhotoSort(out var parsed);
-        Action act = () => value.ParsePhotoSort();
-
-        // Assert
-        accepted.ShouldBeFalse();
-        parsed.ShouldBe((SortType.Title, false));
-        act.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("value");
-    }
-
-    [Test]
     [Arguments(SortType.Title, "\"Title\"")]
     [Arguments(SortType.Year, "\"Year\"")]
     [Arguments(SortType.AddedAt, "\"AddedAt\"")]

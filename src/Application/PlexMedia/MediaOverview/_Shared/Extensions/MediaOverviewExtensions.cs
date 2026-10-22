@@ -1,4 +1,5 @@
 using FlexQuery.NET.Models;
+using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application;
 
@@ -17,6 +18,43 @@ internal static class MediaOverviewExtensions
             && sortType is not SortType.ComparisonState
             ? (sortType, sort.Descending)
             : null;
+    }
+
+    public static bool IsSupportedSort(this string? value, params ReadOnlySpan<SortType> supportedSorts)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+
+        var options = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = value });
+        var sort = options.ResolveSort();
+        if (options.Sort.Count != 1 || sort is null)
+            return false;
+
+        foreach (var supportedSort in supportedSorts)
+            if (supportedSort == sort.Value.Field)
+                return true;
+
+        return false;
+    }
+
+    public static QueryOptions BuildSortOptions(
+        (SortType Field, bool Descending) sort,
+        string titleField,
+        string idField,
+        string? mediaSizeField = null
+    )
+    {
+        var field = sort.Field switch
+        {
+            SortType.Title => titleField,
+            SortType.MediaSize when mediaSizeField is not null => mediaSizeField,
+            SortType.MediaSize => throw new ArgumentOutOfRangeException(nameof(mediaSizeField)),
+            _ => sort.Field.ToQueryField(),
+        };
+        var options = new QueryOptions();
+        options.Sort.Add(new SortNode { Field = field, Descending = sort.Descending });
+        options.Sort.Add(new SortNode { Field = idField, Descending = sort.Descending });
+        return options;
     }
 
     public static async Task<IReadOnlyCollection<int>> ResolveAllowedLibraryIdsAsync(

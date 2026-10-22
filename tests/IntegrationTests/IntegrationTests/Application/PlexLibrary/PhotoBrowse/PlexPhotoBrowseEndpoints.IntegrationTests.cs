@@ -79,6 +79,79 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         await AssertDisabledLibraryAsync(fixture);
     }
 
+    [Test]
+    [Arguments("mediaSize:asc", new[] { 1, 3, 2, 0 })]
+    [Arguments("mediaSize:desc", new[] { 0, 2, 3, 1 })]
+    [Arguments("addedAt:asc", new[] { 2, 0, 3, 1 })]
+    [Arguments("addedAt:desc", new[] { 1, 3, 0, 2 })]
+    [Arguments("updatedAt:asc", new[] { 0, 3, 2, 1 })]
+    [Arguments("updatedAt:desc", new[] { 1, 2, 3, 0 })]
+    [Arguments("duration:asc", new[] { 1, 3, 0, 2 })]
+    [Arguments("duration:desc", new[] { 2, 0, 3, 1 })]
+    public async Task ShouldApplySharedSortFieldsBeforePagingPhotoAssets(string sort, int[] expectedOrder)
+    {
+        // Arrange
+        var seed = new Seed(29005);
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
+            config.DatabaseOptions = x =>
+            {
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 2;
+                x.PhotoAlbumCount = 1;
+                x.PhotoCount = 0;
+                x.PhotoClipCount = 4;
+            };
+        });
+        var context = container.DbContext;
+        var libraryId = await context.PlexLibraries
+            .Where(x => x.Type == PlexMediaType.PhotoAlbum).OrderBy(x => x.Id).Select(x => x.Id).FirstAsync();
+        var assetIds = await context.PlexPhotoMediaData
+            .Where(x => x.PlexLibraryId == libraryId).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
+        assetIds.Count.ShouldBe(4);
+        await ArrangeAssetSortValuesAsync(context, assetIds);
+        using var client = container.GetApiClient();
+        await client.SignIn();
+
+        for (var page = 1; page <= 2; page++)
+        {
+            // Act
+            var response = await client.GETAsync<GetPhotoAssetsEndpoint, GetPhotoAssetsRequest, ResultDTO<PhotoAssetPageDTO>>(
+                new GetPhotoAssetsRequest { PlexLibraryId = libraryId, Page = page, PageSize = 3, Sort = sort }
+            );
+
+            // Assert
+            response.Response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            response.Result.IsSuccess.ShouldBeTrue();
+            response.Result.Errors.Count.ShouldBe(0);
+            var value = response.Result.Value.ShouldNotBeNull();
+            (value.Page, value.PageSize, value.TotalCount, value.TotalBytes).ShouldBe((page, 3, 4, 1000L));
+            value.Items.Select(x => x.Id).ShouldBe(
+                expectedOrder.Skip((page - 1) * 3).Take(3).Select(index => assetIds[index])
+            );
+            value.Items.ShouldAllBe(x => x.PlexLibraryId == libraryId);
+        }
+    }
+
+    private async Task ArrangeAssetSortValuesAsync(IReaparrDbContext context, IReadOnlyList<int> assetIds)
+    {
+        var sizes = new[] { 400L, 100L, 300L, 200L };
+        var addedDays = new[] { 2, 4, 1, 3 };
+        var durations = new int?[] { 60, null, 120, 30 };
+        for (var index = 0; index < assetIds.Count; index++)
+        {
+            var id = assetIds[index];
+            await context.PlexPhotoMediaData.Where(x => x.Id == id).ExecuteUpdateAsync(update => update
+                .SetProperty(x => x.Title, $"Asset {index}")
+                .SetProperty(x => x.Size, sizes[index])
+                .SetProperty(x => x.AddedAt, new DateTime(2026, 1, addedDays[index]))
+                .SetProperty(x => x.UpdatedAt, index == 0 ? (DateTime?)null : new DateTime(2026, 2, 4 - index))
+                .SetProperty(x => x.Duration, durations[index]), CancellationToken);
+        }
+    }
+
     private static T AssertSuccess<T>(HttpStatusCode statusCode, ResultDTO<T> result)
         where T : class
     {
@@ -100,7 +173,7 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
                 PlexLibraryId = fixture.Library.Id,
                 Page = 1,
                 PageSize = 1,
-                Sort = "title:asc",
+                Sort = "sortIndex:asc",
             }
         );
         var value = AssertSuccess(response.Response.StatusCode, response.Result);
@@ -134,7 +207,7 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
                 PlexLibraryId = fixture.Library.Id,
                 Page = 1,
                 PageSize = 2,
-                Sort = "title:desc",
+                Sort = "sortIndex:desc",
             }
         );
         var descendingValue = AssertSuccess(descendingResponse.Response.StatusCode, descendingResponse.Result);
@@ -268,7 +341,7 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
     private async Task AssertInvalidSortAsync(BrowseFixture fixture)
     {
         using var response = await fixture.Client.GetAsync(
-            $"{ApiRoutes.PlexPhotoController}/assets?plexLibraryId={fixture.Library.Id}&sort=sortIndex:asc",
+            $"{ApiRoutes.PlexPhotoController}/assets?plexLibraryId={fixture.Library.Id}&sort=unknown:asc",
             CancellationToken
         );
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);

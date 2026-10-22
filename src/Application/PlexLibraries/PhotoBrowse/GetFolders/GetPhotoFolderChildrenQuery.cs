@@ -1,3 +1,5 @@
+using FlexQuery.NET;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoFolderChildrenQuery(
@@ -21,7 +23,9 @@ public sealed class GetPhotoFolderChildrenQueryValidator : AbstractValidator<Get
         RuleFor(x => x.FolderPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
         RuleFor(x => x.AssetPage).GreaterThan(0);
         RuleFor(x => x.AssetPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Equal(SortType.Title);
+        RuleFor(x => x.Sort)
+            .Equal(SortType.Title)
+            .WithMessage("Photo folders support title sorting only.");
         RuleFor(x => x)
             .Must(x =>
                 (long)(x.FolderPage - 1) * x.FolderPageSize <= int.MaxValue
@@ -150,9 +154,12 @@ public sealed class GetPhotoFolderChildrenQueryHandler
             && x.ParentId == folder.Id
         );
         var folderCount = await childFolders.CountAsync(cancellationToken);
-        var orderedFolders = query.Descending
-            ? childFolders.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
-            : childFolders.OrderBy(x => x.Title).ThenBy(x => x.Id);
+        var folderOptions = MediaOverviewExtensions.BuildSortOptions(
+            (query.Sort, query.Descending),
+            nameof(PlexPhotoFolder.Title),
+            nameof(PlexPhotoFolder.Id)
+        );
+        var orderedFolders = childFolders.ApplySort(folderOptions);
         var rows = await orderedFolders
             .Skip(PhotoBrowseQuerySupport.GetSkip(query.FolderPage, query.FolderPageSize))
             .Take(query.FolderPageSize)
@@ -195,9 +202,13 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         );
         var assetCount = await directAssets.CountAsync(cancellationToken);
         var assetBytes = await directAssets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
-        var orderedAssets = query.Descending
-            ? directAssets.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
-            : directAssets.OrderBy(x => x.Title).ThenBy(x => x.Id);
+        var assetOptions = MediaOverviewExtensions.BuildSortOptions(
+            (query.Sort, query.Descending),
+            nameof(PlexMediaSlimDTO.Title),
+            nameof(PlexMediaSlimDTO.Id),
+            nameof(PlexMediaSlimDTO.MediaSize)
+        );
+        var orderedAssets = directAssets.ProjectToMediaSlimDTO().ApplySort(assetOptions);
         var assetIds = await orderedAssets
             .Skip(PhotoBrowseQuerySupport.GetSkip(query.AssetPage, query.AssetPageSize))
             .Take(query.AssetPageSize)
