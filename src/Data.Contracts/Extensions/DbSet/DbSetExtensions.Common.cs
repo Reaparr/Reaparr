@@ -113,5 +113,5 @@ public static partial class DbSetExtensions
             SortDirection.Desc => query.OrderByDescending(predicate),
             SortDirection.NoSort => query,
             _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null),
-        };=
+        };
 }
