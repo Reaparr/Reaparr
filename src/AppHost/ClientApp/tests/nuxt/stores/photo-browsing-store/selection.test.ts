@@ -174,4 +174,43 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 		expect(store.selectedSelectors).toEqual([expect.objectContaining({ id: 42, kind: PhotoItemKind.Album })]);
 		expect(store.allVisibleSelected).toBe(false);
 	});
+
+	test('Should keep selection cleared after pending enumeration and allow a fresh select all', async () => {
+		// Arrange
+		const firstItems = Array.from({ length: 100 }, (_, index) => asset(index + 1));
+		const firstPage = generateResultDTO({ items: firstItems, page: 1, pageSize: 100, totalCount: 101, totalBytes: 1010 } as PhotoAssetPageDTO);
+		const lastPage = generateResultDTO({ items: [asset(101)], page: 2, pageSize: 100, totalCount: 101, totalBytes: 1010 } as PhotoAssetPageDTO);
+		const pendingPage = new Subject<ResultDTO<PhotoAssetPageDTO>>();
+		let holdLastPage = true;
+		vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockImplementation((query) => {
+			if (query?.page === 2) return holdLastPage ? pendingPage.asObservable() : of(lastPage);
+			return of(firstPage);
+		});
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		store.toggleAsset(asset(900), true);
+		const selection = subscribeSpyTo(store.selectAll(true));
+		expect(store.selectionLoading).toBe(true);
+		expect(store.selectedSelectors.map((selector) => selector.id)).toEqual([900]);
+
+		// Act
+		store.clearSelection();
+		expect(store.selectionLoading).toBe(false);
+		pendingPage.next(lastPage);
+		pendingPage.complete();
+		await selection.onComplete();
+
+		// Assert
+		expect(store.selectedSelectors).toEqual([]);
+		expect(store.allVisibleSelected).toBe(false);
+		expect(store.selectionError).toBe(false);
+		expect(store.overviewItemAt(0)).toMatchObject({ kind: PhotoItemKind.Asset, asset: { id: 1 }, index: 0 });
+
+		// A new user selection must not inherit the cancelled request's lifetime.
+		holdLastPage = false;
+		await subscribeSpyTo(store.selectAll(true)).onComplete();
+		expect(store.selectedSelectors.map((selector) => selector.id)).toEqual(Array.from({ length: 101 }, (_, index) => index + 1));
+		expect(store.allVisibleSelected).toBe(true);
+		expect(store.selectionLoading).toBe(false);
+	});
 });
