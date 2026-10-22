@@ -66,7 +66,7 @@ export function toDownloadActions(downloadStatus: DownloadStatus): DownloadActio
 			actions.push(DownloadActions.Clear, DownloadActions.Restart);
 			break;
 		case DownloadStatus.Stopped:
-			actions.push(DownloadActions.Start, DownloadActions.Delete);
+			actions.push(DownloadActions.Restart, DownloadActions.Delete);
 			break;
 		case DownloadStatus.Moving:
 			actions.push(DownloadActions.Pause, DownloadActions.Stop);

@@ -1,7 +1,7 @@
 namespace Reaparr.Application;
 
 /// <summary>
-/// Reset download tasks left in active download or move states from a previous run before the scheduler starts.
+/// Reset download tasks left in active download, move, or restart states from a previous run before the scheduler starts.
 /// </summary>
 public record RecoverInterruptedDownloadsCommand : ICommand<Result>;
 
@@ -30,7 +30,7 @@ public class RecoverInterruptedDownloadsCommandHandler : ICommandHandler<Recover
         using var dbContext = await _dbContextFactory.CreateAsync();
 
         var fileTasks = await dbContext.GetDownloadTaskFilesByStatusAsync(
-            [DownloadStatus.Downloading, DownloadStatus.Moving, DownloadStatus.MoveFinished],
+            [DownloadStatus.Downloading, DownloadStatus.Moving, DownloadStatus.MoveFinished, DownloadStatus.Restarting],
             cancellationToken
         );
 
@@ -41,6 +41,8 @@ public class RecoverInterruptedDownloadsCommandHandler : ICommandHandler<Recover
             {
                 DownloadStatus.Moving => DownloadStatus.AutoMovePaused,
                 DownloadStatus.MoveFinished => DownloadStatus.Completed,
+                // An interrupted restart may not have finished refreshing source metadata; require an explicit restart.
+                DownloadStatus.Restarting => DownloadStatus.Stopped,
                 _ => DownloadStatus.AutoPaused,
             };
             _log.Here()

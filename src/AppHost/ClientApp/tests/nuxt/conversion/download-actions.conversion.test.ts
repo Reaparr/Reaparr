@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { PhotoItemKind, PlexMediaType } from '@dto';
+import { DownloadActions, DownloadStatus, PhotoItemKind, PlexMediaType } from '@dto';
 import { generatePlexMedia } from '@mock';
-import { toDownloadMedia } from '@composables/conversion/download-actions.conversion';
+import { toDownloadActions, toDownloadMedia } from '@composables/conversion/download-actions.conversion';
 
 function media(type: PlexMediaType) {
 	return generatePlexMedia({
@@ -75,5 +75,21 @@ describe('toDownloadMedia()', () => {
 			selectionKind: null,
 			keepCompletedInDownloadFolder: false,
 		});
+	});
+});
+
+describe('toDownloadActions()', () => {
+	test('Should require a full restart for stopped downloads while preserving paused resume actions', () => {
+		// Arrange
+		const expectedStopped = [DownloadActions.Details, DownloadActions.Restart, DownloadActions.Delete];
+		const expectedPaused = [DownloadActions.Details, DownloadActions.Start, DownloadActions.Stop, DownloadActions.Delete];
+
+		// Act
+		const stopped = toDownloadActions(DownloadStatus.Stopped);
+		const paused = toDownloadActions(DownloadStatus.Paused);
+
+		// Assert
+		expect(stopped).toEqual(expectedStopped);
+		expect(paused).toEqual(expectedPaused);
 	});
 });

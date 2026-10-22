@@ -469,6 +469,13 @@ for (const destination of ['default', 'override', 'custom'] as const) {
 				publishStatus(state, item, DownloadStatus.Downloading, 50);
 				assertAction(item, 'stop');
 				publishStatus(state, item, DownloadStatus.Stopped, 50);
+				cy.get('.download-table-desktop, .download-cards').filter(':visible').should(($queue) => {
+					expect($queue.find(`[data-cy="column-actions-start-${item.id}"]`)).to.have.length(0);
+				});
+				assertAction(item, 'restart');
+				publishStatus(state, item, DownloadStatus.Downloading, 50);
+				assertAction(item, 'stop');
+				publishStatus(state, item, DownloadStatus.Stopped, 50);
 				visibleCy(`column-actions-delete-${item.id}`).click();
 				cy.wait('@delete');
 				cy.wait('@queue');
