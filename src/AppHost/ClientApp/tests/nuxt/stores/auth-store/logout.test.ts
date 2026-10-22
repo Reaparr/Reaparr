@@ -2,7 +2,7 @@ import { describe, afterEach, beforeAll, beforeEach, test, expect, vi } from 'vi
 import { createPinia, setActivePinia } from 'pinia';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { AuthenticationPaths } from '@api-urls';
-import { generateResultDTO } from '@mock';
+import { generateFailedResultDTO, generatePlexAccount, generateResultDTO } from '@mock';
 import { useAccountStore, useAuthenticationStore, useGlobalStore, useSignalrStore } from '@store';
 
 describe('AuthenticationStore.logout()', () => {
@@ -80,6 +80,50 @@ describe('AuthenticationStore.logout()', () => {
 		// Assert
 		expect(authenticationStore.isLoggedIn).toBe(false);
 		expect(accountStore.accounts).toEqual([]);
+		expect(pushSpy).toHaveBeenCalledWith('/login');
+	});
+
+	test.each([
+		{ name: 'the server rejects logout', statusCode: 500 },
+		{ name: 'the network is unavailable', statusCode: 999 },
+	])('Should retain the session and allow retry when $name', async ({ statusCode }) => {
+		// Arrange
+		const authenticationStore = useAuthenticationStore();
+		await subscribeSpyTo(authenticationStore.setup()).onComplete();
+		authenticationStore.currentUsername = 'signed-in-user';
+		const accountStore = useAccountStore();
+		const accounts = [generatePlexAccount({ id: 1, config: { seed: 100 } })];
+		accountStore.accounts = accounts;
+		const globalStore = useGlobalStore();
+		const resetSpy = vi.spyOn(globalStore, 'resetSession');
+		const pushSpy = vi.mocked(useRouter().push);
+		const endpoint = AuthenticationPaths.appUserLogOutEndpoint();
+		if (statusCode === 999)
+			mock.onPost(endpoint).networkErrorOnce();
+		else
+			mock.onPost(endpoint).replyOnce(500, generateFailedResultDTO({ statusCode: 500 }));
+		mock.onPost(endpoint).reply(200, generateResultDTO('ok'));
+
+		// Act
+		const failed = subscribeSpyTo(authenticationStore.logout());
+		await failed.onComplete();
+
+		// Assert: an unconfirmed server logout must not erase the current client session.
+		expect(failed.getLastValue()).toMatchObject({ isSuccess: false, statusCode });
+		expect(authenticationStore.isLoggedIn).toBe(true);
+		expect(authenticationStore.currentUsername).toBe('signed-in-user');
+		expect(accountStore.accounts).toEqual(accounts);
+		expect(resetSpy).not.toHaveBeenCalled();
+		expect(pushSpy).not.toHaveBeenCalled();
+
+		// Act and assert: a confirmed retry clears the same session and reaches Login.
+		const retried = subscribeSpyTo(authenticationStore.logout());
+		await retried.onComplete();
+		expect(retried.getLastValue()?.isSuccess).toBe(true);
+		expect(authenticationStore.isLoggedIn).toBe(false);
+		expect(authenticationStore.currentUsername).toBe('');
+		expect(accountStore.accounts).toEqual([]);
+		expect(resetSpy).toHaveBeenCalledOnce();
 		expect(pushSpy).toHaveBeenCalledWith('/login');
 	});
 });

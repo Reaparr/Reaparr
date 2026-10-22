@@ -157,4 +157,57 @@ describe('sign-in-process', () => {
 			cy.url().should('eq', route('/'));
 		});
 	});
+
+	it('Should retain the session after failed logout and finish a confirmed retry through reload', () => {
+		cy.basePageSetup({ isLoggedIn: true, plexAccountCount: 1, plexServerCount: 1 });
+		let authenticated = true;
+		let logoutRequests = 0;
+		const held = Promise.withResolvers<null>();
+		releasePending = () => held.resolve(null);
+		cy.intercept('GET', AuthenticationPaths.authenticationStatusEndpoint(), (request) => {
+			request.alias = authenticated ? 'authenticatedLogoutStatus' : 'loggedOutStatus';
+			request.reply({
+				statusCode: authenticated ? 200 : 401,
+				body: authenticated
+					? generateResultDTO({ isLoggedIn: true, userName: 'admin', claims: [] })
+					: generateFailedResultDTO({ statusCode: 401 }),
+			});
+		});
+		cy.intercept('POST', AuthenticationPaths.appUserLogOutEndpoint(), (request) => {
+			if (++logoutRequests === 1) {
+				return held.promise.then(() => request.reply({
+					statusCode: 500,
+					body: generateFailedResultDTO({
+						statusCode: 500, errors: [{ message: 'Logout not confirmed', reasons: [], metadata: {} }],
+					}),
+				}));
+			}
+			authenticated = false;
+			request.reply({ statusCode: 200, body: generateResultDTO(null) });
+		}).as('logout');
+
+		cy.visit(route('/'));
+		cy.wait('@authenticatedLogoutStatus').its('response.statusCode').should('equal', 200);
+		cy.getCy('account-selector-btn').should('be.visible').click();
+		cy.contains('Logout').should('be.visible').click();
+		cy.wrap(null).should(() => expect(logoutRequests).to.equal(1));
+		cy.url().should('eq', route('/'));
+		cy.getCy('login-submit-button').should('not.exist');
+		cy.then(() => held.resolve(null));
+		cy.wait('@logout').its('response.statusCode').should('equal', 500);
+		cy.getCy('alert-dialog').should('be.visible').and('contain.text', 'Logout not confirmed');
+		cy.url().should('eq', route('/'));
+		cy.getCy('close-alert-dialog').click();
+		cy.reload();
+		cy.wait('@authenticatedLogoutStatus').its('response.statusCode').should('equal', 200);
+		cy.url().should('eq', route('/'));
+		cy.getCy('account-selector-btn').should('be.visible').click();
+		cy.contains('Logout').should('be.visible').click();
+		cy.wait('@logout').its('response.statusCode').should('equal', 200);
+		cy.url().should('eq', route('/login'));
+		cy.reload();
+		cy.wait('@loggedOutStatus').its('response.statusCode').should('equal', 401);
+		cy.url().should('eq', route('/login'));
+		cy.getCy('login-submit-button').should('be.visible').and('not.be.disabled');
+	});
 });

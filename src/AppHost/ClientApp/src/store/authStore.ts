@@ -100,10 +100,16 @@ export const useAuthenticationStore = defineStore(StoreNames.AuthenticationStore
 			const router = useRouter();
 
 			return authenticationApi.appUserLogOutEndpoint().pipe(
-				tap((res) => Log.info('User logged out', res)),
-				switchMap((result) => from(globalStore.resetSession()).pipe(map(() => result))),
-				tap(() => state.isLoggedIn = false),
-				tap(() => router.push('/login')));
+				switchMap((result) => {
+					if (!result.isSuccess) return of(result);
+					Log.info('User logged out', result);
+					return from(globalStore.resetSession()).pipe(
+						map(() => result),
+						tap(() => state.isLoggedIn = false),
+						tap(() => router.push('/login')),
+					);
+				}),
+			);
 		},
 		status: () => authenticationApi.authenticationStatusEndpoint({ timeout: 5000 }).pipe(
 			tap((res) => state.isLoggedIn = res.isSuccess && !!res.value?.isLoggedIn),
