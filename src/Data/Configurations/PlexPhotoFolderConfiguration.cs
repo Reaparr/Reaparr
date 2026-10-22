@@ -18,6 +18,7 @@ public sealed class PlexPhotoFolderConfiguration : IEntityTypeConfiguration<Plex
             .IsUnique()
             .HasFilter("\"ParentId\" IS NOT NULL");
         builder.HasIndex(x => new { x.PlexLibraryId, x.ParentId, x.Title, x.Id });
+        builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
 
         builder.ToTable(
             "PlexPhotoFolders",
@@ -60,7 +61,8 @@ public sealed class PlexPhotoFolderConfiguration : IEntityTypeConfiguration<Plex
         builder
             .HasOne(x => x.Parent)
             .WithMany(x => x.Children)
-            .HasForeignKey(x => x.ParentId)
+            .HasForeignKey(x => new { x.PlexLibraryId, x.ParentId })
+            .HasPrincipalKey(x => new { x.PlexLibraryId, x.Id })
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

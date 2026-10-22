@@ -52,11 +52,6 @@ public class PlexPhotoMediaData : BaseEntity
     public string? Summary { get; init; }
 
     /// <summary>
-    /// Numeric key used to retrieve the asset's metadata from Plex.
-    /// </summary>
-    public required int PlexApiMetaDataKey { get; init; }
-
-    /// <summary>
     /// Whether Plex reports a thumbnail for this asset.
     /// </summary>
     public required bool HasThumb { get; set; }

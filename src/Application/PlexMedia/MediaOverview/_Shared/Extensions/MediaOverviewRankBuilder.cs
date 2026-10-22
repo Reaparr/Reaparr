@@ -9,7 +9,8 @@ public static partial class MediaOverviewRankBuilder
     private static List<TSnapshot> AssignRanks<TSnapshot>(
         List<TSnapshot> snapshots,
         IReadOnlyDictionary<int, MediaOverviewRankValue> values,
-        Func<TSnapshot, int> getId
+        Func<TSnapshot, int> getId,
+        Action<TSnapshot, int>? setYearRank
     )
         where TSnapshot : BaseMediaOverviewSnapshot
     {
@@ -27,12 +28,15 @@ public static partial class MediaOverviewRankBuilder
                 ),
             static (x, rank) => x.TitleRank = rank
         );
-        AssignRank(
-            snapshots,
-            permutation,
-            (left, right) => Compare(values[getId(left)].Year, values[getId(right)].Year, getId(left), getId(right)),
-            static (x, rank) => x.YearRank = rank
-        );
+        if (setYearRank is not null)
+        {
+            AssignRank(
+                snapshots,
+                permutation,
+                (left, right) => Compare(values[getId(left)].Year, values[getId(right)].Year, getId(left), getId(right)),
+                setYearRank
+            );
+        }
         AssignRank(
             snapshots,
             permutation,

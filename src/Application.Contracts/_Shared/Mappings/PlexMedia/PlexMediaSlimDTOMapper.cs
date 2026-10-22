@@ -137,6 +137,7 @@ public static class PlexMediaSlimDTOMapper
 
     public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexPhotoMediaData source) =>
         new()
+
         {
             Id = source.Id,
             Title = source.Title,
@@ -154,7 +155,7 @@ public static class PlexMediaSlimDTOMapper
             Type = PlexMediaType.PhotoImage,
             HasThumb = source.HasThumb,
             PlexApiRatingKey = source.PlexApiRatingKey,
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = source.PlexApiRatingKey,
             Qualities = [],
         };
 
@@ -177,6 +178,7 @@ public static class PlexMediaSlimDTOMapper
 
     public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexPhotoAlbum source) =>
         new()
+
         {
             Id = source.Id,
             Title = source.Title,
@@ -194,7 +196,7 @@ public static class PlexMediaSlimDTOMapper
             Type = PlexMediaType.PhotoAlbum,
             HasThumb = source.HasThumb,
             PlexApiRatingKey = source.PlexApiRatingKey,
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = source.PlexApiRatingKey,
             Qualities = [],
         };
 
@@ -217,7 +219,7 @@ public static class PlexMediaSlimDTOMapper
             Type = PlexMediaType.PhotoAlbum,
             HasThumb = x.HasThumb,
             PlexApiRatingKey = x.PlexApiRatingKey,
-            PlexApiMetaDataKey = x.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = x.PlexApiRatingKey,
             Qualities = new List<PlexMediaQualityDTO>(),
         });
 
@@ -235,7 +237,12 @@ public static class PlexMediaSlimDTOMapper
             Title = source.Title,
             SearchTitle = source.SearchTitle,
             SortIndex = source.SortIndex,
-            Year = source.Year,
+            Year = source switch
+            {
+                PlexMusicAlbum album => album.Year,
+                PlexOtherVideo video => video.Year,
+                _ => 0,
+            },
             Duration = source.Duration,
             MediaSize = source.MediaSize,
             ChildCount = source.ChildCount,

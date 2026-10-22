@@ -4,12 +4,12 @@ public class PlexMusicAlbumCountries
 {
     public PlexMusicAlbumCountries() { }
 
-    public PlexMusicAlbumCountries(int countryId, int plexLibraryId, int plexMusicAlbumId)
+    public PlexMusicAlbumCountries(int countryId, int plexMusicAlbumId)
     {
         CountryId = countryId;
         PlexMusicAlbumId = plexMusicAlbumId;
-        PlexLibraryId = plexLibraryId;
     }
+
 
     /// <summary>
     /// Gets the identifier of the country catalogue entry.
@@ -18,14 +18,8 @@ public class PlexMusicAlbumCountries
     public int CountryId { get; init; }
 
     /// <summary>
-    /// Gets the identifier of the Plex library containing the album.
-    /// </summary>
-    [Column(Order = 2)]
-    public int PlexLibraryId { get; init; }
-
-    /// <summary>
     /// Gets the identifier of the Plex music album.
     /// </summary>
-    [Column(Order = 3)]
+    [Column(Order = 2)]
     public int PlexMusicAlbumId { get; init; }
 }

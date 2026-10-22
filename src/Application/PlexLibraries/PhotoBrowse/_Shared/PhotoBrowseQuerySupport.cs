@@ -89,7 +89,7 @@ internal static class PhotoBrowseQuerySupport
         AssetKind = asset.AssetKind,
         HasThumbnail = asset.HasThumb,
         PlexApiRatingKey = asset.PlexApiRatingKey,
-        PlexApiMetaDataKey = asset.PlexApiMetaDataKey,
+        PlexApiMetaDataKey = asset.PlexApiRatingKey,
         OriginalFilename = asset.OriginalFilename,
         Size = asset.Size,
         Container = asset.Container,
@@ -114,7 +114,7 @@ internal static class PhotoBrowseQuerySupport
         Title = album.Title,
         HasThumbnail = album.HasThumb,
         PlexApiRatingKey = album.PlexApiRatingKey,
-        PlexApiMetaDataKey = album.PlexApiMetaDataKey,
+        PlexApiMetaDataKey = album.PlexApiRatingKey,
         AssetCount = metrics?.AssetCount ?? 0,
         AssetBytes = metrics?.AssetBytes ?? 0L,
     };

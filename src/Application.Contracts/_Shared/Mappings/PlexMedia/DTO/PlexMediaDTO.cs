@@ -18,7 +18,6 @@ public record PlexMediaDTO : PlexMediaSlimDTO
 
     public required string? RecordLabel { get; init; }
 
-    public required DateTime? ReleaseDate { get; init; }
 
     public required List<PlexGenreDTO> Genres { get; init; } = [];
 

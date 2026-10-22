@@ -566,7 +566,6 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
             PlexApiRatingKey = media[1].PlexApiRatingKey + offset,
             PlexApiMediaId = media[1].PlexApiMediaId + offset,
             PlexApiPartId = media[1].PlexApiPartId + offset,
-            PlexApiMetaDataKey = media[1].PlexApiMetaDataKey + offset,
             Title = filename,
             SearchTitle = filename.ToSearchTitle(),
             HasThumb = false,

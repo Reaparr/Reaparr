@@ -5,12 +5,12 @@ public class PlexOtherVideoActors
     public PlexOtherVideoActors() { }
 
     [SetsRequiredMembers]
-    public PlexOtherVideoActors(int plexActorId, int plexLibraryId, int plexOtherVideoId)
+    public PlexOtherVideoActors(int plexActorId, int plexOtherVideoId)
     {
         PlexActorId = plexActorId;
         PlexOtherVideoId = plexOtherVideoId;
-        PlexLibraryId = plexLibraryId;
     }
+
 
     [Column(Order = 1)]
     public required int PlexActorId { get; set; }
@@ -18,6 +18,4 @@ public class PlexOtherVideoActors
     [Column(Order = 2)]
     public required int PlexOtherVideoId { get; set; }
 
-    [Column(Order = 3)]
-    public required int PlexLibraryId { get; set; }
 }

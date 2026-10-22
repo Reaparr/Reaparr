@@ -19,7 +19,7 @@ internal static class MediaOverviewExtensions
                 nameof(BasePlexMedia.SortIndex),
                 sort.Descending
             ),
-            "year" => (nameof(BasePlexMedia.Year), sort.Descending),
+            "year" => (nameof(PlexMediaSlimDTO.Year), sort.Descending),
             "addedat" => (nameof(BasePlexMedia.AddedAt), sort.Descending),
             "updatedat" => (nameof(BasePlexMedia.UpdatedAt), sort.Descending),
             "duration" => (nameof(BasePlexMedia.Duration), sort.Descending),

@@ -4,6 +4,18 @@ public class PlexMusicAlbum : BasePlexMedia
 {
     public override PlexMediaType Type => PlexMediaType.MusicAlbum;
 
+    [Column(Order = 3)]
+    public required int Year { get; set; }
+
+    [Column(Order = 16)]
+    public required DateTime? OriginallyAvailableAt { get; init; }
+
+    [Column(Order = 10)]
+    public required string Summary { get; init; } = string.Empty;
+
+    [Column(Order = 12)]
+    public required double Rating { get; init; }
+
     /// <summary>
     /// The Plex key of the <see cref="PlexTvShow"/> this belongs too.
     /// </summary>
@@ -22,7 +34,6 @@ public class PlexMusicAlbum : BasePlexMedia
 
     public required string? MusicBrainzReleaseId { get; set; }
 
-    public DateTime? ReleaseDate { get; set; }
 
     public required string? RecordLabel { get; set; }
 
@@ -31,9 +42,6 @@ public class PlexMusicAlbum : BasePlexMedia
     /// </summary>
     public ICollection<PlexCountry> Countries { get; init; } = [];
 
-    public required int? DiscCount { get; set; }
-
-    public required int? TrackCount { get; set; }
 
     public ICollection<PlexMusicTrack> Tracks { get; set; } = [];
 

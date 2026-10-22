@@ -44,7 +44,6 @@ public static partial class PlexMediaDTOMapper
             Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             RecordLabel = null,
-            ReleaseDate = null,
             Genres = source.Genres.ToDTO(),
             Children = [],
             PlexApiMetaDataKey = source.PlexApiMetaDataKey,

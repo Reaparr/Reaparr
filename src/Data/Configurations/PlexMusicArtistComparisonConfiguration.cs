@@ -11,7 +11,17 @@ public class PlexMusicArtistComparisonConfiguration : IEntityTypeConfiguration<P
         }).IsUnique();
         builder.HasOne<PlexLibrary>().WithMany().HasForeignKey(x => x.RemotePlexLibraryId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<PlexLibrary>().WithMany().HasForeignKey(x => x.OwnedPlexLibraryId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<PlexMusicArtist>().WithMany().HasForeignKey(x => x.RemotePlexMediaId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<PlexMusicArtist>().WithMany().HasForeignKey(x => x.OwnedPlexMediaId).OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasOne<PlexMusicArtist>()
+            .WithMany()
+            .HasForeignKey(x => new { x.RemotePlexLibraryId, x.RemotePlexMediaId })
+            .HasPrincipalKey(x => new { x.PlexLibraryId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasOne<PlexMusicArtist>()
+            .WithMany()
+            .HasForeignKey(x => new { x.OwnedPlexLibraryId, x.OwnedPlexMediaId })
+            .HasPrincipalKey(x => new { x.PlexLibraryId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

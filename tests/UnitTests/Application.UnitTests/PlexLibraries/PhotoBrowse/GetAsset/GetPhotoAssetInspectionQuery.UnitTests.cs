@@ -39,7 +39,7 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
         result.Value.PlexServerId.ShouldBe(asset.PlexServerId);
         result.Value.PlexLibraryId.ShouldBe(asset.PlexLibraryId);
         result.Value.PlexApiRatingKey.ShouldBe(asset.PlexApiRatingKey);
-        result.Value.PlexApiMetaDataKey.ShouldBe(asset.PlexApiMetaDataKey);
+        result.Value.PlexApiMetaDataKey.ShouldBe(asset.PlexApiRatingKey);
         result.Value.OriginalFilename.ShouldBe(asset.OriginalFilename);
         result.Value.Size.ShouldBe(asset.Size);
         result.Value.Albums.TotalCount.ShouldBe(expectedAlbumCount);

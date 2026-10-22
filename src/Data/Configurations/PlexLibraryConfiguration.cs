@@ -72,7 +72,8 @@ public class PlexLibraryConfiguration : IEntityTypeConfiguration<PlexLibrary>
             .UsingEntity<PlexLibraryGenresVideo>(
                 l => l.HasOne<PlexGenreVideo>().WithMany().HasForeignKey(e => e.PlexGenreId),
                 r => r.HasOne<PlexLibrary>().WithMany().HasForeignKey(e => e.PlexLibraryId)
-            );
+            )
+            .ToTable("PlexLibraryGenres");
 
         builder
             .HasMany(x => x.GenresAudio)

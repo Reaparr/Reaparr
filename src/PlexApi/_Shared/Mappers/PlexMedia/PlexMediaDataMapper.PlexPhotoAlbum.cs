@@ -26,7 +26,6 @@ public static partial class PlexMediaDataMapper
             Title = source.Title,
             SearchTitle = source.SearchTitle,
             Summary = summary,
-            PlexApiMetaDataKey = source.RatingKey,
             HasThumb = !string.IsNullOrWhiteSpace(source.Thumb),
             AddedAt = source.AddedAt,
             UpdatedAt = source.UpdatedAt,

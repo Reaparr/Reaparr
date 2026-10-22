@@ -5,6 +5,7 @@ public sealed class PlexPhotoAlbumConfiguration : IEntityTypeConfiguration<PlexP
     public void Configure(EntityTypeBuilder<PlexPhotoAlbum> builder)
     {
         builder.HasIndex(x => new { x.PlexLibraryId, x.PlexApiRatingKey }).IsUnique();
+        builder.HasIndex(x => new { x.PlexApiRatingKey, x.PlexServerId });
         builder.Property(x => x.SearchTitle).UseCollation("NOCASE");
         builder.Property(x => x.Title).UseCollation(OrderByNaturalExtensions.CollationName);
         builder.HasIndex(x => new { x.PlexLibraryId, x.Title, x.Id });

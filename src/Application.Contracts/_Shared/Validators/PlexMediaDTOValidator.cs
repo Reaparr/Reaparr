@@ -29,7 +29,7 @@ public class PlexMediaDTOValidator : AbstractValidator<PlexMediaDTO>
                         or PlexMediaType.OtherVideos
             );
 
-        RuleFor(x => x.Summary).NotEmpty();
+        RuleFor(x => x.Summary).NotEmpty().When(x => x.Type != PlexMediaType.MusicTrack);
         RuleFor(x => x.UpdatedAt).NotEmpty();
         RuleForEach(x => x.Qualities)
             .ChildRules(y =>

@@ -37,11 +37,6 @@ public class PlexPhotoAlbum : BaseEntity
     public string? Summary { get; init; }
 
     /// <summary>
-    /// Numeric key used to retrieve the album's metadata from Plex.
-    /// </summary>
-    public required int PlexApiMetaDataKey { get; init; }
-
-    /// <summary>
     /// Whether Plex reports a thumbnail for this album.
     /// </summary>
     public required bool HasThumb { get; set; }

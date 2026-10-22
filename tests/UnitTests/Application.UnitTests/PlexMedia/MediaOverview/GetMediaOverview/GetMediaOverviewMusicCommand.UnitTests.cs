@@ -17,6 +17,55 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
     )
     {
         // Arrange
+        var fixture = await ArrangeFilteredArtistPageAsync();
+        var metadataId = metadataField switch
+        {
+            "Actors" => fixture.Actor.Id,
+            "Countries" => fixture.Country.Id,
+            _ => fixture.Genre.Id,
+        };
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.MusicArtist,
+            PlexLibraryId = fixture.LibraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters
+            {
+                Page = 2,
+                PageSize = 1,
+                Sort = sort,
+                Filter = $"{metadataField}:any:Id:eq:{metadataId}",
+            },
+        };
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<ApplyComparisonStateCommand>(c =>
+                        c.MediaType == PlexMediaType.MusicArtist
+                        && c.PlexLibraryId == fixture.LibraryId
+                        && c.Items.Count == 1
+                        && c.Items[0].Id == fixture.SelectedArtist.Id
+                    ),
+                    CancellationToken
+                )
+            )
+            .Callback<ICommand<Result>, CancellationToken>(
+                (command, _) =>
+                    ((ApplyComparisonStateCommand)command).Items[0].SetComparisonState(PlexMediaComparisonState.Partial)
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMusicCommand(filter));
+
+        // Assert
+        AssertFilteredArtistPage(result, filter, fixture, sort);
+    }
+
+    private async Task<MusicOverviewFixture> ArrangeFilteredArtistPageAsync()
+    {
         await SetupDatabase(
             84201,
             config =>
@@ -45,6 +94,7 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
         target[2].Albums.Count.ShouldBe(2);
         target[2].Albums.Select(x => x.Tracks.Count).ShouldBe([3, 3]);
         await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true), CancellationToken);
+
         var metadataSeed = new Seed(84202);
         var actor = FakeData.GetPlexActors(metadataSeed).Generate();
         var country = FakeData.GetPlexCountries(metadataSeed).Generate();
@@ -70,13 +120,13 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
                 2 => "charlie",
                 _ => "control",
             };
+            var mediaSize = targetIndex >= 0 ? (targetIndex + 1) * 100L : 9000L;
             await dbContext
                 .PlexMusicArtists.Where(x => x.Id == artist.Id)
                 .ExecuteUpdateAsync(
                     x =>
                         x.SetProperty(y => y.SearchTitle, title)
-                            .SetProperty(y => y.Year, targetIndex == 3 ? 1999 : 2000)
-                            .SetProperty(y => y.MediaSize, targetIndex >= 0 ? (targetIndex + 1) * 100L : 9000L)
+                            .SetProperty(y => y.MediaSize, mediaSize)
                             .SetProperty(y => y.HasThumb, true),
                     CancellationToken
                 );
@@ -85,8 +135,13 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
                 {
                     PlexArtistId = artist.Id,
                     PlexLibraryId = artist.PlexLibraryId,
+                    SearchTitle = title,
+                    NavigationTitleLabel = MediaNavigationIndexBuilder.GetTitleLabel(title),
+                    Duration = artist.Duration,
+                    AddedAt = artist.AddedAt,
+                    UpdatedAt = artist.UpdatedAt,
+                    MediaSize = mediaSize,
                     TitleRank = rank,
-                    YearRank = rank,
                     AddedAtRank = rank,
                     UpdatedAtRank = rank,
                     DurationRank = rank,
@@ -95,15 +150,9 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
             );
             if (targetIndex != 3)
             {
-                dbContext.PlexMusicArtistActors.Add(
-                    new PlexMusicArtistActors(actor.Id, artist.PlexLibraryId, artist.Id)
-                );
-                dbContext.PlexMusicArtistCountries.Add(
-                    new PlexMusicArtistCountries(country.Id, artist.PlexLibraryId, artist.Id)
-                );
-                dbContext.PlexMusicArtistGenres.Add(
-                    new PlexMusicArtistGenres(genre.Id, artist.PlexLibraryId, artist.Id)
-                );
+                dbContext.PlexMusicArtistActors.Add(new PlexMusicArtistActors(actor.Id, artist.Id));
+                dbContext.PlexMusicArtistCountries.Add(new PlexMusicArtistCountries(country.Id, artist.Id));
+                dbContext.PlexMusicArtistGenres.Add(new PlexMusicArtistGenres(genre.Id, artist.Id));
             }
         }
         dbContext.PlexMusicArtistMediaQualities.AddRange(
@@ -121,49 +170,16 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
             }
         );
         await dbContext.SaveChangesAsync(CancellationToken);
-        var metadataId = metadataField switch
-        {
-            "Actors" => actor.Id,
-            "Countries" => country.Id,
-            _ => genre.Id,
-        };
-        var filter = new MediaQueryFilter
-        {
-            MediaType = PlexMediaType.MusicArtist,
-            PlexLibraryId = libraryIds[0],
-            FilterOfflineMedia = false,
-            FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters
-            {
-                Page = 2,
-                PageSize = 1,
-                Sort = sort,
-                Filter = $"{metadataField}:any:Id:eq:{metadataId}",
-            },
-        };
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(
-                    It.Is<ApplyComparisonStateCommand>(c =>
-                        c.MediaType == PlexMediaType.MusicArtist
-                        && c.PlexLibraryId == libraryIds[0]
-                        && c.Items.Count == 1
-                        && c.Items[0].Id == target[2].Id
-                    ),
-                    CancellationToken
-                )
-            )
-            .Callback<ICommand<Result>, CancellationToken>(
-                (command, _) =>
-                    ((ApplyComparisonStateCommand)command).Items[0].SetComparisonState(PlexMediaComparisonState.Partial)
-            )
-            .ReturnsAsync(Result.Ok())
-            .Verifiable(Times.Once());
+        return new(libraryIds[0], target[2], actor, country, genre);
+    }
 
-        // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMusicCommand(filter));
-
-        // Assert
+    private void AssertFilteredArtistPage(
+        Result<PagedMediaQueryResult> result,
+        MediaQueryFilter filter,
+        MusicOverviewFixture fixture,
+        string sort
+    )
+    {
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.QueryHash.ShouldBe(filter.QueryHash);
@@ -171,27 +187,33 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
             (2, 1, 3, 3)
         );
         (result.Value.MediaSize, result.Value.TotalMediaSize).ShouldBe((600L, 600L));
-        result.Value.Items.Select(x => x.Id).ShouldBe([target[2].Id]);
+        result.Value.Items.Select(x => x.Id).ShouldBe([fixture.SelectedArtist.Id]);
         var item = result.Value.Items.Single();
         (item.Type, item.SortIndex, item.ChildCount, item.GrandChildCount).ShouldBe(
             (PlexMediaType.MusicArtist, 2, 2, 6)
         );
         item.ComparisonId.ShouldBe(PlexMediaComparisonState.Partial.ToComparisonId());
         (item.PlexLibraryId, item.PlexServerId, item.PlexApiRatingKey, item.PlexApiMetaDataKey, item.HasThumb).ShouldBe(
-            (libraryIds[0], target[2].PlexServerId, target[2].PlexApiRatingKey, target[2].PlexApiMetaDataKey, true)
+            (
+                fixture.LibraryId,
+                fixture.SelectedArtist.PlexServerId,
+                fixture.SelectedArtist.PlexApiRatingKey,
+                fixture.SelectedArtist.PlexApiMetaDataKey,
+                true
+            )
         );
         (item.SearchTitle, item.MediaSize).ShouldBe(("charlie", 300L));
         item.Qualities.Select(x => x.AudioQuality).ShouldBe([AudioQuality.MP3_320KbpsPlus, AudioQuality.Unknown]);
         item.Qualities.ShouldAllBe(x =>
             x.MediaDataType == PlexMediaType.MusicArtist
-            && x.MediaId == target[2].Id
+            && x.MediaId == fixture.SelectedArtist.Id
             && x.DataId == -1
             && x.VideoQuality == VideoQuality.None
         );
         result.Value.Qualities.ShouldBeEmpty();
-        result.Value.Roles.ShouldBe([actor.Id]);
-        result.Value.Countries.ShouldBe([country.Id]);
-        result.Value.Genres.ShouldBe([genre.Id]);
+        result.Value.Roles.ShouldBe([fixture.Actor.Id]);
+        result.Value.Countries.ShouldBe([fixture.Country.Id]);
+        result.Value.Genres.ShouldBe([fixture.Genre.Id]);
         result
             .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
             .ShouldBe(sort.EndsWith("asc") ? [("B", 0), ("C", 1), ("A", 2)] : [("A", 0), ("C", 1), ("B", 2)]);
@@ -199,6 +221,146 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
             .Verify(x => x.Send(It.IsAny<GetMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
     }
+
+    private sealed record MusicOverviewFixture(
+        int LibraryId,
+        PlexMusicArtist SelectedArtist,
+        PlexActor Actor,
+        PlexCountry Country,
+        PlexGenreAudio Genre
+    );
+
+    [Test]
+    [Arguments("sortIndex:asc")]
+    [Arguments("sortIndex:desc")]
+    public async Task ShouldReturnFirstFilteredNavigationOrdinalAcrossLibraries_WhenLabelsRepeatAndRanksHaveGaps(
+        string sort
+    )
+    {
+        // Arrange
+        var fixture = await ArrangeCrossLibraryNavigationFixtureAsync();
+        fixture.ArtistCount.ShouldBe(8);
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.MusicArtist,
+            PlexLibraryId = 0,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters
+            {
+                Page = 2,
+                PageSize = 1,
+                Sort = sort,
+                Filter = "SearchTitle:contains:a",
+            },
+        };
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<ApplyComparisonStateCommand>(command =>
+                        command.MediaType == PlexMediaType.MusicArtist
+                        && command.PlexLibraryId == null
+                        && command.Items.Count == 1
+                        && command.Items[0].Id == fixture.ExpectedPageId
+                    ),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
+            new GetMediaOverviewMusicCommand(filter)
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Items.Select(x => x.Id).ShouldBe([fixture.ExpectedPageId]);
+        (result.Value.TotalCount, result.Value.MediaCount).ShouldBe((3, 3));
+        (result.Value.MediaSize, result.Value.TotalMediaSize).ShouldBe((1400L, 1400L));
+        result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([("A", 0), ("B", 1)]);
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    private async Task<CrossLibraryNavigationFixture> ArrangeCrossLibraryNavigationFixtureAsync()
+    {
+        await SetupDatabase(
+            84205,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 2;
+                config.MusicArtistCount = 4;
+            }
+        );
+        var dbContext = IDbContext;
+        await dbContext.PlexLibraries.ExecuteUpdateAsync(
+            x => x.SetProperty(y => y.IsEnabled, true),
+            CancellationToken
+        );
+        var artists = await dbContext
+            .PlexMusicArtists.OrderBy(x => x.PlexLibraryId)
+            .ThenBy(x => x.Id)
+            .ToListAsync(CancellationToken);
+        var snapshots = await SeedCrossLibraryArtistSnapshotsAsync(dbContext, artists);
+        dbContext.MediaOverviewMusicArtistSnapshots.AddRange(snapshots);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        return new(artists[4].Id, artists.Count);
+    }
+
+    private async Task<List<MediaOverviewMusicArtistSnapshot>> SeedCrossLibraryArtistSnapshotsAsync(
+        IReaparrDbContext dbContext,
+        IReadOnlyList<PlexMusicArtist> artists
+    )
+    {
+        var selectedTitles = new Dictionary<int, string>
+        {
+            [artists[1].Id] = "alpha",
+            [artists[4].Id] = "beta",
+            [artists[6].Id] = "atlas",
+        };
+        var snapshots = new List<MediaOverviewMusicArtistSnapshot>(artists.Count);
+        for (var index = 0; index < artists.Count; index++)
+        {
+            var artist = artists[index];
+            var title = selectedTitles.GetValueOrDefault(artist.Id, "xyz");
+            var mediaSize = (index + 1) * 100L;
+            await dbContext
+                .PlexMusicArtists.Where(x => x.Id == artist.Id)
+                .ExecuteUpdateAsync(
+                    x => x.SetProperty(y => y.SearchTitle, title).SetProperty(y => y.MediaSize, mediaSize),
+                    CancellationToken
+                );
+            snapshots.Add(CreateNavigationSnapshot(artist, title, mediaSize, index));
+        }
+        return snapshots;
+    }
+
+    private static MediaOverviewMusicArtistSnapshot CreateNavigationSnapshot(
+        PlexMusicArtist artist,
+        string title,
+        long mediaSize,
+        int rank
+    ) =>
+        new()
+        {
+            PlexArtistId = artist.Id,
+            PlexLibraryId = artist.PlexLibraryId,
+            SearchTitle = title,
+            NavigationTitleLabel = MediaNavigationIndexBuilder.GetTitleLabel(title),
+            Duration = artist.Duration,
+            AddedAt = artist.AddedAt,
+            UpdatedAt = artist.UpdatedAt,
+            MediaSize = mediaSize,
+            TitleRank = rank,
+            AddedAtRank = rank,
+            UpdatedAtRank = rank,
+            DurationRank = rank,
+            MediaSizeRank = rank,
+        };
+
+    private sealed record CrossLibraryNavigationFixture(int ExpectedPageId, int ArtistCount);
 
     [Test]
     [Arguments(PlexMediaComparisonState.NotCompared)]
@@ -220,8 +382,8 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
             {
                 Page = 2,
                 PageSize = 3,
-                Sort = "Year:desc",
-                Filter = "Year:gte:2000",
+                Sort = "Title:desc",
+                Filter = "SearchTitle:contains:artist",
             },
         };
         var page = new PagedMediaQueryResult

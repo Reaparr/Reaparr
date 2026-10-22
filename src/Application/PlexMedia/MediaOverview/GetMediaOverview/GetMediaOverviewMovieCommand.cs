@@ -177,26 +177,11 @@ public sealed class GetMediaOverviewMovieCommandHandler
             mediaSize,
             cancellationToken
         );
-        var navigationRows = await orderedSnapshots
-            .Join(
-                context.PlexMovies,
-                snapshot => snapshot.PlexMovieId,
-                movie => movie.Id,
-                (_, movie) =>
-                    new MediaNavigationIndexRow(
-                        movie.SearchTitle,
-                        movie.Year,
-                        (int?)movie.VideoQuality,
-                        movie.Duration,
-                        movie.AddedAt,
-                        movie.UpdatedAt,
-                        movie.MediaSize
-                    )
-            )
-            .ToListAsync(cancellationToken);
-        result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
-            navigationRows,
-            options.Sort.FirstOrDefault()?.Field
+        result.NavigationIndexes = await BuildNavigationIndexesAsync(
+            orderedSnapshots,
+            context.PlexMovies,
+            options.Sort.FirstOrDefault()?.Field,
+            cancellationToken
         );
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
@@ -232,6 +217,34 @@ public sealed class GetMediaOverviewMovieCommandHandler
         return Result.Ok(result);
     }
 
+    private static async Task<List<MediaNavigationIndexDTO>> BuildNavigationIndexesAsync(
+        IQueryable<MediaOverviewMovieSnapshot> orderedSnapshots,
+        IQueryable<PlexMovie> movies,
+        string? sortField,
+        CancellationToken cancellationToken
+    )
+    {
+        var navigationRows = await orderedSnapshots
+            .Join(
+                movies,
+                snapshot => snapshot.PlexMovieId,
+                movie => movie.Id,
+                (_, movie) =>
+                    new MediaNavigationIndexRow
+                    {
+                        SearchTitle = movie.SearchTitle,
+                        Year = movie.Year,
+                        QualityValue = (int?)movie.VideoQuality,
+                        Duration = movie.Duration,
+                        AddedAt = movie.AddedAt,
+                        UpdatedAt = movie.UpdatedAt,
+                        MediaSize = movie.MediaSize,
+                    }
+            )
+            .ToListAsync(cancellationToken);
+        return MediaNavigationIndexBuilder.Build(navigationRows, sortField);
+    }
+
     private void LogPhase(MediaQueryFilter filter, string phase, TimeSpan elapsed, int rowCount) =>
         _log.Here()
             .Debug(
@@ -252,7 +265,7 @@ public sealed class GetMediaOverviewMovieCommandHandler
     ) =>
         field switch
         {
-            nameof(BasePlexMedia.Year) => descending
+            nameof(PlexMediaSlimDTO.Year) => descending
                 ? query.OrderByDescending(x => x.YearRank)
                 : query.OrderBy(x => x.YearRank),
             nameof(BasePlexMedia.AddedAt) => descending

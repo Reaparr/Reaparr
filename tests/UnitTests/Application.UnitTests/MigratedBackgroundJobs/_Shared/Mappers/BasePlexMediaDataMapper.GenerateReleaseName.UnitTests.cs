@@ -146,4 +146,49 @@ public class BasePlexMediaDataMapperGenerateReleaseNameUnitTests : BaseUnitTest
         mediaData.NeedsGeneratedName.ShouldBeTrue();
         mediaData.GeneratedNameSyncedAt.ShouldBeNull();
     }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public void ShouldUpdateEpisodeEnrichmentOnly_WhenPartContainsVideo(bool hasVideo)
+    {
+        // Arrange
+        var seed = new Seed(12349);
+        var episodeFile = FakeData.GetPlexTvShowEpisodeMediaData(seed).Generate();
+        episodeFile.GeneratedFilename = "Previous.mkv";
+        episodeFile.NeedsGeneratedName = true;
+        var previousSync = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        episodeFile.GeneratedNameSyncedAt = previousSync;
+        var metadata = FakeData.GetLibraryMediaItemDTO(seed, mediaType: PlexMediaType.Episode).Generate() with
+        {
+            Title = "Known Episode",
+            Year = 2024,
+        };
+        var stream = FakeData.GetLibraryMediaItemStreamDTO(seed, hasVideo ? StreamType.Video : StreamType.Audio)
+            .Generate();
+        var part = FakeData.GetLibraryMediaItemPartDTO(seed).Generate() with { Stream = [stream] };
+        var media = metadata.Media.Single() with { Parts = [part] };
+        var expectedFilename = hasVideo
+            ? BasePlexMediaDataMapper.GenerateReleaseName(
+                metadata.Title, metadata.Year, media.VideoResolution,
+                media.VideoCodec.MapVideoCodec(), media.AudioCodec.MapAudioCodec(media.AudioProfile),
+                stream, media.AudioChannels.MapToFormattedChannels(), part.Stream.FormatLanguage(),
+                episodeFile.Source, episodeFile.Source == ReleaseSource.BluRayRemux
+            )
+            : "Previous.mkv";
+
+        // Act
+        var updated = episodeFile.UpdateStreamMetadata(metadata, media, part);
+
+        // Assert
+        updated.ShouldBe(hasVideo);
+        episodeFile.GeneratedFilename.ShouldBe(expectedFilename);
+        episodeFile.GetFileName.ShouldBe(expectedFilename);
+        episodeFile.NeedsGeneratedName.ShouldBe(!hasVideo);
+        episodeFile.GeneratedNameSyncedAt.ShouldNotBeNull();
+        if (hasVideo)
+            episodeFile.GeneratedNameSyncedAt.Value.ShouldBeGreaterThan(previousSync);
+        else
+            episodeFile.GeneratedNameSyncedAt.ShouldBe(previousSync);
+    }
 }

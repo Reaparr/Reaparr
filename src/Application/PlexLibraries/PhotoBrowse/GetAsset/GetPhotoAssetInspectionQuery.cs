@@ -137,7 +137,7 @@ public sealed class GetPhotoAssetInspectionQueryHandler
                     Title = row.Album.Title,
                     HasThumbnail = row.Album.HasThumb,
                     PlexApiRatingKey = row.Album.PlexApiRatingKey,
-                    PlexApiMetaDataKey = row.Album.PlexApiMetaDataKey,
+                    PlexApiMetaDataKey = row.Album.PlexApiRatingKey,
                 };
             })
             .ToList();
@@ -160,7 +160,7 @@ public sealed class GetPhotoAssetInspectionQueryHandler
             AssetKind = asset.AssetKind,
             HasThumbnail = asset.HasThumb,
             PlexApiRatingKey = asset.PlexApiRatingKey,
-            PlexApiMetaDataKey = asset.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = asset.PlexApiRatingKey,
             OriginalFilename = asset.OriginalFilename,
             Container = asset.Container,
             Size = asset.Size,

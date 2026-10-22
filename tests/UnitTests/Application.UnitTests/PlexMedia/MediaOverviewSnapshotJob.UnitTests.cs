@@ -9,12 +9,14 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
     {
         // Arrange
         var context = CreateJobContext();
+        var coordinator = new MediaOverviewRebuildCoordinator();
         SetupDependencies(builder =>
             builder
-                .RegisterInstance(new MediaOverviewRebuildCoordinator())
+                .RegisterInstance(coordinator)
                 .As<IMediaOverviewRebuildCoordinator>()
                 .SingleInstance()
         );
+        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         Mock.SetupCommand(() => new RebuildMediaOverviewCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
@@ -35,16 +37,53 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
     }
 
     [Test]
+    public async Task ShouldDispatchOnlyRequestedMediaType_WhenSpecificRebuildIsQueued()
+    {
+        // Arrange
+        var context = CreateJobContext();
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        SetupDependencies(builder =>
+            builder
+                .RegisterInstance(coordinator)
+                .As<IMediaOverviewRebuildCoordinator>()
+                .SingleInstance()
+        );
+        coordinator.RequestRebuild(PlexMediaType.PhotoAlbum, DateTimeOffset.UtcNow).ShouldBeTrue();
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<RebuildMediaOverviewCommand>(command =>
+                        command.MediaTypes != null
+                        && command.MediaTypes.SequenceEqual(new[] { PlexMediaType.PhotoAlbum })
+                    ),
+                    System.Threading.CancellationToken.None
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.Execute(context.Object);
+
+        // Assert
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<IScheduler>()
+            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    [Test]
     public async Task ShouldMarkJobFailedWithoutChangingRecurringSchedule_WhenRebuildFails()
     {
         // Arrange
         var context = CreateJobContext();
+        var coordinator = new MediaOverviewRebuildCoordinator();
         SetupDependencies(builder =>
             builder
-                .RegisterInstance(new MediaOverviewRebuildCoordinator())
+                .RegisterInstance(coordinator)
                 .As<IMediaOverviewRebuildCoordinator>()
                 .SingleInstance()
         );
+        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         Mock.SetupCommand(() => new RebuildMediaOverviewCommand())
             .ReturnsAsync(Result.Fail("rebuild failed"))
             .Verifiable(Times.Once());
@@ -72,13 +111,14 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         SetupDependencies(builder =>
             builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
+        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         Mock.SetupCommand(() => new RebuildMediaOverviewCommand())
             .ReturnsAsync(Result.Fail("rebuild failed"))
             .Verifiable(Times.Once());
 
         // Act
         await Sut.Execute(context.Object);
-        var retryAccepted = coordinator.RequestRebuild(DateTimeOffset.UtcNow);
+        var retryAccepted = coordinator.RequestRebuild(null, DateTimeOffset.UtcNow);
 
         // Assert
         retryAccepted.ShouldBeTrue();
@@ -94,13 +134,14 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         SetupDependencies(builder =>
             builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
+        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         Mock.SetupCommand(() => new RebuildMediaOverviewCommand())
             .ReturnsAsync(ResultExtensions.TaskIsCancelled(nameof(RebuildMediaOverviewCommand)))
             .Verifiable(Times.Once());
 
         // Act
         await Sut.Execute(context.Object);
-        var retryAccepted = coordinator.RequestRebuild(DateTimeOffset.UtcNow);
+        var retryAccepted = coordinator.RequestRebuild(null, DateTimeOffset.UtcNow);
 
         // Assert
         retryAccepted.ShouldBeTrue();
@@ -116,13 +157,14 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         SetupDependencies(builder =>
             builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
+        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         Mock.SetupCommand(() => new RebuildMediaOverviewCommand())
             .ThrowsAsync(new InvalidOperationException("dispatch failed"))
             .Verifiable(Times.Once());
 
         // Act
         await Sut.Execute(context.Object);
-        var retryAccepted = coordinator.RequestRebuild(DateTimeOffset.UtcNow);
+        var retryAccepted = coordinator.RequestRebuild(null, DateTimeOffset.UtcNow);
 
         // Assert
         retryAccepted.ShouldBeTrue();
@@ -148,11 +190,11 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             })
             .Verifiable(Times.Once());
 
-        // Act
+        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         var executeTask = Sut.Execute(context.Object);
         await rebuildStarted.Task;
-        coordinator.RequestRebuild(DateTimeOffset.UtcNow).ShouldBeFalse();
-        coordinator.RequestRebuild(DateTimeOffset.UtcNow).ShouldBeFalse();
+        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeFalse();
+        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeFalse();
         finishRebuild.SetResult(Result.Ok());
         await executeTask;
 

@@ -35,6 +35,47 @@ public class QueueMediaOverviewRebuildCommandUnitTests : BaseCommandUnitTest<Que
     }
 
     [Test]
+    public async Task ShouldCoalesceSpecificMediaTypesIntoOneQueuedRebuild()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        SetupDependencies(builder =>
+            builder
+                .RegisterInstance(coordinator)
+                .As<IMediaOverviewRebuildCoordinator>()
+                .SingleInstance()
+        );
+        Mock.Mock<IScheduler>()
+            .Setup(x =>
+                x.TriggerJob(
+                    It.Is<JobKey>(key => key.Equals(MediaOverviewSnapshotJob.GetJobKey())),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+
+        // Act
+        var firstResult = await TestHandlerExecuteAsync(
+            new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum)
+        );
+        var secondResult = await TestHandlerExecuteAsync(
+            new QueueMediaOverviewRebuildCommand(PlexMediaType.OtherVideos)
+        );
+
+        // Assert
+        firstResult.IsSuccess.ShouldBeTrue();
+        firstResult.Errors.Count.ShouldBe(0);
+        secondResult.IsSuccess.ShouldBeTrue();
+        secondResult.Errors.Count.ShouldBe(0);
+        Mock.Mock<IScheduler>().Verify();
+        var scope = coordinator.BeginRebuild(DateTimeOffset.UtcNow);
+        scope.ShouldNotBeNull();
+        scope.RebuildAll.ShouldBeFalse();
+        scope.MediaTypes.OrderBy(x => x).ShouldBe(new[] { PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos }.OrderBy(x => x));
+    }
+
+    [Test]
     public async Task ShouldPermitRetry_WhenQuartzTriggerFails()
     {
         // Arrange

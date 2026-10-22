@@ -4,6 +4,9 @@ public class PlexMusicArtist : BasePlexMedia
 {
     public override PlexMediaType Type => PlexMediaType.MusicArtist;
 
+    [Column(Order = 10)]
+    public required string Summary { get; init; } = string.Empty;
+
     /// <summary>
     /// Native Plex artist identifier normalized from Plex metadata.
     /// Stores the lowercase identifier suffix without a Plex URI prefix or library-local <see cref="BasePlexMedia.PlexApiRatingKey"/>.

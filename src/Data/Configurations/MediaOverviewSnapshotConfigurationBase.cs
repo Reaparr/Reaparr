@@ -15,7 +15,6 @@ public abstract class MediaOverviewSnapshotConfigurationBase<TSnapshot> : IEntit
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => new { x.PlexLibraryId, x.TitleRank });
-        builder.HasIndex(x => new { x.PlexLibraryId, x.YearRank });
         builder.HasIndex(x => new { x.PlexLibraryId, x.AddedAtRank });
         builder.HasIndex(x => new { x.PlexLibraryId, x.UpdatedAtRank });
         builder.HasIndex(x => new { x.PlexLibraryId, x.DurationRank });

@@ -13,11 +13,12 @@ public class PlexOtherVideoMediaDataConfiguration : IEntityTypeConfiguration<Ple
                 x.PartIndex,
             })
             .IsUnique();
-        builder.HasIndex(x => x.PlexApiRatingKey);
+        builder.HasIndex(x => new { x.PlexLibraryId, x.PlexOtherVideoId });
         builder
             .HasOne(x => x.PlexOtherVideo)
             .WithMany(x => x.MediaDataList)
-            .HasForeignKey(x => x.PlexOtherVideoId)
+            .HasForeignKey(x => new { x.PlexLibraryId, x.PlexOtherVideoId })
+            .HasPrincipalKey(x => new { x.PlexLibraryId, x.Id })
             .OnDelete(DeleteBehavior.Cascade);
         builder
             .HasOne(x => x.PlexLibrary)

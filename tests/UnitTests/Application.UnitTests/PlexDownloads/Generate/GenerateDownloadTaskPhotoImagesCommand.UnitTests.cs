@@ -637,7 +637,6 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
             Title = $"{media.Title} duplicate",
             SearchTitle = $"{media.Title} duplicate".ToSearchTitle(),
             Summary = media.Summary,
-            PlexApiMetaDataKey = media.PlexApiMetaDataKey + 1,
             HasThumb = media.HasThumb,
             AddedAt = media.AddedAt,
             UpdatedAt = media.UpdatedAt,

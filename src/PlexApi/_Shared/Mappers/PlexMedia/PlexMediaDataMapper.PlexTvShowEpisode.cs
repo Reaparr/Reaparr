@@ -33,7 +33,6 @@ public static partial class PlexMediaDataMapper
             MediaDataList = source.Media.ToEpisodeMediaDataList(source),
             ParentKey = source.GetParentKey(),
 
-            Type = PlexMediaType.None,
             PlexApiRatingKey = source.RatingKey,
             PlexApiMetaDataKey = RetrieveMetaDataKey(source),
             Studio = source.Studio,

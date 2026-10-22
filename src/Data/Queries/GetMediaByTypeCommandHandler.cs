@@ -124,25 +124,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             return Result.Ok(response);
 
         var hasUserFilters = options.HasFiltersApplied() || filter.ComparisonState.HasValue;
-        options = WithServerLibraryScope(options, allowedPlexLibraryIds, plexLibraryId);
-
-        if (filter.MediaType.IsMusicType() || filter.MediaType.IsPhotoType())
-        {
-            options.Sort.RemoveAll(static sort =>
-                string.Equals(sort.Field, "quality", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(sort.Field, nameof(BasePlexMedia.VideoQuality), StringComparison.OrdinalIgnoreCase)
-            );
-        }
-        else
-        {
-            options.Sort.ForEach(static sort =>
-            {
-                if (string.Equals(sort.Field, "quality", StringComparison.OrdinalIgnoreCase))
-                    sort.Field = nameof(BasePlexMedia.VideoQuality);
-            });
-        }
-        ApplyDefaultMediaSort(options, plexLibraryId);
-        NormalizeAllLibrarySort(options, plexLibraryId);
+        options = PrepareQueryOptions(options, filter, allowedPlexLibraryIds);
 
         // TODO Deduplicate
         switch (filter.MediaType)
@@ -178,15 +160,16 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
 
                     SetNavigationIndexes(
                         response,
-                        filteredMovies.Select(x => new MediaNavigationIndexRow(
-                            x.SearchTitle,
-                            x.Year,
-                            (int?)x.VideoQuality,
-                            x.Duration,
-                            x.AddedAt,
-                            x.UpdatedAt,
-                            x.MediaSize
-                        )),
+                        filteredMovies.Select(x => new MediaNavigationIndexRow
+                        {
+                            SearchTitle = x.SearchTitle,
+                            Year = x.Year,
+                            QualityValue = (int?)x.VideoQuality,
+                            Duration = x.Duration,
+                            AddedAt = x.AddedAt,
+                            UpdatedAt = x.UpdatedAt,
+                            MediaSize = x.MediaSize,
+                        }),
                         options
                     );
 
@@ -224,15 +207,16 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
 
                     await SetNavigationIndexes(
                         response,
-                        movieQuery.Select(x => new MediaNavigationIndexRow(
-                            x.SearchTitle,
-                            x.Year,
-                            (int?)x.VideoQuality,
-                            x.Duration,
-                            x.AddedAt,
-                            x.UpdatedAt,
-                            x.MediaSize
-                        )),
+                        movieQuery.Select(x => new MediaNavigationIndexRow
+                        {
+                            SearchTitle = x.SearchTitle,
+                            Year = x.Year,
+                            QualityValue = (int?)x.VideoQuality,
+                            Duration = x.Duration,
+                            AddedAt = x.AddedAt,
+                            UpdatedAt = x.UpdatedAt,
+                            MediaSize = x.MediaSize,
+                        }),
                         options,
                         ct
                     );
@@ -301,15 +285,16 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
 
                     SetNavigationIndexes(
                         response,
-                        filteredTvShows.Select(x => new MediaNavigationIndexRow(
-                            x.SearchTitle,
-                            x.Year,
-                            (int?)x.VideoQuality,
-                            x.Duration,
-                            x.AddedAt,
-                            x.UpdatedAt,
-                            x.MediaSize
-                        )),
+                        filteredTvShows.Select(x => new MediaNavigationIndexRow
+                        {
+                            SearchTitle = x.SearchTitle,
+                            Year = x.Year,
+                            QualityValue = (int?)x.VideoQuality,
+                            Duration = x.Duration,
+                            AddedAt = x.AddedAt,
+                            UpdatedAt = x.UpdatedAt,
+                            MediaSize = x.MediaSize,
+                        }),
                         options
                     );
 
@@ -347,15 +332,16 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
 
                     await SetNavigationIndexes(
                         response,
-                        tvShowQuery.Select(x => new MediaNavigationIndexRow(
-                            x.SearchTitle,
-                            x.Year,
-                            (int?)x.VideoQuality,
-                            x.Duration,
-                            x.AddedAt,
-                            x.UpdatedAt,
-                            x.MediaSize
-                        )),
+                        tvShowQuery.Select(x => new MediaNavigationIndexRow
+                        {
+                            SearchTitle = x.SearchTitle,
+                            Year = x.Year,
+                            QualityValue = (int?)x.VideoQuality,
+                            Duration = x.Duration,
+                            AddedAt = x.AddedAt,
+                            UpdatedAt = x.UpdatedAt,
+                            MediaSize = x.MediaSize,
+                        }),
                         options,
                         ct
                     );
@@ -426,15 +412,16 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                     response.TotalMediaSize = response.MediaSize;
                     SetNavigationIndexes(
                         response,
-                        filteredArtists.Select(x => new MediaNavigationIndexRow(
-                            x.SearchTitle,
-                            x.Year,
-                            null,
-                            x.Duration,
-                            x.AddedAt,
-                            x.UpdatedAt,
-                            x.MediaSize
-                        )),
+                        filteredArtists.Select(x => new MediaNavigationIndexRow
+                        {
+                            SearchTitle = x.SearchTitle,
+                            Year = 0,
+                            QualityValue = null,
+                            Duration = x.Duration,
+                            AddedAt = x.AddedAt,
+                            UpdatedAt = x.UpdatedAt,
+                            MediaSize = x.MediaSize,
+                        }),
                         options
                     );
                     response.Items = ApplyDtoPaging(filteredDtos, page, pageSize);
@@ -448,15 +435,16 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                     response.TotalMediaSize = response.MediaSize;
                     await SetNavigationIndexes(
                         response,
-                        artistQuery.Select(x => new MediaNavigationIndexRow(
-                            x.SearchTitle,
-                            x.Year,
-                            null,
-                            x.Duration,
-                            x.AddedAt,
-                            x.UpdatedAt,
-                            x.MediaSize
-                        )),
+                        artistQuery.Select(x => new MediaNavigationIndexRow
+                        {
+                            SearchTitle = x.SearchTitle,
+                            Year = 0,
+                            QualityValue = null,
+                            Duration = x.Duration,
+                            AddedAt = x.AddedAt,
+                            UpdatedAt = x.UpdatedAt,
+                            MediaSize = x.MediaSize,
+                        }),
                         options,
                         ct
                     );
@@ -499,15 +487,16 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 response.TotalMediaSize = response.MediaSize;
                 await SetNavigationIndexes(
                     response,
-                    albumQuery.Select(x => new MediaNavigationIndexRow(
-                        x.SearchTitle,
-                        x.Year,
-                        null,
-                        x.Duration,
-                        x.AddedAt,
-                        x.UpdatedAt,
-                        x.MediaSize
-                    )),
+                    albumQuery.Select(x => new MediaNavigationIndexRow
+                    {
+                        SearchTitle = x.SearchTitle,
+                        Year = x.Year,
+                        QualityValue = null,
+                        Duration = x.Duration,
+                        AddedAt = x.AddedAt,
+                        UpdatedAt = x.UpdatedAt,
+                        MediaSize = x.MediaSize,
+                    }),
                     options,
                     ct
                 );
@@ -528,15 +517,16 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 response.TotalMediaSize = response.MediaSize;
                 await SetNavigationIndexes(
                     response,
-                    videoQuery.Select(x => new MediaNavigationIndexRow(
-                        x.SearchTitle,
-                        x.Year,
-                        (int?)x.VideoQuality,
-                        x.Duration,
-                        x.AddedAt,
-                        x.UpdatedAt,
-                        x.MediaSize
-                    )),
+                    videoQuery.Select(x => new MediaNavigationIndexRow
+                    {
+                        SearchTitle = x.SearchTitle,
+                        Year = x.Year,
+                        QualityValue = (int?)x.VideoQuality,
+                        Duration = x.Duration,
+                        AddedAt = x.AddedAt,
+                        UpdatedAt = x.UpdatedAt,
+                        MediaSize = x.MediaSize,
+                    }),
                     options,
                     ct
                 );
@@ -573,6 +563,41 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
         await SetCounts(response, hasUserFilters, allowedPlexLibraryIds, filter.MediaType, ct);
 
         return Result.Ok(response);
+    }
+
+    private QueryOptions PrepareQueryOptions(
+        QueryOptions options,
+        MediaQueryFilter filter,
+        List<int> allowedPlexLibraryIds
+    )
+    {
+        options = WithServerLibraryScope(options, allowedPlexLibraryIds, filter.PlexLibraryId);
+
+        if (filter.MediaType is PlexMediaType.MusicArtist or PlexMediaType.MusicTrack || filter.MediaType.IsPhotoType())
+        {
+            options.Sort.RemoveAll(static sort =>
+                string.Equals(sort.Field, nameof(PlexMediaSlimDTO.Year), StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (filter.MediaType.IsMusicType() || filter.MediaType.IsPhotoType())
+        {
+            options.Sort.RemoveAll(static sort =>
+                string.Equals(sort.Field, "quality", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(sort.Field, nameof(BasePlexMedia.VideoQuality), StringComparison.OrdinalIgnoreCase)
+            );
+        }
+        else
+        {
+            options.Sort.ForEach(static sort =>
+            {
+                if (string.Equals(sort.Field, "quality", StringComparison.OrdinalIgnoreCase))
+                    sort.Field = nameof(BasePlexMedia.VideoQuality);
+            });
+        }
+
+        ApplyDefaultMediaSort(options, filter.PlexLibraryId);
+        NormalizeAllLibrarySort(options, filter.PlexLibraryId);
+        return options;
     }
 
     /// <summary>

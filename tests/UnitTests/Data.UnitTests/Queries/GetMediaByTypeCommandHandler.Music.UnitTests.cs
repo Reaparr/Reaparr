@@ -50,13 +50,11 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         dbContext.PlexActors.Add(actor);
         dbContext.PlexCountries.Add(country);
         dbContext.PlexGenresAudio.Add(genre);
-        int[] years = [1999, 2000, 2000, 2001, 2001, 2002];
         foreach (var libraryArtists in new[] { targetArtists, controlArtists })
         {
             for (var i = 0; i < libraryArtists.Count; i++)
             {
                 var artist = libraryArtists[i];
-                artist.Year = years[i];
                 artist.Duration = (i + 1) * 100;
                 artist.MediaSize = (i + 1) * 100L;
                 artist.Title = $"{artist.PlexLibraryId}-root-{i}";
@@ -81,7 +79,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         albums.Select(x => x.PlexArtistId).ShouldBe(targetArtists.SelectMany(x => new[] { x.Id, x.Id }));
         albums.Select(x => x.ChildCount).ShouldBe(Enumerable.Repeat(3, 12));
 
-        var expectedArtists = new[] { targetArtists[4], targetArtists[3] };
+        var expectedArtists = new[] { targetArtists[3], targetArtists[2] };
         var metadataId = metadataField switch
         {
             "Actors" => actor.Id,
@@ -101,7 +99,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
                     Page = 2,
                     PageSize = 2,
                     Filter = $"{metadataField}:any:Id:eq:{metadataId}",
-                    Sort = sortByQuality ? "videoQuality:desc,Year:asc,Duration:desc" : "Year:asc,Duration:desc",
+                    Sort = sortByQuality ? "videoQuality:desc,Duration:desc" : "Duration:desc",
                 },
             },
         };
@@ -167,7 +165,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
                     x.Id,
                     x.Title,
                     x.SearchTitle,
-                    x.Year,
+                    Year = 0,
                     x.Duration,
                     x.MediaSize,
                     x.PlexApiRatingKey,
@@ -187,9 +185,8 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         response
             .NavigationIndexes.Select(x => new { x.Label, x.Index })
             .ShouldBe([
-                new { Label = "2000", Index = 0 },
-                new { Label = "2001", Index = 2 },
-                new { Label = "2002", Index = 4 },
+                new { Label = "10–20 min", Index = 0 },
+                new { Label = "0–10 min", Index = 1 },
             ]);
         response.Items.SelectMany(x => x.Qualities).ShouldBeEmpty();
         response.Qualities.ShouldBeEmpty();
@@ -265,7 +262,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         artists.Count.ShouldBe(4);
         for (var i = 0; i < artists.Count; i++)
         {
-            artists[i].Year = 2000 + i;
+            artists[i].Duration = (i + 1) * 100;
             artists[i].MediaSize = (i + 1) * 100L;
         }
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -280,7 +277,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
             {
                 Page = 2,
                 PageSize = 1,
-                Sort = "Year:asc",
+                Sort = "Duration:asc",
             },
         };
         Mock.Mock<ICommandExecutor>()
@@ -323,7 +320,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
         result
             .Value.Items.Select(x => (x.Id, x.SortIndex, x.ComparisonId))
             .ShouldBe(new[] { (artists[3].Id, 2, PlexMediaComparisonState.Partial.ToComparisonId()) });
-        result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe(new[] { ("2001", 0), ("2003", 1) });
+        result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe(new[] { ("0–10 min", 0) });
         result.Value.Qualities.ShouldBeEmpty();
         Mock.Mock<ICommandExecutor>().Verify();
     }
