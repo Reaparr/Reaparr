@@ -80,13 +80,13 @@ public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointReq
             var settings = req.SettingsModelDto!.ToModel(_userSettings);
 
             var timeZoneChanged = _userSettings.DateTimeSettings.TimeZone != settings.DateTimeSettings.TimeZone;
-            var downloadScheduleChanged =
-                _userSettings.DownloadManagerSettings.DownloadSchedule
-                != settings.DownloadManagerSettings.DownloadSchedule;
+            var downloadLimitsChanged =
+                _userSettings.DownloadManagerSettings.DownloadSchedule != settings.DownloadManagerSettings.DownloadSchedule
+                || HaveManualLimitsChanged(_userSettings.ServerSettings, settings.ServerSettings);
 
             _userSettings.UpdateSettings(settings);
 
-            if (timeZoneChanged || downloadScheduleChanged)
+            if (timeZoneChanged || downloadLimitsChanged)
             {
                 var result = await Result.Try(async Task () =>
                 {
@@ -108,5 +108,23 @@ public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointReq
         {
             _updateGate.Release();
         }
+    }
+
+    private static bool HaveManualLimitsChanged(PlexServerSettingsModule previous, PlexServerSettingsModule updated)
+    {
+        var previousLimits = new Dictionary<string, int>(previous.Data.Count, StringComparer.Ordinal);
+        foreach (var server in previous.Data)
+            previousLimits.TryAdd(server.MachineIdentifier, Math.Max(0, server.DownloadSpeedLimit));
+
+        foreach (var server in updated.Data)
+        {
+            if (previousLimits.GetValueOrDefault(server.MachineIdentifier) != Math.Max(0, server.DownloadSpeedLimit))
+                return true;
+
+            previousLimits.Remove(server.MachineIdentifier);
+        }
+
+        // Missing settings and a zero cap both mean Unlimited.
+        return previousLimits.Values.Any(limit => limit > 0);
     }
 }
