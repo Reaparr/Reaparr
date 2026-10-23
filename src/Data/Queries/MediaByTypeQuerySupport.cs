@@ -13,8 +13,10 @@ internal static class MediaByTypeQuerySupport
         [SortType.Year] = static item => item.Year,
         [SortType.Duration] = static item => item.Duration,
         [SortType.ComparisonState] = static item => item.ComparisonId,
-        [SortType.VideoQuality] = GetVideoQualityValue,
-        [SortType.AudioQuality] = GetAudioQualityValue,
+        [SortType.VideoQuality] = item =>
+            item.Qualities.Any() ? item.Qualities.Max(quality => quality.VideoQuality.ToId()) : 0,
+        [SortType.AudioQuality] = item =>
+            item.Qualities.Any() ? item.Qualities.Max(quality => (int)quality.AudioQuality) : 0,
     };
 
     private static readonly IReadOnlyDictionary<SortType, Func<PlexMediaSlimDTO, DateTime?>> _dateSelectors =
@@ -67,6 +69,9 @@ internal static class MediaByTypeQuerySupport
 
         if (filter.ComparisonState is PlexMediaComparisonState comparisonState)
             candidates.RemoveAll(item => item.ComparisonId != comparisonState.ToComparisonId());
+
+        if (!options.Sort.Any(sort => sort.Field.ToSortType() == SortType.ComparisonState))
+            return Result.Ok(candidates);
 
         var sorts = options
             .Sort.Select(sort => new Sort(
@@ -212,10 +217,4 @@ internal static class MediaByTypeQuerySupport
 
         return descending ? source.OrderByDescending(selector, comparer) : source.OrderBy(selector, comparer);
     }
-
-    private static int GetVideoQualityValue(PlexMediaSlimDTO item) =>
-        item.Qualities.Count == 0 ? 0 : item.Qualities.Max(quality => quality.VideoQuality.ToId());
-
-    private static int GetAudioQualityValue(PlexMediaSlimDTO item) =>
-        item.Qualities.Count == 0 ? 0 : item.Qualities.Max(quality => (int)quality.AudioQuality);
 }

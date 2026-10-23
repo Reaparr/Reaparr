@@ -204,7 +204,7 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
                 sort.EndsWith("asc") ? [("720", 0), ("1080", 1), ("2160", 2)] : [("2160", 0), ("1080", 1), ("720", 2)]
             );
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.Send(It.IsAny<GetOtherVideoMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
@@ -217,6 +217,58 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
         PlexCountry Country,
         PlexGenreVideo Genre
     );
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldPropagateTypedQueryFailure_WhenOtherVideoRequiresCanonicalFallback(bool snapshotMissing)
+    {
+        // Arrange
+        var libraryId = 0;
+        if (snapshotMissing)
+        {
+            await SetupDatabase(84210, config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoCount = 1;
+            });
+            var dbContext = IDbContext;
+            libraryId = await dbContext.PlexOtherVideos.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
+            (await dbContext.MediaOverviewOtherVideoSnapshots.CountAsync(CancellationToken)).ShouldBe(0);
+        }
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.OtherVideos,
+            PlexLibraryId = libraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters
+            {
+                Page = 1,
+                PageSize = 25,
+                Sort = snapshotMissing ? "Title:asc" : "Title:asc,Year:desc",
+            },
+        };
+        var expected = Result.Fail<PagedMediaQueryResult>("Canonical query failed");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.Is<GetOtherVideoMediaByTypeCommand>(c => c.Filter == filter), CancellationToken))
+            .ReturnsAsync(expected)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewOtherVideoCommand(filter));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Errors[0].ShouldBeSameAs(expected.Errors[0]);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        if (!snapshotMissing)
+            Mock.Mock<IReaparrDbContextFactory>().Verify(x => x.CreateAsync(), Times.Never());
+    }
 
     [Test]
     public void ShouldOrderRebuiltQualityRanks_ByQualityThenMediaId()

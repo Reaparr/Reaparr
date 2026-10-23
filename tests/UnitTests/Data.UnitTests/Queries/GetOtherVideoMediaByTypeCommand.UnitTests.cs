@@ -3,12 +3,8 @@ using Reaparr.Application.Contracts;
 
 namespace Reaparr.Data.UnitTests;
 
-public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTest<GetMediaByTypeCommand>
+public class GetOtherVideoMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetOtherVideoMediaByTypeCommand>
 {
-    public GetMediaByTypeCommandHandlerOtherVideoUnitTests()
-    {
-        SetupMediaByTypeCommandDispatch();
-    }
 
     [Test]
     [Arguments(false, "Actors")]
@@ -100,9 +96,8 @@ public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTe
             _ => genre.Id,
         };
 
-        var command = new GetMediaByTypeCommand
-        {
-            Filter = new MediaQueryFilter
+        var command = new GetOtherVideoMediaByTypeCommand(
+            new MediaQueryFilter
             {
                 MediaType = PlexMediaType.OtherVideos,
                 PlexLibraryId = targetLibraryId,
@@ -115,8 +110,8 @@ public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTe
                     Filter = $"{metadataField}:any:Id:eq:{metadataId}",
                     Sort = sortByQuality ? "videoQuality:desc,Year:asc,Duration:desc" : "Year:asc,Duration:desc",
                 },
-            },
-        };
+            }
+        );
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(command);

@@ -1,24 +1,21 @@
 using FlexQuery.NET;
 using FlexQuery.NET.Models;
 using Reaparr.Application.Contracts;
+using Reaparr.Data.Contracts;
 using static Reaparr.Data.MediaByTypeQuerySupport;
 
 namespace Reaparr.Data;
 
-public record GetOtherVideoMediaByTypeCommand(MediaQueryFilter Filter, QueryOptions Options)
-    : ICommand<Result<PagedMediaQueryResult>>;
-
-public class GetOtherVideoMediaByTypeCommandValidator : AbstractValidator<GetOtherVideoMediaByTypeCommand>
+public sealed class GetOtherVideoMediaByTypeCommandValidator : AbstractValidator<GetOtherVideoMediaByTypeCommand>
 {
     public GetOtherVideoMediaByTypeCommandValidator()
     {
         RuleFor(x => x).NotNull();
-        RuleFor(x => x.Filter).NotNull();
-        RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.OtherVideos).When(x => x.Filter is not null);
+        RuleFor(x => x.Filter).NotNull().SetValidator(new MediaQueryFilterValidator(PlexMediaType.OtherVideos));
     }
 }
 
-public class GetOtherVideoMediaByTypeCommandHandler
+public sealed class GetOtherVideoMediaByTypeCommandHandler
     : ICommandHandler<GetOtherVideoMediaByTypeCommand, Result<PagedMediaQueryResult>>
 {
     private readonly IReaparrDbContext _dbContext;
@@ -30,52 +27,66 @@ public class GetOtherVideoMediaByTypeCommandHandler
 
     public async Task<Result<PagedMediaQueryResult>> ExecuteAsync(
         GetOtherVideoMediaByTypeCommand command,
-        CancellationToken ct
+        CancellationToken cancellationToken
     )
     {
         var filter = command.Filter;
-        var options = command.Options;
         var response = CreateResponse(filter);
+        var (options, libraryIds, hasUserFilters) = await MediaQueryPreparation.PrepareAsync(
+            _dbContext,
+            filter,
+            cancellationToken
+        );
+        if (libraryIds.Count == 0)
+            return Result.Ok(response);
 
-        var videoQuery = _dbContext
-            .PlexOtherVideos.Include(x => x.MediaDataList)
-            .Include(x => x.Actors)
-            .Include(x => x.Countries)
-            .Include(x => x.Genres)
-            .ApplyFilter(options)
-            .ApplySort(options);
-
-        response.TotalCount = await videoQuery.CountAsync(ct);
-        response.MediaSize = await videoQuery.SumAsync(x => x.MediaSize, ct);
+        var videoQuery = _dbContext.PlexOtherVideos.ApplyFilter(options).ApplySort(options);
+        response.TotalCount = await videoQuery.CountAsync(cancellationToken);
+        response.MediaSize = await videoQuery.SumAsync(x => x.MediaSize, cancellationToken);
         response.TotalMediaSize = response.MediaSize;
+
         await SetNavigationIndexes(
             response,
-            videoQuery.Select(x => new MediaNavigationIndexRow
-            {
-                SearchTitle = x.SearchTitle,
-                Year = x.Year,
-                QualityValue = (int?)x.VideoQuality,
-                Duration = x.Duration,
-                AddedAt = x.AddedAt,
-                UpdatedAt = x.UpdatedAt,
-                MediaSize = x.MediaSize,
-            }),
+            videoQuery.ProjectOtherVideoNavigationIndexRows(),
             options,
-            ct
+            cancellationToken
         );
 
-        var videos = await videoQuery.ApplyPaging(options).ToListAsync(ct);
-        response.Items = videos.Select(x => x.ToSlimDTOMapper()).ToList();
-        response.Roles = videos.SelectMany(x => x.Actors).Select(x => x.Id).Distinct().Order().ToList();
-        response.Countries = videos.SelectMany(x => x.Countries).Select(x => x.Id).Distinct().Order().ToList();
-        response.Genres = videos.SelectMany(x => x.Genres).Select(x => x.Id).Distinct().Order().ToList();
-        response.Qualities = response
-            .Items.SelectMany(x => x.Qualities)
-            .Select(x => x.VideoQuality.ToId())
-            .Distinct()
-            .OrderBy(x => x)
-            .ToList();
+        var pageCandidates = await videoQuery
+            .ApplyPaging(options)
+            .ProjectOtherVideoPage()
+            .ToListAsync(cancellationToken);
+        var pageMetadata = await LoadOtherVideoPageMetadataAsync(
+            pageCandidates.Select(x => x.Id).ToHashSet(),
+            cancellationToken
+        );
+        SetComparisonPage(response, pageCandidates, pageMetadata, includeQuality: true);
 
+        await MediaQueryResponse.CompleteAsync(
+            _dbContext,
+            response,
+            filter,
+            libraryIds,
+            hasUserFilters,
+            cancellationToken
+        );
         return Result.Ok(response);
+    }
+
+    private async Task<(List<int> Roles, List<int> Countries, List<int> Genres)> LoadOtherVideoPageMetadataAsync(
+        HashSet<int> pageIds,
+        CancellationToken cancellationToken
+    )
+    {
+        var rows = await _dbContext
+            .PlexOtherVideos.Where(x => pageIds.Contains(x.Id))
+            .ProjectOtherVideoMetadataRows()
+            .ToListAsync(cancellationToken);
+
+        return (
+            rows.SelectMany(x => x.Roles).Distinct().Order().ToList(),
+            rows.SelectMany(x => x.Countries).Distinct().Order().ToList(),
+            rows.SelectMany(x => x.Genres).Distinct().Order().ToList()
+        );
     }
 }

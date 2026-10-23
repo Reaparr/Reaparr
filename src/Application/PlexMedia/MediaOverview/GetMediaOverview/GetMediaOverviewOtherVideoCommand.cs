@@ -49,7 +49,7 @@ public sealed class GetMediaOverviewOtherVideoCommandHandler
         if (sort is null)
         {
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetOtherVideoMediaByTypeCommand(filter),
                 cancellationToken
             );
             LogPhase(filter, "CanonicalFallback", stopwatch.Elapsed, 0);
@@ -85,7 +85,7 @@ public sealed class GetMediaOverviewOtherVideoCommandHandler
         {
             LogPhase(filter, "SnapshotMissing", stopwatch.Elapsed, 0);
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetOtherVideoMediaByTypeCommand(filter),
                 cancellationToken
             );
             return mediaResult.LogIfFailed();

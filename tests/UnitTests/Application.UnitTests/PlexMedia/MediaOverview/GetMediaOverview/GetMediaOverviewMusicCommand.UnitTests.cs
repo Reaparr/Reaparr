@@ -218,7 +218,7 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
             .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
             .ShouldBe(sort.EndsWith("asc") ? [("B", 0), ("C", 1), ("A", 2)] : [("A", 0), ("C", 1), ("B", 2)]);
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.Send(It.IsAny<GetMusicArtistMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -397,7 +397,7 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
             TotalMediaSize = 1234,
         };
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<GetMediaByTypeCommand>(c => c.Filter == filter), CancellationToken))
+            .Setup(x => x.Send(It.Is<GetMusicArtistMediaByTypeCommand>(c => c.Filter == filter), CancellationToken))
             .ReturnsAsync(Result.Ok(page))
             .Verifiable(Times.Once());
 
@@ -412,4 +412,43 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
+    [Test]
+    public async Task ShouldPropagateTypedQueryFailure_WhenArtistSnapshotIsMissing()
+    {
+        // Arrange
+        await SetupDatabase(84208, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
+        var dbContext = IDbContext;
+        var libraryId = await dbContext.PlexMusicArtists.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
+        (await dbContext.MediaOverviewMusicArtistSnapshots.CountAsync(CancellationToken)).ShouldBe(0);
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.MusicArtist,
+            PlexLibraryId = libraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters { Page = 1, PageSize = 25 },
+        };
+        var expected = Result.Fail<PagedMediaQueryResult>("Canonical query failed");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.Is<GetMusicArtistMediaByTypeCommand>(c => c.Filter == filter), CancellationToken))
+            .ReturnsAsync(expected)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMusicCommand(filter));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Errors[0].ShouldBeSameAs(expected.Errors[0]);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
 }

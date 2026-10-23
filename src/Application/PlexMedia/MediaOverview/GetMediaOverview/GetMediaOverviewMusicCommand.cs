@@ -61,7 +61,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
         )
         {
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetMusicArtistMediaByTypeCommand(filter),
                 cancellationToken
             );
             LogPhase(filter, "CanonicalFallback", stopwatch.Elapsed, 0);
@@ -97,7 +97,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
         {
             LogPhase(filter, "SnapshotMissing", stopwatch.Elapsed, 0);
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetMusicArtistMediaByTypeCommand(filter),
                 cancellationToken
             );
             return mediaResult.LogIfFailed();

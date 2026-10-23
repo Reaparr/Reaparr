@@ -3,11 +3,28 @@ using Reaparr.Application.Contracts;
 
 namespace Reaparr.Data.UnitTests;
 
-public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTest<GetMediaByTypeCommand>
+public class GetPhotoAlbumMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetPhotoAlbumMediaByTypeCommand>
 {
-    public GetMediaByTypeCommandHandlerPhotoAlbumUnitTests()
+
+    [Test]
+    public void ShouldRejectComparisonSorting_WhenPhotoAlbumsAreRequested()
     {
-        SetupMediaByTypeCommandDispatch();
+        // Arrange
+        var command = new GetPhotoAlbumMediaByTypeCommand(new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.PhotoAlbum,
+            PlexLibraryId = 1,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters { Sort = "comparisonState:asc" },
+        });
+
+        // Act
+        var result = new GetPhotoAlbumMediaByTypeCommandValidator().Validate(command);
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.Errors.Select(x => x.PropertyName).ShouldBe(["Filter.Parameters.Sort"]);
     }
 
     [Test]
@@ -85,9 +102,8 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
                 x.Title,
             })
             .ToListAsync(CancellationToken);
-        var command = new GetMediaByTypeCommand
-        {
-            Filter = new MediaQueryFilter
+        var command = new GetPhotoAlbumMediaByTypeCommand(
+            new MediaQueryFilter
             {
                 MediaType = PlexMediaType.PhotoAlbum,
                 PlexLibraryId = targetLibraryId,
@@ -100,8 +116,8 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
                     Filter = "SearchTitle:contains:target",
                     Sort = sort,
                 },
-            },
-        };
+            }
+        );
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(command);
@@ -209,17 +225,16 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
         ).ShouldBe(
             albums.OrderBy(x => x.Id).Select(x => new { PlexPhotoAlbumId = x.Id, PlexPhotoMediaDataId = files[0].Id })
         );
-        var request = new GetMediaByTypeCommand
-        {
-            Filter = new MediaQueryFilter
+        var request = new GetPhotoAlbumMediaByTypeCommand(
+            new MediaQueryFilter
             {
                 PlexLibraryId = library.Id,
                 MediaType = PlexMediaType.PhotoAlbum,
                 FilterOfflineMedia = false,
                 FilterOwnedMedia = false,
                 Parameters = new FlexQueryParameters { Page = 1, PageSize = 100 },
-            },
-        };
+            }
+        );
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(request);

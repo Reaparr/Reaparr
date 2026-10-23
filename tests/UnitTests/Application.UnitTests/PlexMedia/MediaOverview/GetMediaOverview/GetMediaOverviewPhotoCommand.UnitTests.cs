@@ -167,11 +167,63 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
             sort.EndsWith("asc") ? [("B", 0), ("C", 1), ("A", 2)] : [("A", 0), ("C", 1), ("B", 2)]
         );
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.Send(It.IsAny<GetPhotoAlbumMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     private sealed record PhotoOverviewFixture(int LibraryId, PlexPhotoAlbum SelectedAlbum);
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldPropagateTypedQueryFailure_WhenPhotoRequiresCanonicalFallback(bool snapshotMissing)
+    {
+        // Arrange
+        var libraryId = 0;
+        if (snapshotMissing)
+        {
+            await SetupDatabase(84209, config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+            });
+            var dbContext = IDbContext;
+            libraryId = await dbContext.PlexPhotoAlbums.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
+            (await dbContext.MediaOverviewPhotoAlbumSnapshots.CountAsync(CancellationToken)).ShouldBe(0);
+        }
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.PhotoAlbum,
+            PlexLibraryId = libraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters
+            {
+                Page = 1,
+                PageSize = 25,
+                Sort = snapshotMissing ? "Title:asc" : "Title:asc,Duration:desc",
+            },
+        };
+        var expected = Result.Fail<PagedMediaQueryResult>("Canonical query failed");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.Is<GetPhotoAlbumMediaByTypeCommand>(c => c.Filter == filter), CancellationToken))
+            .ReturnsAsync(expected)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewPhotoCommand(filter));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Errors[0].ShouldBeSameAs(expected.Errors[0]);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        if (!snapshotMissing)
+            Mock.Mock<IReaparrDbContextFactory>().Verify(x => x.CreateAsync(), Times.Never());
+    }
 
 }

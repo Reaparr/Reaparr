@@ -48,7 +48,7 @@ public sealed class GetMediaOverviewPhotoCommandHandler
         if (sort is null || sort.Value.Field is SortType.VideoQuality or SortType.Year)
         {
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetPhotoAlbumMediaByTypeCommand(filter),
                 cancellationToken
             );
             LogPhase(filter, "CanonicalFallback", stopwatch.Elapsed, 0);
@@ -80,7 +80,7 @@ public sealed class GetMediaOverviewPhotoCommandHandler
         {
             LogPhase(filter, "SnapshotMissing", stopwatch.Elapsed, 0);
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetPhotoAlbumMediaByTypeCommand(filter),
                 cancellationToken
             );
             return mediaResult.LogIfFailed();

@@ -385,7 +385,7 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
             PageSize = 25,
         };
         Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
-                command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
+                command is GetMovieMediaByTypeCommand && ((GetMovieMediaByTypeCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());
@@ -399,6 +399,45 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
         result.Value.ShouldBeSameAs(expected);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IReaparrDbContextFactory>().Verify(x => x.CreateAsync(), Times.Never());
+    }
+
+    [Test]
+    public async Task ShouldPropagateTypedQueryFailure_WhenMovieSnapshotIsMissing()
+    {
+        // Arrange
+        await SetupDatabase(84008, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
+        var dbContext = IDbContext;
+        var libraryId = await dbContext.PlexMovies.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
+        (await dbContext.MediaOverviewMovieSnapshots.CountAsync(CancellationToken)).ShouldBe(0);
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.Movie,
+            PlexLibraryId = libraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters { Page = 1, PageSize = 25 },
+        };
+        var expected = Result.Fail<PagedMediaQueryResult>("Canonical query failed");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.Is<GetMovieMediaByTypeCommand>(c => c.Filter == filter), CancellationToken))
+            .ReturnsAsync(expected)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewMovieCommand(filter));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Errors[0].ShouldBeSameAs(expected.Errors[0]);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]

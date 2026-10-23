@@ -2,24 +2,23 @@ using FlexQuery.NET;
 using FlexQuery.NET.Constants;
 using FlexQuery.NET.Models;
 using Reaparr.Application.Contracts;
+using Reaparr.Data.Contracts;
 using static Reaparr.Data.MediaByTypeQuerySupport;
 
 namespace Reaparr.Data;
 
-public record GetPhotoAlbumMediaByTypeCommand(MediaQueryFilter Filter, QueryOptions Options)
-    : ICommand<Result<PagedMediaQueryResult>>;
-
-public class GetPhotoAlbumMediaByTypeCommandValidator : AbstractValidator<GetPhotoAlbumMediaByTypeCommand>
+public sealed class GetPhotoAlbumMediaByTypeCommandValidator : AbstractValidator<GetPhotoAlbumMediaByTypeCommand>
 {
     public GetPhotoAlbumMediaByTypeCommandValidator()
     {
         RuleFor(x => x).NotNull();
-        RuleFor(x => x.Filter).NotNull();
-        RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.PhotoAlbum).When(x => x.Filter is not null);
+        RuleFor(x => x.Filter)
+            .NotNull()
+            .SetValidator(new MediaQueryFilterValidator(PlexMediaType.PhotoAlbum));
     }
 }
 
-public class GetPhotoAlbumMediaByTypeCommandHandler
+public sealed class GetPhotoAlbumMediaByTypeCommandHandler
     : ICommandHandler<GetPhotoAlbumMediaByTypeCommand, Result<PagedMediaQueryResult>>
 {
     private readonly IReaparrDbContext _dbContext;
@@ -35,14 +34,17 @@ public class GetPhotoAlbumMediaByTypeCommandHandler
     )
     {
         var filter = command.Filter;
-        var options = command.Options;
+        var response = CreateResponse(filter);
+        var preparation = await MediaQueryPreparation.PrepareAsync(_dbContext, filter, ct);
+        if (preparation.LibraryIds.Count == 0)
+            return Result.Ok(response);
+
+        var options = preparation.Options;
         options.Sort.RemoveAll(static sort =>
         {
             var field = sort.Field.ToSortType();
             return field is SortType.Year or SortType.VideoQuality;
         });
-        var response = CreateResponse(filter);
-
         foreach (var sort in options.Sort)
         {
             if (sort.Field == SortType.Title.ToSortValue())
@@ -54,7 +56,10 @@ public class GetPhotoAlbumMediaByTypeCommandHandler
 
         options.Sort.Add(new SortNode { Field = nameof(PlexMediaSlimDTO.Id), Descending = false });
 
-        var albumQuery = _dbContext.PlexPhotoAlbums.ProjectToMediaSlimDTO().ApplyFilter(options).ApplySort(options);
+        var albumQuery = _dbContext.PlexPhotoAlbums
+            .ProjectToMediaSlimDTO()
+            .ApplyFilter(options)
+            .ApplySort(options);
 
         response.TotalCount = await albumQuery.CountAsync(ct);
         response.MediaSize = await _dbContext
@@ -64,23 +69,16 @@ public class GetPhotoAlbumMediaByTypeCommandHandler
             .SumAsync(file => file.Size, ct);
         response.TotalMediaSize = response.MediaSize;
 
-        await SetNavigationIndexes(
+        await SetNavigationIndexes(response, albumQuery.ProjectNavigationIndexRows(), options, ct);
+        response.Items = await albumQuery.ApplyPaging(options).ToListAsync(ct);
+        await MediaQueryResponse.CompleteAsync(
+            _dbContext,
             response,
-            albumQuery.Select(x => new MediaNavigationIndexRow
-            {
-                SearchTitle = x.SearchTitle,
-                Year = x.Year,
-                QualityValue = null,
-                Duration = x.Duration,
-                AddedAt = x.AddedAt,
-                UpdatedAt = x.UpdatedAt,
-                MediaSize = x.MediaSize,
-            }),
-            options,
+            filter,
+            preparation.LibraryIds,
+            preparation.HasUserFilters,
             ct
         );
-
-        response.Items = await albumQuery.ApplyPaging(options).ToListAsync(ct);
         return Result.Ok(response);
     }
 }

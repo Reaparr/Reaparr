@@ -232,7 +232,7 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
             TotalCount = 1,
         };
         Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
-                command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
+                command is GetTvShowMediaByTypeCommand && ((GetTvShowMediaByTypeCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());
@@ -262,7 +262,7 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
             PageSize = 25,
         };
         Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
-                command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
+                command is GetTvShowMediaByTypeCommand && ((GetTvShowMediaByTypeCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());

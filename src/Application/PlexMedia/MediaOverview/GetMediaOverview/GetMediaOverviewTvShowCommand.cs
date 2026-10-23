@@ -47,7 +47,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
         if (sort is null || filter.ComparisonState.HasValue)
         {
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetTvShowMediaByTypeCommand(filter),
                 cancellationToken
             );
             LogPhase(filter, "CanonicalFallback", stopwatch.Elapsed, 0);
@@ -79,7 +79,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
         {
             LogPhase(filter, "SnapshotMissing", stopwatch.Elapsed, 0);
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetTvShowMediaByTypeCommand(filter),
                 cancellationToken
             );
             return mediaResult.LogIfFailed();
