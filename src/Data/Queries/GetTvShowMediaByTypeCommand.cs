@@ -11,7 +11,30 @@ public sealed class GetTvShowMediaByTypeCommandValidator : AbstractValidator<Get
     public GetTvShowMediaByTypeCommandValidator()
     {
         RuleFor(x => x).NotNull();
-        RuleFor(x => x.Filter).NotNull().SetValidator(new MediaQueryFilterValidator(PlexMediaType.TvShow));
+        RuleFor(x => x.Filter)
+            .NotNull()
+            .ChildRules(filter =>
+            {
+                filter.RuleFor(x => x.MediaType).Equal(PlexMediaType.TvShow);
+                filter.RuleFor(x => x.ComparisonState).Null().When(x => !x.MediaType.SupportsComparison());
+                filter
+                    .RuleFor(x => x.ComparisonState)
+                    .Must(x =>
+                        x
+                            is null
+                                or PlexMediaComparisonState.NotCompared
+                                or PlexMediaComparisonState.Pending
+                                or PlexMediaComparisonState.Owned
+                                or PlexMediaComparisonState.Missing
+                                or PlexMediaComparisonState.Partial
+                    )
+                    .When(x => x.MediaType == PlexMediaType.MusicArtist);
+                filter
+                    .RuleFor(x => x.Parameters.Sort)
+                    .Must((value, sort) => sort.IsSupportedSort(value.MediaType))
+                    .WithMessage("Sort contains an unsupported field.")
+                    .When(x => x.Parameters is not null);
+            });
     }
 }
 
@@ -57,7 +80,10 @@ public sealed class GetTvShowMediaByTypeCommandHandler
 
             var candidates = candidatesResult.Value;
             SetComparisonSummary(response, candidates, options.Sort, includeQuality: true);
-            var pageCandidates = ApplyDtoPaging(candidates, response.Page, response.PageSize);
+            var pageCandidates =
+                response.PageSize == 0
+                    ? candidates
+                    : candidates.Skip((response.Page - 1) * response.PageSize).Take(response.PageSize).ToList();
             var pageMetadata = await LoadTvShowPageMetadataAsync(
                 pageCandidates.Select(x => x.Id).ToHashSet(),
                 cancellationToken
@@ -85,16 +111,21 @@ public sealed class GetTvShowMediaByTypeCommandHandler
                 response.TotalMediaSize = response.MediaSize;
 
                 var filteredIds = candidates.Select(x => x.Id).ToHashSet();
-                await SetNavigationIndexes(
-                    response,
-                    sortedTvShowQuery
-                        .Where(x => filteredIds.Contains(x.Id))
-                        .ProjectTvShowNavigationIndexRows(),
-                    options,
-                    cancellationToken
+                var materialized = await sortedTvShowQuery
+                    .Where(x => filteredIds.Contains(x.Id))
+                    .ProjectTvShowNavigationIndexRows()
+                    .ToListAsync(cancellationToken);
+                response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+                    materialized,
+                    ((IReadOnlyList<SortNode>)options.Sort).Count == 0
+                        ? SortType.Title
+                        : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
                 );
 
-                var pageCandidates = ApplyDtoPaging(candidates, response.Page, response.PageSize);
+                var pageCandidates =
+                    response.PageSize == 0
+                        ? candidates
+                        : candidates.Skip((response.Page - 1) * response.PageSize).Take(response.PageSize).ToList();
                 var pageMetadata = await LoadTvShowPageMetadataAsync(
                     pageCandidates.Select(x => x.Id).ToHashSet(),
                     cancellationToken
@@ -107,23 +138,36 @@ public sealed class GetTvShowMediaByTypeCommandHandler
                 response.MediaSize = await sortedTvShowQuery.SumAsync(x => x.MediaSize, cancellationToken);
                 response.TotalMediaSize = response.MediaSize;
 
-                await SetNavigationIndexes(
-                    response,
-                    sortedTvShowQuery.ProjectTvShowNavigationIndexRows(),
-                    options,
-                    cancellationToken
+                var materialized = await sortedTvShowQuery
+                    .ProjectTvShowNavigationIndexRows()
+                    .ToListAsync(cancellationToken);
+                response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+                    materialized,
+                    ((IReadOnlyList<SortNode>)options.Sort).Count == 0
+                        ? SortType.Title
+                        : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
                 );
 
                 var pageCandidates = await sortedTvShowQuery
                     .ApplyPaging(options)
                     .ProjectTvShowPage()
                     .ToListAsync(cancellationToken);
-                var comparisonResult = await ApplyComparisonStateAsync(
-                    _commandExecutor,
-                    pageCandidates,
-                    filter,
-                    cancellationToken
-                );
+                Result ret;
+                if (pageCandidates.Count == 0)
+                    ret = Result.Ok();
+                else
+                {
+                    ret = await _commandExecutor.Send(
+                        new ApplyComparisonStateCommand(
+                            pageCandidates,
+                            filter.MediaType,
+                            filter.PlexLibraryId > 0 ? filter.PlexLibraryId : null
+                        ),
+                        cancellationToken
+                    );
+                }
+
+                var comparisonResult = ret;
                 if (comparisonResult.IsCancelledOrFailed)
                     return comparisonResult.ToResult<PagedMediaQueryResult>();
 

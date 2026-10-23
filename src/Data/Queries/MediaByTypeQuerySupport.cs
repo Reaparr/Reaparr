@@ -34,26 +34,6 @@ internal static class MediaByTypeQuerySupport
             PageSize = filter.PageSize,
         };
 
-    internal static async Task<Result> ApplyComparisonStateAsync(
-        ICommandExecutor executor,
-        List<PlexMediaSlimDTO> items,
-        MediaQueryFilter filter,
-        CancellationToken ct
-    )
-    {
-        if (items.Count == 0)
-            return Result.Ok();
-
-        return await executor.Send(
-            new ApplyComparisonStateCommand(
-                items,
-                filter.MediaType,
-                filter.PlexLibraryId > 0 ? filter.PlexLibraryId : null
-            ),
-            ct
-        );
-    }
-
     internal static async Task<Result<List<PlexMediaSlimDTO>>> LoadComparisonCandidatesAsync(
         IQueryable<PlexMediaSlimDTO> query,
         ICommandExecutor executor,
@@ -63,7 +43,22 @@ internal static class MediaByTypeQuerySupport
     )
     {
         var candidates = await query.ToListAsync(ct);
-        var projection = await ApplyComparisonStateAsync(executor, candidates, filter, ct);
+        Result ret;
+        if (candidates.Count == 0)
+            ret = Result.Ok();
+        else
+        {
+            ret = await executor.Send(
+                new ApplyComparisonStateCommand(
+                    candidates,
+                    filter.MediaType,
+                    filter.PlexLibraryId > 0 ? filter.PlexLibraryId : null
+                ),
+                ct
+            );
+        }
+
+        var projection = ret;
         if (projection.IsCancelledOrFailed)
             return projection.ToResult<List<PlexMediaSlimDTO>>();
 
@@ -138,25 +133,6 @@ internal static class MediaByTypeQuerySupport
             response.Qualities = [];
         }
     }
-
-    internal static async Task SetNavigationIndexes(
-        PagedMediaQueryResult response,
-        IQueryable<MediaNavigationIndexRow> rows,
-        QueryOptions options,
-        CancellationToken ct
-    )
-    {
-        var materialized = await rows.ToListAsync(ct);
-        response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
-            materialized,
-            ((IReadOnlyList<SortNode>)options.Sort).Count == 0
-                ? SortType.Title
-                : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
-        );
-    }
-
-    internal static List<PlexMediaSlimDTO> ApplyDtoPaging(List<PlexMediaSlimDTO> items, int page, int pageSize) =>
-        pageSize == 0 ? items : items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
     private static List<PlexMediaSlimDTO> SortComparisonCandidates(
         List<PlexMediaSlimDTO> candidates,

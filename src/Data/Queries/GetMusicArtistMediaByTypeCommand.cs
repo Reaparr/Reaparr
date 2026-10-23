@@ -14,7 +14,28 @@ public sealed class GetMusicArtistMediaByTypeCommandValidator : AbstractValidato
         RuleFor(x => x).NotNull();
         RuleFor(x => x.Filter)
             .NotNull()
-            .SetValidator(new MediaQueryFilterValidator(PlexMediaType.MusicArtist));
+            .ChildRules(filter =>
+            {
+                filter.RuleFor(x => x.MediaType).Equal(PlexMediaType.MusicArtist);
+                filter.RuleFor(x => x.ComparisonState).Null().When(x => !x.MediaType.SupportsComparison());
+                filter
+                    .RuleFor(x => x.ComparisonState)
+                    .Must(x =>
+                        x
+                            is null
+                                or PlexMediaComparisonState.NotCompared
+                                or PlexMediaComparisonState.Pending
+                                or PlexMediaComparisonState.Owned
+                                or PlexMediaComparisonState.Missing
+                                or PlexMediaComparisonState.Partial
+                    )
+                    .When(x => x.MediaType == PlexMediaType.MusicArtist);
+                filter
+                    .RuleFor(x => x.Parameters.Sort)
+                    .Must((value, sort) => sort.IsSupportedSort(value.MediaType))
+                    .WithMessage("Sort contains an unsupported field.")
+                    .When(x => x.Parameters is not null);
+            });
     }
 }
 
@@ -64,7 +85,10 @@ public sealed class GetMusicArtistMediaByTypeCommandHandler
 
             var candidates = candidateResult.Value;
             SetComparisonSummary(response, candidates, options.Sort, includeQuality: false);
-            var pageCandidates = ApplyDtoPaging(candidates, response.Page, response.PageSize);
+            var pageCandidates =
+                response.PageSize == 0
+                    ? candidates
+                    : candidates.Skip((response.Page - 1) * response.PageSize).Take(response.PageSize).ToList();
             var metadata = await LoadMusicArtistPageMetadataAsync(pageCandidates.Select(x => x.Id), ct);
             SetComparisonPage(response, pageCandidates, metadata, includeQuality: false);
             await MediaQueryResponse.CompleteAsync(
@@ -81,10 +105,7 @@ public sealed class GetMusicArtistMediaByTypeCommandHandler
         if (filter.ComparisonState.HasValue)
         {
             var candidateResult = await LoadComparisonCandidatesAsync(
-                _dbContext
-                    .PlexMusicArtists.ApplyFilter(options)
-                    .ApplySort(options)
-                    .ProjectMusicArtistPage(),
+                _dbContext.PlexMusicArtists.ApplyFilter(options).ApplySort(options).ProjectMusicArtistPage(),
                 _commandExecutor,
                 filter,
                 options,
@@ -95,7 +116,10 @@ public sealed class GetMusicArtistMediaByTypeCommandHandler
 
             var candidates = candidateResult.Value;
             SetComparisonSummary(response, candidates, options.Sort, includeQuality: false);
-            var pageCandidates = ApplyDtoPaging(candidates, response.Page, response.PageSize);
+            var pageCandidates =
+                response.PageSize == 0
+                    ? candidates
+                    : candidates.Skip((response.Page - 1) * response.PageSize).Take(response.PageSize).ToList();
             var metadata = await LoadMusicArtistPageMetadataAsync(pageCandidates.Select(x => x.Id), ct);
             SetComparisonPage(response, pageCandidates, metadata, includeQuality: false);
             await MediaQueryResponse.CompleteAsync(
@@ -113,18 +137,31 @@ public sealed class GetMusicArtistMediaByTypeCommandHandler
         response.TotalCount = await artistQuery.CountAsync(ct);
         response.MediaSize = await artistQuery.SumAsync(x => x.MediaSize, ct);
         response.TotalMediaSize = response.MediaSize;
-        await SetNavigationIndexes(
-            response,
-            artistQuery.ProjectMusicArtistNavigationIndexRows(),
-            options,
-            ct
+        var materialized = await artistQuery.ProjectMusicArtistNavigationIndexRows().ToListAsync(ct);
+        response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+            materialized,
+            ((IReadOnlyList<SortNode>)options.Sort).Count == 0
+                ? SortType.Title
+                : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
         );
 
-        response.Items = await artistQuery
-            .ApplyPaging(options)
-            .ProjectMusicArtistPage()
-            .ToListAsync(ct);
-        var comparisonResult = await ApplyComparisonStateAsync(_commandExecutor, response.Items, filter, ct);
+        response.Items = await artistQuery.ApplyPaging(options).ProjectMusicArtistPage().ToListAsync(ct);
+        Result ret;
+        if (response.Items.Count == 0)
+            ret = Result.Ok();
+        else
+        {
+            ret = await _commandExecutor.Send(
+                new ApplyComparisonStateCommand(
+                    response.Items,
+                    filter.MediaType,
+                    filter.PlexLibraryId > 0 ? filter.PlexLibraryId : null
+                ),
+                ct
+            );
+        }
+
+        var comparisonResult = ret;
         if (comparisonResult.IsCancelledOrFailed)
             return comparisonResult.ToResult<PagedMediaQueryResult>();
 

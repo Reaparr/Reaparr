@@ -11,7 +11,30 @@ public sealed class GetOtherVideoMediaByTypeCommandValidator : AbstractValidator
     public GetOtherVideoMediaByTypeCommandValidator()
     {
         RuleFor(x => x).NotNull();
-        RuleFor(x => x.Filter).NotNull().SetValidator(new MediaQueryFilterValidator(PlexMediaType.OtherVideos));
+        RuleFor(x => x.Filter)
+            .NotNull()
+            .ChildRules(filter =>
+            {
+                filter.RuleFor(x => x.MediaType).Equal(PlexMediaType.OtherVideos);
+                filter.RuleFor(x => x.ComparisonState).Null().When(x => !x.MediaType.SupportsComparison());
+                filter
+                    .RuleFor(x => x.ComparisonState)
+                    .Must(x =>
+                        x
+                            is null
+                                or PlexMediaComparisonState.NotCompared
+                                or PlexMediaComparisonState.Pending
+                                or PlexMediaComparisonState.Owned
+                                or PlexMediaComparisonState.Missing
+                                or PlexMediaComparisonState.Partial
+                    )
+                    .When(x => x.MediaType == PlexMediaType.MusicArtist);
+                filter
+                    .RuleFor(x => x.Parameters.Sort)
+                    .Must((value, sort) => sort.IsSupportedSort(value.MediaType))
+                    .WithMessage("Sort contains an unsupported field.")
+                    .When(x => x.Parameters is not null);
+            });
     }
 }
 
@@ -45,11 +68,12 @@ public sealed class GetOtherVideoMediaByTypeCommandHandler
         response.MediaSize = await videoQuery.SumAsync(x => x.MediaSize, cancellationToken);
         response.TotalMediaSize = response.MediaSize;
 
-        await SetNavigationIndexes(
-            response,
-            videoQuery.ProjectOtherVideoNavigationIndexRows(),
-            options,
-            cancellationToken
+        var materialized = await videoQuery.ProjectOtherVideoNavigationIndexRows().ToListAsync(cancellationToken);
+        response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+            materialized,
+            ((IReadOnlyList<SortNode>)options.Sort).Count == 0
+                ? SortType.Title
+                : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
         );
 
         var pageCandidates = await videoQuery

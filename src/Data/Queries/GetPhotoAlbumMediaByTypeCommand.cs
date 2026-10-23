@@ -14,7 +14,28 @@ public sealed class GetPhotoAlbumMediaByTypeCommandValidator : AbstractValidator
         RuleFor(x => x).NotNull();
         RuleFor(x => x.Filter)
             .NotNull()
-            .SetValidator(new MediaQueryFilterValidator(PlexMediaType.PhotoAlbum));
+            .ChildRules(filter =>
+            {
+                filter.RuleFor(x => x.MediaType).Equal(PlexMediaType.PhotoAlbum);
+                filter.RuleFor(x => x.ComparisonState).Null().When(x => !x.MediaType.SupportsComparison());
+                filter
+                    .RuleFor(x => x.ComparisonState)
+                    .Must(x =>
+                        x
+                            is null
+                                or PlexMediaComparisonState.NotCompared
+                                or PlexMediaComparisonState.Pending
+                                or PlexMediaComparisonState.Owned
+                                or PlexMediaComparisonState.Missing
+                                or PlexMediaComparisonState.Partial
+                    )
+                    .When(x => x.MediaType == PlexMediaType.MusicArtist);
+                filter
+                    .RuleFor(x => x.Parameters.Sort)
+                    .Must((value, sort) => sort.IsSupportedSort(value.MediaType))
+                    .WithMessage("Sort contains an unsupported field.")
+                    .When(x => x.Parameters is not null);
+            });
     }
 }
 
@@ -56,10 +77,7 @@ public sealed class GetPhotoAlbumMediaByTypeCommandHandler
 
         options.Sort.Add(new SortNode { Field = nameof(PlexMediaSlimDTO.Id), Descending = false });
 
-        var albumQuery = _dbContext.PlexPhotoAlbums
-            .ProjectToMediaSlimDTO()
-            .ApplyFilter(options)
-            .ApplySort(options);
+        var albumQuery = _dbContext.PlexPhotoAlbums.ProjectToMediaSlimDTO().ApplyFilter(options).ApplySort(options);
 
         response.TotalCount = await albumQuery.CountAsync(ct);
         response.MediaSize = await _dbContext
@@ -69,7 +87,13 @@ public sealed class GetPhotoAlbumMediaByTypeCommandHandler
             .SumAsync(file => file.Size, ct);
         response.TotalMediaSize = response.MediaSize;
 
-        await SetNavigationIndexes(response, albumQuery.ProjectNavigationIndexRows(), options, ct);
+        var materialized = await albumQuery.ProjectNavigationIndexRows().ToListAsync(ct);
+        response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
+            materialized,
+            ((IReadOnlyList<SortNode>)options.Sort).Count == 0
+                ? SortType.Title
+                : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
+        );
         response.Items = await albumQuery.ApplyPaging(options).ToListAsync(ct);
         await MediaQueryResponse.CompleteAsync(
             _dbContext,
