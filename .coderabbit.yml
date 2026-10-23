@@ -19,6 +19,7 @@ reviews:
         - "src/**/*.vue"
         - "src/AppHost/ClientApp/eslint.config.mjs"
         - "src/AppHost/ClientApp/cypress/**/*.ts"
+        - "src/AppHost/ClientApp/tests/**/*.ts"
         - "tests/**/*.cs"
         - "tools/**/*.cs"
 
