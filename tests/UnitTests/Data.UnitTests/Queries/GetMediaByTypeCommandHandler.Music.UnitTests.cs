@@ -277,7 +277,7 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
             {
                 Page = 2,
                 PageSize = 1,
-                Sort = "Duration:asc",
+                Sort = "Duration:asc,comparisonState:desc",
             },
         };
         Mock.Mock<ICommandExecutor>()
@@ -286,7 +286,8 @@ public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<Ge
                     It.Is<ApplyComparisonStateCommand>(c =>
                         c.MediaType == PlexMediaType.MusicArtist
                         && c.PlexLibraryId == libraryId
-                        && c.Items.Select(item => item.Id).SequenceEqual(artists.Select(item => item.Id))
+                        && c.Items.Count == artists.Count
+                        && c.Items.Select(item => item.Id).ToHashSet().SetEquals(artists.Select(item => item.Id))
                     ),
                     CancellationToken
                 )

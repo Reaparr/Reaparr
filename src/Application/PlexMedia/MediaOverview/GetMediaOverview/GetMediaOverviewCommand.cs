@@ -22,6 +22,9 @@ public sealed class GetMediaOverviewCommandValidator : AbstractValidator<GetMedi
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
             .When(x => x.Filter.Parameters.PageSize.HasValue);
+        RuleFor(x => x.Filter.Parameters.Sort)
+            .Must((command, sort) => sort.IsSupportedSort(command.Filter.MediaType))
+            .WithMessage("Sort fields must be supported media sort types.");
         RuleFor(x => x.Filter.ComparisonState).Null().When(x => !x.Filter.MediaType.SupportsComparison());
         RuleFor(x => x.Filter.ComparisonState)
             .Must(x =>

@@ -8,7 +8,7 @@ public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTe
     [Test]
     [Arguments("sortIndex:asc", 3, 4)]
     [Arguments("Title:desc", 3, 2)]
-    [Arguments("quality:desc,Title:desc", 3, 2)]
+    [Arguments("videoQuality:desc,Title:desc", 3, 2)]
     public async Task ShouldPageScopedPhotoAlbumsWithDerivedFileTotals_WhenFilteringCanonicalMedia(
         string sort,
         int firstIndex,

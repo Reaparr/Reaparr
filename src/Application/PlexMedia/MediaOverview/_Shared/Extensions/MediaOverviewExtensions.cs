@@ -1,5 +1,4 @@
 using FlexQuery.NET.Models;
-using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application;
 
@@ -14,28 +13,12 @@ internal static class MediaOverviewExtensions
             return null;
 
         var sort = options.Sort[0];
-        return SortTypeExtensions.TryParse(sort.Field, out var sortType)
-            && sortType is not SortType.ComparisonState
+        var sortType = sort.Field.ToSortType();
+        return sortType is not SortType.ComparisonState
             ? new Sort(sortType, sort.Descending ? SortDirection.Desc : SortDirection.Asc)
             : null;
     }
 
-    public static bool IsSupportedSort(this string? value, params ReadOnlySpan<SortType> supportedSorts)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return true;
-
-        var options = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = value });
-        var sort = options.ResolveSort();
-        if (options.Sort.Count != 1 || sort is null)
-            return false;
-
-        foreach (var supportedSort in supportedSorts)
-            if (supportedSort == sort.Value.Field)
-                return true;
-
-        return false;
-    }
 
     public static QueryOptions BuildSortOptions(
         Sort sort,
@@ -49,7 +32,7 @@ internal static class MediaOverviewExtensions
             SortType.Title => titleField,
             SortType.MediaSize when mediaSizeField is not null => mediaSizeField,
             SortType.MediaSize => throw new ArgumentOutOfRangeException(nameof(mediaSizeField)),
-            _ => sort.Field.ToQueryField(),
+            _ => sort.Field.ToSortValue(),
         };
         var options = new QueryOptions();
         options.Sort.Add(new SortNode { Field = field, Descending = sort.Direction == SortDirection.Desc });
@@ -72,18 +55,23 @@ internal static class MediaOverviewExtensions
     {
         if (filter.PlexLibraryId > 0)
         {
-            return await context.PlexLibraries.IgnoreIsEnabledFilter()
+            return await context
+                .PlexLibraries.IgnoreIsEnabledFilter()
                 .Where(x => x.Id == filter.PlexLibraryId && x.IsEnabled && x.Type == libraryType)
-                .Select(x => x.Id).ToListAsync(cancellationToken);
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
         }
 
         var libraries = context.PlexLibraries.Where(x =>
             x.Type == libraryType
-            && (!context.PlexAccounts.Any() || (x.PlexServer!.PlexAccountServers.Any() && x.PlexAccountLibraries.Any())));
+            && (!context.PlexAccounts.Any() || (x.PlexServer!.PlexAccountServers.Any() && x.PlexAccountLibraries.Any()))
+        );
         if (filter.FilterOwnedMedia)
             libraries = libraries.WhereIsNotOwned();
         if (filter.FilterOfflineMedia)
-            libraries = libraries.Where(x => context.PlexServerStatuses.Any(status => status.PlexServerId == x.PlexServerId && status.IsSuccessful));
+            libraries = libraries.Where(x =>
+                context.PlexServerStatuses.Any(status => status.PlexServerId == x.PlexServerId && status.IsSuccessful)
+            );
         return await libraries.Select(x => x.Id).ToListAsync(cancellationToken);
     }
 
@@ -129,12 +117,14 @@ internal static class MediaOverviewExtensions
             MediaCount = totalCount,
             MovieCount = filter.MediaType == PlexMediaType.Movie ? totalCount : 0,
             TvShowCount = filter.MediaType == PlexMediaType.TvShow ? totalCount : 0,
-            SeasonCount = filter.MediaType == PlexMediaType.TvShow
-                ? (!hasUserFilters ? totalSeasonCount : items.Sum(x => x.ChildCount))
-                : 0,
-            EpisodeCount = filter.MediaType == PlexMediaType.TvShow
-                ? (!hasUserFilters ? totalEpisodeCount : items.Sum(x => x.GrandChildCount))
-                : 0,
+            SeasonCount =
+                filter.MediaType == PlexMediaType.TvShow
+                    ? (!hasUserFilters ? totalSeasonCount : items.Sum(x => x.ChildCount))
+                    : 0,
+            EpisodeCount =
+                filter.MediaType == PlexMediaType.TvShow
+                    ? (!hasUserFilters ? totalEpisodeCount : items.Sum(x => x.GrandChildCount))
+                    : 0,
             TotalMovieCount = filter.MediaType == PlexMediaType.Movie ? totalCount : libraries.Sum(x => x.MovieCount),
             TotalTvShowCount =
                 filter.MediaType == PlexMediaType.TvShow ? totalCount : libraries.Sum(x => x.TvShowCount),

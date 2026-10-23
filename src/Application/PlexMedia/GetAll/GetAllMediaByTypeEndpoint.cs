@@ -39,7 +39,7 @@ public record GetAllMediaByTypeRequest
     [QueryParam, BindFrom("comparisonState")]
     public PlexMediaComparisonState? ComparisonState { get; init; }
 
-    /// <summary>The sorting expression (e.g., "sortIndex:asc").</summary>
+    /// <summary>The sorting expression (e.g., "title:asc").</summary>
     [QueryParam, BindFrom("sort")]
     public string? Sort { get; init; }
 
@@ -92,6 +92,9 @@ public class GetAllMediaByTypeRequestValidator : Validator<GetAllMediaByTypeRequ
                         or PlexMediaComparisonState.Partial
             )
             .When(x => x.MediaType == PlexMediaType.MusicArtist);
+        RuleFor(x => x.Sort)
+            .Must((request, sort) => sort.IsSupportedSort(request.MediaType))
+            .WithMessage("Sort fields must be supported media sort types.");
     }
 }
 

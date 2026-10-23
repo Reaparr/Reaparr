@@ -22,8 +22,8 @@ public class MediaOverviewExtensionsUnitTests
     [Test]
     [Arguments("sortIndex", SortType.Title)]
     [Arguments(" searchTitle ", SortType.Title)]
-    [Arguments("quality", SortType.VideoQuality)]
-    public void ShouldResolveLegacySortAlias_WhenOneSortIsRequested(string field, SortType expectedField)
+    [Arguments("title", SortType.Title)]
+    public void ShouldResolveCanonicalAndInternalTitleNames_WhenOneSortIsRequested(string field, SortType expectedField)
     {
         // Arrange
         var options = new QueryOptions();
@@ -37,17 +37,17 @@ public class MediaOverviewExtensionsUnitTests
     }
 
     [Test]
-    public void ShouldReturnNull_WhenSortFieldIsUnsupported()
+    public void ShouldThrow_WhenSortFieldIsUnsupported()
     {
         // Arrange
         var options = new QueryOptions();
         options.Sort.Add(new SortNode { Field = "unsupported", Descending = false });
 
         // Act
-        var result = options.ResolveSort();
+        Action act = () => options.ResolveSort();
 
         // Assert
-        result.ShouldBeNull();
+        act.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("value");
     }
 
     [Test]
@@ -70,22 +70,6 @@ public class MediaOverviewExtensionsUnitTests
 
         // Assert
         result.ShouldBe(new Sort(expectedField, expectedDirection));
-    }
-
-    [Test]
-    public void ShouldRejectUnsupportedSortValuesAtTheSharedBoundary()
-    {
-        // Arrange
-
-        // Act
-        var unknown = "unknown:asc".IsSupportedSort(SortType.Title, SortType.AddedAt);
-        var unsupported = "year:asc".IsSupportedSort(SortType.Title, SortType.AddedAt);
-        var multiple = "title:asc,addedAt:desc".IsSupportedSort(SortType.Title, SortType.AddedAt);
-
-        // Assert
-        unknown.ShouldBeFalse();
-        unsupported.ShouldBeFalse();
-        multiple.ShouldBeFalse();
     }
 
 

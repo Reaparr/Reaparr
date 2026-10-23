@@ -3,27 +3,30 @@ namespace Reaparr.Domain;
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum SortType
 {
-    [JsonStringEnumMemberName(nameof(Title))]
+    [JsonStringEnumMemberName("title")]
     Title,
 
-    [JsonStringEnumMemberName(nameof(Year))]
+    [JsonStringEnumMemberName("year")]
     Year,
 
-    [JsonStringEnumMemberName(nameof(AddedAt))]
+    [JsonStringEnumMemberName("addedAt")]
     AddedAt,
 
-    [JsonStringEnumMemberName(nameof(UpdatedAt))]
+    [JsonStringEnumMemberName("updatedAt")]
     UpdatedAt,
 
-    [JsonStringEnumMemberName(nameof(Duration))]
+    [JsonStringEnumMemberName("duration")]
     Duration,
 
-    [JsonStringEnumMemberName(nameof(MediaSize))]
+    [JsonStringEnumMemberName("mediaSize")]
     MediaSize,
 
-    [JsonStringEnumMemberName(nameof(VideoQuality))]
+    [JsonStringEnumMemberName("videoQuality")]
     VideoQuality,
 
-    [JsonStringEnumMemberName(nameof(ComparisonState))]
+    [JsonStringEnumMemberName("audioQuality")]
+    AudioQuality,
+
+    [JsonStringEnumMemberName("comparisonState")]
     ComparisonState,
 }

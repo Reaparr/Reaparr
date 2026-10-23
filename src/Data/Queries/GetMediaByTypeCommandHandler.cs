@@ -30,10 +30,15 @@ public class GetMediaByTypeCommandValidator : AbstractValidator<GetMediaByTypeCo
                         or PlexMediaComparisonState.Partial
             )
             .When(x => x.Filter.MediaType == PlexMediaType.MusicArtist);
+        RuleFor(x => x.Filter.Parameters.Sort)
+            .Must((command, sort) => sort.IsSupportedSort(command.Filter.MediaType))
+            .WithMessage("Sort contains an unsupported field.")
+            .When(x => x.Filter is not null && x.Filter.Parameters is not null);
     }
+
 }
 
-public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeCommand, Result<PagedMediaQueryResult>>
+public partial class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeCommand, Result<PagedMediaQueryResult>>
 {
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
@@ -126,6 +131,17 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
         var hasUserFilters = options.HasFiltersApplied() || filter.ComparisonState.HasValue;
         options = PrepareQueryOptions(options, filter, allowedPlexLibraryIds);
 
+        if (options.Sort.Any(sort => sort.Field == SortType.ComparisonState.ToSortValue()))
+        {
+            var comparisonResult = await ExecuteComparisonSortedQueryAsync(response, filter, options, ct);
+            if (comparisonResult.IsCancelledOrFailed)
+                return comparisonResult.ToResult<PagedMediaQueryResult>();
+
+            SetResponseSortIndexes(response);
+            await SetCounts(response, hasUserFilters, allowedPlexLibraryIds, filter.MediaType, ct);
+            return Result.Ok(response);
+        }
+
         // TODO Deduplicate
         switch (filter.MediaType)
         {
@@ -149,8 +165,8 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         PlexMediaType.Movie,
                         ct
                     );
-                    if (movieComparisonResult.IsFailed)
-                        return Result.Fail<PagedMediaQueryResult>(movieComparisonResult.Errors);
+                    if (movieComparisonResult.IsCancelledOrFailed)
+                        return movieComparisonResult.ToResult<PagedMediaQueryResult>();
 
                     var filteredDtos = movieDtos
                         .Where(x => x.ComparisonId == filter.ComparisonState.Value.ToComparisonId())
@@ -170,7 +186,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                             UpdatedAt = x.UpdatedAt,
                             MediaSize = x.MediaSize,
                         }),
-                        options
+                        options.Sort
                     );
 
                     response.TotalCount = filteredDtos.Count;
@@ -230,8 +246,8 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         PlexMediaType.Movie,
                         ct
                     );
-                    if (movieComparisonResult.IsFailed)
-                        return Result.Fail<PagedMediaQueryResult>(movieComparisonResult.Errors);
+                    if (movieComparisonResult.IsCancelledOrFailed)
+                        return movieComparisonResult.ToResult<PagedMediaQueryResult>();
 
                     response.Items = movieDtos;
                     response.Roles.AddRange(
@@ -274,8 +290,8 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         PlexMediaType.TvShow,
                         ct
                     );
-                    if (tvShowComparisonResult.IsFailed)
-                        return Result.Fail<PagedMediaQueryResult>(tvShowComparisonResult.Errors);
+                    if (tvShowComparisonResult.IsCancelledOrFailed)
+                        return tvShowComparisonResult.ToResult<PagedMediaQueryResult>();
 
                     var filteredDtos = tvShowDtos
                         .Where(x => x.ComparisonId == filter.ComparisonState.Value.ToComparisonId())
@@ -295,7 +311,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                             UpdatedAt = x.UpdatedAt,
                             MediaSize = x.MediaSize,
                         }),
-                        options
+                        options.Sort
                     );
 
                     response.TotalCount = filteredDtos.Count;
@@ -355,8 +371,8 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         PlexMediaType.TvShow,
                         ct
                     );
-                    if (tvShowComparisonResult.IsFailed)
-                        return Result.Fail<PagedMediaQueryResult>(tvShowComparisonResult.Errors);
+                    if (tvShowComparisonResult.IsCancelledOrFailed)
+                        return tvShowComparisonResult.ToResult<PagedMediaQueryResult>();
 
                     response.Items = tvShowDtos;
                     response.Roles.AddRange(
@@ -400,8 +416,8 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         PlexMediaType.MusicArtist,
                         ct
                     );
-                    if (comparisonResult.IsFailed)
-                        return Result.Fail<PagedMediaQueryResult>(comparisonResult.Errors);
+                    if (comparisonResult.IsCancelledOrFailed)
+                        return comparisonResult.ToResult<PagedMediaQueryResult>();
                     var filteredDtos = candidateDtos
                         .Where(x => x.ComparisonId == filter.ComparisonState.Value.ToComparisonId())
                         .ToList();
@@ -422,7 +438,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                             UpdatedAt = x.UpdatedAt,
                             MediaSize = x.MediaSize,
                         }),
-                        options
+                        options.Sort
                     );
                     response.Items = ApplyDtoPaging(filteredDtos, page, pageSize);
                     var pagedIds = response.Items.Select(x => x.Id).ToHashSet();
@@ -456,8 +472,8 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                         PlexMediaType.MusicArtist,
                         ct
                     );
-                    if (comparisonResult.IsFailed)
-                        return Result.Fail<PagedMediaQueryResult>(comparisonResult.Errors);
+                    if (comparisonResult.IsCancelledOrFailed)
+                        return comparisonResult.ToResult<PagedMediaQueryResult>();
                 }
                 response.Roles = artists.SelectMany(x => x.Actors).Select(x => x.Id).Distinct().Order().ToList();
                 response.Countries = artists.SelectMany(x => x.Countries).Select(x => x.Id).Distinct().Order().ToList();
@@ -468,7 +484,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             {
                 foreach (var sort in options.Sort)
                 {
-                    if (sort.Field == SortType.Title.ToQueryField())
+                    if (sort.Field == SortType.Title.ToSortValue())
                         sort.Field = nameof(PlexMediaSlimDTO.Title);
                 }
                 if (options.Sort.Count == 0)
@@ -550,15 +566,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
                 );
         }
 
-        var effectivePageSize = response.PageSize > 0 ? response.PageSize : response.Items.Count;
-        var offset = (response.Page - 1) * effectivePageSize;
-
-        for (var i = 0; i < response.Items.Count; i++)
-        {
-            var slimDTO = response.Items[i];
-
-            slimDTO.SortIndex = offset + i + 1;
-        }
+        SetResponseSortIndexes(response);
 
         await SetCounts(response, hasUserFilters, allowedPlexLibraryIds, filter.MediaType, ct);
 
@@ -573,25 +581,22 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
     {
         options = WithServerLibraryScope(options, allowedPlexLibraryIds, filter.PlexLibraryId);
         foreach (var sort in options.Sort)
-        {
-            if (SortTypeExtensions.TryParse(sort.Field, out var sortType))
-                sort.Field = sortType.ToQueryField();
-        }
+            sort.Field = sort.Field.ToSortType().ToSortValue();
 
         if (filter.MediaType is PlexMediaType.MusicArtist or PlexMediaType.MusicTrack || filter.MediaType.IsPhotoType())
         {
-            options.Sort.RemoveAll(static sort => sort.Field == SortType.Year.ToQueryField());
+            options.Sort.RemoveAll(static sort => sort.Field == SortType.Year.ToSortValue());
         }
 
         if (filter.MediaType.IsMusicType() || filter.MediaType.IsPhotoType())
         {
-            options.Sort.RemoveAll(static sort => sort.Field == SortType.VideoQuality.ToQueryField());
+            options.Sort.RemoveAll(static sort => sort.Field == SortType.VideoQuality.ToSortValue());
         }
 
         if (options.Sort.Count > 0 || filter.PlexLibraryId == 0) { }
         else
         {
-            options.Sort.Add(new SortNode { Field = SortType.Title.ToQueryField(), Descending = false });
+            options.Sort.Add(new SortNode { Field = SortType.Title.ToSortValue(), Descending = false });
         }
 
         NormalizeAllLibrarySort(options, filter.PlexLibraryId);
@@ -667,10 +672,9 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
     )
     {
         var materializedRows = await rows.ToListAsync(ct);
-        var sort = options.Sort.FirstOrDefault();
         response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
             materializedRows,
-            sort is not null && SortTypeExtensions.TryParse(sort.Field, out var sortType) ? sortType : SortType.Title
+            GetNavigationSortType(options.Sort)
         );
     }
 
@@ -688,8 +692,8 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
             new ApplyComparisonStateCommand(items, mediaType, plexLibraryId > 0 ? plexLibraryId : null),
             ct
         );
-        if (result.IsFailed)
-            return Result.Fail(result.Errors);
+        if (result.IsCancelledOrFailed)
+            return result;
 
         return Result.Ok();
     }
@@ -697,14 +701,24 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
     private static void SetNavigationIndexes(
         PagedMediaQueryResult response,
         IEnumerable<MediaNavigationIndexRow> rows,
-        QueryOptions options
+        IReadOnlyList<SortNode> sorts
     )
     {
-        var sort = options.Sort.FirstOrDefault();
         response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
             rows,
-            sort is not null && SortTypeExtensions.TryParse(sort.Field, out var sortType) ? sortType : SortType.Title
+            GetNavigationSortType(sorts)
         );
+    }
+
+    private static SortType GetNavigationSortType(IReadOnlyList<SortNode> sorts) =>
+        sorts.Count == 0 ? SortType.Title : sorts[0].Field.ToSortType();
+
+    private static void SetResponseSortIndexes(PagedMediaQueryResult response)
+    {
+        var offset = response.PageSize > 0 ? (response.Page - 1) * response.PageSize : 0;
+
+        for (var i = 0; i < response.Items.Count; i++)
+            response.Items[i].SortIndex = offset + i + 1;
     }
 
     private static List<PlexMediaSlimDTO> ApplyDtoPaging(List<PlexMediaSlimDTO> items, int page, int pageSize)
@@ -722,7 +736,7 @@ public class GetMediaByTypeCommandHandler : ICommandHandler<GetMediaByTypeComman
 
         foreach (var sort in options.Sort)
         {
-            if (sort.Field == SortType.Title.ToQueryField())
+            if (sort.Field == SortType.Title.ToSortValue())
                 sort.Field = nameof(BasePlexMedia.SearchTitle);
         }
     }

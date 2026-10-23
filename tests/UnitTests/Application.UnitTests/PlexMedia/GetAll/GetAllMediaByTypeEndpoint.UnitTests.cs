@@ -4,20 +4,34 @@ public class GetAllMediaByTypeEndpointUnitTests
     : BaseEndpointUnitTest<GetAllMediaByTypeEndpoint, GetAllMediaByTypeRequest, PlexMediaStatisticsDTO>
 {
     [Test]
-    public async Task ShouldRejectLeafPhotosWithoutDispatch_WhenRequestingRootOverview()
+    [Arguments(PlexMediaType.PhotoImage, null, null, nameof(GetAllMediaByTypeRequest.MediaType))]
+    [Arguments(PlexMediaType.PhotoAlbum, null, 7, nameof(GetAllMediaByTypeRequest.QualityId))]
+    [Arguments(PlexMediaType.MusicArtist, null, 7, nameof(GetAllMediaByTypeRequest.QualityId))]
+    [Arguments(PlexMediaType.Movie, "unknown:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    [Arguments(PlexMediaType.Movie, "id:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    [Arguments(PlexMediaType.Movie, "title:asc,id:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    [Arguments(PlexMediaType.Movie, "quality:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    [Arguments(PlexMediaType.Movie, "sortTitle:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    [Arguments(PlexMediaType.Movie, "99:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    [Arguments(PlexMediaType.PhotoAlbum, "comparisonState:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    [Arguments(PlexMediaType.OtherVideos, "title:asc,comparisonState:desc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    public async Task ShouldRejectInvalidRootRequestsWithoutDispatch(
+        PlexMediaType mediaType,
+        string? sort,
+        int? qualityId,
+        string expectedProperty
+    )
     {
         // Arrange
-        var request = new GetAllMediaByTypeRequest { MediaType = PlexMediaType.PhotoImage };
+        var request = new GetAllMediaByTypeRequest { MediaType = mediaType, Sort = sort, QualityId = qualityId };
 
         // Act
         var result = await TestEndpointHandleAsync(request);
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result
-            .ValidationResult.ShouldNotBeNull()
-            .Errors.Select(x => x.PropertyName)
-            .ShouldBe([nameof(GetAllMediaByTypeRequest.MediaType)]);
+        result.ValidationResult.ShouldNotBeNull().Errors.Select(x => x.PropertyName)
+            .ShouldBe([expectedProperty]);
         result.Response.ShouldBeNull();
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<GetMediaOverviewCommand>(), It.IsAny<CancellationToken>()), Times.Never());
@@ -114,28 +128,6 @@ public class GetAllMediaByTypeEndpointUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
-    [Test]
-    [Arguments(PlexMediaType.PhotoAlbum)]
-    [Arguments(PlexMediaType.MusicArtist)]
-    public async Task ShouldRejectVideoQualityFiltersWithoutDispatch_WhenMediaHasNoVideoQuality(
-        PlexMediaType mediaType
-    )
-    {
-        // Arrange
-        var request = new GetAllMediaByTypeRequest { MediaType = mediaType, QualityId = 7 };
-
-        // Act
-        var result = await TestEndpointHandleAsync(request);
-
-        // Assert
-        result.IsValid.ShouldBeFalse();
-        result.ValidationResult.ShouldNotBeNull()
-            .Errors.Select(x => x.PropertyName)
-            .ShouldBe([nameof(GetAllMediaByTypeRequest.QualityId)]);
-        result.Response.ShouldBeNull();
-        Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaOverviewCommand>(), It.IsAny<CancellationToken>()), Times.Never());
-    }
 
     [Test]
     [Arguments(1, null, null, null, nameof(GetAllMediaByTypeRequest.CountryId))]

@@ -469,7 +469,7 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
                 {
                     Page = 1,
                     PageSize = 1,
-                    Sort = null,
+                    Sort = "comparisonState:asc",
                     Filter = null,
                 },
             },
@@ -1902,10 +1902,11 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
     }
 
     [Test]
+    [Arguments("Title:asc")]
     [Arguments("sortIndex:asc")]
     [Arguments("SORTINDEX:asc")]
     [Arguments("SoRtInDeX:asc")]
-    public async Task ShouldSortAllLibraryMoviesBySearchTitle_WhenSortIndexSortIsRequested(string sort)
+    public async Task ShouldSortAllLibraryMoviesByTitle_WhenCanonicalOrLegacyTitleSortIsRequested(string sort)
     {
         // Arrange
         await SetupDatabase(
@@ -2786,6 +2787,44 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
                         .SetProperty(y => y.VideoQuality, VideoQuality.SD),
                 CancellationToken
             );
+    }
+
+    [Test]
+    [Arguments("Id:asc", false, PlexMediaType.Movie)]
+    [Arguments("sortTitle:asc", false, PlexMediaType.Movie)]
+    [Arguments("quality:asc", false, PlexMediaType.Movie)]
+    [Arguments("1:asc", false, PlexMediaType.Movie)]
+    [Arguments("comparisonState:asc", false, PlexMediaType.PhotoAlbum)]
+    [Arguments("Title:asc,Id:asc", false, PlexMediaType.Movie)]
+    [Arguments("Title:asc", true, PlexMediaType.Movie)]
+    [Arguments("SortIndex:desc", true, PlexMediaType.Movie)]
+    [Arguments("SearchTitle:asc", true, PlexMediaType.Movie)]
+    public void ShouldValidateCanonicalSortFields_AndRejectRemovedOrRawIdSorts(
+        string sort,
+        bool valid,
+        PlexMediaType mediaType
+    )
+    {
+        // Arrange
+        var command = new GetMediaByTypeCommand
+        {
+            Filter = new MediaQueryFilter
+            {
+                MediaType = mediaType,
+                PlexLibraryId = 1,
+                FilterOfflineMedia = false,
+                FilterOwnedMedia = false,
+                Parameters = new FlexQueryParameters { Sort = sort },
+            },
+        };
+
+        // Act
+        var result = new GetMediaByTypeCommandValidator().Validate(command);
+
+        // Assert
+        result.IsValid.ShouldBe(valid);
+        if (!valid)
+            result.Errors.Select(x => x.PropertyName).ShouldContain("Filter.Parameters.Sort");
     }
 
     [Test]

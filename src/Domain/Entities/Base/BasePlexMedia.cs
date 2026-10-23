@@ -18,7 +18,8 @@ public class BasePlexMedia : BaseEntity
     public required string Title { get; set; }
 
     /// <summary>
-    /// Gets or sets the sort index of the media based on the alphabetical sort order.
+    /// Gets or sets the persisted natural-title ordering rank assigned during catalog retrieval.
+    /// Logical <see cref="SortType.Title"/> ordering uses this rank rather than display text or a response position.
     /// </summary>
     [Column(Order = 4)]
     public required int SortIndex { get; init; }

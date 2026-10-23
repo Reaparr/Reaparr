@@ -88,6 +88,35 @@ public class GetMediaOverviewCommandUnitTests
         result.Errors.Count.ShouldBe(0);
     }
 
+    [Test]
+    [Arguments(PlexMediaType.Movie, "title:asc", true)]
+    [Arguments(PlexMediaType.Movie, "comparisonState:desc,title:asc", true)]
+    [Arguments(PlexMediaType.TvShow, "comparisonState:desc", true)]
+    [Arguments(PlexMediaType.MusicArtist, "comparisonState:asc", true)]
+    [Arguments(PlexMediaType.PhotoAlbum, "comparisonState:asc", false)]
+    [Arguments(PlexMediaType.OtherVideos, "comparisonState:asc", false)]
+    [Arguments(PlexMediaType.Movie, "unknown:asc", false)]
+    [Arguments(PlexMediaType.Movie, "id:asc", false)]
+    [Arguments(PlexMediaType.Movie, "quality:asc", false)]
+    [Arguments(PlexMediaType.Movie, "sortTitle:asc", false)]
+    [Arguments(PlexMediaType.Movie, "99:asc", false)]
+    public void ShouldValidateEnumSortFields_WhenValidatingRequest(PlexMediaType mediaType, string sort, bool expected)
+    {
+        // Arrange
+        var filter = CreateFilter(mediaType) with
+        {
+            Parameters = new FlexQueryParameters { Sort = sort },
+        };
+
+        // Act
+        var result = new GetMediaOverviewCommandValidator().Validate(new GetMediaOverviewCommand(filter));
+
+        // Assert
+        result.IsValid.ShouldBe(expected);
+        result.Errors.Select(x => x.PropertyName)
+            .ShouldBe(expected ? [] : new[] { "Filter.Parameters.Sort" });
+    }
+
     private static MediaQueryFilter CreateFilter(PlexMediaType mediaType) =>
         new()
         {
