@@ -5,6 +5,11 @@ namespace Reaparr.Data.UnitTests;
 
 public class GetMediaByTypeCommandHandlerQualityFiltersUnitTests : BaseCommandUnitTest<GetMediaByTypeCommand>
 {
+    public GetMediaByTypeCommandHandlerQualityFiltersUnitTests()
+    {
+        SetupMediaByTypeCommandDispatch();
+    }
+
     [Test]
     [Arguments(PlexMediaType.Movie, "MediaDataList")]
     [Arguments(PlexMediaType.TvShow, "Qualities")]

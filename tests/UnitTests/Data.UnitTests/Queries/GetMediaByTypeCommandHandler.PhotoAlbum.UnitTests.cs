@@ -5,6 +5,11 @@ namespace Reaparr.Data.UnitTests;
 
 public class GetMediaByTypeCommandHandlerPhotoAlbumUnitTests : BaseCommandUnitTest<GetMediaByTypeCommand>
 {
+    public GetMediaByTypeCommandHandlerPhotoAlbumUnitTests()
+    {
+        SetupMediaByTypeCommandDispatch();
+    }
+
     [Test]
     [Arguments("sortIndex:asc", 3, 4)]
     [Arguments("Title:desc", 3, 2)]

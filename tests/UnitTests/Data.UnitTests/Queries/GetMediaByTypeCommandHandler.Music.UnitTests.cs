@@ -5,6 +5,11 @@ namespace Reaparr.Data.UnitTests;
 
 public class GetMediaByTypeCommandHandlerMusicUnitTests : BaseCommandUnitTest<GetMediaByTypeCommand>
 {
+    public GetMediaByTypeCommandHandlerMusicUnitTests()
+    {
+        SetupMediaByTypeCommandDispatch();
+    }
+
     [Test]
     [Arguments(false, "Actors")]
     [Arguments(true, "Actors")]

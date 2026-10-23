@@ -1,3 +1,4 @@
+using FlexQuery.NET.Constants;
 using FlexQuery.NET.Models;
 using Reaparr.Application.Contracts;
 
@@ -10,6 +11,82 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<ICommand<Result>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
+        SetupMediaByTypeCommandDispatch();
+    }
+
+    [Test]
+    [Arguments(PlexMediaType.Movie, typeof(GetMovieMediaByTypeCommand))]
+    [Arguments(PlexMediaType.TvShow, typeof(GetTvShowMediaByTypeCommand))]
+    [Arguments(PlexMediaType.MusicArtist, typeof(GetMusicArtistMediaByTypeCommand))]
+    [Arguments(PlexMediaType.PhotoAlbum, typeof(GetPhotoAlbumMediaByTypeCommand))]
+    [Arguments(PlexMediaType.OtherVideos, typeof(GetOtherVideoMediaByTypeCommand))]
+    public async Task ShouldDispatchEachSupportedMediaTypeWithScopedFilterAndPreparedOptions(
+        PlexMediaType mediaType,
+        Type commandType
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            70601,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.PlexMusicLibraryCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.MovieCount = 2;
+                config.TvShowCount = 2;
+                config.MusicArtistCount = 2;
+                config.PhotoAlbumCount = 2;
+                config.OtherVideoCount = 2;
+            }
+        );
+        var expectedLibraryIds = await IDbContext
+            .PlexLibraries.OrderBy(library => library.Id)
+            .Select(library => library.Id)
+            .ToListAsync(CancellationToken);
+        var filter = new MediaQueryFilter
+        {
+            MediaType = mediaType,
+            PlexLibraryId = 0,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters { Page = 1, PageSize = 2, Sort = "title:asc" },
+        };
+
+        // Act
+        var result = await Sut.ExecuteAsync(new GetMediaByTypeCommand { Filter = filter }, CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.TotalCount.ShouldBe(2);
+        result.Value.Items.Count.ShouldBe(2);
+        result.Value.Items.ShouldAllBe(item => item.Type == mediaType);
+        var command = MediaByTypeDispatchedCommands.Single();
+        command.GetType().ShouldBe(commandType);
+        var (dispatchedFilter, options) = command switch
+        {
+            GetMovieMediaByTypeCommand movie => (movie.Filter, movie.Options),
+            GetTvShowMediaByTypeCommand tvShow => (tvShow.Filter, tvShow.Options),
+            GetMusicArtistMediaByTypeCommand music => (music.Filter, music.Options),
+            GetPhotoAlbumMediaByTypeCommand photo => (photo.Filter, photo.Options),
+            GetOtherVideoMediaByTypeCommand video => (video.Filter, video.Options),
+            _ => throw new InvalidOperationException($"Unexpected command type: {command.GetType()}"),
+        };
+        dispatchedFilter.MediaType.ShouldBe(mediaType);
+        dispatchedFilter.PlexLibraryId.ShouldBe(0);
+        options.Paging.PageSize.ShouldBe(2);
+        options.Filter.ShouldNotBeNull();
+        var scopeCondition = options.Filter!.Filters.Single();
+        scopeCondition.Field.ShouldBe(nameof(BasePlexMedia.PlexLibraryId));
+        scopeCondition.Operator.ShouldBe(FilterOperators.In);
+        scopeCondition.Value.ShouldNotBeNull();
+        scopeCondition.Value!.Split(',').Select(int.Parse).Order().ShouldBe(expectedLibraryIds);
+        options.Sort[0].Field.ShouldBe(nameof(BasePlexMedia.SearchTitle));
+        options.Sort[0].Descending.ShouldBeFalse();
     }
 
     [Test]
@@ -492,9 +569,68 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
         // Act
         var result = await Sut.ExecuteAsync(command, CancellationToken);
 
-        // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
+        MediaByTypeDispatchedCommands.Count.ShouldBe(1);
+        MediaByTypeDispatchedCommands.Single().ShouldBeOfType<GetMovieMediaByTypeCommand>();
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldPropagateProjectionCancellationFromDispatchedMovieHandler()
+    {
+        // Arrange
+        await SetupDatabase(
+            70040,
+            cfg =>
+            {
+                cfg.PlexServerCount = 1;
+                cfg.PlexMovieLibraryCount = 1;
+                cfg.MovieCount = 2;
+            }
+        );
+
+        var command = new GetMediaByTypeCommand
+        {
+            Filter = new MediaQueryFilter
+            {
+                MediaType = PlexMediaType.Movie,
+                PlexLibraryId = 0,
+                FilterOfflineMedia = false,
+                FilterOwnedMedia = false,
+                ComparisonState = PlexMediaComparisonState.Missing,
+                Parameters = new FlexQueryParameters
+                {
+                    Page = 1,
+                    PageSize = 1,
+                    Sort = "comparisonState:asc",
+                },
+            },
+        };
+        var cancelled = ResultExtensions.TaskIsCancelled("comparison projection");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<ApplyComparisonStateCommand>(projection =>
+                        projection.PlexLibraryId == null
+                        && projection.MediaType == PlexMediaType.Movie
+                        && projection.Items.Count == 2
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(cancelled)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(command, CancellationToken);
+
+        // Assert
+        result.IsCancelled.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Errors.Single().ShouldBeSameAs(cancelled.Errors.Single());
+        MediaByTypeDispatchedCommands.Count.ShouldBe(1);
+        MediaByTypeDispatchedCommands.Single().ShouldBeOfType<GetMovieMediaByTypeCommand>();
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -589,8 +725,10 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         result.Value.TotalCount.ShouldBe(0);
         result.Value.Items.ShouldBeEmpty();
+        MediaByTypeDispatchedCommands.ShouldBeEmpty();
     }
 
     [Test]
@@ -1063,8 +1201,10 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         result.Value.TotalCount.ShouldBe(0);
         result.Value.Items.ShouldBeEmpty();
+        MediaByTypeDispatchedCommands.ShouldBeEmpty();
     }
 
     [Test]
@@ -1104,8 +1244,12 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.TotalCount.ShouldBe(6);
+        result.Value.MediaCount.ShouldBe(6);
         result.Value.Items.ShouldNotBeEmpty();
         result.Value.Items.Select(x => x.SortIndex).ShouldBe(Enumerable.Range(1, result.Value.Items.Count));
+        MediaByTypeDispatchedCommands.Single().ShouldBeOfType<GetMovieMediaByTypeCommand>();
     }
 
     [Test]
@@ -1145,8 +1289,12 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.TotalCount.ShouldBe(6);
+        result.Value.MediaCount.ShouldBe(6);
         result.Value.Items.ShouldNotBeEmpty();
         result.Value.Items.Select(x => x.SortIndex).ShouldBe(Enumerable.Range(1, result.Value.Items.Count));
+        MediaByTypeDispatchedCommands.Single().ShouldBeOfType<GetTvShowMediaByTypeCommand>();
     }
 
     [Test]
@@ -1548,8 +1696,10 @@ public class GetMediaByTypeCommandHandlerUnitTests : BaseUnitTest<GetMediaByType
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         result.Value.TotalCount.ShouldBe(0);
         result.Value.Items.ShouldBeEmpty();
+        MediaByTypeDispatchedCommands.ShouldBeEmpty();
     }
 
     [Test]

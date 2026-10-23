@@ -5,6 +5,11 @@ namespace Reaparr.Data.UnitTests;
 
 public class GetMediaByTypeCommandHandlerOtherVideoUnitTests : BaseCommandUnitTest<GetMediaByTypeCommand>
 {
+    public GetMediaByTypeCommandHandlerOtherVideoUnitTests()
+    {
+        SetupMediaByTypeCommandDispatch();
+    }
+
     [Test]
     [Arguments(false, "Actors")]
     [Arguments(true, "Actors")]
