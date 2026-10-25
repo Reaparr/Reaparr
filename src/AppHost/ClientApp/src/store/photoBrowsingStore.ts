@@ -402,14 +402,12 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 		loadCurrent(force = false): Observable<void> {
 			if (!state.active || state.disabledLibrary) return of(undefined);
+			const currentIndex = force && state.dialog.open && state.current ? findOverviewIndex(state.current) : -1;
 			prepareForcedRead(force);
 			const initial = requestRangeInternal(0, PAGE_SIZE, force);
 			let rangeRequest = initial;
-			if (force && state.dialog.open && state.current) {
-				const currentIndex = findOverviewIndex(state.current);
-				if (currentIndex >= PAGE_SIZE) {
-					rangeRequest = forkJoin([initial, requestRangeInternal(currentIndex, currentIndex + 1, true)]).pipe(map(() => undefined));
-				}
+			if (currentIndex >= PAGE_SIZE) {
+				rangeRequest = forkJoin([initial, requestRangeInternal(currentIndex, currentIndex + 1, true)]).pipe(map(() => undefined));
 			}
 			const viewerRequest = force && state.dialog.open ? rangeRequest.pipe(switchMap(() => reloadViewerImages())) : rangeRequest;
 			return viewerRequest.pipe(finalize(() => imagePreloadChanges$.next()));
@@ -581,6 +579,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 				catchError((error) => {
 					if (isSelectionCurrent(generation, session, contextGenerationAtStart, context.key)) {
 						state.selectionError = true;
+						state.allVisibleSelected = state.allVisibleSelected && !selected;
 					}
 					Log.debug('Photo selection enumeration failed', error);
 					return of(undefined);
@@ -881,8 +880,15 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		cancelBrowseRequests();
 		invalidatePreloadedImages(state.libraryId > 0 && !state.searchQuery ? new Set([state.libraryId]) : null);
 		contextGeneration += 1;
-		// Keep the last published rows visible, but only newly loaded pages may enter the cache.
-		for (const surface of surfaces()) loadedPages[surface].clear();
+		// Keep the first published page visible, but never expose stale distant rows as loaded.
+		for (const surface of surfaces()) {
+			loadedPages[surface].clear();
+			for (const index of feedMaps[surface].keys()) {
+				if (index >= PAGE_SIZE) feedMaps[surface].delete(index);
+			}
+			syncPageState(surface);
+		}
+		compactCacheOrder();
 	}
 
 	function takeCachedContext(key: string): CachedBrowseContext | undefined {

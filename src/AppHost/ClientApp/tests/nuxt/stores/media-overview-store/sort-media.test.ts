@@ -54,13 +54,14 @@ describe('MediaOverviewStore.sortMedia()', () => {
 	}
 
 	const canonicalSortCases = [
-		{ field: SortType.Title, asc: 'sortIndex:asc', desc: 'sortIndex:desc' },
+		{ field: SortType.Title, asc: 'title:asc', desc: 'title:desc' },
 		{ field: SortType.Year, asc: 'year:asc', desc: 'year:desc' },
 		{ field: SortType.AddedAt, asc: 'addedAt:asc', desc: 'addedAt:desc' },
 		{ field: SortType.UpdatedAt, asc: 'updatedAt:asc', desc: 'updatedAt:desc' },
 		{ field: SortType.Duration, asc: 'duration:asc', desc: 'duration:desc' },
 		{ field: SortType.MediaSize, asc: 'mediaSize:asc', desc: 'mediaSize:desc' },
 		{ field: SortType.VideoQuality, asc: 'videoQuality:asc', desc: 'videoQuality:desc' },
+		{ field: SortType.AudioQuality, asc: 'audioQuality:asc', desc: 'audioQuality:desc' },
 		{ field: SortType.ComparisonState, asc: 'comparisonState:asc', desc: 'comparisonState:desc' },
 	] as const;
 
@@ -190,7 +191,7 @@ describe('MediaOverviewStore.sortMedia()', () => {
 		const dsl = serializeFlexSortDsl(createDefaultMediaOverviewSort());
 
 		// Assert
-		expect(dsl).toBe('sortIndex:asc');
+		expect(dsl).toBe('title:asc');
 	});
 
 	test('rejects unknown Flex sort fields', () => {
@@ -206,8 +207,8 @@ describe('MediaOverviewStore.sortMedia()', () => {
 	test('Should preserve field precedence and wire directions when building multi-field sorts', () => {
 		// Arrange
 		const sorts = [
-			{ field: 'mediaSize', direction: SortDirection.Desc },
-			{ field: 'sortIndex', direction: SortDirection.Asc },
+			{ field: SortType.MediaSize, direction: SortDirection.Desc },
+			{ field: SortType.Title, direction: SortDirection.Asc },
 			{ field: 'id' },
 		] as const;
 
@@ -215,6 +216,6 @@ describe('MediaOverviewStore.sortMedia()', () => {
 		const dsl = buildFlexSortDsl(sorts);
 
 		// Assert
-		expect(dsl).toBe('mediaSize:desc,sortIndex:asc,id:asc');
+		expect(dsl).toBe('mediaSize:desc,title:asc,id:asc');
 	});
 });

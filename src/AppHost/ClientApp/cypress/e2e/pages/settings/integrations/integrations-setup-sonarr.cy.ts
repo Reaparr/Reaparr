@@ -608,7 +608,7 @@ describe('Sonarr integrations', () => {
 			currentDetail = configuredDetail;
 			request.reply({ statusCode: 200, body: generateResultDTO(configuredDetail) });
 		}).as('setupSonarr');
-		cy.intercept('DELETE', IntegrationPaths.deleteSonarrIntegrationEndpoint(integrationId, { Force: true }), (request) => {
+		cy.intercept('DELETE', IntegrationPaths.deleteSonarrIntegrationEndpoint(integrationId, { force: true }), (request) => {
 			isDeleted = true;
 			request.reply({ delay: 1000, statusCode: 204 });
 		}).as('deleteSonarr');
@@ -779,7 +779,7 @@ describe('Sonarr integrations', () => {
 		cy.getCy('confirmation-dialog-cancel-button').should('be.disabled');
 		cy.wait('@deleteSonarr').then(({ request, response }) => {
 			expect(request.method).to.equal('DELETE');
-			expect(request.query).to.deep.include({ Force: 'true' });
+			expect(request.query).to.deep.include({ force: 'true' });
 			expect(response?.statusCode).to.equal(204);
 		});
 		cy.getCy('confirmation-dialog').should('not.exist');

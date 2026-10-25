@@ -20,7 +20,7 @@ export interface AppUpdateCheckDTO {
   currentVersion: string;
   isUpdateAvailable: boolean;
   newestVersion: string;
-  releaseNotes: ReleaseNoteDTO[];
+  releaseNotes: IReadOnlyListOfReleaseNoteDTO;
 }
 
 export interface AppUpdateDownloadProgressDTO {
@@ -120,15 +120,15 @@ export enum AudioQuality {
 }
 
 export interface BaseResultDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
 }
 
 export interface CheckAllConnectionStatusUpdateDTO {
-  plexServersWithConnectionIds: Record<string, number[]>;
+  plexServersWithConnectionIds: DictionaryOfInt32AndListOfInt32;
 }
 
 export interface ConfirmationSettingsDTO {
@@ -150,10 +150,11 @@ export interface CountResponseDTO {
 }
 
 export interface CreateDownloadTasksRequest {
+  /** @default "" */
   customDestinationFolderPath: string;
   /** @format int32 */
   destinationFolderPathId?: number | null;
-  downloadMedias: DownloadMediaDTO[];
+  downloadMedias: ListOfDownloadMediaDTO;
   integration?: IntegrationIdentity | null;
 }
 
@@ -172,10 +173,7 @@ export interface CreatePlexAccountEndpointRequest {
   isValidated: boolean;
   /** @minLength 5 */
   password: string;
-  /**
-   * @format int64
-   * @minLength 1
-   */
+  /** @format int64 */
   plexId: number;
   title: string;
   /** @minLength 5 */
@@ -264,12 +262,28 @@ export interface DesktopMessageDTO {
   value: string;
 }
 
-/** The various types of Desktop messages that can be sent */
+/** The type of the DesktopMessageDTO */
 export enum DesktopMessageType {
   None = "None",
   ExternalLink = "ExternalLink",
   DesktopReady = "DesktopReady",
 }
+
+export type DictionaryOfInt32AndListOfInt32 = Record<string, ListOfInt32>;
+
+export type DictionaryOfStringAndBoolean = Record<string, boolean>;
+
+export type DictionaryOfStringAndDictionaryOfStringAndNullableOfInt32 = Record<
+  string,
+  DictionaryOfStringAndNullableOfInt32
+>;
+
+export type DictionaryOfStringAndNullableOfInt32 = Record<
+  string,
+  number | null
+>;
+
+export type DictionaryOfStringAndObject = object;
 
 export interface DisplaySettingsDTO {
   allOverviewViewMode: PlexMediaType;
@@ -303,12 +317,12 @@ export interface DownloadManagerSettingsDTO {
 
 export interface DownloadMediaDTO {
   keepCompletedInDownloadFolder: boolean;
-  mediaIds: number[];
+  mediaIds: ListOfInt32;
   /** @format int32 */
   plexLibraryId: number;
   /** @format int32 */
   plexServerId: number;
-  qualities: PlexMediaQualityDTO[];
+  qualities: ListOfPlexMediaQualityDTO;
   selectionKind?: PhotoItemKind | null;
   type: PlexMediaType;
 }
@@ -320,11 +334,11 @@ export interface DownloadPatchDTO {
   dataTotal: number;
   /** @format int64 */
   downloadSpeed: number;
-  /** @format guid */
+  /** @format uuid */
   id: string;
-  /** @format guid */
+  /** @format uuid */
   parentId: string;
-  /** @format decimal */
+  /** @format double */
   percentage: number;
   status: DownloadStatus;
   /** @format int32 */
@@ -338,11 +352,11 @@ export interface DownloadPatchEntryMessagePackDTO {
   dataTotal: number;
   /** @format int64 */
   downloadSpeed: number;
-  /** @format guid */
+  /** @format uuid */
   id: string;
-  /** @format guid */
+  /** @format uuid */
   parentId: string;
-  /** @format decimal */
+  /** @format double */
   percentage: number;
   status: DownloadStatus;
   /** @format int32 */
@@ -350,25 +364,25 @@ export interface DownloadPatchEntryMessagePackDTO {
 }
 
 export interface DownloadPatchMessagePackDTO {
-  deletedIds: string[];
+  deletedIds: ListOfGuid;
   /** @format int64 */
   sequence: number;
   /** @format int32 */
   serverId: number;
-  upserts: DownloadPatchEntryMessagePackDTO[];
+  upserts: ListOfDownloadPatchEntryMessagePackDTO;
 }
 
 export interface DownloadPreviewContainerDTO {
-  expanded: Record<string, boolean>;
-  previews: DownloadPreviewDTO[];
+  expanded: DictionaryOfStringAndBoolean;
+  previews: ListOfDownloadPreviewDTO;
   /** @format int64 */
   totalSize: number;
 }
 
 export interface DownloadPreviewDTO {
-  children: DownloadPreviewDTO[];
+  children: ListOfDownloadPreviewDTO;
   key: string;
-  qualities: PlexMediaQualityDTO[];
+  qualities: ListOfPlexMediaQualityDTO;
   /** @format int64 */
   size: number;
   title: string;
@@ -379,22 +393,21 @@ export interface DownloadPreviewRequest {
   customDestinationFolderPath: string;
   /** @format int32 */
   destinationFolderPathId?: number | null;
-  /** @minLength 1 */
-  downloadMedias: DownloadMediaDTO[];
+  downloadMedias: ListOfDownloadMediaDTOOpDF26594E59F4;
 }
 
 export interface DownloadProgressDTO {
-  children: DownloadProgressDTO[];
+  children: ListOfDownloadProgressDTO;
   /** @format int64 */
   dataReceived: number;
   /** @format int64 */
   dataTotal: number;
   /** @format int64 */
   downloadSpeed: number;
-  /** @format guid */
+  /** @format uuid */
   id: string;
   mediaType: PlexMediaType;
-  /** @format decimal */
+  /** @format double */
   percentage: number;
   status: DownloadStatus;
   /** @format int32 */
@@ -403,17 +416,17 @@ export interface DownloadProgressDTO {
 }
 
 export interface DownloadProgressMessagePackDTO {
-  children: DownloadProgressMessagePackDTO[];
+  children: ListOfDownloadProgressMessagePackDTO;
   /** @format int64 */
   dataReceived: number;
   /** @format int64 */
   dataTotal: number;
   /** @format int64 */
   downloadSpeed: number;
-  /** @format guid */
+  /** @format uuid */
   id: string;
   mediaType: PlexMediaType;
-  /** @format decimal */
+  /** @format double */
   percentage: number;
   status: DownloadStatus;
   /** @format int32 */
@@ -422,7 +435,7 @@ export interface DownloadProgressMessagePackDTO {
 }
 
 export interface DownloadScheduleDTO {
-  days: Record<string, Record<string, number | null>>;
+  days: DictionaryOfStringAndDictionaryOfStringAndNullableOfInt32;
   enabled: boolean;
 }
 
@@ -478,7 +491,7 @@ export interface DownloadTaskCreationReportDTO {
 
 export interface DownloadTaskDTO {
   audioQuality: AudioQuality;
-  children: DownloadTaskDTO[];
+  children: ListOfDownloadTaskDTO;
   /** @format date-time */
   createdAt: string;
   /** @format int64 */
@@ -496,12 +509,12 @@ export interface DownloadTaskDTO {
   /** @format int64 */
   fileTransferSpeed: number;
   fullTitle: string;
-  /** @format guid */
+  /** @format uuid */
   id: string;
   mediaType: PlexMediaType;
-  /** @format guid */
+  /** @format uuid */
   parentId: string;
-  /** @format decimal */
+  /** @format double */
   percentage: number;
   /** @format int32 */
   plexLibraryId: number;
@@ -516,7 +529,7 @@ export interface DownloadTaskDTO {
 }
 
 export interface DownloadTaskKey {
-  /** @format guid */
+  /** @format uuid */
   id: string;
   isValid: boolean;
   /** @format int32 */
@@ -556,13 +569,12 @@ export enum DownloadTaskType {
 
 export interface ErrorDTO {
   message: string;
-  metadata: Record<string, any>;
-  reasons: ErrorDTO[];
+  metadata: DictionaryOfStringAndObject;
+  reasons: ListOfErrorDTO;
 }
 
 /** the dto used to send an error response to the client */
 export interface ErrorResponse {
-  /** the collection of errors for the current context */
   errors: Record<string, string[]>;
   /**
    * the message for the error response
@@ -579,8 +591,8 @@ export interface ErrorResponse {
 
 export interface FileSystemDTO {
   current?: FileSystemModelDTO | null;
-  directories: FileSystemModelDTO[];
-  files: FileSystemModelDTO[];
+  directories: ListOfFileSystemModelDTO;
+  files: ListOfFileSystemModelDTO;
   parent: string;
 }
 
@@ -646,15 +658,30 @@ export interface GeneratePlexTokenResponse {
 }
 
 export interface IError {
-  reasons: IError[];
+  message: string | null;
+  metadata: DictionaryOfStringAndObject;
+  reasons: ListOfIError;
 }
 
+export type IReadOnlyListOfErrorDTO = ErrorDTO[];
+
+export type IReadOnlyListOfIError = IError[];
+
+export type IReadOnlyListOfInt32 = number[];
+
+export type IReadOnlyListOfLibrarySyncProgressItemDTO =
+  LibrarySyncProgressItemDTO[];
+
+export type IReadOnlyListOfReleaseNoteDTO = ReleaseNoteDTO[];
+
+export type IReadOnlyListOfSuccessDTO = SuccessDTO[];
+
 export interface InspectPlexServerJobUpdateDTO {
-  plexServerIds: number[];
+  plexServerIds: ListOfInt32;
 }
 
 export interface IntegrationIdentity {
-  /** @format guid */
+  /** @format uuid */
   id: string;
   type: IntegrationType;
 }
@@ -667,7 +694,7 @@ export enum IntegrationProvisioningState {
 
 export interface IntegrationSetupProgressDTO {
   error?: string | null;
-  /** @format guid */
+  /** @format uuid */
   integrationId: string;
   isRunning: boolean;
   isSuccess: boolean;
@@ -691,7 +718,7 @@ export interface IntegrationSummary {
   externalDownloadClientId?: number | null;
   /** @format int32 */
   externalIndexerId?: number | null;
-  /** @format guid */
+  /** @format uuid */
   id: string;
   lastConnectionTestErrorMessage?: string | null;
   /** @format int32 */
@@ -749,7 +776,7 @@ export interface LanguageSettingsDTO {
 }
 
 export interface LibraryComparisonCompletedDTO {
-  affectedLibraryIds: number[];
+  affectedLibraryIds: IReadOnlyListOfInt32;
   /** @format date-time */
   completedAt: string;
   mediaType: PlexMediaType;
@@ -783,16 +810,16 @@ export enum LibrarySyncJobStatus {
 }
 
 export interface LibrarySyncProgressDTO {
-  errors: IError[];
+  errors: IReadOnlyListOfIError;
   isComplete: boolean;
-  items: LibrarySyncProgressItemDTO[];
-  /** @format decimal */
+  items: IReadOnlyListOfLibrarySyncProgressItemDTO;
+  /** @format double */
   percentage: number;
   /** @format int32 */
   plexLibraryId: number;
   /** @format int32 */
   received: number;
-  /** @format duration */
+  /** @pattern ^-?(\d+\.)?\d{2}:\d{2}:\d{2}(\.\d{1,7})?$ */
   timeRemaining: string;
   /** @format date-time */
   timeStamp: string;
@@ -803,15 +830,90 @@ export interface LibrarySyncProgressDTO {
 export interface LibrarySyncProgressItemDTO {
   isComplete: boolean;
   mediaType: PlexMediaType;
-  /** @format decimal */
+  /** @format double */
   percentage: number;
   /** @format int32 */
   received: number;
-  /** @format duration */
+  /** @pattern ^-?(\d+\.)?\d{2}:\d{2}:\d{2}(\.\d{1,7})?$ */
   timeRemaining: string;
   /** @format int32 */
   total: number;
 }
+
+export type ListOfDownloadMediaDTO = DownloadMediaDTO[];
+
+/** @minItems 1 */
+export type ListOfDownloadMediaDTOOpDF26594E59F4 = DownloadMediaDTO[];
+
+export type ListOfDownloadPatchEntryMessagePackDTO =
+  DownloadPatchEntryMessagePackDTO[];
+
+export type ListOfDownloadPreviewDTO = DownloadPreviewDTO[];
+
+export type ListOfDownloadProgressDTO = DownloadProgressDTO[];
+
+export type ListOfDownloadProgressMessagePackDTO =
+  DownloadProgressMessagePackDTO[];
+
+export type ListOfDownloadTaskDTO = DownloadTaskDTO[];
+
+export type ListOfErrorDTO = ErrorDTO[];
+
+export type ListOfFileSystemModelDTO = FileSystemModelDTO[];
+
+export type ListOfGuid = string[];
+
+export type ListOfIError = IError[];
+
+export type ListOfInt32 = number[];
+
+export type ListOfMediaNavigationIndexDTO = MediaNavigationIndexDTO[];
+
+export type ListOfPhotoAlbumBrowseDTO = PhotoAlbumBrowseDTO[];
+
+export type ListOfPhotoAlbumSummaryDTO = PhotoAlbumSummaryDTO[];
+
+export type ListOfPhotoAssetBrowseDTO = PhotoAssetBrowseDTO[];
+
+export type ListOfPhotoFolderBreadcrumbDTO = PhotoFolderBreadcrumbDTO[];
+
+export type ListOfPhotoFolderBrowseDTO = PhotoFolderBrowseDTO[];
+
+export type ListOfPlexCountryDTO = PlexCountryDTO[];
+
+export type ListOfPlexGenreDTO = PlexGenreDTO[];
+
+export type ListOfPlexLibraryAccessCurrentStateDTO =
+  PlexLibraryAccessCurrentStateDTO[];
+
+export type ListOfPlexLibraryAccessCurrentStateLibraryDTO =
+  PlexLibraryAccessCurrentStateLibraryDTO[];
+
+export type ListOfPlexLibraryAccessRapportDTO = PlexLibraryAccessRapportDTO[];
+
+export type ListOfPlexLibraryAccessTimelineEventDTO =
+  PlexLibraryAccessTimelineEventDTO[];
+
+export type ListOfPlexMediaComparisonDetailsRowDTO =
+  PlexMediaComparisonDetailsRowDTO[];
+
+export type ListOfPlexMediaDTO = PlexMediaDTO[];
+
+export type ListOfPlexMediaDataDTO = PlexMediaDataDTO[];
+
+export type ListOfPlexMediaQualityDTO = PlexMediaQualityDTO[];
+
+export type ListOfPlexMediaSlimDTO = PlexMediaSlimDTO[];
+
+export type ListOfPlexQualityDTO = PlexQualityDTO[];
+
+export type ListOfPlexRoleDTO = PlexRoleDTO[];
+
+export type ListOfPlexServerAccessRapportDTO = PlexServerAccessRapportDTO[];
+
+export type ListOfPlexServerSettingItemModule = PlexServerSettingItemModule[];
+
+export type ListOfString = string[];
 
 export interface LiveLogEventDTO {
   exception?: string | null;
@@ -852,7 +954,6 @@ export interface MediaQueryFilterDTO {
   having?: string | null;
   includeCount?: boolean | null;
   includes?: string | null;
-  /** @default "None" */
   mediaType: PlexMediaType;
   mode?: string | null;
   /** @format int32 */
@@ -886,7 +987,7 @@ export interface MoveDownloadFileJobUpdateDTO {
 }
 
 export interface NetworkSettingsDTO {
-  allowedProxyIps: string[];
+  allowedProxyIps: ListOfString;
   basePath: string;
   forwardedHostHeader: string;
   forwardedPathHeader: string;
@@ -937,7 +1038,7 @@ export interface PhotoAlbumBrowseDTO {
 }
 
 export interface PhotoAlbumPageDTO {
-  items: PhotoAlbumBrowseDTO[];
+  items: ListOfPhotoAlbumBrowseDTO;
   /** @format int32 */
   page: number;
   /** @format int32 */
@@ -966,7 +1067,7 @@ export interface PhotoAlbumSummaryDTO {
 }
 
 export interface PhotoAlbumSummaryPageDTO {
-  items: PhotoAlbumSummaryDTO[];
+  items: ListOfPhotoAlbumSummaryDTO;
   /** @format int32 */
   page: number;
   /** @format int32 */
@@ -1011,7 +1112,7 @@ export interface PhotoAssetInspectionDTO {
   albums: PhotoAlbumSummaryPageDTO;
   assetKind: PhotoAssetKind;
   audioCodec?: string | null;
-  breadcrumbs: PhotoFolderBreadcrumbDTO[];
+  breadcrumbs: ListOfPhotoFolderBreadcrumbDTO;
   container: string;
   /** @format int32 */
   duration?: number | null;
@@ -1052,7 +1153,7 @@ export enum PhotoAssetKind {
 }
 
 export interface PhotoAssetPageDTO {
-  items: PhotoAssetBrowseDTO[];
+  items: ListOfPhotoAssetBrowseDTO;
   /** @format int32 */
   page: number;
   /** @format int32 */
@@ -1091,13 +1192,13 @@ export interface PhotoFolderBrowseDTO {
 
 export interface PhotoFolderChildrenDTO {
   assets: PhotoAssetPageDTO;
-  breadcrumbs: PhotoFolderBreadcrumbDTO[];
+  breadcrumbs: ListOfPhotoFolderBreadcrumbDTO;
   folder: PhotoFolderBrowseDTO;
   folders: PhotoFolderPageDTO;
 }
 
 export interface PhotoFolderPageDTO {
-  items: PhotoFolderBrowseDTO[];
+  items: ListOfPhotoFolderBrowseDTO;
   /** @format int32 */
   page: number;
   /** @format int32 */
@@ -1107,8 +1208,8 @@ export interface PhotoFolderPageDTO {
 }
 
 export enum PhotoImageRepresentation {
-  Original = "Original",
-  Converted = "Converted",
+  Original = "original",
+  Converted = "converted",
 }
 
 export enum PhotoItemKind {
@@ -1140,8 +1241,8 @@ export interface PlexAccountDTO {
   password: string;
   /** @format int64 */
   plexId: number;
-  plexLibraryAccess: number[];
-  plexServerAccess: number[];
+  plexLibraryAccess: ListOfInt32;
+  plexServerAccess: ListOfInt32;
   title: string;
   username: string;
   uuid: string;
@@ -1170,7 +1271,7 @@ export interface PlexGenreDTO {
 }
 
 export interface PlexLibraryAccessCurrentStateDTO {
-  libraries: PlexLibraryAccessCurrentStateLibraryDTO[];
+  libraries: ListOfPlexLibraryAccessCurrentStateLibraryDTO;
   /** @format int32 */
   plexServerId?: number | null;
   plexServerName?: string | null;
@@ -1202,8 +1303,8 @@ export interface PlexLibraryAccessRapportDTO {
 }
 
 export interface PlexLibraryAccessTimelineDTO {
-  currentState: PlexLibraryAccessCurrentStateDTO[];
-  events: PlexLibraryAccessTimelineEventDTO[];
+  currentState: ListOfPlexLibraryAccessCurrentStateDTO;
+  events: ListOfPlexLibraryAccessTimelineEventDTO;
 }
 
 export interface PlexLibraryAccessTimelineEventDTO {
@@ -1220,7 +1321,7 @@ export interface PlexLibraryAccessTimelineEventDTO {
   /** @format int32 */
   plexServerId?: number | null;
   plexServerName?: string | null;
-  /** @format guid */
+  /** @format uuid */
   refreshRunId: string;
   state: PlexAccessState;
 }
@@ -1274,13 +1375,13 @@ export interface PlexLibraryDTO {
 export interface PlexMediaComparisonDetailsDTO {
   /** @format int32 */
   plexMediaId: number;
-  rows: PlexMediaComparisonDetailsRowDTO[];
+  rows: ListOfPlexMediaComparisonDetailsRowDTO;
   state: PlexMediaComparisonState;
   type: PlexMediaType;
 }
 
 export interface PlexMediaComparisonDetailsRowDTO {
-  children: PlexMediaComparisonDetailsRowDTO[];
+  children: ListOfPlexMediaComparisonDetailsRowDTO;
   ownedAudioQuality: AudioQuality;
   /** @format int32 */
   ownedPlexMediaDataId?: number | null;
@@ -1316,7 +1417,7 @@ export interface PlexMediaDTO {
   addedAt: string;
   /** @format int32 */
   childCount: number;
-  children: PlexMediaDTO[];
+  children: ListOfPlexMediaDTO;
   /** @format int32 */
   comparisonId: number;
   contentRating?: string | null;
@@ -1324,7 +1425,7 @@ export interface PlexMediaDTO {
   discNumber?: number | null;
   /** @format int32 */
   duration: number;
-  genres: PlexGenreDTO[];
+  genres: ListOfPlexGenreDTO;
   /** @format int32 */
   grandChildCount: number;
   hasArt: boolean;
@@ -1332,7 +1433,7 @@ export interface PlexMediaDTO {
   hasThumb: boolean;
   /** @format int32 */
   id: number;
-  mediaData: PlexMediaDataDTO[];
+  mediaData: ListOfPlexMediaDataDTO;
   /** @format int64 */
   mediaSize: number;
   /** @format date-time */
@@ -1347,7 +1448,7 @@ export interface PlexMediaDTO {
   plexLibraryId: number;
   /** @format int32 */
   plexServerId: number;
-  qualities: PlexMediaQualityDTO[];
+  qualities: ListOfPlexMediaQualityDTO;
   /** @format double */
   rating: number;
   recordLabel?: string | null;
@@ -1389,27 +1490,27 @@ export interface PlexMediaDataDTO {
 }
 
 export interface PlexMediaFilterMetadataDTO {
-  countries: number[];
-  genres: number[];
-  qualities: number[];
-  roles: number[];
+  countries: ListOfInt32;
+  genres: ListOfInt32;
+  qualities: ListOfInt32;
+  roles: ListOfInt32;
 }
 
 export interface PlexMediaMetadataDTO {
-  countries: PlexCountryDTO[];
+  countries: ListOfPlexCountryDTO;
   /** @format int32 */
   countryCount: number;
   /** @format int32 */
   genreCount: number;
-  genres: PlexGenreDTO[];
+  genres: ListOfPlexGenreDTO;
   /** @format int32 */
   mediaCount: number;
-  qualities: PlexQualityDTO[];
+  qualities: ListOfPlexQualityDTO;
   /** @format int32 */
   qualityCount: number;
   /** @format int32 */
   roleCount: number;
-  roles: PlexRoleDTO[];
+  roles: ListOfPlexRoleDTO;
 }
 
 export interface PlexMediaQualityDTO {
@@ -1448,7 +1549,7 @@ export interface PlexMediaSlimDTO {
   plexLibraryId: number;
   /** @format int32 */
   plexServerId: number;
-  qualities: PlexMediaQualityDTO[];
+  qualities: ListOfPlexMediaQualityDTO;
   searchTitle: string;
   /** @format int32 */
   sortIndex: number;
@@ -1461,25 +1562,25 @@ export interface PlexMediaSlimDTO {
 }
 
 export interface PlexMediaStatisticsDTO {
-  countries: number[];
+  countries: ListOfInt32;
   /** @format int32 */
   episodeCount: number;
-  genres: number[];
+  genres: ListOfInt32;
   /** @format int32 */
   mediaCount: number;
-  mediaList: PlexMediaSlimDTO[];
+  mediaList: ListOfPlexMediaSlimDTO;
   /** @format int64 */
   mediaSize: number;
   /** @format int32 */
   movieCount: number;
-  navigationIndexes: MediaNavigationIndexDTO[];
+  navigationIndexes: ListOfMediaNavigationIndexDTO;
   /** @format int32 */
   page: number;
   /** @format int32 */
   pageSize: number;
-  qualities: number[];
+  qualities: ListOfInt32;
   queryHash: string;
-  roles: number[];
+  roles: ListOfInt32;
   /** @format int32 */
   seasonCount: number;
   /** @format int32 */
@@ -1531,7 +1632,7 @@ export interface PlexRoleDTO {
 
 export interface PlexServerAccessRapportDTO {
   isServerOffline: boolean;
-  libraryAccess: PlexLibraryAccessRapportDTO[];
+  libraryAccess: ListOfPlexLibraryAccessRapportDTO;
   /** @format int32 */
   plexServerId: number;
   plexServerName: string;
@@ -1620,7 +1721,7 @@ export interface RadarrIntegrationDTO {
   category: string;
   /** @format int32 */
   downloadFolderId: number;
-  /** @format guid */
+  /** @format uuid */
   id: string;
   lastConnectionTestErrorMessage?: string | null;
   /** @format int32 */
@@ -1649,7 +1750,7 @@ export interface RefreshLibraryMediaEndpointRequest {
 }
 
 export interface RefreshPlexAccountAccessRapportDTO {
-  access: PlexServerAccessRapportDTO[];
+  access: ListOfPlexServerAccessRapportDTO;
   /** @format int32 */
   plexAccountId: number;
   plexAccountName: string;
@@ -1664,480 +1765,480 @@ export interface ReleaseNoteDTO {
 }
 
 export interface ResultDTOOfAppCredentialsDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: AppCredentialsDTO | null;
 }
 
 export interface ResultDTOOfAppUpdateCheckDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: AppUpdateCheckDTO | null;
 }
 
 export interface ResultDTOOfBoolean {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value: boolean;
 }
 
 export interface ResultDTOOfCountResponseDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: CountResponseDTO | null;
 }
 
 export interface ResultDTOOfDownloadPreviewContainerDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: DownloadPreviewContainerDTO | null;
 }
 
 export interface ResultDTOOfDownloadTaskCreationReportDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: DownloadTaskCreationReportDTO | null;
 }
 
 export interface ResultDTOOfDownloadTaskDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: DownloadTaskDTO | null;
 }
 
 export interface ResultDTOOfFileSystemDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: FileSystemDTO | null;
 }
 
 export interface ResultDTOOfFolderPathDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: FolderPathDTO | null;
 }
 
 export interface ResultDTOOfGeneratePlexTokenResponse {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: GeneratePlexTokenResponse | null;
 }
 
 export interface ResultDTOOfInt32 {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   /** @format int32 */
   value: number;
 }
 
 export interface ResultDTOOfLibrarySyncJobQueueDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: LibrarySyncJobQueueDTO | null;
 }
 
 export interface ResultDTOOfListOfDownloadTaskLogDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: DownloadTaskLogDTO[] | null;
 }
 
 export interface ResultDTOOfListOfFolderPathDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: FolderPathDTO[] | null;
 }
 
 export interface ResultDTOOfListOfIntegrationSummary {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: IntegrationSummary[] | null;
 }
 
 export interface ResultDTOOfListOfJobStatusUpdateDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: JobStatusUpdateDTO[] | null;
 }
 
 export interface ResultDTOOfListOfLibrarySyncJobQueueDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: LibrarySyncJobQueueDTO[] | null;
 }
 
 export interface ResultDTOOfListOfLiveLogEventDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: LiveLogEventDTO[] | null;
 }
 
 export interface ResultDTOOfListOfNotificationDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: NotificationDTO[] | null;
 }
 
 export interface ResultDTOOfListOfPlexAccountDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexAccountDTO[] | null;
 }
 
 export interface ResultDTOOfListOfPlexLibraryDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexLibraryDTO[] | null;
 }
 
 export interface ResultDTOOfListOfPlexServerConnectionDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexServerConnectionDTO[] | null;
 }
 
 export interface ResultDTOOfListOfPlexServerDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexServerDTO[] | null;
 }
 
 export interface ResultDTOOfListOfPlexServerStatusDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexServerStatusDTO[] | null;
 }
 
 export interface ResultDTOOfListOfRefreshPlexAccountAccessRapportDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: RefreshPlexAccountAccessRapportDTO[] | null;
 }
 
 export interface ResultDTOOfListOfServerDownloadProgressDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: ServerDownloadProgressDTO[] | null;
 }
 
 export interface ResultDTOOfListOfString {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: string[] | null;
 }
 
 export interface ResultDTOOfPhotoAlbumPageDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PhotoAlbumPageDTO | null;
 }
 
 export interface ResultDTOOfPhotoAssetInspectionDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PhotoAssetInspectionDTO | null;
 }
 
 export interface ResultDTOOfPhotoAssetPageDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PhotoAssetPageDTO | null;
 }
 
 export interface ResultDTOOfPhotoFolderChildrenDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PhotoFolderChildrenDTO | null;
 }
 
 export interface ResultDTOOfPhotoFolderPageDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PhotoFolderPageDTO | null;
 }
 
 export interface ResultDTOOfPlexAccountDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexAccountDTO | null;
 }
 
 export interface ResultDTOOfPlexLibraryAccessTimelineDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexLibraryAccessTimelineDTO | null;
 }
 
 export interface ResultDTOOfPlexLibraryDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexLibraryDTO | null;
 }
 
 export interface ResultDTOOfPlexMediaComparisonDetailsDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexMediaComparisonDetailsDTO | null;
 }
 
 export interface ResultDTOOfPlexMediaDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexMediaDTO | null;
 }
 
 export interface ResultDTOOfPlexMediaFilterMetadataDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexMediaFilterMetadataDTO | null;
 }
 
 export interface ResultDTOOfPlexMediaMetadataDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexMediaMetadataDTO | null;
 }
 
 export interface ResultDTOOfPlexMediaStatisticsDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexMediaStatisticsDTO | null;
 }
 
 export interface ResultDTOOfPlexServerConnectionDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexServerConnectionDTO | null;
 }
 
 export interface ResultDTOOfPlexServerDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexServerDTO | null;
 }
 
 export interface ResultDTOOfPlexServerStatusDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: PlexServerStatusDTO | null;
 }
 
 export interface ResultDTOOfRadarrIntegrationDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: RadarrIntegrationDTO | null;
 }
 
 export interface ResultDTOOfServerIdentityDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: ServerIdentityDTO | null;
 }
 
 export interface ResultDTOOfSettingsModelDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: SettingsModelDTO | null;
 }
 
 export interface ResultDTOOfSonarrIntegrationDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: SonarrIntegrationDTO | null;
 }
 
 export interface ResultDTOOfString {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: string | null;
 }
 
 export interface ResultDTOOfTestConnectionToRadarrEndpointResponse {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: TestConnectionToRadarrEndpointResponse | null;
 }
 
 export interface ResultDTOOfTestConnectionToSonarrEndpointResponse {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: TestConnectionToSonarrEndpointResponse | null;
 }
 
 export interface ResultDTOOfUserClaimsDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: UserClaimsDTO | null;
 }
 
 export interface ResultDTOOfValidatePlexCredentialsDTO {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: ValidatePlexCredentialsDTO | null;
 }
 
 export interface ResultDTOOfValidatePlexTokenEndpointResponse {
-  errors: ErrorDTO[];
+  errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
-  successes: SuccessDTO[];
+  successes: IReadOnlyListOfSuccessDTO;
   value?: ValidatePlexTokenEndpointResponse | null;
 }
 
@@ -2162,7 +2263,7 @@ export interface ServerConnectionCheckStatusProgressDTO {
 export interface ServerDownloadProgressDTO {
   /** @format int32 */
   downloadableTasksCount: number;
-  downloads: DownloadProgressDTO[];
+  downloads: ListOfDownloadProgressDTO;
   /** @format int32 */
   id: number;
 }
@@ -2170,7 +2271,7 @@ export interface ServerDownloadProgressDTO {
 export interface ServerDownloadProgressMessagePackDTO {
   /** @format int32 */
   downloadableTasksCount: number;
-  downloads: DownloadProgressMessagePackDTO[];
+  downloads: ListOfDownloadProgressMessagePackDTO;
   /** @format int32 */
   id: number;
 }
@@ -2182,7 +2283,7 @@ export interface ServerIdentityDTO {
 }
 
 export interface ServerSettingsDTO {
-  data: PlexServerSettingItemModule[];
+  data: ListOfPlexServerSettingItemModule;
 }
 
 export interface SetLibraryEnabledRequest {
@@ -2228,7 +2329,7 @@ export interface SonarrIntegrationDTO {
   category: string;
   /** @format int32 */
   downloadFolderId: number;
-  /** @format guid */
+  /** @format uuid */
   id: string;
   lastConnectionTestErrorMessage?: string | null;
   /** @format int32 */
@@ -2247,25 +2348,26 @@ export interface Sort {
 }
 
 export enum SortDirection {
-  Asc = "Asc",
-  Desc = "Desc",
-  NoSort = "NoSort",
+  Asc = "asc",
+  Desc = "desc",
+  NoSort = "no-sort",
 }
 
 export enum SortType {
-  Title = "Title",
-  Year = "Year",
-  AddedAt = "AddedAt",
-  UpdatedAt = "UpdatedAt",
-  Duration = "Duration",
-  MediaSize = "MediaSize",
-  VideoQuality = "VideoQuality",
-  ComparisonState = "ComparisonState",
+  Title = "title",
+  Year = "year",
+  AddedAt = "addedAt",
+  UpdatedAt = "updatedAt",
+  Duration = "duration",
+  MediaSize = "mediaSize",
+  VideoQuality = "videoQuality",
+  AudioQuality = "audioQuality",
+  ComparisonState = "comparisonState",
 }
 
 export interface SuccessDTO {
   message: string;
-  metadata: Record<string, any>;
+  metadata: DictionaryOfStringAndObject;
 }
 
 export interface SyncPlexServerMediaEndpointRequest {
@@ -2375,7 +2477,7 @@ export interface UpdateSonarrIntegrationRequest {
 }
 
 export interface UserClaimsDTO {
-  claims: string[];
+  claims: ListOfString;
   isLoggedIn: boolean;
   userName: string;
 }
@@ -2419,6 +2521,7 @@ export interface ValidatePlexTokenEndpointRequest {
   /**
    * @format int32
    * @min 0
+   * @exclusiveMin false
    */
   plexAccountId: number;
 }

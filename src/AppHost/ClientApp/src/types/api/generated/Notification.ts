@@ -27,22 +27,6 @@ export class Notification {
   /**
    * No description
    * * @tags Notification
-   * @name ClearAllNotificationsEndpoint
-   * @request DELETE:/api/Notification/clear
-   * @secure
-   */
-  clearAllNotificationsEndpoint = (params: RequestParams = {}) =>
-    axiosObservable<CountResponseDTO>({
-      url: `/api/Notification/clear`,
-      method: "DELETE",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<CountResponseDTO>);
-
-  /**
-   * No description
-   * * @tags Notification
    * @name GetAllNotificationsEndpoint
    * @request GET:/api/Notification
    * @secure
@@ -76,15 +60,31 @@ export class Notification {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<BaseResultDTO>);
+
+  /**
+   * No description
+   * * @tags Notification
+   * @name ClearAllNotificationsEndpoint
+   * @request DELETE:/api/Notification/clear
+   * @secure
+   */
+  clearAllNotificationsEndpoint = (params: RequestParams = {}) =>
+    axiosObservable<CountResponseDTO>({
+      url: `/api/Notification/clear`,
+      method: "DELETE",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<CountResponseDTO>);
 }
 
 export class NotificationPaths {
-  static clearAllNotificationsEndpoint = () =>
-    queryString.stringifyUrl({ url: `/api/Notification/clear` });
-
   static getAllNotificationsEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/Notification` });
 
   static setNotificationVisibilityEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/Notification` });
+
+  static clearAllNotificationsEndpoint = () =>
+    queryString.stringifyUrl({ url: `/api/Notification/clear` });
 }

@@ -28,22 +28,6 @@ export class Authentication {
   /**
    * No description
    * * @tags Authentication
-   * @name AuthenticationStatusEndpoint
-   * @request GET:/api/Authentication/status
-   * @secure
-   */
-  authenticationStatusEndpoint = (params: RequestParams = {}) =>
-    axiosObservable<UserClaimsDTO>({
-      url: `/api/Authentication/status`,
-      method: "GET",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<UserClaimsDTO>);
-
-  /**
-   * No description
-   * * @tags Authentication
    * @name GetAppCredentials
    * @summary Gets the username and random password from the main App user.
    * @request GET:/api/Authentication
@@ -86,7 +70,6 @@ export class Authentication {
    * @name AppUserLoginEndpoint
    * @summary User Login
    * @request POST:/api/Authentication/login
-   * @secure
    */
   appUserLoginEndpoint = (
     data: AppUserLoginEndpointRequest,
@@ -96,7 +79,6 @@ export class Authentication {
       url: `/api/Authentication/login`,
       method: "POST",
       data: data,
-      secure: true,
       type: ContentType.FormData,
       responseType: "json",
       ...params,
@@ -117,12 +99,23 @@ export class Authentication {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<String>);
+
+  /**
+   * No description
+   * * @tags Authentication
+   * @name AuthenticationStatusEndpoint
+   * @request GET:/api/Authentication/status
+   */
+  authenticationStatusEndpoint = (params: RequestParams = {}) =>
+    axiosObservable<UserClaimsDTO>({
+      url: `/api/Authentication/status`,
+      method: "GET",
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<UserClaimsDTO>);
 }
 
 export class AuthenticationPaths {
-  static authenticationStatusEndpoint = () =>
-    queryString.stringifyUrl({ url: `/api/Authentication/status` });
-
   static getAppCredentials = () =>
     queryString.stringifyUrl({ url: `/api/Authentication` });
 
@@ -134,4 +127,7 @@ export class AuthenticationPaths {
 
   static appUserLogOutEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/Authentication/logout` });
+
+  static authenticationStatusEndpoint = () =>
+    queryString.stringifyUrl({ url: `/api/Authentication/status` });
 }

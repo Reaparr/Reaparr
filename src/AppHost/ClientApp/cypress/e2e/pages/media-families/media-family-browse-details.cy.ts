@@ -3,7 +3,6 @@ import { generatePlexMedia, generateResultDTO, type MockConfig } from '@mock';
 import { PlexLibraryPaths, PlexMediaPaths, SettingsPaths } from '@api/api-paths';
 import { MediaMetaDataTypes } from '@enums';
 import { AudioQuality, PlexMediaType, SortType, VideoQuality, ViewMode, type PlexMediaDTO, type PlexMediaMetadataDTO, type PlexMediaStatisticsDTO, type SettingsModelDTO } from '@dto';
-import { getFlexSortField } from '@composables';
 
 const families = [
 	{ type: PlexMediaType.MusicArtist, path: 'music', name: 'Music', viewField: 'musicArtistViewMode' },
@@ -55,7 +54,7 @@ function createRoots(type: PlexMediaType, config: MockConfig, libraryId: number,
 }
 
 function setupFamily(family: (typeof families)[number]) {
-	cy.intercept('**/api/**', (request) => {
+	cy.intercept('http*://*/api/**', (request) => {
 		throw new Error(`Unmocked API request: ${request.method} ${request.url}`);
 	});
 	return cy.basePageSetup({
@@ -85,10 +84,11 @@ function setupFamily(family: (typeof families)[number]) {
 		cy.intercept('GET', '**/api/PlexMedia*', (request) => {
 			let rows = roots.filter((root) => Number(request.query.plexLibraryId ?? library.id) === library.id && String(request.query.mediaType ?? family.type) === root.type);
 			const query = String(request.query.q ?? '').toLowerCase();
-			const sort = String(request.query.sort ?? 'Title:Asc');
+			const sort = String(request.query.sort ?? `${SortType.Title}:asc`);
+			const [sortField, sortDirection] = sort.split(':');
 			if (
 				family.type !== PlexMediaType.OtherVideos
-				&& (request.query.qualityId || sort.toLowerCase().startsWith('videoquality:'))
+				&& (request.query.qualityId || sortField === SortType.VideoQuality)
 			) {
 				rows = [];
 			}
@@ -97,8 +97,8 @@ function setupFamily(family: (typeof families)[number]) {
 			if (request.query.qualityId) rows = rows.filter((root) => root.id === (Number(request.query.qualityId) === 1080 ? 100 : 200));
 			rows = rows.filter((root) => root.title.toLowerCase().includes(query));
 			rows.sort((left, right) => {
-				const comparison = sort.toLowerCase().startsWith('year:') ? left.year - right.year : left.title.localeCompare(right.title);
-				return sort.toLowerCase().endsWith(':desc') ? -comparison : comparison;
+				const comparison = sortField === SortType.Year ? left.year - right.year : left.title.localeCompare(right.title);
+				return sortDirection === 'desc' ? -comparison : comparison;
 			});
 			const mediaSize = rows.reduce((size, root) => size + root.mediaSize, 0);
 			const response: PlexMediaStatisticsDTO = {
@@ -198,7 +198,7 @@ for (const family of families) {
 			cy.get('.media-poster-card').should('have.length', 2).first().should('contain.text', 'Acoustic collection');
 			assertViewPersistence(family);
 			cy.getCy('media-overview-sort-btn').click();
-			cy.getCy(`sort-option-${getFlexSortField(SortType.Year)}-btn`).click();
+			cy.getCy(`sort-option-${SortType.Year}-btn`).click();
 			cy.get('.media-poster-card').first().should('contain.text', 'Synth collection');
 			cy.getCy('media-overview-filter-btn').filter(':visible').click();
 			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.ComparisonState}`).should(family.type === PlexMediaType.MusicArtist ? 'be.visible' : 'not.exist');
@@ -232,17 +232,17 @@ for (const family of families) {
 					assertTouchControl('music-artist-checkbox');
 					const album = root.children[0]!;
 					const albumPanelCy = `music-album-${album.id}`;
-					cy.getCy(albumPanelCy).find('.q-expansion-item__container > .q-item').first().click();
-					cy.getCy(albumPanelCy).find('[data-cy="media-q-table-mobile-card"], tbody tr').should('have.length', album.children.length);
+					cy.getCy(albumPanelCy).find('.q-expansion-item__toggle-icon').first().click();
+					cy.getCy(albumPanelCy).find('[data-cy="media-q-table-mobile-card"], tbody tr').should('have.length', album.children.length).first().should('be.visible');
 					for (const track of album.children)
 						cy.getCy(albumPanelCy).should('contain.text', track.title);
 					const track = album.children[0]!;
 					selectMediaTableRow(albumPanelCy, track.title);
 					cy.getCy('music-artist-checkbox').should('have.attr', 'aria-checked', 'mixed');
-					cy.getCy(albumPanelCy).find('.q-expansion-item__container > .q-item').first().click();
+					cy.getCy(albumPanelCy).find('.q-expansion-item__toggle-icon').first().click();
 					cy.getCy(albumPanelCy).find('[data-cy="media-q-table-mobile-card"], tbody tr').filter(`:contains("${track.title}")`).should('not.be.visible');
-					cy.getCy(albumPanelCy).find('.q-expansion-item__container > .q-item').first().click();
-					cy.getCy(albumPanelCy).find('[data-cy="media-q-table-mobile-card"], tbody tr').filter(`:contains("${track.title}")`).find('[role="checkbox"]').should('have.attr', 'aria-checked', 'true');
+					cy.getCy(albumPanelCy).find('.q-expansion-item__toggle-icon').first().click();
+					cy.getCy(albumPanelCy).find('[data-cy="media-q-table-mobile-card"], tbody tr').filter(`:contains("${track.title}")`).should('be.visible').find('[role="checkbox"]').should('have.attr', 'aria-checked', 'true');
 				} else {
 					scrollLastFileIntoViewport('[data-cy="other-video-media-list"] [data-cy="media-q-table-mobile-card"]:last-child');
 					cy.getCy('other-video-media-list').should('contain.text', 'multipart-original-part-18.mp4');

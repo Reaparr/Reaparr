@@ -244,10 +244,10 @@ export const useIntegrationStore = defineStore(StoreNames.IntegrationStore, () =
 			let request: Observable<unknown>;
 			switch (detail.type) {
 				case IntegrationType.Radarr:
-					request = integrationApi.deleteRadarrIntegrationEndpoint(detail.id, { Force: true });
+					request = integrationApi.deleteRadarrIntegrationEndpoint(detail.id, { force: true });
 					break;
 				case IntegrationType.Sonarr:
-					request = integrationApi.deleteSonarrIntegrationEndpoint(detail.id, { Force: true });
+					request = integrationApi.deleteSonarrIntegrationEndpoint(detail.id, { force: true });
 					break;
 				default:
 					throw new Error(`Unsupported integration type: ${String(detail.type)}`);

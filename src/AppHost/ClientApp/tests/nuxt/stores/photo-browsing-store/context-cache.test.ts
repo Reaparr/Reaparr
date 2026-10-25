@@ -119,7 +119,7 @@ describe('PhotoBrowsingStore - context cache', () => {
 	test('Should isolate identical asset IDs by library and sort while reusing each visited context', async () => {
 		// Arrange
 		const request = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockImplementation((query) =>
-			of(generateResultDTO({ ...assetsPage(query?.plexLibraryId ?? 7), items: [asset(query?.sort === 'sortIndex:desc' ? 2 : 1, query?.plexLibraryId ?? 7)] })));
+			of(generateResultDTO({ ...assetsPage(query?.plexLibraryId ?? 7), items: [asset(query?.sort === `${SortType.Title}:desc` ? 2 : 1, query?.plexLibraryId ?? 7)] })));
 		const first = route({ view: 'assets' });
 		const otherLibrary = route({ view: 'assets', libraryId: 8 });
 		const descending = route({ view: 'assets', sort: titleDescending });
@@ -347,6 +347,7 @@ describe('PhotoBrowsingStore - context cache', () => {
 		// Act
 		version = 1;
 		await subscribeSpyTo(store.loadCurrent(true)).onComplete();
+		expect(store.overviewItemAt(100)).toBeNull();
 		await activate(route({ libraryId: 8, view: 'assets' }));
 		await activate(context);
 		expect(store.overviewItemAt(100)).toBeNull();

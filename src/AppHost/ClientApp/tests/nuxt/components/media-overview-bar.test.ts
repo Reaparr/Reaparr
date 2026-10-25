@@ -48,16 +48,16 @@ describe('MediaOverviewBar - photo mode', () => {
 		await wrapper.get('[data-cy="view-mode-assets-btn"]').trigger('click');
 		await wrapper.get('[data-cy="media-overview-sort-btn"]').trigger('click');
 		await flushPromises();
-		await wrapper.get('[data-cy="sort-option-sortIndex-btn"]').trigger('click');
+		await wrapper.get(`[data-cy="sort-option-${SortType.Title}-btn"]`).trigger('click');
 
 		// Assert
 		expect(wrapper.emitted('photo-view')).toEqual([['assets']]);
 		expect(wrapper.emitted('photo-sort')).toEqual([[toggleMediaOverviewSort(defaultSort, SortType.Title)]]);
-		expect(wrapper.find('[data-cy="sort-option-year-btn"]').exists()).toBe(false);
-		expect(wrapper.find('[data-cy="sort-option-addedAt-btn"]').exists()).toBe(true);
-		expect(wrapper.find('[data-cy="sort-option-updatedAt-btn"]').exists()).toBe(true);
-		expect(wrapper.find('[data-cy="sort-option-duration-btn"]').exists()).toBe(true);
-		expect(wrapper.find('[data-cy="sort-option-mediaSize-btn"]').exists()).toBe(true);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.Year}-btn"]`).exists()).toBe(false);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.AddedAt}-btn"]`).exists()).toBe(true);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.UpdatedAt}-btn"]`).exists()).toBe(true);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.Duration}-btn"]`).exists()).toBe(true);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.MediaSize}-btn"]`).exists()).toBe(true);
 	});
 	test('clears a non-default photo sort through the shared sort menu', async () => {
 		// Arrange

@@ -4,7 +4,7 @@ import { of } from 'rxjs';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateFailedResultDTO, generatePlexLibrary, generateResultDTO, Seed } from '@mock';
 import { plexPhotoApi } from '@api';
-import { PhotoAssetKind, PhotoItemKind, PlexMediaType, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
+import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
 import { useLibraryStore, usePhotoBrowsingStore } from '@store';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
@@ -49,8 +49,8 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
 		await subscribeSpyTo(store.selectAll(true)).onComplete();
 
-		expect(request).toHaveBeenCalledWith({ page: 2, size: 100, sort: 'sortIndex:asc', plexLibraryId: 7 }, expect.any(Object));
-		expect(request).toHaveBeenCalledWith({ page: 3, size: 100, sort: 'sortIndex:asc', plexLibraryId: 7 }, expect.any(Object));
+		expect(request).toHaveBeenCalledWith({ page: 2, size: 100, sort: `${SortType.Title}:asc`, plexLibraryId: 7 }, expect.any(Object));
+		expect(request).toHaveBeenCalledWith({ page: 3, size: 100, sort: `${SortType.Title}:asc`, plexLibraryId: 7 }, expect.any(Object));
 		expect(store.selectedSelectors.map((selector) => selector.id)).toEqual([1, 2, 201]);
 		expect(store.allVisibleSelected).toBe(true);
 		expect(store.overviewItemAt(200)).toBeNull();
@@ -66,10 +66,12 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 			.mockReturnValueOnce(of(firstPage))
 			.mockReturnValueOnce(of(generateFailedResultDTO({ statusCode: 503 })));
 		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		store.allVisibleSelected = true;
 		await subscribeSpyTo(store.selectAll(true)).onComplete();
 
 		expect(store.selectedSelectors).toEqual([expect.objectContaining({ id: 900, kind: PhotoItemKind.Asset })]);
 		expect(store.selectionError).toBe(true);
+		expect(store.allVisibleSelected).toBe(false);
 	});
 
 	test('root select all includes configured folders and unmapped assets', async () => {

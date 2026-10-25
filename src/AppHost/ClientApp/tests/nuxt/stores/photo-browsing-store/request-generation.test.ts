@@ -4,7 +4,7 @@ import { Subject } from 'rxjs';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateResultDTO } from '@mock';
 import { plexPhotoApi } from '@api';
-import { PhotoAssetKind, PhotoItemKind, PlexMediaType, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PlexLibraryDTO } from '@dto';
+import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PlexLibraryDTO } from '@dto';
 import type { ResultDTO } from '@interfaces';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
@@ -63,8 +63,8 @@ describe('PhotoBrowsingStore - range and context cancellation', () => {
 		await first.onComplete();
 		await second.onComplete();
 
-		expect(request).toHaveBeenNthCalledWith(1, { q: 'old', page: 1, size: 100, sort: 'sortIndex:asc' }, expect.any(Object));
-		expect(request).toHaveBeenNthCalledWith(2, { q: 'new', page: 1, size: 100, sort: 'sortIndex:asc' }, expect.any(Object));
+		expect(request).toHaveBeenNthCalledWith(1, { q: 'old', page: 1, size: 100, sort: `${SortType.Title}:asc` }, expect.any(Object));
+		expect(request).toHaveBeenNthCalledWith(2, { q: 'new', page: 1, size: 100, sort: `${SortType.Title}:asc` }, expect.any(Object));
 		expect(store.search.items.map((item) => item.id)).toEqual([2]);
 	});
 

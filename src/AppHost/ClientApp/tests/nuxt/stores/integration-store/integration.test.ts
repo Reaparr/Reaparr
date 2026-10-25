@@ -791,7 +791,7 @@ describe('IntegrationStore', () => {
 		await subscribeSpyTo(store.delete()).onComplete();
 
 		// Assert
-		expect(deleteIntegration).toHaveBeenCalledWith('id', { Force: true });
+		expect(deleteIntegration).toHaveBeenCalledWith('id', { force: true });
 		expect(store.detail).toBeNull();
 		expect(store.isDeleting).toBe(false);
 	});

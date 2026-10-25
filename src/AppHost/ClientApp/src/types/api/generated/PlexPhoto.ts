@@ -28,34 +28,6 @@ export class PlexPhoto {
   /**
    * No description
    * * @tags Plexphoto
-   * @name GetPhotoAlbumMembersEndpoint
-   * @request GET:/api/PlexPhoto/libraries/{PlexLibraryId}/albums/{AlbumId}/assets
-   * @secure
-   */
-  getPhotoAlbumMembersEndpoint = (
-    plexLibraryId: number,
-    albumId: number,
-    query?: {
-      /** @format int32 */
-      page?: number | null;
-      /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<PhotoAssetPageDTO>({
-      url: `/api/PlexPhoto/libraries/${plexLibraryId}/albums/${albumId}/assets`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<PhotoAssetPageDTO>);
-
-  /**
-   * No description
-   * * @tags Plexphoto
    * @name GetPhotoAlbumsEndpoint
    * @request GET:/api/PlexPhoto/albums
    * @secure
@@ -80,59 +52,6 @@ export class PlexPhoto {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<PhotoAlbumPageDTO>);
-
-  /**
-   * No description
-   * * @tags Plexphoto
-   * @name GetPhotoAssetInspectionEndpoint
-   * @request GET:/api/PlexPhoto/libraries/{PlexLibraryId}/assets/{AssetId}
-   * @secure
-   */
-  getPhotoAssetInspectionEndpoint = (
-    plexLibraryId: number,
-    assetId: number,
-    query?: {
-      /** @format int32 */
-      membershipPage?: number | null;
-      /** @format int32 */
-      membershipSize?: number | null;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<PhotoAssetInspectionDTO>({
-      url: `/api/PlexPhoto/libraries/${plexLibraryId}/assets/${assetId}`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<PhotoAssetInspectionDTO>);
-
-  /**
-   * @description Streams the original photo part or a Plex-side browser-compatible conversion.
-   * * @tags Plexphoto
-   * @name GetPhotoAssetImageEndpoint
-   * @summary Deliver a photo image
-   * @request GET:/api/PlexPhoto/libraries/{PlexLibraryId}/assets/{AssetId}/image
-   * @secure
-   */
-  getPhotoAssetImageEndpoint = (
-    plexLibraryId: number,
-    assetId: number,
-    query: {
-      /** @example "Original" */
-      representation: PhotoImageRepresentation;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<Blob>({
-      url: `/api/PlexPhoto/libraries/${plexLibraryId}/assets/${assetId}/image`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "blob",
-      ...params,
-    }).pipe(apiCheckPipe<Blob>);
 
   /**
    * No description
@@ -166,8 +85,116 @@ export class PlexPhoto {
   /**
    * No description
    * * @tags Plexphoto
+   * @name SearchPhotoAssetsEndpoint
+   * @request GET:/api/PlexPhoto/assets/search
+   * @secure
+   */
+  searchPhotoAssetsEndpoint = (
+    query?: {
+      /** @format int32 */
+      page?: number | null;
+      q?: string | null;
+      /** @format int32 */
+      size?: number | null;
+      sort?: string | null;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<PhotoAssetPageDTO>({
+      url: `/api/PlexPhoto/assets/search`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<PhotoAssetPageDTO>);
+
+  /**
+   * No description
+   * * @tags Plexphoto
+   * @name GetPhotoAlbumMembersEndpoint
+   * @request GET:/api/PlexPhoto/libraries/{plexLibraryId}/albums/{albumId}/assets
+   * @secure
+   */
+  getPhotoAlbumMembersEndpoint = (
+    plexLibraryId: number,
+    albumId: number,
+    query?: {
+      /** @format int32 */
+      page?: number | null;
+      /** @format int32 */
+      size?: number | null;
+      sort?: string | null;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<PhotoAssetPageDTO>({
+      url: `/api/PlexPhoto/libraries/${plexLibraryId}/albums/${albumId}/assets`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<PhotoAssetPageDTO>);
+
+  /**
+   * No description
+   * * @tags Plexphoto
+   * @name GetPhotoAssetInspectionEndpoint
+   * @request GET:/api/PlexPhoto/libraries/{plexLibraryId}/assets/{assetId}
+   * @secure
+   */
+  getPhotoAssetInspectionEndpoint = (
+    plexLibraryId: number,
+    assetId: number,
+    query?: {
+      /** @format int32 */
+      membershipPage?: number | null;
+      /** @format int32 */
+      membershipSize?: number | null;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<PhotoAssetInspectionDTO>({
+      url: `/api/PlexPhoto/libraries/${plexLibraryId}/assets/${assetId}`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<PhotoAssetInspectionDTO>);
+
+  /**
+   * @description Streams the original photo part or a Plex-side browser-compatible conversion.
+   * * @tags Plexphoto
+   * @name GetPhotoAssetImageEndpoint
+   * @summary Deliver a photo image
+   * @request GET:/api/PlexPhoto/libraries/{plexLibraryId}/assets/{assetId}/image
+   * @secure
+   */
+  getPhotoAssetImageEndpoint = (
+    plexLibraryId: number,
+    assetId: number,
+    query: {
+      /** @example "original" */
+      representation: PhotoImageRepresentation;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<Blob>({
+      url: `/api/PlexPhoto/libraries/${plexLibraryId}/assets/${assetId}/image`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "blob",
+      ...params,
+    }).pipe(apiCheckPipe<Blob>);
+
+  /**
+   * No description
+   * * @tags Plexphoto
    * @name GetPhotoFolderChildrenEndpoint
-   * @request GET:/api/PlexPhoto/libraries/{PlexLibraryId}/folders/{FolderId}/children
+   * @request GET:/api/PlexPhoto/libraries/{plexLibraryId}/folders/{folderId}/children
    * @secure
    */
   getPhotoFolderChildrenEndpoint = (
@@ -199,7 +226,7 @@ export class PlexPhoto {
    * No description
    * * @tags Plexphoto
    * @name GetPhotoSourceRootsEndpoint
-   * @request GET:/api/PlexPhoto/libraries/{PlexLibraryId}/roots
+   * @request GET:/api/PlexPhoto/libraries/{plexLibraryId}/roots
    * @secure
    */
   getPhotoSourceRootsEndpoint = (
@@ -221,36 +248,40 @@ export class PlexPhoto {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<PhotoFolderPageDTO>);
-
-  /**
-   * No description
-   * * @tags Plexphoto
-   * @name SearchPhotoAssetsEndpoint
-   * @request GET:/api/PlexPhoto/assets/search
-   * @secure
-   */
-  searchPhotoAssetsEndpoint = (
-    query?: {
-      /** @format int32 */
-      page?: number | null;
-      q?: string | null;
-      /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<PhotoAssetPageDTO>({
-      url: `/api/PlexPhoto/assets/search`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<PhotoAssetPageDTO>);
 }
 
 export class PlexPhotoPaths {
+  static getPhotoAlbumsEndpoint = (query?: {
+    /** @format int32 */
+    page?: number | null;
+    /** @format int32 */
+    plexLibraryId?: number | null;
+    /** @format int32 */
+    size?: number | null;
+    sort?: string | null;
+  }) => queryString.stringifyUrl({ url: `/api/PlexPhoto/albums`, query });
+
+  static getPhotoAssetsEndpoint = (query?: {
+    /** @format int32 */
+    page?: number | null;
+    /** @format int32 */
+    plexLibraryId?: number | null;
+    /** @format int32 */
+    size?: number | null;
+    sort?: string | null;
+    unmappedOnly?: boolean | null;
+  }) => queryString.stringifyUrl({ url: `/api/PlexPhoto/assets`, query });
+
+  static searchPhotoAssetsEndpoint = (query?: {
+    /** @format int32 */
+    page?: number | null;
+    q?: string | null;
+    /** @format int32 */
+    size?: number | null;
+    sort?: string | null;
+  }) =>
+    queryString.stringifyUrl({ url: `/api/PlexPhoto/assets/search`, query });
+
   static getPhotoAlbumMembersEndpoint = (
     plexLibraryId: number,
     albumId: number,
@@ -266,16 +297,6 @@ export class PlexPhotoPaths {
       url: `/api/PlexPhoto/libraries/${plexLibraryId}/albums/${albumId}/assets`,
       query,
     });
-
-  static getPhotoAlbumsEndpoint = (query?: {
-    /** @format int32 */
-    page?: number | null;
-    /** @format int32 */
-    plexLibraryId?: number | null;
-    /** @format int32 */
-    size?: number | null;
-    sort?: string | null;
-  }) => queryString.stringifyUrl({ url: `/api/PlexPhoto/albums`, query });
 
   static getPhotoAssetInspectionEndpoint = (
     plexLibraryId: number,
@@ -296,7 +317,7 @@ export class PlexPhotoPaths {
     plexLibraryId: number,
     assetId: number,
     query: {
-      /** @example "Original" */
+      /** @example "original" */
       representation: PhotoImageRepresentation;
     },
   ) =>
@@ -304,17 +325,6 @@ export class PlexPhotoPaths {
       url: `/api/PlexPhoto/libraries/${plexLibraryId}/assets/${assetId}/image`,
       query,
     });
-
-  static getPhotoAssetsEndpoint = (query?: {
-    /** @format int32 */
-    page?: number | null;
-    /** @format int32 */
-    plexLibraryId?: number | null;
-    /** @format int32 */
-    size?: number | null;
-    sort?: string | null;
-    unmappedOnly?: boolean | null;
-  }) => queryString.stringifyUrl({ url: `/api/PlexPhoto/assets`, query });
 
   static getPhotoFolderChildrenEndpoint = (
     plexLibraryId: number,
@@ -350,14 +360,4 @@ export class PlexPhotoPaths {
       url: `/api/PlexPhoto/libraries/${plexLibraryId}/roots`,
       query,
     });
-
-  static searchPhotoAssetsEndpoint = (query?: {
-    /** @format int32 */
-    page?: number | null;
-    q?: string | null;
-    /** @format int32 */
-    size?: number | null;
-    sort?: string | null;
-  }) =>
-    queryString.stringifyUrl({ url: `/api/PlexPhoto/assets/search`, query });
 }

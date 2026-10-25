@@ -110,7 +110,7 @@
 							<q-item
 								v-for="option in sortOptions"
 								:key="option.field"
-								:data-cy="`sort-option-${getFlexSortField(option.field)}-btn`"
+								:data-cy="`sort-option-${option.field}-btn`"
 								clickable
 								style="min-width: 200px"
 								@click="changeSort(option.field)">
@@ -266,7 +266,7 @@
 										v-for="option in sortOptions"
 										:key="option.field"
 										v-close-popup
-										:data-cy="`sort-option-${getFlexSortField(option.field)}-btn`"
+										:data-cy="`sort-option-${option.field}-btn`"
 										clickable
 										@click="changeSort(option.field)">
 										<q-item-section avatar>
@@ -355,7 +355,7 @@ import type { PlexMediaDTO } from '@dto';
 import { PlexMediaType, SortDirection, SortType, ViewMode } from '@dto';
 import type { IMediaOverviewBarActions, ISortOption } from '@interfaces';
 import type { IMediaOverviewSort } from '@composables/event-bus';
-import { MEDIA_OVERVIEW_SORT_FIELDS, createDefaultMediaOverviewSort, getFlexSortField, toggleMediaOverviewSort } from '@composables';
+import { MEDIA_OVERVIEW_SORT_FIELDS, createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
 import { useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
 import { useLibraryStore, useMediaOverviewStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
 import type { PhotoBrowseView } from '@/store/photoBrowsingStore';

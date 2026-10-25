@@ -43,7 +43,7 @@ export class Settings {
    * @secure
    */
   updateUserSettingsEndpoint = (
-    data: SettingsModelDTO,
+    data: SettingsModelDTO | null,
     params: RequestParams = {},
   ) =>
     axiosObservable<SettingsModelDTO>({

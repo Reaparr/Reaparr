@@ -1,6 +1,6 @@
 import type { Interception } from 'cypress/types/net-stubbing';
 import { headers, route } from '@fixtures';
-import { JobStatus, JobTypes, LibrarySyncJobStatus, PhotoAssetKind, PhotoItemKind, PlexMediaType, type LibrarySyncJobQueueDTO, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO } from '@dto';
+import { JobStatus, JobTypes, LibrarySyncJobStatus, PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type LibrarySyncJobQueueDTO, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO } from '@dto';
 import { PlexLibraryPaths } from '@api/api-paths';
 import { generateLibrarySyncJobQueue } from '@factories';
 import { generateResultDTO } from '@mock';
@@ -45,7 +45,24 @@ function setupPhotoApi(assets: PhotoAssetBrowseDTO[] = [asset]) {
 	const pageReply = (items: PhotoAssetBrowseDTO[], request: { url: string }) => {
 		const query = new URL(request.url).searchParams;
 		const page = Number(query.get('page') ?? 1);
-		const sorted = query.get('sort')?.endsWith(':desc') ? [...items].reverse() : items;
+		const sort = query.get('sort') ?? `${SortType.Title}:asc`;
+		const [sortField, sortDirection] = sort.split(':');
+		const sorted = [...items].sort((left, right) => {
+			let comparison: number;
+			switch (sortField) {
+				case SortType.AddedAt:
+					comparison = left.id - right.id;
+					break;
+				case SortType.MediaSize:
+					comparison = left.size - right.size;
+					break;
+				case SortType.Title:
+				default:
+					comparison = left.title.localeCompare(right.title);
+					break;
+			}
+			return sortDirection === 'desc' ? -comparison : comparison;
+		});
 		return generateResultDTO({
 			items: sorted.slice((page - 1) * 100, page * 100), page, pageSize: 100,
 			totalCount: items.length, totalBytes: items.reduce((total, item) => total + item.size, 0),
@@ -168,9 +185,9 @@ describe('Photos browsing', () => {
 	it('returns to the originating aggregate state and searches globally from an album', () => {
 		setupPage();
 		setupPhotoApi();
-		cy.visit(route('/photos?sort=sortIndex:desc'));
+		cy.visit(route(`/photos?sort=${SortType.Title}:desc`));
 		cy.wait('@photoAlbums').its('request.url').should((url) => {
-			expect(new URL(url).searchParams.get('sort')).to.equal('sortIndex:desc');
+			expect(new URL(url).searchParams.get('sort')).to.equal(`${SortType.Title}:desc`);
 		});
 		cy.getCy('media-overview-bar-header').click();
 		cy.getCy('media-overview-type-selector').filter(':visible').should('be.visible');
@@ -182,7 +199,7 @@ describe('Photos browsing', () => {
 		cy.getCy('photo-overview-list').should('contain.text', 'Beach photo');
 		cy.getCy('photo-album-back').click();
 		cy.location('pathname').should('eq', '/photos');
-		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal('sortIndex:desc'));
+		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal(`${SortType.Title}:desc`));
 		cy.getCy('photo-album-41-301').click();
 		cy.location('pathname').should('eq', `/photos/${libraryId}/details/${albumId}`);
 		cy.getCy('photo-overview-list').should('contain.text', 'Beach photo');
@@ -230,18 +247,18 @@ describe('Photos browsing', () => {
 		cy.wait('@photoAssets');
 
 		cy.getCy('media-overview-sort-btn').click();
-		cy.getCy('sort-option-addedAt-btn').click();
+		cy.getCy(`sort-option-${SortType.AddedAt}-btn`).click();
 		cy.wait('@photoAssets').its('request.url').should((url) => {
-			expect(new URL(url).searchParams.get('sort')).to.equal('addedAt:asc');
+			expect(new URL(url).searchParams.get('sort')).to.equal(`${SortType.AddedAt}:asc`);
 		});
-		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal('addedAt:asc'));
+		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal(`${SortType.AddedAt}:asc`));
 
 		cy.getCy('media-overview-sort-btn').click();
-		cy.getCy('sort-option-mediaSize-btn').click();
+		cy.getCy(`sort-option-${SortType.MediaSize}-btn`).click();
 		cy.wait('@photoAssets').its('request.url').should((url) => {
-			expect(new URL(url).searchParams.get('sort')).to.equal('mediaSize:asc');
+			expect(new URL(url).searchParams.get('sort')).to.equal(`${SortType.MediaSize}:asc`);
 		});
-		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal('mediaSize:asc'));
+		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal(`${SortType.MediaSize}:asc`));
 	});
 
 
@@ -333,7 +350,7 @@ describe('Photos browsing', () => {
 
 	it('keeps distant poster and table scroll positions instead of feeding observations back as scroll commands', () => {
 		setupPage();
-		const assets = Array.from({ length: 301 }, (_, index) => ({ ...asset, id: assetId + index, title: `Photo ${index + 1}` }));
+		const assets = Array.from({ length: 301 }, (_, index) => ({ ...asset, id: assetId + index, title: `Photo ${String(index + 1).padStart(3, '0')}` }));
 		setupPhotoApi(assets);
 		cy.visit(route(`/photos/${libraryId}?view=assets`));
 		cy.wait('@photoAssets');
@@ -370,7 +387,7 @@ describe('Photos browsing', () => {
 
 	it('wraps an image-first carousel across uncached ranges and returns focus to the last viewed image', () => {
 		setupPage();
-		const assets = Array.from({ length: 101 }, (_, index) => ({ ...asset, id: assetId + index, title: `Photo ${index + 1}` }));
+		const assets = Array.from({ length: 101 }, (_, index) => ({ ...asset, id: assetId + index, title: `Photo ${String(index + 1).padStart(3, '0')}` }));
 		setupPhotoApi(assets);
 		cy.intercept('POST', '**/api/Download/preview', {
 			statusCode: 200, body: generateResultDTO({ previews: [], totalSize: 0, expanded: {} }), ...headers,
@@ -379,7 +396,7 @@ describe('Photos browsing', () => {
 		cy.wait('@photoAssets');
 		cy.getCy('photo-asset-41-501').focus().type('{enter}');
 		cy.wait('@photoImage');
-		cy.getCy('photo-viewer-image').should('have.attr', 'alt', 'Photo 1').and('have.prop', 'naturalWidth', 6000);
+		cy.getCy('photo-viewer-image').should('have.attr', 'alt', 'Photo 001').and('have.prop', 'naturalWidth', 6000);
 		cy.getCy('photo-asset-dialog').should('not.contain.text', 'A summer photo');
 		cy.get<Interception[]>('@photoInspection.all').should('have.length', 0);
 		cy.getCy('photo-viewer-image').then(($image) => {

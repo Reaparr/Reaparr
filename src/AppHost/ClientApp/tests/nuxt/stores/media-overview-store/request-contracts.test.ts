@@ -166,16 +166,16 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		await result.onComplete();
 
 		// Assert
-		expect(lastMediaRequest().params.sort).toBe('year:desc');
+		expect(lastMediaRequest().params.sort).toBe(`${SortType.Year}:desc`);
 	});
 
 	test.each([
-		{ field: SortType.VideoQuality, token: 'videoQuality' },
-		{ field: SortType.ComparisonState, token: 'comparisonState' },
-	])('Should preserve $token sorting when restored from the route and toggled', async ({ field, token }) => {
+		{ field: SortType.VideoQuality, token: SortType.VideoQuality, routeToken: 'videoQuality' },
+		{ field: SortType.ComparisonState, token: SortType.ComparisonState, routeToken: 'comparisonState' },
+	])('Should preserve $token sorting when restored from the route and toggled', async ({ field, token, routeToken }) => {
 		// Arrange
 		const sortQuery = useRouteQuery<string>('sort', '');
-		set(sortQuery, `${token}:desc`);
+		set(sortQuery, `${routeToken}:desc`);
 		const store = useMediaOverviewStore();
 		store.applyRouteQueryState();
 		const restoredSort = { ...store.sortedState };
@@ -190,6 +190,48 @@ describe('MediaOverviewStore - Request Contracts', () => {
 		expect(store.sortedState).toEqual({ field, sort: SortDirection.Asc });
 		expect(lastMediaRequest().params.sort).toBe(`${token}:asc`);
 		expect(get(sortQuery)).toBe(`${token}:asc`);
+	});
+
+	test.each([
+		{ mediaType: PlexMediaType.PhotoAlbum, sortField: SortType.ComparisonState },
+		{ mediaType: PlexMediaType.OtherVideos, sortField: SortType.ComparisonState },
+		{ mediaType: PlexMediaType.Movie, sortField: SortType.AudioQuality },
+	])(
+		'Should fall back to title sorting when an unsupported $sortField route is restored for $mediaType',
+		async ({ mediaType, sortField }) => {
+			// Arrange
+			const sortQuery = useRouteQuery<string>('sort', '');
+			set(sortQuery, `${sortField}:desc`);
+			useSettingsStore().displaySettings.allOverviewViewMode = mediaType;
+			const store = useMediaOverviewStore();
+			store.applyRouteQueryState();
+			mockMediaResponse();
+
+			// Act
+			const result = subscribeSpyTo(store.requestMediaPage(1));
+			await result.onComplete();
+
+			// Assert
+			expect(store.getActiveSort).toEqual({ field: SortType.Title, sort: SortDirection.Asc });
+			expect(lastMediaRequest().params.sort).toBe(`${SortType.Title}:asc`);
+			expect(get(sortQuery)).toBe('');
+		},
+	);
+
+	test('Should clear unsupported comparison sorting when switching the all-media family to Photos', () => {
+		// Arrange
+		const sortQuery = useRouteQuery<string>('sort', '');
+		useSettingsStore().displaySettings.allOverviewViewMode = PlexMediaType.Movie;
+		const store = useMediaOverviewStore();
+		store.sortedState = { field: SortType.ComparisonState, sort: SortDirection.Desc };
+		set(sortQuery, `${SortType.ComparisonState}:desc`);
+
+		// Act
+		store.changeAllMediaOverviewType(PlexMediaType.PhotoAlbum);
+
+		// Assert
+		expect(store.getActiveSort).toEqual({ field: SortType.Title, sort: SortDirection.Asc });
+		expect(get(sortQuery)).toBe('');
 	});
 
 	test('Should preserve load failure state when media response fails', async () => {
