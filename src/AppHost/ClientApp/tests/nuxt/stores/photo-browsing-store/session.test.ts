@@ -7,6 +7,7 @@ import { plexPhotoApi } from '@api';
 import { PhotoItemKind, PlexMediaType } from '@dto';
 import type { PhotoAlbumBrowseDTO, PhotoAlbumPageDTO, PlexLibraryDTO, RefreshDataType } from '@dto';
 import { useLibraryStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { ResultDTO } from '@interfaces';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
@@ -18,6 +19,7 @@ describe('PhotoBrowsingStore - photo session lifecycle', () => {
 		getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		mockPhotoMetadata();
 	});
 
 const route: IPhotoBrowseActivation = { mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort() };

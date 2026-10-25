@@ -5,6 +5,7 @@ import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateResultDTO } from '@mock';
 import { plexPhotoApi } from '@api';
 import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PlexLibraryDTO } from '@dto';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { ResultDTO } from '@interfaces';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
@@ -16,6 +17,7 @@ describe('PhotoBrowsingStore - range and context cancellation', () => {
 		getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		mockPhotoMetadata();
 	});
 
 	const route = (partial: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({

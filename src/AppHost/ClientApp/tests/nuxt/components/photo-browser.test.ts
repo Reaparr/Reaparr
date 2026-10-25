@@ -6,6 +6,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { useGlobalStore, useLibraryStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
+import { mockPhotoMetadata } from '../helpers/photo-metadata';
 import { LibrarySyncJobStatus, PlexMediaType, SortDirection, SortType, ViewMode } from '@dto';
 import { generateLibrarySyncJobQueue, generatePlexLibrary, generateResultDTO, Seed } from '@mock';
 import PhotoBrowser from '@/components/Photos/PhotoBrowser.vue';
@@ -31,6 +32,7 @@ describe('PhotoBrowser - unified route context', () => {
 		mock = getAxiosMock();
 		pinia = createPinia();
 		setActivePinia(pinia);
+		mockPhotoMetadata();
 		navigation.route = reactive({ path: '/photos', fullPath: '/photos', query: {} as Record<string, string>, params: {} });
 		navigation.push.mockReset().mockResolvedValue(undefined);
 		navigation.replace.mockReset().mockResolvedValue(undefined);
@@ -132,7 +134,7 @@ describe('PhotoBrowser - unified route context', () => {
 		expect(usePhotoBrowsingStore().sort).toEqual({ field: SortType.MediaSize, sort: SortDirection.Asc });
 	});
 
-	test.each(['', `${SortType.Title}:ASC`, ` ${SortType.Title}:asc`, `${SortType.Title}:asc `, `${SortType.Year}:asc`, `${SortType.Title}:no-sort`, 'sortIndex:asc'])('Should reject invalid photo sort route value %s', async (sort) => {
+	test.each(['', `${SortType.Title}:ASC`, ` ${SortType.Title}:asc`, `${SortType.Title}:asc `, `${SortType.Title}:no-sort`, 'sortIndex:asc'])('Should reject malformed photo sort route value %s', async (sort) => {
 		// Arrange
 		navigation.route.fullPath = `/photos?sort=${encodeURIComponent(sort)}`;
 		navigation.route.query = { sort };
@@ -143,6 +145,28 @@ describe('PhotoBrowser - unified route context', () => {
 		// Assert
 		expect(wrapper.find('[data-cy="photo-invalid-route"]').exists()).toBe(true);
 		expect(usePhotoBrowsingStore().active).toBe(false);
+	});
+	test('Should reject a known photo sort omitted from the scoped metadata response', async () => {
+		// Arrange
+		navigation.route.fullPath = `/photos/4?view=assets&sort=${SortType.Year}:asc`;
+		navigation.route.query = { view: 'assets', sort: `${SortType.Year}:asc` };
+		useLibraryStore().updateLibrary(generatePlexLibrary({
+			seed: new Seed(1404),
+			plexServerId: 1,
+			type: PlexMediaType.PhotoAlbum,
+			partialData: { id: 4, isEnabled: true },
+		}));
+		const wrapper = await render(4);
+
+		// Act
+		useGlobalStore().pageReadyObservable.next(true);
+		await nextTick();
+		await flushPromises();
+
+		// Assert
+		expect(wrapper.find('[data-cy="photo-invalid-route"]').exists()).toBe(true);
+		expect(usePhotoBrowsingStore().active).toBe(true);
+		expect(mock.history.get.some((request) => request.url === '/api/PlexPhoto/assets')).toBe(false);
 	});
 	test('Should serialize the typed toolbar sort when updating the photo route', async () => {
 		// Arrange

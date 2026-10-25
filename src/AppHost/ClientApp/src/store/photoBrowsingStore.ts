@@ -26,11 +26,13 @@ import {
 	switchMap,
 	takeUntil,
 	tap,
+	shareReplay,
 	toArray,
 } from 'rxjs/operators';
 import { cloneDeep, pick, uniqBy } from 'lodash-es';
 import {
 	PlexMediaType,
+	SortType,
 	LibrarySyncJobStatus,
 	type LibrarySyncJobQueueDTO,
 	RefreshDataType,
@@ -49,7 +51,7 @@ import { PhotoAssetKind, PhotoItemKind } from '@dto';
 import { StoreNames, type ISetupResult, type ResultDTO } from '@interfaces';
 import type { IMediaOverviewSort } from '@composables/event-bus';
 import { createDefaultMediaOverviewSort, serializeFlexSortDsl } from '@composables';
-import { plexPhotoApi } from '@api';
+import { plexLibraryApi, plexPhotoApi } from '@api';
 import { useAccountStore, useLibraryStore, useMediaStore, useServerStore, useSettingsStore, useSignalrStore } from '@store';
 
 export type PhotoBrowseView = 'albums' | 'folders' | 'assets';
@@ -124,6 +126,9 @@ interface IPhotoBrowsingState {
 	view: PhotoBrowseView;
 	folderId: number | null;
 	sort: IMediaOverviewSort;
+	supportedSorts: SortType[];
+	sortMetadataProfileKey: string;
+	sortMetadataReady: boolean;
 	searchQuery: string;
 	searchOrigin: IPhotoBrowseRoute | null;
 	albums: IPhotoPageState<PhotoAlbumBrowseDTO>;
@@ -221,6 +226,9 @@ const createDefaultState = (): IPhotoBrowsingState => ({
 	view: 'albums',
 	folderId: null,
 	sort: createDefaultMediaOverviewSort(),
+	supportedSorts: [],
+	sortMetadataProfileKey: '',
+	sortMetadataReady: false,
 	searchQuery: '',
 	searchOrigin: null,
 	albums: createPage<PhotoAlbumBrowseDTO>(),
@@ -283,6 +291,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	let selectionCancel$ = new Subject<void>();
 	let viewerCancel$ = new Subject<void>();
 	let refreshInFlight = false;
+	let sortMetadataRequestKey = '';
+	let sortMetadataRequest$: Observable<boolean> | null = null;
 	let activeOwner: object | null = null;
 	let eligibilityMetadataKey = '';
 	let eligibilityInitialized = false;
@@ -344,6 +354,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 		activate(route: IPhotoBrowseActivation, owner: object): Observable<void> {
 			const key = contextKey(route);
+			const sortProfileKey = photoSortMetadataKey(route);
 			const contextChanged = activeContextKey !== key;
 			if (contextChanged || activeOwner !== owner) {
 				cancelBrowseRequests();
@@ -354,6 +365,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 				rememberContextResults();
 				activeContextKey = key;
 				contextGeneration += 1;
+				if (state.sortMetadataProfileKey !== sortProfileKey) clearSortMetadata();
 				clearViewer();
 				state.dialog.open = false;
 				clearContextResults();
@@ -404,7 +416,11 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			if (!state.active || state.disabledLibrary) return of(undefined);
 			const currentIndex = force && state.dialog.open && state.current ? findOverviewIndex(state.current) : -1;
 			prepareForcedRead(force);
-			const initial = requestRangeInternal(0, PAGE_SIZE, force);
+			const context = currentContext(force);
+			if (!context) return of(undefined);
+			const initial = ensureSortMetadata(context, contextGeneration).pipe(
+				switchMap((sortSupported) => sortSupported ? requestRangeInternal(0, PAGE_SIZE, force) : of(undefined)),
+			);
 			let rangeRequest = initial;
 			if (currentIndex >= PAGE_SIZE) {
 				rangeRequest = forkJoin([initial, requestRangeInternal(currentIndex, currentIndex + 1, true)]).pipe(map(() => undefined));
@@ -565,7 +581,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			if (!state.active || state.disabledLibrary || !context) return of(undefined);
 			state.selectionLoading = true;
 			state.selectionError = false;
-			return enumerateContext(context).pipe(
+			return ensureSortMetadata(context, contextGeneration).pipe(
+				switchMap((sortSupported) => sortSupported ? enumerateContext(context) : of([] as IPhotoSelector[])),
 				takeUntil(selectionCancel$),
 				tap((selectors) => {
 					if (!isSelectionCurrent(generation, session, contextGenerationAtStart, context.key)) return;
@@ -676,6 +693,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			eligibilityMetadataKey = '';
 			eligibilityInitialized = false;
 			refreshInFlight = false;
+			sortMetadataRequestKey = '';
+			sortMetadataRequest$ = null;
 			activeContextKey = '';
 			contextGeneration += 1;
 			selectionGeneration += 1;
@@ -788,6 +807,22 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		state.allVisibleSelected = false;
 	}
 
+	function photoSortView(route: Pick<IPhotoBrowseRoute, 'mode' | 'view' | 'searchQuery'>): PhotoItemKind {
+		if (route.mode === 'album' || route.view === 'assets' || route.searchQuery.trim()) return PhotoItemKind.Asset;
+		if (route.view === 'folders') return PhotoItemKind.Folder;
+		return PhotoItemKind.Album;
+	}
+
+	function photoSortMetadataKey(route: IPhotoBrowseRoute): string {
+		return `${route.libraryId}:${photoSortView(route)}`;
+	}
+
+	function clearSortMetadata(): void {
+		state.supportedSorts = [];
+		state.sortMetadataProfileKey = '';
+		state.sortMetadataReady = false;
+	}
+
 	function contextKey(route: IPhotoBrowseRoute): string {
 		return [
 			route.mode,
@@ -817,6 +852,53 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 	function isCurrentContext(context: PhotoBrowseReadContext, generation = contextGeneration): boolean {
 		return state.active && generation === contextGeneration && context.key === activeContextKey;
+	}
+
+	function ensureSortMetadata(context: PhotoBrowseReadContext, generation: number): Observable<boolean> {
+		const key = photoSortMetadataKey(context);
+		if (state.sortMetadataReady && state.sortMetadataProfileKey === key) {
+			return of(state.supportedSorts.includes(context.sort.field));
+		}
+		if (sortMetadataRequest$ && sortMetadataRequestKey === key) return sortMetadataRequest$;
+
+		sortMetadataRequestKey = key;
+		let request$: Observable<boolean>;
+		request$ = plexLibraryApi.getLibraryMediaMetadata(context.libraryId, {
+			mediaType: PlexMediaType.PhotoAlbum,
+			photoView: photoSortView(context),
+		}, photoBrowseRequestParams).pipe(
+			takeUntil(browseCancel$),
+			map((response) => apiValue(response)),
+			tap((metadata) => {
+				if (!isCurrentContext(context, generation)) return;
+				state.sortMetadataProfileKey = key;
+				state.sortMetadataReady = metadata !== null;
+				state.supportedSorts = metadata?.supportedSorts ? [...metadata.supportedSorts] : [];
+				state.error = metadata === null;
+				state.reloadError = false;
+			}),
+			map((metadata) => metadata !== null
+				&& isCurrentContext(context, generation)
+				&& state.supportedSorts.includes(context.sort.field)),
+			catchError((error) => {
+				if (isCurrentContext(context, generation)) {
+					clearSortMetadata();
+					state.error = true;
+					state.reloadError = false;
+				}
+				Log.debug('Photo sort metadata request failed', error);
+				return of(false);
+			}),
+			finalize(() => {
+				if (sortMetadataRequest$ === request$) {
+					sortMetadataRequest$ = null;
+					sortMetadataRequestKey = '';
+				}
+			}),
+			shareReplay({ bufferSize: 1, refCount: true }),
+		);
+		sortMetadataRequest$ = request$;
+		return request$;
 	}
 
 	function apiValue<T>(response: ApiResult<T>): T | null {
@@ -1108,6 +1190,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		browseCancel$.next();
 		browseCancel$.complete();
 		browseCancel$ = new Subject<void>();
+		sortMetadataRequestKey = '';
+		sortMetadataRequest$ = null;
 		cancelSelectionRequests();
 		cancelViewerLoads();
 		for (const canceler of rangeCancellers.values()) {
@@ -1395,7 +1479,11 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		rangeCancellers.set(rangeKey, rangeCanceller);
 		state.loading = true;
 		state.error = false;
-		return requestContextRange(context, start, boundedEnd, force, generation, rangeCanceller).pipe(
+		return ensureSortMetadata(context, generation).pipe(
+			takeUntil(rangeCanceller),
+			switchMap((sortSupported) => sortSupported
+				? requestContextRange(context, start, boundedEnd, force, generation, rangeCanceller)
+				: of(undefined)),
 			map(() => undefined),
 			catchError((error) => {
 				if (isCurrentContext(context, generation)) {
@@ -2128,6 +2216,9 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		overviewCount: computed(() => overviewCountValue()),
 		overviewFolderCount: computed(() => overviewFolderCount()),
 		overviewItemAt: (index: number): PhotoOverviewItem | null => overviewItemAtValue(index),
+		isSortSupported: (route: IPhotoBrowseRoute): boolean =>
+			!(state.sortMetadataReady && state.sortMetadataProfileKey === photoSortMetadataKey(route))
+			|| state.supportedSorts.includes(route.sort.field),
 	};
 
 	return { ...toRefs(state), ...actions, ...getters };

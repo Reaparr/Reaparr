@@ -31,6 +31,7 @@ import {
 } from '@composables';
 import { useSubscription } from '@vueuse/rxjs';
 
+
 interface IMediaOverviewStoreState {
 	libraryId: number;
 	pageSize: number;
@@ -109,6 +110,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			countries: [],
 			genres: [],
 			qualities: [],
+			supportedSorts: [],
 		},
 		availableRoleIds: [],
 		availableCountryIds: [],
@@ -251,26 +253,24 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 						return of(null);
 					}
 					const library = libraryStore.getLibrary(state.libraryId);
-					if (!get(getters.getSupportsVideoQuality)) {
-						state.metadata.qualityId = 0;
-						set(qualityIdQuery, undefined);
-						if (state.sortedState.field === SortType.VideoQuality) {
-							state.sortedState = cloneDeep(defaultState.sortedState);
-							set(sortQuery, undefined);
-						}
-					}
-					state.metadata.comparisonState = normalizeComparisonState(state.metadata.comparisonState);
-					set(comparisonStateQuery, state.metadata.comparisonState ?? undefined);
 					if (library && (!library.isEnabled || library.syncedAt === null)) {
 						state.loading = false;
 						return of(null);
 					}
 
-					return forkJoin([
-						actions.refreshFilterMetadata(),
-						actions.refreshMetaData(),
-						refreshMediaDataForGeneration(generation).pipe(defaultIfEmpty(null)),
-					]).pipe(map(([, , requestMediaResult]) => requestMediaResult));
+					const filterMetadataRequest = actions.refreshFilterMetadata();
+					const mediaRequest = actions.refreshMetaData().pipe(
+						switchMap((result) => {
+							if (!hasSuccessfulSortMetadata(result)) {
+								state.loading = false;
+								state.mediaLoadError = true;
+								return of(null);
+							}
+
+							return refreshMediaDataForGeneration(generation).pipe(defaultIfEmpty(null));
+						}),
+					);
+					return forkJoin([filterMetadataRequest, mediaRequest]).pipe(map(([, requestMediaResult]) => requestMediaResult));
 				}),
 			);
 		},
@@ -293,6 +293,9 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 					if (isMetadataGenerationActive(metadataGeneration)
 						&& requestId === metadataRequestId && result.isSuccess && result.value) {
 						state.metadataList = Object.freeze(result.value);
+						if (result.value.supportedSorts.length > 0) {
+							normalizeMetadataState();
+						}
 					}
 				}),
 			);
@@ -527,21 +530,31 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				state.metadata.qualityId = qualityId;
 			}
 
-			state.metadata.comparisonState = get(getters.getMediaType) === PlexMediaType.None
-				&& Object.values(PlexMediaComparisonState).includes(comparisonState as PlexMediaComparisonState)
-				? comparisonState as PlexMediaComparisonState
-				: normalizeComparisonState(comparisonState as PlexMediaComparisonState);
-			if (!state.metadata.comparisonState)
+			const parsedComparisonState = Object.values(PlexMediaComparisonState)
+				.find((candidate) => candidate === comparisonState) ?? null;
+			const mediaType = get(getters.getMediaType);
+			const canNormalizeComparison = hasSortCapabilities() && mediaType !== PlexMediaType.None;
+			state.metadata.comparisonState = parsedComparisonState && canNormalizeComparison
+				? normalizeComparisonState(parsedComparisonState)
+				: parsedComparisonState;
+			if (!state.metadata.comparisonState) {
 				set(comparisonStateQuery, undefined);
+			}
 
 			if (scrollIndex > 0) {
 				state.currentScrollIndex = scrollIndex;
 			}
-
 			const routeSort = get(sortQuery);
-			const parsedSort = parseFlexSortDsl(typeof routeSort === 'string' ? routeSort.trim() || undefined : undefined);
+			const capabilitiesReady = hasSortCapabilities() && mediaType !== PlexMediaType.None;
+			const routeValue = typeof routeSort === 'string' ? routeSort.trim() || undefined : undefined;
+			const parsedSort = capabilitiesReady
+				? parseFlexSortDsl(routeValue, getSupportedSortFields())
+				: parseFlexSortDsl(routeValue);
 			if (parsedSort) {
 				state.sortedState = parsedSort;
+			} else if (capabilitiesReady && routeSort) {
+				state.sortedState = cloneDeep(defaultState.sortedState);
+				set(sortQuery, undefined);
 			}
 		},
 		changeAllMediaOverviewType(mediaType: PlexMediaType) {
@@ -551,7 +564,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				actions.clearMetaDataFilter();
 				state.filterQuery = '';
 				set(searchQuery, undefined);
-				set(scrollIndexQuery, undefined);
+				normalizeUnsupportedSort();
 				set(sortQuery, undefined);
 				return;
 			}
@@ -607,6 +620,10 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			return actions.setFilterQuery('');
 		},
 		toggleSortMedia(field: SortType) {
+			if (hasSortCapabilities() && !getSupportedSortFields().includes(field)) {
+				return;
+			}
+
 			state.sortedState = toggleMediaOverviewSort(state.sortedState, field);
 
 			// If default sort then undefined
@@ -741,12 +758,16 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			);
 		}
 
+		if (!hasSortCapabilities()) {
+			return loadSortCapabilitiesForPage(page, size, forceRefresh, generation);
+		}
+
 		pendingPages.set(page, generation);
 		return plexMediaApi.getAllMediaByTypeEndpoint({
 			q: state.filterQuery,
 			page,
 			size,
-			sort: get(getters.getSortDSL),
+			sort: getRequestSort(),
 			countryId: state.metadata.countryId > 0 ? state.metadata.countryId : undefined,
 			genreId: state.metadata.genreId > 0 ? state.metadata.genreId : undefined,
 			qualityId: get(getters.getSupportsVideoQuality) && state.metadata.qualityId > 0 ? state.metadata.qualityId : undefined,
@@ -778,6 +799,29 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		);
 	}
 
+	function hasSuccessfulSortMetadata(result: { isSuccess: boolean; value?: PlexMediaMetadataDTO | null }): boolean {
+		return result.isSuccess
+			&& (result.value?.supportedSorts.length ?? 0) > 0
+			&& hasSortCapabilities();
+	}
+
+	function loadSortCapabilitiesForPage(
+		page: number,
+		size: number,
+		forceRefresh: boolean,
+		generation: number,
+	): Observable<PlexMediaStatisticsDTO | null> {
+		return actions.refreshMetaData().pipe(
+			takeUntil(cancelSubject$),
+			switchMap((result) => {
+				if (!hasSuccessfulSortMetadata(result) || !isRequestGenerationActive(generation)) {
+					return of(null);
+				}
+				return requestMediaPageForGeneration(page, size, forceRefresh, generation);
+			}),
+		);
+	}
+
 	function normalizeComparisonState(value?: PlexMediaComparisonState | null): PlexMediaComparisonState | null {
 		if (!get(getters.getSupportsComparison) || !value || !Object.values(PlexMediaComparisonState).includes(value))
 			return null;
@@ -792,6 +836,42 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		return value;
 	}
 
+	function hasSortCapabilities(): boolean {
+		return state.metadataList.supportedSorts.length > 0;
+	}
+
+	function getSupportedSortFields(): readonly SortType[] {
+		return state.metadataList.supportedSorts;
+	}
+
+	function normalizeUnsupportedSort(): void {
+		if (!hasSortCapabilities() || getSupportedSortFields().includes(state.sortedState.field)) {
+			return;
+		}
+
+		state.sortedState = cloneDeep(defaultState.sortedState);
+		set(sortQuery, undefined);
+	}
+
+	function normalizeMetadataState(): void {
+		if (!hasSortCapabilities()) {
+			return;
+		}
+
+		if (!get(getters.getSupportsVideoQuality)) {
+			state.metadata.qualityId = 0;
+			set(qualityIdQuery, undefined);
+		}
+
+		state.metadata.comparisonState = normalizeComparisonState(state.metadata.comparisonState);
+		set(comparisonStateQuery, state.metadata.comparisonState ?? undefined);
+		normalizeUnsupportedSort();
+	}
+
+	function getRequestSort(): string {
+		normalizeUnsupportedSort();
+		return serializeFlexSortDsl(state.sortedState);
+	}
 	const getters = {
 		hasSelectedMedia: computed((): boolean => {
 			return state.selection.keys.length > 0;
@@ -893,8 +973,8 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			return state.sortedState;
 		}),
 		getMediaType: computed((): PlexMediaType => state.libraryId === 0 ? settingsStore.displaySettings.allOverviewViewMode : libraryStore.getLibrary(state.libraryId)?.type ?? PlexMediaType.None),
-		getSupportsVideoQuality: computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.OtherVideos].includes(get(getters.getMediaType))),
-		getSupportsComparison: computed(() => [PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist].includes(get(getters.getMediaType))),
+		getSupportsVideoQuality: computed(() => getSupportedSortFields().includes(SortType.VideoQuality)),
+		getSupportsComparison: computed(() => getSupportedSortFields().includes(SortType.ComparisonState)),
 		getIsSorted: computed((): boolean => {
 			if (state.sortedState.sort === SortDirection.NoSort) {
 				return false;
@@ -907,28 +987,27 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		): ISortOption[] => {
 			const { $i18n } = useNuxtApp();
 			const { t } = $i18n;
-			const options: ISortOption[] = [
-				{ field: SortType.Title, label: t('general.sort.title'), direction: SortDirection.NoSort },
-				{ field: SortType.Year, label: t('general.sort.year'), direction: SortDirection.NoSort },
-				{ field: SortType.AddedAt, label: t('general.sort.added-at'), direction: SortDirection.NoSort },
-				{ field: SortType.UpdatedAt, label: t('general.sort.updated-at'), direction: SortDirection.NoSort },
-				{ field: SortType.Duration, label: t('general.sort.duration'), direction: SortDirection.NoSort },
-				{ field: SortType.MediaSize, label: t('general.sort.size'), direction: SortDirection.NoSort },
-			];
-			if (get(getters.getSupportsVideoQuality)) {
-				options.push({ field: SortType.VideoQuality, label: t('general.sort.quality'), direction: SortDirection.NoSort });
-			}
-
-			const visibleOptions = supportedFields === undefined
-				? options
-				: options.filter((option) => supportedFields.includes(option.field));
-			for (const option of visibleOptions) {
-				if (option.field === activeSort.field) {
-					option.direction = activeSort.sort;
-				}
-			}
-
-			return visibleOptions;
+			const labels: Record<SortType, string> = {
+				[SortType.Title]: t('general.sort.title'),
+				[SortType.Year]: t('general.sort.year'),
+				[SortType.AddedAt]: t('general.sort.added-at'),
+				[SortType.UpdatedAt]: t('general.sort.updated-at'),
+				[SortType.Duration]: t('general.sort.duration'),
+				[SortType.MediaSize]: t('general.sort.size'),
+				[SortType.VideoQuality]: t('general.sort.quality'),
+				[SortType.AudioQuality]: t('general.sort.audio-quality'),
+				[SortType.ComparisonState]: t('general.media-list.columns.comparison-state'),
+			};
+			const sortFields = supportedFields ?? state.metadataList.supportedSorts;
+			return sortFields.flatMap((field) => {
+				const label = labels[field];
+				if (!label) return [];
+				return [{
+					field,
+					label,
+					direction: field === activeSort.field ? activeSort.sort : SortDirection.NoSort,
+				}];
+			});
 		},
 		getGenres: computed(() => sortBy(
 			state.metadataList.genres.filter((x) => state.availableGenreIds.includes(x.id)),

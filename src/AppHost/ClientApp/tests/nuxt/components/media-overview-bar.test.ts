@@ -6,7 +6,7 @@ import { DOMWrapper, flushPromises } from '@vue/test-utils';
 import { baseSetup } from '@services-test-base';
 import { PhotoItemKind, PlexMediaType, SortType, ViewMode } from '@dto';
 import { useLibraryStore, useMediaOverviewStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
-import { MEDIA_OVERVIEW_SORT_FIELDS, createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
+import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
 import { generatePlexLibrary, generateSupportedSorts, Seed } from '@mock';
 import messages from '@/lang/en-US.json';
 import MediaOverviewBar from '@/components/MediaOverview/MediaOverviewBar.vue';
@@ -74,19 +74,18 @@ describe('MediaOverviewBar - photo mode', () => {
 		expect(mediaOverviewStore.getSortOptions().map((option) => option.field)).not.toContain(SortType.AudioQuality);
 		expect(mediaOverviewStore.getSortOptions().map((option) => option.field)).toContain(SortType.VideoQuality);
 		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.PhotoAlbum;
-		mediaOverviewStore.metadataList = {
-			...mediaOverviewStore.metadataList,
-			supportedSorts: generateSupportedSorts(PlexMediaType.PhotoAlbum),
-		};
-		const photoFields = mediaOverviewStore.getSortOptions(MEDIA_OVERVIEW_SORT_FIELDS).map((option) => option.field);
-		expect(photoFields).not.toContain(SortType.AudioQuality);
-		expect(photoFields).toEqual([...MEDIA_OVERVIEW_SORT_FIELDS]);
+		const photoStore = usePhotoBrowsingStore();
+		const returnedPhotoSorts = [SortType.MediaSize, SortType.Title];
+		photoStore.supportedSorts = returnedPhotoSorts;
+		const photoFields = mediaOverviewStore.getSortOptions(photoStore.supportedSorts).map((option) => option.field);
+		expect(photoFields).toEqual(returnedPhotoSorts);
 	});
 
 	test('drives photo view and title sort route events through the shared dropdowns', async () => {
 		// Arrange
 		const photoStore = usePhotoBrowsingStore();
 		photoStore.view = 'albums';
+		photoStore.supportedSorts = [SortType.MediaSize, SortType.AddedAt, SortType.Title];
 		const defaultSort = createDefaultMediaOverviewSort();
 		photoStore.sort = defaultSort;
 		const wrapper = await mountSuspended(MediaOverviewBar, {
@@ -105,15 +104,22 @@ describe('MediaOverviewBar - photo mode', () => {
 		await wrapper.get('[data-cy="view-mode-assets-btn"]').trigger('click');
 		await wrapper.get('[data-cy="media-overview-sort-btn"]').trigger('click');
 		await flushPromises();
+		const visibleSortOptions = wrapper.findAll('[data-cy^="sort-option-"]')
+			.filter((option) => option.isVisible())
+			.map((option) => option.attributes('data-cy'));
+		expect(visibleSortOptions).toEqual([
+			`sort-option-${SortType.MediaSize}-btn`,
+			`sort-option-${SortType.AddedAt}-btn`,
+			`sort-option-${SortType.Title}-btn`,
+		]);
 		await wrapper.get(`[data-cy="sort-option-${SortType.Title}-btn"]`).trigger('click');
 
 		// Assert
 		expect(wrapper.emitted('photo-view')).toEqual([['assets']]);
 		expect(wrapper.emitted('photo-sort')).toEqual([[toggleMediaOverviewSort(defaultSort, SortType.Title)]]);
 		expect(wrapper.find(`[data-cy="sort-option-${SortType.Year}-btn"]`).exists()).toBe(false);
-		expect(wrapper.find(`[data-cy="sort-option-${SortType.AddedAt}-btn"]`).exists()).toBe(true);
-		expect(wrapper.find(`[data-cy="sort-option-${SortType.UpdatedAt}-btn"]`).exists()).toBe(true);
-		expect(wrapper.find(`[data-cy="sort-option-${SortType.Duration}-btn"]`).exists()).toBe(true);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.UpdatedAt}-btn"]`).exists()).toBe(false);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.Duration}-btn"]`).exists()).toBe(false);
 		expect(wrapper.find(`[data-cy="sort-option-${SortType.MediaSize}-btn"]`).exists()).toBe(true);
 	});
 	test('clears a non-default photo sort through the shared sort menu', async () => {

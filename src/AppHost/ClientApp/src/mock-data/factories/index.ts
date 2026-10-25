@@ -12,3 +12,4 @@ export * from './download-patch-factory';
 export * from './plex-media-factory';
 export * from './folder-path-factory';
 export * from './plex-library-sync-progress-factory';
+export * from './supported-sorts-factory';

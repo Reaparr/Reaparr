@@ -157,7 +157,7 @@ import { DialogType } from '@enums';
 import { LibrarySyncJobStatus, PhotoItemKind, PlexMediaType, SortType, type DownloadMediaDTO, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoFolderBrowseDTO } from '@dto';
 import type { IMediaOverviewBarActions } from '@interfaces';
 import type { IMediaOverviewSort } from '@composables/event-bus';
-import { MEDIA_OVERVIEW_SORT_FIELDS, createDefaultMediaOverviewSort, parseFlexSortDsl, serializeFlexSortDsl } from '@composables';
+import { createDefaultMediaOverviewSort, parseFlexSortDsl, serializeFlexSortDsl } from '@composables';
 import type { IPhotoBrowseActivation, IPhotoSelector, PhotoBrowseView, PhotoOverviewItem } from '@/store/photoBrowsingStore';
 import { useDialogStore, useDownloadStore, useGlobalStore, useLibraryStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
 
@@ -210,10 +210,7 @@ const parsedRoute = computed<IPhotoBrowseActivation | null>(() => {
 	if (!view || (query !== undefined && typeof query !== 'string')) return null;
 	const searchQuery = query ?? '';
 	const effectiveView: PhotoBrowseView = props.albumId ? 'assets' : view;
-	const supportedSortFields: readonly SortType[] = effectiveView === 'folders' && !searchQuery.trim()
-		? [SortType.Title]
-		: MEDIA_OVERVIEW_SORT_FIELDS;
-	const sort = parseFlexSortDsl(scalarQuery('sort'), supportedSortFields);
+	const sort = parseFlexSortDsl(scalarQuery('sort'));
 	if (!sort) return null;
 	const folderValue = scalarQuery('folderId');
 	let folderId: number | null = null;
@@ -238,7 +235,10 @@ const parsedRoute = computed<IPhotoBrowseActivation | null>(() => {
 		sort,
 	};
 });
-const validRoute = computed(() => get(parsedRoute) !== null);
+const validRoute = computed(() => {
+	const context = get(parsedRoute);
+	return context !== null && photoStore.isSortSupported(context);
+});
 const shouldRedirectToFolders = computed(() => {
 	const context = get(parsedRoute);
 	return context?.mode === 'library' && context.view === 'albums' && get(hasNoAlbums);

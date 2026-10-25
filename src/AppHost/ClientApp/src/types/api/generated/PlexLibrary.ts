@@ -16,6 +16,7 @@ import { ContentType } from "./http-client";
 import type {
   BaseResultDTO,
   LibrarySyncJobQueueDTO,
+  PhotoItemKind,
   PlexLibraryAccessTimelineDTO,
   PlexLibraryDTO,
   PlexMediaFilterMetadataDTO,
@@ -172,6 +173,7 @@ export class PlexLibrary {
       /** @default false */
       filterOwnedMedia?: boolean | null;
       mediaType: PlexMediaType;
+      photoView?: PhotoItemKind;
     },
     params: RequestParams = {},
   ) =>
@@ -272,6 +274,7 @@ export class PlexLibraryPaths {
       /** @default false */
       filterOwnedMedia?: boolean | null;
       mediaType: PlexMediaType;
+      photoView?: PhotoItemKind;
     },
   ) =>
     queryString.stringifyUrl({

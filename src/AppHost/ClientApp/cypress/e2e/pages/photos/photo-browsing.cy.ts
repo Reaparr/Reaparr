@@ -216,6 +216,7 @@ describe('Photos browsing', () => {
 		setupPage();
 		setupPhotoApi();
 		cy.visit(route(`/photos/${libraryId}?view=albums`));
+		cy.wait('@photoLibraryMetadata').its('request.query').should('include', { photoView: PhotoItemKind.Album });
 		cy.wait('@photoAlbums');
 		cy.getCy('photo-album-41-301').should('contain.text', 'Summer trip');
 		cy.getCy('photo-overview-list').find('h2').should('not.exist');
@@ -223,10 +224,13 @@ describe('Photos browsing', () => {
 
 		cy.getCy('change-view-mode-btn').filter(':visible').click();
 		cy.getCy('view-mode-folders-btn').filter(':visible').click();
+		cy.wait('@photoLibraryMetadata').its('request.query').should('include', { photoView: PhotoItemKind.Folder });
 		cy.wait('@photoRoots');
 		cy.location('search').should('contain', 'view=folders');
 		cy.getCy('photo-folder-601').should('contain.text', 'Trips');
-		cy.getCy('photo-overview-list').find('h2').should('not.exist');
+		cy.getCy('media-overview-sort-btn').filter(':visible').click();
+		cy.get('[data-cy^="sort-option-"]').filter(':visible').should('have.length', 1)
+			.and('have.attr', 'data-cy', `sort-option-${SortType.Title}-btn`);
 
 		cy.getCy('change-view-mode-btn').filter(':visible').click();
 		cy.getCy('view-mode-assets-btn').filter(':visible').click();
@@ -244,6 +248,7 @@ describe('Photos browsing', () => {
 		setupPage();
 		setupPhotoApi();
 		cy.visit(route(`/photos/${libraryId}?view=assets`));
+		cy.wait('@photoLibraryMetadata').its('request.query').should('include', { photoView: PhotoItemKind.Asset });
 		cy.wait('@photoAssets');
 
 		cy.getCy('media-overview-sort-btn').click();

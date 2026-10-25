@@ -8,6 +8,7 @@ import { plexPhotoApi } from '@api';
 import { LibrarySyncJobStatus, PlexMediaType, RefreshDataType, type PhotoAlbumBrowseDTO, type PhotoAlbumPageDTO, type PhotoAssetBrowseDTO, type PlexLibraryDTO } from '@dto';
 import { useAccountStore, useLibraryStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
 import type { ResultDTO } from '@interfaces';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import { createDefaultMediaOverviewSort } from '@composables';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 
@@ -19,6 +20,7 @@ describe('PhotoBrowsingStore - refresh and eligibility lifecycle', () => {
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
 		vi.useFakeTimers();
+		mockPhotoMetadata();
 	});
 	afterEach(() => vi.useRealTimers());
 

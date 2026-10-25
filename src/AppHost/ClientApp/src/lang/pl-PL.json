@@ -757,7 +757,8 @@
             "updated-at": "Zaktualizowano",
             "duration": "Czas trwania",
             "size": "Rozmiar",
-            "quality": "Jakość"
+            "quality": "Jakość",
+            "audio-quality": "Jakość dźwięku"
         },
         "units": {
             "per-second": "/s"

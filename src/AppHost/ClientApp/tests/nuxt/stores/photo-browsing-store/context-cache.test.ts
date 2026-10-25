@@ -6,6 +6,7 @@ import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-tes
 import { generateLibrarySyncJobQueue, generatePlexAccount, generatePlexLibrary, generateResultDTO, Seed } from '@mock';
 import { plexPhotoApi } from '@api';
 import { useAccountStore, useLibraryStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import {
 	LibrarySyncJobStatus, PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType,
 	type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO,
@@ -53,6 +54,7 @@ describe('PhotoBrowsingStore - context cache', () => {
 		vi.restoreAllMocks();
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		mockPhotoMetadata();
 		for (const id of [7, 8, 9, 10]) {
 			useLibraryStore().updateLibrary(generatePlexLibrary({
 				seed: new Seed(id), plexServerId: 1, type: PlexMediaType.PhotoAlbum,

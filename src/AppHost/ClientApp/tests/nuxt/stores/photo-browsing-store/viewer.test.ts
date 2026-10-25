@@ -6,6 +6,7 @@ import { generateResultDTO } from '@mock';
 import { plexPhotoApi } from '@api';
 import { PhotoAssetKind, PlexMediaType, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PlexLibraryDTO } from '@dto';
 import { useLibraryStore, useMediaStore, usePhotoBrowsingStore } from '@store';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
 
@@ -16,6 +17,7 @@ describe('PhotoBrowsingStore - bounded viewer sequence', () => {
 		getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		mockPhotoMetadata();
 	});
 
 	const route = (partial: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({

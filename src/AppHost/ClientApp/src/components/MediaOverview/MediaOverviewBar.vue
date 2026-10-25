@@ -355,7 +355,7 @@ import type { PlexMediaDTO } from '@dto';
 import { PlexMediaType, SortDirection, SortType, ViewMode } from '@dto';
 import type { IMediaOverviewBarActions, ISortOption } from '@interfaces';
 import type { IMediaOverviewSort } from '@composables/event-bus';
-import { MEDIA_OVERVIEW_SORT_FIELDS, createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
+import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
 import { useMediaOverviewBarDownloadCommandBus } from '@composables/event-bus';
 import { useLibraryStore, useMediaOverviewStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
 import type { PhotoBrowseView } from '@/store/photoBrowsingStore';
@@ -434,20 +434,10 @@ const activeSortIcon = computed((): string => {
 	return sort === SortDirection.Asc ? 'mdi-sort-descending' : 'mdi-sort-ascending';
 });
 
-const sortOptions = computed((): ISortOption[] => {
-	let supportedFields: readonly SortType[] | undefined;
-	if (!props.photoMode) {
-		supportedFields = undefined;
-	} else if (photoStore.searchQuery.trim() || photoStore.view !== 'folders') {
-		supportedFields = MEDIA_OVERVIEW_SORT_FIELDS;
-	} else {
-		supportedFields = [SortType.Title];
-	}
-	return mediaOverviewStore.getSortOptions(
-		supportedFields,
-		props.photoMode ? photoStore.sort : undefined,
-	);
-});
+const sortOptions = computed((): ISortOption[] => mediaOverviewStore.getSortOptions(
+	props.photoMode ? photoStore.supportedSorts : undefined,
+	props.photoMode ? photoStore.sort : undefined,
+));
 
 const viewOptions = computed((): ViewOption[] => {
 	const options: ViewOption[] = [

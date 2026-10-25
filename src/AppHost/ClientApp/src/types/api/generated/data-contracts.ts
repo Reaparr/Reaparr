@@ -674,6 +674,8 @@ export type IReadOnlyListOfLibrarySyncProgressItemDTO =
 
 export type IReadOnlyListOfReleaseNoteDTO = ReleaseNoteDTO[];
 
+export type IReadOnlyListOfSortType = SortType[];
+
 export type IReadOnlyListOfSuccessDTO = SuccessDTO[];
 
 export interface InspectPlexServerJobUpdateDTO {
@@ -1511,6 +1513,7 @@ export interface PlexMediaMetadataDTO {
   /** @format int32 */
   roleCount: number;
   roles: ListOfPlexRoleDTO;
+  supportedSorts: IReadOnlyListOfSortType;
 }
 
 export interface PlexMediaQualityDTO {

@@ -6,6 +6,7 @@ import { generateFailedResultDTO, generatePlexLibrary, generateResultDTO, Seed }
 import { plexPhotoApi } from '@api';
 import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
 import { useLibraryStore, usePhotoBrowsingStore } from '@store';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
 
@@ -16,6 +17,7 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 		getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		mockPhotoMetadata();
 		useLibraryStore().updateLibrary(generatePlexLibrary({
 			seed: new Seed(7),
 			plexServerId: 1,
