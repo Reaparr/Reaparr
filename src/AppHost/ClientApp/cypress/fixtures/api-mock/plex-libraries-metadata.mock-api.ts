@@ -1,7 +1,11 @@
 import type { BasePageSetupResult } from '@fixtures';
-import { type MockConfig, Seed } from '@mock';
-import { generatePlexLibrariesFromPlexServers, generateResultDTO } from '@mock';
-import { PlexLibraryPaths } from '@api/api-paths';
+import {
+	type MockConfig,
+	Seed,
+	generatePlexLibrariesFromPlexServers,
+	generateResultDTO,
+	generateSupportedSorts,
+} from '@mock';
 import { headers } from '@fixtures';
 
 export function setupMockPlexLibraryMetaDataEndpoints(
@@ -21,7 +25,7 @@ export function setupMockPlexLibraryMetaDataEndpoints(
 			mediaType: library.type,
 		}), {
 			statusCode: 200,
-			body: generateResultDTO([]),
+			body: generateResultDTO({ countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 0, supportedSorts: generateSupportedSorts(library.type) }),
 			...headers,
 		}).then(() => {
 			if (config.debugDisplayData) {

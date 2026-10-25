@@ -8,6 +8,7 @@ import {
 	generatePlexMedia,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
+	generateSupportedSorts,
 } from '@mock';
 import { useMediaOverviewStore, useSettingsStore } from '@store';
 import { AudioQuality, PlexMediaComparisonState, PlexMediaType, SortDirection, SortType, VideoQuality } from '@dto';
@@ -33,7 +34,7 @@ describe('MediaOverviewStore - Filter / Search', () => {
 		}));
 
 		mock.onGet(new RegExp(`/api/PlexMedia`)).reply(200, generateResultDTO(movies));
-		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply(200, generateResultDTO({
+		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply((request) => [200, generateResultDTO({
 			episodeCount: 0,
 			mediaCount: 0,
 			mediaSize: 0,
@@ -49,7 +50,8 @@ describe('MediaOverviewStore - Filter / Search', () => {
 			countryCount: 0,
 			genreCount: 0,
 			qualityCount: 0,
-		}));
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 
 		await subscribeSpyTo(store.refreshMediaData()).onComplete();
 		return movies;
@@ -140,7 +142,7 @@ describe('MediaOverviewStore - Filter / Search', () => {
 			.replyOnce(200, generateResultDTO(firstResponse))
 			.onGet(new RegExp(`/api/PlexMedia`))
 			.reply(200, generateResultDTO(secondResponse));
-		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply(200, generateResultDTO({
+		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply((request) => [200, generateResultDTO({
 			episodeCount: 0,
 			mediaCount: 0,
 			mediaSize: 0,
@@ -156,7 +158,8 @@ describe('MediaOverviewStore - Filter / Search', () => {
 			countryCount: 0,
 			genreCount: 0,
 			qualityCount: 0,
-		}));
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 		await subscribeSpyTo(store.refreshMediaData()).onComplete();
 
 		// Act
@@ -174,10 +177,11 @@ describe('MediaOverviewStore - Filter / Search', () => {
 			const settings = useSettingsStore();
 			settings.displaySettings.allOverviewViewMode = PlexMediaType.Movie;
 			const store = useMediaOverviewStore();
-			mock.onGet(/\/api\/PlexLibrary\/0\/metadata/).reply(200, generateResultDTO({
+			mock.onGet(/\/api\/PlexLibrary\/0\/metadata/).reply((request) => [200, generateResultDTO({
 				mediaCount: 1, countryCount: 0, genreCount: 0, roleCount: 0, qualityCount: 0,
 				countries: [], genres: [], roles: [], qualities: [],
-			}));
+				supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+			})]);
 			mock.onGet('/api/PlexMedia').reply((request) => {
 				const type = request.params.mediaType as PlexMediaType;
 				const unsupported = type !== PlexMediaType.Movie && (
@@ -216,6 +220,18 @@ describe('MediaOverviewStore - Filter / Search', () => {
 		// Arrange
 		useSettingsStore().displaySettings.allOverviewViewMode = PlexMediaType.OtherVideos;
 		const store = useMediaOverviewStore();
+		store.metadataList = {
+			mediaCount: 0,
+			countryCount: 0,
+			genreCount: 0,
+			qualityCount: 0,
+			roleCount: 0,
+			countries: [],
+			genres: [],
+			qualities: [],
+			roles: [],
+			supportedSorts: generateSupportedSorts(PlexMediaType.OtherVideos),
+		};
 		const videos = [VideoQuality.FullHD, VideoQuality.HD].map((videoQuality, index) => generatePlexMedia({
 			config: { seed: 625 },
 			partialData: {

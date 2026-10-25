@@ -5,7 +5,7 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
-import { generatePlexMediaSlims, generatePlexMediaStatisticsDTO, generateResultDTO, generateSettingsModel } from '@mock';
+import { generatePlexMediaSlims, generatePlexMediaStatisticsDTO, generateResultDTO, generateSettingsModel, generateSupportedSorts } from '@mock';
 import { PlexMediaType, ViewMode, type SettingsModelDTO } from '@dto';
 import { useGlobalStore, useMediaOverviewStore, useSettingsStore } from '@store';
 import type { ResultDTO } from '@interfaces';
@@ -48,10 +48,11 @@ describe('MediaOverview startup visibility', () => {
 			partialData: { id: 101, title: 'Visible movie', type: PlexMediaType.Movie, plexServerId: 1, plexLibraryId: 1 },
 		});
 		mock.onGet('/api/PlexMedia').reply(200, generateResultDTO(generatePlexMediaStatisticsDTO(movies)));
-		mock.onGet('/api/PlexLibrary/0/metadata').reply(200, generateResultDTO({
+		mock.onGet('/api/PlexLibrary/0/metadata').reply((request) => [200, generateResultDTO({
 			mediaCount: 1, roleCount: 0, countryCount: 0, genreCount: 1, qualityCount: 0,
 			roles: [], countries: [], genres: [{ id: 33, name: 'Visible genre' }], qualities: [],
-		}));
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 		mock.onGet('/api/PlexLibrary/0/metadata-filter').reply(200, generateResultDTO({
 			roles: [], countries: [], genres: [33], qualities: [],
 		}));

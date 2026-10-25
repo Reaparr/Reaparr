@@ -5,10 +5,11 @@ import {
 	generatePlexMediaSlims,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
+	generateSupportedSorts,
 } from '@mock';
 import { useMediaOverviewStore } from '@store';
 import { PlexMediaType, SortDirection, SortType } from '@dto';
-import { buildFlexSortDsl, createDefaultMediaOverviewSort, parseFlexSortDsl, serializeFlexSortDsl } from '@composables';
+import { createDefaultMediaOverviewSort, parseFlexSortDsl, serializeFlexSortDsl } from '@composables';
 
 describe('MediaOverviewStore.sortMedia()', () => {
 	let { mock } = baseVars();
@@ -30,7 +31,7 @@ describe('MediaOverviewStore.sortMedia()', () => {
 		}));
 
 		mock.onGet(new RegExp(`/api/PlexMedia`)).reply(200, generateResultDTO(movies));
-		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply(200, generateResultDTO({
+		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply((request) => [200, generateResultDTO({
 			episodeCount: 0,
 			mediaCount: 0,
 			mediaSize: 0,
@@ -46,7 +47,8 @@ describe('MediaOverviewStore.sortMedia()', () => {
 			countryCount: 0,
 			genreCount: 0,
 			qualityCount: 0,
-		}));
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 
 		const result = subscribeSpyTo(mediaOverviewStore.refreshMediaData());
 		await result.onComplete();
@@ -204,18 +206,4 @@ describe('MediaOverviewStore.sortMedia()', () => {
 		expect(parsed).toBeNull();
 	});
 
-	test('Should preserve field precedence and wire directions when building multi-field sorts', () => {
-		// Arrange
-		const sorts = [
-			{ field: SortType.MediaSize, direction: SortDirection.Desc },
-			{ field: SortType.Title, direction: SortDirection.Asc },
-			{ field: 'id' },
-		] as const;
-
-		// Act
-		const dsl = buildFlexSortDsl(sorts);
-
-		// Assert
-		expect(dsl).toBe('mediaSize:desc,title:asc,id:asc');
-	});
 });

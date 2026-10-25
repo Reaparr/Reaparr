@@ -1,5 +1,5 @@
 import { headers, route } from '@fixtures';
-import { generatePlexMedia, generateResultDTO, type MockConfig } from '@mock';
+import { generatePlexMedia, generateResultDTO, generateSupportedSorts, type MockConfig } from '@mock';
 import { PlexLibraryPaths, PlexMediaPaths, SettingsPaths } from '@api/api-paths';
 import { MediaMetaDataTypes } from '@enums';
 import { AudioQuality, PlexMediaType, SortType, VideoQuality, ViewMode, type PlexMediaDTO, type PlexMediaMetadataDTO, type PlexMediaStatisticsDTO, type SettingsModelDTO } from '@dto';
@@ -26,6 +26,10 @@ function createRoots(type: PlexMediaType, config: MockConfig, libraryId: number,
 	roots[1]!.year = 1990;
 	for (const root of roots) {
 		if (type === PlexMediaType.MusicArtist) {
+			root.qualities = [{
+				dataId: -1, mediaId: root.id, mediaDataType: PlexMediaType.MusicArtist, videoQuality: VideoQuality.None,
+				audioQuality: root.id === 100 ? AudioQuality.FLAC16Bit441KHz : AudioQuality.MP3320KbpsPlus,
+			}];
 			root.children = [0, 1].map((albumIndex) => {
 				const album = create(root.id + 10 + albumIndex * 10, PlexMediaType.MusicAlbum, `Album ${albumIndex + 1}`, root.id);
 				album.children = Array.from({ length: albumIndex === 0 ? 4 : 1 }, (_, trackIndex) => {
@@ -53,6 +57,17 @@ function createRoots(type: PlexMediaType, config: MockConfig, libraryId: number,
 	return roots;
 }
 
+function compareRootSort(left: PlexMediaDTO, right: PlexMediaDTO, field: string): number {
+	switch (field) {
+		case SortType.AudioQuality:
+			return Number(left.id === 100) - Number(right.id === 100);
+		case SortType.Year:
+			return left.year - right.year;
+		default:
+			return left.title.localeCompare(right.title);
+	}
+}
+
 function setupFamily(family: (typeof families)[number]) {
 	cy.intercept('http*://*/api/**', (request) => {
 		throw new Error(`Unmocked API request: ${request.method} ${request.url}`);
@@ -78,6 +93,7 @@ function setupFamily(family: (typeof families)[number]) {
 		const metadata: PlexMediaMetadataDTO = {
 			countries: [], countryCount: 0, genres: [{ id: 7, name: 'Jazz' }, { id: 8, name: 'Acoustic' }], genreCount: 2,
 			roles: [], roleCount: 0, qualities, qualityCount: qualities.length, mediaCount: roots.length,
+			supportedSorts: generateSupportedSorts(family.type),
 		};
 		cy.intercept('GET', PlexLibraryPaths.getLibraryMediaMetadata(library.id, { mediaType: family.type }), { statusCode: 200, body: generateResultDTO(metadata), ...headers });
 		cy.intercept('GET', PlexLibraryPaths.getMetadataFilter(library.id, { mediaType: family.type }), { statusCode: 200, body: generateResultDTO({ countries: [], genres: [7, 8], roles: [], qualities: qualities.map((quality) => quality.id) }), ...headers });
@@ -97,7 +113,7 @@ function setupFamily(family: (typeof families)[number]) {
 			if (request.query.qualityId) rows = rows.filter((root) => root.id === (Number(request.query.qualityId) === 1080 ? 100 : 200));
 			rows = rows.filter((root) => root.title.toLowerCase().includes(query));
 			rows.sort((left, right) => {
-				const comparison = sortField === SortType.Year ? left.year - right.year : left.title.localeCompare(right.title);
+				const comparison = compareRootSort(left, right, sortField ?? SortType.Title);
 				return sortDirection === 'desc' ? -comparison : comparison;
 			});
 			const mediaSize = rows.reduce((size, root) => size + root.mediaSize, 0);
@@ -197,8 +213,28 @@ for (const family of families) {
 			cy.getPageData();
 			cy.get('.media-poster-card').should('have.length', 2).first().should('contain.text', 'Acoustic collection');
 			assertViewPersistence(family);
+			cy.intercept('GET', '**/api/PlexMedia*').as('familySortRequest');
 			cy.getCy('media-overview-sort-btn').click();
-			cy.getCy(`sort-option-${SortType.Year}-btn`).click();
+			if (family.type === PlexMediaType.MusicArtist) {
+				cy.getCy(`sort-option-${SortType.Year}-btn`).should('not.exist');
+				cy.getCy(`sort-option-${SortType.VideoQuality}-btn`).should('not.exist');
+				cy.getCy(`sort-option-${SortType.AudioQuality}-btn`).click();
+				cy.wait('@familySortRequest').its('request.query.sort').should('eq', 'audioQuality:asc');
+				cy.get('.media-poster-card').first().should('contain.text', 'Acoustic collection');
+				cy.getCy('media-overview-sort-btn').click();
+				cy.getCy(`sort-option-${SortType.AudioQuality}-btn`).click();
+				cy.wait('@familySortRequest').its('request.query.sort').should('eq', 'audioQuality:desc');
+				cy.get('.media-poster-card').first().should('contain.text', 'Synth collection');
+				cy.reload();
+				cy.getPageData();
+				cy.location('search').should((search) => {
+					expect(new URLSearchParams(search).get('sort')).to.equal('audioQuality:desc');
+				});
+			} else {
+				cy.getCy(`sort-option-${SortType.AudioQuality}-btn`).should('not.exist');
+				cy.getCy(`sort-option-${SortType.Year}-btn`).click();
+				cy.wait('@familySortRequest').its('request.query.sort').should('eq', 'year:asc');
+			}
 			cy.get('.media-poster-card').first().should('contain.text', 'Synth collection');
 			cy.getCy('media-overview-filter-btn').filter(':visible').click();
 			cy.getCy(`media-filter-menu-category-${MediaMetaDataTypes.ComparisonState}`).should(family.type === PlexMediaType.MusicArtist ? 'be.visible' : 'not.exist');

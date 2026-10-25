@@ -6,8 +6,8 @@ import { DOMWrapper, flushPromises } from '@vue/test-utils';
 import { baseSetup } from '@services-test-base';
 import { PhotoItemKind, PlexMediaType, SortType, ViewMode } from '@dto';
 import { useLibraryStore, useMediaOverviewStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
-import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
-import { generatePlexLibrary, Seed } from '@mock';
+import { MEDIA_OVERVIEW_SORT_FIELDS, createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
+import { generatePlexLibrary, generateSupportedSorts, Seed } from '@mock';
 import messages from '@/lang/en-US.json';
 import MediaOverviewBar from '@/components/MediaOverview/MediaOverviewBar.vue';
 
@@ -24,6 +24,63 @@ describe('MediaOverviewBar - photo mode', () => {
 	afterEach(() => {
 		mounted.forEach((wrapper) => wrapper.unmount());
 		mounted.length = 0;
+	});
+
+	function setSortMetadata(mediaType: PlexMediaType) {
+		const store = useMediaOverviewStore();
+		store.metadataList = {
+			mediaCount: 0,
+			countryCount: 0,
+			genreCount: 0,
+			qualityCount: 0,
+			roleCount: 0,
+			countries: [],
+			genres: [],
+			qualities: [],
+			roles: [],
+			supportedSorts: generateSupportedSorts(mediaType),
+		};
+		return store;
+	}
+
+	test('derives sort menu choices from metadata capabilities for each media family', async () => {
+		// Arrange
+		const settingsStore = useSettingsStore();
+		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.MusicArtist;
+		const mediaOverviewStore = setSortMetadata(PlexMediaType.MusicArtist);
+		const wrapper = await mountSuspended(MediaOverviewBar, {
+			props: { libraryId: 0 },
+			global: {
+				plugins: [pinia, i18n()],
+				stubs: { teleport: true, QMediaTypeIcon: true },
+			},
+		});
+		mounted.push(wrapper);
+
+		// Act
+		await wrapper.get('[data-cy="media-overview-sort-btn"]').trigger('click');
+		await flushPromises();
+
+		// Assert
+		const audioOption = wrapper.find(`[data-cy="sort-option-${SortType.AudioQuality}-btn"]`);
+		expect(audioOption.exists()).toBe(true);
+		expect(audioOption.text()).toContain('Audio Quality');
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.VideoQuality}-btn"]`).exists()).toBe(false);
+		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.Movie;
+		mediaOverviewStore.metadataList = {
+			...mediaOverviewStore.metadataList,
+			supportedSorts: generateSupportedSorts(PlexMediaType.Movie),
+		};
+		expect(mediaOverviewStore.getSortOptions().map((option) => option.field)).not.toContain(SortType.AudioQuality);
+		expect(mediaOverviewStore.getSortOptions().map((option) => option.field)).toContain(SortType.VideoQuality);
+		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.PhotoAlbum;
+		mediaOverviewStore.metadataList = {
+			...mediaOverviewStore.metadataList,
+			supportedSorts: generateSupportedSorts(PlexMediaType.PhotoAlbum),
+		};
+		const photoFields = mediaOverviewStore.getSortOptions(MEDIA_OVERVIEW_SORT_FIELDS).map((option) => option.field);
+		expect(photoFields).not.toContain(SortType.AudioQuality);
+		expect(photoFields).toEqual([...MEDIA_OVERVIEW_SORT_FIELDS]);
 	});
 
 	test('drives photo view and title sort route events through the shared dropdowns', async () => {

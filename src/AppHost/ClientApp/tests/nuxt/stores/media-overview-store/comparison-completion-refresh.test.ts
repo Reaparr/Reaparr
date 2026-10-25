@@ -6,6 +6,7 @@ import {
 	generatePlexMedia,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
+	generateSupportedSorts,
 	Seed,
 } from '@mock';
 import { useBackgroundJobsStore, useLibraryStore, useMediaOverviewStore } from '@store';
@@ -24,6 +25,21 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
 	});
+
+	function setMetadata(mediaType: PlexMediaType) {
+		useMediaOverviewStore().metadataList = {
+			mediaCount: 0,
+			countryCount: 0,
+			genreCount: 0,
+			qualityCount: 0,
+			roleCount: 0,
+			countries: [],
+			genres: [],
+			qualities: [],
+			roles: [],
+			supportedSorts: generateSupportedSorts(mediaType),
+		};
+	}
 
 	function createMediaPage(page: number, queryHash: string, type = PlexMediaType.TvShow): PlexMediaStatisticsDTO {
 		const mediaItems = Array.from({ length: 3 }, (_, index) => generatePlexMedia({
@@ -47,6 +63,7 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 
 	test.each([PlexMediaType.Movie, PlexMediaType.TvShow, PlexMediaType.MusicArtist])('Should refresh cached %s pages only after successful affected comparison completion', async (type) => {
 		// Arrange
+		setMetadata(type);
 		const libraryId = 17;
 		const mediaOverviewStore = useMediaOverviewStore();
 		const libraryStore = useLibraryStore();
@@ -107,6 +124,7 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 
 	test.each([PlexMediaType.TvShow, PlexMediaType.MusicArtist])('Should ignore %s comparison completion when current library is not affected', async (type) => {
 		// Arrange
+		setMetadata(type);
 		const libraryId = 17;
 		const mediaOverviewStore = useMediaOverviewStore();
 		const libraryStore = useLibraryStore();
@@ -143,6 +161,7 @@ describe('MediaOverviewStore.refreshCurrentMediaDataWhenComparisonCompleted()', 
 	});
 	test('Should ignore a different media family completion even when the Music library id is affected', async () => {
 		// Arrange
+		setMetadata(PlexMediaType.MusicArtist);
 		const store = useMediaOverviewStore();
 		useLibraryStore().updateLibrary(generatePlexLibrary({
 			seed: new Seed(4819), plexServerId: 1, type: PlexMediaType.MusicArtist, partialData: { id: 17 },

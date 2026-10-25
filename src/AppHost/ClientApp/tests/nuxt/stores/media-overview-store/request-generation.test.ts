@@ -1,20 +1,24 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { of, Subject } from 'rxjs';
+import { get, set } from '@vueuse/core';
+import { useRouteQuery } from '@vueuse/router';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import {
 	generatePlexMediaSlims,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
+	generateSupportedSorts,
 } from '@mock';
 import { plexLibraryApi, plexMediaApi } from '@api';
-import { useLibraryStore, useMediaOverviewStore } from '@store';
+import { useLibraryStore, useMediaOverviewStore, useSettingsStore } from '@store';
 import {
 	type PlexLibraryDTO,
 	type PlexMediaFilterMetadataDTO,
 	type PlexMediaMetadataDTO,
 	type PlexMediaStatisticsDTO,
 	PlexMediaType,
+	SortDirection,
+	SortType,
 } from '@dto';
 import type { ResultDTO } from '@interfaces';
 
@@ -27,7 +31,13 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		setSortMetadata(PlexMediaType.Movie);
 	});
+
+	function setSortMetadata(mediaType: PlexMediaType) {
+		const store = useMediaOverviewStore();
+		store.metadataList = createMetadata(0, mediaType);
+	}
 
 	function createPage(title: string, queryHash: string, totalCount: number, page = 1): PlexMediaStatisticsDTO {
 		const mediaList = generatePlexMediaSlims({
@@ -59,7 +69,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		} as PlexLibraryDTO;
 	}
 
-	function createMetadata(mediaCount: number): PlexMediaMetadataDTO {
+	function createMetadata(mediaCount: number, mediaType: PlexMediaType): PlexMediaMetadataDTO {
 		return {
 			mediaCount,
 			countryCount: 0,
@@ -70,6 +80,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 			genres: [],
 			qualities: [],
 			roles: [],
+			supportedSorts: generateSupportedSorts(mediaType),
 		};
 	}
 
@@ -110,7 +121,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		libraryResponse.complete();
 		expect(metadataRequest).toHaveBeenCalledTimes(1);
 		expect(filterMetadataRequest).toHaveBeenCalledTimes(1);
-		metadataResponse.next(generateResultDTO(createMetadata(42)));
+		metadataResponse.next(generateResultDTO(createMetadata(42, PlexMediaType.Movie)));
 		metadataResponse.complete();
 		filterMetadataResponse.next(generateResultDTO(createFilterMetadata(40)));
 		filterMetadataResponse.complete();
@@ -158,7 +169,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		queryMediaResponse.next(generateResultDTO(queryPage));
 		queryMediaResponse.complete();
 		await query.onComplete();
-		metadataResponse.next(generateResultDTO(createMetadata(42)));
+		metadataResponse.next(generateResultDTO(createMetadata(42, PlexMediaType.Movie)));
 		metadataResponse.complete();
 		filterMetadataResponse.next(generateResultDTO(createFilterMetadata(40)));
 		filterMetadataResponse.complete();
@@ -203,7 +214,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 
 		// Act
 		await firstInitialization.onComplete();
-		firstMetadataResponse.next(generateResultDTO(createMetadata(11)));
+		firstMetadataResponse.next(generateResultDTO(createMetadata(11, PlexMediaType.Movie)));
 		firstFilterMetadataResponse.next(generateResultDTO(createFilterMetadata(10)));
 		firstMediaResponse.next(generateResultDTO(createPage('O', 'old-library', 1)));
 		firstMetadataResponse.complete();
@@ -215,7 +226,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		expect(store.getMediaItems).toEqual([]);
 		secondLibraryResponse.next(generateResultDTO(secondLibrary));
 		secondLibraryResponse.complete();
-		secondMetadataResponse.next(generateResultDTO(createMetadata(22)));
+		secondMetadataResponse.next(generateResultDTO(createMetadata(22, PlexMediaType.Movie)));
 		secondMetadataResponse.complete();
 		secondFilterMetadataResponse.next(generateResultDTO(createFilterMetadata(20)));
 		secondFilterMetadataResponse.complete();
@@ -286,5 +297,127 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		expect(store.itemsLength).toBe(1);
 		expect(store.totalCount).toBe(250);
 		expect(store.navLoading).toBe(false);
+	});
+
+	test('Should wait for capabilities before the first media request without losing a restored audio sort', async () => {
+		// Arrange
+		useSettingsStore().displaySettings.allOverviewViewMode = PlexMediaType.MusicArtist;
+		const sortQuery = useRouteQuery<string>('sort', '');
+		setSortMetadata(PlexMediaType.MusicArtist);
+		set(sortQuery, `${SortType.AudioQuality}:desc`);
+		const store = useMediaOverviewStore();
+		const metadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		const filterMetadataResponse = new Subject<ResultDTO<PlexMediaFilterMetadataDTO>>();
+		const mediaResponse = new Subject<ResultDTO<PlexMediaStatisticsDTO>>();
+		const metadataRequest = vi.spyOn(plexLibraryApi, 'getLibraryMediaMetadata').mockReturnValue(metadataResponse.asObservable());
+		vi.spyOn(plexLibraryApi, 'getMetadataFilter').mockReturnValue(filterMetadataResponse.asObservable());
+		const mediaRequest = vi.spyOn(plexMediaApi, 'getAllMediaByTypeEndpoint').mockReturnValue(mediaResponse.asObservable());
+
+		// Act
+		const initialization = subscribeSpyTo(store.initializeLibrary(0));
+
+		// Assert
+		expect(metadataRequest).toHaveBeenCalledTimes(1);
+		expect(mediaRequest).not.toHaveBeenCalled();
+		expect(store.sortedState).toEqual({ field: SortType.AudioQuality, sort: SortDirection.Desc });
+
+		filterMetadataResponse.next(generateResultDTO(createFilterMetadata(1)));
+		filterMetadataResponse.complete();
+		metadataResponse.next(generateResultDTO(createMetadata(1, PlexMediaType.MusicArtist)));
+		metadataResponse.complete();
+		expect(mediaRequest).toHaveBeenCalledTimes(1);
+		expect(mediaRequest.mock.calls[0]?.[0]?.sort).toBe(`${SortType.AudioQuality}:desc`);
+
+		mediaResponse.next(generateResultDTO(createPage('A', 'music-query', 1)));
+		mediaResponse.complete();
+		await initialization.onComplete();
+
+		expect(store.sortedState).toEqual({ field: SortType.AudioQuality, sort: SortDirection.Desc });
+		expect(get(sortQuery)).toBe(`${SortType.AudioQuality}:desc`);
+	});
+
+	test('Should stop initialization when capability metadata fails without replacing a restored audio sort', async () => {
+		// Arrange
+		useSettingsStore().displaySettings.allOverviewViewMode = PlexMediaType.MusicArtist;
+		const sortQuery = useRouteQuery<string>('sort', '');
+		setSortMetadata(PlexMediaType.MusicArtist);
+		set(sortQuery, `${SortType.AudioQuality}:desc`);
+		const store = useMediaOverviewStore();
+		const metadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		const filterMetadataResponse = new Subject<ResultDTO<PlexMediaFilterMetadataDTO>>();
+		const mediaResponse = new Subject<ResultDTO<PlexMediaStatisticsDTO>>();
+		const mediaRequest = vi.spyOn(plexMediaApi, 'getAllMediaByTypeEndpoint').mockReturnValue(mediaResponse.asObservable());
+		vi.spyOn(plexLibraryApi, 'getLibraryMediaMetadata').mockReturnValue(metadataResponse.asObservable());
+		vi.spyOn(plexLibraryApi, 'getMetadataFilter').mockReturnValue(filterMetadataResponse.asObservable());
+
+		// Act
+		const initialization = subscribeSpyTo(store.initializeLibrary(0));
+		filterMetadataResponse.next(generateResultDTO(createFilterMetadata(1)));
+		filterMetadataResponse.complete();
+		metadataResponse.next({
+			isSuccess: false,
+			statusCode: 500,
+			errors: [],
+			successes: [],
+			value: null,
+		});
+		metadataResponse.complete();
+		await initialization.onComplete();
+
+		// Assert
+		expect(mediaRequest).not.toHaveBeenCalled();
+		expect(store.mediaLoadError).toBe(true);
+		expect(store.loading).toBe(false);
+		expect(store.sortedState).toEqual({ field: SortType.AudioQuality, sort: SortDirection.Desc });
+		expect(get(sortQuery)).toBe(`${SortType.AudioQuality}:desc`);
+	});
+
+	test('Should reload capabilities before retrying a restored audio sort after metadata failure', async () => {
+		// Arrange
+		useSettingsStore().displaySettings.allOverviewViewMode = PlexMediaType.MusicArtist;
+		const sortQuery = useRouteQuery<string>('sort', '');
+		setSortMetadata(PlexMediaType.MusicArtist);
+		set(sortQuery, `${SortType.AudioQuality}:desc`);
+		const store = useMediaOverviewStore();
+		const firstMetadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		const secondMetadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		const filterMetadataResponse = new Subject<ResultDTO<PlexMediaFilterMetadataDTO>>();
+		const mediaResponse = new Subject<ResultDTO<PlexMediaStatisticsDTO>>();
+		let metadataCall = 0;
+		const metadataRequest = vi.spyOn(plexLibraryApi, 'getLibraryMediaMetadata').mockImplementation(() =>
+			metadataCall++ === 0 ? firstMetadataResponse.asObservable() : secondMetadataResponse.asObservable());
+		vi.spyOn(plexLibraryApi, 'getMetadataFilter').mockReturnValue(filterMetadataResponse.asObservable());
+		const mediaRequest = vi.spyOn(plexMediaApi, 'getAllMediaByTypeEndpoint').mockReturnValue(mediaResponse.asObservable());
+
+		// Act
+		const initialization = subscribeSpyTo(store.initializeLibrary(0));
+		filterMetadataResponse.next(generateResultDTO(createFilterMetadata(1)));
+		filterMetadataResponse.complete();
+		firstMetadataResponse.next({
+			isSuccess: false,
+			statusCode: 500,
+			errors: [],
+			successes: [],
+			value: null,
+		});
+		firstMetadataResponse.complete();
+		await initialization.onComplete();
+		expect(mediaRequest).not.toHaveBeenCalled();
+
+		const retry = subscribeSpyTo(store.retryMediaLoad());
+		expect(metadataRequest).toHaveBeenCalledTimes(2);
+		expect(mediaRequest).not.toHaveBeenCalled();
+		secondMetadataResponse.next(generateResultDTO(createMetadata(1, PlexMediaType.MusicArtist)));
+		secondMetadataResponse.complete();
+		expect(mediaRequest).toHaveBeenCalledTimes(1);
+		expect(mediaRequest.mock.calls[0]?.[0]?.sort).toBe(`${SortType.AudioQuality}:desc`);
+		mediaResponse.next(generateResultDTO(createPage('A', 'retry-query', 1)));
+		mediaResponse.complete();
+		await retry.onComplete();
+
+		// Assert
+		expect(store.mediaLoadError).toBe(false);
+		expect(store.sortedState).toEqual({ field: SortType.AudioQuality, sort: SortDirection.Desc });
+		expect(get(sortQuery)).toBe(`${SortType.AudioQuality}:desc`);
 	});
 });
