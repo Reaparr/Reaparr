@@ -82,6 +82,7 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
                             CountryCount = 0,
                             GenreCount = 0,
                             QualityCount = 0,
+                            SupportedSorts = plexLibrary.Type.GetSupportedSorts(),
                         }
                     ),
                     ct
@@ -132,6 +133,7 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
                 CountryCount = plexLibrary.CountriesCount,
                 GenreCount = plexLibrary.GenresCount,
                 QualityCount = uniqueQualities.Count,
+                SupportedSorts = plexLibrary.Type.GetSupportedSorts(),
             };
 
             await Send.FluentResult(Result.Ok(mediaMetadataDTO), ct);
@@ -214,6 +216,7 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
                         CountryCount = countryCount,
                         GenreCount = genreCount,
                         Qualities = uniqueQualities,
+                        SupportedSorts = req.MediaType.GetSupportedSorts(),
                     }
                 ),
                 ct
@@ -227,12 +230,14 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
         CancellationToken ct
     ) =>
         mediaType.IsMusicType()
-            ? _dbContext.PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
+            ? _dbContext
+                .PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
                 .SelectMany(pl => pl.GenresAudio)
                 .Select(g => new PlexGenreDTO { Id = g.Id, Name = g.Name })
                 .Distinct()
                 .ToListAsync(ct)
-            : _dbContext.PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
+            : _dbContext
+                .PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
                 .SelectMany(pl => pl.GenresVideo)
                 .Select(g => new PlexGenreDTO { Id = g.Id, Name = g.Name })
                 .Distinct()

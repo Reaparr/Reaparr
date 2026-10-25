@@ -334,11 +334,11 @@ public class GetLibraryMediaMetadataUnitTests
     }
 
     /// <summary>
-    /// Verifies metadata publishes the complete media-family sort catalog even for empty or disabled scopes.
+    /// Verifies metadata publishes only its root media type's supported sorts, including empty or disabled scopes.
     /// </summary>
     /// <remarks>
-    /// Assertions inspect the serialized response rather than the DTO's computed catalog getter, so omission
-    /// of the JSON field or incorrect enum wire values cannot be concealed by deserialization defaults.
+    /// Assertions inspect the serialized response so an incorrect object-shaped catalog, omitted field,
+    /// or incorrect enum wire values cannot be concealed by deserialization defaults.
     /// </remarks>
     [Test]
     [Arguments(false, false)]
@@ -364,25 +364,9 @@ public class GetLibraryMediaMetadataUnitTests
         if (disabled)
             await new MetadataScopeTestFixture(dbContext, CancellationToken).DisableLibraryAsync(library);
 
-        var expected = new Dictionary<string, string[]>
+        var expected = new[]
         {
-            [nameof(PlexMediaType.Movie)] =
-            [
-                "title", "year", "addedAt", "updatedAt", "duration", "mediaSize", "videoQuality", "comparisonState",
-            ],
-            [nameof(PlexMediaType.TvShow)] =
-            [
-                "title", "year", "addedAt", "updatedAt", "duration", "mediaSize", "videoQuality", "comparisonState",
-            ],
-            [nameof(PlexMediaType.MusicArtist)] =
-            [
-                "title", "addedAt", "updatedAt", "duration", "mediaSize", "audioQuality", "comparisonState",
-            ],
-            [nameof(PlexMediaType.PhotoAlbum)] = ["title", "addedAt", "updatedAt", "duration", "mediaSize"],
-            [nameof(PlexMediaType.OtherVideos)] =
-            [
-                "title", "year", "addedAt", "updatedAt", "duration", "mediaSize", "videoQuality",
-            ],
+            "title", "year", "addedAt", "updatedAt", "duration", "mediaSize", "videoQuality", "comparisonState",
         };
 
         // Act
@@ -406,10 +390,8 @@ public class GetLibraryMediaMetadataUnitTests
         root.ShouldNotBeNull();
         root["isSuccess"]!.GetValue<bool>().ShouldBeTrue();
         root["errors"]!.AsArray().Count.ShouldBe(0);
-        var capabilities = root["value"]!["supportedSorts"]!.AsObject();
-        capabilities.Select(property => property.Key).Order().ShouldBe(expected.Keys.Order());
-        foreach (var (mediaType, fields) in expected)
-            capabilities[mediaType]!.AsArray().Select(field => field!.GetValue<string>()).ShouldBe(fields);
+        var capabilities = root["value"]!["supportedSorts"]!.AsArray();
+        capabilities.Select(field => field!.GetValue<string>()).ShouldBe(expected);
     }
 
     private async Task<ResultDTO<PlexMediaMetadataDTO>?> ReadMetadataResponseAsync(Stream body)

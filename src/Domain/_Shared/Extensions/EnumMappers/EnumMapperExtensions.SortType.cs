@@ -51,7 +51,7 @@ public static partial class EnumMapperExtensions
     /// </summary>
     /// <param name="mediaType">The root media family whose query capabilities are requested.</param>
     /// <returns>The catalog's fields, or an empty span for a media type that has no root overview query.</returns>
-    public static ReadOnlySpan<SortType> GetSupportedSorts(this PlexMediaType mediaType) =>
+    public static IReadOnlyList<SortType> GetSupportedSorts(this PlexMediaType mediaType) =>
         SupportedMediaSorts.TryGetValue(mediaType, out var supportedSorts) ? supportedSorts : [];
 
     /// <summary>
@@ -89,15 +89,15 @@ public static partial class EnumMapperExtensions
     public static bool IsSupportedSort(this string? value, PlexMediaType mediaType)
     {
         var supportedSorts = mediaType.GetSupportedSorts();
-        return (string.IsNullOrWhiteSpace(value) || !supportedSorts.IsEmpty)
+        return (string.IsNullOrWhiteSpace(value) || !supportedSorts.Any())
             && IsSupportedSort(value, supportedSorts, requireSingleSort: false);
     }
 
     // Explicit field lists belong to browse requests that carry a single sort.
-    public static bool IsSupportedSort(this string? value, params ReadOnlySpan<SortType> supportedSorts) =>
-        IsSupportedSort(value, supportedSorts, requireSingleSort: !supportedSorts.IsEmpty);
+    public static bool IsSupportedSort(this string? value, params IReadOnlyList<SortType> supportedSorts) =>
+        IsSupportedSort(value, supportedSorts, requireSingleSort: !supportedSorts.Any());
 
-    private static bool IsSupportedSort(string? value, ReadOnlySpan<SortType> supportedSorts, bool requireSingleSort)
+    private static bool IsSupportedSort(string? value, IReadOnlyList<SortType> supportedSorts, bool requireSingleSort)
     {
         if (string.IsNullOrWhiteSpace(value))
             return true;
@@ -111,7 +111,7 @@ public static partial class EnumMapperExtensions
             foreach (var node in nodes)
             {
                 var sortType = ParseSortNodeField(node);
-                if (!supportedSorts.IsEmpty && !supportedSorts.Contains(sortType))
+                if (!supportedSorts.Any() && !supportedSorts.Contains(sortType))
                     return false;
             }
 
