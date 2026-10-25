@@ -11,6 +11,9 @@ public sealed class GetMediaOverviewPhotoCommandValidator : AbstractValidator<Ge
     {
         RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.PhotoAlbum);
         RuleFor(x => x.Filter.ComparisonState).Null();
+        RuleFor(x => x.Filter.Parameters.Sort)
+            .Must((command, sort) => sort.IsSupportedSort(command.Filter.MediaType))
+            .WithMessage("Sort fields must be supported media sort types.");
         RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
@@ -45,7 +48,7 @@ public sealed class GetMediaOverviewPhotoCommandHandler
         var filter = command.Filter;
         var options = QueryOptionsParser.Parse(filter.Parameters);
         var sort = options.ResolveSort();
-        if (sort is null || sort.Value.Field is SortType.VideoQuality or SortType.Year)
+        if (sort is null)
         {
             var mediaResult = await _commandExecutor.Send(
                 new GetPhotoAlbumMediaByTypeCommand(filter),

@@ -10,6 +10,9 @@ public sealed class GetMediaOverviewTvShowCommandValidator : AbstractValidator<G
     public GetMediaOverviewTvShowCommandValidator()
     {
         RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.TvShow);
+        RuleFor(x => x.Filter.Parameters.Sort)
+            .Must((command, sort) => sort.IsSupportedSort(command.Filter.MediaType))
+            .WithMessage("Sort fields must be supported media sort types.");
         RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)

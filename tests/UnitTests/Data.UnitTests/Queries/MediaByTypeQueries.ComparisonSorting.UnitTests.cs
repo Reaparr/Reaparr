@@ -315,6 +315,45 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
+    [Test]
+    public async Task ShouldSortMusicAudioQualityBeforeComparisonStateAndPaging_WhenBothSortsAreRequested()
+    {
+        // Arrange
+        var fixture = await ArrangeMusicAudioQualityFixtureAsync();
+        ConfigureMusicAudioQualityComparison(fixture);
+        const string sort = "audioQuality:desc,comparisonState:asc,Title:asc";
+
+        // Act
+        var page1 = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
+            CreateCommand(fixture.LibraryId, 1, sort)
+        );
+        var page2 = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
+            CreateCommand(fixture.LibraryId, 2, sort)
+        );
+
+        // Assert
+        foreach (var result in new[] { page1, page2 })
+        {
+            result.IsSuccess.ShouldBeTrue();
+            result.Errors.Count.ShouldBe(0);
+            result.Value.TotalCount.ShouldBe(4);
+            result.Value.MediaCount.ShouldBe(4);
+            result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([("7", 0), ("3", 2)]);
+            result.Value.Qualities.ShouldBeEmpty();
+        }
+        page1.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[1], fixture.Ids[0]]);
+        page2.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[3], fixture.Ids[2]]);
+        page1.Value.Items.Select(x => x.ComparisonId).ShouldBe([
+            PlexMediaComparisonState.Owned.ToComparisonId(),
+            PlexMediaComparisonState.Missing.ToComparisonId(),
+        ]);
+        page2.Value.Items.Select(x => x.ComparisonId).ShouldBe([
+            PlexMediaComparisonState.Owned.ToComparisonId(),
+            PlexMediaComparisonState.Missing.ToComparisonId(),
+        ]);
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
     private async Task<(int LibraryId, List<int> Ids)> ArrangeMusicArtistFixtureAsync()
     {
         await SetupDatabase(
@@ -344,6 +383,61 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
         var ids = artists.Select(x => x.Id).ToList();
         dbContext.ClearChangeTracker();
         return (libraryId, ids);
+    }
+
+    private async Task<(int LibraryId, List<int> Ids)> ArrangeMusicAudioQualityFixtureAsync()
+    {
+        var fixture = await ArrangeMusicArtistFixtureAsync();
+        var dbContext = IDbContext;
+        var qualities = new[]
+        {
+            (ArtistId: fixture.Ids[0], Quality: AudioQuality.MP3_320KbpsPlus),
+            (ArtistId: fixture.Ids[1], Quality: AudioQuality.MP3_320KbpsPlus),
+            (ArtistId: fixture.Ids[2], Quality: AudioQuality.MP3_128Kbps),
+            (ArtistId: fixture.Ids[3], Quality: AudioQuality.MP3_128Kbps),
+        };
+        dbContext.PlexMusicArtistMediaQualities.AddRange(
+            qualities.Select(quality => new PlexMusicArtistMediaQuality
+            {
+                PlexLibraryId = fixture.LibraryId,
+                PlexMusicArtistId = quality.ArtistId,
+                AudioQuality = quality.Quality,
+            })
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        dbContext.ClearChangeTracker();
+        return fixture;
+    }
+
+    private void ConfigureMusicAudioQualityComparison((int LibraryId, List<int> Ids) fixture)
+    {
+        var states = new Dictionary<int, PlexMediaComparisonState>
+        {
+            [fixture.Ids[0]] = PlexMediaComparisonState.Missing,
+            [fixture.Ids[1]] = PlexMediaComparisonState.Owned,
+            [fixture.Ids[2]] = PlexMediaComparisonState.Missing,
+            [fixture.Ids[3]] = PlexMediaComparisonState.Owned,
+        };
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<ApplyComparisonStateCommand>(command =>
+                        command.MediaType == PlexMediaType.MusicArtist
+                        && command.PlexLibraryId == fixture.LibraryId
+                        && command.Items.Count == fixture.Ids.Count
+                    ),
+                    CancellationToken
+                )
+            )
+            .Callback<ICommand<Result>, CancellationToken>(
+                (command, _) =>
+                {
+                    foreach (var item in ((ApplyComparisonStateCommand)command).Items)
+                        item.SetComparisonState(states[item.Id]);
+                }
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
     }
 
     private GetMusicArtistMediaByTypeCommand CreateCommand(int libraryId, int page, string sort) =>

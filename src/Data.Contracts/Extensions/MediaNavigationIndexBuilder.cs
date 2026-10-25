@@ -33,7 +33,7 @@ public static class MediaNavigationIndexBuilder
     ) =>
         sort.Field switch
         {
-            SortType.Year or SortType.VideoQuality => BuildGroupedAsync<int?>(
+            SortType.Year or SortType.VideoQuality or SortType.AudioQuality => BuildGroupedAsync<int?>(
                 rows,
                 (
                     sort.Field == SortType.Year ? row => row.Year : row => row.QualityValue,
@@ -130,7 +130,7 @@ public static class MediaNavigationIndexBuilder
         {
             SortType.Title => GetTitleLabel(row.SearchTitle),
             SortType.Year => row.Year?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
-            SortType.VideoQuality => row.QualityValue?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
+            SortType.VideoQuality or SortType.AudioQuality => row.QualityValue?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
             SortType.Duration => row.Duration.HasValue ? GetDurationLabel(row.Duration.Value) : UNKNOWN_LABEL,
             SortType.AddedAt => row.AddedAt.ToString("yyyy-MM", CultureInfo.InvariantCulture),
             SortType.UpdatedAt => row.UpdatedAt is null

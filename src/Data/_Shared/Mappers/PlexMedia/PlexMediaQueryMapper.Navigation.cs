@@ -12,7 +12,7 @@ public static partial class PlexMediaQueryMapper
         {
             SearchTitle = x.SearchTitle,
             Year = 0,
-            QualityValue = null,
+            QualityValue = x.Qualities.Select(quality => (int?)quality.AudioQuality).Max() ?? 0,
             Duration = x.Duration,
             AddedAt = x.AddedAt,
             UpdatedAt = x.UpdatedAt,

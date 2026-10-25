@@ -84,6 +84,7 @@ internal static class MediaByTypeQuerySupport
         bool includeQuality
     )
     {
+        var sortType = sorts.Count == 0 ? SortType.Title : sorts[0].Field.ToSortType();
         response.TotalCount = candidates.Count;
         response.MediaSize = candidates.Sum(item => item.MediaSize);
         response.TotalMediaSize = response.MediaSize;
@@ -95,16 +96,18 @@ internal static class MediaByTypeQuerySupport
                         SearchTitle = item.SearchTitle,
                         Year = item.Year,
                         QualityValue =
-                            includeQuality && item.Qualities.Count > 0
-                                ? item.Qualities.Max(quality => quality.VideoQuality.ToId())
-                                : null,
+                            sortType == SortType.AudioQuality
+                                ? _intSelectors[SortType.AudioQuality](item)
+                                : includeQuality && item.Qualities.Count > 0
+                                    ? item.Qualities.Max(quality => quality.VideoQuality.ToId())
+                                    : null,
                         Duration = item.Duration,
                         AddedAt = item.AddedAt,
                         UpdatedAt = item.UpdatedAt,
                         MediaSize = item.MediaSize,
                     }
             ),
-            sorts.Count == 0 ? SortType.Title : sorts[0].Field.ToSortType()
+            sortType
         );
     }
 

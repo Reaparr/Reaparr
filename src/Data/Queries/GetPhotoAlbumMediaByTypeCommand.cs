@@ -61,11 +61,6 @@ public sealed class GetPhotoAlbumMediaByTypeCommandHandler
             return Result.Ok(response);
 
         var options = preparation.Options;
-        options.Sort.RemoveAll(static sort =>
-        {
-            var field = sort.Field.ToSortType();
-            return field is SortType.Year or SortType.VideoQuality;
-        });
         foreach (var sort in options.Sort)
         {
             if (sort.Field == SortType.Title.ToSortValue())

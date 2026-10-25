@@ -100,6 +100,13 @@ public class GetMediaOverviewCommandUnitTests
     [Arguments(PlexMediaType.Movie, "quality:asc", false)]
     [Arguments(PlexMediaType.Movie, "sortTitle:asc", false)]
     [Arguments(PlexMediaType.Movie, "99:asc", false)]
+    [Arguments(PlexMediaType.MusicArtist, "audioQuality:desc,title:asc", true)]
+    [Arguments(PlexMediaType.MusicArtist, "year:asc", false)]
+    [Arguments(PlexMediaType.MusicArtist, "videoQuality:asc", false)]
+    [Arguments(PlexMediaType.Movie, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.TvShow, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.PhotoAlbum, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.OtherVideos, "audioQuality:asc", false)]
     public void ShouldValidateEnumSortFields_WhenValidatingRequest(PlexMediaType mediaType, string sort, bool expected)
     {
         // Arrange
@@ -128,7 +135,6 @@ public class GetMediaOverviewCommandUnitTests
             {
                 Page = 2,
                 PageSize = 25,
-                Sort = "year:desc",
             },
         };
 }

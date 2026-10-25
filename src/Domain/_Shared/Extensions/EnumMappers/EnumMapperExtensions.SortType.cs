@@ -13,9 +13,46 @@ public static partial class EnumMapperExtensions
         )
         .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
 
-    private static readonly SortType[] _nonComparisonSortTypes = Enum.GetValues<SortType>()
-        .Where(sortType => sortType != SortType.ComparisonState)
-        .ToArray();
+    private static readonly SortType[] _commonSortTypes =
+    [
+        SortType.Title,
+        SortType.AddedAt,
+        SortType.UpdatedAt,
+        SortType.Duration,
+        SortType.MediaSize,
+    ];
+
+    private static readonly SortType[] _videoSortTypes =
+    [
+        SortType.Title,
+        SortType.Year,
+        SortType.AddedAt,
+        SortType.UpdatedAt,
+        SortType.Duration,
+        SortType.MediaSize,
+        SortType.VideoQuality,
+    ];
+
+    /// <summary>
+    /// Gets the sort fields implemented by each root media-family query.
+    /// </summary>
+    public static IReadOnlyDictionary<PlexMediaType, SortType[]> SupportedMediaSorts { get; } =
+        new Dictionary<PlexMediaType, SortType[]>
+        {
+            [PlexMediaType.Movie] = [.. _videoSortTypes, SortType.ComparisonState],
+            [PlexMediaType.TvShow] = [.. _videoSortTypes, SortType.ComparisonState],
+            [PlexMediaType.MusicArtist] = [.. _commonSortTypes, SortType.AudioQuality, SortType.ComparisonState],
+            [PlexMediaType.PhotoAlbum] = _commonSortTypes,
+            [PlexMediaType.OtherVideos] = _videoSortTypes,
+        };
+
+    /// <summary>
+    /// Returns the canonical sort capabilities for a root media family without allocating a new field list.
+    /// </summary>
+    /// <param name="mediaType">The root media family whose query capabilities are requested.</param>
+    /// <returns>The catalog's fields, or an empty span for a media type that has no root overview query.</returns>
+    public static ReadOnlySpan<SortType> GetSupportedSorts(this PlexMediaType mediaType) =>
+        SupportedMediaSorts.TryGetValue(mediaType, out var supportedSorts) ? supportedSorts : [];
 
     /// <summary>
     /// Converts a string to <see cref="SortType"/> by its canonical JSON field or supported ordering alias.
@@ -43,12 +80,18 @@ public static partial class EnumMapperExtensions
         return sortType.ToEnumMemberValue();
     }
 
-    public static bool IsSupportedSort(this string? value, PlexMediaType mediaType) =>
-        IsSupportedSort(
-            value,
-            mediaType.SupportsComparison() ? ReadOnlySpan<SortType>.Empty : _nonComparisonSortTypes,
-            requireSingleSort: false
-        );
+    /// <summary>
+    /// Validates all requested sort fields against the same media-family catalog published by the metadata API.
+    /// </summary>
+    /// <param name="value">The optional comma-separated sort expression; omitted sorting uses the query's default order.</param>
+    /// <param name="mediaType">The media family that must implement every requested sort field.</param>
+    /// <returns>True when sorting is omitted or every field is recognized and supported by the selected family.</returns>
+    public static bool IsSupportedSort(this string? value, PlexMediaType mediaType)
+    {
+        var supportedSorts = mediaType.GetSupportedSorts();
+        return (string.IsNullOrWhiteSpace(value) || !supportedSorts.IsEmpty)
+            && IsSupportedSort(value, supportedSorts, requireSingleSort: false);
+    }
 
     // Explicit field lists belong to browse requests that carry a single sort.
     public static bool IsSupportedSort(this string? value, params ReadOnlySpan<SortType> supportedSorts) =>

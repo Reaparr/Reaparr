@@ -12,6 +12,9 @@ public sealed class GetMediaOverviewOtherVideoCommandValidator : AbstractValidat
     {
         RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.OtherVideos);
         RuleFor(x => x.Filter.ComparisonState).Null();
+        RuleFor(x => x.Filter.Parameters.Sort)
+            .Must((command, sort) => sort.IsSupportedSort(command.Filter.MediaType))
+            .WithMessage("Sort fields must be supported media sort types.");
         RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)

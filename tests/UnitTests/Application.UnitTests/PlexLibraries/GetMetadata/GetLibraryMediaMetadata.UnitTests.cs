@@ -333,6 +333,85 @@ public class GetLibraryMediaMetadataUnitTests
         metadata.Qualities.ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies metadata publishes the complete media-family sort catalog even for empty or disabled scopes.
+    /// </summary>
+    /// <remarks>
+    /// Assertions inspect the serialized response rather than the DTO's computed catalog getter, so omission
+    /// of the JSON field or incorrect enum wire values cannot be concealed by deserialization defaults.
+    /// </remarks>
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(false, true)]
+    [Arguments(true, false)]
+    [Arguments(true, true)]
+    public async Task ShouldPublishFamilySortCapabilities_WhenMetadataScopeIsEmptyOrDisabled(
+        bool allLibraries,
+        bool disabled
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            8250,
+            config =>
+            {
+                MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 1);
+                config.MovieCount = 0;
+            }
+        );
+        var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync();
+        if (disabled)
+            await new MetadataScopeTestFixture(dbContext, CancellationToken).DisableLibraryAsync(library);
+
+        var expected = new Dictionary<string, string[]>
+        {
+            [nameof(PlexMediaType.Movie)] =
+            [
+                "title", "year", "addedAt", "updatedAt", "duration", "mediaSize", "videoQuality", "comparisonState",
+            ],
+            [nameof(PlexMediaType.TvShow)] =
+            [
+                "title", "year", "addedAt", "updatedAt", "duration", "mediaSize", "videoQuality", "comparisonState",
+            ],
+            [nameof(PlexMediaType.MusicArtist)] =
+            [
+                "title", "addedAt", "updatedAt", "duration", "mediaSize", "audioQuality", "comparisonState",
+            ],
+            [nameof(PlexMediaType.PhotoAlbum)] = ["title", "addedAt", "updatedAt", "duration", "mediaSize"],
+            [nameof(PlexMediaType.OtherVideos)] =
+            [
+                "title", "year", "addedAt", "updatedAt", "duration", "mediaSize", "videoQuality",
+            ],
+        };
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(
+            new GetLibraryMediaMetadataRequest
+            {
+                PlexLibraryId = allLibraries ? 0 : library.Id,
+                MediaType = PlexMediaType.Movie,
+            }
+        );
+        endpointResult.Endpoint.HttpContext.Response.Body.Position = 0;
+        var root = await System.Text.Json.Nodes.JsonNode.ParseAsync(
+            endpointResult.Endpoint.HttpContext.Response.Body,
+            new System.Text.Json.Nodes.JsonNodeOptions { PropertyNameCaseInsensitive = true },
+            cancellationToken: CancellationToken
+        );
+
+        // Assert
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.StatusCode.ShouldBe(200);
+        root.ShouldNotBeNull();
+        root["isSuccess"]!.GetValue<bool>().ShouldBeTrue();
+        root["errors"]!.AsArray().Count.ShouldBe(0);
+        var capabilities = root["value"]!["supportedSorts"]!.AsObject();
+        capabilities.Select(property => property.Key).Order().ShouldBe(expected.Keys.Order());
+        foreach (var (mediaType, fields) in expected)
+            capabilities[mediaType]!.AsArray().Select(field => field!.GetValue<string>()).ShouldBe(fields);
+    }
+
     private async Task<ResultDTO<PlexMediaMetadataDTO>?> ReadMetadataResponseAsync(Stream body)
     {
         body.Position = 0;

@@ -187,6 +187,21 @@ public class EnumMapperExtensionsSortTypeUnitTests
     [Arguments(PlexMediaType.PhotoAlbum, "title:asc,addedAt:desc", true)]
     [Arguments(PlexMediaType.Movie, "title:asc,", false)]
     [Arguments(PlexMediaType.Movie, "title:asc:desc", false)]
+    [Arguments(PlexMediaType.MusicArtist, "audioQuality:asc", true)]
+    [Arguments(PlexMediaType.MusicArtist, "audioQuality:desc,title:asc", true)]
+    [Arguments(PlexMediaType.MusicArtist, "comparisonState:asc,audioQuality:desc", true)]
+    [Arguments(PlexMediaType.MusicArtist, "videoQuality:asc", false)]
+    [Arguments(PlexMediaType.MusicArtist, "year:desc", false)]
+    [Arguments(PlexMediaType.Movie, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.TvShow, "audioQuality:desc", false)]
+    [Arguments(PlexMediaType.OtherVideos, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.PhotoAlbum, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.PhotoAlbum, "videoQuality:asc", false)]
+    [Arguments(PlexMediaType.PhotoAlbum, "year:asc", false)]
+    [Arguments(PlexMediaType.Movie, "videoQuality:desc,year:asc", true)]
+    [Arguments(PlexMediaType.OtherVideos, "videoQuality:asc,title:asc", true)]
+    [Arguments(PlexMediaType.None, "title:asc", false)]
+    [Arguments(PlexMediaType.None, "", true)]
     public void ShouldValidateParsedSortTypesAgainstMediaSupport(
         PlexMediaType mediaType,
         string sort,

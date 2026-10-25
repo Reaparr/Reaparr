@@ -20,6 +20,9 @@ public sealed class GetMediaOverviewMusicCommandValidator : AbstractValidator<Ge
                         or PlexMediaComparisonState.Missing
                         or PlexMediaComparisonState.Partial
             );
+        RuleFor(x => x.Filter.Parameters.Sort)
+            .Must((command, sort) => sort.IsSupportedSort(command.Filter.MediaType))
+            .WithMessage("Sort fields must be supported media sort types.");
         RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
@@ -54,11 +57,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
         var filter = command.Filter;
         var options = QueryOptionsParser.Parse(filter.Parameters);
         var sort = options.ResolveSort();
-        if (
-            filter.ComparisonState.HasValue
-            || sort is null
-            || sort.Value.Field is SortType.VideoQuality or SortType.Year
-        )
+        if (filter.ComparisonState.HasValue || sort is null || sort.Value.Field == SortType.AudioQuality)
         {
             var mediaResult = await _commandExecutor.Send(
                 new GetMusicArtistMediaByTypeCommand(filter),
