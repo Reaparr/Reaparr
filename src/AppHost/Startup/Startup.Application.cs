@@ -1,5 +1,4 @@
 using System.Reflection;
-using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Http.Extensions;
 
 namespace Reaparr.AppHost;
@@ -9,10 +8,10 @@ public static partial class Startup
     /// <summary>
     /// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     /// </summary>
-    /// <param name="app"> The <see cref="IApplicationBuilder"/> instance to configure.</param>
-    /// <param name="env"> The <see cref="IWebHostEnvironment"/> instance to configure.</param>
-    /// <param name="appBuildInfo"> The <see cref="IAppBuildInfo"/> instance containing application build information to include in response headers.</param>
-    /// <param name="appRuntimeInfo"> The <see cref="IAppRuntimeInfo"/> instance containing application runtime information to include in response headers.</param>
+    /// <param name="app">The built web application whose middleware pipeline and endpoint mappings are configured.</param>
+    /// <param name="env">The hosting environment used to enable production SPA hosting.</param>
+    /// <param name="appBuildInfo">Build metadata used to emit the actual informational-version and runtime-platform response headers.</param>
+    /// <param name="appRuntimeInfo">Runtime settings controlling integration-test exclusions and authentication bypass behavior.</param>
     public static void ConfigureApplication(
         this WebApplication app,
         IWebHostEnvironment env,
@@ -39,7 +38,7 @@ public static partial class Startup
                 // Set global response headers
                 ctx.Response.OnStarting(() =>
                 {
-                    // NOTE: Update "NSwagGlobalHeaders" when adding/updating headers and add to "CORS WithExposedHeaders" in ConfigureServices
+                    // NOTE: Update "OpenApiGlobalHeaders" when adding/updating headers and add to "CORS WithExposedHeaders" in ConfigureServices
                     ctx.Response.Headers[ReaparrHeaders.Version] = appBuildInfo.InformationalVersion;
                     ctx.Response.Headers[ReaparrHeaders.Platform] = appBuildInfo.RuntimeMode;
 
@@ -60,11 +59,15 @@ public static partial class Startup
             app.MapHub<DownloadHub>("/download");
             app.MapHub<NotificationHub>("/notifications");
 
-            // Place this before app.UseAuthentication().UseAuthorization(); to allow it as anonymous
-            app.UseSwaggerGen();
+            app.MapOpenApi().AllowAnonymous();
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/openapi/internal.json", "Internal API");
+                options.SwaggerEndpoint("/openapi/public.json", "Public API");
+            });
         }
 
-        // Setup FastEndpoints Swagger
+        // Setup production SPA
         if (!appRuntimeInfo.IsIntegrationTestMode && env.IsProduction())
         {
             // Used to deploy the front-end Nuxt client
