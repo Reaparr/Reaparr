@@ -10,9 +10,8 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Downloader" Version="5.5.0" />
-        <PackageReference Include="FastEndpoints" Version="8.1.0" />
-        <PackageReference Include="FastEndpoints.Security" Version="8.1.0" />
-        <PackageReference Include="FastEndpoints.Swagger" Version="8.1.0" />
+        <PackageReference Include="FastEndpoints" Version="8.3.0" />
+        <PackageReference Include="FastEndpoints.Security" Version="8.3.0" />
         <PackageReference Include="Polly" Version="8.6.5" />
         <PackageReference Include="Polly.Core" Version="8.6.6" />
         <PackageReference Include="Quartz.Serialization.SystemTextJson" Version="3.19.1" />

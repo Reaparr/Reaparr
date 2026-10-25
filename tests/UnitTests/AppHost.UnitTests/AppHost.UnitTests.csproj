@@ -2,6 +2,7 @@
     <PropertyGroup>
         <RootNamespace>Reaparr.AppHost.UnitTests</RootNamespace>
         <AssemblyName>Reaparr.AppHost.UnitTests</AssemblyName>
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="CSharpier.MsBuild" Version="1.3.0">

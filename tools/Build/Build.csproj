@@ -13,7 +13,7 @@
         <PackageReference Include="Autofac" Version="9.1.0" />
         <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="11.0.0" />
         <PackageReference Include="CliWrap" Version="3.10.1" />
-        <PackageReference Include="FastEndpoints" Version="8.1.0" />
+        <PackageReference Include="FastEndpoints" Version="8.3.0" />
         <PackageReference Include="FluentValidation" Version="12.1.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
         <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
