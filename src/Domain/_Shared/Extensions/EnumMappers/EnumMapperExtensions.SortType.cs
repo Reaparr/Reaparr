@@ -89,13 +89,13 @@ public static partial class EnumMapperExtensions
     public static bool IsSupportedSort(this string? value, PlexMediaType mediaType)
     {
         var supportedSorts = mediaType.GetSupportedSorts();
-        return (string.IsNullOrWhiteSpace(value) || !supportedSorts.Any())
+        return (string.IsNullOrWhiteSpace(value) || supportedSorts.Count > 0)
             && IsSupportedSort(value, supportedSorts, requireSingleSort: false);
     }
 
     // Explicit field lists belong to browse requests that carry a single sort.
     public static bool IsSupportedSort(this string? value, params IReadOnlyList<SortType> supportedSorts) =>
-        IsSupportedSort(value, supportedSorts, requireSingleSort: !supportedSorts.Any());
+        IsSupportedSort(value, supportedSorts, requireSingleSort: supportedSorts.Count > 0);
 
     private static bool IsSupportedSort(string? value, IReadOnlyList<SortType> supportedSorts, bool requireSingleSort)
     {
@@ -111,7 +111,7 @@ public static partial class EnumMapperExtensions
             foreach (var node in nodes)
             {
                 var sortType = ParseSortNodeField(node);
-                if (!supportedSorts.Any() && !supportedSorts.Contains(sortType))
+                if (supportedSorts.Count > 0 && !supportedSorts.Contains(sortType))
                     return false;
             }
 

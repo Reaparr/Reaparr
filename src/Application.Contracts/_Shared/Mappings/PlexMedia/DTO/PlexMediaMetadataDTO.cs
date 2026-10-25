@@ -48,7 +48,7 @@ public record PlexMediaMetadataDTO
     public required List<PlexQualityDTO> Qualities { get; init; }
 
     /// <summary>
-    /// Gets the authoritative sort fields supported by this metadata response's root media type.
+    /// Gets the authoritative sort fields supported by this response's root media type and browsing view.
     /// </summary>
     public required IReadOnlyList<SortType> SupportedSorts { get; init; }
 }
