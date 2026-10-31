@@ -145,6 +145,9 @@ public sealed class MediaOverviewRebuildCoordinator : IMediaOverviewRebuildCoord
                     _lastSuccessfulRebuildAt[mediaType] = completedAt;
             }
 
+            if (!succeeded && HasPendingRequest)
+                RetainFailedRebuildScope();
+
             _rebuildJobActive = false;
             _activeScope = null;
             if (!HasPendingRequest)
@@ -153,6 +156,14 @@ public sealed class MediaOverviewRebuildCoordinator : IMediaOverviewRebuildCoord
             _rebuildTriggerPending = true;
             return CreatePendingScope();
         }
+    }
+
+    private void RetainFailedRebuildScope()
+    {
+        if (_activeScope!.RebuildAll)
+            AddPending(null);
+        else
+            _pendingMediaTypes.UnionWith(_activeScope.MediaTypes);
     }
 
     public void CancelPendingRebuild()

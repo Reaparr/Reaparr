@@ -273,4 +273,34 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         periodicScope.RebuildAll.ShouldBeTrue();
         periodicScope.MediaTypes.ShouldBe(MediaOverviewRebuildCoordinator.AllMediaTypes);
     }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public void ShouldRetainFailedFamilies_WhenAnotherFamilyRequiresFollowUp(bool rebuildAll)
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero);
+        coordinator.RequestRebuild(rebuildAll ? null : PlexMediaType.Movie, now).ShouldBeTrue();
+        var activeScope = coordinator.BeginRebuild(now);
+        activeScope.ShouldNotBeNull();
+        coordinator.RequestRebuild(PlexMediaType.TvShow, now).ShouldBeFalse();
+
+        // Act
+        var followUpScope = coordinator.CompleteRebuild(succeeded: false, now);
+        var dispatchedScope = coordinator.BeginRebuild(now);
+
+        // Assert
+        followUpScope.ShouldNotBeNull();
+        followUpScope.RebuildAll.ShouldBe(rebuildAll);
+        var expectedTypes = rebuildAll
+            ? MediaOverviewRebuildCoordinator.AllMediaTypes.OrderBy(x => x)
+            : new[] { PlexMediaType.Movie, PlexMediaType.TvShow }.OrderBy(x => x);
+        followUpScope.MediaTypes.OrderBy(x => x).ShouldBe(expectedTypes);
+        dispatchedScope.ShouldNotBeNull();
+        dispatchedScope.RebuildAll.ShouldBe(rebuildAll);
+        dispatchedScope.MediaTypes.OrderBy(x => x).ShouldBe(expectedTypes);
+        coordinator.CompleteRebuild(succeeded: true, now).ShouldBeNull();
+    }
 }
