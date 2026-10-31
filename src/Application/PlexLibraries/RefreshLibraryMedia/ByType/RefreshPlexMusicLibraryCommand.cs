@@ -111,40 +111,10 @@ public class RefreshPlexMusicLibraryCommandHandler
             return syncResult.ToResult().LogIfFailed();
         }
 
-        if (command.ForceMediaRefresh || syncResult.Value.ChangedItemCount > 0)
-        {
-            var comparisonResult = await Result.Try(() =>
-                _commandExecutor.Send(
-                    new InvalidateLibraryComparisonJobsCommand([command.LibraryMetadata.PlexLibraryId]),
-                    cancellationToken
-                )
-            );
+        var comparisonResult = await ReconcileMusicComparisonStateAsync(command, syncResult.Value, cancellationToken);
+        if (comparisonResult.IsCancelledOrFailed)
+            return comparisonResult;
 
-            if (comparisonResult.IsCancelled || comparisonResult.IsFailed)
-            {
-                using var finalizationCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                var finalizationToken = finalizationCancellation.Token;
-                var optimizationAfterFailure = await Result.Try(() =>
-                    _commandExecutor.Send(
-                        new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = syncResult.Value.ChangedItemCount },
-                        finalizationToken
-                    )
-                );
-                optimizationAfterFailure.LogIfFailed();
-                var rebuildAfterFailure = await Result.Try(() =>
-                    _commandExecutor.Send(
-                        new QueueMediaOverviewRebuildCommand(PlexMediaType.MusicArtist),
-                        finalizationToken
-                    )
-                );
-                rebuildAfterFailure.LogIfFailed();
-                var progressAfterFailure = await Result.Try(async Task () =>
-                    await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, comparisonResult)
-                );
-                progressAfterFailure.LogIfFailed();
-                return comparisonResult.LogIfFailed();
-            }
-        }
         var optimizationResult = await _commandExecutor.Send(
             new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = syncResult.Value.ChangedItemCount },
             cancellationToken
@@ -198,6 +168,50 @@ public class RefreshPlexMusicLibraryCommandHandler
         return plexLibraryDb is null
             ? ResultExtensions.EntityNotFound(nameof(PlexLibrary), plexLibraryId)
             : Result.Ok(plexLibraryDb);
+    }
+
+    private async Task<Result> ReconcileMusicComparisonStateAsync(
+        RefreshPlexMusicLibraryCommand command,
+        CrudMusicReport report,
+        CancellationToken cancellationToken
+    )
+    {
+        var plexLibraryId = command.LibraryMetadata.PlexLibraryId;
+        var requiresInvalidation = command.ForceMediaRefresh || report.ChangedItemCount > 0;
+        if (!requiresInvalidation)
+        {
+            // Failed invalidation leaves committed media outdated, even when the retry changes no rows.
+            requiresInvalidation = await _dbContext
+                .PlexLibraries.Where(x => x.Id == plexLibraryId)
+                .AnyAsync(x => x.Outdated, CancellationToken.None);
+        }
+        if (!requiresInvalidation)
+            return Result.Ok();
+
+        var comparisonResult = await Result.Try(() =>
+            _commandExecutor.Send(new InvalidateLibraryComparisonJobsCommand([plexLibraryId]), cancellationToken)
+        );
+        if (!comparisonResult.IsCancelledOrFailed)
+            return comparisonResult;
+
+        using var finalizationCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var finalizationToken = finalizationCancellation.Token;
+        var optimizationAfterFailure = await Result.Try(() =>
+            _commandExecutor.Send(
+                new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = report.ChangedItemCount },
+                finalizationToken
+            )
+        );
+        optimizationAfterFailure.LogIfFailed();
+        var rebuildAfterFailure = await Result.Try(() =>
+            _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(PlexMediaType.MusicArtist), finalizationToken)
+        );
+        rebuildAfterFailure.LogIfFailed();
+        var progressAfterFailure = await Result.Try(async Task () =>
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, comparisonResult)
+        );
+        progressAfterFailure.LogIfFailed();
+        return comparisonResult.LogIfFailed();
     }
 
     private static Result BuildMusicTree(
