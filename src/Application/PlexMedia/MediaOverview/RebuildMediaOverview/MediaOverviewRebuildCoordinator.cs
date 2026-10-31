@@ -115,11 +115,15 @@ public sealed class MediaOverviewRebuildCoordinator : IMediaOverviewRebuildCoord
     {
         lock (_sync)
         {
-            _ = startedAt;
-            if (_rebuildJobActive || !HasPendingRequest)
+            if (_rebuildJobActive)
                 return null;
 
-            var scope = CreatePendingScope();
+            if (!HasPendingRequest && IsWithinCooldown(null, startedAt))
+                return null;
+
+            var scope = HasPendingRequest
+                ? CreatePendingScope()
+                : new MediaOverviewRebuildScope(true, AllMediaTypes);
             ClearPendingRequest();
             _rebuildTriggerPending = false;
             _rebuildJobActive = true;

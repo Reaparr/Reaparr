@@ -13,7 +13,6 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         SetupDependencies(builder =>
             builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
-        coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         Mock.SetupCommand(() => new RebuildMediaOverviewCommand()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
 
         // Act

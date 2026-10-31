@@ -231,4 +231,46 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         scope.RebuildAll.ShouldBeTrue();
         scope.MediaTypes.ShouldBe(MediaOverviewRebuildCoordinator.AllMediaTypes);
     }
+
+    [Test]
+    public void ShouldRebuildEveryFamily_WhenScheduledWithoutPendingInvalidations()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero);
+
+        // Act
+        var scope = coordinator.BeginRebuild(now);
+        var concurrentScope = coordinator.BeginRebuild(now);
+
+        // Assert
+        scope.ShouldNotBeNull();
+        scope.RebuildAll.ShouldBeTrue();
+        scope.MediaTypes.ShouldBe(MediaOverviewRebuildCoordinator.AllMediaTypes);
+        concurrentScope.ShouldBeNull();
+        coordinator.CompleteRebuild(succeeded: true, now).ShouldBeNull();
+    }
+
+    [Test]
+    public void ShouldResumeScheduledRebuildsAfterCooldown_WhenInvalidationWasSuppressed()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        var now = new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.Zero);
+        coordinator.RequestRebuild(null, now).ShouldBeTrue();
+        coordinator.BeginRebuild(now).ShouldNotBeNull();
+        coordinator.CompleteRebuild(succeeded: true, now).ShouldBeNull();
+
+        // Act
+        var invalidationAccepted = coordinator.RequestRebuild(PlexMediaType.Movie, now.AddMinutes(1));
+        var withinCooldown = coordinator.BeginRebuild(now.AddMinutes(14));
+        var periodicScope = coordinator.BeginRebuild(now.AddMinutes(15));
+
+        // Assert
+        invalidationAccepted.ShouldBeFalse();
+        withinCooldown.ShouldBeNull();
+        periodicScope.ShouldNotBeNull();
+        periodicScope.RebuildAll.ShouldBeTrue();
+        periodicScope.MediaTypes.ShouldBe(MediaOverviewRebuildCoordinator.AllMediaTypes);
+    }
 }
