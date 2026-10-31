@@ -17,7 +17,8 @@ public abstract class ComparisonSortingTestBase<TCommand> : BaseCommandUnitTest<
         PlexMediaType mediaType,
         int libraryId,
         IReadOnlyCollection<int> ids,
-        IReadOnlyDictionary<int, PlexMediaComparisonState> states
+        IReadOnlyDictionary<int, PlexMediaComparisonState> states,
+        int expectedInvocationCount = 4
     )
     {
         Mock.Mock<ICommandExecutor>()
@@ -41,8 +42,9 @@ public abstract class ComparisonSortingTestBase<TCommand> : BaseCommandUnitTest<
                 }
             )
             .ReturnsAsync(Result.Ok())
-            .Verifiable(Times.Exactly(4));
+            .Verifiable(Times.Exactly(expectedInvocationCount));
     }
+
 }
 
 public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
@@ -120,6 +122,67 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
+    [Test]
+    public async Task ShouldUseRawVideoQualityInNavigation_WhenSortingBeforeComparisonState()
+    {
+        // Arrange
+        var fixture = await ArrangeMovieFixtureAsync();
+        var dbContext = IDbContext;
+        var qualityByMovieId = new Dictionary<int, VideoQuality>
+        {
+            [fixture.Ids[0]] = VideoQuality.FullHD,
+            [fixture.Ids[1]] = VideoQuality.HD,
+            [fixture.Ids[2]] = VideoQuality.FullHD,
+            [fixture.Ids[3]] = VideoQuality.HD,
+        };
+        var mediaDataMovieIds = await dbContext
+            .PlexMovieData.Where(x => fixture.Ids.Contains(x.PlexMovieId))
+            .Select(x => x.PlexMovieId)
+            .ToListAsync(CancellationToken);
+        mediaDataMovieIds.OrderBy(x => x).ShouldBe(fixture.Ids.OrderBy(x => x));
+        foreach (var (movieId, quality) in qualityByMovieId)
+        {
+            await dbContext
+                .PlexMovieData.Where(x => x.PlexMovieId == movieId)
+                .ExecuteUpdateAsync(update => update.SetProperty(x => x.VideoQuality, quality), CancellationToken);
+        }
+        ConfigureComparisonProjection(
+            PlexMediaType.Movie,
+            fixture.LibraryId,
+            fixture.Ids,
+            new Dictionary<int, PlexMediaComparisonState>
+            {
+                [fixture.Ids[0]] = PlexMediaComparisonState.Missing,
+                [fixture.Ids[1]] = PlexMediaComparisonState.Owned,
+                [fixture.Ids[2]] = PlexMediaComparisonState.Owned,
+                [fixture.Ids[3]] = PlexMediaComparisonState.Missing,
+            },
+            expectedInvocationCount: 1
+        );
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
+            CreateCommand(fixture.LibraryId, 1, "videoQuality:asc,comparisonState:asc", pageSize: 4)
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.TotalCount.ShouldBe(4);
+        result.Value.MediaCount.ShouldBe(4);
+        result.Value.NavigationIndexes
+            .Select(x => (x.Label, x.Index))
+            .ShouldBe([("720", 0), ("1080", 2)]);
+        result.Value.Items.Select(x => (x.Id, x.Qualities.Single().VideoQuality, x.ComparisonId))
+            .ShouldBe([
+                (fixture.Ids[1], VideoQuality.HD, PlexMediaComparisonState.Owned.ToComparisonId()),
+                (fixture.Ids[3], VideoQuality.HD, PlexMediaComparisonState.Missing.ToComparisonId()),
+                (fixture.Ids[2], VideoQuality.FullHD, PlexMediaComparisonState.Owned.ToComparisonId()),
+                (fixture.Ids[0], VideoQuality.FullHD, PlexMediaComparisonState.Missing.ToComparisonId()),
+            ]);
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
     private async Task<(int LibraryId, List<int> Ids)> ArrangeMovieFixtureAsync()
     {
         await SetupDatabase(
@@ -160,7 +223,7 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
         return (libraryId, movieIds);
     }
 
-    private GetMovieMediaByTypeCommand CreateCommand(int libraryId, int page, string sort) =>
+    private GetMovieMediaByTypeCommand CreateCommand(int libraryId, int page, string sort, int pageSize = 2) =>
         new(
             new MediaQueryFilter
             {
@@ -171,7 +234,7 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
                 Parameters = new FlexQueryParameters
                 {
                     Page = page,
-                    PageSize = 2,
+                    PageSize = pageSize,
                     Sort = sort,
                 },
             }
@@ -236,6 +299,77 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
+    [Test]
+    public async Task ShouldUseRawVideoQualityInNavigation_WhenSortingTvShowsBeforeComparisonState()
+    {
+        // Arrange
+        var fixture = await ArrangeTvShowFixtureAsync();
+        var dbContext = IDbContext;
+        (await dbContext.PlexTvShowMediaQualities.CountAsync(CancellationToken)).ShouldBe(0);
+        dbContext.PlexTvShowMediaQualities.AddRange(
+            new PlexTvShowMediaQuality
+            {
+                PlexLibraryId = fixture.LibraryId,
+                PlexTvShowId = fixture.Ids[0],
+                VideoQuality = VideoQuality.FullHD,
+            },
+            new PlexTvShowMediaQuality
+            {
+                PlexLibraryId = fixture.LibraryId,
+                PlexTvShowId = fixture.Ids[1],
+                VideoQuality = VideoQuality.HD,
+            },
+            new PlexTvShowMediaQuality
+            {
+                PlexLibraryId = fixture.LibraryId,
+                PlexTvShowId = fixture.Ids[2],
+                VideoQuality = VideoQuality.FullHD,
+            },
+            new PlexTvShowMediaQuality
+            {
+                PlexLibraryId = fixture.LibraryId,
+                PlexTvShowId = fixture.Ids[3],
+                VideoQuality = VideoQuality.HD,
+            }
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        ConfigureComparisonProjection(
+            PlexMediaType.TvShow,
+            fixture.LibraryId,
+            fixture.Ids,
+            new Dictionary<int, PlexMediaComparisonState>
+            {
+                [fixture.Ids[0]] = PlexMediaComparisonState.Missing,
+                [fixture.Ids[1]] = PlexMediaComparisonState.Owned,
+                [fixture.Ids[2]] = PlexMediaComparisonState.Owned,
+                [fixture.Ids[3]] = PlexMediaComparisonState.Missing,
+            },
+            expectedInvocationCount: 1
+        );
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
+            CreateCommand(fixture.LibraryId, 1, "videoQuality:asc,comparisonState:asc", pageSize: 4)
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.TotalCount.ShouldBe(4);
+        result.Value.MediaCount.ShouldBe(4);
+        result.Value.NavigationIndexes
+            .Select(x => (x.Label, x.Index))
+            .ShouldBe([("720", 0), ("1080", 2)]);
+        result.Value.Items.Select(x => (x.Id, x.Qualities.Single().VideoQuality, x.ComparisonId))
+            .ShouldBe([
+                (fixture.Ids[1], VideoQuality.HD, PlexMediaComparisonState.Owned.ToComparisonId()),
+                (fixture.Ids[3], VideoQuality.HD, PlexMediaComparisonState.Missing.ToComparisonId()),
+                (fixture.Ids[2], VideoQuality.FullHD, PlexMediaComparisonState.Owned.ToComparisonId()),
+                (fixture.Ids[0], VideoQuality.FullHD, PlexMediaComparisonState.Missing.ToComparisonId()),
+            ]);
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
     private async Task<(int LibraryId, List<int> Ids)> ArrangeTvShowFixtureAsync()
     {
         await SetupDatabase(
@@ -277,7 +411,7 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
         return (libraryId, tvShowIds);
     }
 
-    private GetTvShowMediaByTypeCommand CreateCommand(int libraryId, int page, string sort) =>
+    private GetTvShowMediaByTypeCommand CreateCommand(int libraryId, int page, string sort, int pageSize = 2) =>
         new(
             new MediaQueryFilter
             {
@@ -288,7 +422,7 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
                 Parameters = new FlexQueryParameters
                 {
                     Page = page,
-                    PageSize = 2,
+                    PageSize = pageSize,
                     Sort = sort,
                 },
             }
