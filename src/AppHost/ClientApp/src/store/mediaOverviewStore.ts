@@ -18,7 +18,7 @@ import {
 import type { IMediaOverviewSort } from '@composables/event-bus';
 import { type IMetaDataMediaFilter, type ISelection, type ISortOption, StoreNames } from '@interfaces';
 import { plexLibraryApi, plexMediaApi } from '@api';
-import { defaultIfEmpty, map, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { defaultIfEmpty, map, shareReplay, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { BehaviorSubject, defer, finalize, forkJoin, type Observable, of, Subject } from 'rxjs';
 import { useLibraryStore, useSettingsStore } from '@store';
 import {
@@ -334,9 +334,25 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		},
 		refreshMediaDataWithMetadata() {
 			invalidateMetadataGeneration();
-			const mediaRequest = actions.refreshMediaData().pipe(defaultIfEmpty(null));
-			const metadataRequest = actions.refreshMetaData();
+			const generation = invalidateRequestGeneration();
+			const metadataRequest = actions.refreshMetaData().pipe(
+				shareReplay({ bufferSize: 1, refCount: true }),
+			);
 			const filterMetadataRequest = actions.refreshFilterMetadata();
+			const mediaRequest = metadataRequest.pipe(
+				switchMap((result) => {
+					if (!isRequestGenerationActive(generation)) {
+						return of(null);
+					}
+					if (!hasSuccessfulSortMetadata(result)) {
+						state.loading = false;
+						state.mediaLoadError = true;
+						return of(null);
+					}
+					return refreshMediaDataForGeneration(generation);
+				}),
+				defaultIfEmpty(null),
+			);
 			return forkJoin([mediaRequest, metadataRequest, filterMetadataRequest]);
 		},
 		refreshMediaData(): Observable<PlexMediaStatisticsDTO | null> {
