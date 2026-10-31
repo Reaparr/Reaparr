@@ -16,7 +16,7 @@ internal static class ComparisonDetailsExtensions
 
         var candidates = isOwned ? dbContext.PlexLibraries.WhereIsNotOwned() : dbContext.PlexLibraries.WhereIsOwned();
         var libraryIds = await candidates
-            .Where(x => x.Type == mediaType && !x.Outdated)
+            .Where(x => x.Type == mediaType)
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
         var keys = libraryIds.Select(x =>
