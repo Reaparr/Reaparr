@@ -65,6 +65,9 @@ describe('MediaOverviewBar - photo mode', () => {
 		const audioOption = wrapper.find(`[data-cy="sort-option-${SortType.AudioQuality}-btn"]`);
 		expect(audioOption.exists()).toBe(true);
 		expect(audioOption.text()).toContain('Audio Quality');
+		const comparisonOption = wrapper.find(`[data-cy="sort-option-${SortType.ComparisonState}-btn"]`);
+		expect(comparisonOption.exists()).toBe(true);
+		expect(comparisonOption.text()).toContain('Comparison state');
 		expect(wrapper.find(`[data-cy="sort-option-${SortType.VideoQuality}-btn"]`).exists()).toBe(false);
 		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.Movie;
 		mediaOverviewStore.metadataList = {

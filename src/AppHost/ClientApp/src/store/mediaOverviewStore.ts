@@ -1014,7 +1014,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				[SortType.MediaSize]: t('general.sort.size'),
 				[SortType.VideoQuality]: t('general.sort.quality'),
 				[SortType.AudioQuality]: t('general.sort.audio-quality'),
-				[SortType.ComparisonState]: t('general.media-list.columns.comparison-state'),
+				[SortType.ComparisonState]: t('components.media-list.columns.comparison-state'),
 			};
 			const sortFields = supportedFields ?? state.metadataList.supportedSorts;
 			return sortFields.flatMap((field) => {
