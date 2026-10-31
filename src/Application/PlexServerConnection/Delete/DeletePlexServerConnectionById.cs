@@ -36,8 +36,10 @@ public class DeletePlexServerConnectionById : Endpoint<DeletePlexServerConnectio
     public override async Task HandleAsync(DeletePlexServerConnectionByIdRequest req, CancellationToken ct)
     {
         _log.Here().DebugApiCall(HttpContext, req);
-        var connection = await _dbContext.PlexServerConnections
-            .FirstOrDefaultAsync(x => x.Id == req.PlexServerConnectionId, ct);
+        var connection = await _dbContext.PlexServerConnections.FirstOrDefaultAsync(
+            x => x.Id == req.PlexServerConnectionId,
+            ct
+        );
 
         if (connection is null)
         {
@@ -50,24 +52,31 @@ public class DeletePlexServerConnectionById : Endpoint<DeletePlexServerConnectio
 
         if (!connection.IsCustom)
         {
-            await Send.FluentResult(ResultExtensions.Create400BadRequestResult("Only custom connections can be deleted"), ct);
+            await Send.FluentResult(
+                ResultExtensions.Create400BadRequestResult("Only custom connections can be deleted"),
+                ct
+            );
             return;
         }
 
-        var deleteResult = await _dbContext.ExecuteTransactionAsync(async (context, token) =>
-        {
-            var deleted = await context.PlexServerConnections
-                .Where(x => x.Id == connection.Id && x.IsCustom)
-                .ExecuteDeleteAsync(token);
-            if (deleted > 0)
+        var deleteResult = await _dbContext.ExecuteTransactionAsync(
+            async (context, token) =>
             {
-                await context.PlexServers.IgnoreIsEnabledFilter()
-                    .Where(x => x.Id == connection.PlexServerId && x.PreferredConnectionId == connection.Id)
-                    .ExecuteUpdateAsync(x => x.SetProperty(y => y.PreferredConnectionId, 0), token);
-            }
+                var deleted = await context
+                    .PlexServerConnections.Where(x => x.Id == connection.Id && x.IsCustom)
+                    .ExecuteDeleteAsync(token);
+                if (deleted > 0)
+                {
+                    await context
+                        .PlexServers.IgnoreIsEnabledFilter()
+                        .Where(x => x.Id == connection.PlexServerId && x.PreferredConnectionId == connection.Id)
+                        .ExecuteUpdateAsync(x => x.SetProperty(y => y.PreferredConnectionId, 0), token);
+                }
 
-            return deleted;
-        }, ct);
+                return deleted;
+            },
+            ct
+        );
         if (deleteResult.IsCancelledOrFailed)
         {
             await Send.FluentResult(deleteResult.LogIfFailed().ToResult(), ct);
@@ -77,7 +86,9 @@ public class DeletePlexServerConnectionById : Endpoint<DeletePlexServerConnectio
         if (deleteResult.Value == 0)
         {
             await Send.FluentResult(
-                ResultExtensions.EntityNotFound(nameof(PlexServerConnection), req.PlexServerConnectionId), ct);
+                ResultExtensions.EntityNotFound(nameof(PlexServerConnection), req.PlexServerConnectionId),
+                ct
+            );
             return;
         }
 

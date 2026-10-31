@@ -70,15 +70,6 @@
 									data-cy="photo-image-retry"
 									@click="retryImage" />
 							</div>
-							<QChip
-								v-if="slide.url && !isClip(slide) && slide.representation === 'preview' && !slide.error"
-								dense
-								square
-								class="photo-asset-dialog__preview-indicator"
-								icon="mdi-image-alert-outline"
-								:label="t('components.photo-browser.image-preview')"
-								:data-cy="slide.index === photoStore.index ? 'photo-viewer-preview' : undefined"
-								role="status" />
 						</div>
 					</QCarouselSlide>
 					<template #control>
@@ -398,9 +389,10 @@ import { clamp } from 'lodash-es';
 import type { DockPassThroughMethodOptions } from 'primevue/dock';
 import { PhotoAssetKind, PhotoItemKind, type PhotoAssetBrowseDTO, type PhotoAssetInspectionDTO } from '@dto';
 import type { PhotoOverviewItem, PhotoViewerSlide } from '@/store/photoBrowsingStore';
-import { usePhotoBrowsingStore } from '@store';
+import { useMediaStore, usePhotoBrowsingStore } from '@store';
 
 const photoStore = usePhotoBrowsingStore();
+const mediaStore = useMediaStore();
 const { t } = useI18n();
 const detailsTitleId = 'photo-asset-details-title';
 const emit = defineEmits<{
@@ -769,6 +761,12 @@ useEventListener(carouselSurface, 'lostpointercapture', endPointerDrag);
 
 useEventListener(window, 'keydown', onKeyDown, { capture: true });
 
+watchDebounced(
+	[() => mediaStore.photoPreviewSize.width, () => mediaStore.photoPreviewSize.height],
+	() => useSubscription(photoStore.resizeImages().subscribe()),
+	{ debounce: 150 },
+);
+
 watch(() => [photoStore.index, photoStore.slides], () => {
 	const retainedKeys = new Set(photoStore.slides.map(slideKey));
 	for (const key of nativeDimensions.keys()) {
@@ -947,15 +945,6 @@ watch(() => photoStore.zoomed, (zoomed) => {
 		width: 100%;
 		height: 100%;
 		color: var(--q-grey-4, #aaa);
-	}
-
-	&__preview-indicator {
-		position: absolute;
-		right: 1.25rem;
-		bottom: 1.25rem;
-		margin: 0;
-		background: rgba(0, 0, 0, 0.72);
-		color: var(--q-grey-2, #ddd);
 	}
 
 	&__details {

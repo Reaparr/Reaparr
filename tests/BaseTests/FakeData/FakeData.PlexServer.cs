@@ -40,8 +40,8 @@ public static partial class FakeData
     public static Faker<PlexServer> GetPlexServer(Seed seed, Action<FakeDataConfig>? options = null) =>
         // Note: Ensure all faker values are a lambda f => x,
         // otherwise Entity Framework will see differently generated values as the same object and mess up any database testing
-        _plexServerFaker
-            .UseSeed(seed.Next());
+        _plexServerFaker.UseSeed(seed.Next());
+
     private static readonly Faker<FolderPath> _folderPathFaker = new Faker<FolderPath>()
         .StrictMode(true)
         .RuleFor(x => x.Id, _ => 0)
@@ -54,9 +54,7 @@ public static partial class FakeData
     public static Faker<FolderPath> GetFolderPaths(Seed seed)
     {
         var ids = 0;
-        return _folderPathFaker
-            .RuleFor(x => x.Id, _ => ids++)
-            .UseSeed(seed.Next());
+        return _folderPathFaker.RuleFor(x => x.Id, _ => ids++).UseSeed(seed.Next());
     }
 
     private static readonly Faker<PlexServerConnection> _plexServerConnectionFaker = new Faker<PlexServerConnection>()
@@ -87,7 +85,6 @@ public static partial class FakeData
             .RuleFor(x => x.PlexServerId, _ => plexServerId)
             .UseSeed(seed.Next());
     }
-
 
     public static Faker<PlexServerStatus> GetPlexServerStatus(
         Seed seed,

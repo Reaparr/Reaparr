@@ -86,6 +86,31 @@ export class Integration {
   /**
    * No description
    * * @tags Integration
+   * @name TestConnectionToRadarrEndpoint
+   * @request GET:/api/Integration/Radarr/TestConnection
+   * @secure
+   */
+  testConnectionToRadarrEndpoint = (
+    query?: {
+      apiKey?: string | null;
+      /** @format uuid */
+      integrationId?: string | null;
+      url?: string | null;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<TestConnectionToRadarrEndpointResponse>({
+      url: `/api/Integration/Radarr/TestConnection`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<TestConnectionToRadarrEndpointResponse>);
+
+  /**
+   * No description
+   * * @tags Integration
    * @name DeleteRadarrIntegrationEndpoint
    * @request DELETE:/api/Integration/Radarr/{integrationId}
    * @secure
@@ -93,7 +118,7 @@ export class Integration {
   deleteRadarrIntegrationEndpoint = (
     integrationId: string,
     query: {
-      Force: boolean;
+      force: boolean;
     },
     params: RequestParams = {},
   ) =>
@@ -127,50 +152,6 @@ export class Integration {
   /**
    * No description
    * * @tags Integration
-   * @name SetupRadarrIntegrationEndpoint
-   * @request POST:/api/Integration/Radarr/{integrationId}/Setup
-   * @secure
-   */
-  setupRadarrIntegrationEndpoint = (
-    integrationId: string,
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<RadarrIntegrationDTO>({
-      url: `/api/Integration/Radarr/${integrationId}/Setup`,
-      method: "POST",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<RadarrIntegrationDTO>);
-
-  /**
-   * No description
-   * * @tags Integration
-   * @name TestConnectionToRadarrEndpoint
-   * @request GET:/api/Integration/Radarr/TestConnection
-   * @secure
-   */
-  testConnectionToRadarrEndpoint = (
-    query?: {
-      apiKey?: string | null;
-      /** @format guid */
-      integrationId?: string | null;
-      url?: string | null;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<TestConnectionToRadarrEndpointResponse>({
-      url: `/api/Integration/Radarr/TestConnection`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<TestConnectionToRadarrEndpointResponse>);
-
-  /**
-   * No description
-   * * @tags Integration
    * @name UpdateRadarrIntegrationEndpoint
    * @request PUT:/api/Integration/Radarr/{integrationId}/Configure
    * @secure
@@ -186,6 +167,25 @@ export class Integration {
       data: data,
       secure: true,
       type: ContentType.Json,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<RadarrIntegrationDTO>);
+
+  /**
+   * No description
+   * * @tags Integration
+   * @name SetupRadarrIntegrationEndpoint
+   * @request POST:/api/Integration/Radarr/{integrationId}/Setup
+   * @secure
+   */
+  setupRadarrIntegrationEndpoint = (
+    integrationId: string,
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<RadarrIntegrationDTO>({
+      url: `/api/Integration/Radarr/${integrationId}/Setup`,
+      method: "POST",
+      secure: true,
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<RadarrIntegrationDTO>);
@@ -230,6 +230,31 @@ export class Integration {
   /**
    * No description
    * * @tags Integration
+   * @name TestConnectionToSonarrEndpoint
+   * @request GET:/api/Integration/Sonarr/TestConnection
+   * @secure
+   */
+  testConnectionToSonarrEndpoint = (
+    query?: {
+      apiKey?: string | null;
+      /** @format uuid */
+      integrationId?: string | null;
+      url?: string | null;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<TestConnectionToSonarrEndpointResponse>({
+      url: `/api/Integration/Sonarr/TestConnection`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<TestConnectionToSonarrEndpointResponse>);
+
+  /**
+   * No description
+   * * @tags Integration
    * @name DeleteSonarrIntegrationEndpoint
    * @request DELETE:/api/Integration/Sonarr/{integrationId}
    * @secure
@@ -237,7 +262,7 @@ export class Integration {
   deleteSonarrIntegrationEndpoint = (
     integrationId: string,
     query: {
-      Force: boolean;
+      force: boolean;
     },
     params: RequestParams = {},
   ) =>
@@ -271,50 +296,6 @@ export class Integration {
   /**
    * No description
    * * @tags Integration
-   * @name SetupSonarrIntegrationEndpoint
-   * @request POST:/api/Integration/Sonarr/{integrationId}/Setup
-   * @secure
-   */
-  setupSonarrIntegrationEndpoint = (
-    integrationId: string,
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<SonarrIntegrationDTO>({
-      url: `/api/Integration/Sonarr/${integrationId}/Setup`,
-      method: "POST",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<SonarrIntegrationDTO>);
-
-  /**
-   * No description
-   * * @tags Integration
-   * @name TestConnectionToSonarrEndpoint
-   * @request GET:/api/Integration/Sonarr/TestConnection
-   * @secure
-   */
-  testConnectionToSonarrEndpoint = (
-    query?: {
-      apiKey?: string | null;
-      /** @format guid */
-      integrationId?: string | null;
-      url?: string | null;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<TestConnectionToSonarrEndpointResponse>({
-      url: `/api/Integration/Sonarr/TestConnection`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<TestConnectionToSonarrEndpointResponse>);
-
-  /**
-   * No description
-   * * @tags Integration
    * @name UpdateSonarrIntegrationEndpoint
    * @request PUT:/api/Integration/Sonarr/{integrationId}/Configure
    * @secure
@@ -333,6 +314,25 @@ export class Integration {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<SonarrIntegrationDTO>);
+
+  /**
+   * No description
+   * * @tags Integration
+   * @name SetupSonarrIntegrationEndpoint
+   * @request POST:/api/Integration/Sonarr/{integrationId}/Setup
+   * @secure
+   */
+  setupSonarrIntegrationEndpoint = (
+    integrationId: string,
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<SonarrIntegrationDTO>({
+      url: `/api/Integration/Sonarr/${integrationId}/Setup`,
+      method: "POST",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<SonarrIntegrationDTO>);
 }
 
 export class IntegrationPaths {
@@ -345,10 +345,21 @@ export class IntegrationPaths {
   static createRadarrIntegrationEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/Integration/Radarr/Configure` });
 
+  static testConnectionToRadarrEndpoint = (query?: {
+    apiKey?: string | null;
+    /** @format uuid */
+    integrationId?: string | null;
+    url?: string | null;
+  }) =>
+    queryString.stringifyUrl({
+      url: `/api/Integration/Radarr/TestConnection`,
+      query,
+    });
+
   static deleteRadarrIntegrationEndpoint = (
     integrationId: string,
     query: {
-      Force: boolean;
+      force: boolean;
     },
   ) =>
     queryString.stringifyUrl({
@@ -361,25 +372,14 @@ export class IntegrationPaths {
       url: `/api/Integration/Radarr/${integrationId}`,
     });
 
-  static setupRadarrIntegrationEndpoint = (integrationId: string) =>
-    queryString.stringifyUrl({
-      url: `/api/Integration/Radarr/${integrationId}/Setup`,
-    });
-
-  static testConnectionToRadarrEndpoint = (query?: {
-    apiKey?: string | null;
-    /** @format guid */
-    integrationId?: string | null;
-    url?: string | null;
-  }) =>
-    queryString.stringifyUrl({
-      url: `/api/Integration/Radarr/TestConnection`,
-      query,
-    });
-
   static updateRadarrIntegrationEndpoint = (integrationId: string) =>
     queryString.stringifyUrl({
       url: `/api/Integration/Radarr/${integrationId}/Configure`,
+    });
+
+  static setupRadarrIntegrationEndpoint = (integrationId: string) =>
+    queryString.stringifyUrl({
+      url: `/api/Integration/Radarr/${integrationId}/Setup`,
     });
 
   static clearSonarrConfigurationEndpoint = () =>
@@ -388,10 +388,21 @@ export class IntegrationPaths {
   static createSonarrIntegrationEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/Integration/Sonarr/Configure` });
 
+  static testConnectionToSonarrEndpoint = (query?: {
+    apiKey?: string | null;
+    /** @format uuid */
+    integrationId?: string | null;
+    url?: string | null;
+  }) =>
+    queryString.stringifyUrl({
+      url: `/api/Integration/Sonarr/TestConnection`,
+      query,
+    });
+
   static deleteSonarrIntegrationEndpoint = (
     integrationId: string,
     query: {
-      Force: boolean;
+      force: boolean;
     },
   ) =>
     queryString.stringifyUrl({
@@ -404,24 +415,13 @@ export class IntegrationPaths {
       url: `/api/Integration/Sonarr/${integrationId}`,
     });
 
-  static setupSonarrIntegrationEndpoint = (integrationId: string) =>
-    queryString.stringifyUrl({
-      url: `/api/Integration/Sonarr/${integrationId}/Setup`,
-    });
-
-  static testConnectionToSonarrEndpoint = (query?: {
-    apiKey?: string | null;
-    /** @format guid */
-    integrationId?: string | null;
-    url?: string | null;
-  }) =>
-    queryString.stringifyUrl({
-      url: `/api/Integration/Sonarr/TestConnection`,
-      query,
-    });
-
   static updateSonarrIntegrationEndpoint = (integrationId: string) =>
     queryString.stringifyUrl({
       url: `/api/Integration/Sonarr/${integrationId}/Configure`,
+    });
+
+  static setupSonarrIntegrationEndpoint = (integrationId: string) =>
+    queryString.stringifyUrl({
+      url: `/api/Integration/Sonarr/${integrationId}/Setup`,
     });
 }

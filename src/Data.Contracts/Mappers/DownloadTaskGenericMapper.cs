@@ -12,8 +12,8 @@ public static class DownloadTaskGenericMapper
             DownloadTaskTvShow x => x.Children.Select(child => child.ToGeneric()).ToList(),
             DownloadTaskTvShowSeason x => x.Children.Select(child => child.ToGeneric()).ToList(),
             DownloadTaskTvShowEpisode x => x.Children.Select(child => child.ToGeneric()).ToList(),
-            DownloadTaskPhotoFolder x => x.Children
-                .Select(child => child.ToGeneric())
+            DownloadTaskPhotoFolder x => x
+                .Children.Select(child => child.ToGeneric())
                 .Concat(x.Files.Select(file => file.ToGeneric()))
                 .OrderBy(child => child.CreatedAt)
                 .ToList(),

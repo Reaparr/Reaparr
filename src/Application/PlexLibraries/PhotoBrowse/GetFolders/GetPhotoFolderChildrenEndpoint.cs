@@ -1,3 +1,6 @@
+using FlexQuery.NET.Models;
+using FlexQuery.NET.Parsers;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoFolderChildrenRequest
@@ -31,14 +34,21 @@ public sealed class GetPhotoFolderChildrenRequestValidator : Validator<GetPhotoF
         RuleFor(x => x.PlexLibraryId).GreaterThan(0);
         RuleFor(x => x.FolderId).GreaterThan(0);
         RuleFor(x => x.FolderPage).GreaterThan(0).When(x => x.FolderPage.HasValue);
-        RuleFor(x => x.FolderPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize).When(x => x.FolderPageSize.HasValue);
+        RuleFor(x => x.FolderPageSize)
+            .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
+            .When(x => x.FolderPageSize.HasValue);
         RuleFor(x => x.AssetPage).GreaterThan(0).When(x => x.AssetPage.HasValue);
-        RuleFor(x => x.AssetPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize).When(x => x.AssetPageSize.HasValue);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort).When(x => x.Sort is not null);
+        RuleFor(x => x.AssetPageSize)
+            .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
+            .When(x => x.AssetPageSize.HasValue);
+        RuleFor(x => x.Sort)
+            .Must(sort => sort.IsSupportedSort(SortType.Title))
+            .WithMessage("Photo folders support title sorting only.");
         RuleFor(x => x)
             .Must(x =>
                 (long)((x.FolderPage ?? 1) - 1) * (x.FolderPageSize ?? MediaQueryFilter.MaximumPageSize) <= int.MaxValue
-                && (long)((x.AssetPage ?? 1) - 1) * (x.AssetPageSize ?? MediaQueryFilter.MaximumPageSize) <= int.MaxValue
+                && (long)((x.AssetPage ?? 1) - 1) * (x.AssetPageSize ?? MediaQueryFilter.MaximumPageSize)
+                    <= int.MaxValue
             )
             .WithMessage("The requested page offset is too large.");
     }
@@ -66,6 +76,7 @@ public sealed class GetPhotoFolderChildrenEndpoint : Endpoint<GetPhotoFolderChil
 
     public override async Task HandleAsync(GetPhotoFolderChildrenRequest req, CancellationToken ct)
     {
+        var sort = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = req.Sort }).ResolveSort()!.Value;
         var result = await _commandExecutor.Send(
             new GetPhotoFolderChildrenQuery(
                 req.PlexLibraryId,
@@ -74,7 +85,8 @@ public sealed class GetPhotoFolderChildrenEndpoint : Endpoint<GetPhotoFolderChil
                 req.FolderPageSize ?? MediaQueryFilter.MaximumPageSize,
                 req.AssetPage ?? 1,
                 req.AssetPageSize ?? MediaQueryFilter.MaximumPageSize,
-                req.Sort ?? "title:asc"
+                sort.Field,
+                sort.Direction
             ),
             ct
         );

@@ -6,23 +6,24 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
     public async Task ShouldReturnMetadataAndMembershipsWithoutSensitiveSourceFields()
     {
         // Arrange
-        await SetupDatabase(71006, config =>
-        {
-            config.PlexPhotoLibraryCount = 1;
-            config.PhotoAlbumCount = 2;
-            config.PhotoCount = 2;
-            config.PhotoClipCount = 1;
-        });
+        await SetupDatabase(
+            71006,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 2;
+                config.PhotoCount = 2;
+                config.PhotoClipCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var asset = await dbContext.PlexPhotoMediaData
-            .OrderBy(x => x.Id)
-            .FirstAsync(CancellationToken);
-        await dbContext.PlexPhotoMediaData
-            .Where(x => x.Id == asset.Id)
+        var asset = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).FirstAsync(CancellationToken);
+        await dbContext
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexPhotoFolderId, (int?)null), CancellationToken);
         asset.PlexPhotoFolderId = null;
-        var expectedAlbumCount = await dbContext.PlexPhotoAlbumMemberships
-            .Where(x => x.PlexPhotoMediaDataId == asset.Id)
+        var expectedAlbumCount = await dbContext
+            .PlexPhotoAlbumMemberships.Where(x => x.PlexPhotoMediaDataId == asset.Id)
             .Select(x => x.PlexPhotoAlbumId)
             .Distinct()
             .CountAsync(CancellationToken);
@@ -39,7 +40,7 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
         result.Value.PlexServerId.ShouldBe(asset.PlexServerId);
         result.Value.PlexLibraryId.ShouldBe(asset.PlexLibraryId);
         result.Value.PlexApiRatingKey.ShouldBe(asset.PlexApiRatingKey);
-        result.Value.PlexApiMetaDataKey.ShouldBe(asset.PlexApiMetaDataKey);
+        result.Value.PlexApiMetaDataKey.ShouldBe(asset.PlexApiRatingKey);
         result.Value.OriginalFilename.ShouldBe(asset.OriginalFilename);
         result.Value.Size.ShouldBe(asset.Size);
         result.Value.Albums.TotalCount.ShouldBe(expectedAlbumCount);
@@ -51,6 +52,7 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
         serialized.ShouldNotContain(asset.SourcePath);
         serialized.ShouldNotContain(asset.Key);
     }
+
     [Test]
     public async Task ShouldReturnDeepAncestryClipMetadataAndBoundMembershipPages()
     {
@@ -73,9 +75,7 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
         firstPage.Value.AssetKind.ShouldBe(PhotoAssetKind.VideoClip);
         firstPage.Value.VideoCodec.ShouldNotBeNullOrWhiteSpace();
         firstPage.Value.AudioCodec.ShouldNotBeNullOrWhiteSpace();
-        firstPage.Value.Breadcrumbs.Select(x => x.Id).ShouldBe(
-            [fixture.Root.Id, .. fixture.Chain.Select(x => x.Id)]
-        );
+        firstPage.Value.Breadcrumbs.Select(x => x.Id).ShouldBe([fixture.Root.Id, .. fixture.Chain.Select(x => x.Id)]);
         firstPage.Value.Albums.TotalCount.ShouldBe(2);
         secondPage.Value.Albums.TotalCount.ShouldBe(2);
         firstPage.Value.Albums.Items.Count.ShouldBe(1);
@@ -85,13 +85,16 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
 
     private async Task<DeepInspectionFixture> ArrangeDeepInspectionFixtureAsync()
     {
-        await SetupDatabase(71014, config =>
-        {
-            config.PlexPhotoLibraryCount = 1;
-            config.PhotoAlbumCount = 3;
-            config.PhotoCount = 1;
-            config.PhotoClipCount = 1;
-        });
+        await SetupDatabase(
+            71014,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 3;
+                config.PhotoCount = 1;
+                config.PhotoClipCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -122,29 +125,27 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
             chain.Add(folder);
             parentId = folder.Id;
         }
-        var asset = await dbContext.PlexPhotoMediaData
-            .Where(x => x.PlexLibraryId == library.Id && x.AssetKind == PhotoAssetKind.VideoClip)
+        var asset = await dbContext
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id && x.AssetKind == PhotoAssetKind.VideoClip)
             .FirstAsync(CancellationToken);
-        await dbContext.PlexPhotoMediaData
-            .Where(x => x.Id == asset.Id)
+        await dbContext
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexPhotoFolderId, chain[^1].Id), CancellationToken);
-        var albumIds = await dbContext.PlexPhotoAlbums
-            .Where(x => x.PlexLibraryId == library.Id)
+        var albumIds = await dbContext
+            .PlexPhotoAlbums.Where(x => x.PlexLibraryId == library.Id)
             .OrderBy(x => x.Id)
             .Select(x => x.Id)
             .Take(2)
             .ToListAsync(CancellationToken);
-        if (!await dbContext.PlexPhotoAlbumMemberships.AnyAsync(
+        if (
+            !await dbContext.PlexPhotoAlbumMemberships.AnyAsync(
                 x => x.PlexPhotoAlbumId == albumIds[1] && x.PlexPhotoMediaDataId == asset.Id,
                 CancellationToken
-            ))
+            )
+        )
         {
             dbContext.PlexPhotoAlbumMemberships.Add(
-                new PlexPhotoAlbumMembership
-                {
-                    PlexPhotoAlbumId = albumIds[1],
-                    PlexPhotoMediaDataId = asset.Id,
-                }
+                new PlexPhotoAlbumMembership { PlexPhotoAlbumId = albumIds[1], PlexPhotoMediaDataId = asset.Id }
             );
             await dbContext.SaveChangesAsync(CancellationToken);
         }
@@ -163,12 +164,15 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
     public async Task ShouldPreserveLocationMetadata_WhenSourceRootIsInactive()
     {
         // Arrange
-        await SetupDatabase(71016, config =>
-        {
-            config.PlexPhotoLibraryCount = 1;
-            config.PhotoAlbumCount = 1;
-            config.PhotoCount = 1;
-        });
+        await SetupDatabase(
+            71016,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.FirstAsync(CancellationToken);
         var inactiveRoot = new PlexPhotoFolder
@@ -194,8 +198,8 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
         };
         dbContext.PlexPhotoFolders.Add(child);
         await dbContext.SaveChangesAsync(CancellationToken);
-        await dbContext.PlexPhotoMediaData
-            .Where(x => x.Id == asset.Id)
+        await dbContext
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexPhotoFolderId, child.Id), CancellationToken);
 
         // Act

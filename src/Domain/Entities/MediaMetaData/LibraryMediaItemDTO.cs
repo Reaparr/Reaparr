@@ -282,6 +282,7 @@ public record LibraryMediaItemStreamDTO
     /// Unique stream identifier.
     /// </summary>
     public required int Id { get; init; }
+
     /// <summary>
     /// Raw stream locator supplied by Plex. Null is distinct from a supplied malformed value.
     /// </summary>
@@ -301,11 +302,11 @@ public record LibraryMediaItemStreamDTO
     /// Codec used by the stream.
     /// </summary>
     public required string Codec { get; init; }
+
     /// <summary>
     /// Raw stream format supplied by Plex.
     /// </summary>
     public required string? Format { get; init; }
-
 
     /// <summary>
     /// Index of the stream.

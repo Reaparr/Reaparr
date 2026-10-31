@@ -1,12 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateFailedResultDTO, generatePlexLibrary, generateResultDTO, Seed } from '@mock';
 import { plexPhotoApi } from '@api';
-import { PhotoAssetKind, PhotoItemKind, PlexMediaType, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
-import { useLibraryStore, usePhotoBrowsingStore } from '@store';
+import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PlexMediaMetadataDTO, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
+import { useLibraryStore, useMediaStore, usePhotoBrowsingStore } from '@store';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort } from '@composables';
+import type { ResultDTO } from '@interfaces';
 
 describe('PhotoBrowsingStore - complete-result selection', () => {
 	const owner = {};
@@ -15,6 +18,7 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 		getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		mockPhotoMetadata();
 		useLibraryStore().updateLibrary(generatePlexLibrary({
 			seed: new Seed(7),
 			plexServerId: 1,
@@ -24,7 +28,7 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 	});
 
 	const route = (partial: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({
-		mode: 'library', libraryId: 7, view: 'assets', folderId: null, searchQuery: '', sort: 'title:asc', ...partial,
+		mode: 'library', libraryId: 7, view: 'assets', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort(), ...partial,
 	});
 
 	const asset = (id: number, libraryId = 7): PhotoAssetBrowseDTO => ({
@@ -48,11 +52,75 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
 		await subscribeSpyTo(store.selectAll(true)).onComplete();
 
-		expect(request).toHaveBeenCalledWith({ page: 2, size: 100, sort: 'title:asc', plexLibraryId: 7 }, expect.any(Object));
-		expect(request).toHaveBeenCalledWith({ page: 3, size: 100, sort: 'title:asc', plexLibraryId: 7 }, expect.any(Object));
+		expect(request).toHaveBeenCalledWith({ page: 2, size: 100, sort: `${SortType.Title}:asc`, plexLibraryId: 7 }, expect.any(Object));
+		expect(request).toHaveBeenCalledWith({ page: 3, size: 100, sort: `${SortType.Title}:asc`, plexLibraryId: 7 }, expect.any(Object));
 		expect(store.selectedSelectors.map((selector) => selector.id)).toEqual([1, 2, 201]);
 		expect(store.allVisibleSelected).toBe(true);
 		expect(store.overviewItemAt(200)).toBeNull();
+	});
+
+	test('keeps a selected later-page identity fresh when a forced viewer refresh republishes it', async () => {
+		const pageOne = Array.from({ length: 100 }, (_, index) => asset(index + 1));
+		const selected = asset(101);
+		const request = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockImplementation((query) => {
+			const page = query?.page ?? 1;
+			const items = page === 1 ? pageOne : [selected];
+			return of(generateResultDTO({ items, page, pageSize: 100, totalCount: 101, totalBytes: 101 } as PhotoAssetPageDTO));
+		});
+		const media = useMediaStore();
+		vi.spyOn(media, 'getPhotoImageUrl').mockImplementation((photo) => of(`image-${photo.id}`));
+		vi.spyOn(media, 'releasePhotoImageUrl');
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		await subscribeSpyTo(store.requestRange(100, 101)).onComplete();
+		store.toggleAsset(selected, true);
+		await subscribeSpyTo(store.openAsset(selected, 100)).onComplete();
+
+		await subscribeSpyTo(store.loadCurrent(true)).onComplete();
+
+		expect(request.mock.calls.filter(([query]) => query?.page === 2).length).toBeGreaterThan(1);
+		expect(store.selectionStale).toBe(false);
+		expect(store.selectedSelectors).toEqual([{
+			id: selected.id,
+			plexServerId: selected.plexServerId,
+			plexLibraryId: selected.plexLibraryId,
+			kind: PhotoItemKind.Asset,
+			type: PlexMediaType.PhotoImage,
+			title: selected.title,
+			stale: false,
+		}]);
+	});
+
+	test('reports failed metadata when selecting all restored cached rows', async () => {
+		const metadata = mockPhotoMetadata();
+		const assets = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockReturnValue(of(generateResultDTO({
+			items: [asset(1)], page: 1, pageSize: 100, totalCount: 1, totalBytes: 10,
+		} as PhotoAssetPageDTO)));
+		vi.spyOn(plexPhotoApi, 'getPhotoAlbumsEndpoint').mockReturnValue(of(generateResultDTO({
+			items: [], page: 1, pageSize: 100, totalCount: 0, totalAssetBytes: 0,
+		})));
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		await subscribeSpyTo(store.activate(route({ view: 'albums' }), owner)).onComplete();
+		const metadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		metadata.mockReturnValue(metadataResponse.asObservable());
+		const restored = subscribeSpyTo(store.activate(route(), owner));
+		expect(store.overviewItemAt(0)).toEqual({ kind: PhotoItemKind.Asset, index: 0, asset: asset(1) });
+
+		const selection = subscribeSpyTo(store.selectAll(true));
+		expect(store.selectionLoading).toBe(true);
+		metadataResponse.next(generateFailedResultDTO({ statusCode: 503 }));
+		metadataResponse.complete();
+		await restored.onComplete();
+		await selection.onComplete();
+
+		expect(assets).toHaveBeenCalledTimes(1);
+		expect(metadata).toHaveBeenCalledTimes(3);
+		expect(store.selectionError).toBe(true);
+		expect(store.selectionLoading).toBe(false);
+		expect(store.allVisibleSelected).toBe(false);
+		expect(store.selectedSelectors).toEqual([]);
+		expect(store.getDownloadSelectors()).toEqual([]);
 	});
 
 	test('does not partially mutate selection when a later enumeration page fails', async () => {
@@ -65,10 +133,12 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 			.mockReturnValueOnce(of(firstPage))
 			.mockReturnValueOnce(of(generateFailedResultDTO({ statusCode: 503 })));
 		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		store.allVisibleSelected = true;
 		await subscribeSpyTo(store.selectAll(true)).onComplete();
 
 		expect(store.selectedSelectors).toEqual([expect.objectContaining({ id: 900, kind: PhotoItemKind.Asset })]);
 		expect(store.selectionError).toBe(true);
+		expect(store.allVisibleSelected).toBe(false);
 	});
 
 	test('root select all includes configured folders and unmapped assets', async () => {

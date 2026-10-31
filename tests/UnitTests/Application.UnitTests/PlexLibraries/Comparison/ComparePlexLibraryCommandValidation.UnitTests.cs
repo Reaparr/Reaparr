@@ -164,7 +164,6 @@ public class CompareMoviePlexLibraryCommandValidationUnitTests : BaseCommandUnit
         var scopeCount = await IDbContext.PlexComparisonScopes.CountAsync(CancellationToken);
         scopeCount.ShouldBe(0);
     }
-
 }
 
 public class CompareTvShowPlexLibraryCommandValidationUnitTests : BaseCommandUnitTest<CompareTvShowPlexLibraryCommand>
@@ -329,5 +328,4 @@ public class CompareTvShowPlexLibraryCommandValidationUnitTests : BaseCommandUni
         var scopeCount = await IDbContext.PlexComparisonScopes.CountAsync(CancellationToken);
         scopeCount.ShouldBe(0);
     }
-
 }

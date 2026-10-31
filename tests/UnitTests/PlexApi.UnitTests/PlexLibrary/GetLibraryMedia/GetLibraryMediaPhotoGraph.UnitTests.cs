@@ -39,21 +39,32 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
         };
 
         Mock.SetupCommand(() => It.Is<GetLibrarySectionsCommand>(x => x.PlexServerId == original.PlexServerId))
-            .ReturnsAsync(Result.Ok(new List<PlexLibrary> { section })).Verifiable(Times.Once());
+            .ReturnsAsync(Result.Ok(new List<PlexLibrary> { section }))
+            .Verifiable(Times.Once());
         Mock.SetupCommand(() => It.Is<GetLibraryMediaTotalsCommand>(x => x.PlexLibrary.Id == original.Id))
             .ReturnsAsync(Result.Ok<IReadOnlyDictionary<PlexMediaType, int>>(new Dictionary<PlexMediaType, int>()))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.StartAsync(original.Id, original.Type, It.IsAny<IReadOnlyDictionary<PlexMediaType, int>>()))
-            .Returns(Task.CompletedTask).Verifiable(Times.Once());
-        transport.Setup(x => x.CloneAsync(It.IsAny<HttpRequestMessage>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        transport
+            .Setup(x => x.CloneAsync(It.IsAny<HttpRequestMessage>()))
             .ReturnsAsync((HttpRequestMessage request) => request);
-        transport.Setup(x => x.SendAsync(It.Is<HttpRequestMessage>(r => r.Method == HttpMethod.Get && r.RequestUri!.Host == "plex.test")))
-            .ReturnsAsync((HttpRequestMessage request) => CreateResponse(request, original.Key, mode, requests, preservedQueries))
+        transport
+            .Setup(x =>
+                x.SendAsync(
+                    It.Is<HttpRequestMessage>(r => r.Method == HttpMethod.Get && r.RequestUri!.Host == "plex.test")
+                )
+            )
+            .ReturnsAsync(
+                (HttpRequestMessage request) => CreateResponse(request, original.Key, mode, requests, preservedQueries)
+            )
             .Verifiable(Times.Exactly(expectedRequestCount));
         Mock.Mock<IPlexApiClientFactory>()
             .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk)).Verifiable(Times.Once());
+            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk))
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(new GetLibraryMediaFromPlexApiCommand(original), CancellationToken);
@@ -63,9 +74,12 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
         result.Errors.Count.ShouldBe(0);
         var library = result.Value.Library;
         library.PhotoAlbums.Select(x => x.PlexApiRatingKey).ShouldBe([501, 502]);
-        library.PhotoAlbums
-            .SelectMany(album => album.Memberships.Select(m => (album.PlexApiRatingKey, m.PlexPhotoMediaData!.PlexApiRatingKey)))
-            .OrderBy(x => x.Item1).ThenBy(x => x.Item2)
+        library
+            .PhotoAlbums.SelectMany(album =>
+                album.Memberships.Select(m => (album.PlexApiRatingKey, m.PlexPhotoMediaData!.PlexApiRatingKey))
+            )
+            .OrderBy(x => x.Item1)
+            .ThenBy(x => x.Item2)
             .ShouldBe([(501, 601), (501, 602), (502, 601), (502, 602)]);
         var photoPath = mode switch
         {
@@ -75,75 +89,131 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             PhotoResponseMode.EquivalentUncPaths => @"\\SERVER\SHARE\Photos\photo.jpg",
             _ => "/photos/Family/photo.jpg",
         };
-        var photoFolder = mode is PhotoResponseMode.UnmappedAsset
-            or PhotoResponseMode.MissingSource
-            or PhotoResponseMode.EquivalentWindowsPaths
-            or PhotoResponseMode.EquivalentUncPaths
+        var photoFolder = mode
+            is PhotoResponseMode.UnmappedAsset
+                or PhotoResponseMode.MissingSource
+                or PhotoResponseMode.EquivalentWindowsPaths
+                or PhotoResponseMode.EquivalentUncPaths
             ? null
             : "Family";
-        library.PhotoMediaData.OrderBy(x => x.PlexApiRatingKey)
-            .Select(x => (x.PlexApiRatingKey, x.AssetKind, x.PlexApiMediaId, x.PlexApiPartId, x.SourcePath, x.OriginalFilename, x.Size, x.PlexPhotoFolder?.RelativePath))
+        library
+            .PhotoMediaData.OrderBy(x => x.PlexApiRatingKey)
+            .Select(x =>
+                (
+                    x.PlexApiRatingKey,
+                    x.AssetKind,
+                    x.PlexApiMediaId,
+                    x.PlexApiPartId,
+                    x.SourcePath,
+                    x.OriginalFilename,
+                    x.Size,
+                    x.PlexPhotoFolder?.RelativePath
+                )
+            )
             .ShouldBe([
-                (601, PhotoAssetKind.Image, 700, 701, photoPath, mode == PhotoResponseMode.MissingSource ? "" : "photo.jpg", 12L, photoFolder),
+                (
+                    601,
+                    PhotoAssetKind.Image,
+                    700,
+                    701,
+                    photoPath,
+                    mode == PhotoResponseMode.MissingSource ? "" : "photo.jpg",
+                    12L,
+                    photoFolder
+                ),
                 (602, PhotoAssetKind.VideoClip, 800, 801, "/photos/clip.mp4", "clip.mp4", 24L, ""),
             ]);
-        library.PhotoMediaData.Select(x => (x.PlexLibraryId, x.PlexServerId))
+        library
+            .PhotoMediaData.Select(x => (x.PlexLibraryId, x.PlexServerId))
             .ShouldBe([(original.Id, original.PlexServerId), (original.Id, original.PlexServerId)]);
         var photo = library.PhotoMediaData.Single(x => x.PlexApiRatingKey == 601);
-        (photo.Key, photo.AddedAt, photo.OriginallyAvailableAt)
-            .ShouldBe(("/library/parts/701/file.jpg", DateTime.UnixEpoch.AddSeconds(1), new DateTime(2026, 4, 18, 12, 34, 56)));
+        (photo.Key, photo.AddedAt, photo.OriginallyAvailableAt).ShouldBe(
+            ("/library/parts/701/file.jpg", DateTime.UnixEpoch.AddSeconds(1), new DateTime(2026, 4, 18, 12, 34, 56))
+        );
         var clip = library.PhotoMediaData.Single(x => x.PlexApiRatingKey == 602);
-        (clip.Key, clip.Width, clip.Height, clip.Duration, clip.VideoCodec, clip.AudioCodec)
-            .ShouldBe(("/library/parts/801/file.mp4", 1920, 1080, 2500, "h264", "aac"));
+        (clip.Key, clip.Width, clip.Height, clip.Duration, clip.VideoCodec, clip.AudioCodec).ShouldBe(
+            ("/library/parts/801/file.mp4", 1920, 1080, 2500, "h264", "aac")
+        );
         result.Value.PhotoClipCount.ShouldBe(1);
-        var folders = library.PhotoFolders.OrderBy(x => x.RelativePath)
-            .Select(x => (x.RelativePath, x.Parent?.RelativePath, x.RootIdentityKey)).ToList();
+        var folders = library
+            .PhotoFolders.OrderBy(x => x.RelativePath)
+            .Select(x => (x.RelativePath, x.Parent?.RelativePath, x.RootIdentityKey))
+            .ToList();
         if (photoFolder is null)
             folders.ShouldBe([("", null, "path:posix:/photos")]);
         else
             folders.ShouldBe([("", null, "path:posix:/photos"), ("Family", "", null)]);
         var children = requests.Where(x => x.Path.EndsWith("/children", StringComparison.Ordinal)).ToList();
-        var firstAlbumPath = mode == PhotoResponseMode.AlbumChildrenTokenDiffers
-            ? "/library/metadata/9501/children"
-            : "/library/metadata/501/children";
-        var secondAlbumPath = mode == PhotoResponseMode.AlbumChildrenTokenDiffers
-            ? "/library/metadata/9502/children"
-            : "/library/metadata/502/children";
-        if (mode is PhotoResponseMode.NoTotalChildren or PhotoResponseMode.NoTotalPages or PhotoResponseMode.ReturnedNavigationQueryPaged)
+        var firstAlbumPath =
+            mode == PhotoResponseMode.AlbumChildrenTokenDiffers
+                ? "/library/metadata/9501/children"
+                : "/library/metadata/501/children";
+        var secondAlbumPath =
+            mode == PhotoResponseMode.AlbumChildrenTokenDiffers
+                ? "/library/metadata/9502/children"
+                : "/library/metadata/502/children";
+        if (
+            mode
+            is PhotoResponseMode.NoTotalChildren
+                or PhotoResponseMode.NoTotalPages
+                or PhotoResponseMode.ReturnedNavigationQueryPaged
+        )
             children.ShouldBe([
-                (firstAlbumPath, 0, null), (firstAlbumPath, 1, null), (firstAlbumPath, 2, null),
-                (secondAlbumPath, 0, null), (secondAlbumPath, 1, null), (secondAlbumPath, 2, null),
+                (firstAlbumPath, 0, null),
+                (firstAlbumPath, 1, null),
+                (firstAlbumPath, 2, null),
+                (secondAlbumPath, 0, null),
+                (secondAlbumPath, 1, null),
+                (secondAlbumPath, 2, null),
             ]);
         else
             children.ShouldBe([(firstAlbumPath, 0, null), (secondAlbumPath, 0, null)]);
         if (mode is PhotoResponseMode.NoTotalPages or PhotoResponseMode.ReturnedNavigationQueryPaged)
         {
             var allPath = $"/library/sections/{original.Key}/all";
-            requests.Where(x => x.Path == allPath && x.Type is "13" or "photo")
-                .Select(x => x.Offset).ShouldBe([0, 1, 2]);
-            requests.Where(x => x.Path == allPath && x.Type is "14" or "photoalbum")
-                .Select(x => x.Offset).ShouldBe([0, 1, 2]);
-            requests.Where(x => x.Path == allPath && x.Type is "12" or "clip")
-                .Select(x => x.Offset).ShouldBe([0, 1]);
-            requests.Where(x => x.Path.EndsWith("/folder", StringComparison.Ordinal))
-                .Select(x => x.Offset).ShouldBe([0, 1, 0, 1]);
+            requests
+                .Where(x => x.Path == allPath && x.Type is "13" or "photo")
+                .Select(x => x.Offset)
+                .ShouldBe([0, 1, 2]);
+            requests
+                .Where(x => x.Path == allPath && x.Type is "14" or "photoalbum")
+                .Select(x => x.Offset)
+                .ShouldBe([0, 1, 2]);
+            requests.Where(x => x.Path == allPath && x.Type is "12" or "clip").Select(x => x.Offset).ShouldBe([0, 1]);
+            requests
+                .Where(x => x.Path.EndsWith("/folder", StringComparison.Ordinal))
+                .Select(x => x.Offset)
+                .ShouldBe([0, 1, 0, 1]);
         }
         if (mode is PhotoResponseMode.ReturnedNavigationQuery or PhotoResponseMode.ReturnedNavigationQueryPaged)
         {
             var albumPageCount = mode == PhotoResponseMode.ReturnedNavigationQuery ? 2 : 6;
             var folderPageCount = mode == PhotoResponseMode.ReturnedNavigationQuery ? 1 : 2;
-            var forwardedNames = new HashSet<string>(["view", "album", "section", "includeMeta"], StringComparer.OrdinalIgnoreCase);
-            preservedQueries.Select(query =>
-                string.Join("&", query.TrimStart('?').Split('&')
-                    .Where(pair => forwardedNames.Contains(pair.Split('=', 2)[0]))
-                    .OrderBy(pair => pair, StringComparer.Ordinal)))
+            var forwardedNames = new HashSet<string>(
+                ["view", "album", "section", "includeMeta"],
+                StringComparer.OrdinalIgnoreCase
+            );
+            preservedQueries
+                .Select(query =>
+                    string.Join(
+                        "&",
+                        query
+                            .TrimStart('?')
+                            .Split('&')
+                            .Where(pair => forwardedNames.Contains(pair.Split('=', 2)[0]))
+                            .OrderBy(pair => pair, StringComparer.Ordinal)
+                    )
+                )
                 .ShouldBe(
-                    Enumerable.Repeat("album=curated&includeMeta=0&view=full&view=thumb", albumPageCount)
+                    Enumerable
+                        .Repeat("album=curated&includeMeta=0&view=full&view=thumb", albumPageCount)
                         .Concat(Enumerable.Repeat("includeMeta=0&section=photos&view=full&view=thumb", folderPageCount))
                 );
             foreach (var query in preservedQueries)
             {
-                query.TrimStart('?').Split('&')
+                query
+                    .TrimStart('?')
+                    .Split('&')
                     .Where(pair => pair.StartsWith("X-Plex-Container-Size=", StringComparison.OrdinalIgnoreCase))
                     .ShouldBe(["X-Plex-Container-Size=100"]);
             }
@@ -174,21 +244,32 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
         var sdk = new PlexAPI(client: transport.Object, serverUrl: "http://plex.test", token: "test-token");
 
         Mock.SetupCommand(() => It.Is<GetLibrarySectionsCommand>(x => x.PlexServerId == original.PlexServerId))
-            .ReturnsAsync(Result.Ok(new List<PlexLibrary> { section })).Verifiable(Times.Once());
+            .ReturnsAsync(Result.Ok(new List<PlexLibrary> { section }))
+            .Verifiable(Times.Once());
         Mock.SetupCommand(() => It.Is<GetLibraryMediaTotalsCommand>(x => x.PlexLibrary.Id == original.Id))
             .ReturnsAsync(Result.Ok<IReadOnlyDictionary<PlexMediaType, int>>(new Dictionary<PlexMediaType, int>()))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.StartAsync(original.Id, original.Type, It.IsAny<IReadOnlyDictionary<PlexMediaType, int>>()))
-            .Returns(Task.CompletedTask).Verifiable(Times.Once());
-        transport.Setup(x => x.CloneAsync(It.IsAny<HttpRequestMessage>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        transport
+            .Setup(x => x.CloneAsync(It.IsAny<HttpRequestMessage>()))
             .ReturnsAsync((HttpRequestMessage request) => request);
-        transport.Setup(x => x.SendAsync(It.Is<HttpRequestMessage>(r => r.Method == HttpMethod.Get && r.RequestUri!.Host == "plex.test")))
-            .ReturnsAsync((HttpRequestMessage request) => CreateHistoricalResponse(request, original.Key, mode, requests))
+        transport
+            .Setup(x =>
+                x.SendAsync(
+                    It.Is<HttpRequestMessage>(r => r.Method == HttpMethod.Get && r.RequestUri!.Host == "plex.test")
+                )
+            )
+            .ReturnsAsync(
+                (HttpRequestMessage request) => CreateHistoricalResponse(request, original.Key, mode, requests)
+            )
             .Verifiable(Times.Exactly(expectedRequestCount));
         Mock.Mock<IPlexApiClientFactory>()
             .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk)).Verifiable(Times.Once());
+            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk))
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(new GetLibraryMediaFromPlexApiCommand(original), CancellationToken);
@@ -196,16 +277,24 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
         // Assert
         result.IsSuccess.ShouldBeTrue(result.ToString());
         result.Errors.Count.ShouldBe(0);
-        var expectedRatingKeys = mode == PhotoResponseMode.HistoricalSection10
-            ? Enumerable.Range(10000, 111).Concat(Enumerable.Range(20000, 17)).Concat([30000])
-            : Enumerable.Range(10000, expectedAssetCount);
-        result.Value.Library.PhotoMediaData.OrderBy(x => x.PlexApiRatingKey)
-            .Select(x => x.PlexApiRatingKey).ShouldBe(expectedRatingKeys);
+        var expectedRatingKeys =
+            mode == PhotoResponseMode.HistoricalSection10
+                ? Enumerable.Range(10000, 111).Concat(Enumerable.Range(20000, 17)).Concat([30000])
+                : Enumerable.Range(10000, expectedAssetCount);
+        result
+            .Value.Library.PhotoMediaData.OrderBy(x => x.PlexApiRatingKey)
+            .Select(x => x.PlexApiRatingKey)
+            .ShouldBe(expectedRatingKeys);
         result.Value.Library.PhotoAlbums.Count.ShouldBe(expectedAlbumCount);
         if (mode == PhotoResponseMode.HistoricalSection10)
-            result.Value.Library.PhotoAlbums
-                .SelectMany(album => album.Memberships.Select(edge => (album.PlexApiRatingKey, edge.PlexPhotoMediaData!.PlexApiRatingKey)))
-                .OrderBy(edge => edge.Item1).ThenBy(edge => edge.Item2)
+            result
+                .Value.Library.PhotoAlbums.SelectMany(album =>
+                    album.Memberships.Select(edge =>
+                        (album.PlexApiRatingKey, edge.PlexPhotoMediaData!.PlexApiRatingKey)
+                    )
+                )
+                .OrderBy(edge => edge.Item1)
+                .ThenBy(edge => edge.Item2)
                 .ShouldBe(Enumerable.Range(20000, 17).Select(key => (99133, key)).Concat([(99151, 30000)]));
         else
             result.Value.Library.PhotoAlbums.ShouldBeEmpty();
@@ -245,27 +334,34 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
         var sdk = new PlexAPI(client: transport.Object, serverUrl: "http://plex.test", token: "test-token");
 
         Mock.SetupCommand(() => It.Is<GetLibrarySectionsCommand>(x => x.PlexServerId == original.PlexServerId))
-            .ReturnsAsync(Result.Ok(new List<PlexLibrary> { section })).Verifiable(Times.Once());
+            .ReturnsAsync(Result.Ok(new List<PlexLibrary> { section }))
+            .Verifiable(Times.Once());
         Mock.SetupCommand(() => It.Is<GetLibraryMediaTotalsCommand>(x => x.PlexLibrary.Id == original.Id))
             .ReturnsAsync(Result.Ok<IReadOnlyDictionary<PlexMediaType, int>>(new Dictionary<PlexMediaType, int>()))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.StartAsync(original.Id, original.Type, It.IsAny<IReadOnlyDictionary<PlexMediaType, int>>()))
-            .Returns(Task.CompletedTask).Verifiable(Times.Once());
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateErrorAsync(
-                original.Id,
-                It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1),
-                It.Is<CancellationToken>(ct => ct == CancellationToken)))
-            .Returns(Task.CompletedTask).Verifiable(Times.Once());
-        transport.Setup(x => x.CloneAsync(It.IsAny<HttpRequestMessage>()))
+            .Setup(x => x.UpdateErrorAsync(original.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        transport
+            .Setup(x => x.CloneAsync(It.IsAny<HttpRequestMessage>()))
             .ReturnsAsync((HttpRequestMessage request) => request);
-        transport.Setup(x => x.SendAsync(It.Is<HttpRequestMessage>(r => r.Method == HttpMethod.Get && r.RequestUri!.Host == "plex.test")))
+        transport
+            .Setup(x =>
+                x.SendAsync(
+                    It.Is<HttpRequestMessage>(r => r.Method == HttpMethod.Get && r.RequestUri!.Host == "plex.test")
+                )
+            )
             .ReturnsAsync((HttpRequestMessage request) => CreateResponse(request, original.Key, mode, requests))
             .Verifiable(Times.Exactly(expectedRequestCount));
         Mock.Mock<IPlexApiClientFactory>()
             .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk)).Verifiable(Times.Once());
+            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk))
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(new GetLibraryMediaFromPlexApiCommand(original), CancellationToken);
@@ -298,16 +394,18 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             ScannedAt = source.ScannedAt,
             ContentChangedAt = source.ContentChangedAt,
         };
-        library.PhotoFolders.Add(new PlexPhotoFolder
-        {
-            PlexServerId = source.PlexServerId,
-            PlexLibraryId = 0,
-            RelativePath = string.Empty,
-            Title = "photos",
-            RootIdentityKey = "path:posix:/photos",
-            SourceRootPath = "/photos",
-            IsActive = true,
-        });
+        library.PhotoFolders.Add(
+            new PlexPhotoFolder
+            {
+                PlexServerId = source.PlexServerId,
+                PlexLibraryId = 0,
+                RelativePath = string.Empty,
+                Title = "photos",
+                RootIdentityKey = "path:posix:/photos",
+                SourceRootPath = "/photos",
+                IsActive = true,
+            }
+        );
         return library;
     }
 
@@ -324,28 +422,39 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
         if (
             mode is PhotoResponseMode.ReturnedNavigationQuery or PhotoResponseMode.ReturnedNavigationQueryPaged
             && query.ContainsKey("view")
-            && (path.EndsWith("/folder", StringComparison.Ordinal) || path.EndsWith("/children", StringComparison.Ordinal))
+            && (
+                path.EndsWith("/folder", StringComparison.Ordinal)
+                || path.EndsWith("/children", StringComparison.Ordinal)
+            )
         )
             preservedQueries?.Add(request.RequestUri.Query);
-        var offset = query.TryGetValue("X-Plex-Container-Start", out var start) ? int.Parse(start, CultureInfo.InvariantCulture) : 0;
+        var offset = query.TryGetValue("X-Plex-Container-Start", out var start)
+            ? int.Parse(start, CultureInfo.InvariantCulture)
+            : 0;
         query.TryGetValue("type", out var type);
         requests.Add((path, offset, type));
         var sectionId = long.Parse(sectionKey, CultureInfo.InvariantCulture);
         var photoSourceOverride = mode switch
         {
-            PhotoResponseMode.EquivalentWindowsPaths when path.Contains("/metadata/502/children", StringComparison.Ordinal)
-                => @"c:/photos/family/PHOTO.JPG",
+            PhotoResponseMode.EquivalentWindowsPaths
+                when path.Contains("/metadata/502/children", StringComparison.Ordinal) => @"c:/photos/family/PHOTO.JPG",
             PhotoResponseMode.EquivalentWindowsPaths => @"C:\Photos\Family\photo.jpg",
-            PhotoResponseMode.EquivalentUncPaths when path.Contains("/metadata/502/children", StringComparison.Ordinal)
-                => "//server/share/photos/PHOTO.JPG",
+            PhotoResponseMode.EquivalentUncPaths
+                when path.Contains("/metadata/502/children", StringComparison.Ordinal) =>
+                "//server/share/photos/PHOTO.JPG",
             PhotoResponseMode.EquivalentUncPaths => @"\\SERVER\SHARE\Photos\photo.jpg",
-            PhotoResponseMode.PosixDistinctPaths when path.Contains("/metadata/502/children", StringComparison.Ordinal)
-                => "/photos/family/photo.jpg",
+            PhotoResponseMode.PosixDistinctPaths
+                when path.Contains("/metadata/502/children", StringComparison.Ordinal) => "/photos/family/photo.jpg",
             _ => null,
         };
         var photo = CreateAsset(601, 700, 701, sectionId, mode, photoSourceOverride);
         var clip = CreateAsset(602, 800, 801, sectionId, mode);
-        var container = new MediaContainerWithMetadataMediaContainer { Offset = offset, TotalSize = 0, Size = 0 };
+        var container = new MediaContainerWithMetadataMediaContainer
+        {
+            Offset = offset,
+            TotalSize = 0,
+            Size = 0,
+        };
         if (path.EndsWith("/children", StringComparison.Ordinal))
         {
             container.TotalSize = mode switch
@@ -408,17 +517,29 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             container.Photo = TakePage(container.Photo, ref remaining);
             container.Video = TakePage(container.Video, ref remaining);
         }
-        container.Size = (container.Metadata?.Count ?? 0) + (container.Directory?.Count ?? 0)
-            + (container.Photo?.Count ?? 0) + (container.Video?.Count ?? 0);
+        container.Size =
+            (container.Metadata?.Count ?? 0)
+            + (container.Directory?.Count ?? 0)
+            + (container.Photo?.Count ?? 0)
+            + (container.Video?.Count ?? 0);
         if (!path.EndsWith("/children", StringComparison.Ordinal))
             container.TotalSize = container.Size;
-        if (mode is PhotoResponseMode.NoTotalPages or PhotoResponseMode.NoPagingMetadata or PhotoResponseMode.ReturnedNavigationQueryPaged)
+        if (
+            mode
+            is PhotoResponseMode.NoTotalPages
+                or PhotoResponseMode.NoPagingMetadata
+                or PhotoResponseMode.ReturnedNavigationQueryPaged
+        )
             container.TotalSize = null;
         if (mode == PhotoResponseMode.NoPagingMetadata)
             container.Offset = null;
         if (mode == PhotoResponseMode.BadOffsetMedia && path.EndsWith("/all", StringComparison.Ordinal))
             container.Offset = offset + 1;
-        if (mode == PhotoResponseMode.UnpagedAfterPaged && path.EndsWith("/children", StringComparison.Ordinal) && offset > 0)
+        if (
+            mode == PhotoResponseMode.UnpagedAfterPaged
+            && path.EndsWith("/children", StringComparison.Ordinal)
+            && offset > 0
+        )
             container.Offset = null;
         if (mode == PhotoResponseMode.IncompleteFolder && path.EndsWith("/folder", StringComparison.Ordinal))
         {
@@ -427,7 +548,10 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             container.Size = 0;
             container.TotalSize = 1;
         }
-        return new MediaContainerWithMetadata { MediaContainer = container }.ToJsonHttpResponse(request, HttpStatusCode.OK);
+        return new MediaContainerWithMetadata { MediaContainer = container }.ToJsonHttpResponse(
+            request,
+            HttpStatusCode.OK
+        );
     }
 
     private static HttpResponseMessage CreateHistoricalResponse(
@@ -496,15 +620,19 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             }
             else if (type is "14" or "photoalbum")
             {
-                container.Metadata = mode == PhotoResponseMode.HistoricalSection10
-                    ? [CreateAlbum(99133, sectionId, mode), CreateAlbum(99151, sectionId, mode)]
-                    : [];
+                container.Metadata =
+                    mode == PhotoResponseMode.HistoricalSection10
+                        ? [CreateAlbum(99133, sectionId, mode), CreateAlbum(99151, sectionId, mode)]
+                        : [];
                 container.Size = container.Metadata.Count;
                 container.TotalSize = container.Metadata.Count;
             }
         }
 
-        return new MediaContainerWithMetadata { MediaContainer = container }.ToJsonHttpResponse(request, HttpStatusCode.OK);
+        return new MediaContainerWithMetadata { MediaContainer = container }.ToJsonHttpResponse(
+            request,
+            HttpStatusCode.OK
+        );
     }
 
     private static void SetHistoricalPhotoPage(
@@ -540,51 +668,49 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
     ) =>
         Enumerable
             .Range(firstRatingKey, count)
-            .Select(
-                ratingKey =>
-                    new Metadata
+            .Select(ratingKey => new Metadata
+            {
+                RatingKey = ratingKey.ToString(CultureInfo.InvariantCulture),
+                Key = $"/library/metadata/{ratingKey}",
+                Type = "photo",
+                Title = $"Photo {ratingKey}",
+                LibrarySectionID = sectionId,
+                AddedAt = 1,
+                SkipChildren = SkipChildren.CreateBoolean(false),
+                SkipParent = SkipParent.CreateBoolean(false),
+                Media =
+                [
+                    new Media
                     {
-                        RatingKey = ratingKey.ToString(CultureInfo.InvariantCulture),
-                        Key = $"/library/metadata/{ratingKey}",
-                        Type = "photo",
-                        Title = $"Photo {ratingKey}",
-                        LibrarySectionID = sectionId,
-                        AddedAt = 1,
-                        SkipChildren = SkipChildren.CreateBoolean(false),
-                        SkipParent = SkipParent.CreateBoolean(false),
-                        Media =
+                        Id = ratingKey + 100000,
+                        Width = 800,
+                        Height = 600,
+                        Part =
                         [
-                            new Media
+                            new Part
                             {
-                                Id = ratingKey + 100000,
-                                Width = 800,
-                                Height = 600,
-                                Part =
-                                [
-                                    new Part
-                                    {
-                                        Id = ratingKey + 200000,
-                                        Key = $"/library/parts/{ratingKey + 200000}/file.jpg",
-                                        File = $"{sourceDirectory}/photo-{ratingKey}.jpg",
-                                        Size = 12,
-                                        Container = "jpg",
-                                    },
-                                ],
+                                Id = ratingKey + 200000,
+                                Key = $"/library/parts/{ratingKey + 200000}/file.jpg",
+                                File = $"{sourceDirectory}/photo-{ratingKey}.jpg",
+                                Size = 12,
+                                Container = "jpg",
                             },
                         ],
-                    }
-            )
+                    },
+                ],
+            })
             .ToList();
 
-    private static Metadata CreateHistoricalFolder(string sectionKey, long sectionId) => new()
-    {
-        Key = $"/library/sections/{sectionKey}/folder?parent=3706",
-        Type = "directory",
-        Title = "Folder A",
-        LibrarySectionID = sectionId,
-        SkipChildren = SkipChildren.CreateBoolean(false),
-        SkipParent = SkipParent.CreateBoolean(false),
-    };
+    private static Metadata CreateHistoricalFolder(string sectionKey, long sectionId) =>
+        new()
+        {
+            Key = $"/library/sections/{sectionKey}/folder?parent=3706",
+            Type = "directory",
+            Title = "Folder A",
+            LibrarySectionID = sectionId,
+            SkipChildren = SkipChildren.CreateBoolean(false),
+            SkipParent = SkipParent.CreateBoolean(false),
+        };
 
     private static List<Metadata>? TakePage(List<Metadata>? items, ref int remaining)
     {
@@ -600,26 +726,38 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
         return [item];
     }
 
-    private static Metadata CreateFolder(string sectionKey, long sectionId, PhotoResponseMode mode) => new()
-    {
-        Key = $"/library/sections/{sectionKey}/folder?parent=3706"
-            + (mode is PhotoResponseMode.ReturnedNavigationQuery or PhotoResponseMode.ReturnedNavigationQueryPaged ? "&view=full&view=thumb&section=photos&includeMeta=0" : string.Empty),
-        LibrarySectionID = sectionId,
-        SkipChildren = SkipChildren.CreateBoolean(false),
-        SkipParent = SkipParent.CreateBoolean(false),
-    };
+    private static Metadata CreateFolder(string sectionKey, long sectionId, PhotoResponseMode mode) =>
+        new()
+        {
+            Key =
+                $"/library/sections/{sectionKey}/folder?parent=3706"
+                + (
+                    mode is PhotoResponseMode.ReturnedNavigationQuery or PhotoResponseMode.ReturnedNavigationQueryPaged
+                        ? "&view=full&view=thumb&section=photos&includeMeta=0"
+                        : string.Empty
+                ),
+            LibrarySectionID = sectionId,
+            SkipChildren = SkipChildren.CreateBoolean(false),
+            SkipParent = SkipParent.CreateBoolean(false),
+        };
 
-    private static Metadata CreateAlbum(int id, long sectionId, PhotoResponseMode mode) => new()
-    {
-        RatingKey = id.ToString(CultureInfo.InvariantCulture),
-        Key = $"/library/metadata/{(mode == PhotoResponseMode.AlbumChildrenTokenDiffers ? id + 9000 : id)}/children"
-            + (mode is PhotoResponseMode.ReturnedNavigationQuery or PhotoResponseMode.ReturnedNavigationQueryPaged ? "?view=full&view=thumb&album=curated&includeMeta=0" : string.Empty),
-        Type = "photoalbum",
-        Title = $"Album {id}",
-        LibrarySectionID = sectionId,
-        SkipChildren = SkipChildren.CreateBoolean(false),
-        SkipParent = SkipParent.CreateBoolean(false),
-    };
+    private static Metadata CreateAlbum(int id, long sectionId, PhotoResponseMode mode) =>
+        new()
+        {
+            RatingKey = id.ToString(CultureInfo.InvariantCulture),
+            Key =
+                $"/library/metadata/{(mode == PhotoResponseMode.AlbumChildrenTokenDiffers ? id + 9000 : id)}/children"
+                + (
+                    mode is PhotoResponseMode.ReturnedNavigationQuery or PhotoResponseMode.ReturnedNavigationQueryPaged
+                        ? "?view=full&view=thumb&album=curated&includeMeta=0"
+                        : string.Empty
+                ),
+            Type = "photoalbum",
+            Title = $"Album {id}",
+            LibrarySectionID = sectionId,
+            SkipChildren = SkipChildren.CreateBoolean(false),
+            SkipParent = SkipParent.CreateBoolean(false),
+        };
 
     private static Metadata CreateAsset(
         int ratingKey,

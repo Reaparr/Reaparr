@@ -65,14 +65,19 @@ public class UpdatePlexServerConnectionEndpoint
 
         if (!existing.IsCustom)
         {
-            await Send.FluentResult(ResultExtensions.Create400BadRequestResult("Only custom connections can be edited"), ct);
+            await Send.FluentResult(
+                ResultExtensions.Create400BadRequestResult("Only custom connections can be edited"),
+                ct
+            );
             return;
         }
 
         if (existing.PlexServerId != req.PlexServerId)
         {
             await Send.FluentResult(
-                ResultExtensions.Create400BadRequestResult("A connection cannot be moved to another Plex server"), ct);
+                ResultExtensions.Create400BadRequestResult("A connection cannot be moved to another Plex server"),
+                ct
+            );
             return;
         }
 

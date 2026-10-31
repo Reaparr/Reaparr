@@ -18,7 +18,9 @@ public class RecoverInterruptedDownloadsCommandMusicUnitTests : BaseUnitTest<Rec
             }
         );
         var dbContext = IDbContext;
-        var files = (await dbContext.DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken))
+        var files = (
+            await dbContext.DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken)
+        )
             .Cast<DownloadTaskFileBase>()
             .ToList();
         DownloadStatus[] statuses =
@@ -88,7 +90,9 @@ public class RecoverInterruptedDownloadsCommandMusicUnitTests : BaseUnitTest<Rec
         for (var index = 0; index < 3; index++)
         {
             var key = files[index].ToParentKey()!;
-            (await dbContext.GetDownloadTaskAsync(key, CancellationToken))!.DownloadStatus.ShouldBe(expectedStatuses[index]);
+            (await dbContext.GetDownloadTaskAsync(key, CancellationToken))!.DownloadStatus.ShouldBe(
+                expectedStatuses[index]
+            );
         }
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(

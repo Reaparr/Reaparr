@@ -49,7 +49,8 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         var plexLibrary = await container.DbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
         var radarrIntegration = await container.DbContext.RadarrIntegrations.SingleAsync(CancellationToken);
-        var rssUrl = $"/api/public/integrations/{radarrIntegration.Id}/indexer/api?t=search&cat=2000&limit=100&offset=0&apikey={radarrIntegration.TorznabApiKey}";
+        var rssUrl =
+            $"/api/public/integrations/{radarrIntegration.Id}/indexer/api?t=search&cat=2000&limit=100&offset=0&apikey={radarrIntegration.TorznabApiKey}";
 
         // Act
         var client = container.GetApiClient();
@@ -158,7 +159,8 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         var plexLibrary = await container.DbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
         var sonarrIntegration = await container.DbContext.SonarrIntegrations.SingleAsync(CancellationToken);
-        var rssUrl = $"/api/public/integrations/{sonarrIntegration.Id}/indexer/api?t=tvsearch&cat=5000&limit=100&offset=0&apikey={sonarrIntegration.TorznabApiKey}";
+        var rssUrl =
+            $"/api/public/integrations/{sonarrIntegration.Id}/indexer/api?t=tvsearch&cat=5000&limit=100&offset=0&apikey={sonarrIntegration.TorznabApiKey}";
 
         // Act
         var client = container.GetApiClient();
@@ -229,6 +231,7 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         mediaList.Count.ShouldBeGreaterThanOrEqualTo(totalEpisodeCount);
         (await GetRssTotal(client, rssUrl)).ShouldBe(mediaList.Count);
     }
+
     private async Task<int> GetRssTotal(HttpClient client, string url)
     {
         var response = await client.GetAsync(url, CancellationToken);

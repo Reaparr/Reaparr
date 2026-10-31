@@ -67,6 +67,7 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         fileTaskPatch.Status.ShouldBe(DownloadStatus.Completed);
         fileTaskPatch.Percentage.ShouldBe(100m);
     }
+
     [Test]
     public async Task ShouldIncludeSeasonAndTvShowInPatch_WhenEpisodeProgressIsUpdated()
     {
@@ -133,6 +134,7 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         patchIds.ShouldContain(season.Id);
         patchIds.ShouldContain(tvShow.Id);
     }
+
     private async Task WaitForPatchCount<T>(IReadOnlyCollection<T> collection, int expectedCount)
     {
         for (var i = 0; i < 40 && collection.Count < expectedCount; i++)
@@ -155,6 +157,7 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
 
         (await predicate()).ShouldBeTrue();
     }
+
     [Test]
     public async Task ShouldPersistCompletedEpisodeSnapshot_WhenSiblingEpisodeProgressArrivesBeforeFlush()
     {
@@ -317,7 +320,8 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
             .ReturnsAsync(Result.Ok());
-        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.IsServerDownloading(completedEpisodeFile.PlexServerId))
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(completedEpisodeFile.PlexServerId))
             .ReturnsAsync(true);
 
         var capturedPatches = new List<IReadOnlyCollection<DownloadPatchDTO>>();
@@ -436,6 +440,7 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         updatedSiblingEpisodeFile.Percentage.ShouldBe(25);
         updatedSiblingEpisodeFile.DownloadSpeed.ShouldBe(123);
     }
+
     [Test]
     public async Task ShouldIncludeSeasonAndTvShowInPatch_WhenEpisodeStatusChanges()
     {
@@ -489,6 +494,7 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
         patchIds.ShouldContain(season.Id);
         patchIds.ShouldContain(tvShow.Id);
     }
+
     [Test]
     public async Task ShouldSendOnlyLatestProgress_WhenMultipleUpdatesAreBufferedBeforeFlush()
     {

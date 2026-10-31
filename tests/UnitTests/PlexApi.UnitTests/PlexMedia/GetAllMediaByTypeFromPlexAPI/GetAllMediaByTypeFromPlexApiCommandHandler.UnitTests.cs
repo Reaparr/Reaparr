@@ -58,8 +58,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
                     library.Id,
                     It.Is<LibraryProgressItem>(p =>
                         p.MediaType == PlexMediaType.OtherVideos && p.Received == 0 && p.Total == 0
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -159,8 +158,8 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
         Mock.Mock<ILibrarySyncProgressStore>().Setup(x => x.Get(library.Id)).Returns(progress);
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateItemAsync(library.Id, It.IsAny<LibraryProgressItem>(), CancellationToken))
-            .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => item.Total.ShouldBe(3))
+            .Setup(x => x.UpdateItemAsync(library.Id, It.IsAny<LibraryProgressItem>()))
+            .Callback<int, LibraryProgressItem>((_, item) => item.Total.ShouldBe(3))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -236,9 +235,11 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
                 {
                     var query = request.ParseQueryToDictionary();
                     requests.Add(query);
-                    apiVersions.Add(request.Headers.TryGetValues("X-Plex-Pms-Api-Version", out var versions)
-                        ? versions.Single()
-                        : null);
+                    apiVersions.Add(
+                        request.Headers.TryGetValues("X-Plex-Pms-Api-Version", out var versions)
+                            ? versions.Single()
+                            : null
+                    );
                     var start = int.Parse(query["X-Plex-Container-Start"]);
                     var size = int.Parse(query["X-Plex-Container-Size"]);
                     var available = query.ContainsKey("unwatched") ? [] : items;
@@ -256,8 +257,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
             .Setup(x =>
                 x.UpdateItemAsync(
                     library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == mediaType && p.Received == 2 && p.Total == 3),
-                    CancellationToken
+                    It.Is<LibraryProgressItem>(p => p.MediaType == mediaType && p.Received == 2 && p.Total == 3)
                 )
             )
             .Returns(Task.CompletedTask)
@@ -266,8 +266,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
             .Setup(x =>
                 x.UpdateItemAsync(
                     library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == mediaType && p.Received == 3 && p.Total == 3),
-                    CancellationToken
+                    It.Is<LibraryProgressItem>(p => p.MediaType == mediaType && p.Received == 3 && p.Total == 3)
                 )
             )
             .Returns(Task.CompletedTask)
@@ -304,11 +303,16 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
         };
         requests.Select(q => q["type"]).ShouldBe(Enumerable.Repeat(expectedWireType.ToString(), 3));
         requests.Select(q => q["sort"]).ShouldBe(Enumerable.Repeat("titleSort:asc", 3));
-        var expectedElements = mediaType is PlexMediaType.Movie or PlexMediaType.Episode or PlexMediaType.MusicTrack or PlexMediaType.OtherVideos
+        var expectedElements = mediaType
+            is PlexMediaType.Movie
+                or PlexMediaType.Episode
+                or PlexMediaType.MusicTrack
+                or PlexMediaType.OtherVideos
             ? "Stream"
             : null;
         var expectedVersion = expectedElements is null ? null : "1.0";
-        requests.Select(q => q.TryGetValue("includeOptionalElements", out var elements) ? elements : null)
+        requests
+            .Select(q => q.TryGetValue("includeOptionalElements", out var elements) ? elements : null)
             .ShouldBe([null, expectedElements, expectedElements]);
         apiVersions.ShouldBe([null, expectedVersion, expectedVersion]);
         requests.Any(q => q.ContainsKey("includeElements")).ShouldBeFalse();

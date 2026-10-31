@@ -21,22 +21,6 @@ export class Update {
   /**
    * No description
    * * @tags Update
-   * @name ApplyUpdateEndpoint
-   * @request POST:/api/Update/execute
-   * @secure
-   */
-  applyUpdateEndpoint = (params: RequestParams = {}) =>
-    axiosObservable<BaseResultDTO>({
-      url: `/api/Update/execute`,
-      method: "POST",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<BaseResultDTO>);
-
-  /**
-   * No description
-   * * @tags Update
    * @name CheckForUpdateEndpoint
    * @request GET:/api/Update/Check
    * @secure
@@ -65,15 +49,31 @@ export class Update {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<BaseResultDTO>);
+
+  /**
+   * No description
+   * * @tags Update
+   * @name ApplyUpdateEndpoint
+   * @request POST:/api/Update/execute
+   * @secure
+   */
+  applyUpdateEndpoint = (params: RequestParams = {}) =>
+    axiosObservable<BaseResultDTO>({
+      url: `/api/Update/execute`,
+      method: "POST",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<BaseResultDTO>);
 }
 
 export class UpdatePaths {
-  static applyUpdateEndpoint = () =>
-    queryString.stringifyUrl({ url: `/api/Update/execute` });
-
   static checkForUpdateEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/Update/Check` });
 
   static downloadUpdateEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/Update/DownloadUpdate` });
+
+  static applyUpdateEndpoint = () =>
+    queryString.stringifyUrl({ url: `/api/Update/execute` });
 }

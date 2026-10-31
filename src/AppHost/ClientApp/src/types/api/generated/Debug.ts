@@ -21,6 +21,22 @@ export class Debug {
   /**
    * No description
    * * @tags Debug
+   * @name GetAllLogsEndpoint
+   * @request GET:/api/Debug/logs
+   * @secure
+   */
+  getAllLogsEndpoint = (params: RequestParams = {}) =>
+    axiosObservable<LiveLogEventDTO[]>({
+      url: `/api/Debug/logs`,
+      method: "GET",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<LiveLogEventDTO[]>);
+
+  /**
+   * No description
+   * * @tags Debug
    * @name GetAllUniqueMediaTitlesEndpoint
    * @request GET:/api/Debug/unique-media-titles
    * @secure
@@ -41,32 +57,16 @@ export class Debug {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<String[]>);
-
-  /**
-   * No description
-   * * @tags Debug
-   * @name GetAllLogsEndpoint
-   * @request GET:/api/Debug/logs
-   * @secure
-   */
-  getAllLogsEndpoint = (params: RequestParams = {}) =>
-    axiosObservable<LiveLogEventDTO[]>({
-      url: `/api/Debug/logs`,
-      method: "GET",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<LiveLogEventDTO[]>);
 }
 
 export class DebugPaths {
+  static getAllLogsEndpoint = () =>
+    queryString.stringifyUrl({ url: `/api/Debug/logs` });
+
   static getAllUniqueMediaTitlesEndpoint = (query: {
     /** @format int32 */
     count: number;
     type: PlexMediaType;
   }) =>
     queryString.stringifyUrl({ url: `/api/Debug/unique-media-titles`, query });
-
-  static getAllLogsEndpoint = () =>
-    queryString.stringifyUrl({ url: `/api/Debug/logs` });
 }

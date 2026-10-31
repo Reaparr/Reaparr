@@ -103,19 +103,25 @@ public class PauseDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<PauseD
             x => x.Id == sibling.Id,
             CancellationToken
         );
-        afterSibling.DownloadStatus.ShouldBe(selection == DownloadTaskType.PhotoFolder ? DownloadStatus.Paused : DownloadStatus.Queued);
-        afterSibling.DataReceived.ShouldBe(64);
-        (await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.ParentId == root.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Queued);
-        var afterNested = await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken);
-        afterNested.DownloadStatus.ShouldBe(
-            before is DownloadStatus.MoveFinished or DownloadStatus.Completed
-                ? DownloadStatus.Queued
-                : selection == DownloadTaskType.PhotoFolder
-                    ? DownloadStatus.Paused
-                    : expected
+        afterSibling.DownloadStatus.ShouldBe(
+            selection == DownloadTaskType.PhotoFolder ? DownloadStatus.Paused : DownloadStatus.Queued
         );
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken)).DownloadStatus.ShouldBe(
+        afterSibling.DataReceived.ShouldBe(64);
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.ParentId == root.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        var afterNested = await dbContext.DownloadTaskPhotoFolders.SingleAsync(
+            x => x.Id == nested.Id,
+            CancellationToken
+        );
+        afterNested.DownloadStatus.ShouldBe(
+            before is DownloadStatus.MoveFinished or DownloadStatus.Completed ? DownloadStatus.Queued
+            : selection == DownloadTaskType.PhotoFolder ? DownloadStatus.Paused
+            : expected
+        );
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(
             afterNested.DownloadStatus is DownloadStatus.Paused or DownloadStatus.MovePaused
                 ? afterNested.DownloadStatus
                 : DownloadStatus.Queued
@@ -236,18 +242,22 @@ public class PauseDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<PauseD
         dbContext.ClearChangeTracker();
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        (await dbContext.DownloadTaskPhotoImageFiles.Where(x => x.ParentId == nested.Id)
-            .OrderBy(x => x.Id).Select(x => x.DownloadStatus).ToListAsync(
-            CancellationToken
-        )).ShouldBe([DownloadStatus.AutoPaused, DownloadStatus.AutoPaused]);
-        (await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.ParentId == root.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Queued);
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken)).DownloadStatus.ShouldBe(
-            DownloadStatus.AutoPaused
-        );
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken)).DownloadStatus.ShouldBe(
-            DownloadStatus.AutoPaused
-        );
+        (
+            await dbContext
+                .DownloadTaskPhotoImageFiles.Where(x => x.ParentId == nested.Id)
+                .OrderBy(x => x.Id)
+                .Select(x => x.DownloadStatus)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe([DownloadStatus.AutoPaused, DownloadStatus.AutoPaused]);
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.ParentId == root.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.AutoPaused);
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.AutoPaused);
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
     }
@@ -276,7 +286,13 @@ public class PauseDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<PauseD
             .ReturnsAsync(stopError)
             .Verifiable(Times.Once());
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Setup(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), It.IsAny<DownloadStatus>(), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.OnStatusChangedAsync(
+                    It.IsAny<DownloadTaskKey>(),
+                    It.IsAny<DownloadStatus>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
 
@@ -325,7 +341,13 @@ public class PauseDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<PauseD
             .ReturnsAsync(cancelled)
             .Verifiable(Times.Once());
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Setup(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), It.IsAny<DownloadStatus>(), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.OnStatusChangedAsync(
+                    It.IsAny<DownloadTaskKey>(),
+                    It.IsAny<DownloadStatus>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
 

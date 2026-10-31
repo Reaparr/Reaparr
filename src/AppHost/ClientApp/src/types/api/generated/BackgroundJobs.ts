@@ -27,7 +27,6 @@ export class BackgroundJobs {
    */
   getAllBackgroundJobsEndpoint = (
     query?: {
-      /** @default false */
       UseMockData?: boolean;
     },
     params: RequestParams = {},
@@ -43,8 +42,6 @@ export class BackgroundJobs {
 }
 
 export class BackgroundJobsPaths {
-  static getAllBackgroundJobsEndpoint = (query?: {
-    /** @default false */
-    UseMockData?: boolean;
-  }) => queryString.stringifyUrl({ url: `/api/BackgroundJobs`, query });
+  static getAllBackgroundJobsEndpoint = (query?: { UseMockData?: boolean }) =>
+    queryString.stringifyUrl({ url: `/api/BackgroundJobs`, query });
 }

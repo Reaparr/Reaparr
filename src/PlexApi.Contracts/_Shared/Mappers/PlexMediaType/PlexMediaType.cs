@@ -30,5 +30,4 @@ public static class PlexMediaTypeMappers
             _ => throw new ArgumentOutOfRangeException(nameof(apiType), $"Unknown media type value: {apiType}"),
         };
     }
-
 }

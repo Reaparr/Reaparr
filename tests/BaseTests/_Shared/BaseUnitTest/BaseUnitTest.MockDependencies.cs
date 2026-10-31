@@ -52,7 +52,6 @@ public partial class BaseUnitTest
     {
         builder.Register<ILogger>((_, _) => LogFactory.Create()).SingleInstance();
 
-
         // Database context can be set up once and then retrieved by its DB name.
         builder
             .Register(

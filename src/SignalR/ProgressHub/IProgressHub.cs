@@ -44,8 +44,5 @@ public interface IProgressHub
     /// </summary>
     /// <param name="progress"></param>
     /// <param name="cancellationToken"> The <see cref="CancellationToken"/> to use.</param>
-    Task IntegrationSetupProgress(
-        IntegrationSetupProgressDTO progress,
-        CancellationToken cancellationToken = default
-    );
+    Task IntegrationSetupProgress(IntegrationSetupProgressDTO progress, CancellationToken cancellationToken = default);
 }

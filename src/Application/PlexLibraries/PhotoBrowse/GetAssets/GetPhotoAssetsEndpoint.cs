@@ -1,3 +1,6 @@
+using FlexQuery.NET.Models;
+using FlexQuery.NET.Parsers;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoAssetsRequest
@@ -25,7 +28,17 @@ public sealed class GetPhotoAssetsRequestValidator : Validator<GetPhotoAssetsReq
         RuleFor(x => x.PlexLibraryId).GreaterThan(0).When(x => x.PlexLibraryId.HasValue);
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize).When(x => x.PageSize.HasValue);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort).When(x => x.Sort is not null);
+        RuleFor(x => x.Sort)
+            .Must(sort =>
+                sort.IsSupportedSort(
+                    SortType.Title,
+                    SortType.AddedAt,
+                    SortType.UpdatedAt,
+                    SortType.Duration,
+                    SortType.MediaSize
+                )
+            )
+            .WithMessage("Unsupported photo asset sort.");
         RuleFor(x => x)
             .Must(x => x.UnmappedOnly != true || x.PlexLibraryId.HasValue)
             .WithMessage("Unmapped-only assets require an explicit photo library.");
@@ -57,12 +70,14 @@ public sealed class GetPhotoAssetsEndpoint : Endpoint<GetPhotoAssetsRequest, Pho
 
     public override async Task HandleAsync(GetPhotoAssetsRequest req, CancellationToken ct)
     {
+        var sort = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = req.Sort }).ResolveSort()!.Value;
         var result = await _commandExecutor.Send(
             new GetPhotoAssetsQuery(
                 req.PlexLibraryId,
                 req.Page ?? 1,
                 req.PageSize ?? MediaQueryFilter.MaximumPageSize,
-                req.Sort ?? "title:asc",
+                sort.Field,
+                sort.Direction,
                 req.UnmappedOnly ?? false
             ),
             ct

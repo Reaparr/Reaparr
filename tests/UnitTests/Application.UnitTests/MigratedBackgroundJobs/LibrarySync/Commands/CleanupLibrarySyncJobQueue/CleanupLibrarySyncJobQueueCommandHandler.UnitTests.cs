@@ -3,8 +3,7 @@ using Quartz.Impl.Matchers;
 
 namespace Reaparr.Application.UnitTests;
 
-public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests
-    : BaseCommandUnitTest<CleanupLibrarySyncJobQueueCommand>
+public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnitTest<CleanupLibrarySyncJobQueueCommand>
 {
     [Test]
     public async Task ShouldDeleteStaleJobsAndRequeueInterruptedRows_WhenRecoveringAtStartup()
@@ -108,15 +107,15 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests
             .ToListAsync(CancellationToken);
         before.Count.ShouldBe(5);
         before.Select(x => x.PlexLibraryId).ShouldBe(libraries.Select(x => x.Id).ToList());
-        before.Select(x => x.Status).ShouldBe(
-            [
+        before
+            .Select(x => x.Status)
+            .ShouldBe([
                 LibrarySyncJobStatus.Completed,
                 LibrarySyncJobStatus.Failed,
                 LibrarySyncJobStatus.Processing,
                 LibrarySyncJobStatus.Queued,
                 LibrarySyncJobStatus.Cancelled,
-            ]
-        );
+            ]);
 
         var staleJobKeys = new[]
         {
@@ -127,10 +126,7 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
             .Setup(x =>
-                x.GetJobKeys(
-                    GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)),
-                    CancellationToken
-                )
+                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)), CancellationToken)
             )
             .ReturnsAsync(staleJobKeys)
             .Verifiable(Times.Once());
@@ -144,7 +140,9 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
-            .Setup(x => x.SendRefreshNotificationAsync(new List<RefreshDataType> { RefreshDataType.PlexLibrarySyncStatus }))
+            .Setup(x =>
+                x.SendRefreshNotificationAsync(new List<RefreshDataType> { RefreshDataType.PlexLibrarySyncStatus })
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -174,9 +172,9 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests
             .ToListAsync(CancellationToken);
         // Completed items should be deleted, failed and processing items requeued, and queued/cancelled items retained.
         after.Count.ShouldBe(4);
-        after.Select(x => x.PlexLibraryId).ShouldBe(
-            [libraries[1].Id, libraries[2].Id, libraries[3].Id, libraries[4].Id]
-        );
+        after
+            .Select(x => x.PlexLibraryId)
+            .ShouldBe([libraries[1].Id, libraries[2].Id, libraries[3].Id, libraries[4].Id]);
 
         var requeuedFailed = after.Single(x => x.PlexLibraryId == libraries[1].Id);
         requeuedFailed.Priority.ShouldBe(2);
@@ -285,10 +283,7 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
             .Setup(x =>
-                x.GetJobKeys(
-                    GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)),
-                    CancellationToken
-                )
+                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)), CancellationToken)
             )
             .ReturnsAsync([staleJobKey])
             .Verifiable(Times.Once());
@@ -326,41 +321,36 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests
                 x.ForceMediaRefresh,
             })
             .ToListAsync(CancellationToken);
-        after.ShouldBe(
-            [
-                new
-                {
-                    PlexLibraryId = libraries[0].Id,
-                    Priority = 1,
-                    Status = LibrarySyncJobStatus.Failed,
-                    CreatedAt = createdAt,
-                    StartedAt = (DateTime?)startedAt,
-                    CompletedAt = (DateTime?)null,
-                    IsServerOffline = false,
-                    ErrorMessage = (string?)"failed sync",
-                    ForceMediaRefresh = true,
-                },
-                new
-                {
-                    PlexLibraryId = libraries[1].Id,
-                    Priority = 2,
-                    Status = LibrarySyncJobStatus.Processing,
-                    CreatedAt = createdAt,
-                    StartedAt = (DateTime?)startedAt,
-                    CompletedAt = (DateTime?)null,
-                    IsServerOffline = false,
-                    ErrorMessage = (string?)null,
-                    ForceMediaRefresh = false,
-                },
-            ]
-        );
+        after.ShouldBe([
+            new
+            {
+                PlexLibraryId = libraries[0].Id,
+                Priority = 1,
+                Status = LibrarySyncJobStatus.Failed,
+                CreatedAt = createdAt,
+                StartedAt = (DateTime?)startedAt,
+                CompletedAt = (DateTime?)null,
+                IsServerOffline = false,
+                ErrorMessage = (string?)"failed sync",
+                ForceMediaRefresh = true,
+            },
+            new
+            {
+                PlexLibraryId = libraries[1].Id,
+                Priority = 2,
+                Status = LibrarySyncJobStatus.Processing,
+                CreatedAt = createdAt,
+                StartedAt = (DateTime?)startedAt,
+                CompletedAt = (DateTime?)null,
+                IsServerOffline = false,
+                ErrorMessage = (string?)null,
+                ForceMediaRefresh = false,
+            },
+        ]);
 
         Mock.Mock<IScheduler>().Verify();
         Mock.Mock<INotificationHubService>()
-            .Verify(
-                x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()),
-                Times.Never()
-            );
+            .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Never());
     }
 
     [Test]
@@ -379,15 +369,14 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
             .Setup(x =>
-                x.GetJobKeys(
-                    GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)),
-                    CancellationToken
-                )
+                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)), CancellationToken)
             )
             .ReturnsAsync([])
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
-            .Setup(x => x.SendRefreshNotificationAsync(new List<RefreshDataType> { RefreshDataType.PlexLibrarySyncStatus }))
+            .Setup(x =>
+                x.SendRefreshNotificationAsync(new List<RefreshDataType> { RefreshDataType.PlexLibrarySyncStatus })
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 

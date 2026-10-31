@@ -1,10 +1,13 @@
+using FlexQuery.NET;
+
 namespace Reaparr.Application;
 
 public sealed record SearchPhotoAssetsQuery(
     string Query,
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
-    string Sort = "title:asc"
+    SortType Sort = SortType.Title,
+    SortDirection Direction = SortDirection.Asc
 ) : ICommand<Result<PhotoAssetPageDTO>>;
 
 public sealed class SearchPhotoAssetsQueryValidator : AbstractValidator<SearchPhotoAssetsQuery>
@@ -14,15 +17,24 @@ public sealed class SearchPhotoAssetsQueryValidator : AbstractValidator<SearchPh
         RuleFor(x => x.Query).NotEmpty().Must(x => !string.IsNullOrWhiteSpace(x));
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort);
+        RuleFor(x => x.Direction).IsInEnum();
+        RuleFor(x => x.Sort)
+            .Must(sort =>
+                sort
+                    is SortType.Title
+                        or SortType.AddedAt
+                        or SortType.UpdatedAt
+                        or SortType.Duration
+                        or SortType.MediaSize
+            )
+            .WithMessage("Unsupported photo asset sort.");
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
     }
 }
 
-public sealed class SearchPhotoAssetsQueryHandler
-    : ICommandHandler<SearchPhotoAssetsQuery, Result<PhotoAssetPageDTO>>
+public sealed class SearchPhotoAssetsQueryHandler : ICommandHandler<SearchPhotoAssetsQuery, Result<PhotoAssetPageDTO>>
 {
     private readonly IReaparrDbContextFactory _dbContextFactory;
 
@@ -50,20 +62,18 @@ public sealed class SearchPhotoAssetsQueryHandler
             query,
             cancellationToken
         );
-        var items = await PhotoBrowseQuerySupport.LoadAssetItemsAsync(
-            context,
-            assetIds,
-            cancellationToken
-        );
+        var items = await PhotoBrowseQuerySupport.LoadAssetItemsAsync(context, assetIds, cancellationToken);
 
-        return Result.Ok(new PhotoAssetPageDTO
-        {
-            Items = items,
-            Page = query.Page,
-            PageSize = query.PageSize,
-            TotalCount = totalCount,
-            TotalBytes = totalBytes,
-        });
+        return Result.Ok(
+            new PhotoAssetPageDTO
+            {
+                Items = items,
+                Page = query.Page,
+                PageSize = query.PageSize,
+                TotalCount = totalCount,
+                TotalBytes = totalBytes,
+            }
+        );
     }
 
     private static async Task<(int TotalCount, long TotalBytes, List<int> AssetIds)> LoadAssetPageAsync(
@@ -78,11 +88,14 @@ public sealed class SearchPhotoAssetsQueryHandler
         foreach (var term in terms)
             assets = assets.Where(x => x.SearchTitle.Contains(term));
 
-        var totalCount = await assets.CountAsync(cancellationToken);
-        var totalBytes = await assets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
-        var ordered = PhotoBrowseQuerySupport.IsDescending(query.Sort)
-            ? assets.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
-            : assets.OrderBy(x => x.Title).ThenBy(x => x.Id);
+        var (totalCount, totalBytes) = await assets.GetPlexPhotoAssetTotalsAsync();
+        var sortOptions = MediaOverviewExtensions.BuildSortOptions(
+            new Sort(query.Sort, query.Direction),
+            nameof(PlexMediaSlimDTO.Title),
+            nameof(PlexMediaSlimDTO.Id),
+            nameof(PlexMediaSlimDTO.MediaSize)
+        );
+        var ordered = assets.ProjectToMediaSlimDTO().ApplySort(sortOptions);
         var assetIds = await ordered
             .Skip(PhotoBrowseQuerySupport.GetSkip(query.Page, query.PageSize))
             .Take(query.PageSize)
@@ -91,5 +104,4 @@ public sealed class SearchPhotoAssetsQueryHandler
 
         return (totalCount, totalBytes, assetIds);
     }
-
 }

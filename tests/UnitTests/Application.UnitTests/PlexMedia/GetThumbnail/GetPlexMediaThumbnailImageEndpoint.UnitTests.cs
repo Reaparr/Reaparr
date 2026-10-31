@@ -5,11 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Reaparr.Application.UnitTests;
 
 public class GetPlexMediaThumbnailImageEndpointUnitTests
-    : BaseEndpointUnitTest<
-        GetPlexMediaThumbnailImageEndpoint,
-        GetPlexMediaThumbnailImageEndpointRequest,
-        byte[]
-    >
+    : BaseEndpointUnitTest<GetPlexMediaThumbnailImageEndpoint, GetPlexMediaThumbnailImageEndpointRequest, byte[]>
 {
     [Test]
     public void ShouldBuildTranscodeUrl_WithEncodedOriginalThumbnailUrl()
@@ -181,10 +177,9 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
         // Assert
         result.IsValid.ShouldBeTrue();
         result.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
-        handler.RequestUris.Select(x => x.AbsolutePath).ShouldBe([
-            "/photo/:/transcode",
-            $"/library/metadata/{request.PlexKey}/thumb/{request.MetaDataKey}",
-        ]);
+        handler
+            .RequestUris.Select(x => x.AbsolutePath)
+            .ShouldBe(["/photo/:/transcode", $"/library/metadata/{request.PlexKey}/thumb/{request.MetaDataKey}"]);
         clientFactory.Verify();
     }
 

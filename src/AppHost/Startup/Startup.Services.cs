@@ -1,15 +1,13 @@
 using System.Reflection;
-using System.Text.Json.Serialization;
+using FastEndpoints.OpenApi;
 using FastEndpoints.Security;
-using FastEndpoints.Swagger;
 using MessagePack;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http;
-using NSwag;
-using NSwag.Generation.Processors.Security;
+using Microsoft.OpenApi;
 using Reaparr.Application.Contracts;
 using Reaparr.Identity.Contracts;
 using Serilog.Sinks.AspNetCore.App.SignalR.Extensions;
@@ -22,11 +20,13 @@ namespace Reaparr.AppHost;
 public static partial class Startup
 {
     /// <summary>
-    /// This method gets called by the runtime. Use this method to add services to the container.
+    /// Registers application services, shared HTTP serialization, and the native OpenAPI document-generation pipeline.
     /// </summary>
-    /// <param name="services"> The <see cref="IServiceCollection"/> instance to configure.</param>
-    /// <param name="env"> The <see cref="IWebHostEnvironment"/> instance to configure.</param>
-    /// <param name="appRuntimeInfo"> The <see cref="IAppRuntimeInfo"/> instance to configure.</param>
+    /// <param name="services">The service collection to populate before the application service provider is built.</param>
+    /// <param name="env">The hosting environment used to select development or production hosting services.</param>
+    /// <param name="appRuntimeInfo">
+    /// Runtime settings controlling integration-test exclusions and the trusted-proxy authentication header name.
+    /// </param>
     public static void ConfigureServices(
         this IServiceCollection services,
         IWebHostEnvironment env,
@@ -51,6 +51,8 @@ public static partial class Startup
         });
 
         services.AddOptions();
+
+        services.ConfigureHttpJsonOptions(options => options.SerializerOptions.ApplyStandardConfiguration());
 
         services.AddMemoryCache();
 
@@ -111,77 +113,61 @@ public static partial class Startup
 
             services.AddSerilogHub<LogHub>();
 
-            services.SwaggerDocument(o =>
+            services.OpenApiDocument(o =>
             {
+                o.Title = "Reaparr Internal API  (NOT FOR EXTERNAL USE)";
+                o.DocumentName = "internal";
+                o.Version = "v1";
+
                 // https://fast-endpoints.com/docs/swagger-support#swagger-operation-tags
                 o.AutoTagPathSegmentIndex = 2;
 
                 // https://fast-endpoints.com/docs/swagger-support#short-schema-names
                 o.ShortSchemaNames = true;
-
                 o.EnableJWTBearerAuth = false;
+                o.EndpointFilter = ep => !ep.EndpointType.IsDefined(typeof(HideFromOpenApiAttribute), inherit: true);
 
-                // https://fast-endpoints.com/docs/swagger-support#removing-empty-schema
-                o.RemoveEmptyRequestSchema = true;
-
-                o.FlattenSchema = true;
-
-                o.EndpointFilter = ep => !ep.EndpointType.IsDefined(typeof(HideFromOpenApiAttribute));
-
-                o.SerializerSettings = serializerOptions =>
+                o.ConfigureOpenApi = options =>
                 {
-                    var config = DefaultJsonSerializerOptions.ConfigStandard;
-                    serializerOptions.PropertyNameCaseInsensitive = config.PropertyNameCaseInsensitive;
-                    serializerOptions.PropertyNamingPolicy = config.PropertyNamingPolicy;
-                    serializerOptions.DefaultIgnoreCondition = config.DefaultIgnoreCondition;
-
-                    // This will ensure that Enums are not exported as integers but as string values in the Swagger UI
-                    serializerOptions.Converters.Add(new JsonStringEnumConverter());
+                    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
+                    options.ShouldInclude = description => description.GroupName == "Internal API";
+                    var extraTypes = new OpenApiAddExtraTypes(options.CreateSchemaReferenceId);
+                    options.AddSchemaTransformer(extraTypes);
+                    options.AddDocumentTransformer(extraTypes);
+                    options.AddOperationTransformer<OpenApiGlobalHeaders>();
+                    options.AddSchemaTransformer(new OpenApiRequiredPropertiesSchemaTransformer());
+                    var enumNames = new OpenApiEnumNamesSchemaTransformer(options.CreateSchemaReferenceId);
+                    options.AddSchemaTransformer(enumNames);
+                    options.AddDocumentTransformer(enumNames);
                 };
 
-                o.DocumentSettings = s =>
-                {
-                    s.Title = "Reaparr Internal API  (NOT FOR EXTERNAL USE)";
-                    s.DocumentName = "internal";
-                    s.ApiGroupNames = ["Internal API"];
-                    s.Version = "v1";
+                // Add cookie-based authentication
+                o.AddAuth(
+                    "CookieAuth",
+                    new OpenApiSecurityScheme
+                    {
+                        Type = SecuritySchemeType.ApiKey,
+                        In = ParameterLocation.Cookie,
+                        Name = DefaultUserAppCredentials.DefaultCookieName,
+                        Description = "Cookie-based authentication for the internal Reaparr API",
+                    }
+                );
 
-                    s.MarkNonNullablePropsAsRequired();
-
-                    s.DocumentProcessors.Add(new NSwagAddExtraTypes());
-                    s.OperationProcessors.Add(new NSwagGlobalHeaders());
-
-                    // Add cookie-based authentication
-                    s.AddAuth(
-                        "CookieAuth",
-                        new()
-                        {
-                            Type = OpenApiSecuritySchemeType.ApiKey,
-                            In = OpenApiSecurityApiKeyLocation.Cookie,
-                            Name = DefaultUserAppCredentials.DefaultCookieName,
-                            Description = "Cookie-based authentication for the internal Reaparr API",
-                        }
-                    );
-
-                    // 🔹 Header-based authentication
-                    s.AddAuth(
-                        "HeaderAuth",
-                        new()
-                        {
-                            Type = OpenApiSecuritySchemeType.ApiKey,
-                            In = OpenApiSecurityApiKeyLocation.Header,
-                            Name = appRuntimeInfo.HeaderAuthTokenName,
-                            Description = "Header-based authentication via trusted proxy",
-                        }
-                    );
-                    s.OperationProcessors.Add(new OperationSecurityScopeProcessor("HeaderAuth"));
-
-                    s.OperationProcessors.Add(new OperationSecurityScopeProcessor("CookieAuth"));
-                };
+                // Header-based authentication
+                o.AddAuth(
+                    "HeaderAuth",
+                    new OpenApiSecurityScheme
+                    {
+                        Type = SecuritySchemeType.ApiKey,
+                        In = ParameterLocation.Header,
+                        Name = appRuntimeInfo.HeaderAuthTokenName,
+                        Description = "Header-based authentication via trusted proxy",
+                    }
+                );
             });
 
-            // Separate Swagger doc for Public API
-            services.SwaggerDocument(o =>
+            // Separate OpenAPI document for the Public API
+            services.OpenApiDocument(o =>
             {
                 // https://fast-endpoints.com/docs/swagger-support#swagger-operation-tags
                 o.AutoTagPathSegmentIndex = 0;
@@ -189,13 +175,18 @@ public static partial class Startup
                 // https://fast-endpoints.com/docs/swagger-support#short-schema-names
                 o.ShortSchemaNames = true;
 
-                o.DocumentSettings = s =>
+                o.ConfigureOpenApi = options =>
                 {
-                    s.Title = "Public API";
-                    s.DocumentName = "public";
-                    s.ApiGroupNames = ["Public API"];
-                    s.Version = "v1";
+                    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
+                    options.ShouldInclude = description => description.GroupName == "Public API";
+                    var enumNames = new OpenApiEnumNamesSchemaTransformer(options.CreateSchemaReferenceId);
+                    options.AddSchemaTransformer(enumNames);
+                    options.AddDocumentTransformer(enumNames);
                 };
+
+                o.Title = "Public API";
+                o.DocumentName = "public";
+                o.Version = "v1";
             });
         }
 

@@ -26,11 +26,13 @@ import {
 	switchMap,
 	takeUntil,
 	tap,
+	shareReplay,
 	toArray,
 } from 'rxjs/operators';
 import { cloneDeep, pick, uniqBy } from 'lodash-es';
 import {
 	PlexMediaType,
+	type SortType,
 	LibrarySyncJobStatus,
 	type LibrarySyncJobQueueDTO,
 	RefreshDataType,
@@ -47,12 +49,13 @@ import {
 } from '@dto';
 import { PhotoAssetKind, PhotoItemKind } from '@dto';
 import { StoreNames, type ISetupResult, type ResultDTO } from '@interfaces';
-import { plexPhotoApi } from '@api';
+import type { IMediaOverviewSort } from '@composables/event-bus';
+import { createDefaultMediaOverviewSort, serializeFlexSortDsl } from '@composables';
+import { plexLibraryApi, plexPhotoApi } from '@api';
 import { useAccountStore, useLibraryStore, useMediaStore, useServerStore, useSettingsStore, useSignalrStore } from '@store';
 
 export type PhotoBrowseView = 'albums' | 'folders' | 'assets';
 export type PhotoBrowseMode = 'aggregate' | 'library' | 'album';
-export type PhotoBrowseSort = 'title:asc' | 'title:desc';
 
 export interface IPhotoBrowseRoute {
 	mode: PhotoBrowseMode;
@@ -61,7 +64,7 @@ export interface IPhotoBrowseRoute {
 	view: PhotoBrowseView;
 	folderId?: number | null;
 	searchQuery: string;
-	sort: PhotoBrowseSort;
+	sort: IMediaOverviewSort;
 }
 
 export type IPhotoBrowseActivation = IPhotoBrowseRoute;
@@ -85,7 +88,6 @@ export interface PhotoViewerSlide {
 	asset: PhotoAssetBrowseDTO;
 	index: number;
 	url: string;
-	representation: 'original' | 'converted' | 'preview';
 	loading: boolean;
 	error: boolean;
 }
@@ -122,7 +124,10 @@ interface IPhotoBrowsingState {
 	albumId: number | null;
 	view: PhotoBrowseView;
 	folderId: number | null;
-	sort: PhotoBrowseSort;
+	sort: IMediaOverviewSort;
+	supportedSorts: SortType[];
+	sortMetadataProfileKey: string;
+	sortMetadataReady: boolean;
 	searchQuery: string;
 	searchOrigin: IPhotoBrowseRoute | null;
 	albums: IPhotoPageState<PhotoAlbumBrowseDTO>;
@@ -164,6 +169,11 @@ interface PhotoBrowseReadContext extends IPhotoBrowseRoute {
 
 type Surface = 'albums' | 'assets' | 'folders' | 'folderAssets' | 'albumMembers' | 'search';
 type PageItem = PhotoAlbumBrowseDTO | PhotoAssetBrowseDTO | PhotoFolderBrowseDTO;
+interface PhotoPageIdentity {
+	id: number;
+	plexServerId: number;
+	plexLibraryId: number;
+}
 type PageDTO = PhotoAlbumPageDTO | PhotoAssetPageDTO | PhotoFolderPageDTO;
 type SelectionPage = PageDTO | PhotoFolderChildrenDTO;
 type ApiResult<T> = ResultDTO<T>;
@@ -219,7 +229,10 @@ const createDefaultState = (): IPhotoBrowsingState => ({
 	albumId: null,
 	view: 'albums',
 	folderId: null,
-	sort: 'title:asc',
+	sort: createDefaultMediaOverviewSort(),
+	supportedSorts: [],
+	sortMetadataProfileKey: '',
+	sortMetadataReady: false,
 	searchQuery: '',
 	searchOrigin: null,
 	albums: createPage<PhotoAlbumBrowseDTO>(),
@@ -282,12 +295,15 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	let selectionCancel$ = new Subject<void>();
 	let viewerCancel$ = new Subject<void>();
 	let refreshInFlight = false;
+	let sortMetadataRequestKey = '';
+	let sortMetadataRequest$: Observable<boolean> | null = null;
 	let activeOwner: object | null = null;
 	let eligibilityMetadataKey = '';
 	let eligibilityInitialized = false;
 	let eligibleLibraryIds = new Set<number>();
 	let selectionGeneration = 0;
 	let viewerGeneration = 0;
+	let viewerImageGeneration = 0;
 	let inspectionGeneration = 0;
 	const observedQueues = new Map<string, { status: LibrarySyncJobStatus; completedAt?: string | null; eligible: boolean }>();
 	const pendingRefreshLibraries = new Set<number>();
@@ -314,6 +330,14 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		folderAssets: new Set<number>(),
 		albumMembers: new Set<number>(),
 		search: new Set<number>(),
+	};
+	const forcedReadIdentities: Record<Surface, Map<number, PhotoPageIdentity[]>> = {
+		albums: new Map<number, PhotoPageIdentity[]>(),
+		assets: new Map<number, PhotoPageIdentity[]>(),
+		folders: new Map<number, PhotoPageIdentity[]>(),
+		folderAssets: new Map<number, PhotoPageIdentity[]>(),
+		albumMembers: new Map<number, PhotoPageIdentity[]>(),
+		search: new Map<number, PhotoPageIdentity[]>(),
 	};
 	const cacheOrder: Array<{ surface: Surface; index: number }> = [];
 	const contextCache = new Map<string, CachedBrowseContext>();
@@ -343,6 +367,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 		activate(route: IPhotoBrowseActivation, owner: object): Observable<void> {
 			const key = contextKey(route);
+			const sortProfileKey = photoSortMetadataKey(route);
 			const contextChanged = activeContextKey !== key;
 			if (contextChanged || activeOwner !== owner) {
 				cancelBrowseRequests();
@@ -353,6 +378,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 				rememberContextResults();
 				activeContextKey = key;
 				contextGeneration += 1;
+				if (state.sortMetadataProfileKey !== sortProfileKey) clearSortMetadata();
 				clearViewer();
 				state.dialog.open = false;
 				clearContextResults();
@@ -401,14 +427,16 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 		loadCurrent(force = false): Observable<void> {
 			if (!state.active || state.disabledLibrary) return of(undefined);
+			const currentIndex = force && state.dialog.open && state.current ? findOverviewIndex(state.current) : -1;
 			prepareForcedRead(force);
-			const initial = requestRangeInternal(0, PAGE_SIZE, force);
+			const context = currentContext(force);
+			if (!context) return of(undefined);
+			const initial = ensureSortMetadata(context, contextGeneration).pipe(
+				switchMap((sortSupported) => sortSupported ? requestRangeInternal(0, PAGE_SIZE, force) : of(undefined)),
+			);
 			let rangeRequest = initial;
-			if (force && state.dialog.open && state.current) {
-				const currentIndex = findOverviewIndex(state.current);
-				if (currentIndex >= PAGE_SIZE) {
-					rangeRequest = forkJoin([initial, requestRangeInternal(currentIndex, currentIndex + 1, true)]).pipe(map(() => undefined));
-				}
+			if (currentIndex >= PAGE_SIZE) {
+				rangeRequest = forkJoin([initial, requestRangeInternal(currentIndex, currentIndex + 1, true)]).pipe(map(() => undefined));
 			}
 			const viewerRequest = force && state.dialog.open ? rangeRequest.pipe(switchMap(() => reloadViewerImages())) : rangeRequest;
 			return viewerRequest.pipe(finalize(() => imagePreloadChanges$.next()));
@@ -473,17 +501,21 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 		retryImage(): Observable<void> {
 			const slide = state.slides.find((candidate) => candidate.index === state.index);
-			return slide ? retrySlide(slide, 'original') : of(undefined);
+			return slide ? retrySlide(slide) : of(undefined);
+		},
+
+		resizeImages(): Observable<void> {
+			cancelImagePreloads();
+			cancelViewerImageLoads();
+			imagePreloadChanges$.next();
+			return reloadViewerImages();
 		},
 
 		imageFailed(index: number): Observable<void> {
 			const slide = state.slides.find((candidate) => candidate.index === index);
 			if (!slide) return of(undefined);
-			if (slide.representation === 'original') return retrySlide(slide, 'converted');
-			if (slide.representation === 'converted') return retrySlide(slide, 'preview');
 			releaseSlideUrl(slide);
 			slide.url = '';
-			slide.representation = 'preview';
 			slide.loading = false;
 			slide.error = true;
 			nextSlideVersion(slideKey(slide.asset));
@@ -566,7 +598,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			if (!state.active || state.disabledLibrary || !context) return of(undefined);
 			state.selectionLoading = true;
 			state.selectionError = false;
-			return enumerateContext(context).pipe(
+			return ensureSortMetadata(context, contextGeneration).pipe(
+				switchMap((sortSupported) => sortSupported ? enumerateContext(context) : throwError(() => new Error('Photo sort metadata is unavailable'))),
 				takeUntil(selectionCancel$),
 				tap((selectors) => {
 					if (!isSelectionCurrent(generation, session, contextGenerationAtStart, context.key)) return;
@@ -580,6 +613,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 				catchError((error) => {
 					if (isSelectionCurrent(generation, session, contextGenerationAtStart, context.key)) {
 						state.selectionError = true;
+						state.allVisibleSelected = state.allVisibleSelected && !selected;
 					}
 					Log.debug('Photo selection enumeration failed', error);
 					return of(undefined);
@@ -676,6 +710,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			eligibilityMetadataKey = '';
 			eligibilityInitialized = false;
 			refreshInFlight = false;
+			sortMetadataRequestKey = '';
+			sortMetadataRequest$ = null;
 			activeContextKey = '';
 			contextGeneration += 1;
 			selectionGeneration += 1;
@@ -788,6 +824,22 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		state.allVisibleSelected = false;
 	}
 
+	function photoSortView(route: Pick<IPhotoBrowseRoute, 'mode' | 'view' | 'searchQuery'>): PhotoItemKind {
+		if (route.mode === 'album' || route.view === 'assets' || route.searchQuery.trim()) return PhotoItemKind.Asset;
+		if (route.view === 'folders') return PhotoItemKind.Folder;
+		return PhotoItemKind.Album;
+	}
+
+	function photoSortMetadataKey(route: IPhotoBrowseRoute): string {
+		return `${route.libraryId}:${photoSortView(route)}`;
+	}
+
+	function clearSortMetadata(): void {
+		state.supportedSorts = [];
+		state.sortMetadataProfileKey = '';
+		state.sortMetadataReady = false;
+	}
+
 	function contextKey(route: IPhotoBrowseRoute): string {
 		return [
 			route.mode,
@@ -795,7 +847,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			route.albumId ?? 0,
 			route.view,
 			route.folderId ?? 0,
-			route.sort,
+			serializeFlexSortDsl(route.sort),
 			route.searchQuery.trim(),
 		].join(':');
 	}
@@ -817,6 +869,52 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 	function isCurrentContext(context: PhotoBrowseReadContext, generation = contextGeneration): boolean {
 		return state.active && generation === contextGeneration && context.key === activeContextKey;
+	}
+
+	function ensureSortMetadata(context: PhotoBrowseReadContext, generation: number): Observable<boolean> {
+		const key = photoSortMetadataKey(context);
+		if (state.sortMetadataReady && state.sortMetadataProfileKey === key) {
+			return of(state.supportedSorts.includes(context.sort.field));
+		}
+		if (sortMetadataRequest$ && sortMetadataRequestKey === key) return sortMetadataRequest$;
+
+		sortMetadataRequestKey = key;
+		const request$ = plexLibraryApi.getLibraryMediaMetadata(context.libraryId, {
+			mediaType: PlexMediaType.PhotoAlbum,
+			photoView: photoSortView(context),
+		}, photoBrowseRequestParams).pipe(
+			takeUntil(browseCancel$),
+			map((response) => apiValue(response)),
+			tap((metadata) => {
+				if (!isCurrentContext(context, generation)) return;
+				state.sortMetadataProfileKey = key;
+				state.sortMetadataReady = metadata !== null;
+				state.supportedSorts = metadata?.supportedSorts ? [...metadata.supportedSorts] : [];
+				state.error = metadata === null;
+				state.reloadError = false;
+			}),
+			map((metadata) => metadata !== null
+				&& isCurrentContext(context, generation)
+				&& state.supportedSorts.includes(context.sort.field)),
+			catchError((error) => {
+				if (isCurrentContext(context, generation)) {
+					clearSortMetadata();
+					state.error = true;
+					state.reloadError = false;
+				}
+				Log.debug('Photo sort metadata request failed', error);
+				return of(false);
+			}),
+			finalize(() => {
+				if (sortMetadataRequest$ === request$) {
+					sortMetadataRequest$ = null;
+					sortMetadataRequestKey = '';
+				}
+			}),
+			shareReplay({ bufferSize: 1, refCount: true }),
+		);
+		sortMetadataRequest$ = request$;
+		return request$;
 	}
 
 	function apiValue<T>(response: ApiResult<T>): T | null {
@@ -863,6 +961,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	}
 
 	function clearContextResults(): void {
+		clearForcedReadIdentities();
 		for (const surface of surfaces()) clearSurface(surface);
 		cacheOrder.length = 0;
 		state.folder = null;
@@ -875,13 +974,31 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		state.allVisibleSelected = false;
 	}
 
+	function clearForcedReadIdentities(): void {
+		for (const surface of surfaces()) forcedReadIdentities[surface].clear();
+	}
+
 	function prepareForcedRead(force: boolean): void {
 		if (!force) return;
 		cancelBrowseRequests();
 		invalidatePreloadedImages(state.libraryId > 0 && !state.searchQuery ? new Set([state.libraryId]) : null);
 		contextGeneration += 1;
-		// Keep the last published rows visible, but only newly loaded pages may enter the cache.
-		for (const surface of surfaces()) loadedPages[surface].clear();
+		for (const surface of surfaces()) {
+			for (const [index, item] of feedMaps[surface]) {
+				const pageNumber = Math.floor(index / PAGE_SIZE) + 1;
+				const identities = forcedReadIdentities[surface].get(pageNumber) ?? [];
+				identities.push({
+					id: item.id,
+					plexServerId: item.plexServerId,
+					plexLibraryId: item.plexLibraryId,
+				});
+				forcedReadIdentities[surface].set(pageNumber, identities);
+				if (index >= PAGE_SIZE) feedMaps[surface].delete(index);
+			}
+			loadedPages[surface].clear();
+			syncPageState(surface);
+		}
+		compactCacheOrder();
 	}
 
 	function takeCachedContext(key: string): CachedBrowseContext | undefined {
@@ -1016,7 +1133,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		let kind = PhotoItemKind.Asset;
 		if (surface === 'albums') kind = PhotoItemKind.Album;
 		else if (surface === 'folders') kind = PhotoItemKind.Folder;
-		if (force) markSelectorsMissing(previousItems, items, kind);
+		if (force) markSelectorsMissing([...previousItems, ...(forcedReadIdentities[surface].get(pageNumber) ?? [])], items, kind);
 		const first = (pageNumber - 1) * PAGE_SIZE;
 		items.forEach((item, offset) => cacheSurfaceItem(surface, first + offset, item));
 		loadedPages[surface].add(pageNumber);
@@ -1089,18 +1206,26 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		state.selectionLoading = false;
 	}
 
-	function cancelViewerLoads(): void {
+	function cancelViewerImageLoads(): void {
 		viewerCancel$.next();
 		viewerCancel$.complete();
 		viewerCancel$ = new Subject<void>();
+		viewerImageGeneration += 1;
+	}
+
+	function cancelViewerLoads(): void {
 		viewerGeneration += 1;
+		cancelViewerImageLoads();
 	}
 
 	function cancelBrowseRequests(): void {
+		clearForcedReadIdentities();
 		cancelImagePreloads();
 		browseCancel$.next();
 		browseCancel$.complete();
 		browseCancel$ = new Subject<void>();
+		sortMetadataRequestKey = '';
+		sortMetadataRequest$ = null;
 		cancelSelectionRequests();
 		cancelViewerLoads();
 		for (const canceler of rangeCancellers.values()) {
@@ -1388,7 +1513,11 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		rangeCancellers.set(rangeKey, rangeCanceller);
 		state.loading = true;
 		state.error = false;
-		return requestContextRange(context, start, boundedEnd, force, generation, rangeCanceller).pipe(
+		return ensureSortMetadata(context, generation).pipe(
+			takeUntil(rangeCanceller),
+			switchMap((sortSupported) => sortSupported
+				? requestContextRange(context, start, boundedEnd, force, generation, rangeCanceller)
+				: of(undefined)),
 			map(() => undefined),
 			catchError((error) => {
 				if (isCurrentContext(context, generation)) {
@@ -1544,7 +1673,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		if (!force && loadedPages.albums.has(page)) return of(undefined);
 		state.albums.loading = true;
 		const libraryId = context.mode === 'aggregate' ? 0 : context.libraryId;
-		const query = { page, size: PAGE_SIZE, sort: context.sort, ...(libraryId > 0 ? { plexLibraryId: libraryId } : {}) };
+		const query = { page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort), ...(libraryId > 0 ? { plexLibraryId: libraryId } : {}) };
 		return plexPhotoApi.getPhotoAlbumsEndpoint(query, photoBrowseRequestParams).pipe(
 			takeUntil(rangeCanceller),
 			map((response) => ({ value: apiValue<PhotoAlbumPageDTO>(response), statusCode: response.statusCode })),
@@ -1570,13 +1699,14 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		context: PhotoBrowseReadContext,
 		page: number,
 	): Observable<ApiResult<PhotoAssetPageDTO>> {
+		const sort = serializeFlexSortDsl(context.sort);
 		switch (surface) {
 			case 'search':
-				return plexPhotoApi.searchPhotoAssetsEndpoint({ q: context.searchQuery, page, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams);
+				return plexPhotoApi.searchPhotoAssetsEndpoint({ q: context.searchQuery, page, size: PAGE_SIZE, sort }, photoBrowseRequestParams);
 			case 'albumMembers':
-				return plexPhotoApi.getPhotoAlbumMembersEndpoint(context.libraryId, context.albumId!, { page, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams);
+				return plexPhotoApi.getPhotoAlbumMembersEndpoint(context.libraryId, context.albumId!, { page, size: PAGE_SIZE, sort }, photoBrowseRequestParams);
 			default:
-				return plexPhotoApi.getPhotoAssetsEndpoint({ page, size: PAGE_SIZE, sort: context.sort, ...(context.mode === 'aggregate' ? {} : { plexLibraryId: context.libraryId }) }, photoBrowseRequestParams);
+				return plexPhotoApi.getPhotoAssetsEndpoint({ page, size: PAGE_SIZE, sort, ...(context.mode === 'aggregate' ? {} : { plexLibraryId: context.libraryId }) }, photoBrowseRequestParams);
 		}
 	}
 
@@ -1606,7 +1736,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	function requestRootsPage(context: PhotoBrowseReadContext, page: number, force: boolean, generation: number, rangeCanceller: Subject<void>): Observable<void> {
 		if (!force && loadedPages.folders.has(page)) return of(undefined);
 		state.folders.loading = true;
-		return plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams).pipe(
+		return plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort) }, photoBrowseRequestParams).pipe(
 			takeUntil(rangeCanceller),
 			map((response) => ({ value: apiValue<PhotoFolderPageDTO>(response), statusCode: response.statusCode })),
 			tap(({ value, statusCode }) => {
@@ -1629,7 +1759,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	function requestUnmappedAssetsPage(context: PhotoBrowseReadContext, page: number, force: boolean, generation: number, rangeCanceller: Subject<void>): Observable<void> {
 		if (!force && loadedPages.folderAssets.has(page)) return of(undefined);
 		state.folderAssets.loading = true;
-		const query = { page, size: PAGE_SIZE, sort: context.sort, plexLibraryId: context.libraryId, unmappedOnly: true };
+		const query = { page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort), plexLibraryId: context.libraryId, unmappedOnly: true };
 		return plexPhotoApi.getPhotoAssetsEndpoint(query, photoBrowseRequestParams).pipe(
 			takeUntil(rangeCanceller),
 			map((response) => ({ value: apiValue<PhotoAssetPageDTO>(response), statusCode: response.statusCode })),
@@ -1656,7 +1786,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		if (!force && folderAlreadyLoaded && assetsAlreadyLoaded) return of(undefined);
 		state.folders.loading = true;
 		state.folderAssets.loading = true;
-		const query = { folderPage, folderSize: PAGE_SIZE, assetPage, assetSize: PAGE_SIZE, sort: context.sort };
+		const query = { folderPage, folderSize: PAGE_SIZE, assetPage, assetSize: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort) };
 		return plexPhotoApi.getPhotoFolderChildrenEndpoint(context.libraryId, context.folderId!, query, photoBrowseRequestParams).pipe(
 			takeUntil(rangeCanceller),
 			map((response) => ({ value: apiValue<PhotoFolderChildrenDTO>(response), statusCode: response.statusCode })),
@@ -1762,69 +1892,44 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		}, { handleErrorsLocally: true }).pipe(catchError(() => of('')));
 	}
 
-	function originalUrl(asset: PhotoAssetBrowseDTO, representation: 'original' | 'converted'): Observable<string> {
-		return mediaStore.getPhotoImageUrl(asset, representation).pipe(
-			catchError((error) => responseStatus(error) === 404 ? throwError(() => error) : of('')),
-		);
-	}
-
-	function setSlideResult(slide: PhotoViewerSlide, url: string, representation: 'original' | 'converted' | 'preview', error: boolean): void {
+	function setSlideResult(slide: PhotoViewerSlide, url: string, error: boolean): void {
 		slide.url = url;
-		slide.representation = representation;
 		slide.loading = false;
 		slide.error = error;
 	}
 
-	function retrySlide(slide: PhotoViewerSlide, start: 'original' | 'converted' | 'preview'): Observable<void> {
+	function retrySlide(slide: PhotoViewerSlide): Observable<void> {
 		releaseSlideUrl(slide);
 		slide.url = '';
-		slide.representation = start;
 		slide.loading = true;
 		slide.error = false;
-		return loadSlide(slide.asset, slide.index, nextSlideVersion(slideKey(slide.asset)), start).pipe(map(() => undefined));
+		return loadSlide(slide, nextSlideVersion(slideKey(slide.asset))).pipe(map(() => undefined));
 	}
 
-	function loadSlide(
-		asset: PhotoAssetBrowseDTO,
-		index: number,
-		version: number,
-		start: 'original' | 'converted' | 'preview' = 'original',
-	): Observable<string> {
+	function loadSlide(slide: PhotoViewerSlide, version: number): Observable<string> {
+		const { asset, index } = slide;
 		const key = slideKey(asset);
 		const contextAtStart = activeContextKey;
-		const generation = viewerGeneration;
-		const slide = state.slides.find((candidate) => candidate.index === index && slideKey(candidate.asset) === key);
-		if (!slide) return of('');
-		const valid = () => generation === viewerGeneration && slideVersions.get(key) === version && contextAtStart === activeContextKey && state.dialog.open && state.slides.includes(slide);
-		const preview = () => thumbnailUrl(asset).pipe(map((url) => ({ url, representation: 'preview' as const })));
-		const converted = () => originalUrl(asset, 'converted').pipe(
-			switchMap((url) => url ? of({ url, representation: 'converted' as const }) : preview()),
-		);
-		const original = () => originalUrl(asset, 'original').pipe(
-			switchMap((url) => url ? of({ url, representation: 'original' as const }) : converted()),
-		);
-		let source: Observable<{ url: string; representation: PhotoViewerSlide['representation'] }>;
-		if (asset.assetKind === PhotoAssetKind.VideoClip || start === 'preview') source = preview();
-		else if (start === 'converted') source = converted();
-		else source = original();
+		const imageGeneration = viewerImageGeneration;
+		const valid = () =>
+			imageGeneration === viewerImageGeneration
+			&& slideVersions.get(key) === version
+			&& contextAtStart === activeContextKey
+			&& state.dialog.open
+			&& state.slides.includes(slide);
+		const source = asset.assetKind === PhotoAssetKind.VideoClip
+			? thumbnailUrl(asset)
+			: mediaStore.getPhotoImageUrl(asset);
 		return source.pipe(
 			tap({ subscribe: () => {
 				// Let the foreground subscriber join its shared request before background subscribers detach.
 				if (index === state.index) asapScheduler.schedule(pauseImagePreloads);
 			} }),
 			takeUntil(viewerCancel$),
-			tap(({ url, representation }) => {
+			catchError(() => of('')),
+			tap((url) => {
 				if (!valid()) return;
-				setSlideResult(slide, url, representation, !url);
-			}),
-			map(({ url }) => url),
-			catchError((error) => {
-				if (responseStatus(error) === 404 && valid()) {
-					closeViewerForInvalidAsset();
-					return of('');
-				}
-				if (valid()) setSlideResult(slide, '', 'preview', true);
-				return of('');
+				setSlideResult(slide, url, !url);
 			}),
 		);
 	}
@@ -1833,16 +1938,15 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		const loads = state.slides.map((slide) => {
 			releaseSlideUrl(slide);
 			slide.url = '';
-			slide.representation = 'original';
 			slide.loading = true;
 			slide.error = false;
-			return loadSlide(slide.asset, slide.index, nextSlideVersion(slideKey(slide.asset)));
+			return loadSlide(slide, nextSlideVersion(slideKey(slide.asset)));
 		});
 		return forkJoin(loads).pipe(map(() => undefined));
 	}
 
 	function releaseSlideUrl(slide: PhotoViewerSlide): void {
-		if (slide.url && slide.representation !== 'preview') mediaStore.releasePhotoImageUrl(slide.url);
+		if (slide.asset.assetKind === PhotoAssetKind.Image && slide.url) mediaStore.releasePhotoImageUrl(slide.url);
 	}
 
 	function clearViewer(): void {
@@ -1886,7 +1990,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		}
 		const targetIndex = count > 0 ? normalizeAssetIndex(indexValue, count) : 0;
 		const generation = ++viewerGeneration;
-		viewerCancel$.next();
+		cancelViewerImageLoads();
 		const context = currentContext(false);
 		if (!context) {
 			if (!fallbackAsset) return of(undefined);
@@ -1899,12 +2003,11 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 				asset: fallbackAsset,
 				index: 0,
 				url: '',
-				representation: 'preview',
 				loading: true,
 				error: false,
 			};
 			state.slides = [fallbackSlide];
-			return loadSlide(fallbackAsset, 0, nextSlideVersion(slideKey(fallbackAsset))).pipe(
+			return loadSlide(fallbackSlide, nextSlideVersion(slideKey(fallbackAsset))).pipe(
 				map(() => undefined),
 				finalize(() => { if (generation === viewerGeneration) state.navigating = false; }),
 			);
@@ -1959,11 +2062,11 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 					const existing = state.slides.find((candidate) => slideKey(candidate.asset) === slideKey(asset));
 					return existing
 						? { ...existing, asset, index: slideIndex }
-						: { asset, index: slideIndex, url: '', representation: 'preview' as const, loading: true, error: false };
+						: { asset, index: slideIndex, url: '', loading: true, error: false };
 				});
 				const loads = state.slides
 					.filter((slide) => slide.loading || !slide.url)
-					.map((slide) => loadSlide(slide.asset, slide.index, nextSlideVersion(slideKey(slide.asset))));
+					.map((slide) => loadSlide(slide, nextSlideVersion(slideKey(slide.asset))));
 				return loads.length > 0 ? forkJoin(loads).pipe(map(() => undefined)) : of(undefined);
 			}),
 			catchError((error) => {
@@ -2032,7 +2135,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 	function selectionPageRequest(surface: 'albums' | 'assets' | 'search' | 'albumMembers', context: PhotoBrowseReadContext, page: number): Observable<PageDTO> {
 		const request = surface === 'albums'
-			? plexPhotoApi.getPhotoAlbumsEndpoint({ page, size: PAGE_SIZE, sort: context.sort, ...(context.mode === 'aggregate' ? {} : { plexLibraryId: context.libraryId }) }, photoBrowseRequestParams)
+			? plexPhotoApi.getPhotoAlbumsEndpoint({ page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort), ...(context.mode === 'aggregate' ? {} : { plexLibraryId: context.libraryId }) }, photoBrowseRequestParams)
 			: assetPageRequest(surface, context, page);
 		return requestSelectionPage(request as Observable<ApiResult<PageDTO>>);
 	}
@@ -2044,7 +2147,8 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			const assets = enumerateUnmappedAssets(context);
 			return forkJoin([folders, assets]).pipe(map(([folderPages, assetPages]) => [...folderPages, ...assetPages]));
 		}
-		const first = requestSelectionPage(plexPhotoApi.getPhotoFolderChildrenEndpoint(context.libraryId, context.folderId!, { folderPage: 1, folderSize: PAGE_SIZE, assetPage: 1, assetSize: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderChildrenDTO>>);
+		const sort = serializeFlexSortDsl(context.sort);
+		const first = requestSelectionPage(plexPhotoApi.getPhotoFolderChildrenEndpoint(context.libraryId, context.folderId!, { folderPage: 1, folderSize: PAGE_SIZE, assetPage: 1, assetSize: PAGE_SIZE, sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderChildrenDTO>>);
 		return first.pipe(
 			switchMap((firstPage) => {
 				const folderCount = Math.ceil(firstPage.folders.totalCount / PAGE_SIZE);
@@ -2057,7 +2161,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 						folderSize: PAGE_SIZE,
 						assetPage: page <= assetCount ? page : 1,
 						assetSize: PAGE_SIZE,
-						sort: context.sort,
+						sort,
 					}, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderChildrenDTO>>)),
 					toArray(),
 					map((remaining) => [firstPage, ...remaining]),
@@ -2067,13 +2171,14 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	}
 
 	function enumerateRootFolders(context: PhotoBrowseReadContext): Observable<PhotoFolderPageDTO[]> {
-		const first = requestSelectionPage(plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page: 1, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderPageDTO>>);
-		return pageSequence(first, (page) => requestSelectionPage(plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page, size: PAGE_SIZE, sort: context.sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderPageDTO>>));
+		const sort = serializeFlexSortDsl(context.sort);
+		const first = requestSelectionPage(plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page: 1, size: PAGE_SIZE, sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderPageDTO>>);
+		return pageSequence(first, (page) => requestSelectionPage(plexPhotoApi.getPhotoSourceRootsEndpoint(context.libraryId, { page, size: PAGE_SIZE, sort }, photoBrowseRequestParams) as Observable<ApiResult<PhotoFolderPageDTO>>));
 	}
 
 	function enumerateUnmappedAssets(context: PhotoBrowseReadContext): Observable<PhotoAssetPageDTO[]> {
 		const requestPage = (page: number) => {
-			const query = { page, size: PAGE_SIZE, sort: context.sort, plexLibraryId: context.libraryId, unmappedOnly: true };
+			const query = { page, size: PAGE_SIZE, sort: serializeFlexSortDsl(context.sort), plexLibraryId: context.libraryId, unmappedOnly: true };
 			return requestSelectionPage(plexPhotoApi.getPhotoAssetsEndpoint(query, photoBrowseRequestParams) as Observable<ApiResult<PhotoAssetPageDTO>>);
 		};
 		return pageSequence(requestPage(1), requestPage);
@@ -2118,6 +2223,9 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		overviewCount: computed(() => overviewCountValue()),
 		overviewFolderCount: computed(() => overviewFolderCount()),
 		overviewItemAt: (index: number): PhotoOverviewItem | null => overviewItemAtValue(index),
+		isSortSupported: (route: IPhotoBrowseRoute): boolean =>
+			!(state.sortMetadataReady && state.sortMetadataProfileKey === photoSortMetadataKey(route))
+			|| state.supportedSorts.includes(route.sort.field),
 	};
 
 	return { ...toRefs(state), ...actions, ...getters };

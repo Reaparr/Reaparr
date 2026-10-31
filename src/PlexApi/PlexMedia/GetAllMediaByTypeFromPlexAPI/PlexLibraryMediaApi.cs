@@ -1,8 +1,8 @@
 using System.Globalization;
 using LukeHagar.PlexAPI.SDK;
+using LukeHagar.PlexAPI.SDK.Hooks;
 using LukeHagar.PlexAPI.SDK.Models.Components;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
-using LukeHagar.PlexAPI.SDK.Hooks;
 using Metadata = LukeHagar.PlexAPI.SDK.Models.Components.Metadata;
 
 namespace Reaparr.PlexApi;
@@ -62,7 +62,8 @@ internal static class PlexLibraryMediaApi
     ) =>
         ReadPhotoPagesAsync(
             offset =>
-                client.Content.ListContentAsync(
+                client
+                    .Content.ListContentAsync(
                         CreateListContentRequest(
                             libraryKey,
                             mediaType,
@@ -93,19 +94,19 @@ internal static class PlexLibraryMediaApi
                 )
                 .LogError();
 
-        var readPage = new Func<int, Task<Result<GetSectionFolderResponse>>>(
-            offset =>
-                client.Library.GetSectionFolderAsync(
-                        new GetSectionFolderRequest
-                        {
-                            SectionId = libraryKey,
-                            Parent = parent,
-                            XPlexContainerStart = offset,
-                            XPlexContainerSize = 100,
-                            IncludeMeta = BoolInt.True,
-                        }
-                    )
-                    .ToResponse(cancellationToken)
+        var readPage = new Func<int, Task<Result<GetSectionFolderResponse>>>(offset =>
+            client
+                .Library.GetSectionFolderAsync(
+                    new GetSectionFolderRequest
+                    {
+                        SectionId = libraryKey,
+                        Parent = parent,
+                        XPlexContainerStart = offset,
+                        XPlexContainerSize = 100,
+                        IncludeMeta = BoolInt.True,
+                    }
+                )
+                .ToResponse(cancellationToken)
         );
 
         if (additionalQuery.Count == 0)
@@ -117,7 +118,11 @@ internal static class PlexLibraryMediaApi
             );
 
         var sdk = (PlexAPI)client;
-        var hook = new AddQueryParametersHook("getSectionFolder", $"/library/sections/{libraryKey}/folder", additionalQuery);
+        var hook = new AddQueryParametersHook(
+            "getSectionFolder",
+            $"/library/sections/{libraryKey}/folder",
+            additionalQuery
+        );
         sdk.SDKConfiguration.Hooks.RegisterBeforeRequestHook(hook);
         try
         {
@@ -148,18 +153,18 @@ internal static class PlexLibraryMediaApi
                 )
                 .LogError();
 
-        var readPage = new Func<int, Task<Result<GetMetadataChildrenResponse>>>(
-            offset =>
-                client.Library.GetMetadataChildrenAsync(
-                        new GetMetadataChildrenRequest
-                        {
-                            Id = albumKey,
-                            XPlexContainerStart = offset,
-                            XPlexContainerSize = 100,
-                            IncludeMeta = BoolInt.True,
-                        }
-                    )
-                    .ToResponse(cancellationToken)
+        var readPage = new Func<int, Task<Result<GetMetadataChildrenResponse>>>(offset =>
+            client
+                .Library.GetMetadataChildrenAsync(
+                    new GetMetadataChildrenRequest
+                    {
+                        Id = albumKey,
+                        XPlexContainerStart = offset,
+                        XPlexContainerSize = 100,
+                        IncludeMeta = BoolInt.True,
+                    }
+                )
+                .ToResponse(cancellationToken)
         );
 
         if (additionalQuery.Count == 0)
@@ -171,7 +176,11 @@ internal static class PlexLibraryMediaApi
             );
 
         var sdk = (PlexAPI)client;
-        var hook = new AddQueryParametersHook("getMetadataChildren", $"/library/metadata/{albumKey}/children", additionalQuery);
+        var hook = new AddQueryParametersHook(
+            "getMetadataChildren",
+            $"/library/metadata/{albumKey}/children",
+            additionalQuery
+        );
         sdk.SDKConfiguration.Hooks.RegisterBeforeRequestHook(hook);
         try
         {
@@ -194,10 +203,7 @@ internal static class PlexLibraryMediaApi
         IReadOnlyList<KeyValuePair<string, string>> additionalQuery
     ) : IBeforeRequestHook
     {
-        public Task<HttpRequestMessage> BeforeRequestAsync(
-            BeforeRequestContext context,
-            HttpRequestMessage request
-        )
+        public Task<HttpRequestMessage> BeforeRequestAsync(BeforeRequestContext context, HttpRequestMessage request)
         {
             if (
                 !string.Equals(context.OperationID, operationId, StringComparison.Ordinal)
@@ -243,10 +249,8 @@ internal static class PlexLibraryMediaApi
 
             return parameters;
         }
-
-
-
     }
+
     private static ListContentRequest CreateListContentRequest(
         long libraryKey,
         PlexMediaType mediaType,
@@ -258,16 +262,17 @@ internal static class PlexLibraryMediaApi
     )
     {
         var requestMediaType = requestMediaTypeOverride ?? mediaType.ToMediaType();
-        var addStreams = includeStreams
+        var addStreams =
+            includeStreams
             && pageSize > 0
-            && mediaType is PlexMediaType.Movie or PlexMediaType.Episode or PlexMediaType.MusicTrack or PlexMediaType.OtherVideos;
+            && mediaType
+                is PlexMediaType.Movie
+                    or PlexMediaType.Episode
+                    or PlexMediaType.MusicTrack
+                    or PlexMediaType.OtherVideos;
         return new ListContentRequest
         {
-            MediaQuery = new MediaQuery
-            {
-                Type = requestMediaType,
-                Sort = "titleSort:asc",
-            },
+            MediaQuery = new MediaQuery { Type = requestMediaType, Sort = "titleSort:asc" },
             XPlexContainerStart = startIndex,
             XPlexContainerSize = pageSize,
             SectionId = libraryKey,
@@ -297,7 +302,9 @@ internal static class PlexLibraryMediaApi
 
             var container = getContainer(response.Value);
             if (container is null)
-                return Result.Fail<List<PlexLibraryMediaItem>>($"Plex returned no typed {description} container").LogError();
+                return Result
+                    .Fail<List<PlexLibraryMediaItem>>($"Plex returned no typed {description} container")
+                    .LogError();
 
             var page = pages.Validate(container, offset, missingType, description);
             if (page.IsFailed)
@@ -334,8 +341,8 @@ internal static class PlexLibraryMediaApi
         var type = metadata.Type?.Trim().ToLowerInvariant();
         var mediaType = type switch
         {
-            null or "" when string.Equals(metadata.Subtype?.Trim(), "photo", StringComparison.OrdinalIgnoreCase)
-                => PlexMediaType.PhotoImage,
+            null or "" when string.Equals(metadata.Subtype?.Trim(), "photo", StringComparison.OrdinalIgnoreCase) =>
+                PlexMediaType.PhotoImage,
             null or "" when origin == PlexLibraryMediaItemOrigin.Photo => PlexMediaType.PhotoImage,
             null or "" when origin == PlexLibraryMediaItemOrigin.Video => PlexMediaType.OtherVideos,
             null or "" when origin == PlexLibraryMediaItemOrigin.Directory => (PlexMediaType?)null,
@@ -365,8 +372,7 @@ internal static class PlexLibraryMediaApi
         return new PlexLibraryMediaItem(metadata, origin, mediaType, shape);
     }
 
-    private static bool IsPositiveRatingKey(string? value) =>
-        int.TryParse(value, out var parsed) && parsed > 0;
+    private static bool IsPositiveRatingKey(string? value) => int.TryParse(value, out var parsed) && parsed > 0;
 
     internal enum PlexLibraryMediaItemOrigin
     {
@@ -405,35 +411,47 @@ internal static class PlexLibraryMediaApi
         {
             var items = Enumerate(container, missingType).ToList();
             if (container.Offset is < 0 || container.Size is < 0 || container.TotalSize is < 0)
-                return Result.Fail<PhotoPageResult>($"Plex returned invalid {description} pagination values").LogError();
+                return Result
+                    .Fail<PhotoPageResult>($"Plex returned invalid {description} pagination values")
+                    .LogError();
 
             var isUnpaged = container.Offset is null && container.TotalSize is null;
             var offset = container.Offset ?? requestedOffset;
             if (offset != requestedOffset)
-                return Result.Fail<PhotoPageResult>(
-                    $"Plex returned {description} offset {offset} for requested offset {requestedOffset}"
-                ).LogError();
+                return Result
+                    .Fail<PhotoPageResult>(
+                        $"Plex returned {description} offset {offset} for requested offset {requestedOffset}"
+                    )
+                    .LogError();
             if (container.Size is { } size && size != items.Count)
-                return Result.Fail<PhotoPageResult>(
-                    $"Plex returned a {description} size inconsistent with its item window"
-                ).LogError();
+                return Result
+                    .Fail<PhotoPageResult>($"Plex returned a {description} size inconsistent with its item window")
+                    .LogError();
             if (_total.HasValue && container.TotalSize is null)
-                return Result.Fail<PhotoPageResult>($"Plex omitted the {description} total during pagination").LogError();
+                return Result
+                    .Fail<PhotoPageResult>($"Plex omitted the {description} total during pagination")
+                    .LogError();
             if (_total.HasValue && container.TotalSize != _total)
-                return Result.Fail<PhotoPageResult>($"Plex changed the reported {description} total during enumeration").LogError();
+                return Result
+                    .Fail<PhotoPageResult>($"Plex changed the reported {description} total during enumeration")
+                    .LogError();
             if (items.Count > 0 && !_windows.Add(GetWindowIdentity(items)))
-                return Result.Fail<PhotoPageResult>($"Plex returned a repeated nonempty {description} window").LogError();
+                return Result
+                    .Fail<PhotoPageResult>($"Plex returned a repeated nonempty {description} window")
+                    .LogError();
 
             _total ??= container.TotalSize;
 
             var total = _total;
             var end = (long)requestedOffset + items.Count;
             if (total is { } knownTotal && (requestedOffset > knownTotal || end > knownTotal))
-                return Result.Fail<PhotoPageResult>(
-                    $"Plex returned a {description} window beyond its reported total"
-                ).LogError();
+                return Result
+                    .Fail<PhotoPageResult>($"Plex returned a {description} window beyond its reported total")
+                    .LogError();
             if (isUnpaged && requestedOffset > 0)
-                return Result.Fail<PhotoPageResult>($"Plex returned unpaged {description} metadata after pagination started").LogError();
+                return Result
+                    .Fail<PhotoPageResult>($"Plex returned unpaged {description} metadata after pagination started")
+                    .LogError();
             if (isUnpaged)
                 return Result.Ok(new PhotoPageResult(items, true, requestedOffset));
             if (items.Count == 0)
@@ -450,10 +468,7 @@ internal static class PlexLibraryMediaApi
         }
 
         private static string GetWindowIdentity(IReadOnlyList<PlexLibraryMediaItem> items) =>
-            string.Join(
-                "\u001f",
-                items.Select(GetWindowItemIdentity).OrderBy(x => x, StringComparer.Ordinal)
-            );
+            string.Join("\u001f", items.Select(GetWindowItemIdentity).OrderBy(x => x, StringComparer.Ordinal));
 
         private static string GetWindowItemIdentity(PlexLibraryMediaItem item)
         {

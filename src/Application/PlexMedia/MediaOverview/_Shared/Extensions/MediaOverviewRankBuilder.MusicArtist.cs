@@ -5,5 +5,5 @@ public static partial class MediaOverviewRankBuilder
     public static List<MediaOverviewMusicArtistSnapshot> AssignRanks(
         this List<MediaOverviewMusicArtistSnapshot> snapshots,
         IReadOnlyDictionary<int, MediaOverviewRankValue> values
-    ) => AssignRanks(snapshots, values, static x => x.PlexArtistId);
+    ) => AssignRanks(snapshots, values, static x => x.PlexArtistId, setYearRank: null);
 }

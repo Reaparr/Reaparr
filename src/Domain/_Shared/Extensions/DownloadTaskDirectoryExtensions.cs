@@ -35,8 +35,7 @@ public static class DownloadTaskDirectoryExtensions
     private static string GetCategoryFolderName(DownloadTaskType type) =>
         type switch
         {
-            DownloadTaskType.Movie or DownloadTaskType.MovieData =>
-                IPathProvider.DefaultMovieFolderName,
+            DownloadTaskType.Movie or DownloadTaskType.MovieData => IPathProvider.DefaultMovieFolderName,
             DownloadTaskType.TvShow
             or DownloadTaskType.Season
             or DownloadTaskType.Episode
@@ -55,16 +54,13 @@ public static class DownloadTaskDirectoryExtensions
         {
             DownloadTaskType.Movie or DownloadTaskType.MovieData => directory.MovieFolder,
             DownloadTaskType.TvShow => directory.TvShowFolder,
-            DownloadTaskType.Season
-            or DownloadTaskType.Episode
-            or DownloadTaskType.EpisodeData => Path.Combine(directory.TvShowFolder, directory.SeasonFolder),
-            DownloadTaskType.MusicArtist => directory.MusicArtistFolder,
-            DownloadTaskType.MusicAlbum
-            or DownloadTaskType.MusicTrack
-            or DownloadTaskType.MusicTrackData => Path.Combine(
-                directory.MusicArtistFolder,
-                directory.MusicAlbumFolder
+            DownloadTaskType.Season or DownloadTaskType.Episode or DownloadTaskType.EpisodeData => Path.Combine(
+                directory.TvShowFolder,
+                directory.SeasonFolder
             ),
+            DownloadTaskType.MusicArtist => directory.MusicArtistFolder,
+            DownloadTaskType.MusicAlbum or DownloadTaskType.MusicTrack or DownloadTaskType.MusicTrackData =>
+                Path.Combine(directory.MusicArtistFolder, directory.MusicAlbumFolder),
             DownloadTaskType.PhotoFolder or DownloadTaskType.PhotoImage => directory.PhotoFolder,
             DownloadTaskType.OtherVideo or DownloadTaskType.OtherVideoData => directory.OtherVideoFolder,
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unsupported download task type."),
@@ -87,5 +83,4 @@ public static class DownloadTaskDirectoryExtensions
         DownloadTaskType type,
         string fileName
     ) => Path.Join(directory.GetDestinationDirectory(type), fileName);
-
 }

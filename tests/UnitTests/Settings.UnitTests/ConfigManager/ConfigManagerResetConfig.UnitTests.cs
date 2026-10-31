@@ -48,10 +48,7 @@ public class ConfigManagerResetConfigUnitTests : BaseUnitTest<ConfigManager>
     [Arguments(nameof(ConfigManager.LoadConfig), true)]
     [Arguments(nameof(ConfigManager.Setup), false)]
     [Arguments(nameof(ConfigManager.Setup), true)]
-    public void ShouldFailRecoveryAndPreserveWriteError_WhenResetCannotSave(
-        string entryPoint,
-        bool readFails
-    )
+    public void ShouldFailRecoveryAndPreserveWriteError_WhenResetCannotSave(string entryPoint, bool readFails)
     {
         // Arrange
         SetupFileSystem();

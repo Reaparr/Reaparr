@@ -366,17 +366,17 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         if (
             HaveConflictingMetadata(remote.RecordLabel, owned.RecordLabel)
             || (
-                remote.ReleaseDate.HasValue
-                && owned.ReleaseDate.HasValue
-                && remote.ReleaseDate.Value.Date != owned.ReleaseDate.Value.Date
+                remote.OriginallyAvailableAt.HasValue
+                && owned.OriginallyAvailableAt.HasValue
+                && remote.OriginallyAvailableAt.Value.Date != owned.OriginallyAvailableAt.Value.Date
             )
-            || (remote.DiscCount > 0 && owned.DiscCount > 0 && remote.DiscCount != owned.DiscCount)
-            || (remote.DiscCount > 0 && ownedTracks.MaximumDisc > remote.DiscCount)
-            || (owned.DiscCount > 0 && remoteTracks.MaximumDisc > owned.DiscCount)
         )
             return false;
 
-        var singleDisc = SingleDisc(remote, owned, remoteTracks, ownedTracks);
+        if (remoteTracks.HasConflictingDiscLayout(ownedTracks, remote.ChildCount, owned.ChildCount))
+            return false;
+
+        var singleDisc = SingleDisc(remoteTracks, ownedTracks);
         var remotePositions = remoteTracks.Positions(singleDisc);
         var ownedPositions = ownedTracks.Positions(singleDisc);
         foreach (var group in remotePositions.Concat(ownedPositions))
@@ -413,7 +413,7 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         CancellationToken ct
     )
     {
-        var singleDisc = SingleDisc(remoteAlbum, ownedAlbum, remoteTracks, ownedTracks);
+        var singleDisc = SingleDisc(remoteTracks, ownedTracks);
         foreach (var remote in remoteTracks.Tracks)
         {
             var native = remote.PlexApiIdentityId is { } nativeId ? ownedTracks.NativeIds[nativeId] : [];
@@ -507,16 +507,8 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         && !(remote.TrackNumber > 0 && owned.TrackNumber > 0 && remote.TrackNumber != owned.TrackNumber)
         && (singleDisc || (remote.DiscNumber > 0 && owned.DiscNumber > 0));
 
-    private static bool SingleDisc(
-        PlexMusicAlbum remote,
-        PlexMusicAlbum owned,
-        AlbumTracks remoteTracks,
-        AlbumTracks ownedTracks
-    ) =>
-        remote.DiscCount == 1
-        && owned.DiscCount == 1
-        && remoteTracks.HasOnlySingleDiscTracks
-        && ownedTracks.HasOnlySingleDiscTracks;
+    private static bool SingleDisc(AlbumTracks remoteTracks, AlbumTracks ownedTracks) =>
+        remoteTracks.HasOnlySingleDiscTracks && ownedTracks.HasOnlySingleDiscTracks;
 
     private static (int Disc, int Track)? Position(PlexMusicTrack track, bool singleDisc) =>
         track.TrackNumber > 0 && (track.DiscNumber > 0 || singleDisc)
@@ -549,8 +541,16 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         private ILookup<(int Disc, int Track), PlexMusicTrack>? _singleDiscPositions;
 
         public PlexMusicTrack[] Tracks { get; } = tracks;
+        private bool HasKnownDiscNumbers { get; } = tracks.Length > 0 && tracks.All(x => x.DiscNumber > 0);
         public bool HasOnlySingleDiscTracks { get; } = tracks.All(x => x.DiscNumber is null or 1);
-        public int MaximumDisc { get; } = tracks.Length == 0 ? 0 : tracks.Max(x => x.DiscNumber ?? 0);
+
+        private bool HasCompleteDiscLayout(int childCount) => HasKnownDiscNumbers && Tracks.Length == childCount;
+
+        // Advertised counts prevent partial snapshots from being mistaken for different editions.
+        public bool HasConflictingDiscLayout(AlbumTracks other, int childCount, int otherChildCount) =>
+            HasCompleteDiscLayout(childCount)
+            && other.HasCompleteDiscLayout(otherChildCount)
+            && HasOnlySingleDiscTracks != other.HasOnlySingleDiscTracks;
 
         public ILookup<string, PlexMusicTrack> NativeIds =>
             field ??= Tracks

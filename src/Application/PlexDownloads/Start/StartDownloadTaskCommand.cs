@@ -78,7 +78,8 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
         var queuedWaitingTasks = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
 
         if (
-            key.Type is DownloadTaskType.TvShow
+            key.Type
+            is DownloadTaskType.TvShow
                 or DownloadTaskType.Season
                 or DownloadTaskType.MusicArtist
                 or DownloadTaskType.MusicAlbum
@@ -117,7 +118,11 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
             case DownloadTaskPhase.None:
             case DownloadTaskPhase.Downloading:
                 var downloadPreviousStatus = nextDownloadTask.DownloadStatus;
-                var wasPaused = downloadPreviousStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused or DownloadStatus.Stopped;
+                var wasPaused =
+                    downloadPreviousStatus
+                    is DownloadStatus.Paused
+                        or DownloadStatus.AutoPaused
+                        or DownloadStatus.Stopped;
                 if (wasPaused)
                 {
                     await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(
@@ -242,10 +247,11 @@ public class StartDownloadTaskCommandHandler : ICommandHandler<StartDownloadTask
                 var currentStatus = await _dbContext.GetDownloadStatusAsync(startedKey);
                 if (
                     currentStatus != previousStatus
-                    && currentStatus is DownloadStatus.Queued
-                        or DownloadStatus.Downloading
-                        or DownloadStatus.Paused
-                        or DownloadStatus.AutoPaused
+                    && currentStatus
+                        is DownloadStatus.Queued
+                            or DownloadStatus.Downloading
+                            or DownloadStatus.Paused
+                            or DownloadStatus.AutoPaused
                 )
                 {
                     await _downloadTaskUpdateDispatcher.OnStatusChangedAsync(

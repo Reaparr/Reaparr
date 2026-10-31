@@ -194,7 +194,6 @@ public class PathProvider : IPathProvider
         }
     }
 
-
     /// <inheritdoc/>
     public string ConfigDirectory
     {

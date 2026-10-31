@@ -4,7 +4,7 @@ import { get, set } from '@vueuse/core';
 import { useRouteQuery } from '@vueuse/router';
 import { flushPromises } from '@vue/test-utils';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
-import { generatePlexLibrary, generatePlexMediaStatisticsDTO, generateResultDTO, Seed } from '@mock';
+import { generatePlexLibrary, generateResultDTO, generateSupportedSorts, Seed } from '@mock';
 import { useMediaOverviewStore, useSettingsStore } from '@store';
 import { PlexMediaComparisonState, PlexMediaType } from '@dto';
 
@@ -24,8 +24,28 @@ describe('MediaOverviewStore - Music comparison filters', () => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
 		useSettingsStore().displaySettings.allOverviewViewMode = PlexMediaType.MusicArtist;
-		mock.onGet('/api/PlexMedia').reply(200, generateResultDTO(generatePlexMediaStatisticsDTO([])));
+		useMediaOverviewStore().metadataList = {
+			mediaCount: 0,
+			countryCount: 0,
+			genreCount: 0,
+			qualityCount: 0,
+			roleCount: 0,
+			countries: [],
+			genres: [],
+			qualities: [],
+			roles: [],
+			supportedSorts: generateSupportedSorts(PlexMediaType.MusicArtist),
+		};
 	});
+
+	function setSupportedSorts(mediaType: PlexMediaType) {
+		const store = useMediaOverviewStore();
+		store.metadataList = {
+			...store.metadataList,
+			supportedSorts: generateSupportedSorts(mediaType),
+		};
+		return store;
+	}
 
 	test.each(musicStates)('Should preserve supported Music URL filter %s in the API request', async (comparisonState) => {
 		// Arrange
@@ -76,7 +96,7 @@ describe('MediaOverviewStore - Music comparison filters', () => {
 	test.each([PlexMediaType.Movie, PlexMediaType.TvShow])('Should preserve existing %s upgrade queries', async (mediaType) => {
 		// Arrange
 		useSettingsStore().displaySettings.allOverviewViewMode = mediaType;
-		const store = useMediaOverviewStore();
+		const store = setSupportedSorts(mediaType);
 
 		// Act
 		await subscribeSpyTo(store.setComparisonStateFilter(PlexMediaComparisonState.HigherQuality)).onComplete();
@@ -90,7 +110,7 @@ describe('MediaOverviewStore - Music comparison filters', () => {
 		// Arrange
 		useSettingsStore().displaySettings.allOverviewViewMode = mediaType;
 		set(useRouteQuery<string>('comparisonState', ''), PlexMediaComparisonState.Missing);
-		const store = useMediaOverviewStore();
+		const store = setSupportedSorts(mediaType);
 
 		// Act
 		store.applyRouteQueryState();
@@ -112,6 +132,7 @@ describe('MediaOverviewStore - Music comparison filters', () => {
 		mock.onGet(/\/api\/PlexLibrary\/4\/metadata/).reply(200, generateResultDTO({
 			mediaCount: 0, countryCount: 0, genreCount: 0, roleCount: 0, qualityCount: 0,
 			countries: [], genres: [], roles: [], qualities: [],
+			supportedSorts: generateSupportedSorts(library.type),
 		}));
 		const store = useMediaOverviewStore();
 

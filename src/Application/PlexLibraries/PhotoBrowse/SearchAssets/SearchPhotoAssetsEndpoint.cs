@@ -1,3 +1,6 @@
+using FlexQuery.NET.Models;
+using FlexQuery.NET.Parsers;
+
 namespace Reaparr.Application;
 
 public sealed record SearchPhotoAssetsRequest
@@ -22,7 +25,17 @@ public sealed class SearchPhotoAssetsRequestValidator : Validator<SearchPhotoAss
         RuleFor(x => x.Query).NotEmpty().Must(x => !string.IsNullOrWhiteSpace(x));
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize).When(x => x.PageSize.HasValue);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort).When(x => x.Sort is not null);
+        RuleFor(x => x.Sort)
+            .Must(sort =>
+                sort.IsSupportedSort(
+                    SortType.Title,
+                    SortType.AddedAt,
+                    SortType.UpdatedAt,
+                    SortType.Duration,
+                    SortType.MediaSize
+                )
+            )
+            .WithMessage("Unsupported photo asset sort.");
         RuleFor(x => x)
             .Must(x => (long)((x.Page ?? 1) - 1) * (x.PageSize ?? MediaQueryFilter.MaximumPageSize) <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -50,8 +63,15 @@ public sealed class SearchPhotoAssetsEndpoint : Endpoint<SearchPhotoAssetsReques
 
     public override async Task HandleAsync(SearchPhotoAssetsRequest req, CancellationToken ct)
     {
+        var sort = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = req.Sort }).ResolveSort()!.Value;
         var result = await _commandExecutor.Send(
-            new SearchPhotoAssetsQuery(req.Query ?? string.Empty, req.Page ?? 1, req.PageSize ?? MediaQueryFilter.MaximumPageSize, req.Sort ?? "title:asc"),
+            new SearchPhotoAssetsQuery(
+                req.Query ?? string.Empty,
+                req.Page ?? 1,
+                req.PageSize ?? MediaQueryFilter.MaximumPageSize,
+                sort.Field,
+                sort.Direction
+            ),
             ct
         );
         await Send.FluentResult(result, ct);

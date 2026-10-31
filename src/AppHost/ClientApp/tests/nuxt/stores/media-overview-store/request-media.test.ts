@@ -5,6 +5,7 @@ import {
 	generatePlexMediaSlims,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
+	generateSupportedSorts,
 } from '@mock';
 import { useMediaOverviewStore } from '@store';
 import { type PlexMediaSlimDTO, PlexMediaType } from '@dto';
@@ -19,6 +20,18 @@ describe('MediaOverviewStore.requestMedia()', () => {
 	beforeEach(() => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		useMediaOverviewStore().metadataList = {
+			mediaCount: 0,
+			countryCount: 0,
+			genreCount: 0,
+			qualityCount: 0,
+			roleCount: 0,
+			countries: [],
+			genres: [],
+			qualities: [],
+			roles: [],
+			supportedSorts: generateSupportedSorts(PlexMediaType.Movie),
+		};
 	});
 
 	test('Should set media in MediaOverviewStore when media is retrieved with success', async () => {
@@ -43,7 +56,18 @@ describe('MediaOverviewStore.requestMedia()', () => {
 		let url = new RegExp(`/api/PlexMedia/*`);
 		mock.onGet(url).reply(200, generateResultDTO(movies));
 		url = new RegExp(`/api/PlexLibrary/0/metadata`);
-		mock.onGet(url).reply(200, generateResultDTO(generatePlexMediaStatisticsDTO([])));
+		mock.onGet(url).reply((request) => [200, generateResultDTO({
+			mediaCount: 0,
+			countryCount: 0,
+			genreCount: 0,
+			qualityCount: 0,
+			roleCount: 0,
+			countries: [],
+			genres: [],
+			qualities: [],
+			roles: [],
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 
 		// Act
 		const result = subscribeSpyTo(mediaOverviewStore.refreshMediaData());

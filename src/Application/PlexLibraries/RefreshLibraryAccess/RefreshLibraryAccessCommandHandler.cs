@@ -76,10 +76,9 @@ public class RefreshLibraryAccessHandler
 
         // Refresh Plex libraries
         var libraryResults = await Task.WhenAll(
-            plexServers.Select(async server => (
-                ServerId: server.Id,
-                Result: await RefreshLibrary(server.Id, plexAccountId, cancellationToken)
-            ))
+            plexServers.Select(async server =>
+                (ServerId: server.Id, Result: await RefreshLibrary(server.Id, plexAccountId, cancellationToken))
+            )
         );
 
         var cancelledResults = libraryResults.Where(x => x.Result.IsCancelled).Select(x => x.Result).ToArray();

@@ -17,7 +17,10 @@ public static partial class FakeData
             .Ignore(x => x.Logs)
             .RuleFor(x => x.AssetKind, _ => isClip ? PhotoAssetKind.VideoClip : PhotoAssetKind.Image)
             .RuleFor(x => x.VideoQuality, _ => VideoQuality.None)
-            .RuleFor(x => x.FileName, (_, x) => $"photo-{x.PlexApiPartId}.{(x.AssetKind == PhotoAssetKind.VideoClip ? "mp4" : "jpg")}")
+            .RuleFor(
+                x => x.FileName,
+                (_, x) => $"photo-{x.PlexApiPartId}.{(x.AssetKind == PhotoAssetKind.VideoClip ? "mp4" : "jpg")}"
+            )
             .RuleFor(x => x.FileLocationUrl, (_, x) => $"/library/parts/{x.PlexApiPartId}/file")
             .RuleFor(
                 x => x.DataTotal,

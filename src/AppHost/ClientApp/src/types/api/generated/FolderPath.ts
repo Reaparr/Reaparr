@@ -31,7 +31,7 @@ export class FolderPath {
    * @secure
    */
   createFolderPathEndpoint = (
-    data: FolderPathDTO,
+    data: FolderPathDTO | null,
     params: RequestParams = {},
   ) =>
     axiosObservable<FolderPathDTO>({
@@ -84,22 +84,6 @@ export class FolderPath {
   /**
    * No description
    * * @tags Folderpath
-   * @name DeleteFolderPathEndpoint
-   * @request DELETE:/api/FolderPath/{Id}
-   * @secure
-   */
-  deleteFolderPathEndpoint = (id: number, params: RequestParams = {}) =>
-    axiosObservable<BaseResultDTO>({
-      url: `/api/FolderPath/${id}`,
-      method: "DELETE",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<BaseResultDTO>);
-
-  /**
-   * No description
-   * * @tags Folderpath
    * @name GetFolderPathDirectoryEndpoint
    * @summary Get all the FolderPaths entities in the database
    * @request GET:/api/FolderPath/directory
@@ -107,7 +91,6 @@ export class FolderPath {
    */
   getFolderPathDirectoryEndpoint = (
     query?: {
-      /** @default "" */
       path?: string;
     },
     params: RequestParams = {},
@@ -120,6 +103,22 @@ export class FolderPath {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<FileSystemDTO>);
+
+  /**
+   * No description
+   * * @tags Folderpath
+   * @name DeleteFolderPathEndpoint
+   * @request DELETE:/api/FolderPath/{id}
+   * @secure
+   */
+  deleteFolderPathEndpoint = (id: number, params: RequestParams = {}) =>
+    axiosObservable<BaseResultDTO>({
+      url: `/api/FolderPath/${id}`,
+      method: "DELETE",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<BaseResultDTO>);
 }
 
 export class FolderPathPaths {
@@ -132,11 +131,9 @@ export class FolderPathPaths {
   static updateFolderPathEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/FolderPath` });
 
+  static getFolderPathDirectoryEndpoint = (query?: { path?: string }) =>
+    queryString.stringifyUrl({ url: `/api/FolderPath/directory`, query });
+
   static deleteFolderPathEndpoint = (id: number) =>
     queryString.stringifyUrl({ url: `/api/FolderPath/${id}` });
-
-  static getFolderPathDirectoryEndpoint = (query?: {
-    /** @default "" */
-    path?: string;
-  }) => queryString.stringifyUrl({ url: `/api/FolderPath/directory`, query });
 }

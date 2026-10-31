@@ -34,9 +34,7 @@ public class CreateAccountIntegrationTests : BaseIntegrationTests
                     builder
                         .Register(_ =>
                             new FakeCommandExecutor()
-                                .Intercept<QueueLibrarySyncJobCommand, Result>(
-                                    (_, _) => Task.FromResult(Result.Ok())
-                                )
+                                .Intercept<QueueLibrarySyncJobCommand, Result>((_, _) => Task.FromResult(Result.Ok()))
                                 .Intercept<QueueMediaOverviewRebuildCommand, Result>(
                                     (_, _) => Task.FromResult(Result.Ok())
                                 )

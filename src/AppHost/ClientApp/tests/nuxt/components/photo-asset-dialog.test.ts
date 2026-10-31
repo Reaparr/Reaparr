@@ -11,13 +11,13 @@ import messages from '@/lang/en-US.json';
 import PhotoAssetDialog from '@/components/Photos/PhotoAssetDialog.vue';
 
 const usePhotoBrowsingStoreMock = vi.hoisted(() => vi.fn());
-vi.mock('@store', () => ({ usePhotoBrowsingStore: usePhotoBrowsingStoreMock }));
+const useMediaStoreMock = vi.hoisted(() => vi.fn());
+vi.mock('@store', () => ({ usePhotoBrowsingStore: usePhotoBrowsingStoreMock, useMediaStore: useMediaStoreMock }));
 
 type TestSlide = {
 	asset: PhotoAssetBrowseDTO;
 	index: number;
 	url: string;
-	representation: 'original' | 'converted' | 'preview';
 	loading: boolean;
 	error: boolean;
 };
@@ -42,6 +42,7 @@ interface ViewerStore {
 	closeDetails: Mock<() => void>;
 	setZoomed: Mock<(zoomed: boolean) => void>;
 	retryImage: Mock<() => Observable<void>>;
+	resizeImages: Mock<() => Observable<void>>;
 	imageFailed: Mock<(index: number) => Observable<void>>;
 	retryInspection: Mock<() => Observable<void>>;
 	requestInspectionMembershipPage: Mock<(page: number) => Observable<void>>;
@@ -55,6 +56,7 @@ describe('PhotoAssetDialog - image-first viewer', () => {
 	beforeEach(() => {
 		store = createViewerStore();
 		usePhotoBrowsingStoreMock.mockReturnValue(store);
+		useMediaStoreMock.mockReturnValue(reactive({ photoPreviewSize: { width: 1280, height: 720 } }));
 	});
 	afterEach(() => {
 		mounted.forEach((wrapper) => wrapper.unmount());
@@ -124,7 +126,6 @@ describe('PhotoAssetDialog - image-first viewer', () => {
 			asset,
 			index,
 			url: `blob:asset-${index}`,
-			representation: 'original' as const,
 			loading: false,
 			error: false,
 		}));
@@ -154,6 +155,7 @@ describe('PhotoAssetDialog - image-first viewer', () => {
 			}),
 			setZoomed: vi.fn((zoomed: boolean) => { viewer.zoomed = zoomed; }),
 			retryImage: vi.fn(() => of(undefined)),
+			resizeImages: vi.fn(() => of(undefined)),
 			imageFailed: vi.fn(() => of(undefined)),
 			retryInspection: vi.fn(() => of(undefined)),
 			requestInspectionMembershipPage: vi.fn(() => of(undefined)),
@@ -359,7 +361,7 @@ describe('PhotoAssetDialog - image-first viewer', () => {
 		expect(store.requestInspectionMembershipPage).toHaveBeenCalledWith(2);
 	});
 
-	test('Should keep clip thumbnails usable without claiming an original image failed or offering playback', async () => {
+	test('Should keep clip thumbnails usable without offering playback', async () => {
 		// Arrange
 		const clip = browseAsset(0, PhotoAssetKind.VideoClip);
 		store.current = clip;
@@ -367,13 +369,11 @@ describe('PhotoAssetDialog - image-first viewer', () => {
 			asset: clip,
 			index: 0,
 			url: 'blob:preview',
-			representation: 'preview',
 			loading: false,
 			error: false,
 		}];
 		store.count = 1;
 		const wrapper = await render();
-		// A clip thumbnail is intentional, not a failed original image.
 		expect(wrapper.find('[data-cy="photo-viewer-preview"]').exists()).toBe(false);
 		// Act
 		await wrapper.get('[data-cy="photo-viewer-image"]').trigger('error');
@@ -387,22 +387,22 @@ describe('PhotoAssetDialog - image-first viewer', () => {
 		expect(store.retryImage).toHaveBeenCalledTimes(1);
 	});
 
-	test('Should label only an available fallback preview rather than a pending original request', async () => {
+	test('Should display a loaded thumbnail without claiming the original is unavailable', async () => {
 		// Arrange
 		store.slides[0]!.url = '';
-		store.slides[0]!.representation = 'preview';
 		store.slides[0]!.loading = true;
 		const wrapper = await render();
 		expect(wrapper.find('[data-cy="photo-viewer-preview"]').exists()).toBe(false);
 
 		// Act
-		store.slides[0]!.url = 'blob:fallback';
+		store.slides[0]!.url = 'blob:thumbnail';
 		store.slides[0]!.loading = false;
 		await nextTick();
 
 		// Assert
-		expect(wrapper.get('[data-cy="photo-viewer-image"]').attributes('src')).toBe('blob:fallback');
-		expect(wrapper.get('[data-cy="photo-viewer-preview"]').text()).toContain('Preview — original unavailable');
+		expect(wrapper.get('[data-cy="photo-viewer-image"]').attributes('src')).toBe('blob:thumbnail');
+		expect(wrapper.find('[data-cy="photo-viewer-preview"]').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('original unavailable');
 	});
 
 	test('Should switch the native-size control for still images', async () => {

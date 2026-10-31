@@ -4,9 +4,10 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import { DOMWrapper, flushPromises } from '@vue/test-utils';
 import { baseSetup } from '@services-test-base';
-import { PhotoItemKind, PlexMediaType, ViewMode } from '@dto';
+import { PhotoItemKind, PlexMediaType, SortType, ViewMode } from '@dto';
 import { useLibraryStore, useMediaOverviewStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
-import { generatePlexLibrary, Seed } from '@mock';
+import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
+import { generatePlexLibrary, generateSupportedSorts, Seed } from '@mock';
 import messages from '@/lang/en-US.json';
 import MediaOverviewBar from '@/components/MediaOverview/MediaOverviewBar.vue';
 
@@ -25,11 +26,71 @@ describe('MediaOverviewBar - photo mode', () => {
 		mounted.length = 0;
 	});
 
+	function setSortMetadata(mediaType: PlexMediaType) {
+		const store = useMediaOverviewStore();
+		store.metadataList = {
+			mediaCount: 0,
+			countryCount: 0,
+			genreCount: 0,
+			qualityCount: 0,
+			roleCount: 0,
+			countries: [],
+			genres: [],
+			qualities: [],
+			roles: [],
+			supportedSorts: generateSupportedSorts(mediaType),
+		};
+		return store;
+	}
+
+	test('derives sort menu choices from metadata capabilities for each media family', async () => {
+		// Arrange
+		const settingsStore = useSettingsStore();
+		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.MusicArtist;
+		const mediaOverviewStore = setSortMetadata(PlexMediaType.MusicArtist);
+		const wrapper = await mountSuspended(MediaOverviewBar, {
+			props: { libraryId: 0 },
+			global: {
+				plugins: [pinia, i18n()],
+				stubs: { teleport: true, QMediaTypeIcon: true },
+			},
+		});
+		mounted.push(wrapper);
+
+		// Act
+		await wrapper.get('[data-cy="media-overview-sort-btn"]').trigger('click');
+		await flushPromises();
+
+		// Assert
+		const audioOption = wrapper.find(`[data-cy="sort-option-${SortType.AudioQuality}-btn"]`);
+		expect(audioOption.exists()).toBe(true);
+		expect(audioOption.text()).toContain('Audio Quality');
+		const comparisonOption = wrapper.find(`[data-cy="sort-option-${SortType.ComparisonState}-btn"]`);
+		expect(comparisonOption.exists()).toBe(true);
+		expect(comparisonOption.text()).toContain('Comparison state');
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.VideoQuality}-btn"]`).exists()).toBe(false);
+		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.Movie;
+		mediaOverviewStore.metadataList = {
+			...mediaOverviewStore.metadataList,
+			supportedSorts: generateSupportedSorts(PlexMediaType.Movie),
+		};
+		expect(mediaOverviewStore.getSortOptions().map((option) => option.field)).not.toContain(SortType.AudioQuality);
+		expect(mediaOverviewStore.getSortOptions().map((option) => option.field)).toContain(SortType.VideoQuality);
+		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.PhotoAlbum;
+		const photoStore = usePhotoBrowsingStore();
+		const returnedPhotoSorts = [SortType.MediaSize, SortType.Title];
+		photoStore.supportedSorts = returnedPhotoSorts;
+		const photoFields = mediaOverviewStore.getSortOptions(photoStore.supportedSorts).map((option) => option.field);
+		expect(photoFields).toEqual(returnedPhotoSorts);
+	});
+
 	test('drives photo view and title sort route events through the shared dropdowns', async () => {
 		// Arrange
 		const photoStore = usePhotoBrowsingStore();
 		photoStore.view = 'albums';
-		photoStore.sort = 'title:asc';
+		photoStore.supportedSorts = [SortType.MediaSize, SortType.AddedAt, SortType.Title];
+		const defaultSort = createDefaultMediaOverviewSort();
+		photoStore.sort = defaultSort;
 		const wrapper = await mountSuspended(MediaOverviewBar, {
 			attachTo: document.body,
 			props: { photoMode: true, libraryId: 4 },
@@ -46,12 +107,45 @@ describe('MediaOverviewBar - photo mode', () => {
 		await wrapper.get('[data-cy="view-mode-assets-btn"]').trigger('click');
 		await wrapper.get('[data-cy="media-overview-sort-btn"]').trigger('click');
 		await flushPromises();
-		await wrapper.get('[data-cy="sort-option-title-btn"]').trigger('click');
+		const visibleSortOptions = wrapper.findAll('[data-cy^="sort-option-"]')
+			.filter((option) => option.isVisible())
+			.map((option) => option.attributes('data-cy'));
+		expect(visibleSortOptions).toEqual([
+			`sort-option-${SortType.MediaSize}-btn`,
+			`sort-option-${SortType.AddedAt}-btn`,
+			`sort-option-${SortType.Title}-btn`,
+		]);
+		await wrapper.get(`[data-cy="sort-option-${SortType.Title}-btn"]`).trigger('click');
 
 		// Assert
 		expect(wrapper.emitted('photo-view')).toEqual([['assets']]);
-		expect(wrapper.emitted('photo-sort')).toEqual([['title:desc']]);
-		expect(wrapper.find('[data-cy="sort-option-year-btn"]').exists()).toBe(false);
+		expect(wrapper.emitted('photo-sort')).toEqual([[toggleMediaOverviewSort(defaultSort, SortType.Title)]]);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.Year}-btn"]`).exists()).toBe(false);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.UpdatedAt}-btn"]`).exists()).toBe(false);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.Duration}-btn"]`).exists()).toBe(false);
+		expect(wrapper.find(`[data-cy="sort-option-${SortType.MediaSize}-btn"]`).exists()).toBe(true);
+	});
+	test('clears a non-default photo sort through the shared sort menu', async () => {
+		// Arrange
+		const photoStore = usePhotoBrowsingStore();
+		photoStore.view = 'assets';
+		const defaultSort = createDefaultMediaOverviewSort();
+		photoStore.sort = toggleMediaOverviewSort(defaultSort, SortType.Title);
+		const wrapper = await mountSuspended(MediaOverviewBar, {
+			props: { photoMode: true, libraryId: 4 },
+			global: {
+				plugins: [pinia, i18n()],
+				stubs: { teleport: true, QMediaTypeIcon: true },
+			},
+		});
+		mounted.push(wrapper);
+
+		// Act
+		await wrapper.get('[data-cy="media-overview-sort-btn"]').trigger('click');
+		await wrapper.get('[data-cy="sort-clear-btn"]').trigger('click');
+
+		// Assert
+		expect(wrapper.emitted('photo-sort')).toEqual([[defaultSort]]);
 	});
 
 	test('renders shared photo selection actions and emits download and clear commands', async () => {

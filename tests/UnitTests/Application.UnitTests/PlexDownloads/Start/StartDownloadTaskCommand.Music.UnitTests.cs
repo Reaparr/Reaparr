@@ -29,9 +29,12 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
             }
         );
         var dbContext = IDbContext;
-        var files = await dbContext.DownloadTaskMusicTrackFiles
-            .Include(x => x.Parent).ThenInclude(x => x!.Parent).ThenInclude(x => x!.Parent)
-            .OrderBy(x => x.Id).ToArrayAsync(CancellationToken);
+        var files = await dbContext
+            .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
+                .ThenInclude(x => x!.Parent)
+                    .ThenInclude(x => x!.Parent)
+            .OrderBy(x => x.Id)
+            .ToArrayAsync(CancellationToken);
         foreach (var file in files)
             await dbContext.SetDownloadStatus(file.ToKey(), DownloadStatus.AutoPaused);
         var target = files[0];
@@ -58,9 +61,13 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
             .Returns(async () =>
             {
                 foreach (var file in files)
-                    (await dbContext.GetDownloadTaskFileAsync(file.ToKey(), CancellationToken))!.DownloadStatus
-                        .ShouldBe(file.Id == target.Id || container && selectedIds.Contains(file.Id)
-                            ? DownloadStatus.Queued : DownloadStatus.AutoPaused);
+                    (
+                        await dbContext.GetDownloadTaskFileAsync(file.ToKey(), CancellationToken)
+                    )!.DownloadStatus.ShouldBe(
+                        file.Id == target.Id || container && selectedIds.Contains(file.Id)
+                            ? DownloadStatus.Queued
+                            : DownloadStatus.AutoPaused
+                    );
                 return failStart ? Result.Fail(error) : Result.Ok();
             })
             .Verifiable(Times.Once());
@@ -73,7 +80,9 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
             Mock.Mock<IEventPublisher>()
                 .Setup(x =>
                     x.PublishAsync(
-                        It.Is<CheckDownloadQueueEvent>(e => e.PlexServerIds.SequenceEqual(new[] { target.PlexServerId })),
+                        It.Is<CheckDownloadQueueEvent>(e =>
+                            e.PlexServerIds.SequenceEqual(new[] { target.PlexServerId })
+                        ),
                         CancellationToken
                     )
                 )
@@ -92,7 +101,8 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
         foreach (var file in files)
             (await dbContext.GetDownloadTaskFileAsync(file.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(
                 !failStart && (file.Id == target.Id || container && selectedIds.Contains(file.Id))
-                    ? DownloadStatus.Queued : DownloadStatus.AutoPaused
+                    ? DownloadStatus.Queued
+                    : DownloadStatus.AutoPaused
             );
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
@@ -132,9 +142,14 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
             }
         );
         var dbContext = IDbContext;
-        var files = (await dbContext.DownloadTaskMusicTrackFiles
-            .Include(x => x.Parent).ThenInclude(x => x!.Parent).ThenInclude(x => x!.Parent)
-            .OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken))
+        var files = (
+            await dbContext
+                .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
+                    .ThenInclude(x => x!.Parent)
+                        .ThenInclude(x => x!.Parent)
+                .OrderBy(x => x.PlexApiRatingKey)
+                .ToListAsync(CancellationToken)
+        )
             .Cast<DownloadTaskFileBase>()
             .ToList();
         var download = files[0];
@@ -213,16 +228,18 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
         Mock.Mock<IEventPublisher>().Verify();
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
+                x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<IMoveDownloadFileScheduler>()
+            .Verify(
                 x =>
-                    x.StartDownloadTaskJob(
-                        It.IsAny<DownloadTaskKey>(),
+                    x.StartMoveDownloadFileJob(
+                        It.Is<DownloadTaskKey>(k => k.Id != nextMove.Id),
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Never()
             );
-        Mock.Mock<IMoveDownloadFileScheduler>()
-            .Verify(x => x.StartMoveDownloadFileJob(
-                It.Is<DownloadTaskKey>(k => k.Id != nextMove.Id), It.IsAny<CancellationToken>()), Times.Never());
         if (failMove)
             Mock.VerifyEventPublished(It.IsAny<CheckDownloadQueueEvent>, Times.Never());
     }

@@ -46,4 +46,9 @@ public record PlexMediaMetadataDTO
     /// Gets or sets the list of distinct quality levels available in the media items of the <see cref="PlexLibrary"/>.
     /// </summary>
     public required List<PlexQualityDTO> Qualities { get; init; }
+
+    /// <summary>
+    /// Gets the authoritative sort fields supported by this response's root media type and browsing view.
+    /// </summary>
+    public required IReadOnlyList<SortType> SupportedSorts { get; init; }
 }

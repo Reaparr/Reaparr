@@ -67,7 +67,9 @@ public class SetPlexLibraryDefaultDestinationByIdEndpoint
         if (folder.MediaType != libraryType.Value || !IsDestinationFolderType(libraryType.Value, folder.FolderType))
         {
             await Send.FluentResult(
-                ResultExtensions.Create400BadRequestResult("The selected folder is not a compatible media destination."),
+                ResultExtensions.Create400BadRequestResult(
+                    "The selected folder is not a compatible media destination."
+                ),
                 ct
             );
             return;
@@ -92,11 +94,17 @@ public class SetPlexLibraryDefaultDestinationByIdEndpoint
     }
 
     private static bool IsDestinationFolderType(PlexMediaType mediaType, FolderType folderType) =>
-        (mediaType, folderType) is
-            (PlexMediaType.Movie, FolderType.MovieFolder)
-            or (PlexMediaType.TvShow, FolderType.TvShowFolder)
-            or (PlexMediaType.MusicArtist, FolderType.MusicFolder)
-            or (PlexMediaType.PhotoAlbum, FolderType.PhotosFolder)
-            or (PlexMediaType.OtherVideos, FolderType.OtherVideosFolder)
-            or (PlexMediaType.Games, FolderType.GamesVideosFolder);
+        (mediaType, folderType)
+            is
+                (PlexMediaType.Movie, FolderType.MovieFolder)
+                or
+                (PlexMediaType.TvShow, FolderType.TvShowFolder)
+                or
+                (PlexMediaType.MusicArtist, FolderType.MusicFolder)
+                or
+                (PlexMediaType.PhotoAlbum, FolderType.PhotosFolder)
+                or
+                (PlexMediaType.OtherVideos, FolderType.OtherVideosFolder)
+                or
+                (PlexMediaType.Games, FolderType.GamesVideosFolder);
 }

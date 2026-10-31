@@ -52,10 +52,16 @@ public class GetMediaOverviewCommandUnitTests
     [Arguments(PlexMediaComparisonState.Partial, true)]
     [Arguments(PlexMediaComparisonState.HigherQuality, false)]
     [Arguments(PlexMediaComparisonState.PartialAndHigherQuality, false)]
-    public void ShouldLimitMusicToCoverageStates_WhenValidatingEveryOverviewBoundary(PlexMediaComparisonState state, bool valid)
+    public void ShouldLimitMusicToCoverageStates_WhenValidatingEveryOverviewBoundary(
+        PlexMediaComparisonState state,
+        bool valid
+    )
     {
         // Arrange
-        var filter = CreateFilter(PlexMediaType.MusicArtist) with { ComparisonState = state };
+        var filter = CreateFilter(PlexMediaType.MusicArtist) with
+        {
+            ComparisonState = state,
+        };
         var request = new GetAllMediaByTypeRequest { MediaType = PlexMediaType.MusicArtist, ComparisonState = state };
 
         // Act
@@ -78,7 +84,10 @@ public class GetMediaOverviewCommandUnitTests
     public void ShouldPreserveVideoUpgradeFilters_WhenValidatingOverview(PlexMediaType mediaType)
     {
         // Arrange
-        var filter = CreateFilter(mediaType) with { ComparisonState = PlexMediaComparisonState.PartialAndHigherQuality };
+        var filter = CreateFilter(mediaType) with
+        {
+            ComparisonState = PlexMediaComparisonState.PartialAndHigherQuality,
+        };
 
         // Act
         var result = new GetMediaOverviewCommandValidator().Validate(new GetMediaOverviewCommand(filter));
@@ -88,6 +97,41 @@ public class GetMediaOverviewCommandUnitTests
         result.Errors.Count.ShouldBe(0);
     }
 
+    [Test]
+    [Arguments(PlexMediaType.Movie, "title:asc", true)]
+    [Arguments(PlexMediaType.Movie, "comparisonState:desc,title:asc", true)]
+    [Arguments(PlexMediaType.TvShow, "comparisonState:desc", true)]
+    [Arguments(PlexMediaType.MusicArtist, "comparisonState:asc", true)]
+    [Arguments(PlexMediaType.PhotoAlbum, "comparisonState:asc", false)]
+    [Arguments(PlexMediaType.OtherVideos, "comparisonState:asc", false)]
+    [Arguments(PlexMediaType.Movie, "unknown:asc", false)]
+    [Arguments(PlexMediaType.Movie, "id:asc", false)]
+    [Arguments(PlexMediaType.Movie, "quality:asc", false)]
+    [Arguments(PlexMediaType.Movie, "sortTitle:asc", false)]
+    [Arguments(PlexMediaType.Movie, "99:asc", false)]
+    [Arguments(PlexMediaType.MusicArtist, "audioQuality:desc,title:asc", true)]
+    [Arguments(PlexMediaType.MusicArtist, "year:asc", false)]
+    [Arguments(PlexMediaType.MusicArtist, "videoQuality:asc", false)]
+    [Arguments(PlexMediaType.Movie, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.TvShow, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.PhotoAlbum, "audioQuality:asc", false)]
+    [Arguments(PlexMediaType.OtherVideos, "audioQuality:asc", false)]
+    public void ShouldValidateEnumSortFields_WhenValidatingRequest(PlexMediaType mediaType, string sort, bool expected)
+    {
+        // Arrange
+        var filter = CreateFilter(mediaType) with
+        {
+            Parameters = new FlexQueryParameters { Sort = sort },
+        };
+
+        // Act
+        var result = new GetMediaOverviewCommandValidator().Validate(new GetMediaOverviewCommand(filter));
+
+        // Assert
+        result.IsValid.ShouldBe(expected);
+        result.Errors.Select(x => x.PropertyName).ShouldBe(expected ? [] : new[] { "Filter.Parameters.Sort" });
+    }
+
     private static MediaQueryFilter CreateFilter(PlexMediaType mediaType) =>
         new()
         {
@@ -95,11 +139,6 @@ public class GetMediaOverviewCommandUnitTests
             PlexLibraryId = 0,
             FilterOfflineMedia = false,
             FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters
-            {
-                Page = 2,
-                PageSize = 25,
-                Sort = "year:desc",
-            },
+            Parameters = new FlexQueryParameters { Page = 2, PageSize = 25 },
         };
 }

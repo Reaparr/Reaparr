@@ -10,7 +10,7 @@ public interface ILibrarySyncProgressStore
         IReadOnlyDictionary<PlexMediaType, int>? progressTotals = null
     );
 
-    Task UpdateItemAsync(int plexLibraryId, LibraryProgressItem item, CancellationToken cancellationToken = default);
+    Task UpdateItemAsync(int plexLibraryId, LibraryProgressItem item);
 
-    Task UpdateErrorAsync(int plexLibraryId, Result errorResult, CancellationToken cancellationToken = default);
+    Task UpdateErrorAsync(int plexLibraryId, Result errorResult);
 }

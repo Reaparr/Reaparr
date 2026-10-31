@@ -54,6 +54,7 @@
 				<td>
 					<QDateTime
 						short-date
+						time
 						:text="plexServer.lastSeenAt" />
 				</td>
 			</tr>

@@ -19,7 +19,14 @@ public class IntegrationCredentialRedactionUnitTests : BaseUnitTest
             var pathProvider = Mock.Container.Resolve<IPathProvider>();
             LogFactory.SetupLogging(new TestLogConfig(runtimeInfo, pathProvider), runtimeInfo);
             var log = LogFactory.Create<IntegrationCredentialRedactionUnitTests>();
-            var secrets = new[] { "arr-secret", "qbittorrent-secret", "torznab-secret", "bearer-secret", "query-secret" };
+            var secrets = new[]
+            {
+                "arr-secret",
+                "qbittorrent-secret",
+                "torznab-secret",
+                "bearer-secret",
+                "query-secret",
+            };
 
             using var context = TestCorrelator.CreateContext();
 
@@ -38,8 +45,8 @@ public class IntegrationCredentialRedactionUnitTests : BaseUnitTest
                 .GetLogEventsFromContextId(context.Id)
                 .Where(x =>
                     x.MessageTemplate.Text
-                    is "{ArrApiKey} {QBittorrentApiKey} {TorznabApiKey} {Authorization}"
-                        or "{Url}"
+                        is "{ArrApiKey} {QBittorrentApiKey} {TorznabApiKey} {Authorization}"
+                            or "{Url}"
                 )
                 .Select(x => x.RenderMessage())
                 .ToList();

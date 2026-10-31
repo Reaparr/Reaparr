@@ -1,10 +1,13 @@
+using FlexQuery.NET;
+
 namespace Reaparr.Application;
 
 public sealed record GetPhotoSourceRootsQueryCommand(
     int PlexLibraryId,
     int Page = 1,
     int PageSize = MediaQueryFilter.MaximumPageSize,
-    string Sort = "title:asc"
+    SortType Sort = SortType.Title,
+    SortDirection Direction = SortDirection.Asc
 ) : ICommand<Result<PhotoFolderPageDTO>>;
 
 public sealed class GetPhotoSourceRootsQueryCommandValidator : AbstractValidator<GetPhotoSourceRootsQueryCommand>
@@ -14,7 +17,8 @@ public sealed class GetPhotoSourceRootsQueryCommandValidator : AbstractValidator
         RuleFor(x => x.PlexLibraryId).GreaterThan(0);
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
-        RuleFor(x => x.Sort).Must(PhotoBrowseQuerySupport.IsSupportedSort);
+        RuleFor(x => x.Direction).IsInEnum();
+        RuleFor(x => x.Sort).Equal(SortType.Title).WithMessage("Photo folders support title sorting only.");
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -40,14 +44,17 @@ public sealed class GetPhotoSourceRootsQueryCommandHandler
         var scopeResult = await context.ResolvePlexPhotoBrowseScopeAsync(queryCommand.PlexLibraryId, cancellationToken);
         if (scopeResult.IsCancelledOrFailed)
             return scopeResult.ToResult<PhotoFolderPageDTO>();
-
         var roots = context.PlexPhotoFolders.Where(x =>
             x.PlexLibraryId == queryCommand.PlexLibraryId && x.ParentId == null && x.IsActive == true
         );
         var totalCount = await roots.CountAsync(cancellationToken);
-        var ordered = PhotoBrowseQuerySupport.IsDescending(queryCommand.Sort)
-            ? roots.OrderByDescending(x => x.Title).ThenByDescending(x => x.Id)
-            : roots.OrderBy(x => x.Title).ThenBy(x => x.Id);
+
+        var options = MediaOverviewExtensions.BuildSortOptions(
+            new Sort(queryCommand.Sort, queryCommand.Direction),
+            nameof(PlexPhotoFolder.Title),
+            nameof(PlexPhotoFolder.Id)
+        );
+        var ordered = roots.ApplySort(options);
         var rootRows = await ordered
             .Skip(PhotoBrowseQuerySupport.GetSkip(queryCommand.Page, queryCommand.PageSize))
             .Take(queryCommand.PageSize)

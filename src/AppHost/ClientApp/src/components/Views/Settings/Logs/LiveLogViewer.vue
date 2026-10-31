@@ -210,8 +210,7 @@ import { get, set, useClipboard, useDebounceFn } from '@vueuse/core';
 import { format } from 'date-fns';
 import { useLogsStore } from '@store';
 import type { LiveLogEventDTO } from '@dto';
-import { LogSeverity } from '@dto';
-import { SortDirection } from '@enums';
+import { LogSeverity, SortDirection } from '@dto';
 
 const logsStore = useLogsStore();
 const helpStore = useHelpStore();

@@ -422,10 +422,7 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
         result.Errors.Count.ShouldBe(0);
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>()
-            .Verify(
-                x => x.StartMoveDownloadFileJob(It.IsAny<DownloadTaskKey>(), CancellationToken),
-                Times.Once()
-            );
+            .Verify(x => x.StartMoveDownloadFileJob(It.IsAny<DownloadTaskKey>(), CancellationToken), Times.Once());
     }
 
     [Test]
@@ -437,15 +434,25 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
         await SetupDatabase(88333, config => config.MovieDownloadTasksCount = 2);
         var dbContext = IDbContext;
         await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
-            update => update.SetProperty(file => file.DownloadStatus, DownloadStatus.DownloadFinished), CancellationToken
+            update => update.SetProperty(file => file.DownloadStatus, DownloadStatus.DownloadFinished),
+            CancellationToken
         );
-        var before = await dbContext.DownloadTaskMovieFile.OrderBy(file => file.Id)
-            .Select(file => new { file.Id, file.DownloadStatus, file.CurrentFileTransferBytesOffset })
+        var before = await dbContext
+            .DownloadTaskMovieFile.OrderBy(file => file.Id)
+            .Select(file => new
+            {
+                file.Id,
+                file.DownloadStatus,
+                file.CurrentFileTransferBytesOffset,
+            })
             .ToListAsync(CancellationToken);
-        before.Select(file => file.DownloadStatus).ShouldBe([DownloadStatus.DownloadFinished, DownloadStatus.DownloadFinished]);
+        before
+            .Select(file => file.DownloadStatus)
+            .ShouldBe([DownloadStatus.DownloadFinished, DownloadStatus.DownloadFinished]);
         using var stopping = new CancellationTokenSource();
         stopping.Cancel();
-        Mock.Mock<IHostApplicationLifetime>().SetupSequence(x => x.ApplicationStopping)
+        Mock.Mock<IHostApplicationLifetime>()
+            .SetupSequence(x => x.ApplicationStopping)
             .Returns(stopsDuringSelection ? CancellationToken.None : stopping.Token)
             .Returns(stopping.Token);
 
@@ -455,12 +462,24 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
         // Assert
         result.IsCancelled.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
-        (await dbContext.DownloadTaskMovieFile.OrderBy(file => file.Id)
-            .Select(file => new { file.Id, file.DownloadStatus, file.CurrentFileTransferBytesOffset })
-            .ToListAsync(CancellationToken)).ShouldBe(before);
-        Mock.Mock<IMoveDownloadFileScheduler>().Verify(scheduler => scheduler.StartMoveDownloadFileJob(
-            It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()), Times.Never());
-        Mock.Mock<IHostApplicationLifetime>().VerifyGet(x => x.ApplicationStopping,
-            Times.Exactly(stopsDuringSelection ? 2 : 1));
+        (
+            await dbContext
+                .DownloadTaskMovieFile.OrderBy(file => file.Id)
+                .Select(file => new
+                {
+                    file.Id,
+                    file.DownloadStatus,
+                    file.CurrentFileTransferBytesOffset,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(before);
+        Mock.Mock<IMoveDownloadFileScheduler>()
+            .Verify(
+                scheduler =>
+                    scheduler.StartMoveDownloadFileJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<IHostApplicationLifetime>()
+            .VerifyGet(x => x.ApplicationStopping, Times.Exactly(stopsDuringSelection ? 2 : 1));
     }
 }

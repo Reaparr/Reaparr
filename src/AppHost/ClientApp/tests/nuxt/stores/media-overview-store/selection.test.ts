@@ -5,6 +5,7 @@ import {
 	generatePlexMediaSlims,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
+	generateSupportedSorts,
 } from '@mock';
 import { useMediaOverviewStore } from '@store';
 import { PlexMediaType } from '@dto';
@@ -30,7 +31,7 @@ describe('MediaOverviewStore - Selection', () => {
 		movies.mediaCount = totalCount;
 		movies.totalCount = totalCount;
 		mock.onGet(new RegExp(`/api/PlexMedia`)).reply(200, generateResultDTO(movies));
-		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply(200, generateResultDTO({
+		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply((request) => [200, generateResultDTO({
 			episodeCount: 0,
 			mediaCount: 0,
 			mediaSize: 0,
@@ -46,7 +47,8 @@ describe('MediaOverviewStore - Selection', () => {
 			countryCount: 0,
 			genreCount: 0,
 			qualityCount: 0,
-		}));
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 
 		await subscribeSpyTo(store.refreshMediaData()).onComplete();
 		return movies;

@@ -199,7 +199,9 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandler
 
         await _dbContext.CreateDownloadClientLogs(logs, ct);
 
-        return Result.Ok(new DownloadTaskCreationReport { Episodes = downloadTasks.DistinctBy(x => x.ParentId).Count() });
+        return Result.Ok(
+            new DownloadTaskCreationReport { Episodes = downloadTasks.DistinctBy(x => x.ParentId).Count() }
+        );
     }
 
     private async Task<DownloadTaskTvShow?> GetOrCreateTvShowDownloadTaskAsync(
@@ -286,18 +288,22 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandler
         }
 
         // A selected quality may contain multiple physical parts; every part must be queued.
-        var downloadFiles = tvShowEpisode.MediaDataList
-            .Where(x => x.PlexApiMediaId == episodeData.PlexApiMediaId)
-            .Where(mediaData => !episodeDownloadTask.Children.Any(existing =>
-                existing.PlexApiMediaId == mediaData.PlexApiMediaId
-                && existing.PlexApiPartId == mediaData.PlexApiPartId
-            ))
-            .Select(x => x.MapToDownloadTask(
-                tvShowEpisode,
-                request,
-                downloadRootPath,
-                downloadMediaDto.KeepCompletedInDownloadFolder
-            ))
+        var downloadFiles = tvShowEpisode
+            .MediaDataList.Where(x => x.PlexApiMediaId == episodeData.PlexApiMediaId)
+            .Where(mediaData =>
+                !episodeDownloadTask.Children.Any(existing =>
+                    existing.PlexApiMediaId == mediaData.PlexApiMediaId
+                    && existing.PlexApiPartId == mediaData.PlexApiPartId
+                )
+            )
+            .Select(x =>
+                x.MapToDownloadTask(
+                    tvShowEpisode,
+                    request,
+                    downloadRootPath,
+                    downloadMediaDto.KeepCompletedInDownloadFolder
+                )
+            )
             .ToList();
 
         episodeDownloadTask.Children.AddRange(downloadFiles);

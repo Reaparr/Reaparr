@@ -2,22 +2,21 @@ namespace Reaparr.BaseTests;
 
 public static partial class FakeData
 {
-    private static readonly Faker<DownloadTaskMovie> _downloadTaskMovieFaker =
-        new Faker<DownloadTaskMovie>()
-            .ApplyDownloadTaskParentBase(DownloadTaskType.Movie)
-            .Ignore(x => x.Children)
-            .FinishWith(
-                (_, movie) =>
+    private static readonly Faker<DownloadTaskMovie> _downloadTaskMovieFaker = new Faker<DownloadTaskMovie>()
+        .ApplyDownloadTaskParentBase(DownloadTaskType.Movie)
+        .Ignore(x => x.Children)
+        .FinishWith(
+            (_, movie) =>
+            {
+                var movieIndex = 1;
+                foreach (var movieFile in movie.Children)
                 {
-                    var movieIndex = 1;
-                    foreach (var movieFile in movie.Children)
-                    {
-                        var currentMovieIndex = movieIndex++;
-                        movieFile.Title = $"{movieFile.Title} {currentMovieIndex}";
-                        movieFile.FullTitle = $"{movie.FullTitle}/{currentMovieIndex}-{movieFile.FileName}";
-                    }
+                    var currentMovieIndex = movieIndex++;
+                    movieFile.Title = $"{movieFile.Title} {currentMovieIndex}";
+                    movieFile.FullTitle = $"{movie.FullTitle}/{currentMovieIndex}-{movieFile.FileName}";
                 }
-            );
+            }
+        );
 
     public static Faker<DownloadTaskMovie> GetMovieDownloadTask(Seed seed, Action<FakeDataConfig>? options = null)
     {

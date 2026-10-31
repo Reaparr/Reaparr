@@ -52,7 +52,10 @@ public static class PhotoSourcePathExtensions
                 selected = root;
                 ambiguous = false;
             }
-            else if (rootPath.Length == selected.SourceRootPath!.Length && root.RootIdentityKey != selected.RootIdentityKey)
+            else if (
+                rootPath.Length == selected.SourceRootPath!.Length
+                && root.RootIdentityKey != selected.RootIdentityKey
+            )
                 ambiguous = true;
         }
 

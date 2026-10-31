@@ -10,6 +10,7 @@ import { PhotoAssetKind, PlexMediaType, ViewMode, type PhotoAssetPageDTO } from 
 import { useAccountStore, useGlobalStore, useLibraryStore, usePhotoBrowsingStore, useServerStore, useSettingsStore } from '@store';
 import PhotoDetails from '@/pages/photos/[id]/details/[albumId].vue';
 import messages from '@/lang/en-US.json';
+import { mockPhotoMetadata } from '../helpers/photo-metadata';
 
 const routeState = vi.hoisted(() => ({
 	params: { id: '4', albumId: '20' },
@@ -26,6 +27,7 @@ describe('Photos album route - bounded member browsing', () => {
 	beforeAll(() => baseSetup());
 	beforeEach(async () => {
 		mock = getAxiosMock();
+		mockPhotoMetadata();
 		pinia = createPinia();
 		setActivePinia(pinia);
 		useSettingsStore().displaySettings.photoAlbumViewMode = ViewMode.Table;

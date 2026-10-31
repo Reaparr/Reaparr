@@ -10,8 +10,12 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
         // Arrange
         var keys = new[] { new JobKey("first", "comparison"), new JobKey("second", "comparison") };
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.Setup(x => x.DeleteJobs(It.Is<IReadOnlyCollection<JobKey>>(value => value.SequenceEqual(keys)), CancellationToken))
-            .ReturnsAsync(false).Verifiable(Times.Once());
+        scheduler
+            .Setup(x =>
+                x.DeleteJobs(It.Is<IReadOnlyCollection<JobKey>>(value => value.SequenceEqual(keys)), CancellationToken)
+            )
+            .ReturnsAsync(false)
+            .Verifiable(Times.Once());
         foreach (var key in keys)
             scheduler.Setup(x => x.CheckExists(key, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
 
@@ -32,10 +36,17 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
         var remainingKey = new JobKey("remaining", "comparison");
         var keys = new[] { absentKey, remainingKey };
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.Setup(x => x.DeleteJobs(It.Is<IReadOnlyCollection<JobKey>>(value => value.SequenceEqual(keys)), CancellationToken))
-            .ReturnsAsync(false).Verifiable(Times.Once());
+        scheduler
+            .Setup(x =>
+                x.DeleteJobs(It.Is<IReadOnlyCollection<JobKey>>(value => value.SequenceEqual(keys)), CancellationToken)
+            )
+            .ReturnsAsync(false)
+            .Verifiable(Times.Once());
         scheduler.Setup(x => x.CheckExists(absentKey, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
-        scheduler.Setup(x => x.CheckExists(remainingKey, CancellationToken)).ReturnsAsync(true).Verifiable(Times.Once());
+        scheduler
+            .Setup(x => x.CheckExists(remainingKey, CancellationToken))
+            .ReturnsAsync(true)
+            .Verifiable(Times.Once());
 
         // Act
         var result = await scheduler.Object.DeleteBatchJobs(keys, CancellationToken);
@@ -52,8 +63,15 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
         // Arrange
         var key = new JobKey("deleted", "comparison");
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.Setup(x => x.DeleteJobs(It.Is<IReadOnlyCollection<JobKey>>(value => value.Count == 1 && value.Contains(key)), CancellationToken))
-            .ReturnsAsync(true).Verifiable(Times.Once());
+        scheduler
+            .Setup(x =>
+                x.DeleteJobs(
+                    It.Is<IReadOnlyCollection<JobKey>>(value => value.Count == 1 && value.Contains(key)),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(true)
+            .Verifiable(Times.Once());
 
         // Act
         var result = await scheduler.Object.DeleteBatchJobs([key], CancellationToken);
@@ -77,7 +95,10 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        scheduler.Verify(x => x.DeleteJobs(It.IsAny<IReadOnlyCollection<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(
+            x => x.DeleteJobs(It.IsAny<IReadOnlyCollection<JobKey>>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
         scheduler.Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
@@ -90,7 +111,12 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
         var key = new JobKey("requested", "comparison");
         var failure = new InvalidOperationException("Scheduler unavailable");
         var scheduler = Mock.Mock<IScheduler>();
-        var deletion = scheduler.Setup(x => x.DeleteJobs(It.Is<IReadOnlyCollection<JobKey>>(value => value.Count == 1 && value.Contains(key)), CancellationToken));
+        var deletion = scheduler.Setup(x =>
+            x.DeleteJobs(
+                It.Is<IReadOnlyCollection<JobKey>>(value => value.Count == 1 && value.Contains(key)),
+                CancellationToken
+            )
+        );
         if (checkingAbsence)
         {
             deletion.ReturnsAsync(false).Verifiable(Times.Once());

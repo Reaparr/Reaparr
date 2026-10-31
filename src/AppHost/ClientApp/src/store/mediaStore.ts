@@ -1,14 +1,15 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { reactive, toRefs } from 'vue';
-import { defer, from, Observable, of, Subject } from 'rxjs';
-import { map, take, catchError, finalize, shareReplay, takeUntil } from 'rxjs/operators';
+import { reactive, computed, toRefs } from 'vue';
+import { defer, from, type Observable, of, Subject } from 'rxjs';
+import { map, take, catchError, finalize, shareReplay, takeUntil, tap } from 'rxjs/operators';
 import type { PlexMediaComparisonDetailsDTO, PlexMediaType, PlexMediaDTO, BaseResultDTO, PhotoAssetBrowseDTO } from '@dto';
 import { PhotoAssetKind, PhotoImageRepresentation } from '@dto';
 import { StoreNames, type ISetupResult } from '@interfaces';
 import { plexMediaApi, plexPhotoApi } from '@api';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, clamp } from 'lodash-es';
 import Log from 'consola';
 import Axios, { type AxiosRequestConfig } from 'axios';
+import { get, useDevicePixelRatio, useWindowSize } from '@vueuse/core';
 
 const PHOTO_IMAGE_CACHE_MAX_ENTRIES = 24;
 const PHOTO_IMAGE_CACHE_MAX_BYTES = 64 * 1024 * 1024;
@@ -34,6 +35,11 @@ interface IPhotoImageCacheEntry {
 	cached: boolean;
 }
 
+interface IPhotoPreviewSize {
+	readonly width: number;
+	readonly height: number;
+}
+
 interface IPhotoImageRequest {
 	key: string;
 	plexLibraryId: number;
@@ -52,6 +58,8 @@ export const useMediaStore = defineStore(StoreNames.MediaStore, () => {
 	const photoImageUrls = new Map<string, IPhotoImageCacheEntry>();
 	const photoImageRequests = new Map<string, IPhotoImageRequest>();
 	let photoImageClock = 0;
+	const { width: viewportWidth, height: viewportHeight } = useWindowSize();
+	const { pixelRatio } = useDevicePixelRatio();
 
 	const actions = {
 		setup(): Observable<ISetupResult> {
@@ -114,12 +122,13 @@ export const useMediaStore = defineStore(StoreNames.MediaStore, () => {
 				);
 		},
 
-		getPhotoImageUrl(asset: PhotoAssetBrowseDTO, representation: 'original' | 'converted'): Observable<string> {
-			return requestPhotoImage(asset, representation, true);
+		getPhotoImageUrl(asset: PhotoAssetBrowseDTO): Observable<string> {
+			if (asset.assetKind !== PhotoAssetKind.Image) return of('');
+			return requestPhotoImage(asset, true, currentPhotoPreviewSize());
 		},
 		preloadPhotoImage(asset: PhotoAssetBrowseDTO): Observable<void> {
 			if (asset.assetKind !== PhotoAssetKind.Image) return of(undefined);
-			return requestPhotoImage(asset, 'original', false).pipe(map(() => undefined));
+			return requestPhotoImage(asset, false, currentPhotoPreviewSize()).pipe(map(() => undefined));
 		},
 		releasePhotoImageUrl(url: string): void {
 			releasePhotoImage(url);
@@ -163,59 +172,50 @@ export const useMediaStore = defineStore(StoreNames.MediaStore, () => {
 
 	function requestPhotoImage(
 		asset: PhotoAssetBrowseDTO,
-		representation: 'original' | 'converted',
 		grantLease: boolean,
+		previewSize: IPhotoPreviewSize,
 	): Observable<string> {
-		const key = photoImageKey(asset, representation);
+		const key = photoImageKey(asset, previewSize);
 
-		return new Observable<string>((subscriber) => {
+		return defer(() => {
 			const cached = photoImageCache.get(key);
-			if (cached) {
-				touchPhotoImage(cached);
-				if (grantLease) cached.leases += 1;
-				subscriber.next(cached.url);
-				subscriber.complete();
-				return;
-			}
-
-			const request = getOrCreatePhotoImageRequest(asset, representation);
-			const subscription = request.source$.subscribe({
-				next: (url) => {
-					if (grantLease && url) {
-						const entry = photoImageUrls.get(url);
-						if (entry && entry.key === key) {
-							entry.leases += 1;
-							touchPhotoImage(entry);
-						}
-					}
-					subscriber.next(url);
-				},
-				error: (error: unknown) => subscriber.error(error),
-				complete: () => subscriber.complete(),
-			});
-
-			return () => subscription.unsubscribe();
+			const source = cached ? of(cached.url) : getOrCreatePhotoImageRequest(asset, previewSize).source$;
+			return source.pipe(tap((url) => {
+				const entry = cached ?? photoImageUrls.get(url);
+				if (!entry || entry.key !== key) return;
+				if (grantLease) entry.leases += 1;
+				touchPhotoImage(entry);
+			}));
 		});
 	}
 
 	function getOrCreatePhotoImageRequest(
 		asset: PhotoAssetBrowseDTO,
-		representation: 'original' | 'converted',
+		previewSize: IPhotoPreviewSize,
 	): IPhotoImageRequest {
-		const key = photoImageKey(asset, representation);
+		const capturedPreviewSize = Object.freeze({
+			width: previewSize.width,
+			height: previewSize.height,
+		});
+		const key = photoImageKey(asset, capturedPreviewSize);
 		const existing = photoImageRequests.get(key);
 		if (existing) return existing;
 
+		const query = Object.freeze({
+			representation: PhotoImageRepresentation.Converted,
+			width: capturedPreviewSize.width,
+			height: capturedPreviewSize.height,
+		});
 		const cancel$ = new Subject<void>();
 		const source$ = defer(() =>
 			plexPhotoApi.getPhotoAssetImageEndpoint(
 				asset.plexLibraryId,
 				asset.id,
-				{ representation: representation === 'original' ? PhotoImageRepresentation.Original : PhotoImageRepresentation.Converted },
+				query,
 				{
 					handleErrorsLocally: true,
 					validateStatus: (status) => status !== 401,
-					// Expected image failures belong to the viewer; keep their status beside raw blob successes.
+					// Keep non-success responses as result objects so image-like error blobs are never cached.
 					transformResponse: (data: Blob, _headers, status) => status === 200
 						? data
 						: { isSuccess: false, statusCode: status, value: null, errors: [], successes: [] },
@@ -244,13 +244,16 @@ export const useMediaStore = defineStore(StoreNames.MediaStore, () => {
 		return request;
 	}
 
+	function currentPhotoPreviewSize(): IPhotoPreviewSize {
+		const ratio = get(pixelRatio);
+		return {
+			width: clamp(Math.ceil(get(viewportWidth) * ratio), 1, 4096),
+			height: clamp(Math.ceil(get(viewportHeight) * ratio), 1, 4096),
+		};
+	}
+
 	function photoResponseToUrl(request: IPhotoImageRequest, response: Blob | BaseResultDTO): string {
-		if (!(response instanceof Blob)) {
-			if (response.statusCode === 404) {
-				throw Object.assign(new Error('The photo asset is no longer available.'), { statusCode: 404 });
-			}
-			return '';
-		}
+		if (!(response instanceof Blob)) return '';
 		if (!response.type.startsWith('image/')) return '';
 		return cachePhotoImage(request, response);
 	}
@@ -275,16 +278,16 @@ export const useMediaStore = defineStore(StoreNames.MediaStore, () => {
 		return entry.url;
 	}
 
-	function photoImageKey(asset: PhotoAssetBrowseDTO, representation: 'original' | 'converted'): string {
+	function photoImageKey(asset: PhotoAssetBrowseDTO, previewSize: IPhotoPreviewSize): string {
 		return [
 			asset.plexServerId,
 			asset.plexLibraryId,
 			asset.id,
 			asset.plexApiMetaDataKey,
-			representation,
+			previewSize.width,
+			previewSize.height,
 		].join(':');
 	}
-
 	function touchPhotoImage(entry: IPhotoImageCacheEntry): void {
 		entry.lastUsed = ++photoImageClock;
 	}
@@ -360,7 +363,9 @@ export const useMediaStore = defineStore(StoreNames.MediaStore, () => {
 		URL.revokeObjectURL(entry.url);
 	}
 
-	const getters = {};
+	const getters = {
+		photoPreviewSize: computed<IPhotoPreviewSize>(() => currentPhotoPreviewSize()),
+	};
 	return {
 		...toRefs(state), ...actions, ...getters,
 	};

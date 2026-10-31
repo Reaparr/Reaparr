@@ -6,6 +6,7 @@ namespace Reaparr.Logging;
 public static class LogEventMapper
 {
     private static long _sequence;
+
     // Share each event across history and live delivery without retaining the original LogEvent.
     private static readonly ConditionalWeakTable<LogEvent, LiveLogEventDTO> _mappedEvents = new();
 

@@ -84,8 +84,8 @@ public class ClearCompletedDownloadTasksByServerIdCommandUnitTests
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
-            .ThenInclude(x => x!.Parent!)
-            .ThenInclude(x => x!.Parent!)
+                .ThenInclude(x => x!.Parent!)
+                    .ThenInclude(x => x!.Parent!)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var otherVideoFiles = await dbContext
@@ -212,6 +212,7 @@ public class ClearCompletedDownloadTasksByServerIdCommandUnitTests
             DownloadStatus.Completed
         );
     }
+
     [Test]
     public async Task ShouldClearCompletedStandalonePhotoRootWithoutTouchingActiveOrOtherServer()
     {
@@ -254,7 +255,12 @@ public class ClearCompletedDownloadTasksByServerIdCommandUnitTests
         (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).ToListAsync(CancellationToken))
             .Order()
             .ShouldBe(new[] { roots[1].Files.Single().Id, roots[2].Files.Single().Id }.Order());
-        (await dbContext.GetAllDownloadTasksByServerAsync(libraries[0].PlexServerId, cancellationToken: CancellationToken))
+        (
+            await dbContext.GetAllDownloadTasksByServerAsync(
+                libraries[0].PlexServerId,
+                cancellationToken: CancellationToken
+            )
+        )
             .Select(x => x.Id)
             .ShouldBe([roots[1].Id]);
     }

@@ -1,5 +1,5 @@
 import { headers, route } from '@fixtures';
-import { generatePlexMediaSlims, generatePlexMediaStatisticsDTO, generateResultDTO } from '@mock';
+import { generatePlexMediaSlims, generatePlexMediaStatisticsDTO, generateResultDTO, generateSupportedSorts } from '@mock';
 import { MediaMetaDataTypes } from '@enums';
 import { PlexMediaType, ViewMode, type PlexMediaMetadataDTO } from '@dto';
 import { SettingsPaths } from '@api-urls';
@@ -57,6 +57,7 @@ function setupVisibilityFixture() {
 			const metadata: PlexMediaMetadataDTO = {
 				mediaCount: available.length, genres: available, genreCount: available.length,
 				countries: [], countryCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0,
+				supportedSorts: generateSupportedSorts(request.query.mediaType as PlexMediaType),
 			};
 			request.reply({ statusCode: 200, body: generateResultDTO(metadata), ...headers });
 		});

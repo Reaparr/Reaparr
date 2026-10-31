@@ -750,15 +750,15 @@ public class GetTvShowMediaComparisonDetailsCommandHandlerUnitTests
             expectedIds.Add(remoteEpisodes[^1].Id);
         if (episodeUpgrade)
             expectedIds.Add(remoteEpisodes[0].Id);
-        result.Value.Rows.SelectMany(x => x.Children).Select(x => x.PlexMediaId).Order()
-            .ShouldBe(expectedIds.Order());
+        result.Value.Rows.SelectMany(x => x.Children).Select(x => x.PlexMediaId).Order().ShouldBe(expectedIds.Order());
         if (missingEpisode)
         {
             var season = result.Value.Rows.Single();
             season.State.ShouldBe(
                 episodeUpgrade ? PlexMediaComparisonState.PartialAndHigherQuality : PlexMediaComparisonState.Partial
             );
-            season.Children.Single(x => x.PlexMediaId == remoteEpisodes[^1].Id)
+            season
+                .Children.Single(x => x.PlexMediaId == remoteEpisodes[^1].Id)
                 .State.ShouldBe(PlexMediaComparisonState.Missing);
         }
         else
@@ -828,5 +828,4 @@ public class GetTvShowMediaComparisonDetailsCommandHandlerUnitTests
         result.Value.State.ShouldBe(expectedState);
         result.Value.Rows.ShouldBeEmpty();
     }
-
 }

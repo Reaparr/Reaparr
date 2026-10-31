@@ -259,11 +259,7 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
     {
         // Arrange
         var seed = new Seed(24682);
-        var config = new FakeDataConfig
-        {
-            PhotoFolderDownloadTasksCount = 2,
-            PhotoImageDownloadTasksCount = 3,
-        };
+        var config = new FakeDataConfig { PhotoFolderDownloadTasksCount = 2, PhotoImageDownloadTasksCount = 3 };
 
         // Act
         var folders = FakeData
@@ -297,9 +293,7 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
             && file.FullTitle.StartsWith(file.Parent!.FullTitle, StringComparison.Ordinal)
             && file.DirectoryMeta.PhotoFolder == file.Parent!.Title.SanitizeFolderName()
         );
-        folders.ShouldAllBe(folder =>
-            folder.Files.All(file => file.ParentId == folder.Id && file.Parent == folder)
-        );
+        folders.ShouldAllBe(folder => folder.Files.All(file => file.ParentId == folder.Id && file.Parent == folder));
     }
 
     [Test]
@@ -340,9 +334,7 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
         );
 
         // Act
-        var folder = await dbContext
-            .DownloadTaskPhotoFolders.Include(x => x.Files)
-            .SingleAsync(CancellationToken);
+        var folder = await dbContext.DownloadTaskPhotoFolders.Include(x => x.Files).SingleAsync(CancellationToken);
 
         // Assert
         folder.Children.ShouldBeEmpty();

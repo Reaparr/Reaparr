@@ -6,9 +6,10 @@ import { catchError, concatMap, map, switchMap, tap } from 'rxjs/operators';
 import type { PlexServerDTO } from '@dto';
 import { StoreNames, type ISetupResult } from '@interfaces';
 import { plexServerApi } from '@api';
-import { RefreshDataType } from '@dto';
+import { RefreshDataType, SortDirection } from '@dto';
 import { cloneDeep, orderBy } from 'lodash-es';
 import { useServerConnectionStore, useSettingsStore, useSignalrStore } from '@store';
+import { getSortOrder } from '@composables';
 
 interface IServerStoreState {
 	servers: PlexServerDTO[];
@@ -145,7 +146,10 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 		},
 		getVisibleServers: computed((): PlexServerDTO[] => {
 			const servers = getters.getServers().filter((x) => x.isEnabled);
-			return orderBy(servers, [(x) => x.owned, (x) => x.name.toLocaleLowerCase()], ['desc', 'asc']);
+			return orderBy(servers, [(x) => x.owned, (x) => x.name.toLocaleLowerCase()], [
+				getSortOrder(SortDirection.Desc),
+				getSortOrder(SortDirection.Asc),
+			]);
 		}),
 		getDisabledServers: computed((): PlexServerDTO[] => getters.getServers().filter((x) => !x.isEnabled)),
 		getServerName: (serverId: number): string => {

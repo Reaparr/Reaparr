@@ -5,11 +5,21 @@ public class PlexOtherVideoConfiguration : IEntityTypeConfiguration<PlexOtherVid
     public void Configure(EntityTypeBuilder<PlexOtherVideo> builder)
     {
         builder.HasIndex(x => new { x.PlexLibraryId, x.PlexApiRatingKey }).IsUnique();
+        builder.HasIndex(x => new { x.PlexApiRatingKey, x.PlexServerId });
         builder.Property(x => x.SearchTitle).UseCollation("NOCASE");
-        builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
         builder.HasIndex(x => new { x.PlexLibraryId, x.SearchTitle });
-        builder.HasOne(x => x.PlexLibrary).WithMany(x => x.OtherVideos).HasForeignKey(x => x.PlexLibraryId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne(x => x.PlexServer).WithMany().HasForeignKey(x => x.PlexServerId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
+        builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
+        builder
+            .HasOne(x => x.PlexLibrary)
+            .WithMany(x => x.OtherVideos)
+            .HasForeignKey(x => x.PlexLibraryId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasOne(x => x.PlexServer)
+            .WithMany()
+            .HasForeignKey(x => x.PlexServerId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder
             .HasMany(x => x.Actors)

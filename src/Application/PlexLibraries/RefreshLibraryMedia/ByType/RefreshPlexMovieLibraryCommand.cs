@@ -64,8 +64,7 @@ public class RefreshPlexMovieLibraryCommandHandler
                     Received = 0,
                     Total = movieCount,
                     TimeRemaining = TimeSpan.Zero,
-                },
-                cancellationToken
+                }
             );
 
             return syncResult.ToResult().LogError();
@@ -97,11 +96,13 @@ public class RefreshPlexMovieLibraryCommandHandler
                 Received = movieCount,
                 Total = movieCount,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
 
-        var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), cancellationToken);
+        var rebuildResult = await _commandExecutor.Send(
+            new QueueMediaOverviewRebuildCommand(PlexMediaType.Movie),
+            cancellationToken
+        );
         rebuildResult.LogIfFailed();
 
         // Refresh the PlexLibrary from the database to ensure we have the latest data

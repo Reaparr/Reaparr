@@ -38,7 +38,14 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         await dbContext.SaveChangesAsync(CancellationToken);
         var persistedBeforeCancellation = await dbContext
             .LibrarySyncJobQueues.AsNoTracking()
-            .Select(x => new { x.PlexLibraryId, x.Status, x.CompletedAt, x.ErrorMessage, x.IsServerOffline })
+            .Select(x => new
+            {
+                x.PlexLibraryId,
+                x.Status,
+                x.CompletedAt,
+                x.ErrorMessage,
+                x.IsServerOffline,
+            })
             .SingleAsync(CancellationToken);
         persistedBeforeCancellation.ShouldBe(
             new
@@ -118,9 +125,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
@@ -246,8 +251,9 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
                         x.PlexServerId == library.PlexServerId && x.PlexLibraryId == library.Id
                     )
                     .ExecuteUpdateAsync(
-                        s => s.SetProperty(x => x.CreatedAt, successorCreatedAt)
-                            .SetProperty(x => x.StartedAt, successorStartedAt),
+                        s =>
+                            s.SetProperty(x => x.CreatedAt, successorCreatedAt)
+                                .SetProperty(x => x.StartedAt, successorStartedAt),
                         CancellationToken.None
                     )
                     .GetAwaiter()
@@ -301,7 +307,14 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         await dbContext.SaveChangesAsync(CancellationToken);
         var persistedBeforeCancellation = await dbContext
             .LibrarySyncJobQueues.AsNoTracking()
-            .Select(x => new { x.PlexLibraryId, x.Status, x.CreatedAt, x.ErrorMessage, x.IsServerOffline })
+            .Select(x => new
+            {
+                x.PlexLibraryId,
+                x.Status,
+                x.CreatedAt,
+                x.ErrorMessage,
+                x.IsServerOffline,
+            })
             .SingleAsync(CancellationToken);
         persistedBeforeCancellation.ShouldBe(
             new
@@ -339,9 +352,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
@@ -411,8 +422,9 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
                         x.PlexServerId == library.PlexServerId && x.PlexLibraryId == library.Id
                     )
                     .ExecuteUpdateAsync(
-                        s => s.SetProperty(x => x.Status, LibrarySyncJobStatus.Processing)
-                            .SetProperty(x => x.StartedAt, startedAt),
+                        s =>
+                            s.SetProperty(x => x.Status, LibrarySyncJobStatus.Processing)
+                                .SetProperty(x => x.StartedAt, startedAt),
                         CancellationToken.None
                     )
                     .GetAwaiter()
@@ -433,8 +445,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         retainedExecution.CreatedAt.ShouldBe(createdAt);
         retainedExecution.StartedAt.ShouldBe(startedAt);
         retainedExecution.CompletedAt.ShouldBeNull();
-        Mock.Mock<IScheduler>()
-            .Verify(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Mock.Mock<IScheduler>().Verify(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()), Times.Exactly(2));
         Mock.Mock<IScheduler>().Verify();
         Mock.Mock<INotificationHubService>().VerifyNoOtherCalls();
         Mock.Mock<ICommandExecutor>().VerifyNoOtherCalls();
@@ -493,9 +504,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
@@ -513,8 +522,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         updatedQueueItem.CompletedAt.ShouldNotBeNull();
         updatedQueueItem.ErrorMessage.ShouldBeNull();
         updatedQueueItem.IsServerOffline.ShouldBeFalse();
-        Mock.Mock<IScheduler>()
-            .Verify(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Mock.Mock<IScheduler>().Verify(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()), Times.Exactly(2));
         Mock.Mock<IScheduler>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
@@ -536,14 +544,18 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         var dbContext = IDbContext;
         var libraries = dbContext.PlexLibraries.OrderBy(x => x.Id).ToList();
         await dbContext.LibrarySyncJobQueues.AddRangeAsync(
-            libraries.Select((library, index) => new LibrarySyncJobQueue
-                {
-                    PlexServerId = library.PlexServerId,
-                    PlexLibraryId = library.Id,
-                    Priority = index + 1,
-                    Status = LibrarySyncJobStatus.Queued,
-                    CreatedAt = DateTime.UtcNow,
-                })
+            libraries
+                .Select(
+                    (library, index) =>
+                        new LibrarySyncJobQueue
+                        {
+                            PlexServerId = library.PlexServerId,
+                            PlexLibraryId = library.Id,
+                            Priority = index + 1,
+                            Status = LibrarySyncJobStatus.Queued,
+                            CreatedAt = DateTime.UtcNow,
+                        }
+                )
                 .ToList(),
             CancellationToken
         );
@@ -584,9 +596,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 

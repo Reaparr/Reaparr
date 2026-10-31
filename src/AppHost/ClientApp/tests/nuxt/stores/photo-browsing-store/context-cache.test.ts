@@ -6,18 +6,20 @@ import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-tes
 import { generateLibrarySyncJobQueue, generatePlexAccount, generatePlexLibrary, generateResultDTO, Seed } from '@mock';
 import { plexPhotoApi } from '@api';
 import { useAccountStore, useLibraryStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import {
-	LibrarySyncJobStatus, PhotoAssetKind, PhotoItemKind, PlexMediaType,
+	LibrarySyncJobStatus, PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType,
 	type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO,
 	type PhotoFolderBrowseDTO, type PhotoFolderChildrenDTO,
 } from '@dto';
 import type { ResultDTO } from '@interfaces';
-import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
 
 const owner = {};
 const route = (overrides: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({
-	mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: 'title:asc', ...overrides,
+	mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort(), ...overrides,
 });
+const titleDescending = toggleMediaOverviewSort(createDefaultMediaOverviewSort(), SortType.Title);
 const asset = (id: number, libraryId = 7): PhotoAssetBrowseDTO => ({
 	id, plexServerId: 1, plexLibraryId: libraryId, plexServerName: 'Server', plexLibraryTitle: 'Photos', title: `Asset ${id}`,
 	assetKind: PhotoAssetKind.Image, container: 'jpg', originalFilename: `${id}.jpg`, hasThumbnail: false,
@@ -52,6 +54,7 @@ describe('PhotoBrowsingStore - context cache', () => {
 		vi.restoreAllMocks();
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		mockPhotoMetadata();
 		for (const id of [7, 8, 9, 10]) {
 			useLibraryStore().updateLibrary(generatePlexLibrary({
 				seed: new Seed(id), plexServerId: 1, type: PlexMediaType.PhotoAlbum,
@@ -118,10 +121,10 @@ describe('PhotoBrowsingStore - context cache', () => {
 	test('Should isolate identical asset IDs by library and sort while reusing each visited context', async () => {
 		// Arrange
 		const request = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockImplementation((query) =>
-			of(generateResultDTO({ ...assetsPage(query?.plexLibraryId ?? 7), items: [asset(query?.sort === 'title:desc' ? 2 : 1, query?.plexLibraryId ?? 7)] })));
+			of(generateResultDTO({ ...assetsPage(query?.plexLibraryId ?? 7), items: [asset(query?.sort === `${SortType.Title}:desc` ? 2 : 1, query?.plexLibraryId ?? 7)] })));
 		const first = route({ view: 'assets' });
 		const otherLibrary = route({ view: 'assets', libraryId: 8 });
-		const descending = route({ view: 'assets', sort: 'title:desc' });
+		const descending = route({ view: 'assets', sort: titleDescending });
 		await activate(first);
 		await activate(otherLibrary);
 		await activate(descending);
@@ -346,6 +349,7 @@ describe('PhotoBrowsingStore - context cache', () => {
 		// Act
 		version = 1;
 		await subscribeSpyTo(store.loadCurrent(true)).onComplete();
+		expect(store.overviewItemAt(100)).toBeNull();
 		await activate(route({ libraryId: 8, view: 'assets' }));
 		await activate(context);
 		expect(store.overviewItemAt(100)).toBeNull();

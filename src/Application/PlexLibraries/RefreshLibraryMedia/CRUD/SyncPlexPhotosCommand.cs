@@ -1,9 +1,7 @@
 namespace Reaparr.Application;
 
-public record SyncPlexPhotosCommand(
-    InsertMediaMetaDataCommandResponse LibraryMetadata,
-    bool ForceMediaRefresh = false
-) : ICommand<Result<CrudPhotosReport>>;
+public record SyncPlexPhotosCommand(InsertMediaMetaDataCommandResponse LibraryMetadata, bool ForceMediaRefresh = false)
+    : ICommand<Result<CrudPhotosReport>>;
 
 public class SyncPlexPhotosCommandValidator : AbstractValidator<SyncPlexPhotosCommand>
 {
@@ -48,20 +46,32 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         return result;
     }
 
-    private async Task<CrudPhotosReport> ReconcileAsync(IReaparrDbContext context, PlexLibrary library, CancellationToken ct)
+    private async Task<CrudPhotosReport> ReconcileAsync(
+        IReaparrDbContext context,
+        PlexLibrary library,
+        CancellationToken ct
+    )
     {
         var incomingAlbums = library.PhotoAlbums.ToList();
         var incomingFiles = library.PhotoMediaData.ToList();
         var incomingAlbumByKey = incomingAlbums.ToDictionary(x => x.PlexApiRatingKey);
         var incomingFileByKey = incomingFiles.ToDictionary(x => x.PlexApiRatingKey);
 
-        var currentAlbums = await context.PlexPhotoAlbums.Where(x => x.PlexLibraryId == library.Id).AsTracking().ToListAsync(ct);
-        var currentFiles = await context.PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id).AsTracking().ToListAsync(ct);
-        var currentFolders = await context.PlexPhotoFolders.Where(x => x.PlexLibraryId == library.Id).AsTracking().ToListAsync(ct);
+        var currentAlbums = await context
+            .PlexPhotoAlbums.Where(x => x.PlexLibraryId == library.Id)
+            .AsTracking()
+            .ToListAsync(ct);
+        var currentFiles = await context
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
+            .AsTracking()
+            .ToListAsync(ct);
+        var currentFolders = await context
+            .PlexPhotoFolders.Where(x => x.PlexLibraryId == library.Id)
+            .AsTracking()
+            .ToListAsync(ct);
         var currentMemberships = await context
             .PlexPhotoAlbumMemberships.Where(x =>
-                x.PlexPhotoAlbum!.PlexLibraryId == library.Id
-                && x.PlexPhotoMediaData!.PlexLibraryId == library.Id
+                x.PlexPhotoAlbum!.PlexLibraryId == library.Id && x.PlexPhotoMediaData!.PlexLibraryId == library.Id
             )
             .AsTracking()
             .ToListAsync(ct);
@@ -193,7 +203,8 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         foreach (var sourceFile in incomingFiles)
         {
             var persistedFile = workingFiles[sourceFile.PlexApiRatingKey];
-            var changedFolder = previousFolderIdByFileKey.TryGetValue(sourceFile.PlexApiRatingKey, out var oldFolderId)
+            var changedFolder =
+                previousFolderIdByFileKey.TryGetValue(sourceFile.PlexApiRatingKey, out var oldFolderId)
                 && oldFolderId != persistedFile.PlexPhotoFolderId;
             if (scalarChangesByFileKey.TryGetValue(sourceFile.PlexApiRatingKey, out var scalarChanged))
             {
@@ -227,11 +238,7 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         foreach (var key in desiredMemberships.Where(x => !retainedMemberships.Contains(x)))
         {
             context.PlexPhotoAlbumMemberships.Add(
-                new PlexPhotoAlbumMembership
-                {
-                    PlexPhotoAlbumId = key.AlbumId,
-                    PlexPhotoMediaDataId = key.FileId,
-                }
+                new PlexPhotoAlbumMembership { PlexPhotoAlbumId = key.AlbumId, PlexPhotoMediaDataId = key.FileId }
             );
         }
 
@@ -250,12 +257,15 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         );
         var albumCount = await context.PlexPhotoAlbums.CountAsync(x => x.PlexLibraryId == library.Id, ct);
         var totalMediaSize =
-            await context.PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id).Select(x => (long?)x.Size).SumAsync(ct) ?? 0;
+            await context
+                .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
+                .Select(x => (long?)x.Size)
+                .SumAsync(ct)
+            ?? 0;
         // Catalog metrics and shared sync completion must commit with photo reconciliation.
         var syncedAt = DateTime.UtcNow;
         await context
-            .PlexLibraries
-            .Where(x => x.Id == library.Id)
+            .PlexLibraries.Where(x => x.Id == library.Id)
             .ExecuteUpdateAsync(
                 setters =>
                     setters
@@ -296,7 +306,6 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
             Title = source.Title,
             SearchTitle = source.SearchTitle,
             Summary = source.Summary,
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
             HasThumb = source.HasThumb,
             AddedAt = source.AddedAt,
             UpdatedAt = source.UpdatedAt,
@@ -319,7 +328,6 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
             Title = source.Title,
             SearchTitle = source.SearchTitle,
             Summary = source.Summary,
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
             HasThumb = source.HasThumb,
             AddedAt = source.AddedAt,
             UpdatedAt = source.UpdatedAt,
@@ -353,7 +361,12 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
             IsActive = parent is null ? true : null,
         };
 
-    private static void ApplyFolder(PlexPhotoFolder target, PlexPhotoFolder source, PlexLibrary library, PlexPhotoFolder? parent)
+    private static void ApplyFolder(
+        PlexPhotoFolder target,
+        PlexPhotoFolder source,
+        PlexLibrary library,
+        PlexPhotoFolder? parent
+    )
     {
         target.PlexLibraryId = library.Id;
         target.PlexServerId = library.PlexServerId;

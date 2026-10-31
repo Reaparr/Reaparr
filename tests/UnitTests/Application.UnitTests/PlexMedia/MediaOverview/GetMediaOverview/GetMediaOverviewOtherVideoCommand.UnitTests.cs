@@ -17,6 +17,39 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
     )
     {
         // Arrange
+        var fixture = await ArrangeFilteredOtherVideoPageAsync();
+        var metadataId = metadataField switch
+        {
+            "Actors" => fixture.Actor.Id,
+            "Countries" => fixture.Country.Id,
+            _ => fixture.Genre.Id,
+        };
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.OtherVideos,
+            PlexLibraryId = fixture.LibraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters
+            {
+                Page = 2,
+                PageSize = 1,
+                Sort = sort,
+                Filter = $"{metadataField}:any:Id:eq:{metadataId}",
+            },
+        };
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
+            new GetMediaOverviewOtherVideoCommand(filter)
+        );
+
+        // Assert
+        AssertFilteredOtherVideoPage(result, filter, fixture, sort);
+    }
+
+    private async Task<OtherVideoOverviewFixture> ArrangeFilteredOtherVideoPageAsync()
+    {
         await SetupDatabase(
             84203,
             config =>
@@ -42,6 +75,7 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
             .PlexOtherVideoData.Where(x => x.PlexOtherVideoId == target[2].Id)
             .SingleAsync(CancellationToken);
         await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true), CancellationToken);
+
         var metadataSeed = new Seed(84204);
         var actor = FakeData.GetPlexActors(metadataSeed).Generate();
         var country = FakeData.GetPlexCountries(metadataSeed).Generate();
@@ -73,13 +107,15 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
                 2 => "charlie",
                 _ => "control",
             };
+            var year = targetIndex == 3 ? 1999 : 2000;
+            var mediaSize = targetIndex >= 0 ? (targetIndex + 1) * 100L : 9000L;
             await dbContext
                 .PlexOtherVideos.Where(x => x.Id == video.Id)
                 .ExecuteUpdateAsync(
                     x =>
                         x.SetProperty(y => y.SearchTitle, title)
-                            .SetProperty(y => y.Year, targetIndex == 3 ? 1999 : 2000)
-                            .SetProperty(y => y.MediaSize, targetIndex >= 0 ? (targetIndex + 1) * 100L : 9000L)
+                            .SetProperty(y => y.Year, year)
+                            .SetProperty(y => y.MediaSize, mediaSize)
                             .SetProperty(y => y.VideoQuality, quality)
                             .SetProperty(y => y.HasThumb, true),
                     CancellationToken
@@ -92,6 +128,14 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
                 {
                     PlexOtherVideoId = video.Id,
                     PlexLibraryId = video.PlexLibraryId,
+                    SearchTitle = title,
+                    NavigationTitleLabel = MediaNavigationIndexBuilder.GetTitleLabel(title),
+                    Year = year,
+                    AddedAt = video.AddedAt,
+                    UpdatedAt = video.UpdatedAt,
+                    Duration = video.Duration,
+                    MediaSize = mediaSize,
+                    VideoQuality = quality,
                     TitleRank = targetIndex >= 0 ? targetIndex : 0,
                     QualityRank = qualityRank,
                     YearRank = qualityRank,
@@ -103,41 +147,22 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
             );
             if (targetIndex != 3)
             {
-                dbContext.PlexOtherVideoActors.Add(new PlexOtherVideoActors(actor.Id, video.PlexLibraryId, video.Id));
-                dbContext.PlexOtherVideoCountries.Add(
-                    new PlexOtherVideoCountries(country.Id, video.PlexLibraryId, video.Id)
-                );
-                dbContext.PlexOtherVideoGenres.Add(new PlexOtherVideoGenres(genre.Id, video.PlexLibraryId, video.Id));
+                dbContext.PlexOtherVideoActors.Add(new PlexOtherVideoActors(actor.Id, video.Id));
+                dbContext.PlexOtherVideoCountries.Add(new PlexOtherVideoCountries(country.Id, video.Id));
+                dbContext.PlexOtherVideoGenres.Add(new PlexOtherVideoGenres(genre.Id, video.Id));
             }
         }
         await dbContext.SaveChangesAsync(CancellationToken);
-        var metadataId = metadataField switch
-        {
-            "Actors" => actor.Id,
-            "Countries" => country.Id,
-            _ => genre.Id,
-        };
-        var filter = new MediaQueryFilter
-        {
-            MediaType = PlexMediaType.OtherVideos,
-            PlexLibraryId = libraryIds[0],
-            FilterOfflineMedia = false,
-            FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters
-            {
-                Page = 2,
-                PageSize = 1,
-                Sort = sort,
-                Filter = $"{metadataField}:any:Id:eq:{metadataId}",
-            },
-        };
+        return new(libraryIds[0], target[2], selectedData, actor, country, genre);
+    }
 
-        // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
-            new GetMediaOverviewOtherVideoCommand(filter)
-        );
-
-        // Assert
+    private void AssertFilteredOtherVideoPage(
+        Result<PagedMediaQueryResult> result,
+        MediaQueryFilter filter,
+        OtherVideoOverviewFixture fixture,
+        string sort
+    )
+    {
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.QueryHash.ShouldBe(filter.QueryHash);
@@ -145,30 +170,107 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
             (2, 1, 3, 3)
         );
         (result.Value.MediaSize, result.Value.TotalMediaSize).ShouldBe((600L, 600L));
-        result.Value.Items.Select(x => x.Id).ShouldBe([target[2].Id]);
+        result.Value.Items.Select(x => x.Id).ShouldBe([fixture.SelectedVideo.Id]);
         var item = result.Value.Items.Single();
         (item.Type, item.SortIndex, item.ChildCount, item.GrandChildCount).ShouldBe(
             (PlexMediaType.OtherVideos, 2, 0, 0)
         );
         (item.PlexLibraryId, item.PlexServerId, item.PlexApiRatingKey, item.PlexApiMetaDataKey, item.HasThumb).ShouldBe(
-            (libraryIds[0], target[2].PlexServerId, target[2].PlexApiRatingKey, target[2].PlexApiMetaDataKey, true)
+            (
+                fixture.LibraryId,
+                fixture.SelectedVideo.PlexServerId,
+                fixture.SelectedVideo.PlexApiRatingKey,
+                fixture.SelectedVideo.PlexApiMetaDataKey,
+                true
+            )
         );
         (item.SearchTitle, item.MediaSize).ShouldBe(("charlie", 300L));
         item.Qualities.Select(x => (x.DataId, x.MediaId, x.MediaDataType, Quality: x.VideoQuality))
-            .ShouldBe([(selectedData.Id, target[2].Id, PlexMediaType.OtherVideos, VideoQuality.FullHD)]);
+            .ShouldBe([
+                (fixture.SelectedData.Id, fixture.SelectedVideo.Id, PlexMediaType.OtherVideos, VideoQuality.FullHD),
+            ]);
         result.Value.Qualities.ShouldBe([VideoQuality.FullHD.ToId()]);
-        result.Value.Roles.ShouldBe([actor.Id]);
-        result.Value.Countries.ShouldBe([country.Id]);
-        result.Value.Genres.ShouldBe([genre.Id]);
+        result.Value.Roles.ShouldBe([fixture.Actor.Id]);
+        result.Value.Countries.ShouldBe([fixture.Country.Id]);
+        result.Value.Genres.ShouldBe([fixture.Genre.Id]);
         result
             .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
             .ShouldBe(
                 sort.EndsWith("asc") ? [("720", 0), ("1080", 1), ("2160", 2)] : [("2160", 0), ("1080", 1), ("720", 2)]
             );
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.Send(It.IsAny<GetOtherVideoMediaByTypeCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    private sealed record OtherVideoOverviewFixture(
+        int LibraryId,
+        PlexOtherVideo SelectedVideo,
+        PlexOtherVideoMediaData SelectedData,
+        PlexActor Actor,
+        PlexCountry Country,
+        PlexGenreVideo Genre
+    );
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldPropagateTypedQueryFailure_WhenOtherVideoRequiresCanonicalFallback(bool snapshotMissing)
+    {
+        // Arrange
+        var libraryId = 0;
+        if (snapshotMissing)
+        {
+            await SetupDatabase(
+                84210,
+                config =>
+                {
+                    config.PlexServerCount = 1;
+                    config.PlexOtherVideoLibraryCount = 1;
+                    config.OtherVideoCount = 1;
+                }
+            );
+            var dbContext = IDbContext;
+            libraryId = await dbContext.PlexOtherVideos.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
+            (await dbContext.MediaOverviewOtherVideoSnapshots.CountAsync(CancellationToken)).ShouldBe(0);
+        }
+        var filter = new MediaQueryFilter
+        {
+            MediaType = PlexMediaType.OtherVideos,
+            PlexLibraryId = libraryId,
+            FilterOfflineMedia = false,
+            FilterOwnedMedia = false,
+            Parameters = new FlexQueryParameters
+            {
+                Page = 1,
+                PageSize = 25,
+                Sort = snapshotMissing ? "Title:asc" : "Title:asc,Year:desc",
+            },
+        };
+        var expected = Result.Fail<PagedMediaQueryResult>("Canonical query failed");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.Is<GetOtherVideoMediaByTypeCommand>(c => c.Filter == filter), CancellationToken))
+            .ReturnsAsync(expected)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
+            new GetMediaOverviewOtherVideoCommand(filter)
+        );
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Errors[0].ShouldBeSameAs(expected.Errors[0]);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        if (!snapshotMissing)
+            Mock.Mock<IReaparrDbContextFactory>().Verify(x => x.CreateAsync(), Times.Never());
     }
 
     [Test]

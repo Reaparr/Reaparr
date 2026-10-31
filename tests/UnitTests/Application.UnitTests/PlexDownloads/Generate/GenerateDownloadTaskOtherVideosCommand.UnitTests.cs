@@ -68,7 +68,7 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         task.PlexServerId.ShouldBe(source.PlexServerId);
         task.PlexLibraryId.ShouldBe(source.PlexLibraryId);
         task.Title.ShouldBe(source.Title);
-        task.FullTitle.ShouldBe(source.FullTitle);
+        task.FullTitle.ShouldBe(source.Title);
         task.Year.ShouldBe(source.Year);
         task.DownloadStatus.ShouldBe(DownloadStatus.Queued);
         task.Calculate();
@@ -85,7 +85,7 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         file.PlexApiPartId.ShouldBe(data.PlexApiPartId);
         file.FileName.ShouldBe(data.GetFileName);
         file.FileLocationUrl.ShouldBe(data.Key);
-        file.FullTitle.ShouldBe($"{source.FullTitle}/{data.GetFileName}");
+        file.FullTitle.ShouldBe($"{source.Title}/{data.GetFileName}");
         file.VideoQuality.ShouldBe(data.VideoQuality);
         file.DataTotal.ShouldBe(data.Size);
         file.DownloadClientType.ShouldBe(PlexDownloadClientType.Direct);

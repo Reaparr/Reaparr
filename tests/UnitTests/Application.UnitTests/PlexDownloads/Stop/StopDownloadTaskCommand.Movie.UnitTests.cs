@@ -381,7 +381,6 @@ public class StopDownloadTaskCommandMovieUnitTests : BaseUnitTest<StopDownloadTa
         after.DownloadStatus.ShouldBe(DownloadStatus.MoveError);
     }
 
-
     [Test]
     public async Task ShouldHaveFailedResult_WhenStopMoveDownloadFileJobFails()
     {
@@ -572,7 +571,6 @@ public class StopDownloadTaskCommandMovieUnitTests : BaseUnitTest<StopDownloadTa
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<DeleteDownloadTaskFilesCommand>(), It.IsAny<CancellationToken>()), Times.Once);
     }
-
 
     [Test]
     public async Task ShouldStopMovingTask_WhenMovieTaskIsMovingAndNotDownloading()

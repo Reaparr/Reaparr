@@ -15,7 +15,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="FastEndpoints.Testing" Version="8.1.0" />
+        <PackageReference Include="FastEndpoints.Testing" Version="8.3.0" />
         <PackageReference Include="Moq" Version="4.20.72" />
         <PackageReference Include="Moq.Contrib.HttpClient" Version="1.4.0" />
         <PackageReference Include="Shouldly" Version="4.3.0" />

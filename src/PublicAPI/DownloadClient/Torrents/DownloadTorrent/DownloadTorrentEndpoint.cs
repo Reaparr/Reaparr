@@ -121,14 +121,20 @@ public class DownloadTorrentEndpoint : Endpoint<DownloadTorrentEndpointRequest>
                 _dbContext.PlexTvShowEpisodeData.Where(p =>
                     p.PlexTvShowEpisodeId == req.MediaId
                     && p.PlexTvShowEpisode!.PlexLibraryId == req.LibraryId
-                    && p.PlexTvShowEpisode.PlexServerId == req.ServerId),
-                req, ct),
+                    && p.PlexTvShowEpisode.PlexServerId == req.ServerId
+                ),
+                req,
+                ct
+            ),
             PlexMediaType.Movie => GetFileInfoAsync(
                 _dbContext.PlexMovieData.Where(p =>
                     p.PlexMovieId == req.MediaId
                     && p.PlexMovie!.PlexLibraryId == req.LibraryId
-                    && p.PlexMovie.PlexServerId == req.ServerId),
-                req, ct),
+                    && p.PlexMovie.PlexServerId == req.ServerId
+                ),
+                req,
+                ct
+            ),
             _ => Task.FromResult<MediaFileInfo?>(null),
         };
 
@@ -136,11 +142,15 @@ public class DownloadTorrentEndpoint : Endpoint<DownloadTorrentEndpointRequest>
         IQueryable<T> parts,
         TorrentMetadataDTO metadata,
         CancellationToken ct
-    ) where T : BasePlexMediaData =>
-        parts.Where(p => p.Id == metadata.DataId
+    )
+        where T : BasePlexMediaData =>
+        parts
+            .Where(p =>
+                p.Id == metadata.DataId
                 && p.PlexApiPartId == metadata.PlexApiPartId
                 && p.PlexLibraryId == metadata.LibraryId
-                && p.PlexServerId == metadata.ServerId)
+                && p.PlexServerId == metadata.ServerId
+            )
             .Select(p => new MediaFileInfo { FileName = p.GetFileName, Size = p.Size })
             .SingleOrDefaultAsync(ct);
 

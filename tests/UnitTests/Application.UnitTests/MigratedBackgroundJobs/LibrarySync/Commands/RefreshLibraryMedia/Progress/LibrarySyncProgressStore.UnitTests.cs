@@ -92,8 +92,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 10,
                 Total = 999,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
         await Sut.UpdateItemAsync(
             7,
@@ -103,29 +102,16 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 20,
                 Total = 999,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
 
         // Assert
         sentProgress
             .Select(dto => dto.Items.Select(item => (item.MediaType, item.Total)).ToArray())
             .ShouldBe([
-                [
-                    (PlexMediaType.TvShow, 208),
-                    (PlexMediaType.Season, 1088),
-                    (PlexMediaType.Episode, 17185),
-                ],
-                [
-                    (PlexMediaType.TvShow, 208),
-                    (PlexMediaType.Season, 1088),
-                    (PlexMediaType.Episode, 17185),
-                ],
-                [
-                    (PlexMediaType.TvShow, 208),
-                    (PlexMediaType.Season, 1088),
-                    (PlexMediaType.Episode, 17185),
-                ],
+                [(PlexMediaType.TvShow, 208), (PlexMediaType.Season, 1088), (PlexMediaType.Episode, 17185)],
+                [(PlexMediaType.TvShow, 208), (PlexMediaType.Season, 1088), (PlexMediaType.Episode, 17185)],
+                [(PlexMediaType.TvShow, 208), (PlexMediaType.Season, 1088), (PlexMediaType.Episode, 17185)],
             ]);
         Mock.Mock<IProgressHubService>().Verify();
     }
@@ -181,8 +167,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                     Received = 0,
                     Total = 0,
                     TimeRemaining = TimeSpan.Zero,
-                },
-                CancellationToken
+                }
             );
             var complete = mediaType == expectedTypes[^1];
             capturedDto.IsComplete.ShouldBe(complete);
@@ -224,7 +209,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
         };
 
         // Act
-        await Sut.UpdateItemAsync(1, movieItem, CancellationToken);
+        await Sut.UpdateItemAsync(1, movieItem);
 
         // Assert
         capturedDto.ShouldNotBeNull();
@@ -259,8 +244,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 3,
                 Total = 10,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
         await Sut.UpdateItemAsync(
             2,
@@ -270,8 +254,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 20,
                 Total = 40,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
         await Sut.UpdateItemAsync(
             2,
@@ -281,8 +264,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 100,
                 Total = 500,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
 
         // Assert
@@ -315,8 +297,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 4,
                 Total = 10,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
 
         // Assert
@@ -361,8 +342,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 5,
                 Total = 5,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
         await Sut.UpdateItemAsync(
             3,
@@ -372,8 +352,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 20,
                 Total = 20,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
         await Sut.UpdateItemAsync(
             3,
@@ -383,8 +362,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 200,
                 Total = 200,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
 
         // Assert
@@ -417,8 +395,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 5,
                 Total = 5,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
         await Sut.UpdateItemAsync(
             4,
@@ -428,8 +405,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 20,
                 Total = 20,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
         await Sut.UpdateItemAsync(
             4,
@@ -439,8 +415,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 150,
                 Total = 200,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
 
         // Assert
@@ -478,8 +453,8 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
         };
 
         // Act
-        await Sut.UpdateItemAsync(5, tvShowItem, CancellationToken);
-        await Sut.UpdateItemAsync(5, episodeItem, CancellationToken);
+        await Sut.UpdateItemAsync(5, tvShowItem);
+        await Sut.UpdateItemAsync(5, episodeItem);
 
         // Assert — 1 from StartAsync + 2 from UpdateItemAsync
         Mock.Mock<IProgressHubService>()
@@ -508,8 +483,7 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
                 Received = 10,
                 Total = 100,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            CancellationToken
+            }
         );
 
         // Assert

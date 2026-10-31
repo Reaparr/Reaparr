@@ -57,7 +57,8 @@ public class RecoverInterruptedDownloadsCommandPhotoUnitTests : BaseUnitTest<Rec
             DownloadStatus.Paused,
         };
         var after = await dbContext
-            .DownloadTaskPhotoImageFiles.Where(x => x.ParentId != root.Id).OrderBy(x => x.Id)
+            .DownloadTaskPhotoImageFiles.Where(x => x.ParentId != root.Id)
+            .OrderBy(x => x.Id)
             .Select(x => new
             {
                 x.Id,
@@ -80,7 +81,10 @@ public class RecoverInterruptedDownloadsCommandPhotoUnitTests : BaseUnitTest<Rec
                 )
                 .OrderBy(x => x.Id)
         );
-        var idleRootFile = await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.ParentId == root.Id, CancellationToken);
+        var idleRootFile = await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(
+            x => x.ParentId == root.Id,
+            CancellationToken
+        );
         idleRootFile.DownloadStatus.ShouldBe(DownloadStatus.Queued);
         idleRootFile.DataReceived.ShouldBe(0);
         Mock.Mock<ICommandExecutor>().Verify();
@@ -127,6 +131,9 @@ public class RecoverInterruptedDownloadsCommandPhotoUnitTests : BaseUnitTest<Rec
         persistedFolder.DownloadStatus.ShouldBe(DownloadStatus.AutoPaused);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IDownloadTaskScheduler>()
-            .Verify(x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 }

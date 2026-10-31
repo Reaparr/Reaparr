@@ -25,9 +25,7 @@ public class PauseDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<P
             }
         );
         var dbContext = IDbContext;
-        var target = await dbContext.DownloadTaskOtherVideoFiles
-            .Include(x => x.Parent)
-            .SingleAsync(CancellationToken);
+        var target = await dbContext.DownloadTaskOtherVideoFiles.Include(x => x.Parent).SingleAsync(CancellationToken);
         target.DataReceived = 128;
         target.FileDataTransferred = 64;
         dbContext.Entry(target).State = EntityState.Modified;
@@ -81,7 +79,10 @@ public class PauseDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<P
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<DeleteDownloadTaskFilesCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.Send(It.IsAny<DeleteDownloadTaskFilesCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -126,6 +127,14 @@ public class PauseDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<P
         after.DataReceived.ShouldBe(128);
         after.FileDataTransferred.ShouldBe(64);
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Verify(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), It.IsAny<DownloadStatus>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x =>
+                    x.OnStatusChangedAsync(
+                        It.IsAny<DownloadTaskKey>(),
+                        It.IsAny<DownloadStatus>(),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Never()
+            );
     }
 }

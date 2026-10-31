@@ -1,5 +1,5 @@
 import { headers, route } from '@fixtures';
-import { generatePlexMedia, generateResultDTO } from '@mock';
+import { generatePlexMedia, generateResultDTO, generateSupportedSorts } from '@mock';
 import { PlexLibraryPaths, PlexMediaPaths } from '@api/api-paths';
 import { getPlexMediaComparisonState, getPlexMediaComparisonStateId } from '@composables';
 import {
@@ -72,7 +72,7 @@ function setupMusic(owned = false) {
 		cy.intercept('GET', '**/api/Integration', { statusCode: 200, body: generateResultDTO([]), ...headers });
 		cy.intercept('GET', PlexLibraryPaths.getAllPlexLibrariesEndpoint(), { statusCode: 200, body: generateResultDTO(plexLibraries), ...headers });
 		cy.intercept('GET', PlexLibraryPaths.getPlexLibraryByIdEndpoint(library.id), { statusCode: 200, body: generateResultDTO(library), ...headers });
-		cy.intercept('GET', PlexLibraryPaths.getLibraryMediaMetadata(library.id, { mediaType: library.type }), { statusCode: 200, body: generateResultDTO({ countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 1 }), ...headers });
+		cy.intercept('GET', PlexLibraryPaths.getLibraryMediaMetadata(library.id, { mediaType: library.type }), { statusCode: 200, body: generateResultDTO({ countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 1, supportedSorts: generateSupportedSorts(library.type) }), ...headers });
 		cy.intercept('GET', PlexLibraryPaths.getMetadataFilter(library.id, { mediaType: library.type }), { statusCode: 200, body: generateResultDTO({ countries: [], genres: [], roles: [], qualities: [] }), ...headers });
 		cy.intercept('GET', '**/api/FolderPath', { statusCode: 200, body: generateResultDTO([
 			{ id: 81, displayName: 'Music default', directory: '/owned/music/default', mediaType: PlexMediaType.MusicArtist, folderType: FolderType.MusicFolder, isDefault: true, isValid: true },

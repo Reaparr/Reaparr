@@ -10,6 +10,14 @@ public record GetLibraryMediaMetadataRequest
     [DefaultValue(PlexMediaType.None)]
     public PlexMediaType MediaType { get; init; }
 
+    /// <summary>
+    /// Selects the photo browsing surface whose sort capabilities are returned.
+    /// Folder browsing supports title ordering only; album and asset views use the root photo sort fields.
+    /// Omit this parameter for non-photo metadata or the root photo overview.
+    /// </summary>
+    [QueryParam, BindFrom("photoView")]
+    public PhotoItemKind? PhotoView { get; init; }
+
     [QueryParam, BindFrom("filterOwnedMedia")]
     [DefaultValue(false)]
     public bool? FilterOwnedMedia { get; init; } = false;
@@ -27,11 +35,14 @@ public class GetLibraryMediaMetadataRequestValidator : Validator<GetLibraryMedia
             .NotEqual(PlexMediaType.None)
             .When(x => x.PlexLibraryId == 0)
             .WithMessage("MediaType must not be 'None' when PlexLibraryId is 0.");
+        RuleFor(x => x.PhotoView).IsInEnum().When(x => x.PhotoView.HasValue);
     }
 }
 
 public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, PlexMediaMetadataDTO>
 {
+    private static readonly SortType[] _photoFolderSortTypes = [SortType.Title];
+
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
 
@@ -82,6 +93,7 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
                             CountryCount = 0,
                             GenreCount = 0,
                             QualityCount = 0,
+                            SupportedSorts = GetSupportedSorts(plexLibrary.Type, req.PhotoView),
                         }
                     ),
                     ct
@@ -132,6 +144,7 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
                 CountryCount = plexLibrary.CountriesCount,
                 GenreCount = plexLibrary.GenresCount,
                 QualityCount = uniqueQualities.Count,
+                SupportedSorts = GetSupportedSorts(plexLibrary.Type, req.PhotoView),
             };
 
             await Send.FluentResult(Result.Ok(mediaMetadataDTO), ct);
@@ -214,6 +227,7 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
                         CountryCount = countryCount,
                         GenreCount = genreCount,
                         Qualities = uniqueQualities,
+                        SupportedSorts = GetSupportedSorts(req.MediaType, req.PhotoView),
                     }
                 ),
                 ct
@@ -221,18 +235,29 @@ public class GetLibraryMediaMetadata : Endpoint<GetLibraryMediaMetadataRequest, 
         }
     }
 
+    /// <summary>
+    /// Returns the root media capabilities, narrowed to title ordering for a physical photo-folder view.
+    /// Reuses the shared root catalog and folder field array without allocating a list for each response.
+    /// </summary>
+    private static IReadOnlyList<SortType> GetSupportedSorts(PlexMediaType mediaType, PhotoItemKind? photoView) =>
+        mediaType == PlexMediaType.PhotoAlbum && photoView == PhotoItemKind.Folder
+            ? _photoFolderSortTypes
+            : mediaType.GetSupportedSorts();
+
     private Task<List<PlexGenreDTO>> GetGenresForLibrariesAsync(
         PlexMediaType mediaType,
         IReadOnlyCollection<int> libraryIds,
         CancellationToken ct
     ) =>
         mediaType.IsMusicType()
-            ? _dbContext.PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
+            ? _dbContext
+                .PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
                 .SelectMany(pl => pl.GenresAudio)
                 .Select(g => new PlexGenreDTO { Id = g.Id, Name = g.Name })
                 .Distinct()
                 .ToListAsync(ct)
-            : _dbContext.PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
+            : _dbContext
+                .PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
                 .SelectMany(pl => pl.GenresVideo)
                 .Select(g => new PlexGenreDTO { Id = g.Id, Name = g.Name })
                 .Distinct()

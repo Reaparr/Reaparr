@@ -9,7 +9,10 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         using var container = await CreatePhotoContainerAsync(new Seed(231159), photoCount: 2);
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using var context = await factory.CreateAsync();
-        var library = await context.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await context.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var (media, selection) = await CreateRecursiveFolderSelectionAsync(context, library);
         using var client = await CreateSignedInClientAsync(container);
         var destination = container.PathProvider.DefaultPhotosDestinationFolder;
@@ -19,13 +22,7 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             GetDownloadPreviewEndpoint,
             DownloadPreviewRequest,
             ResultDTO<DownloadPreviewContainerDTO>
-        >(
-            new DownloadPreviewRequest
-            {
-                DownloadMedias = [selection],
-                CustomDestinationFolderPath = destination,
-            }
-        );
+        >(new DownloadPreviewRequest { DownloadMedias = [selection], CustomDestinationFolderPath = destination });
         var create = await client.POSTAsync<
             CreateDownloadTasksEndpoint,
             CreateDownloadTasksEndpointRequest,
@@ -60,7 +57,10 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         using var container = await CreatePhotoContainerAsync(new Seed(231160), photoCount: 1);
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using var context = await factory.CreateAsync();
-        var library = await context.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await context.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var selection = await CreateEmptyFolderSelectionAsync(context, library);
         using var client = await CreateSignedInClientAsync(container);
 
@@ -89,7 +89,10 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         var factory = container.Resolve<IReaparrDbContextFactory>();
         var (destinationA, destinationB) = CreateDestinations(container);
         using var context = await factory.CreateAsync();
-        var library = await context.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await context.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var file = await context.PlexPhotoMediaData.SingleAsync(x => x.PlexLibraryId == library.Id, CancellationToken);
         var selection = CreateAssetSelection(library, file);
         using var client = await CreateSignedInClientAsync(container);
@@ -109,13 +112,7 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             GetDownloadPreviewEndpoint,
             DownloadPreviewRequest,
             ResultDTO<DownloadPreviewContainerDTO>
-        >(
-            new DownloadPreviewRequest
-            {
-                DownloadMedias = [selection],
-                CustomDestinationFolderPath = destinationB,
-            }
-        );
+        >(new DownloadPreviewRequest { DownloadMedias = [selection], CustomDestinationFolderPath = destinationB });
         var second = await client.POSTAsync<
             CreateDownloadTasksEndpoint,
             CreateDownloadTasksEndpointRequest,
@@ -186,17 +183,17 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             }
         );
 
-    private async Task<(List<PlexPhotoMediaData> Media, DownloadMediaDTO Selection)> CreateRecursiveFolderSelectionAsync(
-        IReaparrDbContext context,
-        PlexLibrary library
-    )
+    private async Task<(
+        List<PlexPhotoMediaData> Media,
+        DownloadMediaDTO Selection
+    )> CreateRecursiveFolderSelectionAsync(IReaparrDbContext context, PlexLibrary library)
     {
         var root = await context.PlexPhotoFolders.SingleAsync(
             x => x.PlexLibraryId == library.Id && x.ParentId == null,
             CancellationToken
         );
-        var media = await context.PlexPhotoMediaData
-            .AsTracking()
+        var media = await context
+            .PlexPhotoMediaData.AsTracking()
             .Where(x => x.PlexLibraryId == library.Id)
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
@@ -237,10 +234,7 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         );
     }
 
-    private async Task<DownloadMediaDTO> CreateEmptyFolderSelectionAsync(
-        IReaparrDbContext context,
-        PlexLibrary library
-    )
+    private async Task<DownloadMediaDTO> CreateEmptyFolderSelectionAsync(IReaparrDbContext context, PlexLibrary library)
     {
         var root = await context.PlexPhotoFolders.SingleAsync(
             x => x.PlexLibraryId == library.Id && x.ParentId == null,
@@ -286,8 +280,8 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
     )
     {
         using var finalContext = await factory.CreateAsync();
-        var folders = await finalContext.DownloadTaskPhotoFolders
-            .Where(x => x.PlexLibraryId == libraryId)
+        var folders = await finalContext
+            .DownloadTaskPhotoFolders.Where(x => x.PlexLibraryId == libraryId)
             .ToListAsync(CancellationToken);
         folders.Select(x => x.DestinationRootPath).Order().ShouldBe(new[] { destinationA, destinationB }.Order());
     }

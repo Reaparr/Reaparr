@@ -49,11 +49,7 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
         await SendProgressUpdateAsync(progress);
     }
 
-    public async Task UpdateItemAsync(
-        int plexLibraryId,
-        LibraryProgressItem item,
-        CancellationToken cancellationToken = default
-    )
+    public async Task UpdateItemAsync(int plexLibraryId, LibraryProgressItem item)
     {
         var updated = _store.AddOrUpdate(
             plexLibraryId,
@@ -88,11 +84,7 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
         await SendProgressUpdateAsync(updated);
     }
 
-    public async Task UpdateErrorAsync(
-        int plexLibraryId,
-        Result errorResult,
-        CancellationToken cancellationToken = default
-    )
+    public async Task UpdateErrorAsync(int plexLibraryId, Result errorResult)
     {
         var updated = _store.AddOrUpdate(
             plexLibraryId,

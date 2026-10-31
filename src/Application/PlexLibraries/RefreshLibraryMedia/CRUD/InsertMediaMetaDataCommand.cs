@@ -76,13 +76,15 @@ public class InsertMediaMetaDataCommandHandler
 
         _log.Here().Debug("[InsertMetaData] Starting InsertGenresVideo ({Count} items)", genresVideo.Count);
         var syncGenresVideoResult = await InsertGenresVideo(genresVideo, ct);
-        _log.Here().Debug("[InsertMetaData] InsertGenresVideo done. IsFailed={IsFailed}", syncGenresVideoResult.IsFailed);
+        _log.Here()
+            .Debug("[InsertMetaData] InsertGenresVideo done. IsFailed={IsFailed}", syncGenresVideoResult.IsFailed);
         if (syncGenresVideoResult.IsFailed)
             return syncGenresVideoResult.ToResult();
 
         _log.Here().Debug("[InsertMetaData] Starting InsertGenresAudio ({Count} items)", genresAudio.Count);
         var syncGenresAudioResult = await InsertGenresAudio(genresAudio, ct);
-        _log.Here().Debug("[InsertMetaData] InsertGenresAudio done. IsFailed={IsFailed}", syncGenresAudioResult.IsFailed);
+        _log.Here()
+            .Debug("[InsertMetaData] InsertGenresAudio done. IsFailed={IsFailed}", syncGenresAudioResult.IsFailed);
         if (syncGenresAudioResult.IsFailed)
             return syncGenresAudioResult.ToResult();
 
@@ -196,11 +198,12 @@ public class InsertMediaMetaDataCommandHandler
         {
             if (!existingIdByKey.TryGetValue(genre.Key, out var id))
             {
-                _log.Here().Warning(
-                    "{GenreType} with key {GenreKey} not found in DB after insert; skipping",
-                    nameof(PlexGenreVideo),
-                    genre.Key
-                );
+                _log.Here()
+                    .Warning(
+                        "{GenreType} with key {GenreKey} not found in DB after insert; skipping",
+                        nameof(PlexGenreVideo),
+                        genre.Key
+                    );
                 continue;
             }
 
@@ -236,11 +239,12 @@ public class InsertMediaMetaDataCommandHandler
         {
             if (!existingIdByKey.TryGetValue(genre.Key, out var id))
             {
-                _log.Here().Warning(
-                    "{GenreType} with key {GenreKey} not found in DB after insert; skipping",
-                    nameof(PlexGenreAudio),
-                    genre.Key
-                );
+                _log.Here()
+                    .Warning(
+                        "{GenreType} with key {GenreKey} not found in DB after insert; skipping",
+                        nameof(PlexGenreAudio),
+                        genre.Key
+                    );
                 continue;
             }
 

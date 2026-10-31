@@ -1,7 +1,11 @@
 namespace Reaparr.Application.UnitTests;
 
 public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
-    : BaseEndpointUnitTest<SetPlexLibraryDefaultDestinationByIdEndpoint, SetPlexLibraryDefaultDestinationByIdEndpointRequest, BaseResultDTO>
+    : BaseEndpointUnitTest<
+        SetPlexLibraryDefaultDestinationByIdEndpoint,
+        SetPlexLibraryDefaultDestinationByIdEndpointRequest,
+        BaseResultDTO
+    >
 {
     [Test]
     [Arguments(PlexMediaType.Movie, FolderType.MovieFolder)]
@@ -11,7 +15,9 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
     [Arguments(PlexMediaType.OtherVideos, FolderType.OtherVideosFolder)]
     [Arguments(PlexMediaType.Games, FolderType.GamesVideosFolder)]
     public async Task ShouldUpdateOnlySelectedLibraryAndResolveItsFolder_WhenDestinationIsCompatible(
-        PlexMediaType mediaType, FolderType folderType)
+        PlexMediaType mediaType,
+        FolderType folderType
+    )
     {
         // Arrange
         var (dbContext, target, control) = await CreateLibraries(mediaType);
@@ -24,7 +30,8 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
 
         // Act
         var response = await TestEndpointHandleAsync(
-            new SetPlexLibraryDefaultDestinationByIdEndpointRequest(target.Id, selected.Id));
+            new SetPlexLibraryDefaultDestinationByIdEndpointRequest(target.Id, selected.Id)
+        );
 
         // Assert
         response.IsValid.ShouldBeTrue();
@@ -32,12 +39,14 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
         response.Response.ShouldNotBeNull();
         response.Response.IsSuccess.ShouldBeTrue();
         response.Response.Errors.Count.ShouldBe(0);
-        (await ReadDestinations(dbContext)).ShouldBe(before.Select(x => x.Id == target.Id
-            ? x with { DefaultDestinationId = selected.Id } : x).ToArray());
+        (await ReadDestinations(dbContext)).ShouldBe(
+            before.Select(x => x.Id == target.Id ? x with { DefaultDestinationId = selected.Id } : x).ToArray()
+        );
         var destination = await dbContext.GetDestinationFolder(target.Id);
         destination.ShouldNotBeNull();
-        (destination.Id, destination.DirectoryPath, destination.FolderType, destination.MediaType)
-            .ShouldBe((selected.Id, selected.DirectoryPath, folderType, mediaType));
+        (destination.Id, destination.DirectoryPath, destination.FolderType, destination.MediaType).ShouldBe(
+            (selected.Id, selected.DirectoryPath, folderType, mediaType)
+        );
         var controlDestination = await dbContext.GetDestinationFolder(control.Id);
         controlDestination.ShouldNotBeNull();
         controlDestination.Id.ShouldBe(mediaType.ToDefaultDestinationFolderId());
@@ -49,7 +58,9 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
     [Arguments(FolderType.TvShowFolder, PlexMediaType.Movie)]
     [Arguments(FolderType.MovieFolder, PlexMediaType.TvShow)]
     public async Task ShouldPreservePreviousDestinationAndResolver_WhenFolderIsIncompatible(
-        FolderType folderType, PlexMediaType folderMediaType)
+        FolderType folderType,
+        PlexMediaType folderMediaType
+    )
     {
         // Arrange
         var (dbContext, target, control) = await CreateLibraries(PlexMediaType.Movie);
@@ -66,7 +77,8 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
 
         // Act
         var response = await TestEndpointHandleAsync(
-            new SetPlexLibraryDefaultDestinationByIdEndpointRequest(target.Id, incompatible.Id));
+            new SetPlexLibraryDefaultDestinationByIdEndpointRequest(target.Id, incompatible.Id)
+        );
 
         // Assert
         response.IsValid.ShouldBeTrue();
@@ -77,23 +89,28 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
         (await ReadDestinations(dbContext)).ShouldBe(before);
         var destination = await dbContext.GetDestinationFolder(target.Id);
         destination.ShouldNotBeNull();
-        (destination.Id, destination.DirectoryPath, destination.FolderType, destination.MediaType)
-            .ShouldBe((oldDestination.Id, oldDestination.DirectoryPath, oldDestination.FolderType, oldDestination.MediaType));
-        (await dbContext.GetDestinationFolder(control.Id)).ShouldNotBeNull().Id
-            .ShouldBe(PlexMediaType.Movie.ToDefaultDestinationFolderId());
+        (destination.Id, destination.DirectoryPath, destination.FolderType, destination.MediaType).ShouldBe(
+            (oldDestination.Id, oldDestination.DirectoryPath, oldDestination.FolderType, oldDestination.MediaType)
+        );
+        (await dbContext.GetDestinationFolder(control.Id))
+            .ShouldNotBeNull()
+            .Id.ShouldBe(PlexMediaType.Movie.ToDefaultDestinationFolderId());
     }
 
     [Test]
     [Arguments(true)]
     [Arguments(false)]
-    public async Task ShouldReturnNotFoundWithoutChangingDestinations_WhenLibraryOrFolderDoesNotExist(bool missingLibrary)
+    public async Task ShouldReturnNotFoundWithoutChangingDestinations_WhenLibraryOrFolderDoesNotExist(
+        bool missingLibrary
+    )
     {
         // Arrange
         var (dbContext, target, control) = await CreateLibraries(PlexMediaType.Movie);
         var before = await ReadDestinations(dbContext);
         var request = new SetPlexLibraryDefaultDestinationByIdEndpointRequest(
             missingLibrary ? int.MaxValue : target.Id,
-            missingLibrary ? PlexMediaType.Movie.ToDefaultDestinationFolderId() : int.MaxValue);
+            missingLibrary ? PlexMediaType.Movie.ToDefaultDestinationFolderId() : int.MaxValue
+        );
 
         // Act
         var response = await TestEndpointHandleAsync(request);
@@ -105,10 +122,12 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
         response.Response.IsSuccess.ShouldBeFalse();
         response.Response.Errors.Count.ShouldBe(1);
         (await ReadDestinations(dbContext)).ShouldBe(before);
-        (await dbContext.GetDestinationFolder(target.Id)).ShouldNotBeNull().Id
-            .ShouldBe(PlexMediaType.Movie.ToDefaultDestinationFolderId());
-        (await dbContext.GetDestinationFolder(control.Id)).ShouldNotBeNull().Id
-            .ShouldBe(PlexMediaType.Movie.ToDefaultDestinationFolderId());
+        (await dbContext.GetDestinationFolder(target.Id))
+            .ShouldNotBeNull()
+            .Id.ShouldBe(PlexMediaType.Movie.ToDefaultDestinationFolderId());
+        (await dbContext.GetDestinationFolder(control.Id))
+            .ShouldNotBeNull()
+            .Id.ShouldBe(PlexMediaType.Movie.ToDefaultDestinationFolderId());
     }
 
     [Test]
@@ -120,7 +139,9 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
         var (dbContext, target, _) = await CreateLibraries(PlexMediaType.Movie);
         var before = await ReadDestinations(dbContext);
         var request = new SetPlexLibraryDefaultDestinationByIdEndpointRequest(
-            invalidLibrary ? 0 : target.Id, invalidLibrary ? PlexMediaType.Movie.ToDefaultDestinationFolderId() : 0);
+            invalidLibrary ? 0 : target.Id,
+            invalidLibrary ? PlexMediaType.Movie.ToDefaultDestinationFolderId() : 0
+        );
 
         // Act
         var response = await TestEndpointHandleAsync(request);
@@ -128,13 +149,19 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
         // Assert
         response.IsValid.ShouldBeFalse();
         response.ValidationErrors.Count.ShouldBe(1);
-        response.ValidationErrors.Single().PropertyName.ShouldBe(invalidLibrary
-            ? nameof(SetPlexLibraryDefaultDestinationByIdEndpointRequest.PlexLibraryId)
-            : nameof(SetPlexLibraryDefaultDestinationByIdEndpointRequest.FolderPathId));
+        response
+            .ValidationErrors.Single()
+            .PropertyName.ShouldBe(
+                invalidLibrary
+                    ? nameof(SetPlexLibraryDefaultDestinationByIdEndpointRequest.PlexLibraryId)
+                    : nameof(SetPlexLibraryDefaultDestinationByIdEndpointRequest.FolderPathId)
+            );
         (await ReadDestinations(dbContext)).ShouldBe(before);
     }
 
-    private async Task<(IReaparrDbContext Context, PlexLibrary Target, PlexLibrary Control)> CreateLibraries(PlexMediaType mediaType)
+    private async Task<(IReaparrDbContext Context, PlexLibrary Target, PlexLibrary Control)> CreateLibraries(
+        PlexMediaType mediaType
+    )
     {
         await SetupDatabase(54001, config => config.PlexServerCount = 1);
         var dbContext = IDbContext;
@@ -151,8 +178,11 @@ public class SetPlexLibraryDefaultDestinationByIdEndpointUnitTests
     }
 
     private Task<DestinationState[]> ReadDestinations(IReaparrDbContext dbContext) =>
-        dbContext.PlexLibraries.IgnoreIsEnabledFilter().OrderBy(x => x.Id)
-            .Select(x => new DestinationState(x.Id, x.DefaultDestinationId)).ToArrayAsync(CancellationToken);
+        dbContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
+            .OrderBy(x => x.Id)
+            .Select(x => new DestinationState(x.Id, x.DefaultDestinationId))
+            .ToArrayAsync(CancellationToken);
 
     private sealed record DestinationState(int Id, int? DefaultDestinationId);
 }

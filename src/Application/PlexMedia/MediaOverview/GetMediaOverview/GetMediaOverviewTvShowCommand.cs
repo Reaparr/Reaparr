@@ -10,6 +10,9 @@ public sealed class GetMediaOverviewTvShowCommandValidator : AbstractValidator<G
     public GetMediaOverviewTvShowCommandValidator()
     {
         RuleFor(x => x.Filter.MediaType).Equal(PlexMediaType.TvShow);
+        RuleFor(x => x.Filter.Parameters.Sort)
+            .Must((command, sort) => sort.IsSupportedSort(command.Filter.MediaType))
+            .WithMessage("Sort fields must be supported media sort types.");
         RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
@@ -46,10 +49,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
         var sort = options.ResolveSort();
         if (sort is null || filter.ComparisonState.HasValue)
         {
-            var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
-                cancellationToken
-            );
+            var mediaResult = await _commandExecutor.Send(new GetTvShowMediaByTypeCommand(filter), cancellationToken);
             LogPhase(filter, "CanonicalFallback", stopwatch.Elapsed, 0);
             return mediaResult.LogIfFailed();
         }
@@ -78,10 +78,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
         )
         {
             LogPhase(filter, "SnapshotMissing", stopwatch.Elapsed, 0);
-            var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
-                cancellationToken
-            );
+            var mediaResult = await _commandExecutor.Send(new GetTvShowMediaByTypeCommand(filter), cancellationToken);
             return mediaResult.LogIfFailed();
         }
 
@@ -93,7 +90,7 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             allowedLibraryIds.Contains(snapshot.PlexLibraryId)
             && candidates.Any(tvShow => tvShow.Id == snapshot.PlexTvShowId)
         );
-        var orderedSnapshots = ApplyOrder(snapshots, sort.Value.Field, sort.Value.Descending);
+        var orderedSnapshots = ApplyOrder(snapshots, sort.Value.Field, sort.Value.Direction);
         var ids = await orderedSnapshots
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
@@ -176,26 +173,11 @@ public sealed class GetMediaOverviewTvShowCommandHandler
             mediaSize,
             cancellationToken
         );
-        var navigationRows = await orderedSnapshots
-            .Join(
-                context.PlexTvShows,
-                snapshot => snapshot.PlexTvShowId,
-                tvShow => tvShow.Id,
-                (_, tvShow) =>
-                    new MediaNavigationIndexRow(
-                        tvShow.SearchTitle,
-                        tvShow.Year,
-                        (int?)tvShow.VideoQuality,
-                        tvShow.Duration,
-                        tvShow.AddedAt,
-                        tvShow.UpdatedAt,
-                        tvShow.MediaSize
-                    )
-            )
-            .ToListAsync(cancellationToken);
-        result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
-            navigationRows,
-            options.Sort.FirstOrDefault()?.Field
+        result.NavigationIndexes = await BuildNavigationIndexesAsync(
+            orderedSnapshots,
+            context.PlexTvShows,
+            sort.Value.Field,
+            cancellationToken
         );
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
@@ -231,6 +213,34 @@ public sealed class GetMediaOverviewTvShowCommandHandler
         return Result.Ok(result);
     }
 
+    private static async Task<List<MediaNavigationIndexDTO>> BuildNavigationIndexesAsync(
+        IQueryable<MediaOverviewTvShowSnapshot> orderedSnapshots,
+        IQueryable<PlexTvShow> tvShows,
+        SortType sortType,
+        CancellationToken cancellationToken
+    )
+    {
+        var navigationRows = await orderedSnapshots
+            .Join(
+                tvShows,
+                snapshot => snapshot.PlexTvShowId,
+                tvShow => tvShow.Id,
+                (_, tvShow) =>
+                    new MediaNavigationIndexRow
+                    {
+                        SearchTitle = tvShow.SearchTitle,
+                        Year = tvShow.Year,
+                        QualityValue = (int?)tvShow.VideoQuality,
+                        Duration = tvShow.Duration,
+                        AddedAt = tvShow.AddedAt,
+                        UpdatedAt = tvShow.UpdatedAt,
+                        MediaSize = tvShow.MediaSize,
+                    }
+            )
+            .ToListAsync(cancellationToken);
+        return MediaNavigationIndexBuilder.Build(navigationRows, sortType);
+    }
+
     private void LogPhase(MediaQueryFilter filter, string phase, TimeSpan elapsed, int rowCount) =>
         _log.Here()
             .Debug(
@@ -246,29 +256,17 @@ public sealed class GetMediaOverviewTvShowCommandHandler
 
     private static IQueryable<MediaOverviewTvShowSnapshot> ApplyOrder(
         IQueryable<MediaOverviewTvShowSnapshot> query,
-        string field,
-        bool descending
+        SortType sortType,
+        SortDirection direction
     ) =>
-        field switch
+        sortType switch
         {
-            nameof(BasePlexMedia.Year) => descending
-                ? query.OrderByDescending(x => x.YearRank)
-                : query.OrderBy(x => x.YearRank),
-            nameof(BasePlexMedia.AddedAt) => descending
-                ? query.OrderByDescending(x => x.AddedAtRank)
-                : query.OrderBy(x => x.AddedAtRank),
-            nameof(BasePlexMedia.UpdatedAt) => descending
-                ? query.OrderByDescending(x => x.UpdatedAtRank)
-                : query.OrderBy(x => x.UpdatedAtRank),
-            nameof(BasePlexMedia.Duration) => descending
-                ? query.OrderByDescending(x => x.DurationRank)
-                : query.OrderBy(x => x.DurationRank),
-            nameof(BasePlexMedia.MediaSize) => descending
-                ? query.OrderByDescending(x => x.MediaSizeRank)
-                : query.OrderBy(x => x.MediaSizeRank),
-            nameof(BasePlexMedia.VideoQuality) => descending
-                ? query.OrderByDescending(x => x.QualityRank)
-                : query.OrderBy(x => x.QualityRank),
-            _ => descending ? query.OrderByDescending(x => x.TitleRank) : query.OrderBy(x => x.TitleRank),
+            SortType.Year => query.ApplyOrderBy(direction, x => x.YearRank),
+            SortType.AddedAt => query.ApplyOrderBy(direction, x => x.AddedAtRank),
+            SortType.UpdatedAt => query.ApplyOrderBy(direction, x => x.UpdatedAtRank),
+            SortType.Duration => query.ApplyOrderBy(direction, x => x.DurationRank),
+            SortType.MediaSize => query.ApplyOrderBy(direction, x => x.MediaSizeRank),
+            SortType.VideoQuality => query.ApplyOrderBy(direction, x => x.QualityRank),
+            _ => query.ApplyOrderBy(direction, x => x.TitleRank),
         };
 }

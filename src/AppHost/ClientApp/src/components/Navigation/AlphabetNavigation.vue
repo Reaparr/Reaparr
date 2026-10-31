@@ -36,7 +36,7 @@
 import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 import { useMediaOverviewStore } from '@store';
-import { MediaSortField } from '@enums';
+import { SortType } from '@dto';
 import { getVideoQualityFromValue, translateVideoQuality } from '@composables';
 
 const mediaOverviewStore = useMediaOverviewStore();
@@ -125,7 +125,7 @@ function resetDragState() {
 }
 
 function getDisplayValue(value: string): string {
-	if (mediaOverviewStore.getActiveSort.field !== MediaSortField.Quality) {
+	if (mediaOverviewStore.getActiveSort.field !== SortType.VideoQuality) {
 		return value;
 	}
 

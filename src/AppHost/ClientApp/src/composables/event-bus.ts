@@ -1,11 +1,10 @@
 import { useEventBus, type UseEventBusReturn } from '@vueuse/core';
-import type { DownloadMediaDTO } from '@dto';
-import type { MediaSortField, SortDirection } from '@enums';
+import type { DownloadMediaDTO, SortDirection, SortType } from '@dto';
 
 // region MediaOverview
 
 export interface IMediaOverviewSort {
-	field: MediaSortField;
+	field: SortType;
 	sort: SortDirection;
 }
 

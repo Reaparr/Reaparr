@@ -88,12 +88,9 @@ public class SyncPlexLibraryMediaMetaDataCommandHandler : ICommandHandler<SyncPl
         var syncRolesResult = await SyncRoles(roles, libraryId, libraryName, ct);
         _log.Here().Debug("[SyncMetaData] SyncRoles done. IsFailed={IsFailed}", syncRolesResult.IsFailed);
 
-        var syncResult = Result.Merge(
-            syncGenresVideoResult,
-            syncGenresAudioResult,
-            syncCountriesResult,
-            syncRolesResult
-        ).ToResult();
+        var syncResult = Result
+            .Merge(syncGenresVideoResult, syncGenresAudioResult, syncCountriesResult, syncRolesResult)
+            .ToResult();
         if (syncResult.IsCancelledOrFailed)
             return syncResult.LogIfFailed();
 
@@ -132,8 +129,10 @@ public class SyncPlexLibraryMediaMetaDataCommandHandler : ICommandHandler<SyncPl
 
         _log.Here().Debug("Started syncing {Count} roles for library {LibraryName}", sourceDict.Count, libraryName);
 
-        var currentIds = await _dbContext.PlexLibraryActors
-            .Where(x => x.PlexLibraryId == libraryId).Select(x => x.PlexActorId).ToListAsync(ct);
+        var currentIds = await _dbContext
+            .PlexLibraryActors.Where(x => x.PlexLibraryId == libraryId)
+            .Select(x => x.PlexActorId)
+            .ToListAsync(ct);
         if (sourceDict.Values.Select(x => x.Id).ToHashSet().SetEquals(currentIds))
             return Result.Ok(sourceDict.Count);
 
@@ -202,16 +201,17 @@ public class SyncPlexLibraryMediaMetaDataCommandHandler : ICommandHandler<SyncPl
     )
     {
         var stopWatch = Stopwatch.StartNew();
-        _log.Here().Debug("Started syncing {Count} video genres for library {LibraryName}", sourceDict.Count, libraryName);
+        _log.Here()
+            .Debug("Started syncing {Count} video genres for library {LibraryName}", sourceDict.Count, libraryName);
 
-        var currentIds = await _dbContext.PlexLibraryGenresVideo
-            .Where(x => x.PlexLibraryId == libraryId).Select(x => x.PlexGenreId).ToListAsync(ct);
+        var currentIds = await _dbContext
+            .PlexLibraryGenresVideo.Where(x => x.PlexLibraryId == libraryId)
+            .Select(x => x.PlexGenreId)
+            .ToListAsync(ct);
         if (sourceDict.Values.Select(x => x.Id).ToHashSet().SetEquals(currentIds))
             return Result.Ok(sourceDict.Count);
 
-        var newGenres = sourceDict
-            .Select(x => new PlexLibraryGenresVideo(libraryId, x.Value.Id))
-            .ToList();
+        var newGenres = sourceDict.Select(x => new PlexLibraryGenresVideo(libraryId, x.Value.Id)).ToList();
         var insertResult = await _dbContext.ExecuteTransactionAsync(
             async (ctx, txCt) =>
             {
@@ -225,12 +225,13 @@ public class SyncPlexLibraryMediaMetaDataCommandHandler : ICommandHandler<SyncPl
         if (insertResult.IsCancelledOrFailed)
             return insertResult.LogIfFailed();
 
-        _log.Here().Debug(
-            "Finished creating {Count} video genre relations for library {LibraryName} in {ElapsedSeconds:F2} seconds",
-            newGenres.Count,
-            libraryName,
-            stopWatch.Elapsed.TotalSeconds
-        );
+        _log.Here()
+            .Debug(
+                "Finished creating {Count} video genre relations for library {LibraryName} in {ElapsedSeconds:F2} seconds",
+                newGenres.Count,
+                libraryName,
+                stopWatch.Elapsed.TotalSeconds
+            );
         return Result.Ok(newGenres.Count);
     }
 
@@ -242,16 +243,17 @@ public class SyncPlexLibraryMediaMetaDataCommandHandler : ICommandHandler<SyncPl
     )
     {
         var stopWatch = Stopwatch.StartNew();
-        _log.Here().Debug("Started syncing {Count} audio genres for library {LibraryName}", sourceDict.Count, libraryName);
+        _log.Here()
+            .Debug("Started syncing {Count} audio genres for library {LibraryName}", sourceDict.Count, libraryName);
 
-        var currentIds = await _dbContext.PlexLibraryGenresAudio
-            .Where(x => x.PlexLibraryId == libraryId).Select(x => x.PlexGenreId).ToListAsync(ct);
+        var currentIds = await _dbContext
+            .PlexLibraryGenresAudio.Where(x => x.PlexLibraryId == libraryId)
+            .Select(x => x.PlexGenreId)
+            .ToListAsync(ct);
         if (sourceDict.Values.Select(x => x.Id).ToHashSet().SetEquals(currentIds))
             return Result.Ok(sourceDict.Count);
 
-        var newGenres = sourceDict
-            .Select(x => new PlexLibraryGenresAudio(libraryId, x.Value.Id))
-            .ToList();
+        var newGenres = sourceDict.Select(x => new PlexLibraryGenresAudio(libraryId, x.Value.Id)).ToList();
         var insertResult = await _dbContext.ExecuteTransactionAsync(
             async (ctx, txCt) =>
             {
@@ -265,12 +267,13 @@ public class SyncPlexLibraryMediaMetaDataCommandHandler : ICommandHandler<SyncPl
         if (insertResult.IsCancelledOrFailed)
             return insertResult.LogIfFailed();
 
-        _log.Here().Debug(
-            "Finished creating {Count} audio genre relations for library {LibraryName} in {ElapsedSeconds:F2} seconds",
-            newGenres.Count,
-            libraryName,
-            stopWatch.Elapsed.TotalSeconds
-        );
+        _log.Here()
+            .Debug(
+                "Finished creating {Count} audio genre relations for library {LibraryName} in {ElapsedSeconds:F2} seconds",
+                newGenres.Count,
+                libraryName,
+                stopWatch.Elapsed.TotalSeconds
+            );
         return Result.Ok(newGenres.Count);
     }
 
@@ -285,8 +288,10 @@ public class SyncPlexLibraryMediaMetaDataCommandHandler : ICommandHandler<SyncPl
 
         _log.Here().Debug("Started syncing {Count} countries for library {LibraryName}", sourceDict.Count, libraryName);
 
-        var currentIds = await _dbContext.PlexLibraryCountries
-            .Where(x => x.PlexLibraryId == libraryId).Select(x => x.PlexCountryId).ToListAsync(ct);
+        var currentIds = await _dbContext
+            .PlexLibraryCountries.Where(x => x.PlexLibraryId == libraryId)
+            .Select(x => x.PlexCountryId)
+            .ToListAsync(ct);
         if (sourceDict.Values.Select(x => x.Id).ToHashSet().SetEquals(currentIds))
             return Result.Ok(sourceDict.Count);
 

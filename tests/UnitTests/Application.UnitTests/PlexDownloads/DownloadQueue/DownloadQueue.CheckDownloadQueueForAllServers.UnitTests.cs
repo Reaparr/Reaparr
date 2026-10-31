@@ -73,18 +73,20 @@ public class DownloadQueueCheckDownloadQueueForAllServersUnitTests : BaseUnitTes
         var startedKeys = new ConcurrentQueue<DownloadTaskKey>();
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), workerToken))
-            .Returns((DownloadTaskKey key, CancellationToken _) =>
-            {
-                startedKeys.Enqueue(key);
-                if (Interlocked.Increment(ref schedulerCalls) == 1)
+            .Returns(
+                (DownloadTaskKey key, CancellationToken _) =>
                 {
-                    firstAttempt.SetResult();
-                    return Task.FromException<Result>(new InvalidOperationException("first queue check failed"));
-                }
+                    startedKeys.Enqueue(key);
+                    if (Interlocked.Increment(ref schedulerCalls) == 1)
+                    {
+                        firstAttempt.SetResult();
+                        return Task.FromException<Result>(new InvalidOperationException("first queue check failed"));
+                    }
 
-                secondAttempt.SetResult();
-                return Task.FromResult(Result.Ok());
-            })
+                    secondAttempt.SetResult();
+                    return Task.FromResult(Result.Ok());
+                }
+            )
             .Verifiable(Times.Exactly(2));
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.GetCurrentlyDownloadingKeysByServer(It.IsAny<int>()))

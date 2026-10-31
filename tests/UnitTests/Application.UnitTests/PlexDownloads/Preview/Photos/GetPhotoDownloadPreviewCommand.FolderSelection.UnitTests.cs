@@ -69,8 +69,10 @@ public class GetPhotoDownloadPreviewCommandFolderSelectionUnitTests
         var preview = result.Value.Single();
         preview.ChildCount.ShouldBe(2);
         preview.Size.ShouldBe(media.Sum(x => x.Size));
-        preview.Children.Single(x => x.Title == "Trips").Children
-            .Single(x => x.Title == "Day 1").Children.Count.ShouldBe(1);
+        preview
+            .Children.Single(x => x.Title == "Trips")
+            .Children.Single(x => x.Title == "Day 1")
+            .Children.Count.ShouldBe(1);
     }
 
     [Test]

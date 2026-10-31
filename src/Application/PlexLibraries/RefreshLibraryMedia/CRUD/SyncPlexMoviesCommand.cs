@@ -161,7 +161,9 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
 
             if (forceMediaRefresh)
             {
-                await _dbContext.PlexMovies.Where(x => x.PlexLibraryId == plexLibraryId).ExecuteDeleteAsync(cancellationToken);
+                await _dbContext
+                    .PlexMovies.Where(x => x.PlexLibraryId == plexLibraryId)
+                    .ExecuteDeleteAsync(cancellationToken);
                 created = incomingMovies;
                 deleted = currentMovies;
                 report.CreatedMovies = created.Count;
@@ -310,8 +312,8 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
 
         var insertResult = await Result.Try(async Task () =>
         {
-            await _dbContext.PlexMovieActors
-                .Where(x => x.PlexLibraryId == libraryId && movieIds.Contains(x.PlexMovieId))
+            await _dbContext
+                .PlexMovieActors.Where(x => x.PlexLibraryId == libraryId && movieIds.Contains(x.PlexMovieId))
                 .ExecuteDeleteAsync(ct);
             await _dbContext.BulkInsertAsync(list, _config, ct);
         });
@@ -364,8 +366,8 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
 
         var insertResult = await Result.Try(async Task () =>
         {
-            await _dbContext.PlexMovieGenres
-                .Where(x => x.PlexLibraryId == libraryId && movieIds.Contains(x.PlexMovieId))
+            await _dbContext
+                .PlexMovieGenres.Where(x => x.PlexLibraryId == libraryId && movieIds.Contains(x.PlexMovieId))
                 .ExecuteDeleteAsync(ct);
             await _dbContext.BulkInsertAsync(list, _config, ct);
         });
@@ -418,8 +420,8 @@ public class SyncPlexMoviesCommandHandler : ICommandHandler<SyncPlexMoviesComman
 
         var insertResult = await Result.Try(async Task () =>
         {
-            await _dbContext.PlexMovieCountries
-                .Where(x => x.PlexLibraryId == libraryId && movieIds.Contains(x.PlexMovieId))
+            await _dbContext
+                .PlexMovieCountries.Where(x => x.PlexLibraryId == libraryId && movieIds.Contains(x.PlexMovieId))
                 .ExecuteDeleteAsync(ct);
             await _dbContext.BulkInsertAsync(list, _config, ct);
         });

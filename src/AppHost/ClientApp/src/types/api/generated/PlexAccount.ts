@@ -59,7 +59,6 @@ export class PlexAccount {
    */
   getAllPlexAccountsEndpoint = (
     query?: {
-      /** @default false */
       enabledOnly?: boolean;
     },
     params: RequestParams = {},
@@ -81,7 +80,7 @@ export class PlexAccount {
    * @secure
    */
   updatePlexAccountByIdEndpoint = (
-    data: PlexAccountDTO,
+    data: PlexAccountDTO | null,
     params: RequestParams = {},
   ) =>
     axiosObservable<PlexAccountDTO>({
@@ -93,68 +92,6 @@ export class PlexAccount {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<PlexAccountDTO>);
-
-  /**
-   * No description
-   * * @tags Plexaccount
-   * @name DeletePlexAccountByIdEndpoint
-   * @request DELETE:/api/PlexAccount/{PlexAccountId}
-   * @secure
-   */
-  deletePlexAccountByIdEndpoint = (
-    plexAccountId: number,
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<BaseResultDTO>({
-      url: `/api/PlexAccount/${plexAccountId}`,
-      method: "DELETE",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<BaseResultDTO>);
-
-  /**
-   * No description
-   * * @tags Plexaccount
-   * @name GetPlexAccountByIdEndpoint
-   * @request GET:/api/PlexAccount/{PlexAccountId}
-   * @secure
-   */
-  getPlexAccountByIdEndpoint = (
-    plexAccountId: number,
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<PlexAccountDTO>({
-      url: `/api/PlexAccount/${plexAccountId}`,
-      method: "GET",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<PlexAccountDTO>);
-
-  /**
-   * No description
-   * * @tags Plexaccount
-   * @name GeneratePlexTokenEndpoint
-   * @request GET:/api/PlexAccount/generate-token/{PlexAccountId}
-   * @secure
-   */
-  generatePlexTokenEndpoint = (
-    plexAccountId: number,
-    query?: {
-      /** @default "" */
-      verificationCode?: string;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<GeneratePlexTokenResponse>({
-      url: `/api/PlexAccount/generate-token/${plexAccountId}`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<GeneratePlexTokenResponse>);
 
   /**
    * No description
@@ -181,8 +118,31 @@ export class PlexAccount {
   /**
    * No description
    * * @tags Plexaccount
+   * @name GeneratePlexTokenEndpoint
+   * @request GET:/api/PlexAccount/generate-token/{plexAccountId}
+   * @secure
+   */
+  generatePlexTokenEndpoint = (
+    plexAccountId: number,
+    query?: {
+      verificationCode?: string;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<GeneratePlexTokenResponse>({
+      url: `/api/PlexAccount/generate-token/${plexAccountId}`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<GeneratePlexTokenResponse>);
+
+  /**
+   * No description
+   * * @tags Plexaccount
    * @name RefreshPlexAccountAccessEndpoint
-   * @request GET:/api/PlexAccount/refresh/{PlexAccountId}
+   * @request GET:/api/PlexAccount/refresh/{plexAccountId}
    * @secure
    */
   refreshPlexAccountAccessEndpoint = (
@@ -238,30 +198,62 @@ export class PlexAccount {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<ValidatePlexTokenEndpointResponse>);
+
+  /**
+   * No description
+   * * @tags Plexaccount
+   * @name DeletePlexAccountByIdEndpoint
+   * @request DELETE:/api/PlexAccount/{plexAccountId}
+   * @secure
+   */
+  deletePlexAccountByIdEndpoint = (
+    plexAccountId: number,
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<BaseResultDTO>({
+      url: `/api/PlexAccount/${plexAccountId}`,
+      method: "DELETE",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<BaseResultDTO>);
+
+  /**
+   * No description
+   * * @tags Plexaccount
+   * @name GetPlexAccountByIdEndpoint
+   * @request GET:/api/PlexAccount/{plexAccountId}
+   * @secure
+   */
+  getPlexAccountByIdEndpoint = (
+    plexAccountId: number,
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<PlexAccountDTO>({
+      url: `/api/PlexAccount/${plexAccountId}`,
+      method: "GET",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<PlexAccountDTO>);
 }
 
 export class PlexAccountPaths {
   static createPlexAccountEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/PlexAccount` });
 
-  static getAllPlexAccountsEndpoint = (query?: {
-    /** @default false */
-    enabledOnly?: boolean;
-  }) => queryString.stringifyUrl({ url: `/api/PlexAccount`, query });
+  static getAllPlexAccountsEndpoint = (query?: { enabledOnly?: boolean }) =>
+    queryString.stringifyUrl({ url: `/api/PlexAccount`, query });
 
   static updatePlexAccountByIdEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/PlexAccount` });
 
-  static deletePlexAccountByIdEndpoint = (plexAccountId: number) =>
-    queryString.stringifyUrl({ url: `/api/PlexAccount/${plexAccountId}` });
-
-  static getPlexAccountByIdEndpoint = (plexAccountId: number) =>
-    queryString.stringifyUrl({ url: `/api/PlexAccount/${plexAccountId}` });
+  static isUsernameAvailableEndpoint = (query: { username: string }) =>
+    queryString.stringifyUrl({ url: `/api/PlexAccount/check`, query });
 
   static generatePlexTokenEndpoint = (
     plexAccountId: number,
     query?: {
-      /** @default "" */
       verificationCode?: string;
     },
   ) =>
@@ -269,9 +261,6 @@ export class PlexAccountPaths {
       url: `/api/PlexAccount/generate-token/${plexAccountId}`,
       query,
     });
-
-  static isUsernameAvailableEndpoint = (query: { username: string }) =>
-    queryString.stringifyUrl({ url: `/api/PlexAccount/check`, query });
 
   static refreshPlexAccountAccessEndpoint = (plexAccountId: number) =>
     queryString.stringifyUrl({
@@ -283,4 +272,10 @@ export class PlexAccountPaths {
 
   static validatePlexTokenEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/PlexAccount/validate/token` });
+
+  static deletePlexAccountByIdEndpoint = (plexAccountId: number) =>
+    queryString.stringifyUrl({ url: `/api/PlexAccount/${plexAccountId}` });
+
+  static getPlexAccountByIdEndpoint = (plexAccountId: number) =>
+    queryString.stringifyUrl({ url: `/api/PlexAccount/${plexAccountId}` });
 }

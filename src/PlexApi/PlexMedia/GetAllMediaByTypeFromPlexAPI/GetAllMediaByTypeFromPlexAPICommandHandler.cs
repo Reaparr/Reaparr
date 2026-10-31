@@ -123,8 +123,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandler
                 Received = Math.Clamp(index, 0, totalSize),
                 Total = totalSize,
                 TimeRemaining = remainingTime,
-            },
-            cancellationToken
+            }
         );
     }
 }

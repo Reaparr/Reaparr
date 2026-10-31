@@ -1,4 +1,5 @@
 using FlexQuery.NET.Models;
+using SortDirection = Reaparr.Domain.SortDirection;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -175,12 +176,14 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
         var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = tvShows[0].PlexLibraryId;
         await dbContext.MediaOverviewTvShowSnapshots.AddRangeAsync(
-            tvShows.Select((show, index) =>
-            {
-                var snapshot = CreateSnapshot(show.Id, index, libraryId);
-                snapshot.QualityRank = tvShows.Count - index - 1;
-                return snapshot;
-            }),
+            tvShows.Select(
+                (show, index) =>
+                {
+                    var snapshot = CreateSnapshot(show.Id, index, libraryId);
+                    snapshot.QualityRank = tvShows.Count - index - 1;
+                    return snapshot;
+                }
+            ),
             CancellationToken
         );
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -195,13 +198,13 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        var descending = sort.EndsWith(":desc", StringComparison.Ordinal);
+        var direction = sort.EndsWith(":desc", StringComparison.Ordinal) ? SortDirection.Desc : SortDirection.Asc;
         var qualitySort = sort.StartsWith("videoQuality:", StringComparison.Ordinal);
         int expectedFirstId;
         if (qualitySort)
-            expectedFirstId = descending ? tvShows[0].Id : tvShows[^1].Id;
+            expectedFirstId = direction == SortDirection.Desc ? tvShows[0].Id : tvShows[^1].Id;
         else
-            expectedFirstId = descending ? tvShows[^1].Id : tvShows[0].Id;
+            expectedFirstId = direction == SortDirection.Desc ? tvShows[^1].Id : tvShows[0].Id;
         result.Value.Items.Select(x => x.Id).ShouldBe([expectedFirstId]);
         result.Value.NavigationIndexes.ShouldNotBeEmpty();
         result.Value.NavigationIndexes[0].Index.ShouldBe(0);
@@ -231,7 +234,7 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
             TotalCount = 1,
         };
         Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
-                command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
+                command is GetTvShowMediaByTypeCommand && ((GetTvShowMediaByTypeCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());
@@ -261,7 +264,7 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
             PageSize = 25,
         };
         Mock.SetupCommand<Result<PagedMediaQueryResult>>(command =>
-                command is GetMediaByTypeCommand && ((GetMediaByTypeCommand)command).Filter == filter
+                command is GetTvShowMediaByTypeCommand && ((GetTvShowMediaByTypeCommand)command).Filter == filter
             )
             .ReturnsAsync(Result.Ok(expected))
             .Verifiable(Times.Once());

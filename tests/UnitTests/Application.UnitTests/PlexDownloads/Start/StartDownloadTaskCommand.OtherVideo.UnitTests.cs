@@ -46,7 +46,9 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             Mock.Mock<IEventPublisher>()
                 .Setup(x =>
                     x.PublishAsync(
-                        It.Is<CheckDownloadQueueEvent>(e => e.PlexServerIds.SequenceEqual(new[] { target.PlexServerId })),
+                        It.Is<CheckDownloadQueueEvent>(e =>
+                            e.PlexServerIds.SequenceEqual(new[] { target.PlexServerId })
+                        ),
                         CancellationToken
                     )
                 )
@@ -94,8 +96,12 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             }
         );
         var dbContext = IDbContext;
-        var files = (await dbContext.DownloadTaskOtherVideoFiles.Include(x => x.Parent)
-            .OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken))
+        var files = (
+            await dbContext
+                .DownloadTaskOtherVideoFiles.Include(x => x.Parent)
+                .OrderBy(x => x.PlexApiRatingKey)
+                .ToListAsync(CancellationToken)
+        )
             .Cast<DownloadTaskFileBase>()
             .ToList();
         var download = files[0];
@@ -169,11 +175,7 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
         Mock.Mock<IEventPublisher>().Verify();
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
-                x =>
-                    x.StartDownloadTaskJob(
-                        It.IsAny<DownloadTaskKey>(),
-                        It.IsAny<CancellationToken>()
-                    ),
+                x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()),
                 Times.Never()
             );
         Mock.Mock<IMoveDownloadFileScheduler>()

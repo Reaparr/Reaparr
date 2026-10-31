@@ -31,16 +31,6 @@ public class MediaOverviewRankBuilderPhotoAlbumUnitTests
                     .ToArray()
             );
         result
-            .OrderBy(x => x.YearRank)
-            .Select(x => x.PlexPhotoAlbumId)
-            .ShouldBe(
-                snapshots
-                    .OrderBy(x => valuesById[x.PlexPhotoAlbumId].Year)
-                    .ThenBy(x => x.PlexPhotoAlbumId)
-                    .Select(x => x.PlexPhotoAlbumId)
-                    .ToArray()
-            );
-        result
             .OrderBy(x => x.AddedAtRank)
             .Select(x => x.PlexPhotoAlbumId)
             .ShouldBe(
@@ -81,7 +71,6 @@ public class MediaOverviewRankBuilderPhotoAlbumUnitTests
                     .ToArray()
             );
         result.Select(x => x.TitleRank).OrderBy(x => x).ShouldBe(expectedRanks);
-        result.Select(x => x.YearRank).OrderBy(x => x).ShouldBe(expectedRanks);
         result.Select(x => x.AddedAtRank).OrderBy(x => x).ShouldBe(expectedRanks);
         result.Select(x => x.UpdatedAtRank).OrderBy(x => x).ShouldBe(expectedRanks);
         result.Select(x => x.DurationRank).OrderBy(x => x).ShouldBe(expectedRanks);
@@ -106,7 +95,6 @@ public class MediaOverviewRankBuilderPhotoAlbumUnitTests
 
         // Assert
         result.OrderBy(x => x.TitleRank).Select(x => x.PlexPhotoAlbumId).ShouldBe([1, 2]);
-        result.OrderBy(x => x.YearRank).Select(x => x.PlexPhotoAlbumId).ShouldBe([2, 1]);
         result.OrderBy(x => x.DurationRank).Select(x => x.PlexPhotoAlbumId).ShouldBe([2, 1]);
     }
 }

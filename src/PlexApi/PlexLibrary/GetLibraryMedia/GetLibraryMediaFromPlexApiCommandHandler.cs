@@ -165,7 +165,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         result.LogIfFailed();
 
         if (result.IsFailed && command.MediaType is null)
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibrary.Id, result.ToResult(), ct);
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibrary.Id, result.ToResult());
 
         return result;
     }
@@ -203,7 +203,13 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         {
             var pendingFolder = state.PendingFolderParents.First();
             state.PendingFolderParents.Remove(pendingFolder.Key);
-            var folderResult = await ReadPhotoFolderTreeAsync(client, sectionIdResult.Value, pendingFolder.Value, state, ct);
+            var folderResult = await ReadPhotoFolderTreeAsync(
+                client,
+                sectionIdResult.Value,
+                pendingFolder.Value,
+                state,
+                ct
+            );
             if (folderResult.IsCancelledOrFailed)
                 return folderResult.LogIfFailed();
         }
@@ -595,19 +601,11 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         )
             return false;
 
-        navigation = new PhotoAlbumNavigation(
-            requestId,
-            query,
-            BuildPhotoNavigationIdentity(path, query)
-        );
+        navigation = new PhotoAlbumNavigation(requestId, query, BuildPhotoNavigationIdentity(path, query));
         return true;
     }
 
-    private static bool TryGetPhotoFolderNavigation(
-        string? key,
-        long sectionId,
-        out PhotoFolderNavigation navigation
-    )
+    private static bool TryGetPhotoFolderNavigation(string? key, long sectionId, out PhotoFolderNavigation navigation)
     {
         navigation = null!;
         if (!TryGetReturnedPhotoRoute(key, out var path, out var query))
@@ -673,10 +671,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
                 return false;
             }
 
-            if (
-                string.IsNullOrWhiteSpace(name)
-                || IsPhotoCredentialArgument(name)
-            )
+            if (string.IsNullOrWhiteSpace(name) || IsPhotoCredentialArgument(name))
                 return false;
             if (IsPhotoPagingArgument(name))
                 continue;
@@ -729,10 +724,8 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         public long SectionId { get; } = sectionId;
         public Dictionary<int, PlexPhotoAlbum> Albums { get; } = [];
         public Dictionary<int, PhotoAssetState> Assets { get; } = [];
-        public Dictionary<string, PhotoFolderNavigation> PendingFolderParents { get; } = new()
-        {
-            [PhotoRootParentToken] = new(null, [], PhotoRootParentToken),
-        };
+        public Dictionary<string, PhotoFolderNavigation> PendingFolderParents { get; } =
+            new() { [PhotoRootParentToken] = new(null, [], PhotoRootParentToken) };
         public HashSet<string> AlbumNavigationKeys { get; } = [];
         public HashSet<string> ActiveFolderParents { get; } = [];
         public HashSet<string> CompletedFolderParents { get; } = [];

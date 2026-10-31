@@ -12,12 +12,15 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
     )
     {
         // Arrange
-        await SetupDatabase(62001, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            62001,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
@@ -60,15 +63,21 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
     public async Task ShouldRespectMovieSiblingStatusWhenCleaningEpisode(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(62002, config =>
-        {
-            config.MovieDownloadTasksCount = 1;
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 3;
-        });
+        await SetupDatabase(
+            62002,
+            config =>
+            {
+                config.MovieDownloadTasksCount = 1;
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 3;
+            }
+        );
         var dbContext = IDbContext;
-        var episodeFiles = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var episodeFiles = await dbContext
+            .DownloadTaskTvShowEpisodeFile.AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         episodeFiles.Count.ShouldBe(3);
         var target = episodeFiles[0];
         var control = episodeFiles[2];
@@ -103,8 +112,12 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(episodeFiles.Select(x => x.Id).Order());
+        (
+            await dbContext
+                .DownloadTaskTvShowEpisodeFile.Select(x => x.Id)
+                .OrderBy(x => x)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(episodeFiles.Select(x => x.Id).Order());
         (await dbContext.DownloadTaskMovieFile.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
     }
 
@@ -115,14 +128,20 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
     public async Task ShouldRespectEpisodeSiblingStatusWhenCleaningEpisode(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(62003, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 3;
-        });
+        await SetupDatabase(
+            62003,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 3;
+            }
+        );
         var dbContext = IDbContext;
-        var episodeFiles = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var episodeFiles = await dbContext
+            .DownloadTaskTvShowEpisodeFile.AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         episodeFiles.Count.ShouldBe(3);
         var target = episodeFiles[0];
         var sibling = episodeFiles[1];
@@ -158,8 +177,12 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(new[] { target.Id, sibling.Id, control.Id }.Order());
+        (
+            await dbContext
+                .DownloadTaskTvShowEpisodeFile.Select(x => x.Id)
+                .OrderBy(x => x)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(new[] { target.Id, sibling.Id, control.Id }.Order());
     }
 
     [Test]
@@ -169,15 +192,21 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
     public async Task ShouldRespectPhotoSiblingStatusWhenCleaningEpisode(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(62004, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 3;
-            config.PlexPhotoLibraryCount = 1;
-        });
+        await SetupDatabase(
+            62004,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 3;
+                config.PlexPhotoLibraryCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var episodeFiles = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var episodeFiles = await dbContext
+            .DownloadTaskTvShowEpisodeFile.AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         episodeFiles.Count.ShouldBe(3);
         var target = episodeFiles[0];
         var control = episodeFiles[2];
@@ -224,9 +253,15 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(episodeFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext
+                .DownloadTaskTvShowEpisodeFile.Select(x => x.Id)
+                .OrderBy(x => x)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(episodeFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
@@ -236,19 +271,25 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
     public async Task ShouldRespectMusicSiblingStatusWhenCleaningEpisode(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(62006, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 3;
-            config.PlexMusicLibraryCount = 1;
-            config.MusicArtistDownloadTasksCount = 1;
-            config.MusicAlbumDownloadTasksCount = 1;
-            config.MusicTrackDownloadTasksCount = 1;
-            config.MusicTrackFileDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            62006,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 3;
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 1;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var episodeFiles = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var episodeFiles = await dbContext
+            .DownloadTaskTvShowEpisodeFile.AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         episodeFiles.Count.ShouldBe(3);
         var target = episodeFiles[0];
         var control = episodeFiles[2];
@@ -284,9 +325,15 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(episodeFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext
+                .DownloadTaskTvShowEpisodeFile.Select(x => x.Id)
+                .OrderBy(x => x)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(episodeFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
@@ -296,17 +343,23 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
     public async Task ShouldRespectOtherVideoSiblingStatusWhenCleaningEpisode(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(62007, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 3;
-            config.PlexOtherVideoLibraryCount = 1;
-            config.OtherVideoDownloadTasksCount = 1;
-            config.OtherVideoFileDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            62007,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 3;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var episodeFiles = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var episodeFiles = await dbContext
+            .DownloadTaskTvShowEpisodeFile.AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         episodeFiles.Count.ShouldBe(3);
         var target = episodeFiles[0];
         var control = episodeFiles[2];
@@ -341,24 +394,35 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(episodeFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext
+                .DownloadTaskTvShowEpisodeFile.Select(x => x.Id)
+                .OrderBy(x => x)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(episodeFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
     public async Task ShouldReturnFailedResult_WhenSecondCleanupPathResolutionFails()
     {
         // Arrange
-        await SetupDatabase(62008, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            62008,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -370,10 +434,7 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
             .Setup(x => x.GetDirectoryName(target.DownloadDirectory))
             .Throws(new InvalidOperationException("second path failure"))
             .Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.Exists(target.DownloadDirectory))
-            .Returns(true)
-            .Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.Exists(target.DownloadDirectory)).Returns(true).Verifiable(Times.Once());
         Mock.Mock<IDirectory>()
             .Setup(x => x.GetFileSystemEntries(target.DownloadDirectory))
             .Returns([])
@@ -397,15 +458,20 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
     public async Task ShouldReturnFailedResult_WhenSecondCleanupDirectoryEntriesCannotBeRead()
     {
         // Arrange
-        await SetupDatabase(62009, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            62009,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -417,21 +483,13 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
             .Setup(x => x.GetDirectoryName(target.DownloadDirectory))
             .Returns(parent)
             .Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.Exists(target.DownloadDirectory))
-            .Returns(true)
-            .Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.Exists(target.DownloadDirectory)).Returns(true).Verifiable(Times.Once());
         Mock.Mock<IDirectory>()
             .Setup(x => x.GetFileSystemEntries(target.DownloadDirectory))
             .Returns([])
             .Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.Delete(target.DownloadDirectory))
-            .Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.Exists(parent))
-            .Returns(true)
-            .Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.Delete(target.DownloadDirectory)).Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.Exists(parent)).Returns(true).Verifiable(Times.Once());
         Mock.Mock<IDirectory>()
             .Setup(x => x.GetFileSystemEntries(parent))
             .Throws(new UnauthorizedAccessException("second directory denied"))
@@ -454,15 +512,20 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
     public async Task ShouldReturnFailedResult_WhenSecondCleanupDirectoryCannotBeDeleted()
     {
         // Arrange
-        await SetupDatabase(62010, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            62010,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -474,23 +537,14 @@ public class CleanUpDownloadTaskFoldersEpisodeUnitTests : BaseCommandUnitTest<Cl
             .Setup(x => x.GetDirectoryName(target.DownloadDirectory))
             .Returns(parent)
             .Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.Exists(target.DownloadDirectory))
-            .Returns(true)
-            .Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.Exists(target.DownloadDirectory)).Returns(true).Verifiable(Times.Once());
         Mock.Mock<IDirectory>()
             .Setup(x => x.GetFileSystemEntries(target.DownloadDirectory))
             .Returns([])
             .Verifiable(Times.Once());
         Mock.Mock<IDirectory>().Setup(x => x.Delete(target.DownloadDirectory)).Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.Exists(parent))
-            .Returns(true)
-            .Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.GetFileSystemEntries(parent))
-            .Returns([])
-            .Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.Exists(parent)).Returns(true).Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.GetFileSystemEntries(parent)).Returns([]).Verifiable(Times.Once());
         Mock.Mock<IDirectory>()
             .Setup(x => x.Delete(parent))
             .Throws(new UnauthorizedAccessException("second delete denied"))

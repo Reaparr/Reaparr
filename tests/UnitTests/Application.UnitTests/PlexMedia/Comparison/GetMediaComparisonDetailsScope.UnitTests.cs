@@ -32,12 +32,14 @@ public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
         {
             await AddCurrentScopeAsync(remote, owned, mediaType);
             var outdatedId = outdatedSide == 1 ? library.Id : opposite.Id;
-            await IDbContext.PlexLibraries.Where(x => x.Id == outdatedId)
+            await IDbContext
+                .PlexLibraries.Where(x => x.Id == outdatedId)
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.Outdated, true), CancellationToken);
         }
         var scheduler = Mock.Mock<IScheduler>();
         scheduler.Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]);
-        scheduler.Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), CancellationToken))
+        scheduler
+            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), CancellationToken))
             .ReturnsAsync([PlexLibraryComparisonJob.GetJobKey(90001, 90002)]);
 
         // Act
@@ -68,12 +70,15 @@ public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
         var (remote, owned) = await SetupLibrariesAsync(mediaType);
         var key = PlexLibraryComparisonJob.GetJobKey(owned.Id, remote.Id);
         var execution = new Mock<IJobExecutionContext>();
-        execution.SetupGet(x => x.JobDetail)
+        execution
+            .SetupGet(x => x.JobDetail)
             .Returns(JobBuilder.Create<PlexLibraryComparisonJob>().WithIdentity(key).Build());
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken))
+        scheduler
+            .Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken))
             .ReturnsAsync(isRunning ? new List<IJobExecutionContext> { execution.Object } : []);
-        scheduler.Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), CancellationToken))
+        scheduler
+            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), CancellationToken))
             .ReturnsAsync(isRunning ? new HashSet<JobKey>() : [key]);
 
         // Act
@@ -101,8 +106,8 @@ public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
                 config.TvShowEpisodeCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
             }
         );
-        var libraries = await IDbContext.PlexLibraries
-            .Where(x => x.Type == mediaType)
+        var libraries = await IDbContext
+            .PlexLibraries.Where(x => x.Type == mediaType)
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);

@@ -10,9 +10,11 @@ import {
 	type PlexLibraryAccessCurrentStateLibraryDTO,
 	type PlexLibraryAccessTimelineDTO,
 	type PlexLibraryAccessTimelineEventDTO,
+	SortDirection,
 } from '@dto';
 import { StoreNames, type ISetupResult } from '@interfaces';
 import { useSettingsStore } from '@store';
+import { getSortOrder } from '@composables';
 
 export type LibraryAccessTimelineZoomPreset = '1d' | '7d' | '30d' | '90d' | 'All';
 
@@ -203,7 +205,7 @@ export const useLibraryAccessTimelineStore = defineStore(StoreNames.LibraryAcces
 			const toMs = state.filters.toUtc ? new Date(state.filters.toUtc).getTime() : null;
 			const filteredEvents = getFilteredEvents({ ignoreDateFilter: true });
 			const groupedEvents = groupBy(
-				orderBy(filteredEvents, (event) => event.createdAt, 'asc'),
+				orderBy(filteredEvents, (event) => event.createdAt, getSortOrder(SortDirection.Asc)),
 				(event) => buildRowId(event.plexAccountId, event.plexServerId, event.plexLibraryId),
 			);
 

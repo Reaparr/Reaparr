@@ -184,15 +184,9 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
         CancellationToken ct
     )
     {
-        var movieFileIds = leafKeys
-            .Where(k => k.Type is DownloadTaskType.MovieData)
-            .Select(k => k.Id)
-            .ToList();
+        var movieFileIds = leafKeys.Where(k => k.Type is DownloadTaskType.MovieData).Select(k => k.Id).ToList();
 
-        var episodeFileIds = leafKeys
-            .Where(k => k.Type is DownloadTaskType.EpisodeData)
-            .Select(k => k.Id)
-            .ToList();
+        var episodeFileIds = leafKeys.Where(k => k.Type is DownloadTaskType.EpisodeData).Select(k => k.Id).ToList();
 
         var rootKeys = new List<DownloadTaskKey>();
 
@@ -214,9 +208,7 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
 
         if (episodeFileIds.Count > 0)
         {
-            var episodeLeafKeys = leafKeys.Where(k =>
-                k.Type is DownloadTaskType.EpisodeData
-            );
+            var episodeLeafKeys = leafKeys.Where(k => k.Type is DownloadTaskType.EpisodeData);
             foreach (var episodeLeafKey in episodeLeafKeys)
             {
                 var rootKey = await _dbContext.GetRootDownloadTaskKeyAsync(episodeLeafKey, integration, ct);
@@ -253,9 +245,7 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
 
         var movieTask = _dbContext
             .DownloadTaskMovieFile.WhereIntegrationOwnershipMatches(integration)
-            .Where(x =>
-                x.HashId != null && (normalizedHashes == null || normalizedHashes.Contains(x.HashId.ToLower()))
-            )
+            .Where(x => x.HashId != null && (normalizedHashes == null || normalizedHashes.Contains(x.HashId.ToLower())))
             .Select(x => new
             {
                 Key = new DownloadTaskKey
@@ -271,9 +261,7 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
 
         var episodeTask = _dbContext
             .DownloadTaskTvShowEpisodeFile.WhereIntegrationOwnershipMatches(integration)
-            .Where(x =>
-                x.HashId != null && (normalizedHashes == null || normalizedHashes.Contains(x.HashId.ToLower()))
-            )
+            .Where(x => x.HashId != null && (normalizedHashes == null || normalizedHashes.Contains(x.HashId.ToLower())))
             .Select(x => new
             {
                 Key = new DownloadTaskKey

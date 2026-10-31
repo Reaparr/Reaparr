@@ -27,8 +27,7 @@ public abstract class BaseCommandUnitTest<TCommand> : BaseUnitTest
     }
 
     // Construct the real validator; the container supplies its constructor dependencies.
-    private IValidator<TCommand> GetValidator() =>
-        (IValidator<TCommand>)Mock.Create(_validatorType.Value);
+    private IValidator<TCommand> GetValidator() => (IValidator<TCommand>)Mock.Create(_validatorType.Value);
 
     /// <summary>
     /// Use this method to test the execution of a command handler, including the corresponding validator.

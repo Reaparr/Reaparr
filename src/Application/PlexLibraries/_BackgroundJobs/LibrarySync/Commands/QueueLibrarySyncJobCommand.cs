@@ -136,13 +136,16 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
             })
             .ToList();
 
+        await MarkForcedSyncLibrariesOutdatedAsync(command.ForceLibrarySync, itemsToAdd, itemsToReset, cancellationToken);
+
         if (itemsToAdd.Any())
         {
             await _dbContext.LibrarySyncJobQueues.AddRangeAsync(itemsToAdd, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        if (itemsToAdd.Any() || itemsToReset.Any())
+        var hasAdmission = itemsToAdd.Any() || itemsToReset.Any();
+        if (hasAdmission)
         {
             _log.Here()
                 .Debug(
@@ -151,36 +154,46 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
                     itemsToReset.Count,
                     queuedOrProcessingIds.Count
                 );
-        }
-
-        var hasAdmission = itemsToAdd.Any() || itemsToReset.Any();
-        if (hasAdmission)
-        {
-            var notificationResult = await Result.Try(
-                async Task () =>
-                    await _notificationHubService.SendRefreshNotificationAsync([
-                        RefreshDataType.PlexLibrarySyncStatus,
-                    ])
+            var notificationResult = await Result.Try(async Task () =>
+                await _notificationHubService.SendRefreshNotificationAsync([RefreshDataType.PlexLibrarySyncStatus])
             );
             notificationResult.LogIfFailed();
         }
 
         if (hasAdmission || queuedOrProcessingIds.Any())
         {
-            var dispatchResult = await Result.Try(
-                async Task () =>
-                {
-                    var checkQueuedResult = await _commandExecutor.Send(
-                        new CheckQueuedPlexLibraryToSyncCommand(),
-                        cancellationToken
-                    );
-                    checkQueuedResult.LogIfFailed();
-                }
-            );
+            var dispatchResult = await Result.Try(async Task () =>
+            {
+                var checkQueuedResult = await _commandExecutor.Send(
+                    new CheckQueuedPlexLibraryToSyncCommand(),
+                    cancellationToken
+                );
+                checkQueuedResult.LogIfFailed();
+            });
             dispatchResult.LogIfFailed();
         }
 
         return Result.Ok();
+    }
+
+    private async Task MarkForcedSyncLibrariesOutdatedAsync(
+        bool forceLibrarySync,
+        List<LibrarySyncJobQueue> itemsToAdd,
+        List<int> itemsToReset,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!forceLibrarySync)
+            return;
+
+        // A forced sync must invalidate comparison scopes even when Plex returns an unchanged snapshot.
+        var libraryIds = itemsToAdd.Select(x => x.PlexLibraryId).Concat(itemsToReset).Distinct().ToList();
+        if (libraryIds.Count == 0)
+            return;
+
+        await _dbContext
+            .PlexLibraries.Where(x => libraryIds.Contains(x.Id))
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.Outdated, true), cancellationToken);
     }
 
     private int GetPriority(PlexMediaType type)

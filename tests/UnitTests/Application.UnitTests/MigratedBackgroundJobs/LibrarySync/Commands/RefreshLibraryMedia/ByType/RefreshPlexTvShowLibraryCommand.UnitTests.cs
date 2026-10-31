@@ -5,14 +5,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     private void SetupProgressStoreMocks(List<LibraryProgressItem>? capturedItems = null)
     {
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>())
-            )
-            .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => capturedItems?.Add(item))
+            .Setup(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()))
+            .Callback<int, LibraryProgressItem>((_, item) => capturedItems?.Add(item))
             .Returns(Task.CompletedTask);
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()))
             .Returns(Task.CompletedTask);
     }
 
@@ -54,8 +52,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
 
     private void SetupMediaOverviewRebuild()
     {
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
-            .ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.TvShow)).ReturnsAsync(Result.Ok());
         Mock.SetupCommand(() => new ScheduleOptimizeDatabaseJobCommand { ChangedItemCount = 0 })
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
@@ -117,10 +114,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
         updatedLibrary.ShouldNotBeNull();
         updatedLibrary.SyncedAt.ShouldBe(originalSyncedAt);
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.Exactly(3)
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.Exactly(3));
     }
 
     [Test]
@@ -187,10 +181,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
         result.IsFailed.ShouldBeTrue();
         result.Errors.First().Message.ShouldContain("Failed to get seasons");
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Once());
     }
 
     [Test]
@@ -226,10 +217,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
         result.IsFailed.ShouldBeTrue();
         result.Errors.First().Message.ShouldContain("Failed to get episodes");
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Once());
     }
 
     [Test]
@@ -263,10 +251,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
         result.IsFailed.ShouldBeTrue();
         result.Errors.First().Message.ShouldContain("Failed to sync TV shows");
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Once());
     }
 
     // ── Filter: null ParentGuid ────────────────────────────────────────────

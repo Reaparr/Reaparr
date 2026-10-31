@@ -71,14 +71,23 @@ public class CheckForUpdatesCommandUnitTests : BaseUnitTest<CheckForUpdatesComma
         var releasesResult = outcome switch
         {
             FallbackOutcome.Failed => Result.Fail<IReadOnlyList<ReleaseNote>>("GitHub unavailable"),
-            FallbackOutcome.Cancelled => ResultExtensions.TaskIsCancelled(nameof(GetGitHubReleasesCommand))
+            FallbackOutcome.Cancelled => ResultExtensions
+                .TaskIsCancelled(nameof(GetGitHubReleasesCommand))
                 .ToResult<IReadOnlyList<ReleaseNote>>(),
             _ => Result.Ok<IReadOnlyList<ReleaseNote>>([]),
         };
         var appBuildInfo = new MockAppBuildInfo { Version = "1.2.3", InformationalVersion = "1.2.3" };
         var manager = new Mock<UpdateManager>(
-            new Mock<IUpdateSource>().Object, null!, new Mock<IVelopackLocator>(MockBehavior.Loose).Object);
-        var sut = new CheckForUpdatesCommandHandler(Log, Mock.Mock<ICommandExecutor>().Object, appBuildInfo, manager.Object);
+            new Mock<IUpdateSource>().Object,
+            null!,
+            new Mock<IVelopackLocator>(MockBehavior.Loose).Object
+        );
+        var sut = new CheckForUpdatesCommandHandler(
+            Log,
+            Mock.Mock<ICommandExecutor>().Object,
+            appBuildInfo,
+            manager.Object
+        );
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<GetGitHubReleasesCommand>(), CancellationToken))
             .ReturnsAsync(releasesResult)
@@ -110,5 +119,10 @@ public class CheckForUpdatesCommandUnitTests : BaseUnitTest<CheckForUpdatesComma
         manager.Verify();
     }
 
-    public enum FallbackOutcome { Failed, Cancelled, Empty }
+    public enum FallbackOutcome
+    {
+        Failed,
+        Cancelled,
+        Empty,
+    }
 }

@@ -1,5 +1,5 @@
-using Quartz;
 using System.Text.Json;
+using Quartz;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -147,6 +147,7 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
             );
         (await dbContext.PlexComparisonScopes.CountAsync(CancellationToken)).ShouldBe(0);
     }
+
     [Test]
     [Arguments(PlexMediaType.Movie, JobStatus.Completed)]
     [Arguments(PlexMediaType.TvShow, JobStatus.Completed)]
@@ -180,17 +181,20 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
         context.SetupAllProperties();
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken);
         context.SetupGet(x => x.MergedJobDataMap).Returns(jobData);
-        context.SetupGet(x => x.JobDetail).Returns(
-            JobBuilder.Create<PlexLibraryComparisonJob>()
-                .WithIdentity(PlexLibraryComparisonJob.GetJobKey(owned.Id, remote.Id))
-                .Build()
-        );
+        context
+            .SetupGet(x => x.JobDetail)
+            .Returns(
+                JobBuilder
+                    .Create<PlexLibraryComparisonJob>()
+                    .WithIdentity(PlexLibraryComparisonJob.GetJobKey(owned.Id, remote.Id))
+                    .Build()
+            );
         context.SetupGet(x => x.FireTimeUtc).Returns(new DateTimeOffset(2026, 10, 19, 0, 0, 0, TimeSpan.Zero));
         var executionData = new Dictionary<object, object>();
-        context.Setup(x => x.Put(It.IsAny<object>(), It.IsAny<object>()))
+        context
+            .Setup(x => x.Put(It.IsAny<object>(), It.IsAny<object>()))
             .Callback<object, object>((key, value) => executionData[key] = value);
-        context.Setup(x => x.Get(It.IsAny<object>()))
-            .Returns<object>(key => executionData.GetValueOrDefault(key));
+        context.Setup(x => x.Get(It.IsAny<object>())).Returns<object>(key => executionData.GetValueOrDefault(key));
         var writerResult = outcome switch
         {
             JobStatus.Failed => Result.Fail("Comparison writer failed"),
@@ -198,11 +202,14 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
             _ => Result.Ok(),
         };
         var executor = Mock.Mock<ICommandExecutor>();
-        executor.Setup(x => x.Send(It.IsAny<CompareMoviePlexLibraryCommand>(), CancellationToken))
+        executor
+            .Setup(x => x.Send(It.IsAny<CompareMoviePlexLibraryCommand>(), CancellationToken))
             .ReturnsAsync(writerResult);
-        executor.Setup(x => x.Send(It.IsAny<CompareTvShowPlexLibraryCommand>(), CancellationToken))
+        executor
+            .Setup(x => x.Send(It.IsAny<CompareTvShowPlexLibraryCommand>(), CancellationToken))
             .ReturnsAsync(writerResult);
-        executor.Setup(x => x.Send(It.IsAny<CompareMusicPlexLibraryCommand>(), CancellationToken))
+        executor
+            .Setup(x => x.Send(It.IsAny<CompareMusicPlexLibraryCommand>(), CancellationToken))
             .ReturnsAsync(writerResult);
         var updates = new List<JobStatusUpdate<string>>();
         Mock.Mock<IProgressHubService>()
@@ -238,5 +245,4 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
         }
         jobData.GetPayload<PlexLibraryComparisonJobPayload>().ShouldBe(payload);
     }
-
 }

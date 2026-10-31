@@ -22,8 +22,8 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
         var dbContext = IDbContext;
         var file = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
-            .ThenInclude(x => x!.Parent)
-            .ThenInclude(x => x!.Parent)
+                .ThenInclude(x => x!.Parent)
+                    .ThenInclude(x => x!.Parent)
             .SingleAsync(CancellationToken);
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         await dbContext.CreateDownloadClientLog(
@@ -87,8 +87,8 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
-            .ThenInclude(x => x!.Parent)
-            .ThenInclude(x => x!.Parent)
+                .ThenInclude(x => x!.Parent)
+                    .ThenInclude(x => x!.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var file = musicFiles[0];
@@ -154,8 +154,8 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
-            .ThenInclude(x => x!.Parent)
-            .ThenInclude(x => x!.Parent)
+                .ThenInclude(x => x!.Parent)
+                    .ThenInclude(x => x!.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var file = musicFiles[0];
@@ -193,7 +193,6 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
                 .ToListAsync(CancellationToken)
         ).ShouldBe([new { DownloadTaskFileId = sibling.Id, Message = "sibling" }]);
     }
-
 
     private static DownloadTaskTrackFileLog MusicLog(DownloadTaskMusicTrackFile file, string message) =>
         new()

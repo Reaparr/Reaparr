@@ -110,17 +110,16 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
 
         Mock.SetupCommand<Result>(x =>
                 (x as ApplyOwnedMovieComparisonStateCommand) != null
-                && libraries.Select(library => library.Id).Contains(((ApplyOwnedMovieComparisonStateCommand)x).OwnedLibraryId)
+                && libraries
+                    .Select(library => library.Id)
+                    .Contains(((ApplyOwnedMovieComparisonStateCommand)x).OwnedLibraryId)
             )
             .Callback<ICommand<Result>, CancellationToken>(
                 (sentCommand, _) =>
                 {
                     var projection = (ApplyOwnedMovieComparisonStateCommand)sentCommand;
                     observed.Add(
-                        (
-                            projection.OwnedLibraryId,
-                            projection.Items.Select(item => item.Id).OrderBy(id => id).ToList()
-                        )
+                        (projection.OwnedLibraryId, projection.Items.Select(item => item.Id).OrderBy(id => id).ToList())
                     );
                 }
             )
@@ -169,17 +168,16 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
 
         Mock.SetupCommand<Result>(x =>
                 (x as ApplyOwnedTvShowComparisonStateCommand) != null
-                && libraries.Select(library => library.Id).Contains(((ApplyOwnedTvShowComparisonStateCommand)x).OwnedLibraryId)
+                && libraries
+                    .Select(library => library.Id)
+                    .Contains(((ApplyOwnedTvShowComparisonStateCommand)x).OwnedLibraryId)
             )
             .Callback<ICommand<Result>, CancellationToken>(
                 (sentCommand, _) =>
                 {
                     var projection = (ApplyOwnedTvShowComparisonStateCommand)sentCommand;
                     observed.Add(
-                        (
-                            projection.OwnedLibraryId,
-                            projection.Items.Select(item => item.Id).OrderBy(id => id).ToList()
-                        )
+                        (projection.OwnedLibraryId, projection.Items.Select(item => item.Id).OrderBy(id => id).ToList())
                     );
                 }
             )
@@ -612,7 +610,11 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
         );
 
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
-        var command = new ApplyComparisonStateCommand([CreateItem(886, PlexMediaType.Episode)], PlexMediaType.Episode, library.Id);
+        var command = new ApplyComparisonStateCommand(
+            [CreateItem(886, PlexMediaType.Episode)],
+            PlexMediaType.Episode,
+            library.Id
+        );
 
         Mock.SetupCommand<Result>(x => x is ApplyOwnedMovieComparisonStateCommand)
             .ReturnsAsync(Result.Ok())

@@ -1,5 +1,5 @@
 import { headers, route } from '@fixtures';
-import { generatePlexMedia, generateResultDTO } from '@mock';
+import { generatePlexMedia, generateResultDTO, generateSupportedSorts } from '@mock';
 import { PlexLibraryPaths, PlexMediaPaths } from '@api/api-paths';
 import { AudioQuality, PlexMediaType, VideoQuality } from '@dto';
 
@@ -56,7 +56,7 @@ it('keeps multipart Other Video root downloads automatic instead of forcing the 
 			qualities: [{ mediaId: media.id, dataId: part.id, mediaDataType: PlexMediaType.OtherVideos, videoQuality: part.videoQuality, audioQuality: AudioQuality.None }],
 			keepCompletedInDownloadFolder: false,
 		}));
-		const metadata = { countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 1 };
+		const metadata = { countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 1, supportedSorts: generateSupportedSorts(library.type) };
 		cy.intercept('GET', PlexLibraryPaths.getAllPlexLibrariesEndpoint(), {
 			statusCode: 200, body: generateResultDTO([library]), ...headers,
 		});

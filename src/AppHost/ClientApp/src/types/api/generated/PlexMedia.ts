@@ -27,36 +27,13 @@ export class PlexMedia {
   /**
    * No description
    * * @tags Plexmedia
-   * @name GetMediaComparisonDetailsEndpoint
-   * @request GET:/api/PlexMedia/comparison-details/{PlexMediaId}
-   * @secure
-   */
-  getMediaComparisonDetailsEndpoint = (
-    plexMediaId: number,
-    query: {
-      type: PlexMediaType;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<PlexMediaComparisonDetailsDTO>({
-      url: `/api/PlexMedia/comparison-details/${plexMediaId}`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<PlexMediaComparisonDetailsDTO>);
-
-  /**
-   * No description
-   * * @tags Plexmedia
    * @name GetAllMediaByTypeEndpoint
    * @request GET:/api/PlexMedia
    * @secure
    */
   getAllMediaByTypeEndpoint = (
     query: {
-      comparisonState?: PlexMediaComparisonState | null;
+      comparisonState?: PlexMediaComparisonState;
       /** @format int32 */
       countryId?: number | null;
       /** @default false */
@@ -93,8 +70,31 @@ export class PlexMedia {
   /**
    * No description
    * * @tags Plexmedia
+   * @name GetMediaComparisonDetailsEndpoint
+   * @request GET:/api/PlexMedia/comparison-details/{plexMediaId}
+   * @secure
+   */
+  getMediaComparisonDetailsEndpoint = (
+    plexMediaId: number,
+    query: {
+      type: PlexMediaType;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<PlexMediaComparisonDetailsDTO>({
+      url: `/api/PlexMedia/comparison-details/${plexMediaId}`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<PlexMediaComparisonDetailsDTO>);
+
+  /**
+   * No description
+   * * @tags Plexmedia
    * @name GetMediaDetailByIdEndpoint
-   * @request GET:/api/PlexMedia/detail/{PlexMediaId}
+   * @request GET:/api/PlexMedia/detail/{plexMediaId}
    * @secure
    */
   getMediaDetailByIdEndpoint = (
@@ -162,19 +162,8 @@ export class PlexMedia {
 }
 
 export class PlexMediaPaths {
-  static getMediaComparisonDetailsEndpoint = (
-    plexMediaId: number,
-    query: {
-      type: PlexMediaType;
-    },
-  ) =>
-    queryString.stringifyUrl({
-      url: `/api/PlexMedia/comparison-details/${plexMediaId}`,
-      query,
-    });
-
   static getAllMediaByTypeEndpoint = (query: {
-    comparisonState?: PlexMediaComparisonState | null;
+    comparisonState?: PlexMediaComparisonState;
     /** @format int32 */
     countryId?: number | null;
     /** @default false */
@@ -197,6 +186,17 @@ export class PlexMediaPaths {
     size?: number | null;
     sort?: string | null;
   }) => queryString.stringifyUrl({ url: `/api/PlexMedia`, query });
+
+  static getMediaComparisonDetailsEndpoint = (
+    plexMediaId: number,
+    query: {
+      type: PlexMediaType;
+    },
+  ) =>
+    queryString.stringifyUrl({
+      url: `/api/PlexMedia/comparison-details/${plexMediaId}`,
+      query,
+    });
 
   static getMediaDetailByIdEndpoint = (
     plexMediaId: number,

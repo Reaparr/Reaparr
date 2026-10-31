@@ -31,21 +31,32 @@ public class SetLibraryEnabledEndpointUnitTests
         dbContext.PlexPhotoAlbums.AddRange(targetAlbum, controlAlbum);
         dbContext.PlexPhotoMediaData.AddRange(targetFile, controlFile);
         await dbContext.SaveChangesAsync(CancellationToken);
-        dbContext.PlexPhotoAlbumMemberships.Add(new PlexPhotoAlbumMembership
-        {
-            PlexPhotoAlbumId = targetAlbum.Id,
-            PlexPhotoMediaDataId = targetFile.Id,
-        });
+        dbContext.PlexPhotoAlbumMemberships.Add(
+            new PlexPhotoAlbumMembership { PlexPhotoAlbumId = targetAlbum.Id, PlexPhotoMediaDataId = targetFile.Id }
+        );
         await dbContext.SaveChangesAsync(CancellationToken);
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == target.Id), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.Send(
+                    It.Is<CancelLibrarySyncJobCommand>(c => c.PlexLibraryId == target.Id),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
-            .Setup(x => x.SendRefreshNotificationAsync(It.Is<List<RefreshDataType>>(types =>
-                types.SequenceEqual(new[] { RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus })
-            )))
+            .Setup(x =>
+                x.SendRefreshNotificationAsync(
+                    It.Is<List<RefreshDataType>>(types =>
+                        types.SequenceEqual(
+                            new[] { RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus }
+                        )
+                    )
+                )
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -60,14 +71,52 @@ public class SetLibraryEnabledEndpointUnitTests
         response.IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         response.Value.ShouldNotBeNull().IsEnabled.ShouldBeFalse();
-        (await dbContext.PlexPhotoAlbums.Select(x => new { x.PlexLibraryId, x.PlexApiRatingKey }).ToListAsync(CancellationToken))
-            .ShouldBe([new { PlexLibraryId = control.Id, PlexApiRatingKey = 802 }]);
-        (await dbContext.PlexPhotoMediaData.Select(x => new { x.PlexLibraryId, x.PlexApiRatingKey }).ToListAsync(CancellationToken))
-            .ShouldBe([new { PlexLibraryId = control.Id, PlexApiRatingKey = 902 }]);
-        (await dbContext.PlexPhotoFolders.Where(x => x.PlexLibraryId == target.Id).Select(x => new { x.Id, x.ParentId, x.IsActive }).ToListAsync(CancellationToken))
-            .ShouldBe([new { Id = targetRoot.Id, ParentId = (int?)null, IsActive = (bool?)false }]);
-        (await dbContext.PlexPhotoFolders.Where(x => x.PlexLibraryId == control.Id).Select(x => new { x.Id, x.ParentId, x.IsActive }).ToListAsync(CancellationToken))
-            .ShouldBe([new { Id = controlRoot.Id, ParentId = (int?)null, IsActive = (bool?)true }]);
+        (
+            await dbContext
+                .PlexPhotoAlbums.Select(x => new { x.PlexLibraryId, x.PlexApiRatingKey })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe([new { PlexLibraryId = control.Id, PlexApiRatingKey = 802 }]);
+        (
+            await dbContext
+                .PlexPhotoMediaData.Select(x => new { x.PlexLibraryId, x.PlexApiRatingKey })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe([new { PlexLibraryId = control.Id, PlexApiRatingKey = 902 }]);
+        (
+            await dbContext
+                .PlexPhotoFolders.Where(x => x.PlexLibraryId == target.Id)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.ParentId,
+                    x.IsActive,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe([
+            new
+            {
+                Id = targetRoot.Id,
+                ParentId = (int?)null,
+                IsActive = (bool?)false,
+            },
+        ]);
+        (
+            await dbContext
+                .PlexPhotoFolders.Where(x => x.PlexLibraryId == control.Id)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.ParentId,
+                    x.IsActive,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe([
+            new
+            {
+                Id = controlRoot.Id,
+                ParentId = (int?)null,
+                IsActive = (bool?)true,
+            },
+        ]);
         (await dbContext.PlexPhotoAlbumMemberships.CountAsync(CancellationToken)).ShouldBe(0);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
@@ -87,16 +136,31 @@ public class SetLibraryEnabledEndpointUnitTests
         await dbContext.SaveChangesAsync(CancellationToken);
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<QueueLibrarySyncJobCommand>(c =>
-                c.PlexLibraryIds.SequenceEqual(new[] { library.Id }) && !c.ForceLibrarySync && !c.ForceMediaRefresh
-            ), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.Send(
+                    It.Is<QueueLibrarySyncJobCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                        && !c.ForceLibrarySync
+                        && !c.ForceMediaRefresh
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
-            .Setup(x => x.SendRefreshNotificationAsync(It.Is<List<RefreshDataType>>(types =>
-                types.SequenceEqual(new[] { RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus })
-            )))
+            .Setup(x =>
+                x.SendRefreshNotificationAsync(
+                    It.Is<List<RefreshDataType>>(types =>
+                        types.SequenceEqual(
+                            new[] { RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus }
+                        )
+                    )
+                )
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -130,7 +194,13 @@ public class SetLibraryEnabledEndpointUnitTests
             IsActive = active,
         };
 
-    private static PlexPhotoFolder CreateChild(PlexLibrary library, int serverId, PlexPhotoFolder root, string path, string title) =>
+    private static PlexPhotoFolder CreateChild(
+        PlexLibrary library,
+        int serverId,
+        PlexPhotoFolder root,
+        string path,
+        string title
+    ) =>
         new()
         {
             Id = 0,
@@ -155,7 +225,6 @@ public class SetLibraryEnabledEndpointUnitTests
             Title = $"Album {ratingKey}",
             SearchTitle = $"album {ratingKey}",
             Summary = null,
-            PlexApiMetaDataKey = ratingKey,
             HasThumb = false,
             AddedAt = DateTime.UtcNow,
             UpdatedAt = null,
@@ -174,7 +243,6 @@ public class SetLibraryEnabledEndpointUnitTests
             Title = $"file-{ratingKey}.jpg",
             SearchTitle = $"file-{ratingKey}.jpg",
             Summary = null,
-            PlexApiMetaDataKey = ratingKey,
             HasThumb = false,
             AddedAt = DateTime.UtcNow,
             UpdatedAt = null,

@@ -235,10 +235,14 @@ public static partial class PlexMediaExtensions
     )
     {
         var fileName = mediaData.GetFileName;
-        if (string.IsNullOrEmpty(mediaData.GeneratedFilename)
-            || !episodeParts.Any(x => x.PlexApiMediaId == mediaData.PlexApiMediaId
+        if (
+            string.IsNullOrEmpty(mediaData.GeneratedFilename)
+            || !episodeParts.Any(x =>
+                x.PlexApiMediaId == mediaData.PlexApiMediaId
                 && x.PlexApiPartId != mediaData.PlexApiPartId
-                && string.Equals(x.GetFileName, fileName, StringComparison.OrdinalIgnoreCase)))
+                && string.Equals(x.GetFileName, fileName, StringComparison.OrdinalIgnoreCase)
+            )
+        )
             return fileName;
 
         // Part IDs keep generated names stable even when Plex returns parts in a different order.

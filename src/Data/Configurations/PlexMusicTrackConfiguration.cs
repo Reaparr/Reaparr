@@ -4,16 +4,20 @@ public class PlexMusicTrackConfiguration : IEntityTypeConfiguration<PlexMusicTra
 {
     public void Configure(EntityTypeBuilder<PlexMusicTrack> builder)
     {
-        // TODO Remove these from the base class
         builder.Ignore(x => x.VideoQuality);
-        builder.Ignore(x => x.Studio);
-        builder.Ignore(x => x.Guid);
-        builder.Ignore(x => x.Guid_IMDB);
-        builder.Ignore(x => x.Guid_TMDB);
-        builder.Ignore(x => x.Guid_TVDB);
         builder.HasIndex(x => new { x.PlexLibraryId, x.PlexApiRatingKey }).IsUnique();
+        builder.HasIndex(x => new { x.PlexApiRatingKey, x.PlexServerId });
         builder.Property(x => x.SearchTitle).UseCollation("NOCASE");
         builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
+        builder.HasIndex(x => new
+        {
+            x.PlexLibraryId,
+            x.PlexAlbumId,
+            x.DiscNumber,
+            x.TrackNumber,
+            x.Id,
+        });
+        builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
         builder.HasIndex(x => new { x.PlexLibraryId, x.SearchTitle });
         builder.Property(x => x.MusicBrainzReleaseTrackId).UseCollation("BINARY");
         builder.Property(x => x.PlexApiIdentityId).UseCollation("BINARY");
@@ -33,7 +37,8 @@ public class PlexMusicTrackConfiguration : IEntityTypeConfiguration<PlexMusicTra
         builder
             .HasOne(x => x.PlexAlbum)
             .WithMany(x => x.Tracks)
-            .HasForeignKey(x => x.PlexAlbumId)
+            .HasForeignKey(x => new { x.PlexLibraryId, x.PlexAlbumId })
+            .HasPrincipalKey(x => new { x.PlexLibraryId, x.Id })
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

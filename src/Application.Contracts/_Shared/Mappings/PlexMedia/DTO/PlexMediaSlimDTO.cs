@@ -21,7 +21,8 @@ public record PlexMediaSlimDTO
     public required string SearchTitle { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the index of the media based on the filtering, query and sorting. Its dynamic and is overridden on every retrieval of <see cref="PlexMediaSlimDTO"/>
+    /// Gets or sets the dynamic one-based response position after filtering, paging and sorting.
+    /// This is distinct from the persisted natural-title rank used by logical <see cref="SortType.Title"/> ordering.
     /// </summary>
     public required int SortIndex { get; set; }
 

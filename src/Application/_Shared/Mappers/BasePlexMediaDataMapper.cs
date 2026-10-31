@@ -8,11 +8,45 @@ public static class BasePlexMediaDataMapper
     private static readonly ILogger _log = LogFactory.Create(typeof(BasePlexMediaDataMapper));
 
     /// <summary>
-    /// Adds the missing stream data to the <see cref="BasePlexMediaData"/> which allows it to be complete for Torznab indexing. It also generates a <see cref="BasePlexMediaData.GeneratedFilename"/> as Sonarr/Radarr require specific name to contain the media specs.
+    /// Adds missing stream data to movie and TV media files and generates a Sonarr/Radarr-compatible filename.
     /// </summary>
     /// <returns><see langword="true"/> when metadata was generated and applied; otherwise <see langword="false"/> when a video stream was unavailable.</returns>
     public static bool UpdateStreamMetadata(
-        this BasePlexMediaData mediaDataDb,
+        this PlexMovieMediaData mediaDataDb,
+        LibraryMediaItemDTO metaDataItem,
+        LibraryMediaItemMediaDTO mediaItem,
+        LibraryMediaItemPartDTO partItem
+    )
+    {
+        var filename = GenerateStreamFilename(mediaDataDb, metaDataItem, mediaItem, partItem);
+        if (filename is null)
+            return false;
+
+        mediaDataDb.GeneratedFilename = filename;
+        mediaDataDb.NeedsGeneratedName = false;
+        mediaDataDb.GeneratedNameSyncedAt = DateTime.UtcNow;
+        return true;
+    }
+
+    public static bool UpdateStreamMetadata(
+        this PlexTvShowEpisodeMediaData mediaDataDb,
+        LibraryMediaItemDTO metaDataItem,
+        LibraryMediaItemMediaDTO mediaItem,
+        LibraryMediaItemPartDTO partItem
+    )
+    {
+        var filename = GenerateStreamFilename(mediaDataDb, metaDataItem, mediaItem, partItem);
+        if (filename is null)
+            return false;
+
+        mediaDataDb.GeneratedFilename = filename;
+        mediaDataDb.NeedsGeneratedName = false;
+        mediaDataDb.GeneratedNameSyncedAt = DateTime.UtcNow;
+        return true;
+    }
+
+    private static string? GenerateStreamFilename(
+        BasePlexMediaData mediaDataDb,
         LibraryMediaItemDTO metaDataItem,
         LibraryMediaItemMediaDTO mediaItem,
         LibraryMediaItemPartDTO partItem
@@ -31,7 +65,7 @@ public static class BasePlexMediaDataMapper
                     mediaDataDb.Id,
                     mediaDataDb.GetFileName
                 );
-            return false;
+            return null;
         }
 
         // Map codecs
@@ -40,8 +74,8 @@ public static class BasePlexMediaDataMapper
         var audioLayout = mediaItem.AudioChannels.MapToFormattedChannels();
         var languageFormat = partItem.Stream.FormatLanguage();
 
-        // Generate the release name and set GeneratedFilename
-        mediaDataDb.GeneratedFilename = GenerateReleaseName(
+        // Generate the release name; the concrete file entity owns enrichment state.
+        return GenerateReleaseName(
             title: metaDataItem.Title,
             year: metaDataItem.Year,
             videoResolution: mediaItem.VideoResolution,
@@ -53,11 +87,6 @@ public static class BasePlexMediaDataMapper
             source: mediaDataDb.Source,
             isRemux: mediaDataDb.Source == ReleaseSource.BluRayRemux
         );
-
-        // Mark as enriched
-        mediaDataDb.NeedsGeneratedName = false;
-        mediaDataDb.GeneratedNameSyncedAt = DateTime.UtcNow;
-        return true;
     }
 
     /// <summary>

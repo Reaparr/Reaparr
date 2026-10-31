@@ -24,10 +24,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         var command = new CreateDownloadTasksCommand(request);
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
-                x.Send(
-                    It.Is<GenerateDownloadTaskPhotoImagesCommand>(c => c.Request == request),
-                    CancellationToken
-                )
+                x.Send(It.Is<GenerateDownloadTaskPhotoImagesCommand>(c => c.Request == request), CancellationToken)
             )
             .Returns(
                 (GenerateDownloadTaskPhotoImagesCommand c, CancellationToken ct) =>
@@ -84,31 +81,29 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         );
         var media = await IDbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var command = new CreateDownloadTasksCommand(
-            new CreateDownloadTasksRequest(
-                [
-                    CreatePhotoAssetSelection(
-                        media,
-                        [
-                            new PlexMediaQualityDTO
-                            {
-                                MediaId = media.Id,
-                                DataId = media.Id,
-                                MediaDataType = PlexMediaType.PhotoImage,
-                                VideoQuality = VideoQuality.Unknown,
-                            },
-                        ]
-                    ),
-                    new DownloadMediaDTO
-                    {
-                        Type = PlexMediaType.Movie,
-                        SelectionKind = null,
-                        PlexServerId = media.PlexServerId,
-                        PlexLibraryId = media.PlexLibraryId,
-                        MediaIds = [media.Id],
-                        Qualities = [],
-                    },
-                ]
-            )
+            new CreateDownloadTasksRequest([
+                CreatePhotoAssetSelection(
+                    media,
+                    [
+                        new PlexMediaQualityDTO
+                        {
+                            MediaId = media.Id,
+                            DataId = media.Id,
+                            MediaDataType = PlexMediaType.PhotoImage,
+                            VideoQuality = VideoQuality.Unknown,
+                        },
+                    ]
+                ),
+                new DownloadMediaDTO
+                {
+                    Type = PlexMediaType.Movie,
+                    SelectionKind = null,
+                    PlexServerId = media.PlexServerId,
+                    PlexLibraryId = media.PlexLibraryId,
+                    MediaIds = [media.Id],
+                    Qualities = [],
+                },
+            ])
         );
 
         // Act
@@ -118,10 +113,11 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         result.IsFailed.ShouldBeTrue();
         result.ToResult().Has400BadRequestError().ShouldBeTrue();
         result.Errors.ShouldContain(x => x.Message == "Photo selections must not include quality or part selectors.");
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GenerateDownloadTaskPhotoImagesCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<GenerateDownloadTaskPhotoImagesCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         (await IDbContext.DownloadTaskPhotoFolders.CountAsync(CancellationToken)).ShouldBe(0);
     }
 
@@ -139,11 +135,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
             }
         );
         var media = await IDbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
-        var request = new CreateDownloadTasksRequest(
-            [
-                CreatePhotoAssetSelection(media),
-            ]
-        );
+        var request = new CreateDownloadTasksRequest([CreatePhotoAssetSelection(media)]);
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<GenerateDownloadTaskPhotoImagesCommand>(), CancellationToken))
             .ReturnsAsync(Result.Fail<DownloadTaskCreationReport>("photo generator failed"))
@@ -168,7 +160,6 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         Mock.Mock<INotificationHubService>().Verify();
     }
 
-
     [Test]
     [Arguments(false)]
     [Arguments(true)]
@@ -185,18 +176,18 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(2);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<ICommand<Result<DownloadTaskCreationReport>>>(), It.IsAny<CancellationToken>()),
-            Times.Never()
-        );
-        Mock.Mock<IEventPublisher>().Verify(
-            x => x.PublishAsync(It.IsAny<CheckDownloadQueueEvent>(), It.IsAny<CancellationToken>()),
-            Times.Never()
-        );
-        Mock.Mock<INotificationHubService>().Verify(
-            x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()),
-            Times.Never()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<ICommand<Result<DownloadTaskCreationReport>>>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<IEventPublisher>()
+            .Verify(
+                x => x.PublishAsync(It.IsAny<CheckDownloadQueueEvent>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<INotificationHubService>()
+            .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Never());
     }
 
     [Test]
@@ -211,19 +202,17 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
     public async Task ShouldStopWithoutQueueNotification_WhenNonPhotoGeneratorFails(PlexMediaType failedType)
     {
         // Arrange
-        var command = new CreateDownloadTasksCommand(
-            [
-                new DownloadMediaDTO
-                {
-                    Type = failedType,
-                    SelectionKind = null,
-                    PlexServerId = 1,
-                    PlexLibraryId = 11,
-                    MediaIds = [101],
-                    Qualities = [],
-                },
-            ]
-        );
+        var command = new CreateDownloadTasksCommand([
+            new DownloadMediaDTO
+            {
+                Type = failedType,
+                SelectionKind = null,
+                PlexServerId = 1,
+                PlexLibraryId = 11,
+                MediaIds = [101],
+                Qualities = [],
+            },
+        ]);
         var error = new Error("Generation failure");
         var executor = Mock.Mock<ICommandExecutor>();
         executor
@@ -267,15 +256,15 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         result.Errors.Count.ShouldBe(1);
         result.Errors.Single().ShouldBeSameAs(error);
         executor.Verify();
-        Mock.Mock<IEventPublisher>().Verify(
-            x => x.PublishAsync(It.IsAny<CheckDownloadQueueEvent>(), It.IsAny<CancellationToken>()),
-            Times.Never()
-        );
-        Mock.Mock<INotificationHubService>().Verify(
-            x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()),
-            Times.Never()
-        );
+        Mock.Mock<IEventPublisher>()
+            .Verify(
+                x => x.PublishAsync(It.IsAny<CheckDownloadQueueEvent>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<INotificationHubService>()
+            .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Never());
     }
+
     [Test]
     public async Task ShouldPersistAllFiveFamiliesAndReportEveryCreatedTask_WhenSelectionsAreMixed()
     {
@@ -368,59 +357,59 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
                 async (ICommand<Result<DownloadTaskCreationReport>> command, CancellationToken ct) =>
                 {
                     using var handlerContext = IDbContext;
-                    return await (command switch
-                    {
-                        GenerateDownloadTaskMoviesCommand movies =>
-                            new GenerateDownloadTaskMoviesCommandHandler(Serilog.Log.Logger, handlerContext).ExecuteAsync(
-                                movies,
-                                ct
-                            ),
-                        GenerateDownloadTaskTvShowsCommand shows =>
-                            new GenerateDownloadTaskTvShowsCommandHandler(
+                    return await (
+                        command switch
+                        {
+                            GenerateDownloadTaskMoviesCommand movies => new GenerateDownloadTaskMoviesCommandHandler(
+                                Serilog.Log.Logger,
+                                handlerContext
+                            ).ExecuteAsync(movies, ct),
+                            GenerateDownloadTaskTvShowsCommand shows => new GenerateDownloadTaskTvShowsCommandHandler(
                                 Serilog.Log.Logger,
                                 handlerContext,
                                 executor.Object
                             ).ExecuteAsync(shows, ct),
-                        GenerateDownloadTaskTvShowSeasonsCommand seasons =>
-                            new GenerateDownloadTaskTvShowSeasonsCommandHandler(
-                                Serilog.Log.Logger,
-                                handlerContext,
-                                executor.Object
-                            ).ExecuteAsync(seasons, ct),
-                        GenerateDownloadTaskTvShowEpisodesCommand episodes =>
-                            new GenerateDownloadTaskTvShowEpisodesCommandHandler(
-                                Serilog.Log.Logger,
-                                handlerContext
-                            ).ExecuteAsync(episodes, ct),
-                        GenerateDownloadTaskMusicArtistsCommand artists =>
-                            new GenerateDownloadTaskMusicArtistsCommandHandler(
-                                Serilog.Log.Logger,
-                                handlerContext,
-                                executor.Object
-                            ).ExecuteAsync(artists, ct),
-                        GenerateDownloadTaskMusicAlbumsCommand albums =>
-                            new GenerateDownloadTaskMusicAlbumsCommandHandler(
-                                Serilog.Log.Logger,
-                                handlerContext,
-                                executor.Object
-                            ).ExecuteAsync(albums, ct),
-                        GenerateDownloadTaskMusicTracksCommand tracks =>
-                            new GenerateDownloadTaskMusicTracksCommandHandler(
-                                Serilog.Log.Logger,
-                                handlerContext
-                            ).ExecuteAsync(tracks, ct),
-                        GenerateDownloadTaskPhotoImagesCommand images =>
-                            new GenerateDownloadTaskPhotoImagesCommandHandler(Serilog.Log.Logger, handlerContext).ExecuteAsync(
-                                images,
-                                ct
-                            ),
-                        GenerateDownloadTaskOtherVideosCommand otherVideos =>
-                            new GenerateDownloadTaskOtherVideosCommandHandler(Serilog.Log.Logger, handlerContext).ExecuteAsync(
-                                otherVideos,
-                                ct
-                            ),
-                        _ => throw new InvalidOperationException($"Unexpected generator {command.GetType().Name}"),
-                    });
+                            GenerateDownloadTaskTvShowSeasonsCommand seasons =>
+                                new GenerateDownloadTaskTvShowSeasonsCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext,
+                                    executor.Object
+                                ).ExecuteAsync(seasons, ct),
+                            GenerateDownloadTaskTvShowEpisodesCommand episodes =>
+                                new GenerateDownloadTaskTvShowEpisodesCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext
+                                ).ExecuteAsync(episodes, ct),
+                            GenerateDownloadTaskMusicArtistsCommand artists =>
+                                new GenerateDownloadTaskMusicArtistsCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext,
+                                    executor.Object
+                                ).ExecuteAsync(artists, ct),
+                            GenerateDownloadTaskMusicAlbumsCommand albums =>
+                                new GenerateDownloadTaskMusicAlbumsCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext,
+                                    executor.Object
+                                ).ExecuteAsync(albums, ct),
+                            GenerateDownloadTaskMusicTracksCommand tracks =>
+                                new GenerateDownloadTaskMusicTracksCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext
+                                ).ExecuteAsync(tracks, ct),
+                            GenerateDownloadTaskPhotoImagesCommand images =>
+                                new GenerateDownloadTaskPhotoImagesCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext
+                                ).ExecuteAsync(images, ct),
+                            GenerateDownloadTaskOtherVideosCommand otherVideos =>
+                                new GenerateDownloadTaskOtherVideosCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext
+                                ).ExecuteAsync(otherVideos, ct),
+                            _ => throw new InvalidOperationException($"Unexpected generator {command.GetType().Name}"),
+                        }
+                    );
                 }
             )
             .Verifiable();
@@ -443,9 +432,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(
-            new CreateDownloadTasksCommand(request)
-        );
+        var result = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(new CreateDownloadTasksCommand(request));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -499,5 +486,4 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
             MediaIds = [media.Id],
             Qualities = qualities ?? [],
         };
-
 }

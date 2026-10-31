@@ -37,7 +37,13 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
         childKeys.Count.ShouldBe(2);
         var expectedFiles = await dbContext
             .DownloadTaskPhotoImageFiles.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.ParentId, x.DownloadStatus, x.DataReceived })
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.DownloadStatus,
+                x.DataReceived,
+            })
             .ToListAsync(CancellationToken);
         expectedFiles.ShouldAllBe(x => x.DownloadStatus == DownloadStatus.Paused && x.DataReceived == 128);
         var selected = childKeys[0];
@@ -62,18 +68,30 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
         result.Errors.Count.ShouldBe(1);
         var filesAfter = await dbContext
             .DownloadTaskPhotoImageFiles.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.ParentId, x.DownloadStatus, x.DataReceived })
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.DownloadStatus,
+                x.DataReceived,
+            })
             .ToListAsync(CancellationToken);
         filesAfter.ShouldBe(expectedFiles);
         filesAfter.ShouldAllBe(x => x.DownloadStatus == DownloadStatus.Paused && x.DataReceived == 128);
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Paused);
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Paused);
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Paused);
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Paused);
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
-                x => x.StartDownloadTaskJob(It.Is<DownloadTaskKey>(key => key != selected), It.IsAny<CancellationToken>()),
+                x =>
+                    x.StartDownloadTaskJob(
+                        It.Is<DownloadTaskKey>(key => key != selected),
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Never()
             );
         Mock.Mock<IEventPublisher>()
@@ -153,18 +171,20 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
         if (!failMove)
         {
             Mock.Mock<IEventPublisher>()
-                .Setup(x => x.PublishAsync(
-                    It.Is<CheckDownloadQueueEvent>(e => e.PlexServerIds.SequenceEqual(new[] { library.PlexServerId })),
-                    CancellationToken
-                ))
+                .Setup(x =>
+                    x.PublishAsync(
+                        It.Is<CheckDownloadQueueEvent>(e =>
+                            e.PlexServerIds.SequenceEqual(new[] { library.PlexServerId })
+                        ),
+                        CancellationToken
+                    )
+                )
                 .Returns(Task.CompletedTask)
                 .Verifiable(Times.Once());
         }
 
         // Act
-        var result = await TestHandlerExecuteAsync(
-            new StartDownloadTaskCommand(selectFolder ? nested.Id : target.Id)
-        );
+        var result = await TestHandlerExecuteAsync(new StartDownloadTaskCommand(selectFolder ? nested.Id : target.Id));
 
         dbContext.ClearChangeTracker();
         // Assert
@@ -177,14 +197,19 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
         var after = await dbContext
             .DownloadTaskPhotoImageFiles.Where(x => x.ParentId == nested.Id)
             .OrderBy(x => x.FullTitle)
-            .Select(x => new { x.Id, x.DownloadStatus, x.DataReceived })
+            .Select(x => new
+            {
+                x.Id,
+                x.DownloadStatus,
+                x.DataReceived,
+            })
             .ToListAsync(CancellationToken);
         after.Select(x => x.Id).ShouldBe(orderedFiles.Select(x => x.Id));
         after.Select(x => x.DownloadStatus).ShouldBe(statuses);
         after.ShouldAllBe(x => x.DataReceived == 512);
-        (await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.Id == directRootFile.Id, CancellationToken)).DownloadStatus.ShouldBe(
-            DownloadStatus.Queued
-        );
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.Id == directRootFile.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Queued);
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
@@ -192,10 +217,7 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
                 Times.Never()
             );
         Mock.Mock<IDownloadTaskScheduler>()
-            .Verify(
-                x => x.GetCurrentlyDownloadingKeysByServer(It.IsAny<int>()),
-                Times.Never()
-            );
+            .Verify(x => x.GetCurrentlyDownloadingKeysByServer(It.IsAny<int>()), Times.Never());
         Mock.Mock<IEventPublisher>()
             .Verify(
                 x => x.PublishAsync(It.IsAny<CheckDownloadQueueEvent>(), It.IsAny<CancellationToken>()),
@@ -245,10 +267,12 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
             .ReturnsAsync([fileKey])
             .Verifiable(Times.Once());
         Mock.Mock<IEventPublisher>()
-            .Setup(x => x.PublishAsync(
-                It.Is<CheckDownloadQueueEvent>(e => e.PlexServerIds.SequenceEqual(new[] { library.PlexServerId })),
-                CancellationToken
-            ))
+            .Setup(x =>
+                x.PublishAsync(
+                    It.Is<CheckDownloadQueueEvent>(e => e.PlexServerIds.SequenceEqual(new[] { library.PlexServerId })),
+                    CancellationToken
+                )
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -265,17 +289,24 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
         );
         persistedNestedFile.DownloadStatus.ShouldBe(DownloadStatus.Queued);
         persistedNestedFile.DataReceived.ShouldBe(64);
-        (await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.Id == directFile.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Queued);
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Queued);
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.Id == directFile.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Queued);
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
-                x => x.StartDownloadTaskJob(It.Is<DownloadTaskKey>(key => key.Id == directFile.Id), It.IsAny<CancellationToken>()),
+                x =>
+                    x.StartDownloadTaskJob(
+                        It.Is<DownloadTaskKey>(key => key.Id == directFile.Id),
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Never()
             );
     }
@@ -321,9 +352,12 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
         result.ShouldBeSameAs(cancelled);
         result.IsCancelled.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
-        (await dbContext.DownloadTaskPhotoImageFiles.OrderBy(x => x.Id).Select(x => x.DownloadStatus).ToListAsync(
-            CancellationToken
-        )).ShouldBe([DownloadStatus.Paused, DownloadStatus.Paused]);
+        (
+            await dbContext
+                .DownloadTaskPhotoImageFiles.OrderBy(x => x.Id)
+                .Select(x => x.DownloadStatus)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe([DownloadStatus.Paused, DownloadStatus.Paused]);
         (await dbContext.DownloadTaskPhotoFolders.SingleAsync(CancellationToken)).DownloadStatus.ShouldBe(
             DownloadStatus.Paused
         );
@@ -353,9 +387,9 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
         await dbContext
             .PlexServers.Where(x => x.Id == folder.PlexServerId)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.IsDownloadsPausedByUser, true), CancellationToken);
-        var before = await dbContext.DownloadTaskPhotoImageFiles.Select(x => new { x.Id, x.DownloadStatus }).ToListAsync(
-            CancellationToken
-        );
+        var before = await dbContext
+            .DownloadTaskPhotoImageFiles.Select(x => new { x.Id, x.DownloadStatus })
+            .ToListAsync(CancellationToken);
 
         // Act
         var result = await TestHandlerExecuteAsync(new StartDownloadTaskCommand(folder.Id));
@@ -365,9 +399,11 @@ public class StartDownloadTaskCommandPhotoUnitTests : BaseCommandUnitTest<StartD
         result.IsFailed.ShouldBeTrue();
         result.IsCancelled.ShouldBeFalse();
         result.Errors.Count.ShouldBe(1);
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => new { x.Id, x.DownloadStatus }).ToListAsync(
-            CancellationToken
-        )).ShouldBe(before);
+        (
+            await dbContext
+                .DownloadTaskPhotoImageFiles.Select(x => new { x.Id, x.DownloadStatus })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(before);
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
                 x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()),

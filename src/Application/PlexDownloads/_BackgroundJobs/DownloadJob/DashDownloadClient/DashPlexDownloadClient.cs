@@ -155,7 +155,6 @@ public class DashPlexDownloadClient : IPlexDownloadClient
 
             return ResultExtensions.TaskIsCancelled(nameof(DashPlexDownloadClient));
         }
-
     }
 
     public async Task<Result> StopAsync()

@@ -131,7 +131,8 @@ public class GetMediaComparisonDetailsEndpointUnitTests
         // Assert
         endpointResult.HasValidator.ShouldBeTrue();
         endpointResult.IsValid.ShouldBeFalse();
-        endpointResult.ValidationErrors.Select(x => x.PropertyName)
+        endpointResult
+            .ValidationErrors.Select(x => x.PropertyName)
             .ShouldBe([nameof(GetMediaComparisonDetailsEndpointRequest.Type)]);
         endpointResult.Response.ShouldBeNull();
         Mock.Mock<ICommandExecutor>().Verify();

@@ -36,7 +36,11 @@ public class ServerOnlineStatusChangedHandlerUnitTests : BaseUnitTest<ServerOnli
         await Sut.HandleAsync(new ServerOnlineStatusChangedNotification(targetServer.Id, false), CancellationToken);
 
         // Assert
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once()
+            );
         Mock.Mock<IDownloadQueue>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
     }
@@ -83,7 +87,11 @@ public class ServerOnlineStatusChangedHandlerUnitTests : BaseUnitTest<ServerOnli
         await Sut.HandleAsync(new ServerOnlineStatusChangedNotification(targetServer.Id, true), CancellationToken);
 
         // Assert
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once()
+            );
         Mock.Mock<IDownloadQueue>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
     }

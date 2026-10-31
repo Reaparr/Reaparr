@@ -18,6 +18,12 @@ public sealed record GetPhotoAssetImageRequest
 
     [QueryParam, BindFrom("representation")]
     public required PhotoImageRepresentation Representation { get; init; }
+
+    [QueryParam, BindFrom("width")]
+    public int? Width { get; init; }
+
+    [QueryParam, BindFrom("height")]
+    public int? Height { get; init; }
 }
 
 public sealed class GetPhotoAssetImageRequestValidator : Validator<GetPhotoAssetImageRequest>
@@ -27,6 +33,14 @@ public sealed class GetPhotoAssetImageRequestValidator : Validator<GetPhotoAsset
         RuleFor(x => x.PlexLibraryId).GreaterThan(0);
         RuleFor(x => x.AssetId).GreaterThan(0);
         RuleFor(x => x.Representation).IsInEnum();
+        RuleFor(x => x.Width)
+            .Must(width => width is >= 1 and <= 4096)
+            .When(x => x.Representation == PhotoImageRepresentation.Converted)
+            .WithMessage("Width must be between 1 and 4096 for converted photo delivery.");
+        RuleFor(x => x.Height)
+            .Must(height => height is >= 1 and <= 4096)
+            .When(x => x.Representation == PhotoImageRepresentation.Converted)
+            .WithMessage("Height must be between 1 and 4096 for converted photo delivery.");
     }
 }
 
@@ -40,8 +54,9 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
 
     private const int ResponseCacheDurationSeconds = 259200;
     private static readonly TimeSpan _connectionCacheDuration = TimeSpan.FromMinutes(5);
-    private static readonly string _responseCacheControl =
-        FormattableString.Invariant($"private,max-age={ResponseCacheDurationSeconds}");
+    private static readonly string _responseCacheControl = FormattableString.Invariant(
+        $"private,max-age={ResponseCacheDurationSeconds}"
+    );
 
     public GetPhotoAssetImageEndpoint(
         ILogger log,
@@ -63,7 +78,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             ResponseCacheDurationSeconds,
             ResponseCacheLocation.Client,
             varyByHeader: HeaderNames.Cookie,
-            varyByQueryKeys: ["representation"]
+            varyByQueryKeys: ["representation", "width", "height"]
         );
         Summary(s =>
         {
@@ -98,11 +113,9 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             return;
         }
 
-        var asset = await _dbContext.PlexPhotoMediaData
-            .Where(x =>
-                x.Id == req.AssetId
-                && x.PlexLibraryId == req.PlexLibraryId
-                && x.AssetKind == PhotoAssetKind.Image
+        var asset = await _dbContext
+            .PlexPhotoMediaData.Where(x =>
+                x.Id == req.AssetId && x.PlexLibraryId == req.PlexLibraryId && x.AssetKind == PhotoAssetKind.Image
             )
             .FirstOrDefaultAsync(ct);
         if (asset is null)
@@ -111,26 +124,9 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             return;
         }
 
-        if (
-            req.Representation == PhotoImageRepresentation.Converted
-            && (asset.Width is null or <= 0 || asset.Height is null or <= 0)
-        )
-        {
-            await Send.FluentResult(
-                ResultExtensions.Create400BadRequestResult(
-                    "Converted photo delivery requires the asset's native dimensions."
-                ),
-                ct
-            );
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(asset.Key))
         {
-            await Send.FluentResult(
-                ResultExtensions.EntityNotFound(nameof(PlexPhotoMediaData), req.AssetId),
-                ct
-            );
+            await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexPhotoMediaData), req.AssetId), ct);
             return;
         }
 
@@ -142,9 +138,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         if (tokenResult.IsCancelledOrFailed)
         {
             await Send.FluentResult(
-                Result
-                    .Fail("Photo server authentication is unavailable.")
-                    .AddPlex401UnauthorizedError(),
+                Result.Fail("Photo server authentication is unavailable.").AddPlex401UnauthorizedError(),
                 ct
             );
             return;
@@ -157,16 +151,16 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             return;
         }
 
-        var etag = new EntityTagHeaderValue(
-            FormattableString.Invariant(
-                $"\"{asset.PlexServerId}-{asset.PlexLibraryId}-{asset.Id}-{asset.PlexApiPartId}-{asset.PlexApiMetaDataKey}-{asset.UpdatedAt?.Ticks ?? asset.AddedAt.Ticks}-{asset.Size}-{asset.Width}x{asset.Height}-{req.Representation}\""
-            )
-        );
+        var etag = CreateImageEntityTag(asset, req);
 
         // Validate current library access and asset metadata before accepting a cached image.
-        if (HttpContext.Request.GetTypedHeaders().IfNoneMatch.Any(
-                value => value.Equals(EntityTagHeaderValue.Any) || value.Compare(etag, useStrongComparison: false)
-            ))
+        if (
+            HttpContext
+                .Request.GetTypedHeaders()
+                .IfNoneMatch.Any(value =>
+                    value.Equals(EntityTagHeaderValue.Any) || value.Compare(etag, useStrongComparison: false)
+                )
+        )
         {
             HttpContext.Response.Headers.ETag = etag.ToString();
             HttpContext.Response.Headers.CacheControl = _responseCacheControl;
@@ -178,16 +172,17 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         var token = tokenResult.Value;
         var connection = connectionResult.Value;
         var client = _httpClientFactory.CreateClient(HttpClientModule.PlexThumbnailClientName);
-        var upstreamUrl = req.Representation == PhotoImageRepresentation.Original
-            ? BuildOriginalUrl(connection, asset.Key, token)
-            : BuildTranscodeUrl(
-                connection.Url,
-                asset.Key,
-                token,
-                asset.Width!.Value,
-                asset.Height!.Value,
-                GetConversionFormat(asset.Container)
-            );
+        var upstreamUrl =
+            req.Representation == PhotoImageRepresentation.Original
+                ? BuildOriginalUrl(connection, asset.Key, token)
+                : BuildTranscodeUrl(
+                    connection.Url,
+                    asset.Key,
+                    token,
+                    req.Width!.Value,
+                    req.Height!.Value,
+                    GetConversionFormat(asset.Container)
+                );
 
         try
         {
@@ -219,24 +214,26 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
             await stream.CopyToAsync(HttpContext.Response.Body, ct);
         }
-        catch (HttpRequestException) when (!ct.IsCancellationRequested)
+        catch (HttpRequestException exception) when (!ct.IsCancellationRequested)
         {
-            await HandleTransportFailureAsync("Failed to connect to the Plex server.", ct);
+            await HandleTransportFailureAsync(exception, "Failed to connect to the Plex server.", ct);
         }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        catch (TaskCanceledException exception) when (!ct.IsCancellationRequested)
         {
-            await HandleTransportFailureAsync("The Plex image request timed out.", ct);
+            await HandleTransportFailureAsync(exception, "The Plex image request timed out.", ct);
         }
-        catch (IOException) when (!ct.IsCancellationRequested)
+        catch (IOException exception) when (!ct.IsCancellationRequested)
         {
-            await HandleTransportFailureAsync("The Plex image response could not be read.", ct);
+            await HandleTransportFailureAsync(exception, "The Plex image response could not be read.", ct);
         }
     }
 
     private async Task<Result<PlexServerConnection>> GetCachedConnectionAsync(int plexServerId, CancellationToken ct)
     {
         var cacheKey = $"plex_connection_{plexServerId}";
-        if (_cache.TryGetValue<Result<PlexServerConnection>>(cacheKey, out var cachedResult) && cachedResult is not null)
+        if (
+            _cache.TryGetValue<Result<PlexServerConnection>>(cacheKey, out var cachedResult) && cachedResult is not null
+        )
             return cachedResult;
 
         var connectionResult = await _dbContext.ChoosePlexServerConnection(plexServerId, ct);
@@ -244,6 +241,18 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             _cache.Set(cacheKey, connectionResult, _connectionCacheDuration);
 
         return connectionResult;
+    }
+
+    private static EntityTagHeaderValue CreateImageEntityTag(PlexPhotoMediaData asset, GetPhotoAssetImageRequest req)
+    {
+        var targetSize = req.Representation == PhotoImageRepresentation.Converted
+            ? FormattableString.Invariant($"-{req.Width!.Value}x{req.Height!.Value}")
+            : string.Empty;
+        return new EntityTagHeaderValue(
+            FormattableString.Invariant(
+                $"\"{asset.PlexServerId}-{asset.PlexLibraryId}-{asset.Id}-{asset.PlexApiPartId}-{asset.PlexApiRatingKey}-{asset.UpdatedAt?.Ticks ?? asset.AddedAt.Ticks}-{asset.Size}-{asset.Width}x{asset.Height}-{req.Representation}{targetSize}\""
+            )
+        );
     }
 
     internal static string BuildOriginalUrl(PlexServerConnection connection, string partKey, string token) =>
@@ -272,28 +281,27 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             ["X-Plex-Token"] = token,
         };
 
-        return QueryHelpers.AddQueryString(
-            $"{connectionUrl.TrimEnd('/')}/photo/:/transcode",
-            query
-        );
+        return QueryHelpers.AddQueryString($"{connectionUrl.TrimEnd('/')}/photo/:/transcode", query);
     }
 
     internal static string GetConversionFormat(string? container)
     {
         var normalizedContainer = container?.Trim().TrimStart('.').ToLowerInvariant();
-        return normalizedContainer is "png"
-            or "apng"
-            or "webp"
-            or "gif"
-            or "bmp"
-            or "tif"
-            or "tiff"
-            or "avif"
-            or "heic"
-            or "heif"
-            or "svg"
-            or "svgz"
-            or "jxl"
+        return
+            normalizedContainer
+                is "png"
+                    or "apng"
+                    or "webp"
+                    or "gif"
+                    or "bmp"
+                    or "tif"
+                    or "tiff"
+                    or "avif"
+                    or "heic"
+                    or "heif"
+                    or "svg"
+                    or "svgz"
+                    or "jxl"
             ? "png"
             : "jpg";
     }
@@ -314,20 +322,21 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         await Send.FluentResult(result, ct);
     }
 
-    private async Task HandleTransportFailureAsync(string message, CancellationToken ct)
+    private async Task HandleTransportFailureAsync(Exception exception, string message, CancellationToken ct)
     {
         if (HttpContext.Response.HasStarted)
         {
-            _log.Here().Warning("Photo image transport failed after response started: {Message}", message);
-            throw new IOException(message);
+            _log.Here().Warning(exception, "Photo image transport failed after response started: {Message}", message);
+            HttpContext.Abort();
+            return;
         }
 
-        await SendTransportFailureAsync(message, ct);
+        await SendTransportFailureAsync(message, ct, exception);
     }
 
-    private async Task SendTransportFailureAsync(string message, CancellationToken ct)
+    private async Task SendTransportFailureAsync(string message, CancellationToken ct, Exception? exception = null)
     {
-        _log.Here().Warning("{Message}", message);
+        _log.Here().Warning(exception, "{Message}", message);
         HttpContext.Response.Headers.CacheControl = "no-store";
         HttpContext.Response.Headers.Remove(HeaderNames.ETag);
         await Send.FluentResult(Result.Fail(message).Add502BadGatewayError(), ct);

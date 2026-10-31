@@ -7,7 +7,7 @@ public static partial class MediaOverviewRankBuilder
         IReadOnlyDictionary<int, MediaOverviewRankValue> values
     )
     {
-        AssignRanks(snapshots, values, static x => x.PlexOtherVideoId);
+        AssignRanks(snapshots, values, static x => x.PlexOtherVideoId, static (x, rank) => x.YearRank = rank);
         var permutation = Enumerable.Range(0, snapshots.Count).ToArray();
         AssignRank(
             snapshots,

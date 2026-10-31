@@ -30,7 +30,6 @@ public static partial class PlexMediaDataMapper
             AddedAt = source.AddedAt,
             UpdatedAt = source.UpdatedAt,
 
-            Type = PlexMediaType.None,
             PlexApiRatingKey = source.RatingKey,
             PlexApiMetaDataKey = RetrieveMetaDataKey(source),
             Studio = source.Studio,

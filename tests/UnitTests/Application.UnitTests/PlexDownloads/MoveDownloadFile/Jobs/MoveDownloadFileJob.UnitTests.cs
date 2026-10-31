@@ -93,15 +93,15 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         switch (family)
         {
             case PlexMediaType.MusicTrack:
-                var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
-                    .OrderBy(x => x.PlexApiRatingKey)
+                var musicFiles = await dbContext
+                    .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
                     .ToArrayAsync(CancellationToken);
                 target = musicFiles[0];
                 control = musicFiles[1];
                 break;
             case PlexMediaType.OtherVideos:
-                var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
-                    .OrderBy(x => x.PlexApiRatingKey)
+                var otherVideoFiles = await dbContext
+                    .DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey)
                     .ToArrayAsync(CancellationToken);
                 target = otherVideoFiles[0];
                 control = otherVideoFiles[1];
@@ -278,8 +278,9 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             )
             .Verifiable(Times.Once());
         Mock.Mock<IMoveDownloadFileQueue>()
-            .Setup(x => x.CheckMoveDownloadFileJobQueue(
-                scenario == "late-cancellation" ? CancellationToken.None : token))
+            .Setup(x =>
+                x.CheckMoveDownloadFileJobQueue(scenario == "late-cancellation" ? CancellationToken.None : token)
+            )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.Mock<IEventPublisher>()
@@ -395,15 +396,15 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         switch (family)
         {
             case PlexMediaType.MusicTrack:
-                var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
-                    .OrderBy(x => x.PlexApiRatingKey)
+                var musicFiles = await dbContext
+                    .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
                     .ToArrayAsync(CancellationToken);
                 target = musicFiles[0];
                 control = musicFiles[1];
                 break;
             case PlexMediaType.OtherVideos:
-                var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
-                    .OrderBy(x => x.PlexApiRatingKey)
+                var otherVideoFiles = await dbContext
+                    .DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey)
                     .ToArrayAsync(CancellationToken);
                 target = otherVideoFiles[0];
                 control = otherVideoFiles[1];
@@ -516,8 +517,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Never());
         Mock.Mock<IMoveDownloadFileQueue>()
-            .Setup(x => x.CheckMoveDownloadFileJobQueue(
-                scenario == "cancelled" ? CancellationToken.None : token))
+            .Setup(x => x.CheckMoveDownloadFileJobQueue(scenario == "cancelled" ? CancellationToken.None : token))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Result? notified = null;
@@ -538,9 +538,9 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         moveOutcome.ShouldNotBeNull();
         moveOutcome!.Errors.Count.ShouldBe(1);
         moveOutcome.IsCancelled.ShouldBe(scenario == "cancelled");
-        context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(
-            scenario == "cancelled" ? JobStatus.Cancelled : JobStatus.Failed
-        );
+        context
+            .Result.ShouldBeOfType<BackgroundJobResult>()
+            .Status.ShouldBe(scenario == "cancelled" ? JobStatus.Cancelled : JobStatus.Failed);
         var persisted = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!;
         persisted.DownloadStatus.ShouldBe(
             scenario == "cancelled" ? DownloadStatus.MovePaused : DownloadStatus.MoveError
@@ -597,10 +597,17 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         Mock.Mock<IMoveDownloadFileQueue>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
         Moq.Mock.Get(context.Scheduler)
-            .Verify(x => x.ScheduleJob(
-                It.Is<ITrigger>(t => t.JobKey.Equals(MoveDownloadFileJob.GetJobKey(key.Id))
-                    && t.Key.Name == $"{MoveDownloadFileJob.GetJobKey(key.Id).Name}_Retry_move-job-test"),
-                token), scenario == "cancelled" ? Times.Never() : Times.Once());
+            .Verify(
+                x =>
+                    x.ScheduleJob(
+                        It.Is<ITrigger>(t =>
+                            t.JobKey.Equals(MoveDownloadFileJob.GetJobKey(key.Id))
+                            && t.Key.Name == $"{MoveDownloadFileJob.GetJobKey(key.Id).Name}_Retry_move-job-test"
+                        ),
+                        token
+                    ),
+                scenario == "cancelled" ? Times.Never() : Times.Once()
+            );
     }
 
     [Test]
@@ -867,10 +874,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
                 Times.Never()
             );
         Mock.Mock<IMoveDownloadFileQueue>()
-            .Verify(
-                x => x.CheckMoveDownloadFileJobQueue(It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
+            .Verify(x => x.CheckMoveDownloadFileJobQueue(It.IsAny<CancellationToken>()), Times.Once());
         Mock.Mock<IEventPublisher>()
             .Verify(
                 x => x.PublishAsync(It.IsAny<SendNotificationResult>(), It.IsAny<CancellationToken>()),

@@ -22,8 +22,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
             .Setup(x =>
                 x.UpdateErrorAsync(
                     library.Id,
-                    It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1 && r.Errors[0] == error),
-                    CancellationToken
+                    It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1 && r.Errors[0] == error)
                 )
             )
             .Returns(Task.CompletedTask)
@@ -58,11 +57,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
-                x.UpdateErrorAsync(
-                    library.Id,
-                    It.Is<Result>(r => r.Has404NotFoundError() && r.Errors.Count == 1),
-                    CancellationToken
-                )
+                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.Has404NotFoundError() && r.Errors.Count == 1))
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
@@ -105,8 +100,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
             .Setup(x =>
                 x.UpdateErrorAsync(
                     library.Id,
-                    It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1 && r.Errors[0] == error),
-                    CancellationToken
+                    It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1 && r.Errors[0] == error)
                 )
             )
             .Returns(Task.CompletedTask)
@@ -216,14 +210,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         {
             var source = sources.Single(x => x.RatingKey == 101);
             var album = library.PhotoAlbums.Single(x => x.PlexApiRatingKey == 101);
-            (
-                album.Title,
-                album.SearchTitle,
-                album.Summary,
-                album.HasThumb,
-                album.AddedAt,
-                album.UpdatedAt
-            ).ShouldBe(
+            (album.Title, album.SearchTitle, album.Summary, album.HasThumb, album.AddedAt, album.UpdatedAt).ShouldBe(
                 (
                     source.Title,
                     source.SearchTitle,
@@ -254,10 +241,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
                 Times.Never()
             );
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
     }
 
     [Test]
@@ -308,10 +292,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
                 Times.Never()
             );
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
     }
 
     [Test]
@@ -395,10 +376,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         library.PhotoMediaData.ShouldBe(photos);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
     }
 
     private static PlexLibrary CreateDescendantLibrary(PlexMediaType mediaType, LibraryMediaItemDTO template)

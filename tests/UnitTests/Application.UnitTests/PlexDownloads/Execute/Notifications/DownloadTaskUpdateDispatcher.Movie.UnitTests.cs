@@ -26,6 +26,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
 
         (await predicate()).ShouldBeTrue();
     }
+
     [Test]
     public async Task ShouldSendDeletedIds_WhenStatusChangedToDeleted()
     {
@@ -74,6 +75,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
 
         capturedUpserts.Last().ShouldBeEmpty();
     }
+
     [Test]
     public async Task ShouldSendHundredPercentPatch_WhenMovieFileIsCompletedWithStaleStoredPercentage()
     {
@@ -130,6 +132,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         fileTaskPatch.Status.ShouldBe(DownloadStatus.Completed);
         fileTaskPatch.Percentage.ShouldBe(100m);
     }
+
     [Test]
     public async Task ShouldSendPatchWithFileTransferPercentage_WhenNotifyFileTransferProgressIsCalled()
     {
@@ -187,6 +190,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         fileTaskPatch.Status.ShouldBe(DownloadStatus.Moving);
         fileTaskPatch.Percentage.ShouldBe(50.00m);
     }
+
     [Test]
     public async Task ShouldNotWriteDownloadingLogAfterPauseTransition()
     {
@@ -253,6 +257,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
 
         logs.Where(x => x.Id > pauseLog.Id && x.Status == DownloadStatus.Downloading).ShouldBeEmpty();
     }
+
     [Test]
     public async Task ShouldIgnoreProgressUpdateAfterTaskHasBeenPaused()
     {
@@ -328,6 +333,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         updatedMovieFile.DownloadStatus.ShouldBe(DownloadStatus.Paused);
         updatedMovieFile.DataReceived.ShouldBe(initialProgress.DataReceived);
     }
+
     [Test]
     public async Task ShouldPersistBufferedProgressBeforeStatusBecomesPaused()
     {
@@ -360,6 +366,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         updatedMovieFile.DataTotal.ShouldBe(1000);
         updatedMovieFile.DownloadSpeed.ShouldBe(0);
     }
+
     [Test]
     public async Task ShouldIncreaseSequenceAcrossMixedStatusAndProgressPatches()
     {
@@ -421,6 +428,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         for (var i = 1; i < orderedSequences.Count; i++)
             orderedSequences[i].ShouldBeGreaterThan(orderedSequences[i - 1]);
     }
+
     [Test]
     public async Task ShouldRetryBufferedProgress_WhenFirstPatchSendFails()
     {
@@ -470,6 +478,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         attempts.ShouldBeGreaterThanOrEqualTo(2);
         capturedPatches.ShouldNotBeEmpty();
     }
+
     [Test]
     public async Task ShouldIncreasePatchSequence_WhenMultiplePatchesAreDispatchedForSameServer()
     {

@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Reaparr.Application.Contracts.Validators;
 
 namespace Reaparr.Application.UnitTests;
@@ -399,13 +402,24 @@ public class GetMediaDetailByIdEndpointUnitTests
             }
         );
         var dbContext = IDbContext;
-        var root = type == PlexMediaType.MusicArtist
-            ? await dbContext.PlexMusicArtists
-                .Select(x => new { x.Id, x.PlexLibraryId, ChildCount = x.ChildCount })
-                .SingleAsync(CancellationToken)
-            : await dbContext.PlexPhotoAlbums
-                .Select(x => new { x.Id, x.PlexLibraryId, ChildCount = x.Memberships.Count })
-                .SingleAsync(CancellationToken);
+        var root =
+            type == PlexMediaType.MusicArtist
+                ? await dbContext
+                    .PlexMusicArtists.Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        ChildCount = x.ChildCount,
+                    })
+                    .SingleAsync(CancellationToken)
+                : await dbContext
+                    .PlexPhotoAlbums.Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        ChildCount = x.Memberships.Count,
+                    })
+                    .SingleAsync(CancellationToken);
         root.ChildCount.ShouldBe(0);
         if (type == PlexMediaType.MusicArtist)
         {
@@ -887,4 +901,164 @@ public class GetMediaDetailByIdMusicComparisonEndpointUnitTests
             );
         Mock.Mock<ICommandExecutor>().Verify();
     }
+}
+
+public class GetMediaDetailByIdConnectionIndependenceUnitTests
+    : BaseEndpointUnitTest<GetMediaDetailByIdEndpoint, GetMediaDetailByIdEndpointRequest, ResultDTO<PlexMediaDTO>>
+{
+    [Test]
+    [Arguments(PlexMediaType.MusicArtist, true, true)]
+    [Arguments(PlexMediaType.MusicArtist, false, true)]
+    [Arguments(PlexMediaType.MusicArtist, true, false)]
+    [Arguments(PlexMediaType.PhotoAlbum, true, true)]
+    [Arguments(PlexMediaType.PhotoAlbum, false, true)]
+    [Arguments(PlexMediaType.PhotoAlbum, true, false)]
+    [Arguments(PlexMediaType.OtherVideos, true, true)]
+    [Arguments(PlexMediaType.OtherVideos, false, true)]
+    [Arguments(PlexMediaType.OtherVideos, true, false)]
+    public async Task ShouldReturnPersistedDetailWithoutConnectionOrTokenReads_WhenConnectionStateVaries(
+        PlexMediaType type,
+        bool online,
+        bool hasToken
+    )
+    {
+        // Arrange
+        var fixture = await ArrangeDetailAsync(type, online, hasToken);
+        var dbContext = IDbContext;
+        var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
+        var commands = new ConcurrentQueue<string>();
+        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        using var listeners = DiagnosticListener.AllListeners
+            .Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
+            .Subscribe(listener => commandSubscriptions.Add(listener
+                .Select(entry => entry.Value!)
+                .OfType<CommandExecutedEventData>()
+                .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
+                .Subscribe(command => commands.Enqueue(command.Command.CommandText))));
+        if (type == PlexMediaType.MusicArtist)
+        {
+            var expectedIds = new[] { fixture.Id }.Concat(fixture.ChildIds).Concat(fixture.GrandchildIds).ToArray();
+            var expectedTypes = new[] { PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack };
+            Mock.Mock<ICommandExecutor>()
+                .Setup(x => x.Send(
+                    It.Is<ApplyComparisonStateCommand>(command =>
+                        command.MediaType == type
+                        && command.PlexLibraryId == fixture.LibraryId
+                        && command.Items.Select(item => item.Id).SequenceEqual(expectedIds)
+                        && command.Items.Select(item => item.Type).SequenceEqual(expectedTypes)),
+                    CancellationToken))
+                .Returns<ICommand<Result>, CancellationToken>((command, ct) =>
+                    new ApplyOwnedMusicComparisonStateCommandHandler(dbContext, Mock.Mock<Quartz.IScheduler>().Object)
+                        .ExecuteAsync(new ApplyOwnedMusicComparisonStateCommand(
+                            ((ApplyComparisonStateCommand)command).Items, fixture.LibraryId), ct))
+                .Verifiable(Times.Once());
+        }
+
+        // Act
+        var response = await TestEndpointHandleAsync(new GetMediaDetailByIdEndpointRequest(fixture.Id, type));
+
+        // Assert
+        response.IsValid.ShouldBeTrue();
+        response.StatusCode.ShouldBe(200);
+        var result = response.Response.ShouldNotBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var dto = result.Value.ShouldNotBeNull();
+        (dto.Id, dto.Type, dto.PlexLibraryId, dto.PlexServerId, dto.Title, dto.MediaSize).ShouldBe(
+            (fixture.Id, type, fixture.LibraryId, fixture.ServerId, fixture.Title, fixture.MediaSize));
+        dto.Children.Select(x => x.Id).ShouldBe(fixture.ChildIds);
+        dto.Children.SelectMany(x => x.Children).Select(x => x.Id).ShouldBe(fixture.GrandchildIds);
+        new[] { dto }.Concat(dto.Children).Concat(dto.Children.SelectMany(x => x.Children))
+            .SelectMany(x => x.MediaData).Select(x => x.Id).Order().ShouldBe(fixture.MediaIds.Order());
+        dto.ComparisonId.ShouldBe(PlexMediaComparisonState.NotCompared.ToComparisonId());
+        commands.ShouldContain(sql => sql.Contains($"\"{fixture.TableName}\""));
+        commands.ShouldAllBe(sql => !sql.Contains("\"PlexServerConnections\""));
+        commands.ShouldAllBe(sql => !sql.Contains("\"PlexServerStatuses\""));
+        commands.ShouldAllBe(sql => !sql.Contains("\"AuthToken\""));
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+            type == PlexMediaType.MusicArtist ? Times.Once() : Times.Never());
+    }
+
+    private async Task<DetailFixture> ArrangeDetailAsync(PlexMediaType type, bool online, bool hasToken)
+    {
+        await SetupDatabase(62510, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+            config.PhotoClipCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
+        var dbContext = IDbContext;
+        await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.IsSuccessful, online), CancellationToken);
+        await dbContext.PlexAccounts.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.IsValidated, hasToken), CancellationToken);
+        var connections = await dbContext.PlexServerConnections
+            .Include(x => x.LatestConnectionStatus).ToListAsync(CancellationToken);
+        connections.Select(x => x.IsOnline).ShouldBe([online]);
+        var tokens = await dbContext.PlexAccountServers
+            .Where(x => x.PlexAccount!.IsValidated && x.PlexAccount.IsEnabled)
+            .Select(x => x.AuthToken).ToListAsync(CancellationToken);
+        tokens.ShouldBe(hasToken ? ["FAKE_AUTH_TOKEN"] : []);
+        return type switch
+        {
+            PlexMediaType.MusicArtist => await LoadMusicFixtureAsync(dbContext),
+            PlexMediaType.PhotoAlbum => await LoadPhotoFixtureAsync(dbContext),
+            PlexMediaType.OtherVideos => await LoadOtherVideoFixtureAsync(dbContext),
+            _ => throw new ArgumentOutOfRangeException(nameof(type)),
+        };
+    }
+
+    private async Task<DetailFixture> LoadMusicFixtureAsync(IReaparrDbContext dbContext)
+    {
+        var artist = await dbContext.PlexMusicArtists
+            .Include(x => x.Albums).ThenInclude(x => x.Tracks).ThenInclude(x => x.MediaDataList)
+            .SingleAsync(CancellationToken);
+        var album = artist.Albums.ShouldHaveSingleItem();
+        var track = album.Tracks.ShouldHaveSingleItem();
+        return new DetailFixture(artist.Id, artist.PlexLibraryId, artist.PlexServerId, artist.Title, artist.MediaSize,
+            [album.Id], [track.Id], track.MediaDataList.Select(x => x.Id).ToArray(),
+            nameof(IReaparrDbContext.PlexMusicArtists));
+    }
+
+    private async Task<DetailFixture> LoadPhotoFixtureAsync(IReaparrDbContext dbContext)
+    {
+        var album = await dbContext.PlexPhotoAlbums
+            .Include(x => x.Memberships).ThenInclude(x => x.PlexPhotoMediaData).SingleAsync(CancellationToken);
+        var files = album.Memberships.Select(x => x.PlexPhotoMediaData!).OrderByNatural(x => x.Title).ToList();
+        files.Count.ShouldBe(2);
+        return new DetailFixture(album.Id, album.PlexLibraryId, album.PlexServerId, album.Title,
+            files.Sum(x => x.Size), files.Select(x => x.Id).ToArray(), [], [],
+            nameof(IReaparrDbContext.PlexPhotoAlbums));
+    }
+
+    private async Task<DetailFixture> LoadOtherVideoFixtureAsync(IReaparrDbContext dbContext)
+    {
+        var video = await dbContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
+        return new DetailFixture(video.Id, video.PlexLibraryId, video.PlexServerId, video.Title, video.MediaSize,
+            [], [], video.MediaDataList.Select(x => x.Id).ToArray(), nameof(IReaparrDbContext.PlexOtherVideos));
+    }
+
+    private sealed record DetailFixture(
+        int Id,
+        int LibraryId,
+        int ServerId,
+        string Title,
+        long MediaSize,
+        int[] ChildIds,
+        int[] GrandchildIds,
+        int[] MediaIds,
+        string TableName
+    );
 }

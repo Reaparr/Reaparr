@@ -12,9 +12,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         outputFileInfoMock.Setup(x => x.Exists).Returns(true);
         outputFileInfoMock.Setup(x => x.Length).Returns(0);
 
-        Mock.Mock<IFileInfoFactory>()
-            .Setup(x => x.New(It.IsAny<string>()))
-            .Returns(outputFileInfoMock.Object);
+        Mock.Mock<IFileInfoFactory>().Setup(x => x.New(It.IsAny<string>())).Returns(outputFileInfoMock.Object);
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Setup(x =>
                 x.PersistProgressAsync(
@@ -169,9 +167,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         var outputFileInfoMock = new Mock<IFileInfo>();
         outputFileInfoMock.Setup(x => x.Exists).Returns(true);
         outputFileInfoMock.Setup(x => x.Length).Returns(7_654L);
-        Mock.Mock<IFileInfoFactory>()
-            .Setup(x => x.New(It.IsAny<string>()))
-            .Returns(outputFileInfoMock.Object);
+        Mock.Mock<IFileInfoFactory>().Setup(x => x.New(It.IsAny<string>())).Returns(outputFileInfoMock.Object);
 
         DownloadTaskProgress? finalProgress = null;
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
@@ -313,9 +309,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
             outputFileInfoMock.Setup(x => x.Length).Throws(new IOException("Cannot read DASH output length."));
         else
             outputFileInfoMock.Setup(x => x.Length).Returns(0);
-        Mock.Mock<IFileInfoFactory>()
-            .Setup(x => x.New(It.IsAny<string>()))
-            .Returns(outputFileInfoMock.Object);
+        Mock.Mock<IFileInfoFactory>().Setup(x => x.New(It.IsAny<string>())).Returns(outputFileInfoMock.Object);
 
         // Act
         var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
@@ -346,7 +340,6 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
                 Times.Never()
             );
     }
-
 
     [Test]
     public async Task ShouldReportDownloadClientError_WhenFinalProgressPersistenceFails()
@@ -408,9 +401,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         var outputFileInfoMock = new Mock<IFileInfo>();
         outputFileInfoMock.Setup(x => x.Exists).Returns(true);
         outputFileInfoMock.Setup(x => x.Length).Returns(7_654L);
-        Mock.Mock<IFileInfoFactory>()
-            .Setup(x => x.New(It.IsAny<string>()))
-            .Returns(outputFileInfoMock.Object);
+        Mock.Mock<IFileInfoFactory>().Setup(x => x.New(It.IsAny<string>())).Returns(outputFileInfoMock.Object);
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Setup(x =>
                 x.PersistProgressAsync(
@@ -500,9 +491,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         var outputFileInfoMock = new Mock<IFileInfo>();
         outputFileInfoMock.Setup(x => x.Exists).Returns(true);
         outputFileInfoMock.Setup(x => x.Length).Returns(7_654L);
-        Mock.Mock<IFileInfoFactory>()
-            .Setup(x => x.New(It.IsAny<string>()))
-            .Returns(outputFileInfoMock.Object);
+        Mock.Mock<IFileInfoFactory>().Setup(x => x.New(It.IsAny<string>())).Returns(outputFileInfoMock.Object);
 
         var progressSubject = new Subject<DashDownloadProgress>();
         var outputSubject = new Subject<string>();
@@ -569,8 +558,7 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
             && x.Percentage == 100m
         );
         finalProgressIndex.ShouldBeGreaterThanOrEqualTo(0);
-        filePatches.FindIndex(x => x.Status == DownloadStatus.DownloadFinished)
-            .ShouldBeGreaterThan(finalProgressIndex);
+        filePatches.FindIndex(x => x.Status == DownloadStatus.DownloadFinished).ShouldBeGreaterThan(finalProgressIndex);
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IDownloadHubService>().Verify();

@@ -331,10 +331,7 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
             .Select(x => (x.DiscNumber, x.TrackNumber, x.Title, x.MusicBrainzReleaseTrackId))
             .Distinct()
             .OrderBy(x => x.TrackNumber)
-            .ShouldBe([
-                ((int?)1, (int?)1, "Track 1", (string?)null),
-                ((int?)1, (int?)2, "Track 2", (string?)null),
-            ]);
+            .ShouldBe([((int?)1, (int?)1, "Track 1", (string?)null), ((int?)1, (int?)2, "Track 2", (string?)null)]);
         var remoteArtists = artists.Where(x => x.PlexLibraryId == remote.Id).ToDictionary(x => x.Title);
         var ownedArtists = artists.Where(x => x.PlexLibraryId == owned.Id).ToDictionary(x => x.Title);
         var matchedTitles = new[] { "Alpha Complete", "B Partial" };

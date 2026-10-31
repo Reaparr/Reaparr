@@ -33,13 +33,7 @@ public static partial class PlexMediaDataMapper
                             Size = part.Size,
                             Key = part.Key,
                             OriginalFilename = fileName,
-                            Width = x.Width > 0 ? x.Width : null,
-                            Height = x.Height > 0 ? x.Height : null,
-                            VideoProfile = string.IsNullOrEmpty(x.VideoProfile) ? null : x.VideoProfile,
-                            VideoFrameRate = GetVideoFrameRate(part, x.VideoFrameRate),
                             Source = x.DetermineReleaseSource(),
-                            NeedsGeneratedName = !fileName.IsValidMediaFileName(),
-                            GeneratedFilename = null,
                             PlexLibraryId = 0,
                             PlexServerId = 0,
                         };
@@ -56,9 +50,6 @@ public static partial class PlexMediaDataMapper
             SortIndex = source.SortIndex,
             SearchTitle = source.SearchTitle,
             Guid = source.Guid,
-            Guid_IMDB = source.Guids.GetImdbId(),
-            Guid_TMDB = source.Guids.GetTmdbId(),
-            Guid_TVDB = source.Guids.GetTvdbId(),
             Duration = source.Duration,
             MediaSize = source.Media.Sum(x => x.Parts.Sum(p => p.Size)),
             VideoQuality = mediaDataList.Count == 0 ? VideoQuality.Unknown : mediaDataList.Max(x => x.VideoQuality),
@@ -66,17 +57,12 @@ public static partial class PlexMediaDataMapper
             ChildCount = source.ChildCount,
             AddedAt = source.AddedAt,
             UpdatedAt = source.UpdatedAt,
-            FullTitle = source.Title,
             PlexApiRatingKey = source.RatingKey,
             PlexApiMetaDataKey = RetrieveMetaDataKey(source),
-            Studio = source.Studio,
             Summary = source.Summary,
-            ContentRating = source.ContentRating,
-            Rating = source.Rating,
             OriginallyAvailableAt = source.OriginallyAvailableAt.ToDateTime(),
             HasThumb = !string.IsNullOrEmpty(source.Thumb),
             HasArt = !string.IsNullOrEmpty(source.Art),
-            HasTheme = !string.IsNullOrEmpty(source.Theme),
             Actors = source.Role.ToPlexActor(),
             Genres = source.Genre.ToPlexGenreVideo(),
             Countries = source.Country.ToPlexCountry(),
@@ -88,29 +74,5 @@ public static partial class PlexMediaDataMapper
             mediaData.PlexOtherVideo = video;
 
         return video;
-    }
-
-    private static decimal? GetVideoFrameRate(LibraryMediaItemPartDTO part, string mediaFrameRate)
-    {
-        foreach (var stream in part.Stream)
-        {
-            if (
-                stream.StreamType == StreamType.Video
-                && stream.FrameRate is float frameRate
-                && frameRate > 0
-                && float.IsFinite(frameRate)
-                && frameRate < (float)decimal.MaxValue
-            )
-                return (decimal)frameRate;
-        }
-
-        return decimal.TryParse(
-            mediaFrameRate,
-            System.Globalization.NumberStyles.Number,
-            System.Globalization.CultureInfo.InvariantCulture,
-            out var fallbackFrameRate
-        )
-            ? fallbackFrameRate
-            : null;
     }
 }

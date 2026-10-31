@@ -331,7 +331,10 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var library = dbContext.PlexLibraries.Select(x => new { x.Id, x.PlexServerId }).First();
         await dbContext
             .PlexLibraries.Where(x => x.Id == library.Id)
-            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SyncedAt, DateTime.UtcNow.AddHours(-2)), CancellationToken);
+            .ExecuteUpdateAsync(
+                x => x.SetProperty(y => y.SyncedAt, DateTime.UtcNow.AddHours(-2)).SetProperty(y => y.Outdated, false),
+                CancellationToken
+            );
 
         var completedItem = new LibrarySyncJobQueue
         {
@@ -345,6 +348,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
 
         await dbContext.LibrarySyncJobQueues.AddAsync(completedItem, CancellationToken);
         await dbContext.SaveChangesAsync(CancellationToken);
+        (await dbContext.PlexLibraries.SingleAsync(CancellationToken)).Outdated.ShouldBeFalse();
 
         var command = new QueueLibrarySyncJobCommand([library.Id], ForceLibrarySync: true);
 
@@ -358,11 +362,13 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var queueItem = await IDbContext.LibrarySyncJobQueues.IgnoreQueryFilters().SingleAsync(CancellationToken);
         queueItem.PlexLibraryId.ShouldBe(library.Id);
         queueItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
         queueItem.StartedAt.ShouldBeNull();
         queueItem.CompletedAt.ShouldBeNull();
+        (await dbContext.PlexLibraries.SingleAsync(CancellationToken)).Outdated.ShouldBeTrue();
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -1217,6 +1223,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
                 Times.Once()
             );
     }
+
     [Test]
     public async Task ShouldKeepDurableQueueAdmission_WhenCheckerFails()
     {
@@ -1232,9 +1239,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
 
         var library = IDbContext.PlexLibraries.Single();
         Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Fail("checker failed"))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
@@ -1290,9 +1295,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ThrowsAsync(new InvalidOperationException("notification failed"))
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 

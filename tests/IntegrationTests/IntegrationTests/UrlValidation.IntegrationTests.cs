@@ -33,9 +33,14 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         var result = document.RootElement;
         result.GetProperty("isSuccess").GetBoolean().ShouldBeFalse();
         result.GetProperty("errors").GetArrayLength().ShouldBe(1);
-        result.GetProperty("errors")[0].GetProperty("metadata").GetProperty("url").GetString().ShouldBe(
-            target == UrlTarget.Plex ? "string is not a valid URL" : "URL must be an absolute http/https URL."
-        );
+        result
+            .GetProperty("errors")[0]
+            .GetProperty("metadata")
+            .GetProperty("url")
+            .GetString()
+            .ShouldBe(
+                target == UrlTarget.Plex ? "string is not a valid URL" : "URL must be an absolute http/https URL."
+            );
         result.GetProperty("successes").GetArrayLength().ShouldBe(0);
         result.TryGetProperty("value", out _).ShouldBeFalse();
         (await ReadSnapshotsAsync(container, target)).ShouldBe(before);
@@ -82,9 +87,10 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         value.GetProperty("category").GetString().ShouldBe(expected.Category);
         value.GetProperty("downloadFolderId").GetInt32().ShouldBe(FolderTypeDefaults.DefaultDownloadFolderId);
         value.GetProperty("provisioningState").GetString().ShouldBe(expected.ProvisioningState.ToString());
-        var expectedRows = operation == SaveOperation.Create
-            ? before.Append(expected).OrderBy(x => x.Id).ToArray()
-            : before.Select(x => x.Id == original.Id ? expected : x).ToArray();
+        var expectedRows =
+            operation == SaveOperation.Create
+                ? before.Append(expected).OrderBy(x => x.Id).ToArray()
+                : before.Select(x => x.Id == original.Id ? expected : x).ToArray();
         after.ShouldBe(expectedRows);
         if (operation == SaveOperation.Create)
         {
@@ -140,30 +146,44 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         value.IsPlexTvConnection.ShouldBeFalse();
         value.Type.ShouldBe(PlexConnectionTypes.Local);
         value.LatestConnectionStatus.ShouldBeNull();
-        (await ReadPlexSnapshotsAsync(container)).Single(x => x.Id == value.Id).ShouldBe(
-            new PlexConnectionSnapshot(
-                value.Id, "https", scenario.Valid.Address, scenario.Valid.Port, scenario.ExpectedUrl,
-                true, false, true, false, true, 1
-            )
-        );
+        (await ReadPlexSnapshotsAsync(container))
+            .Single(x => x.Id == value.Id)
+            .ShouldBe(
+                new PlexConnectionSnapshot(
+                    value.Id,
+                    "https",
+                    scenario.Valid.Address,
+                    scenario.Valid.Port,
+                    scenario.ExpectedUrl,
+                    true,
+                    false,
+                    true,
+                    false,
+                    true,
+                    1
+                )
+            );
     }
 
     private Task<BaseContainer> CreateUrlContainerAsync(UrlTarget target, SaveOperation operation)
     {
         var seed = target == UrlTarget.Plex ? _plexScenarios[operation].Seed : _arrScenarios[(target, operation)].Seed;
-        return CreateContainer(seed, config =>
-        {
-            config.DatabaseOptions = data =>
+        return CreateContainer(
+            seed,
+            config =>
             {
-                data.PlexServerCount = target == UrlTarget.Plex ? 1 : 0;
-                data.PlexServerConnectionPerServerCount = 1;
-                data.RadarrIntegrationCount = target == UrlTarget.Radarr ? 1 : 0;
-                data.SonarrIntegrationCount = target == UrlTarget.Sonarr ? 1 : 0;
-            };
-            // Startup Arr probing is outside these save requests and must not contact a real service.
-            config.OverrideServices = builder =>
-                builder.RegisterInstance(new SaveEndpointCommandExecutor()).As<ICommandExecutor>();
-        });
+                config.DatabaseOptions = data =>
+                {
+                    data.PlexServerCount = target == UrlTarget.Plex ? 1 : 0;
+                    data.PlexServerConnectionPerServerCount = 1;
+                    data.RadarrIntegrationCount = target == UrlTarget.Radarr ? 1 : 0;
+                    data.SonarrIntegrationCount = target == UrlTarget.Sonarr ? 1 : 0;
+                };
+                // Startup Arr probing is outside these save requests and must not contact a real service.
+                config.OverrideServices = builder =>
+                    builder.RegisterInstance(new SaveEndpointCommandExecutor()).As<ICommandExecutor>();
+            }
+        );
     }
 
     private static HttpRequestMessage BuildInvalidRequest(
@@ -190,22 +210,36 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         {
             (UrlTarget.Radarr, SaveOperation.Create) => new CreateRadarrIntegrationRequest
             {
-                Name = input.Name, Url = input.Url, ApiKey = input.ApiKey, Category = input.Category,
+                Name = input.Name,
+                Url = input.Url,
+                ApiKey = input.ApiKey,
+                Category = input.Category,
                 DownloadFolderId = FolderTypeDefaults.DefaultDownloadFolderId,
             },
             (UrlTarget.Sonarr, SaveOperation.Create) => new CreateSonarrIntegrationRequest
             {
-                Name = input.Name, Url = input.Url, ApiKey = input.ApiKey, Category = input.Category,
+                Name = input.Name,
+                Url = input.Url,
+                ApiKey = input.ApiKey,
+                Category = input.Category,
                 DownloadFolderId = FolderTypeDefaults.DefaultDownloadFolderId,
             },
             (UrlTarget.Radarr, SaveOperation.Update) => new UpdateRadarrIntegrationRequest
             {
-                IntegrationId = id, Name = input.Name, Url = input.Url, ApiKey = input.ApiKey, Category = input.Category,
+                IntegrationId = id,
+                Name = input.Name,
+                Url = input.Url,
+                ApiKey = input.ApiKey,
+                Category = input.Category,
                 DownloadFolderId = FolderTypeDefaults.DefaultDownloadFolderId,
             },
             (UrlTarget.Sonarr, SaveOperation.Update) => new UpdateSonarrIntegrationRequest
             {
-                IntegrationId = id, Name = input.Name, Url = input.Url, ApiKey = input.ApiKey, Category = input.Category,
+                IntegrationId = id,
+                Name = input.Name,
+                Url = input.Url,
+                ApiKey = input.ApiKey,
+                Category = input.Category,
                 DownloadFolderId = FolderTypeDefaults.DefaultDownloadFolderId,
             },
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
@@ -215,10 +249,14 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
 
     private static HttpRequestMessage CreateArrHttpRequest(ArrScenario scenario, object body, Guid id)
     {
-        var route = scenario.Operation == SaveOperation.Create
-            ? $"{ApiRoutes.IntegrationController}/{scenario.Target}/Configure"
-            : $"{ApiRoutes.IntegrationController}/{scenario.Target}/{id}/Configure";
-        return new HttpRequestMessage(scenario.Operation == SaveOperation.Create ? HttpMethod.Post : HttpMethod.Put, route)
+        var route =
+            scenario.Operation == SaveOperation.Create
+                ? $"{ApiRoutes.IntegrationController}/{scenario.Target}/Configure"
+                : $"{ApiRoutes.IntegrationController}/{scenario.Target}/{id}/Configure";
+        return new HttpRequestMessage(
+            scenario.Operation == SaveOperation.Create ? HttpMethod.Post : HttpMethod.Put,
+            route
+        )
         {
             Content = JsonContent.Create(body),
         };
@@ -226,16 +264,25 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
 
     private static HttpRequestMessage BuildPlexRequest(PlexScenario scenario, PlexInput input, int id)
     {
-        object body = scenario.Operation == SaveOperation.Create
-            ? new CreatePlexServerConnectionEndpointRequest
-            {
-                Url = input.Url, Protocol = input.Protocol, Address = input.Address, Port = input.Port, PlexServerId = 1,
-            }
-            : new UpdatePlexServerConnectionEndpointRequest
-            {
-                Id = id, Url = input.Url, Protocol = input.Protocol, Address = input.Address,
-                Port = input.Port, PlexServerId = 1,
-            };
+        object body =
+            scenario.Operation == SaveOperation.Create
+                ? new CreatePlexServerConnectionEndpointRequest
+                {
+                    Url = input.Url,
+                    Protocol = input.Protocol,
+                    Address = input.Address,
+                    Port = input.Port,
+                    PlexServerId = 1,
+                }
+                : new UpdatePlexServerConnectionEndpointRequest
+                {
+                    Id = id,
+                    Url = input.Url,
+                    Protocol = input.Protocol,
+                    Address = input.Address,
+                    Port = input.Port,
+                    PlexServerId = 1,
+                };
         return new HttpRequestMessage(
             scenario.Operation == SaveOperation.Create ? HttpMethod.Post : HttpMethod.Patch,
             ApiRoutes.PlexServerConnectionController
@@ -269,12 +316,21 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
     private static async Task AddCustomConnectionAsync(BaseContainer container)
     {
         using var context = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
-        context.PlexServerConnections.Add(new PlexServerConnection
-        {
-            Protocol = "http", Address = "custom.example.test", Port = 32400,
-            Url = "http://custom.example.test:32400", Local = false, Relay = false,
-            IPv4 = false, IPv6 = false, IsCustom = true, PlexServerId = 1,
-        });
+        context.PlexServerConnections.Add(
+            new PlexServerConnection
+            {
+                Protocol = "http",
+                Address = "custom.example.test",
+                Port = 32400,
+                Url = "http://custom.example.test:32400",
+                Local = false,
+                Relay = false,
+                IPv4 = false,
+                IPv6 = false,
+                IsCustom = true,
+                PlexServerId = 1,
+            }
+        );
         await context.SaveChangesAsync();
     }
 
@@ -289,9 +345,10 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
                 ApiKey = scenario.Valid.ApiKey.Trim(),
                 Category = scenario.Valid.Category.Trim(),
                 DownloadFolderId = FolderTypeDefaults.DefaultDownloadFolderId,
-                ProvisioningState = original.ProvisioningState == IntegrationProvisioningState.Configured
-                    ? IntegrationProvisioningState.ChangesPending
-                    : original.ProvisioningState,
+                ProvisioningState =
+                    original.ProvisioningState == IntegrationProvisioningState.Configured
+                        ? IntegrationProvisioningState.ChangesPending
+                        : original.ProvisioningState,
                 LastConnectionTestStatus = TestConnectionStatus.Unknown,
                 LastConnectionTestHttpStatusCode = null,
                 LastConnectionTestErrorMessage = null,
@@ -300,68 +357,137 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         }
 
         return new ArrSnapshot(
-            saved.Id, scenario.Valid.Name, scenario.ExpectedUrl, scenario.Valid.ApiKey.Trim(),
-            saved.QBittorrentApiKey, saved.TorznabApiKey, scenario.Valid.Category.Trim(),
-            null, null, IntegrationProvisioningState.Unconfigured, TestConnectionStatus.Unknown,
-            null, null, null, FolderTypeDefaults.DefaultDownloadFolderId
+            saved.Id,
+            scenario.Valid.Name,
+            scenario.ExpectedUrl,
+            scenario.Valid.ApiKey.Trim(),
+            saved.QBittorrentApiKey,
+            saved.TorznabApiKey,
+            scenario.Valid.Category.Trim(),
+            null,
+            null,
+            IntegrationProvisioningState.Unconfigured,
+            TestConnectionStatus.Unknown,
+            null,
+            null,
+            null,
+            FolderTypeDefaults.DefaultDownloadFolderId
         );
     }
 
     private static readonly Dictionary<(UrlTarget, SaveOperation), ArrScenario> _arrScenarios = new()
     {
         [(UrlTarget.Radarr, SaveOperation.Create)] = new(
-            UrlTarget.Radarr, SaveOperation.Create, 60101, "https://radarr-valid.example.com:7878/radarr",
+            UrlTarget.Radarr,
+            SaveOperation.Create,
+            60101,
+            "https://radarr-valid.example.com:7878/radarr",
             new("Invalid Radarr", "ftp://radarr-invalid.example.com", "invalid-key", "invalid-category"),
             new("Radarr Valid", "  https://radarr-valid.example.com:7878/radarr/  ", " valid-key ", " valid-category ")
         ),
         [(UrlTarget.Radarr, SaveOperation.Update)] = new(
-            UrlTarget.Radarr, SaveOperation.Update, 60102, "https://radarr-updated.example.com:7879/radarr",
+            UrlTarget.Radarr,
+            SaveOperation.Update,
+            60102,
+            "https://radarr-updated.example.com:7879/radarr",
             new("Updated Radarr", "not-a-url", "updated-key", "updated-category"),
-            new("Updated Radarr", "  https://radarr-updated.example.com:7879/radarr/  ", " updated-key ", " updated-category ")
+            new(
+                "Updated Radarr",
+                "  https://radarr-updated.example.com:7879/radarr/  ",
+                " updated-key ",
+                " updated-category "
+            )
         ),
         [(UrlTarget.Sonarr, SaveOperation.Create)] = new(
-            UrlTarget.Sonarr, SaveOperation.Create, 60103, "http://sonarr-valid.example.com:8989/sonarr",
+            UrlTarget.Sonarr,
+            SaveOperation.Create,
+            60103,
+            "http://sonarr-valid.example.com:8989/sonarr",
             new("Invalid Sonarr", "file://sonarr-invalid.example.com", "invalid-key", "invalid-category"),
             new("Sonarr Valid", "  http://sonarr-valid.example.com:8989/sonarr/  ", " valid-key ", " valid-category ")
         ),
         [(UrlTarget.Sonarr, SaveOperation.Update)] = new(
-            UrlTarget.Sonarr, SaveOperation.Update, 60104, "https://sonarr-updated.example.com:8990/sonarr",
+            UrlTarget.Sonarr,
+            SaveOperation.Update,
+            60104,
+            "https://sonarr-updated.example.com:8990/sonarr",
             new("Updated Sonarr", "https://", "updated-key", "updated-category"),
-            new("Updated Sonarr", "  https://sonarr-updated.example.com:8990/sonarr/  ", " updated-key ", " updated-category ")
+            new(
+                "Updated Sonarr",
+                "  https://sonarr-updated.example.com:8990/sonarr/  ",
+                " updated-key ",
+                " updated-category "
+            )
         ),
     };
 
     private static readonly Dictionary<SaveOperation, PlexScenario> _plexScenarios = new()
     {
         [SaveOperation.Create] = new(
-            SaveOperation.Create, 60105, "https://192.168.0.42:32400/plex/",
+            SaveOperation.Create,
+            60105,
+            "https://192.168.0.42:32400/plex/",
             new("ftp://plex-invalid.example.com:32400", "ftp", "plex-invalid.example.com", 32400),
             new("  https://192.168.0.42:32400/plex/  ", "HTTPS", "192.168.0.42", 32400)
         ),
         [SaveOperation.Update] = new(
-            SaveOperation.Update, 60106, "https://10.0.0.42:32401/plex/",
+            SaveOperation.Update,
+            60106,
+            "https://10.0.0.42:32401/plex/",
             new("not a url", "HTTPS", "custom-updated.example.test", 32401),
             new("  https://10.0.0.42:32401/plex/  ", "HTTPS", "10.0.0.42", 32401)
         ),
     };
 
-    private static readonly Expression<Func<RadarrIntegration, ArrSnapshot>> _radarrProjection =
-        x => new ArrSnapshot(
-            x.Id, x.DisplayName, x.BaseUrl, x.RadarrApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category,
-            x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus,
-            x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId
-        );
+    private static readonly Expression<Func<RadarrIntegration, ArrSnapshot>> _radarrProjection = x => new ArrSnapshot(
+        x.Id,
+        x.DisplayName,
+        x.BaseUrl,
+        x.RadarrApiKey,
+        x.QBittorrentApiKey,
+        x.TorznabApiKey,
+        x.Category,
+        x.ExternalDownloadClientId,
+        x.ExternalIndexerId,
+        x.ProvisioningState,
+        x.LastConnectionTestStatus,
+        x.LastConnectionTestHttpStatusCode,
+        x.LastConnectionTestErrorMessage,
+        x.LastConnectionTestedAt,
+        x.DownloadFolderId
+    );
 
-    private static readonly Expression<Func<SonarrIntegration, ArrSnapshot>> _sonarrProjection =
-        x => new ArrSnapshot(
-            x.Id, x.DisplayName, x.BaseUrl, x.SonarrApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category,
-            x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus,
-            x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId
-        );
+    private static readonly Expression<Func<SonarrIntegration, ArrSnapshot>> _sonarrProjection = x => new ArrSnapshot(
+        x.Id,
+        x.DisplayName,
+        x.BaseUrl,
+        x.SonarrApiKey,
+        x.QBittorrentApiKey,
+        x.TorznabApiKey,
+        x.Category,
+        x.ExternalDownloadClientId,
+        x.ExternalIndexerId,
+        x.ProvisioningState,
+        x.LastConnectionTestStatus,
+        x.LastConnectionTestHttpStatusCode,
+        x.LastConnectionTestErrorMessage,
+        x.LastConnectionTestedAt,
+        x.DownloadFolderId
+    );
 
     private static readonly Expression<Func<PlexServerConnection, PlexConnectionSnapshot>> _plexProjection =
         x => new PlexConnectionSnapshot(
-            x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom, x.PlexServerId
+            x.Id,
+            x.Protocol,
+            x.Address,
+            x.Port,
+            x.Url,
+            x.Local,
+            x.Relay,
+            x.IPv4,
+            x.IPv6,
+            x.IsCustom,
+            x.PlexServerId
         );
 
     private sealed class SaveEndpointCommandExecutor : ICommandExecutor
@@ -377,29 +503,69 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         }
     }
 
-    public enum UrlTarget { Radarr, Sonarr, Plex }
+    public enum UrlTarget
+    {
+        Radarr,
+        Sonarr,
+        Plex,
+    }
 
-    public enum SaveOperation { Create, Update }
+    public enum SaveOperation
+    {
+        Create,
+        Update,
+    }
 
     private sealed record ArrScenario(
-        UrlTarget Target, SaveOperation Operation, int Seed, string ExpectedUrl, ArrInput Invalid, ArrInput Valid
+        UrlTarget Target,
+        SaveOperation Operation,
+        int Seed,
+        string ExpectedUrl,
+        ArrInput Invalid,
+        ArrInput Valid
     );
 
     private sealed record ArrInput(string Name, string Url, string ApiKey, string Category);
 
-    private sealed record PlexScenario(SaveOperation Operation, int Seed, string ExpectedUrl, PlexInput Invalid, PlexInput Valid);
+    private sealed record PlexScenario(
+        SaveOperation Operation,
+        int Seed,
+        string ExpectedUrl,
+        PlexInput Invalid,
+        PlexInput Valid
+    );
 
     private sealed record PlexInput(string Url, string Protocol, string Address, int Port);
 
     private sealed record ArrSnapshot(
-        Guid Id, string DisplayName, string BaseUrl, string ApiKey, string QBittorrentApiKey, string TorznabApiKey,
-        string Category, int? ExternalDownloadClientId, int? ExternalIndexerId, IntegrationProvisioningState ProvisioningState,
-        TestConnectionStatus LastConnectionTestStatus, int? LastConnectionTestHttpStatusCode,
-        string? LastConnectionTestErrorMessage, DateTime? LastConnectionTestedAt, int DownloadFolderId
+        Guid Id,
+        string DisplayName,
+        string BaseUrl,
+        string ApiKey,
+        string QBittorrentApiKey,
+        string TorznabApiKey,
+        string Category,
+        int? ExternalDownloadClientId,
+        int? ExternalIndexerId,
+        IntegrationProvisioningState ProvisioningState,
+        TestConnectionStatus LastConnectionTestStatus,
+        int? LastConnectionTestHttpStatusCode,
+        string? LastConnectionTestErrorMessage,
+        DateTime? LastConnectionTestedAt,
+        int DownloadFolderId
     );
 
     private sealed record PlexConnectionSnapshot(
-        int Id, string Protocol, string Address, int Port, string Url, bool Local, bool Relay,
-        bool IPv4, bool IPv6, bool IsCustom, int PlexServerId
+        int Id,
+        string Protocol,
+        string Address,
+        int Port,
+        string Url,
+        bool Local,
+        bool Relay,
+        bool IPv4,
+        bool IPv6,
+        bool IsCustom,
+        int PlexServerId
     );
 }

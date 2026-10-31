@@ -69,35 +69,46 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         var githubHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         githubHandler
             .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases")
-            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, releasePayload))
+            .ReturnsAsync(
+                (HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, releasePayload)
+            )
             .Verifiable(Times.Exactly(2));
         var githubClientFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
         githubClientFactory
             .Setup(x => x.CreateClient("GitHub"))
-            .Returns(() => new HttpClient(githubHandler.Object, disposeHandler: false)
-            {
-                BaseAddress = new Uri("https://api.github.com/"),
-            })
+            .Returns(() =>
+                new HttpClient(githubHandler.Object, disposeHandler: false)
+                {
+                    BaseAddress = new Uri("https://api.github.com/"),
+                }
+            )
             .Verifiable(Times.Exactly(2));
         var asset = new VelopackAsset { PackageId = "Reaparr", Version = new SemanticVersion(0, 39, 0) };
         var updateManager = new Mock<UpdateManager>(
-            new Mock<IUpdateSource>().Object, null!, new Mock<IVelopackLocator>(MockBehavior.Loose).Object);
-        updateManager.Setup(x => x.CheckForUpdatesAsync())
+            new Mock<IUpdateSource>().Object,
+            null!,
+            new Mock<IVelopackLocator>(MockBehavior.Loose).Object
+        );
+        updateManager
+            .Setup(x => x.CheckForUpdatesAsync())
             .ReturnsAsync(new UpdateInfo(asset, false))
             .Verifiable(Times.Exactly(2));
-        using var container = await CreateContainer(new Seed(11002), config =>
-        {
-            config.OverrideAppBuildInfo = new MockAppBuildInfo
+        using var container = await CreateContainer(
+            new Seed(11002),
+            config =>
             {
-                RuntimeMode = "docker",
-                Version = "0.38.0",
-                InformationalVersion = "0.38.0",
-                RuntimeIdentifier = "linux-x64",
-                CurrentOS = OperatingSystemPlatform.Linux,
-            };
-            config.OverrideServices = builder => RegisterUpdateServices(
-                builder, githubClientFactory.Object, updateManager.Object);
-        });
+                config.OverrideAppBuildInfo = new MockAppBuildInfo
+                {
+                    RuntimeMode = "docker",
+                    Version = "0.38.0",
+                    InformationalVersion = "0.38.0",
+                    RuntimeIdentifier = "linux-x64",
+                    CurrentOS = OperatingSystemPlatform.Linux,
+                };
+                config.OverrideServices = builder =>
+                    RegisterUpdateServices(builder, githubClientFactory.Object, updateManager.Object);
+            }
+        );
         var notificationService = container.Resolve<MockNotificationHubService>();
         var client = container.GetApiClient();
 
@@ -133,31 +144,45 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var githubHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-        githubHandler.SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases")
-            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
-            {
-                RequestMessage = request,
-            })
+        githubHandler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases")
+            .ReturnsAsync(
+                (HttpRequestMessage request, CancellationToken _) =>
+                    new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { RequestMessage = request }
+            )
             .Verifiable(Times.Once());
         var githubClientFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
-        githubClientFactory.Setup(x => x.CreateClient("GitHub"))
-            .Returns(() => new HttpClient(githubHandler.Object, disposeHandler: false)
-            {
-                BaseAddress = new Uri("https://api.github.com/"),
-            })
+        githubClientFactory
+            .Setup(x => x.CreateClient("GitHub"))
+            .Returns(() =>
+                new HttpClient(githubHandler.Object, disposeHandler: false)
+                {
+                    BaseAddress = new Uri("https://api.github.com/"),
+                }
+            )
             .Verifiable(Times.Once());
         var manager = new Mock<UpdateManager>(
-            new Mock<IUpdateSource>().Object, null!, new Mock<IVelopackLocator>(MockBehavior.Loose).Object);
+            new Mock<IUpdateSource>().Object,
+            null!,
+            new Mock<IVelopackLocator>(MockBehavior.Loose).Object
+        );
         manager.Setup(x => x.CheckForUpdatesAsync()).ReturnsAsync((UpdateInfo?)null).Verifiable(Times.Once());
-        using var container = await CreateContainer(new Seed(11006), config =>
-        {
-            config.OverrideAppBuildInfo = new MockAppBuildInfo
+        using var container = await CreateContainer(
+            new Seed(11006),
+            config =>
             {
-                RuntimeMode = "docker", Version = "0.38.0", InformationalVersion = "0.38.0",
-                RuntimeIdentifier = "linux-x64", CurrentOS = OperatingSystemPlatform.Linux,
-            };
-            config.OverrideServices = builder => RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
-        });
+                config.OverrideAppBuildInfo = new MockAppBuildInfo
+                {
+                    RuntimeMode = "docker",
+                    Version = "0.38.0",
+                    InformationalVersion = "0.38.0",
+                    RuntimeIdentifier = "linux-x64",
+                    CurrentOS = OperatingSystemPlatform.Linux,
+                };
+                config.OverrideServices = builder =>
+                    RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
+            }
+        );
         var notifications = container.Resolve<MockNotificationHubService>();
         using var client = container.GetApiClient();
 
@@ -345,16 +370,18 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
     }
 
     private static string CreateStableReleasePayload() =>
-        JsonSerializer.Serialize(new[]
-        {
-            new GitHubReleaseDTO
+        JsonSerializer.Serialize(
+            new[]
             {
-                TagName = "v0.39.0",
-                Body = "Stable release notes",
-                PublishedAt = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc),
-                Prerelease = false,
-            },
-        });
+                new GitHubReleaseDTO
+                {
+                    TagName = "v0.39.0",
+                    Body = "Stable release notes",
+                    PublishedAt = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc),
+                    Prerelease = false,
+                },
+            }
+        );
 
     private static HttpResponseMessage CreateGitHubResponse(HttpRequestMessage request, string payload) =>
         new(HttpStatusCode.OK)
@@ -366,12 +393,12 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
     private static void RegisterUpdateServices(
         Autofac.ContainerBuilder builder,
         IHttpClientFactory githubClientFactory,
-        UpdateManager updateManager)
+        UpdateManager updateManager
+    )
     {
         builder.RegisterInstance(githubClientFactory).As<IHttpClientFactory>().SingleInstance();
         builder.RegisterInstance(updateManager).As<UpdateManager>().SingleInstance();
-        builder.RegisterType<MockNotificationHubService>()
-            .As<INotificationHubService>().AsSelf().SingleInstance();
+        builder.RegisterType<MockNotificationHubService>().As<INotificationHubService>().AsSelf().SingleInstance();
     }
 
     private static FakeCommandExecutor CreateCommandExecutor(AppUpdateCheckResult updateResult) =>

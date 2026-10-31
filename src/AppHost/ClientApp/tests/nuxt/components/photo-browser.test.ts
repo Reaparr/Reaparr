@@ -6,10 +6,14 @@ import { flushPromises } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { useGlobalStore, useLibraryStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
-import { LibrarySyncJobStatus, PlexMediaType, ViewMode } from '@dto';
+import { mockPhotoMetadata } from '../helpers/photo-metadata';
+import { LibrarySyncJobStatus, PlexMediaType, SortDirection, SortType, ViewMode } from '@dto';
 import { generateLibrarySyncJobQueue, generatePlexLibrary, generateResultDTO, Seed } from '@mock';
 import PhotoBrowser from '@/components/Photos/PhotoBrowser.vue';
 import messages from '@/lang/en-US.json';
+import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
+
+const titleDescending = toggleMediaOverviewSort(createDefaultMediaOverviewSort(), SortType.Title);
 
 const navigation = vi.hoisted(() => ({
 	route: { path: '/photos', fullPath: '/photos', query: {} as Record<string, string>, params: {} },
@@ -28,6 +32,7 @@ describe('PhotoBrowser - unified route context', () => {
 		mock = getAxiosMock();
 		pinia = createPinia();
 		setActivePinia(pinia);
+		mockPhotoMetadata();
 		navigation.route = reactive({ path: '/photos', fullPath: '/photos', query: {} as Record<string, string>, params: {} });
 		navigation.push.mockReset().mockResolvedValue(undefined);
 		navigation.replace.mockReset().mockResolvedValue(undefined);
@@ -42,14 +47,14 @@ describe('PhotoBrowser - unified route context', () => {
 		mock.restore();
 		vi.restoreAllMocks();
 	});
-	async function render(libraryId = 0, albumId?: number, overviewStub: boolean | Component = true) {
+	async function render(libraryId = 0, albumId?: number, overviewStub: boolean | Component = true, barStub: boolean | Component = true) {
 		useSettingsStore().displaySettings.photoAlbumViewMode = ViewMode.Table;
 		const wrapper = await mountSuspended(PhotoBrowser, {
 			props: { libraryId, albumId },
 			global: {
 				plugins: [pinia, createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': messages } })],
 				stubs: {
-					MediaOverviewBar: true,
+					MediaOverviewBar: barStub,
 					PhotoOverviewList: overviewStub,
 					DownloadConfirmation: true,
 					RefreshModeDialog: true,
@@ -82,17 +87,151 @@ describe('PhotoBrowser - unified route context', () => {
 
 		// Assert
 		expect(photoStore.active).toBe(true);
-		expect(photoStore.view).toBe('assets');
+		expect(photoStore.sort).toEqual(createDefaultMediaOverviewSort());
 		expect(photoStore.assets.loaded).toBe(true);
 		expect(photoStore.assets.error).toBe(false);
 		expect(mock.history.get.filter((request) => request.url === '/api/PlexPhoto/assets')).toHaveLength(1);
+	});
+	test.each([
+		{ wireSort: `${SortType.Title}:asc`, expectedSort: createDefaultMediaOverviewSort() },
+		{ wireSort: `${SortType.Title}:desc`, expectedSort: titleDescending },
+		{ wireSort: 'title:asc', expectedSort: createDefaultMediaOverviewSort() },
+		{ wireSort: 'sortIndex:asc', expectedSort: createDefaultMediaOverviewSort() },
+	])('Should parse generated and legacy photo sort routes into the typed photo context ($wireSort)', async ({ wireSort, expectedSort }) => {
+		// Arrange
+		navigation.route.fullPath = `/photos?view=assets&sort=${wireSort}`;
+		navigation.route.query = { view: 'assets', sort: wireSort };
+		mock.onGet('/api/PlexPhoto/assets').reply(200, generateResultDTO({
+			items: [], page: 1, pageSize: 100, totalCount: 0, totalBytes: 0,
+		}));
+		await render();
+
+		// Act
+		useGlobalStore().pageReadyObservable.next(true);
+		await nextTick();
+		await flushPromises();
+
+		// Assert
+		expect(usePhotoBrowsingStore().sort).toEqual(expectedSort);
+	});
+	test('uses album asset capabilities when a stale folder view is present in the route', async () => {
+		// Arrange
+		navigation.route.path = '/photos/4/details/9';
+		navigation.route.fullPath = `/photos/4/details/9?view=folders&sort=${SortType.MediaSize}:asc`;
+		navigation.route.query = { view: 'folders', sort: `${SortType.MediaSize}:asc` };
+		mock.onGet('/api/PlexPhoto/libraries/4/albums/9/assets').reply(200, generateResultDTO({
+			items: [], page: 1, pageSize: 100, totalCount: 0, totalBytes: 0,
+		}));
+		await render(4, 9);
+
+		// Act
+		useGlobalStore().pageReadyObservable.next(true);
+		await nextTick();
+		await flushPromises();
+
+		// Assert
+		expect(usePhotoBrowsingStore().active).toBe(true);
+		expect(usePhotoBrowsingStore().view).toBe('assets');
+		expect(usePhotoBrowsingStore().sort).toEqual({ field: SortType.MediaSize, sort: SortDirection.Asc });
+	});
+
+	test.each(['', `${SortType.Title}:ASC`, ` ${SortType.Title}:asc`, `${SortType.Title}:asc `, `${SortType.Title}:no-sort`])('Should reject malformed photo sort route value %s', async (sort) => {
+		// Arrange
+		navigation.route.fullPath = `/photos?sort=${encodeURIComponent(sort)}`;
+		navigation.route.query = { sort };
+
+		// Act
+		const wrapper = await render();
+
+		// Assert
+		expect(wrapper.find('[data-cy="photo-invalid-route"]').exists()).toBe(true);
+		expect(usePhotoBrowsingStore().active).toBe(false);
+	});
+	test('Should reject a known photo sort omitted from the scoped metadata response', async () => {
+		// Arrange
+		navigation.route.fullPath = `/photos/4?view=assets&sort=${SortType.Year}:asc`;
+		navigation.route.query = { view: 'assets', sort: `${SortType.Year}:asc` };
+		useLibraryStore().updateLibrary(generatePlexLibrary({
+			seed: new Seed(1404),
+			plexServerId: 1,
+			type: PlexMediaType.PhotoAlbum,
+			partialData: { id: 4, isEnabled: true },
+		}));
+		const wrapper = await render(4);
+
+		// Act
+		useGlobalStore().pageReadyObservable.next(true);
+		await nextTick();
+		await flushPromises();
+
+		// Assert
+		expect(wrapper.find('[data-cy="photo-invalid-route"]').exists()).toBe(true);
+		expect(usePhotoBrowsingStore().active).toBe(true);
+		expect(mock.history.get.some((request) => request.url === '/api/PlexPhoto/assets')).toBe(false);
+	});
+	test('Should serialize the typed toolbar sort when updating the photo route', async () => {
+		// Arrange
+		const sortBar = defineComponent({
+			name: 'MediaOverviewBar',
+			emits: ['photo-sort'],
+			setup(_, { emit }) {
+				return () => h('button', { 'data-cy': 'test-sort', onClick: () => emit('photo-sort', titleDescending) });
+			},
+		});
+		const wrapper = await render(0, undefined, true, sortBar);
+
+		// Act
+		await wrapper.get('[data-cy="test-sort"]').trigger('click');
+
+		// Assert
+		expect(navigation.push).toHaveBeenCalledWith({ query: { sort: `${SortType.Title}:desc` } });
+	});
+	test('resets an unsupported asset sort when switching to folder view', async () => {
+		// Arrange
+		navigation.route.fullPath = `/photos/4?view=assets&sort=${SortType.MediaSize}:asc`;
+		navigation.route.query = { view: 'assets', sort: `${SortType.MediaSize}:asc` };
+		const viewBar = defineComponent({
+			name: 'MediaOverviewBar',
+			emits: ['photo-view'],
+			setup(_, { emit }) {
+				return () => h('button', { 'data-cy': 'test-folder-view', onClick: () => emit('photo-view', 'folders') });
+			},
+		});
+		const wrapper = await render(4, undefined, true, viewBar);
+		mounted.push(wrapper);
+
+		// Act
+		await wrapper.get('[data-cy="test-folder-view"]').trigger('click');
+
+		// Assert
+		expect(navigation.push).toHaveBeenCalledWith({ query: { view: 'folders' } });
+	});
+	test('resets an unsupported folder sort when clearing search', async () => {
+		// Arrange
+		navigation.route.fullPath = `/photos/4?view=folders&q=sun&sort=${SortType.MediaSize}:asc`;
+		navigation.route.query = { view: 'folders', q: 'sun', sort: `${SortType.MediaSize}:asc` };
+		const searchBar = defineComponent({
+			name: 'MediaOverviewBar',
+			emits: ['photo-search'],
+			setup(_, { emit }) {
+				return () => h('button', { 'data-cy': 'test-clear-search', onClick: () => emit('photo-search', '') });
+			},
+		});
+		const wrapper = await render(4, undefined, true, searchBar);
+		mounted.push(wrapper);
+
+		// Act
+		await wrapper.get('[data-cy="test-clear-search"]').trigger('click');
+
+		// Assert
+		expect(navigation.replace).toHaveBeenCalledWith({ query: { view: 'folders' } });
 	});
 
 	test.each([undefined, 'albums'])('Should redirect an albumless library to folders for view %s', async (view) => {
 		// Arrange
 		navigation.route.path = '/photos/4';
-		navigation.route.fullPath = `/photos/4?sort=title:desc${view ? `&view=${view}` : ''}`;
-		navigation.route.query = { sort: 'title:desc', ...(view ? { view } : {}) };
+		navigation.route.fullPath = `/photos/4?sort=${SortType.Title}:desc${view ? `&view=${view}` : ''}`;
+		navigation.route.query = { sort: `${SortType.Title}:desc`, ...(view ? { view } : {}) };
 		useLibraryStore().updateLibrary(generatePlexLibrary({
 			seed: new Seed(1204),
 			plexServerId: 1,
@@ -107,7 +246,7 @@ describe('PhotoBrowser - unified route context', () => {
 		await flushPromises();
 
 		// Assert
-		expect(navigation.replace).toHaveBeenCalledWith({ query: { sort: 'title:desc', view: 'folders' } });
+		expect(navigation.replace).toHaveBeenCalledWith({ query: { sort: `${SortType.Title}:desc`, view: 'folders' } });
 		expect(mock.history.get.some((request) => request.url === '/api/PlexPhoto/albums')).toBe(false);
 	});
 
@@ -182,8 +321,8 @@ describe('PhotoBrowser - unified route context', () => {
 	test('Should link folder ancestors without linking the current folder and preserve the selected sort', async () => {
 		// Arrange
 		navigation.route.path = '/photos/4';
-		navigation.route.fullPath = '/photos/4?view=folders&folderId=3&sort=title:desc';
-		navigation.route.query = { view: 'folders', folderId: '3', sort: 'title:desc' };
+		navigation.route.fullPath = `/photos/4?view=folders&folderId=3&sort=${SortType.Title}:desc`;
+		navigation.route.query = { view: 'folders', folderId: '3', sort: `${SortType.Title}:desc` };
 		const wrapper = await render(4);
 		const photoStore = usePhotoBrowsingStore();
 		photoStore.mode = 'library';
@@ -205,7 +344,7 @@ describe('PhotoBrowser - unified route context', () => {
 		expect(breadcrumbs.text()).toContain('Day one');
 		expect(destinations.map((url) => url.pathname)).toEqual(['/photos/4', '/photos/4', '/photos/4']);
 		expect(destinations.map((url) => url.searchParams.get('folderId'))).toEqual([null, '1', '2']);
-		expect(destinations.map((url) => url.searchParams.get('sort'))).toEqual(['title:desc', 'title:desc', 'title:desc']);
+		expect(destinations.map((url) => url.searchParams.get('sort'))).toEqual([`${SortType.Title}:desc`, `${SortType.Title}:desc`, `${SortType.Title}:desc`]);
 	});
 
 	test.each([LibrarySyncJobStatus.Completed, LibrarySyncJobStatus.Failed, LibrarySyncJobStatus.Cancelled])(

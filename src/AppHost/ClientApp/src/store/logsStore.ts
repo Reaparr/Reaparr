@@ -8,9 +8,8 @@ import { StoreNames } from '@interfaces';
 import { cloneDeep } from 'lodash-es';
 import { useSignalrStore } from '@store';
 import type { LiveLogEventDTO } from '@dto';
-import { LogSeverity } from '@dto';
+import { LogSeverity, SortDirection } from '@dto';
 import { debugApi } from '@api';
-import { SortDirection } from '@enums';
 
 interface ILogsStoreState {
 	searchText: string;

@@ -18,7 +18,8 @@ public class RefreshPlexPhotoLibraryCommandValidator : AbstractValidator<Refresh
     }
 }
 
-public class RefreshPlexPhotoLibraryCommandHandler : ICommandHandler<RefreshPlexPhotoLibraryCommand, Result<PlexLibrary>>
+public class RefreshPlexPhotoLibraryCommandHandler
+    : ICommandHandler<RefreshPlexPhotoLibraryCommand, Result<PlexLibrary>>
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
@@ -50,7 +51,7 @@ public class RefreshPlexPhotoLibraryCommandHandler : ICommandHandler<RefreshPlex
             return syncResult.ToResult().LogWarning();
         if (syncResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(library.Id, syncResult.ToResult(), ct);
+            await _librarySyncProgressStore.UpdateErrorAsync(library.Id, syncResult.ToResult());
             return syncResult.ToResult().LogError();
         }
 
@@ -72,8 +73,7 @@ public class RefreshPlexPhotoLibraryCommandHandler : ICommandHandler<RefreshPlex
                     Received = library.PhotoAlbums.Count,
                     Total = library.PhotoAlbums.Count,
                     TimeRemaining = TimeSpan.Zero,
-                },
-                ct
+                }
             )
         );
         albumProgressResult.LogIfFailed();
@@ -87,18 +87,22 @@ public class RefreshPlexPhotoLibraryCommandHandler : ICommandHandler<RefreshPlex
                     Received = library.PhotoMediaData.Count,
                     Total = library.PhotoMediaData.Count,
                     TimeRemaining = TimeSpan.Zero,
-                },
-                ct
+                }
             )
         );
         imageProgressResult.LogIfFailed();
 
         var rebuildResult = await Result.Try(() =>
-            _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct)
+            _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum), ct)
         );
         rebuildResult.LogIfFailed();
 
-        _log.Here().Information("Successfully refreshed library {PlexLibraryName} with id: {PlexLibraryId}", library.Title, library.Id);
+        _log.Here()
+            .Information(
+                "Successfully refreshed library {PlexLibraryName} with id: {PlexLibraryId}",
+                library.Title,
+                library.Id
+            );
 
         var plexLibraryDb = await _dbContext.PlexLibraries.FirstOrDefaultAsync(
             x => x.Id == library.Id,

@@ -15,11 +15,12 @@ public class PlexMusicTrackMediaDataConfiguration : IEntityTypeConfiguration<Ple
                 x.PartIndex,
             })
             .IsUnique();
-        builder.HasIndex(x => x.PlexApiRatingKey);
+        builder.HasIndex(x => new { x.PlexLibraryId, x.PlexTrackId });
         builder
             .HasOne(x => x.PlexTrack)
             .WithMany(x => x.MediaDataList)
-            .HasForeignKey(x => x.PlexTrackId)
+            .HasForeignKey(x => new { x.PlexLibraryId, x.PlexTrackId })
+            .HasPrincipalKey(x => new { x.PlexLibraryId, x.Id })
             .OnDelete(DeleteBehavior.Cascade);
         builder
             .HasOne(x => x.PlexLibrary)

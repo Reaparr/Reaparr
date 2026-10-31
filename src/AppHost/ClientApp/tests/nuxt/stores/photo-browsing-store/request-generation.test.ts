@@ -4,9 +4,11 @@ import { Subject } from 'rxjs';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateResultDTO } from '@mock';
 import { plexPhotoApi } from '@api';
-import { PhotoAssetKind, PhotoItemKind, PlexMediaType, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PlexLibraryDTO } from '@dto';
+import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PlexLibraryDTO } from '@dto';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { ResultDTO } from '@interfaces';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort } from '@composables';
 
 describe('PhotoBrowsingStore - range and context cancellation', () => {
 	const owner = {};
@@ -15,10 +17,11 @@ describe('PhotoBrowsingStore - range and context cancellation', () => {
 		getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		mockPhotoMetadata();
 	});
 
 	const route = (partial: Partial<IPhotoBrowseActivation> = {}): IPhotoBrowseActivation => ({
-		mode: 'library', libraryId: 7, view: 'assets', folderId: null, searchQuery: '', sort: 'title:asc', ...partial,
+		mode: 'library', libraryId: 7, view: 'assets', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort(), ...partial,
 	});
 
 	const asset = (id: number, libraryId = 7): PhotoAssetBrowseDTO => ({
@@ -62,8 +65,8 @@ describe('PhotoBrowsingStore - range and context cancellation', () => {
 		await first.onComplete();
 		await second.onComplete();
 
-		expect(request).toHaveBeenNthCalledWith(1, { q: 'old', page: 1, size: 100, sort: 'title:asc' }, expect.any(Object));
-		expect(request).toHaveBeenNthCalledWith(2, { q: 'new', page: 1, size: 100, sort: 'title:asc' }, expect.any(Object));
+		expect(request).toHaveBeenNthCalledWith(1, { q: 'old', page: 1, size: 100, sort: `${SortType.Title}:asc` }, expect.any(Object));
+		expect(request).toHaveBeenNthCalledWith(2, { q: 'new', page: 1, size: 100, sort: `${SortType.Title}:asc` }, expect.any(Object));
 		expect(store.search.items.map((item) => item.id)).toEqual([2]);
 	});
 

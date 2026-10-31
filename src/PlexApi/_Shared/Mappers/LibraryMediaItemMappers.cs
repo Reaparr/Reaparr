@@ -26,11 +26,7 @@ public static class LibraryMediaItemMappers
         source?.Select(x => x.ToPlexGenreVideo()).ToList() ?? [];
 
     public static PlexGenreAudio ToPlexGenreAudio(this LibraryMediaItemGenreDTO source) =>
-        new()
-        {
-            Name = source.Name,
-            Key = source.Key,
-        };
+        new() { Name = source.Name, Key = source.Key };
 
     public static List<PlexGenreAudio> ToPlexGenreAudio(this IEnumerable<LibraryMediaItemGenreDTO>? source) =>
         source?.Select(x => x.ToPlexGenreAudio()).ToList() ?? [];

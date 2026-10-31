@@ -26,7 +26,11 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
         if (await _scheduler.IsJobScheduledOrExecuting(jobKey, cancellationToken))
         {
             _log.Here()
-                .Debug("{MoveDownloadFileJobName} with {JobKey} is already scheduled", nameof(MoveDownloadFileJob), jobKey);
+                .Debug(
+                    "{MoveDownloadFileJobName} with {JobKey} is already scheduled",
+                    nameof(MoveDownloadFileJob),
+                    jobKey
+                );
             return Result.Ok();
         }
 
@@ -68,13 +72,19 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
         return Result.Ok();
     }
 
-    public async Task<bool>
-        IsDownloadFileMoving(DownloadTaskKey downloadTaskKey, CancellationToken cancellationToken) =>
-        await _scheduler.IsJobScheduledOrExecuting(MoveDownloadFileJob.GetJobKey(downloadTaskKey.Id), cancellationToken);
+    public async Task<bool> IsDownloadFileMoving(
+        DownloadTaskKey downloadTaskKey,
+        CancellationToken cancellationToken
+    ) =>
+        await _scheduler.IsJobScheduledOrExecuting(
+            MoveDownloadFileJob.GetJobKey(downloadTaskKey.Id),
+            cancellationToken
+        );
 
-    public async Task<bool> IsAnyMoveDownloadFileJobRunning() => (await _scheduler.GetCurrentlyExecutingJobs()).Any(x =>
-        x.JobDetail.Key.Group == nameof(JobTypes.MoveDownloadFileJob)
-    );
+    public async Task<bool> IsAnyMoveDownloadFileJobRunning() =>
+        (await _scheduler.GetCurrentlyExecutingJobs()).Any(x =>
+            x.JobDetail.Key.Group == nameof(JobTypes.MoveDownloadFileJob)
+        );
 
     public async Task<List<DownloadTaskKey>> GetCurrentlyMovingKeysByServer(int plexServerId)
     {
@@ -93,8 +103,8 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
             if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
                 continue;
 
-            var key = (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))?.JobDataMap
-                .GetPayload<MoveDownloadFileJobPayload>()
+            var key = (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))
+                ?.JobDataMap.GetPayload<MoveDownloadFileJobPayload>()
                 ?.DownloadTaskKey;
             if (key is not null)
                 keysById[key.Id] = key;

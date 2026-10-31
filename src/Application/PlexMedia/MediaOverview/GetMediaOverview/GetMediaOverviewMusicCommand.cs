@@ -20,6 +20,9 @@ public sealed class GetMediaOverviewMusicCommandValidator : AbstractValidator<Ge
                         or PlexMediaComparisonState.Missing
                         or PlexMediaComparisonState.Partial
             );
+        RuleFor(x => x.Filter.Parameters.Sort)
+            .Must((command, sort) => sort.IsSupportedSort(command.Filter.MediaType))
+            .WithMessage("Sort fields must be supported media sort types.");
         RuleFor(x => x.Filter.Parameters.Page).GreaterThan(0).When(x => x.Filter.Parameters.Page.HasValue);
         RuleFor(x => x.Filter.Parameters.PageSize)
             .InclusiveBetween(1, MediaQueryFilter.MaximumPageSize)
@@ -54,10 +57,10 @@ public sealed class GetMediaOverviewMusicCommandHandler
         var filter = command.Filter;
         var options = QueryOptionsParser.Parse(filter.Parameters);
         var sort = options.ResolveSort();
-        if (filter.ComparisonState.HasValue || sort is null || sort.Value.Field == nameof(BasePlexMedia.VideoQuality))
+        if (filter.ComparisonState.HasValue || sort is null || sort.Value.Field == SortType.AudioQuality)
         {
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetMusicArtistMediaByTypeCommand(filter),
                 cancellationToken
             );
             LogPhase(filter, "CanonicalFallback", stopwatch.Elapsed, 0);
@@ -93,7 +96,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
         {
             LogPhase(filter, "SnapshotMissing", stopwatch.Elapsed, 0);
             var mediaResult = await _commandExecutor.Send(
-                new GetMediaByTypeCommand { Filter = filter },
+                new GetMusicArtistMediaByTypeCommand(filter),
                 cancellationToken
             );
             return mediaResult.LogIfFailed();
@@ -107,7 +110,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
             allowedLibraryIds.Contains(snapshot.PlexLibraryId)
             && candidates.Any(artist => artist.Id == snapshot.PlexArtistId)
         );
-        var orderedSnapshots = ApplyOrder(snapshots, sort.Value.Field, sort.Value.Descending);
+        var orderedSnapshots = snapshots.ApplyRankOrder(sort.Value);
         var ids = await orderedSnapshots
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
@@ -116,14 +119,8 @@ public sealed class GetMediaOverviewMusicCommandHandler
         LogPhase(filter, "PageIds", stopwatch.Elapsed, ids.Count);
         stopwatch.Restart();
         var aggregate = await snapshots
-            .Join(
-                context.PlexMusicArtists,
-                snapshot => snapshot.PlexArtistId,
-                artist => artist.Id,
-                (_, artist) => artist.MediaSize
-            )
             .GroupBy(_ => 1)
-            .Select(group => new { Count = group.Count(), MediaSize = group.Sum() })
+            .Select(group => new { Count = group.Count(), MediaSize = group.Sum(x => x.MediaSize) })
             .FirstOrDefaultAsync(cancellationToken);
         var totalCount = aggregate?.Count ?? 0;
         var mediaSize = aggregate?.MediaSize ?? 0;
@@ -137,7 +134,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
                 Title = x.Title,
                 SearchTitle = x.SearchTitle,
                 SortIndex = x.SortIndex,
-                Year = x.Year,
+                Year = 0,
                 Duration = x.Duration,
                 MediaSize = x.MediaSize,
                 ChildCount = x.ChildCount,
@@ -187,27 +184,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
             mediaSize,
             cancellationToken
         );
-        var navigationRows = await orderedSnapshots
-            .Join(
-                context.PlexMusicArtists,
-                snapshot => snapshot.PlexArtistId,
-                artist => artist.Id,
-                (_, artist) =>
-                    new MediaNavigationIndexRow(
-                        artist.SearchTitle,
-                        artist.Year,
-                        null,
-                        artist.Duration,
-                        artist.AddedAt,
-                        artist.UpdatedAt,
-                        artist.MediaSize
-                    )
-            )
-            .ToListAsync(cancellationToken);
-        result.NavigationIndexes = MediaNavigationIndexBuilder.Build(
-            navigationRows,
-            options.Sort.FirstOrDefault()?.Field
-        );
+        result.NavigationIndexes = await BuildNavigationIndexesAsync(snapshots, sort.Value, cancellationToken);
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
         result.Roles = await context
@@ -233,6 +210,16 @@ public sealed class GetMediaOverviewMusicCommandHandler
         return Result.Ok(result);
     }
 
+    private static Task<List<MediaNavigationIndexDTO>> BuildNavigationIndexesAsync(
+        IQueryable<MediaOverviewMusicArtistSnapshot> snapshots,
+        Sort sort,
+        CancellationToken cancellationToken
+    )
+    {
+        var navigationRows = snapshots.SelectNavigationRows(sort);
+        return MediaNavigationIndexBuilder.BuildAsync(navigationRows, sort, cancellationToken);
+    }
+
     private void LogPhase(MediaQueryFilter filter, string phase, TimeSpan elapsed, int rowCount) =>
         _log.Here()
             .Debug(
@@ -245,29 +232,4 @@ public sealed class GetMediaOverviewMusicCommandHandler
                 rowCount,
                 elapsed.TotalMilliseconds
             );
-
-    private static IQueryable<MediaOverviewMusicArtistSnapshot> ApplyOrder(
-        IQueryable<MediaOverviewMusicArtistSnapshot> query,
-        string field,
-        bool descending
-    ) =>
-        field switch
-        {
-            nameof(BasePlexMedia.Year) => descending
-                ? query.OrderByDescending(x => x.YearRank)
-                : query.OrderBy(x => x.YearRank),
-            nameof(BasePlexMedia.AddedAt) => descending
-                ? query.OrderByDescending(x => x.AddedAtRank)
-                : query.OrderBy(x => x.AddedAtRank),
-            nameof(BasePlexMedia.UpdatedAt) => descending
-                ? query.OrderByDescending(x => x.UpdatedAtRank)
-                : query.OrderBy(x => x.UpdatedAtRank),
-            nameof(BasePlexMedia.Duration) => descending
-                ? query.OrderByDescending(x => x.DurationRank)
-                : query.OrderBy(x => x.DurationRank),
-            nameof(BasePlexMedia.MediaSize) => descending
-                ? query.OrderByDescending(x => x.MediaSizeRank)
-                : query.OrderBy(x => x.MediaSizeRank),
-            _ => descending ? query.OrderByDescending(x => x.TitleRank) : query.OrderBy(x => x.TitleRank),
-        };
 }

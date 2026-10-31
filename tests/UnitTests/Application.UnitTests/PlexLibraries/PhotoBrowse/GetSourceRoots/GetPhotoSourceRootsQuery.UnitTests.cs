@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using SortDirection = Reaparr.Domain.SortDirection;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -118,6 +119,9 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
             CancellationToken
         );
         var serverId = library.PlexServerId;
+        await dbContext
+            .PlexPhotoFolders.Where(x => x.PlexLibraryId == library.Id && x.ParentId == null)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.Title, "Scale root"), CancellationToken);
         var roots = Enumerable
             .Range(1, 120)
             .Select(index => new PlexPhotoFolder
@@ -126,7 +130,7 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
                 PlexLibraryId = library.Id,
                 ParentId = null,
                 RelativePath = string.Empty,
-                Title = $"Scale root {index}",
+                Title = "Scale root",
                 RootIdentityKey = $"id:scale-{index}",
                 SourceRootPath = $"/fixture/scale-{index}",
                 PlexApiLocationId = index + 1L,
@@ -135,6 +139,11 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
             .ToList();
         dbContext.PlexPhotoFolders.AddRange(roots);
         await dbContext.SaveChangesAsync(CancellationToken);
+        var expectedRootIds = await dbContext
+            .PlexPhotoFolders.Where(x => x.PlexLibraryId == library.Id && x.ParentId == null && x.IsActive == true)
+            .OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
 
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
@@ -157,25 +166,33 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
 
         // Act
         var smallPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 1)
+            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 1, SortType.Title)
         );
         var smallPageQueryCount = commands.Count;
         commands.Clear();
         var firstPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100)
+            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, SortType.Title)
         );
         var largePageQueryCount = commands.Count;
         var secondPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 2, 100)
+            new GetPhotoSourceRootsQueryCommand(library.Id, 2, 100, SortType.Title)
+        );
+        var descendingPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
+            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, SortType.Title, SortDirection.Desc)
+        );
+        var invalidSort = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
+            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, (SortType)999)
         );
 
         // Assert
         firstPage.IsSuccess.ShouldBeTrue();
         secondPage.IsSuccess.ShouldBeTrue();
         smallPage.IsSuccess.ShouldBeTrue();
+        descendingPage.IsSuccess.ShouldBeTrue();
         smallPage.Errors.Count.ShouldBe(0);
         firstPage.Errors.Count.ShouldBe(0);
         secondPage.Errors.Count.ShouldBe(0);
+        descendingPage.Errors.Count.ShouldBe(0);
         smallPage.Value.Items.Count.ShouldBe(1);
         smallPageQueryCount.ShouldBe(8);
         largePageQueryCount.ShouldBe(smallPageQueryCount);
@@ -183,6 +200,26 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
         secondPage.Value.TotalCount.ShouldBe(121);
         firstPage.Value.Items.Count.ShouldBe(100);
         secondPage.Value.Items.Count.ShouldBe(21);
+        firstPage.Value.Items.Select(x => x.Id).ShouldBe(expectedRootIds.Take(100));
+        descendingPage.Value.Items.Select(x => x.Id).ShouldBe(expectedRootIds.OrderByDescending(x => x).Take(100));
         firstPage.Value.Items.ShouldAllBe(x => x.RecursiveAssetCount >= 0 && x.RecursiveAssetBytes >= 0);
+        invalidSort.IsFailed.ShouldBeTrue();
+        invalidSort.Errors.Count.ShouldBe(2);
+        invalidSort.Has400BadRequestError().ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldRejectUndefinedDirectionBeforeLoadingSourceRoots()
+    {
+        // Arrange
+        var query = new GetPhotoSourceRootsQueryCommand(1, Direction: (SortDirection)999);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(query);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(2);
+        result.Has400BadRequestError().ShouldBeTrue();
     }
 }

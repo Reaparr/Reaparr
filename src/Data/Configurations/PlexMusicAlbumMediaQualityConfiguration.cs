@@ -20,7 +20,8 @@ public class PlexMusicAlbumMediaQualityConfiguration : IEntityTypeConfiguration<
         builder
             .HasOne(x => x.PlexMusicAlbum)
             .WithMany(x => x.Qualities)
-            .HasForeignKey(x => x.PlexMusicAlbumId)
+            .HasForeignKey(x => new { x.PlexLibraryId, x.PlexMusicAlbumId })
+            .HasPrincipalKey(x => new { x.PlexLibraryId, x.Id })
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

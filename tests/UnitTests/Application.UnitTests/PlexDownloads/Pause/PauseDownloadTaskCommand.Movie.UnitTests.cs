@@ -104,8 +104,6 @@ public class PauseDownloadTaskCommandMovieUnitTests : BaseUnitTest<PauseDownload
         result.IsSuccess.ShouldBeTrue();
     }
 
-
-
     [Test]
     public async Task ShouldNotResetProgressOrStatus_WhenFileTaskIsMoveFinished()
     {

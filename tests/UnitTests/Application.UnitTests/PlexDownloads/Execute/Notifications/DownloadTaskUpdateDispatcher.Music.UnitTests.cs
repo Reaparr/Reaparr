@@ -25,8 +25,8 @@ public class DownloadTaskUpdateDispatcherMusicUnitTests : BaseUnitTest<DownloadT
             }
         );
         var dbContext = IDbContext;
-        var files = await dbContext.DownloadTaskMusicTrackFiles
-            .OrderBy(x => x.PlexApiRatingKey)
+        var files = await dbContext
+            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var target = files[0];
         var sibling = files[1];
@@ -45,9 +45,7 @@ public class DownloadTaskUpdateDispatcherMusicUnitTests : BaseUnitTest<DownloadT
         );
         var key = target.ToKey();
 
-        Mock.Mock<IDownloadTaskScheduler>()
-            .Setup(x => x.IsServerDownloading(target.PlexServerId))
-            .ReturnsAsync(true);
+        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.IsServerDownloading(target.PlexServerId)).ReturnsAsync(true);
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
             .ReturnsAsync(Result.Ok());

@@ -94,10 +94,7 @@ public class DownloadTaskExtensionsCalculateUnitTests : BaseUnitTest
     public async Task ShouldCalculateMovingRootTimeRemaining_FromFileTransferProgress()
     {
         // Arrange
-        await SetupDatabase(
-            72871,
-            config => config.MovieDownloadTasksCount = 1
-        );
+        await SetupDatabase(72871, config => config.MovieDownloadTasksCount = 1);
 
         var downloadTask = await IDbContext.DownloadTaskMovie.IncludeAll().FirstAsync(CancellationToken);
         var downloadFile = downloadTask.Children.Single();

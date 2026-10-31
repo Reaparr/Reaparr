@@ -1,10 +1,15 @@
 namespace Reaparr.Application;
 
-public sealed record QueueMediaOverviewRebuildCommand : ICommand<Result>;
+public sealed record QueueMediaOverviewRebuildCommand(PlexMediaType? MediaType = null) : ICommand<Result>;
 
 public sealed class QueueMediaOverviewRebuildCommandValidator : AbstractValidator<QueueMediaOverviewRebuildCommand>
 {
-    public QueueMediaOverviewRebuildCommandValidator() => RuleFor(x => x).NotNull();
+    public QueueMediaOverviewRebuildCommandValidator()
+    {
+        RuleFor(x => x).NotNull();
+        RuleFor(x => x.MediaType)
+            .Must(type => type is null || MediaOverviewRebuildCoordinator.AllMediaTypes.Contains(type.Value));
+    }
 }
 
 public sealed class QueueMediaOverviewRebuildCommandHandler : ICommandHandler<QueueMediaOverviewRebuildCommand, Result>
@@ -12,10 +17,7 @@ public sealed class QueueMediaOverviewRebuildCommandHandler : ICommandHandler<Qu
     private readonly IScheduler _scheduler;
     private readonly IMediaOverviewRebuildCoordinator _coordinator;
 
-    public QueueMediaOverviewRebuildCommandHandler(
-        IScheduler scheduler,
-        IMediaOverviewRebuildCoordinator coordinator
-    )
+    public QueueMediaOverviewRebuildCommandHandler(IScheduler scheduler, IMediaOverviewRebuildCoordinator coordinator)
     {
         _scheduler = scheduler;
         _coordinator = coordinator;
@@ -26,7 +28,7 @@ public sealed class QueueMediaOverviewRebuildCommandHandler : ICommandHandler<Qu
         CancellationToken cancellationToken
     )
     {
-        if (!_coordinator.RequestRebuild(DateTimeOffset.UtcNow))
+        if (!_coordinator.RequestRebuild(command.MediaType, DateTimeOffset.UtcNow))
             return Result.Ok();
 
         var result = await Result.Try(async Task () =>

@@ -63,11 +63,14 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     public async Task ShouldReturnFailedResult_WhenSyncLibraryMediaFails(PlexMediaType libraryType)
     {
         // Arrange
-        await SetupDatabase(1338, config =>
-        {
-            config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
-            config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
-        });
+        await SetupDatabase(
+            1338,
+            config =>
+            {
+                config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
+                config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
+            }
+        );
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
         var before = (plexLibrary.SyncedAt, plexLibrary.SyncedContentChangedAt, plexLibrary.Outdated);
@@ -86,12 +89,13 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         result.Errors.ShouldContain(x => x.Message.Contains("Sync failed"));
         var after = await IDbContext.PlexLibraries.SingleAsync(x => x.Id == plexLibrary.Id);
         (after.SyncedAt, after.SyncedContentChangedAt, after.Outdated).ShouldBe(before);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<InsertMediaMetaDataCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never());
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<RefreshPlexPhotoLibraryCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<InsertMediaMetaDataCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<RefreshPlexPhotoLibraryCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -116,15 +120,22 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         );
 
         var updatedLibrary = await GetUpdatedLibrary(seed, libraryType);
-        var previousContentVersion = await IDbContext.PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
-            .Select(x => x.ContentChangedAt).SingleAsync();
+        var previousContentVersion = await IDbContext
+            .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
+            .Select(x => x.ContentChangedAt)
+            .SingleAsync();
         updatedLibrary.ContentChangedAt = previousContentVersion + 1;
         await IDbContext
             .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.Outdated, true), CancellationToken);
-        var beforeSyncState = await IDbContext.PlexLibraries
-            .Where(x => x.Id == updatedLibrary.Id)
-            .Select(x => new { x.SyncedAt, x.SyncedContentChangedAt, x.Outdated })
+        var beforeSyncState = await IDbContext
+            .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
+            .Select(x => new
+            {
+                x.SyncedAt,
+                x.SyncedContentChangedAt,
+                x.Outdated,
+            })
             .SingleAsync();
 
         Mock.SetupCommand(() => It.Is<GetLibraryMediaFromPlexApiCommand>(c => c.PlexLibrary.Id == updatedLibrary.Id))
@@ -139,30 +150,45 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
                             Actors = [],
                         }
                     )
-            ).Verifiable(Times.Once());
+            )
+            .Verifiable(Times.Once());
         Mock.SetupCommand(() => It.Is<InsertMediaMetaDataCommand>(c => c.LibraryMetadata.Library == updatedLibrary))
             .ReturnsAsync(Result.Ok(new InsertMediaMetaDataCommandResponse(updatedLibrary)))
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => It.Is<SyncPlexLibraryMediaMetaDataCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.SetupCommand(() =>
+                It.Is<SyncPlexLibraryMediaMetaDataCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary)
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         switch (libraryType)
         {
             case PlexMediaType.Movie:
-                Mock.SetupCommand(() => It.Is<RefreshPlexMovieLibraryCommand>(c =>
-                        c.LibraryMetadata.PlexLibrary == updatedLibrary && c.ForceMediaRefresh == forceMediaRefresh))
-                    .ReturnsAsync(Result.Ok(updatedLibrary)).Verifiable(Times.Once());
+                Mock.SetupCommand(() =>
+                        It.Is<RefreshPlexMovieLibraryCommand>(c =>
+                            c.LibraryMetadata.PlexLibrary == updatedLibrary && c.ForceMediaRefresh == forceMediaRefresh
+                        )
+                    )
+                    .ReturnsAsync(Result.Ok(updatedLibrary))
+                    .Verifiable(Times.Once());
                 break;
 
             case PlexMediaType.TvShow:
-                Mock.SetupCommand(() => It.Is<RefreshPlexTvShowLibraryCommand>(c =>
-                        c.LibraryMetadata.PlexLibrary == updatedLibrary && c.ForceMediaRefresh == forceMediaRefresh))
-                    .ReturnsAsync(Result.Ok(updatedLibrary)).Verifiable(Times.Once());
+                Mock.SetupCommand(() =>
+                        It.Is<RefreshPlexTvShowLibraryCommand>(c =>
+                            c.LibraryMetadata.PlexLibrary == updatedLibrary && c.ForceMediaRefresh == forceMediaRefresh
+                        )
+                    )
+                    .ReturnsAsync(Result.Ok(updatedLibrary))
+                    .Verifiable(Times.Once());
                 break;
 
             case PlexMediaType.PhotoAlbum:
-                Mock.SetupCommand(() => It.Is<RefreshPlexPhotoLibraryCommand>(c =>
-                        c.LibraryMetadata.PlexLibrary == updatedLibrary && c.ForceMediaRefresh == forceMediaRefresh))
+                Mock.SetupCommand(() =>
+                        It.Is<RefreshPlexPhotoLibraryCommand>(c =>
+                            c.LibraryMetadata.PlexLibrary == updatedLibrary && c.ForceMediaRefresh == forceMediaRefresh
+                        )
+                    )
                     .ReturnsAsync(Result.Ok(updatedLibrary))
                     .Verifiable(Times.Once());
                 break;
@@ -185,8 +211,9 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         if (libraryType == PlexMediaType.PhotoAlbum)
         {
             // Photo completion is committed by SyncPlexPhotosCommand; this mocked typed command cannot perform that write.
-            (dbLibrary.SyncedAt, dbLibrary.SyncedContentChangedAt, dbLibrary.Outdated)
-                .ShouldBe((beforeSyncState.SyncedAt, beforeSyncState.SyncedContentChangedAt, beforeSyncState.Outdated));
+            (dbLibrary.SyncedAt, dbLibrary.SyncedContentChangedAt, dbLibrary.Outdated).ShouldBe(
+                (beforeSyncState.SyncedAt, beforeSyncState.SyncedContentChangedAt, beforeSyncState.Outdated)
+            );
             result.Value.SyncedContentChangedAt.ShouldBe(beforeSyncState.SyncedContentChangedAt);
         }
         else
@@ -203,11 +230,14 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     public async Task ShouldReturnPersistedPhotoCompletionState_WhenTrackedLibraryIsStale()
     {
         // Arrange
-        var seed = await SetupDatabase(1340, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexPhotoLibraryCount = 1;
-        });
+        var seed = await SetupDatabase(
+            1340,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+            }
+        );
         var updatedLibrary = await GetUpdatedLibrary(seed, PlexMediaType.PhotoAlbum);
         var trackedContext = IDbContext;
         var staleLibrary = await trackedContext.PlexLibraries.GetAsync(updatedLibrary.Id, CancellationToken.None);
@@ -215,8 +245,8 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
 
         var persistedSyncedAt = new DateTime(2026, 10, 20, 13, 0, 0, DateTimeKind.Utc);
         var persistedSyncedContentChangedAt = 901_235L;
-        await IDbContext.PlexLibraries
-            .Where(x => x.Id == updatedLibrary.Id)
+        await IDbContext
+            .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
             .ExecuteUpdateAsync(
                 setters =>
                     setters
@@ -232,7 +262,9 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
                 CancellationToken
             );
 
-        SetupDependencies(builder => builder.RegisterInstance(trackedContext).As<IReaparrDbContext>().ExternallyOwned());
+        SetupDependencies(builder =>
+            builder.RegisterInstance(trackedContext).As<IReaparrDbContext>().ExternallyOwned()
+        );
 
         Mock.SetupCommand(() => It.Is<GetLibraryMediaFromPlexApiCommand>(c => c.PlexLibrary.Id == updatedLibrary.Id))
             .ReturnsAsync(Result.Ok(new LibraryMetadata(updatedLibrary)))
@@ -240,10 +272,14 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         Mock.SetupCommand(() => It.Is<InsertMediaMetaDataCommand>(c => c.LibraryMetadata.Library == updatedLibrary))
             .ReturnsAsync(Result.Ok(new InsertMediaMetaDataCommandResponse(updatedLibrary)))
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => It.Is<SyncPlexLibraryMediaMetaDataCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary))
+        Mock.SetupCommand(() =>
+                It.Is<SyncPlexLibraryMediaMetaDataCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary)
+            )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => It.Is<RefreshPlexPhotoLibraryCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary))
+        Mock.SetupCommand(() =>
+                It.Is<RefreshPlexPhotoLibraryCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary)
+            )
             .ReturnsAsync(Result.Ok(updatedLibrary))
             .Verifiable(Times.Once());
 
@@ -253,8 +289,8 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         // Assert
         result.IsSuccess.ShouldBeTrue(result.ToString());
         result.Errors.Count.ShouldBe(0);
-        var persisted = await IDbContext.PlexLibraries
-            .Where(x => x.Id == updatedLibrary.Id)
+        var persisted = await IDbContext
+            .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
             .Select(x => new
             {
                 x.Title,
@@ -288,7 +324,10 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     [Arguments(PlexMediaType.Movie, true)]
     [Arguments(PlexMediaType.PhotoAlbum, false)]
     [Arguments(PlexMediaType.PhotoAlbum, true)]
-    public async Task ShouldNotAdvanceSync_WhenLibraryMetadataPersistenceFails(PlexMediaType libraryType, bool insertionFails)
+    public async Task ShouldNotAdvanceSync_WhenLibraryMetadataPersistenceFails(
+        PlexMediaType libraryType,
+        bool insertionFails
+    )
     {
         // Arrange
         await SetupDatabase(
@@ -305,14 +344,19 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         var before = (plexLibrary.SyncedAt, plexLibrary.SyncedContentChangedAt, plexLibrary.Outdated);
 
         Mock.SetupCommand(() => It.Is<GetLibraryMediaFromPlexApiCommand>(c => c.PlexLibrary.Id == plexLibrary.Id))
-            .ReturnsAsync(Result.Ok(new LibraryMetadata(plexLibrary))).Verifiable(Times.Once());
+            .ReturnsAsync(Result.Ok(new LibraryMetadata(plexLibrary)))
+            .Verifiable(Times.Once());
 
         Mock.SetupCommand(() => It.Is<InsertMediaMetaDataCommand>(c => c.LibraryMetadata.Library.Id == plexLibrary.Id))
-            .ReturnsAsync(insertionFails
-                ? Result.Fail<InsertMediaMetaDataCommandResponse>("Metadata insert failed")
-                : Result.Ok(new InsertMediaMetaDataCommandResponse(plexLibrary)))
+            .ReturnsAsync(
+                insertionFails
+                    ? Result.Fail<InsertMediaMetaDataCommandResponse>("Metadata insert failed")
+                    : Result.Ok(new InsertMediaMetaDataCommandResponse(plexLibrary))
+            )
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => It.Is<SyncPlexLibraryMediaMetaDataCommand>(c => c.LibraryMetadata.PlexLibraryId == plexLibrary.Id))
+        Mock.SetupCommand(() =>
+                It.Is<SyncPlexLibraryMediaMetaDataCommand>(c => c.LibraryMetadata.PlexLibraryId == plexLibrary.Id)
+            )
             .ReturnsAsync(Result.Fail("Metadata sync failed"))
             .Verifiable(insertionFails ? Times.Never() : Times.Once());
 
@@ -327,9 +371,11 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         var after = await IDbContext.PlexLibraries.SingleAsync(x => x.Id == plexLibrary.Id);
         (after.SyncedAt, after.SyncedContentChangedAt, after.Outdated).ShouldBe(before);
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<RefreshPlexPhotoLibraryCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<RefreshPlexPhotoLibraryCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -348,9 +394,14 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
             }
         );
         var updatedLibrary = await GetUpdatedLibrary(seed, libraryType);
-        var before = await IDbContext.PlexLibraries
-            .Where(x => x.Id == updatedLibrary.Id)
-            .Select(x => new { x.SyncedAt, x.SyncedContentChangedAt, x.Outdated })
+        var before = await IDbContext
+            .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
+            .Select(x => new
+            {
+                x.SyncedAt,
+                x.SyncedContentChangedAt,
+                x.Outdated,
+            })
             .SingleAsync();
 
         Mock.SetupCommand(It.IsAny<InsertMediaMetaDataCommand>)
@@ -361,11 +412,17 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         Mock.SetupCommand(It.IsAny<SyncPlexLibraryMediaMetaDataCommand>).ReturnsAsync(Result.Ok());
 
         if (libraryType == PlexMediaType.PhotoAlbum)
-            Mock.SetupCommand(() => It.Is<RefreshPlexPhotoLibraryCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary))
-                .ReturnsAsync(Result.Fail<PlexLibrary>("Typed refresh failed")).Verifiable(Times.Once());
+            Mock.SetupCommand(() =>
+                    It.Is<RefreshPlexPhotoLibraryCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary)
+                )
+                .ReturnsAsync(Result.Fail<PlexLibrary>("Typed refresh failed"))
+                .Verifiable(Times.Once());
         else
-            Mock.SetupCommand(() => It.Is<RefreshPlexMovieLibraryCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary))
-                .ReturnsAsync(Result.Fail<PlexLibrary>("Typed refresh failed")).Verifiable(Times.Once());
+            Mock.SetupCommand(() =>
+                    It.Is<RefreshPlexMovieLibraryCommand>(c => c.LibraryMetadata.PlexLibrary == updatedLibrary)
+                )
+                .ReturnsAsync(Result.Fail<PlexLibrary>("Typed refresh failed"))
+                .Verifiable(Times.Once());
 
         var command = new RefreshLibraryMediaCommand(updatedLibrary.Id);
 
@@ -376,9 +433,14 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         result.Errors.Single().Message.ShouldBe("Typed refresh failed");
-        var after = await IDbContext.PlexLibraries
-            .Where(x => x.Id == updatedLibrary.Id)
-            .Select(x => new { x.SyncedAt, x.SyncedContentChangedAt, x.Outdated })
+        var after = await IDbContext
+            .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
+            .Select(x => new
+            {
+                x.SyncedAt,
+                x.SyncedContentChangedAt,
+                x.Outdated,
+            })
             .SingleAsync();
         after.ShouldBe(before);
         Mock.Mock<ICommandExecutor>().Verify();

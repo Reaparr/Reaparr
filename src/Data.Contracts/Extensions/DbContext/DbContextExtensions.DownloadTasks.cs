@@ -1509,9 +1509,10 @@ public static partial class DbContextExtensions
                 await dbContext
                     .DownloadTaskMovieFile.Where(x => x.Id == key.Id)
                     .ExecuteUpdateAsync(
-                        p => p.SetProperty(x => x.DownloadSpeed, 0)
-                            .SetProperty(x => x.FileTransferSpeed, 0)
-                            .SetProperty(x => x.TimeRemaining, 0),
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, 0)
+                                .SetProperty(x => x.FileTransferSpeed, 0)
+                                .SetProperty(x => x.TimeRemaining, 0),
                         cancellationToken
                     );
                 break;
@@ -1519,9 +1520,10 @@ public static partial class DbContextExtensions
                 await dbContext
                     .DownloadTaskTvShowEpisodeFile.Where(x => x.Id == key.Id)
                     .ExecuteUpdateAsync(
-                        p => p.SetProperty(x => x.DownloadSpeed, 0)
-                            .SetProperty(x => x.FileTransferSpeed, 0)
-                            .SetProperty(x => x.TimeRemaining, 0),
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, 0)
+                                .SetProperty(x => x.FileTransferSpeed, 0)
+                                .SetProperty(x => x.TimeRemaining, 0),
                         cancellationToken
                     );
                 break;
@@ -1529,9 +1531,10 @@ public static partial class DbContextExtensions
                 await dbContext
                     .DownloadTaskPhotoImageFiles.Where(x => x.Id == key.Id)
                     .ExecuteUpdateAsync(
-                        p => p.SetProperty(x => x.DownloadSpeed, 0)
-                            .SetProperty(x => x.FileTransferSpeed, 0)
-                            .SetProperty(x => x.TimeRemaining, 0),
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, 0)
+                                .SetProperty(x => x.FileTransferSpeed, 0)
+                                .SetProperty(x => x.TimeRemaining, 0),
                         cancellationToken
                     );
                 break;
@@ -1539,9 +1542,10 @@ public static partial class DbContextExtensions
                 await dbContext
                     .DownloadTaskMusicTrackFiles.Where(x => x.Id == key.Id)
                     .ExecuteUpdateAsync(
-                        p => p.SetProperty(x => x.DownloadSpeed, 0)
-                            .SetProperty(x => x.FileTransferSpeed, 0)
-                            .SetProperty(x => x.TimeRemaining, 0),
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, 0)
+                                .SetProperty(x => x.FileTransferSpeed, 0)
+                                .SetProperty(x => x.TimeRemaining, 0),
                         cancellationToken
                     );
                 break;
@@ -1549,9 +1553,10 @@ public static partial class DbContextExtensions
                 await dbContext
                     .DownloadTaskOtherVideoFiles.Where(x => x.Id == key.Id)
                     .ExecuteUpdateAsync(
-                        p => p.SetProperty(x => x.DownloadSpeed, 0)
-                            .SetProperty(x => x.FileTransferSpeed, 0)
-                            .SetProperty(x => x.TimeRemaining, 0),
+                        p =>
+                            p.SetProperty(x => x.DownloadSpeed, 0)
+                                .SetProperty(x => x.FileTransferSpeed, 0)
+                                .SetProperty(x => x.TimeRemaining, 0),
                         cancellationToken
                     );
                 break;
@@ -2199,9 +2204,7 @@ public static partial class DbContextExtensions
     )
     {
         var emptyFolders = folders.Where(x =>
-            !dbContext
-                .DownloadTaskPhotoFolders.IgnoreQueryFilters(new[] { "IsEnabled" })
-                .Any(y => y.ParentId == x.Id)
+            !dbContext.DownloadTaskPhotoFolders.IgnoreQueryFilters(new[] { "IsEnabled" }).Any(y => y.ParentId == x.Id)
             && !dbContext
                 .DownloadTaskPhotoImageFiles.IgnoreQueryFilters(new[] { "IsEnabled" })
                 .Any(y => y.ParentId == x.Id)
@@ -2262,17 +2265,13 @@ public static partial class DbContextExtensions
 
         var folders = await dbContext
             .DownloadTaskPhotoFolders.IgnoreQueryFilters(["IsEnabled"])
-            .Where(x =>
-                x.PlexServerId == scope.PlexServerId && x.PlexLibraryId == scope.PlexLibraryId
-            )
+            .Where(x => x.PlexServerId == scope.PlexServerId && x.PlexLibraryId == scope.PlexLibraryId)
             .Include(x => x.PlexServer)
             .Include(x => x.PlexLibrary)
             .ToListAsync(cancellationToken);
         var files = await dbContext
             .DownloadTaskPhotoImageFiles.IgnoreQueryFilters(["IsEnabled"])
-            .Where(x =>
-                x.PlexServerId == scope.PlexServerId && x.PlexLibraryId == scope.PlexLibraryId
-            )
+            .Where(x => x.PlexServerId == scope.PlexServerId && x.PlexLibraryId == scope.PlexLibraryId)
             .Include(x => x.PlexServer)
             .Include(x => x.PlexLibrary)
             .ToListAsync(cancellationToken);

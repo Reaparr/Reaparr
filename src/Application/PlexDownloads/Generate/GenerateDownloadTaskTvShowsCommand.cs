@@ -87,9 +87,7 @@ public class GenerateDownloadTaskTvShowsCommandHandler
                     .WhereIntegrationOwnershipMatches(request.Integration)
                     .Include(x => x.Children)
                     .SingleOrDefaultAsync(
-                        x =>
-                            x.PlexServerId == tvShow.PlexServerId
-                            && x.PlexApiRatingKey == tvShow.PlexApiRatingKey,
+                        x => x.PlexServerId == tvShow.PlexServerId && x.PlexApiRatingKey == tvShow.PlexApiRatingKey,
                         cancellationToken
                     );
 

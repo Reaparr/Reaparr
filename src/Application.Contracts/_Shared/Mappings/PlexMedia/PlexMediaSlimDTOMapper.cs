@@ -154,7 +154,7 @@ public static class PlexMediaSlimDTOMapper
             Type = PlexMediaType.PhotoImage,
             HasThumb = source.HasThumb,
             PlexApiRatingKey = source.PlexApiRatingKey,
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = source.PlexApiRatingKey,
             Qualities = [],
         };
 
@@ -175,6 +175,29 @@ public static class PlexMediaSlimDTOMapper
                 .ToList()
         );
 
+    public static IQueryable<PlexMediaSlimDTO> ProjectToMediaSlimDTO(this IQueryable<PlexPhotoMediaData> source) =>
+        source.Select(x => new PlexMediaSlimDTO
+        {
+            Id = x.Id,
+            Title = x.Title,
+            SearchTitle = x.SearchTitle,
+            SortIndex = 0,
+            Year = 0,
+            Duration = x.Duration ?? 0,
+            MediaSize = x.Size,
+            ChildCount = 0,
+            GrandChildCount = 0,
+            AddedAt = x.AddedAt,
+            UpdatedAt = x.UpdatedAt,
+            PlexLibraryId = x.PlexLibraryId,
+            PlexServerId = x.PlexServerId,
+            Type = PlexMediaType.PhotoImage,
+            HasThumb = x.HasThumb,
+            PlexApiRatingKey = x.PlexApiRatingKey,
+            PlexApiMetaDataKey = x.PlexApiRatingKey,
+            Qualities = new List<PlexMediaQualityDTO>(),
+        });
+
     public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexPhotoAlbum source) =>
         new()
         {
@@ -194,7 +217,7 @@ public static class PlexMediaSlimDTOMapper
             Type = PlexMediaType.PhotoAlbum,
             HasThumb = source.HasThumb,
             PlexApiRatingKey = source.PlexApiRatingKey,
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = source.PlexApiRatingKey,
             Qualities = [],
         };
 
@@ -217,7 +240,7 @@ public static class PlexMediaSlimDTOMapper
             Type = PlexMediaType.PhotoAlbum,
             HasThumb = x.HasThumb,
             PlexApiRatingKey = x.PlexApiRatingKey,
-            PlexApiMetaDataKey = x.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = x.PlexApiRatingKey,
             Qualities = new List<PlexMediaQualityDTO>(),
         });
 
@@ -235,7 +258,12 @@ public static class PlexMediaSlimDTOMapper
             Title = source.Title,
             SearchTitle = source.SearchTitle,
             SortIndex = source.SortIndex,
-            Year = source.Year,
+            Year = source switch
+            {
+                PlexMusicAlbum album => album.Year,
+                PlexOtherVideo video => video.Year,
+                _ => 0,
+            },
             Duration = source.Duration,
             MediaSize = source.MediaSize,
             ChildCount = source.ChildCount,

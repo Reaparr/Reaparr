@@ -95,7 +95,6 @@
             "image-loading": "Wczytywanie obrazu",
             "image-load-error": "Nie udało się wyświetlić tego obrazu.",
             "image-retry": "Spróbuj ponownie wczytać obraz",
-            "image-preview": "Podgląd — oryginał niedostępny",
             "filename": "Nazwa pliku",
             "format": "Format",
             "size": "Rozmiar",
@@ -757,7 +756,8 @@
             "updated-at": "Zaktualizowano",
             "duration": "Czas trwania",
             "size": "Rozmiar",
-            "quality": "Jakość"
+            "quality": "Jakość",
+            "audio-quality": "Jakość dźwięku"
         },
         "units": {
             "per-second": "/s"

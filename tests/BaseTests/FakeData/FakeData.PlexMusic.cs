@@ -5,12 +5,9 @@ public static partial class FakeData
     private static readonly Faker<PlexMusicArtist> _plexMusicArtist = new Faker<PlexMusicArtist>()
         .ApplyBasePlexMedia()
         .RuleFor(x => x.Title, f => f.Name.FullName())
-        .RuleFor(x => x.Guid, _ => string.Empty)
+        .RuleFor(x => x.Summary, f => f.Lorem.Sentences(2))
         .RuleFor(x => x.PlexApiIdentityId, f => f.Random.Guid().ToString("N"))
         .RuleFor(x => x.MusicBrainzArtistId, f => f.Random.Guid().ToString("D"))
-        .RuleFor(x => x.Guid_IMDB, _ => null)
-        .RuleFor(x => x.Guid_TMDB, _ => null)
-        .RuleFor(x => x.Guid_TVDB, _ => null)
         .Ignore(x => x.Albums)
         .Ignore(x => x.Qualities)
         .Ignore(x => x.Actors)
@@ -24,17 +21,12 @@ public static partial class FakeData
                     album.PlexArtistId = artist.Id;
                     album.PlexArtist = artist;
                     album.ParentKey = artist.PlexApiRatingKey;
-                    album.FullTitle = $"{artist.Title}/{album.Title}";
-
-                    foreach (var track in album.Tracks)
-                        track.FullTitle = $"{album.FullTitle}/{track.Title}";
                 }
 
                 artist.ChildCount = artist.Albums.Count;
                 artist.Duration = artist.Albums.Sum(x => x.Duration);
                 artist.MediaSize = artist.Albums.Sum(x => x.MediaSize);
                 artist.VideoQuality = VideoQuality.None;
-                artist.FullTitle = artist.Title;
             }
         );
 
@@ -55,17 +47,14 @@ public static partial class FakeData
         .Ignore(x => x.PlexArtist)
         .Ignore(x => x.ParentKey)
         .RuleFor(x => x.Title, f => f.Commerce.ProductName())
-        .RuleFor(x => x.Guid, _ => string.Empty)
+        .RuleFor(x => x.Year, f => f.Random.Int(1900, 2030))
+        .RuleFor(x => x.Summary, f => f.Lorem.Sentences(2))
+        .RuleFor(x => x.Rating, f => f.Random.Double(0.1))
+        .RuleFor(x => x.OriginallyAvailableAt, f => f.Date.Past(40))
         .RuleFor(x => x.PlexApiIdentityId, f => f.Random.Guid().ToString("N"))
         .RuleFor(x => x.MusicBrainzReleaseId, f => f.Random.Guid().ToString("D"))
-        .RuleFor(x => x.Guid_IMDB, _ => null)
-        .RuleFor(x => x.Guid_TMDB, _ => null)
-        .RuleFor(x => x.Guid_TVDB, _ => null)
-        .RuleFor(x => x.ReleaseDate, f => f.Date.Past(40))
         .RuleFor(x => x.RecordLabel, f => f.Company.CompanyName())
         .Ignore(x => x.Countries)
-        .Ignore(x => x.DiscCount)
-        .Ignore(x => x.TrackCount)
         .Ignore(x => x.Tracks)
         .Ignore(x => x.Qualities)
         .FinishWith(
@@ -78,15 +67,11 @@ public static partial class FakeData
                     track.ParentKey = album.PlexApiRatingKey;
                     track.DiscNumber = 1;
                     track.TrackNumber = index + 1;
-                    track.FullTitle = $"{album.Title}/{track.Title}";
                 }
                 album.ChildCount = album.Tracks.Count;
-                album.TrackCount = album.Tracks.Count;
-                album.DiscCount = album.Tracks.Count == 0 ? 0 : 1;
                 album.Duration = album.Tracks.Sum(x => x.Duration);
                 album.MediaSize = album.Tracks.Sum(x => x.MediaSize);
                 album.VideoQuality = VideoQuality.None;
-                album.FullTitle = album.Title;
             }
         );
 
@@ -107,12 +92,8 @@ public static partial class FakeData
         .Ignore(x => x.PlexAlbum)
         .Ignore(x => x.ParentKey)
         .RuleFor(x => x.Title, f => string.Join(" ", f.Lorem.Words(f.Random.Int(1, 4))))
-        .RuleFor(x => x.Guid, _ => string.Empty)
         .RuleFor(x => x.PlexApiIdentityId, f => f.Random.Guid().ToString("N"))
         .RuleFor(x => x.MusicBrainzReleaseTrackId, f => f.Random.Guid().ToString("D"))
-        .RuleFor(x => x.Guid_IMDB, _ => null)
-        .RuleFor(x => x.Guid_TMDB, _ => null)
-        .RuleFor(x => x.Guid_TVDB, _ => null)
         .RuleFor(x => x.DiscNumber, _ => 1)
         .RuleFor(x => x.TrackNumber, f => f.IndexFaker + 1)
         .Ignore(x => x.MediaDataList)
@@ -128,7 +109,6 @@ public static partial class FakeData
                 track.Duration = original.Duration / 1000;
                 track.MediaSize = original.Size;
                 track.VideoQuality = VideoQuality.None;
-                track.FullTitle = track.Title;
             }
         );
 
@@ -163,8 +143,7 @@ public static partial class FakeData
             .RuleFor(x => x.Container, _ => "flac")
             .RuleFor(x => x.Source, _ => ReleaseSource.None)
             .RuleFor(x => x.OriginalFilename, f => $"{f.Random.Guid():N}.flac")
-            .RuleFor(x => x.Key, (_, x) => $"/library/parts/{x.PlexApiPartId}/file.flac")
-            .RuleFor(x => x.GeneratedNameSyncedAt, _ => null);
+            .RuleFor(x => x.Key, (_, x) => $"/library/parts/{x.PlexApiPartId}/file.flac");
 
     public static Faker<PlexMusicTrackMediaData> GetPlexMusicTrackMediaData(
         Seed seed,

@@ -176,12 +176,14 @@ public class GetMetadataFilter : Endpoint<GetMetadataFilterRequest, ResultDTO<Pl
         CancellationToken ct
     ) =>
         mediaType.IsMusicType()
-            ? _dbContext.PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
+            ? _dbContext
+                .PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
                 .SelectMany(pl => pl.GenresAudio)
                 .Select(g => g.Id)
                 .Distinct()
                 .ToListAsync(ct)
-            : _dbContext.PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
+            : _dbContext
+                .PlexLibraries.Where(pl => libraryIds.Contains(pl.Id))
                 .SelectMany(pl => pl.GenresVideo)
                 .Select(g => g.Id)
                 .Distinct()

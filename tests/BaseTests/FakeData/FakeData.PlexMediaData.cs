@@ -15,10 +15,7 @@ public static partial class FakeData
             .RuleFor(x => x.Duration, f => f.Random.Int(50000, 55124400))
             .RuleFor(x => x.Container, f => f.System.FileType())
             .RuleFor(x => x.Source, _ => ReleaseSource.WebDl)
-            .RuleFor(x => x.NeedsGeneratedName, _ => false)
-            .RuleFor(x => x.GeneratedNameSyncedAt, _ => DateTime.UtcNow)
             .RuleFor(x => x.OriginalFilename, f => f.System.FileName("video"))
-            .RuleFor(x => x.GeneratedFilename, _ => string.Empty)
             .RuleFor(x => x.PlexApiRatingKey, _ => GetUniqueNumber())
             .RuleFor(x => x.Key, _ => DownloadFileUrl)
             .RuleFor(
@@ -39,6 +36,9 @@ public static partial class FakeData
     {
         return new Faker<PlexMovieMediaData>()
             .ApplyBasePlexMediaData(new FakeDataConfig())
+            .RuleFor(x => x.NeedsGeneratedName, _ => false)
+            .RuleFor(x => x.GeneratedNameSyncedAt, _ => DateTime.UtcNow)
+            .RuleFor(x => x.GeneratedFilename, _ => string.Empty)
             .Ignore(x => x.PlexMovieId)
             .Ignore(x => x.PlexMovie)
             .Ignore(x => x.Streams);
@@ -51,6 +51,9 @@ public static partial class FakeData
     {
         return new Faker<PlexTvShowEpisodeMediaData>()
             .ApplyBasePlexMediaData(new FakeDataConfig())
+            .RuleFor(x => x.NeedsGeneratedName, _ => false)
+            .RuleFor(x => x.GeneratedNameSyncedAt, _ => DateTime.UtcNow)
+            .RuleFor(x => x.GeneratedFilename, _ => string.Empty)
             .Ignore(x => x.PlexTvShowEpisodeId)
             .Ignore(x => x.PlexTvShowEpisode)
             .Ignore(x => x.Streams);

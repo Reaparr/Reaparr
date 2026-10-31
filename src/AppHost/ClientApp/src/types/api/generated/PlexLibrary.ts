@@ -16,6 +16,7 @@ import { ContentType } from "./http-client";
 import type {
   BaseResultDTO,
   LibrarySyncJobQueueDTO,
+  PhotoItemKind,
   PlexLibraryAccessTimelineDTO,
   PlexLibraryDTO,
   PlexMediaFilterMetadataDTO,
@@ -32,40 +33,18 @@ export class PlexLibrary {
   /**
    * No description
    * * @tags Plexlibrary
-   * @name CancelLibrarySyncEndpoint
-   * @request DELETE:/api/PlexLibrary/cancel/{PlexLibraryId}
+   * @name GetAllPlexLibrariesEndpoint
+   * @request GET:/api/PlexLibrary
    * @secure
    */
-  cancelLibrarySyncEndpoint = (
-    plexLibraryId: number,
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<BaseResultDTO>({
-      url: `/api/PlexLibrary/cancel/${plexLibraryId}`,
-      method: "DELETE",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<BaseResultDTO>);
-
-  /**
-   * No description
-   * * @tags Plexlibrary
-   * @name GetPlexLibraryByIdEndpoint
-   * @request GET:/api/PlexLibrary/{PlexLibraryId}
-   * @secure
-   */
-  getPlexLibraryByIdEndpoint = (
-    plexLibraryId: number,
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<PlexLibraryDTO>({
-      url: `/api/PlexLibrary/${plexLibraryId}`,
+  getAllPlexLibrariesEndpoint = (params: RequestParams = {}) =>
+    axiosObservable<PlexLibraryDTO[]>({
+      url: `/api/PlexLibrary`,
       method: "GET",
       secure: true,
       responseType: "json",
       ...params,
-    }).pipe(apiCheckPipe<PlexLibraryDTO>);
+    }).pipe(apiCheckPipe<PlexLibraryDTO[]>);
 
   /**
    * No description
@@ -86,96 +65,27 @@ export class PlexLibrary {
   /**
    * No description
    * * @tags Plexlibrary
-   * @name GetAllPlexLibrariesEndpoint
-   * @request GET:/api/PlexLibrary
+   * @name CancelLibrarySyncEndpoint
+   * @request DELETE:/api/PlexLibrary/cancel/{plexLibraryId}
    * @secure
    */
-  getAllPlexLibrariesEndpoint = (params: RequestParams = {}) =>
-    axiosObservable<PlexLibraryDTO[]>({
-      url: `/api/PlexLibrary`,
-      method: "GET",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<PlexLibraryDTO[]>);
-
-  /**
-   * No description
-   * * @tags Plexlibrary
-   * @name GetLibraryMediaMetadata
-   * @request GET:/api/PlexLibrary/{PlexLibraryId}/metadata
-   * @secure
-   */
-  getLibraryMediaMetadata = (
+  cancelLibrarySyncEndpoint = (
     plexLibraryId: number,
-    query: {
-      /** @default false */
-      filterOfflineMedia?: boolean | null;
-      /** @default false */
-      filterOwnedMedia?: boolean | null;
-      /** @default 0 */
-      mediaType: PlexMediaType;
-    },
     params: RequestParams = {},
   ) =>
-    axiosObservable<PlexMediaMetadataDTO>({
-      url: `/api/PlexLibrary/${plexLibraryId}/metadata`,
-      method: "GET",
-      params: query,
+    axiosObservable<BaseResultDTO>({
+      url: `/api/PlexLibrary/cancel/${plexLibraryId}`,
+      method: "DELETE",
       secure: true,
       responseType: "json",
       ...params,
-    }).pipe(apiCheckPipe<PlexMediaMetadataDTO>);
-
-  /**
-   * No description
-   * * @tags Plexlibrary
-   * @name GetMetadataFilter
-   * @request GET:/api/PlexLibrary/{PlexLibraryId}/metadata-filter
-   * @secure
-   */
-  getMetadataFilter = (
-    plexLibraryId: number,
-    query: {
-      /** @default false */
-      filterOfflineMedia?: boolean | null;
-      /** @default false */
-      filterOwnedMedia?: boolean | null;
-      /** @default 0 */
-      mediaType: PlexMediaType;
-    },
-    params: RequestParams = {},
-  ) =>
-    axiosObservable<PlexMediaFilterMetadataDTO>({
-      url: `/api/PlexLibrary/${plexLibraryId}/metadata-filter`,
-      method: "GET",
-      params: query,
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<PlexMediaFilterMetadataDTO>);
-
-  /**
-   * No description
-   * * @tags Plexlibrary
-   * @name GetLibrarySyncStatusEndpoint
-   * @request GET:/api/PlexLibrary/sync-status
-   * @secure
-   */
-  getLibrarySyncStatusEndpoint = (params: RequestParams = {}) =>
-    axiosObservable<LibrarySyncJobQueueDTO[]>({
-      url: `/api/PlexLibrary/sync-status`,
-      method: "GET",
-      secure: true,
-      responseType: "json",
-      ...params,
-    }).pipe(apiCheckPipe<LibrarySyncJobQueueDTO[]>);
+    }).pipe(apiCheckPipe<BaseResultDTO>);
 
   /**
    * No description
    * * @tags Plexlibrary
    * @name RefreshLibraryMediaEndpoint
-   * @request POST:/api/PlexLibrary/refresh/{PlexLibraryId}
+   * @request POST:/api/PlexLibrary/refresh/{plexLibraryId}
    * @secure
    */
   refreshLibraryMediaEndpoint = (
@@ -196,8 +106,43 @@ export class PlexLibrary {
   /**
    * No description
    * * @tags Plexlibrary
+   * @name GetLibrarySyncStatusEndpoint
+   * @request GET:/api/PlexLibrary/sync-status
+   * @secure
+   */
+  getLibrarySyncStatusEndpoint = (params: RequestParams = {}) =>
+    axiosObservable<LibrarySyncJobQueueDTO[]>({
+      url: `/api/PlexLibrary/sync-status`,
+      method: "GET",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<LibrarySyncJobQueueDTO[]>);
+
+  /**
+   * No description
+   * * @tags Plexlibrary
+   * @name GetPlexLibraryByIdEndpoint
+   * @request GET:/api/PlexLibrary/{plexLibraryId}
+   * @secure
+   */
+  getPlexLibraryByIdEndpoint = (
+    plexLibraryId: number,
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<PlexLibraryDTO>({
+      url: `/api/PlexLibrary/${plexLibraryId}`,
+      method: "GET",
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<PlexLibraryDTO>);
+
+  /**
+   * No description
+   * * @tags Plexlibrary
    * @name SetPlexLibraryDefaultDestinationByIdEndpoint
-   * @request GET:/api/PlexLibrary/{PlexLibraryId}/default/destination/{FolderPathId}
+   * @request GET:/api/PlexLibrary/{plexLibraryId}/default/destination/{folderPathId}
    * @secure
    */
   setPlexLibraryDefaultDestinationByIdEndpoint = (
@@ -216,8 +161,63 @@ export class PlexLibrary {
   /**
    * No description
    * * @tags Plexlibrary
+   * @name GetLibraryMediaMetadata
+   * @request GET:/api/PlexLibrary/{plexLibraryId}/metadata
+   * @secure
+   */
+  getLibraryMediaMetadata = (
+    plexLibraryId: number,
+    query: {
+      /** @default false */
+      filterOfflineMedia?: boolean | null;
+      /** @default false */
+      filterOwnedMedia?: boolean | null;
+      mediaType: PlexMediaType;
+      photoView?: PhotoItemKind;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<PlexMediaMetadataDTO>({
+      url: `/api/PlexLibrary/${plexLibraryId}/metadata`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<PlexMediaMetadataDTO>);
+
+  /**
+   * No description
+   * * @tags Plexlibrary
+   * @name GetMetadataFilter
+   * @request GET:/api/PlexLibrary/{plexLibraryId}/metadata-filter
+   * @secure
+   */
+  getMetadataFilter = (
+    plexLibraryId: number,
+    query: {
+      /** @default false */
+      filterOfflineMedia?: boolean | null;
+      /** @default false */
+      filterOwnedMedia?: boolean | null;
+      mediaType: PlexMediaType;
+    },
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<PlexMediaFilterMetadataDTO>({
+      url: `/api/PlexLibrary/${plexLibraryId}/metadata-filter`,
+      method: "GET",
+      params: query,
+      secure: true,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<PlexMediaFilterMetadataDTO>);
+
+  /**
+   * No description
+   * * @tags Plexlibrary
    * @name SetLibraryEnabledEndpoint
-   * @request PUT:/api/PlexLibrary/{PlexLibraryId}/set-library-enabled
+   * @request PUT:/api/PlexLibrary/{plexLibraryId}/set-library-enabled
    * @secure
    */
   setLibraryEnabledEndpoint = (
@@ -236,19 +236,35 @@ export class PlexLibrary {
 }
 
 export class PlexLibraryPaths {
+  static getAllPlexLibrariesEndpoint = () =>
+    queryString.stringifyUrl({ url: `/api/PlexLibrary` });
+
+  static getPlexLibraryAccessTimelineEndpoint = () =>
+    queryString.stringifyUrl({ url: `/api/PlexLibrary/access-timeline` });
+
   static cancelLibrarySyncEndpoint = (plexLibraryId: number) =>
     queryString.stringifyUrl({
       url: `/api/PlexLibrary/cancel/${plexLibraryId}`,
     });
 
+  static refreshLibraryMediaEndpoint = (plexLibraryId: number) =>
+    queryString.stringifyUrl({
+      url: `/api/PlexLibrary/refresh/${plexLibraryId}`,
+    });
+
+  static getLibrarySyncStatusEndpoint = () =>
+    queryString.stringifyUrl({ url: `/api/PlexLibrary/sync-status` });
+
   static getPlexLibraryByIdEndpoint = (plexLibraryId: number) =>
     queryString.stringifyUrl({ url: `/api/PlexLibrary/${plexLibraryId}` });
 
-  static getPlexLibraryAccessTimelineEndpoint = () =>
-    queryString.stringifyUrl({ url: `/api/PlexLibrary/access-timeline` });
-
-  static getAllPlexLibrariesEndpoint = () =>
-    queryString.stringifyUrl({ url: `/api/PlexLibrary` });
+  static setPlexLibraryDefaultDestinationByIdEndpoint = (
+    plexLibraryId: number,
+    folderPathId: number,
+  ) =>
+    queryString.stringifyUrl({
+      url: `/api/PlexLibrary/${plexLibraryId}/default/destination/${folderPathId}`,
+    });
 
   static getLibraryMediaMetadata = (
     plexLibraryId: number,
@@ -257,8 +273,8 @@ export class PlexLibraryPaths {
       filterOfflineMedia?: boolean | null;
       /** @default false */
       filterOwnedMedia?: boolean | null;
-      /** @default 0 */
       mediaType: PlexMediaType;
+      photoView?: PhotoItemKind;
     },
   ) =>
     queryString.stringifyUrl({
@@ -273,29 +289,12 @@ export class PlexLibraryPaths {
       filterOfflineMedia?: boolean | null;
       /** @default false */
       filterOwnedMedia?: boolean | null;
-      /** @default 0 */
       mediaType: PlexMediaType;
     },
   ) =>
     queryString.stringifyUrl({
       url: `/api/PlexLibrary/${plexLibraryId}/metadata-filter`,
       query,
-    });
-
-  static getLibrarySyncStatusEndpoint = () =>
-    queryString.stringifyUrl({ url: `/api/PlexLibrary/sync-status` });
-
-  static refreshLibraryMediaEndpoint = (plexLibraryId: number) =>
-    queryString.stringifyUrl({
-      url: `/api/PlexLibrary/refresh/${plexLibraryId}`,
-    });
-
-  static setPlexLibraryDefaultDestinationByIdEndpoint = (
-    plexLibraryId: number,
-    folderPathId: number,
-  ) =>
-    queryString.stringifyUrl({
-      url: `/api/PlexLibrary/${plexLibraryId}/default/destination/${folderPathId}`,
     });
 
   static setLibraryEnabledEndpoint = (plexLibraryId: number) =>

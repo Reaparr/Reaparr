@@ -22,8 +22,7 @@ public class UserSettingsResetUnitTests : BaseUnitTest
         // Act
         sut.Reset();
         await resetNotification;
-        var changedNotification = sut.SettingsUpdated
-            .Select(x => x.ToDTO()).Take(1).ToTask(timeout.Token);
+        var changedNotification = sut.SettingsUpdated.Select(x => x.ToDTO()).Take(1).ToTask(timeout.Token);
         language.Language = "fr-FR";
         var published = await changedNotification;
 

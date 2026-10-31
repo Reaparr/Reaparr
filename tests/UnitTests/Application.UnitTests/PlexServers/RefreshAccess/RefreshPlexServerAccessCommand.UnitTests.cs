@@ -149,9 +149,7 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(
-                Result.Fail<List<PlexServerAccessDTO>>("Unauthorized").AddPlex401UnauthorizedError()
-            )
+            .ReturnsAsync(Result.Fail<List<PlexServerAccessDTO>>("Unauthorized").AddPlex401UnauthorizedError())
             .Verifiable(Times.Once());
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
@@ -225,4 +223,3 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
         Mock.Mock<INotificationHubService>().Verify();
     }
 }
-

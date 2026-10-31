@@ -1,6 +1,5 @@
 namespace Reaparr.Application.UnitTests;
 
-
 public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloadPreviewQueryValidator>
 {
     [Test]
@@ -25,9 +24,7 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
     public async Task ShouldRejectPhotoSelection_WhenQualitySelectorIsPresent(PlexMediaType type)
     {
         // Arrange
-        var query = CreateQuery(
-            [CreateSelection(type, qualities: [CreateQuality(PlexMediaType.PhotoImage)])]
-        );
+        var query = CreateQuery([CreateSelection(type, qualities: [CreateQuality(PlexMediaType.PhotoImage)])]);
 
         // Act
         var result = await Sut.ValidateAsync(query, CancellationToken);
@@ -42,9 +39,9 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
     public async Task ShouldStillAcceptMovieQualitySelector_WhenPhotoRuleDoesNotApply()
     {
         // Arrange
-        var query = CreateQuery(
-            [CreateSelection(PlexMediaType.Movie, qualities: [CreateQuality(PlexMediaType.Movie)])]
-        );
+        var query = CreateQuery([
+            CreateSelection(PlexMediaType.Movie, qualities: [CreateQuality(PlexMediaType.Movie)]),
+        ]);
 
         // Act
         var result = await Sut.ValidateAsync(query, CancellationToken);
@@ -69,15 +66,9 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
     )
     {
         // Arrange
-        var selections = new List<DownloadMediaDTO>
-        {
-            CreateSelection(type, ids: (1, 11, 101)),
-        };
+        var selections = new List<DownloadMediaDTO> { CreateSelection(type, ids: (1, 11, 101)) };
         if (mixedWithMovie)
-            selections.Insert(
-                0,
-                CreateSelection(PlexMediaType.Movie, ids: (1, 11, 102))
-            );
+            selections.Insert(0, CreateSelection(PlexMediaType.Movie, ids: (1, 11, 102)));
 
         // Act
         var result = await Sut.ValidateAsync(CreateQuery(selections), CancellationToken);
@@ -105,10 +96,7 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
             PlexMediaType.OtherVideos,
         };
         var query = CreateQuery(
-            supportedTypes
-                .Select((type, index) =>
-                    CreateSelection(type, ids: (index + 1, index + 11, index + 101))
-                )
+            supportedTypes.Select((type, index) => CreateSelection(type, ids: (index + 1, index + 11, index + 101)))
         );
 
         // Act
@@ -136,6 +124,7 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
         result.Errors.Count.ShouldBe(1);
         result.Errors.Single().PropertyName.ShouldBe("Request.DownloadMedias[0].Type");
     }
+
     [Test]
     public async Task ShouldAcceptFolderSelection_WhenSelectionKindIsFolder()
     {
@@ -211,10 +200,7 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
         request.DestinationFolderPathId.ShouldBe(5);
         request.CustomDestinationFolderPath.ShouldBeEmpty();
 
-        var validationResult = await Sut.ValidateAsync(
-            new GetDownloadPreviewQuery(request),
-            CancellationToken
-        );
+        var validationResult = await Sut.ValidateAsync(new GetDownloadPreviewQuery(request), CancellationToken);
         validationResult.IsValid.ShouldBeTrue();
         validationResult.Errors.Count.ShouldBe(0);
     }
@@ -226,8 +212,7 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
         PlexMediaType type,
         List<PlexMediaQualityDTO>? qualities = null,
         (int ServerId, int LibraryId, int MediaId)? ids = null
-    ) =>
-        CreateSelectionWithKind(type, GetDefaultSelectionKind(type), qualities, ids);
+    ) => CreateSelectionWithKind(type, GetDefaultSelectionKind(type), qualities, ids);
 
     private static DownloadMediaDTO CreateSelectionWithKind(
         PlexMediaType type,
@@ -267,5 +252,4 @@ public class GetDownloadPreviewQueryValidatorUnitTests : BaseUnitTest<GetDownloa
             MediaDataType = type,
             VideoQuality = VideoQuality.Unknown,
         };
-
 }

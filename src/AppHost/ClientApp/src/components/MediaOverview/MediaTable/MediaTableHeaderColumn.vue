@@ -11,8 +11,7 @@
 
 <script setup lang="ts">
 import { get } from '@vueuse/core';
-import { SortDirection } from '@enums';
-import type { MediaSortField } from '@enums';
+import { SortDirection } from '@dto';
 import type { QTreeViewTableHeader } from '@props';
 import { useMediaOverviewStore } from '@store';
 
@@ -22,7 +21,7 @@ const props = defineProps<{
 	column: QTreeViewTableHeader;
 }>();
 
-const sortField = computed(() => (props.column.sortField ?? props.column.field) as MediaSortField);
+const sortField = computed(() => props.column.sortField);
 
 const sorted = computed(() => {
 	if (!props.column.sortable) {
@@ -52,7 +51,12 @@ function onClick() {
 		return;
 	}
 
-	mediaOverviewStore.toggleSortMedia(get(sortField));
+	const field = get(sortField);
+	if (!field) {
+		return;
+	}
+
+	mediaOverviewStore.toggleSortMedia(field);
 }
 </script>
 

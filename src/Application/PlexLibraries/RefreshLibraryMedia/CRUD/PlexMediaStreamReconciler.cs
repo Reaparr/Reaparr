@@ -48,9 +48,7 @@ internal static class PlexMediaStreamReconciler
                     if (!IsPersistedStreamType(stream.StreamType))
                         continue;
 
-                    var languageId = languageIds[
-                        (stream.Language.LanguageCode, stream.Language.LanguageTag)
-                    ];
+                    var languageId = languageIds[(stream.Language.LanguageCode, stream.Language.LanguageTag)];
                     if (!currentRows.Remove((data.Id, stream.PlexApiStreamId), out var current))
                     {
                         inserts.Add(create(stream, data.Id, languageId));

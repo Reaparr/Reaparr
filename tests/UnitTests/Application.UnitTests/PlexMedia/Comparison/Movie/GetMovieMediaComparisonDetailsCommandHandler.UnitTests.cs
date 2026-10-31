@@ -318,5 +318,4 @@ public class GetMovieMediaComparisonDetailsCommandHandlerUnitTests
         result.Value.State.ShouldBe(PlexMediaComparisonState.Owned);
         result.Value.Rows.ShouldBeEmpty();
     }
-
 }

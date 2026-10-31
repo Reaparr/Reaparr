@@ -310,6 +310,7 @@ public class ApplyOwnedMusicComparisonStateCommandUnitTests : BaseCommandUnitTes
             );
         Mock.Mock<IScheduler>().Verify();
     }
+
     [Test]
     [Arguments(0)]
     [Arguments(1)]
@@ -376,48 +377,67 @@ public class ApplyOwnedMusicComparisonStateCommandUnitTests : BaseCommandUnitTes
                     OwnedPlexLibraryId = libraries[2].Id,
                     RemotePlexMediaId = remoteTrack.Id,
                     OwnedPlexMediaId = ownedTrack.Id,
-                    HitState = index == higherQualityIndex
-                        ? PlexMediaComparisonHitState.HigherQuality
-                        : PlexMediaComparisonHitState.Matched,
+                    HitState =
+                        index == higherQualityIndex
+                            ? PlexMediaComparisonHitState.HigherQuality
+                            : PlexMediaComparisonHitState.Matched,
                     MatchType = PlexMediaComparisonMatchType.PlexTrackGuid,
                     ComparedAt = DateTime.UtcNow,
                 }
             );
         }
         await dbContext.SaveChangesAsync(CancellationToken);
-        var hits = await dbContext.PlexMusicTrackComparisons
-            .OrderBy(x => x.RemotePlexLibraryId)
+        var hits = await dbContext
+            .PlexMusicTrackComparisons.OrderBy(x => x.RemotePlexLibraryId)
             .ToListAsync(CancellationToken);
-        hits.Select(x => (x.RemotePlexLibraryId, x.OwnedPlexMediaId, x.HitState)).ShouldBe([
-            (libraries[0].Id, ownedTrack.Id, higherQualityIndex == 0
-                ? PlexMediaComparisonHitState.HigherQuality : PlexMediaComparisonHitState.Matched),
-            (libraries[1].Id, ownedTrack.Id, higherQualityIndex == 1
-                ? PlexMediaComparisonHitState.HigherQuality : PlexMediaComparisonHitState.Matched),
-        ]);
+        hits.Select(x => (x.RemotePlexLibraryId, x.OwnedPlexMediaId, x.HitState))
+            .ShouldBe([
+                (
+                    libraries[0].Id,
+                    ownedTrack.Id,
+                    higherQualityIndex == 0
+                        ? PlexMediaComparisonHitState.HigherQuality
+                        : PlexMediaComparisonHitState.Matched
+                ),
+                (
+                    libraries[1].Id,
+                    ownedTrack.Id,
+                    higherQualityIndex == 1
+                        ? PlexMediaComparisonHitState.HigherQuality
+                        : PlexMediaComparisonHitState.Matched
+                ),
+            ]);
         var items = new List<PlexMediaSlimDTO>
         {
-            ownedArtist.ToSlimDTOMapper() with { ComparisonId = PlexMediaComparisonState.Owned.ToComparisonId() },
-            ownedAlbum.ToSlimDTOMapper() with { ComparisonId = PlexMediaComparisonState.Owned.ToComparisonId() },
-            ownedTrack.ToSlimDTOMapper() with { ComparisonId = PlexMediaComparisonState.Owned.ToComparisonId() },
+            ownedArtist.ToSlimDTOMapper() with
+            {
+                ComparisonId = PlexMediaComparisonState.Owned.ToComparisonId(),
+            },
+            ownedAlbum.ToSlimDTOMapper() with
+            {
+                ComparisonId = PlexMediaComparisonState.Owned.ToComparisonId(),
+            },
+            ownedTrack.ToSlimDTOMapper() with
+            {
+                ComparisonId = PlexMediaComparisonState.Owned.ToComparisonId(),
+            },
         };
 
         // Act
-        var result = await TestHandlerExecuteAsync(
-            new ApplyOwnedMusicComparisonStateCommand(items, libraries[2].Id)
-        );
+        var result = await TestHandlerExecuteAsync(new ApplyOwnedMusicComparisonStateCommand(items, libraries[2].Id));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        items.Select(x => (x.Id, x.Type, x.ComparisonId)).ShouldBe([
-            (ownedArtist.Id, PlexMediaType.MusicArtist, PlexMediaComparisonState.HigherQuality.ToComparisonId()),
-            (ownedAlbum.Id, PlexMediaType.MusicAlbum, PlexMediaComparisonState.HigherQuality.ToComparisonId()),
-            (ownedTrack.Id, PlexMediaType.MusicTrack, PlexMediaComparisonState.HigherQuality.ToComparisonId()),
-        ]);
-        Mock.Mock<IScheduler>()
-            .Verify(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()), Times.Never());
+        items
+            .Select(x => (x.Id, x.Type, x.ComparisonId))
+            .ShouldBe([
+                (ownedArtist.Id, PlexMediaType.MusicArtist, PlexMediaComparisonState.HigherQuality.ToComparisonId()),
+                (ownedAlbum.Id, PlexMediaType.MusicAlbum, PlexMediaComparisonState.HigherQuality.ToComparisonId()),
+                (ownedTrack.Id, PlexMediaType.MusicTrack, PlexMediaComparisonState.HigherQuality.ToComparisonId()),
+            ]);
+        Mock.Mock<IScheduler>().Verify(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
             .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
     }
-
 }

@@ -93,10 +93,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
         Mock.Mock<IDownloadQueue>().Verify();
         Mock.Mock<IBackgroundJobsSetup>().Verify();
         Mock.Mock<IMoveDownloadFileQueue>()
-            .Verify(
-                x => x.CheckMoveDownloadFileJobQueue(It.IsAny<CancellationToken>()),
-                Times.Never
-            );
+            .Verify(x => x.CheckMoveDownloadFileJobQueue(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -141,8 +138,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IDownloadQueue>().Verify();
         Mock.Mock<IHostApplicationLifetime>().Verify();
-        Mock.Mock<IBackgroundJobsSetup>()
-            .Verify(x => x.SetupAsync(It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IBackgroundJobsSetup>().Verify(x => x.SetupAsync(It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -234,9 +230,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
         files[1].DownloadStatus = DownloadStatus.Completed;
         files[2].DownloadStatus = DownloadStatus.Paused;
         files.Count.ShouldBe(3);
-        files.Select(x => x.DownloadStatus).ShouldBe(
-            [readyStatus, DownloadStatus.Completed, DownloadStatus.Paused]
-        );
+        files.Select(x => x.DownloadStatus).ShouldBe([readyStatus, DownloadStatus.Completed, DownloadStatus.Paused]);
         await dbContext.SaveChangesAsync(CancellationToken);
         var expectedKey = files[0].ToKey();
         var startupToken = CancellationToken;
@@ -280,12 +274,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
             .Verifiable(Times.Once());
         Mock.Mock<IMoveDownloadFileScheduler>()
             .InSequence(sequence)
-            .Setup(x =>
-                x.StartMoveDownloadFileJob(
-                    It.Is<DownloadTaskKey>(key => key == expectedKey),
-                    startupToken
-                )
-            )
+            .Setup(x => x.StartMoveDownloadFileJob(It.Is<DownloadTaskKey>(key => key == expectedKey), startupToken))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 

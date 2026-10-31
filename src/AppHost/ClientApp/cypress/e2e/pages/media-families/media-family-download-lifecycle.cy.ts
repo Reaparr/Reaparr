@@ -1,6 +1,6 @@
 import prettyBytes from 'pretty-bytes';
 import { headers, route } from '@fixtures';
-import { generateDownloadTask, generatePlexMedia, generateResultDTO, type MockConfig } from '@mock';
+import { generateDownloadTask, generatePlexMedia, generateResultDTO, generateSupportedSorts, type MockConfig } from '@mock';
 import { PlexLibraryPaths, PlexMediaPaths, SettingsPaths } from '@api/api-paths';
 import {
 	DownloadStatus, DownloadTaskType, FileSystemEntityType, FolderType, MessageTypes, PlexMediaType, VideoQuality, AudioQuality,
@@ -128,7 +128,7 @@ function setupFamily(family: Family) {
 			{ ...state.defaultFolder, id: 83, mediaType: PlexMediaType.Movie, folderType: FolderType.MovieFolder, directory: '/wrong/movie/default' },
 			state.defaultFolder,
 		]));
-		cy.intercept('GET', PlexLibraryPaths.getLibraryMediaMetadata(library.id, { mediaType: library.type }), reply({ countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 1 }));
+		cy.intercept('GET', PlexLibraryPaths.getLibraryMediaMetadata(library.id, { mediaType: library.type }), reply({ countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 1, supportedSorts: generateSupportedSorts(library.type) }));
 		cy.intercept('GET', PlexLibraryPaths.getMetadataFilter(library.id, { mediaType: library.type }), reply({ countries: [], genres: [], roles: [], qualities: [] }));
 		cy.intercept({ method: 'GET', pathname: '/api/PlexMedia' }, (request) => {
 			expect(request.query.mediaType).to.equal(library.type);

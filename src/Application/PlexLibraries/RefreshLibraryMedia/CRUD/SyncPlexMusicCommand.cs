@@ -229,17 +229,12 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
             }
 
             // Resolve moves before severing required relationships, using each retained child's actual owner.
-            var albumsByArtist = albums
-                .GroupBy(x => x.PlexArtist!)
-                .ToDictionary(x => x.Key, x => x.ToList());
-            var tracksByAlbum = tracks
-                .GroupBy(x => x.PlexAlbum!)
-                .ToDictionary(x => x.Key, x => x.ToList());
+            var albumsByArtist = albums.GroupBy(x => x.PlexArtist!).ToDictionary(x => x.Key, x => x.ToList());
+            var tracksByAlbum = tracks.GroupBy(x => x.PlexAlbum!).ToDictionary(x => x.Key, x => x.ToList());
             foreach (var (_, stored) in refreshedAlbums)
             {
                 stored.Tracks = tracksByAlbum.GetValueOrDefault(stored) ?? [];
                 stored.ChildCount = stored.Tracks.Count;
-                stored.TrackCount = stored.Tracks.Count;
                 stored.Duration = stored.Tracks.Sum(x => x.Duration);
                 stored.MediaSize = stored.Tracks.Sum(x => x.MediaSize);
             }
@@ -389,9 +384,6 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
             if (remainingRows.Remove(key, out var stored))
             {
                 row.Id = stored.Id;
-                row.GeneratedFilename = stored.GeneratedFilename;
-                row.GeneratedNameSyncedAt = stored.GeneratedNameSyncedAt;
-                row.NeedsGeneratedName = stored.NeedsGeneratedName;
                 ctx.Entry(stored).CurrentValues.SetValues(row);
             }
             else
@@ -514,14 +506,10 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
         foreach (var artist in artists)
         foreach (var actor in artist.Actors)
             if (metadata.PlexActors.TryGetValue(actor.Key, out var stored) && keys.Add((stored.Id, artist.Id)))
-                rows.Add(new PlexMusicArtistActors(stored.Id, metadata.PlexLibraryId, artist.Id));
+                rows.Add(new PlexMusicArtistActors(stored.Id, artist.Id));
 
         var artistIds = artists.Select(x => x.Id).ToList();
-        await ctx
-            .PlexMusicArtistActors.Where(x =>
-                x.PlexLibraryId == metadata.PlexLibraryId && artistIds.Contains(x.PlexMusicArtistId)
-            )
-            .ExecuteDeleteAsync(ct);
+        await ctx.PlexMusicArtistActors.Where(x => artistIds.Contains(x.PlexMusicArtistId)).ExecuteDeleteAsync(ct);
         if (rows.Count > 0)
             await ctx.BulkInsertAsync(rows, bulkConfig, ct);
     }
@@ -539,14 +527,10 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
         foreach (var artist in artists)
         foreach (var genre in artist.Genres)
             if (metadata.PlexGenresAudio.TryGetValue(genre.Key, out var stored) && keys.Add((stored.Id, artist.Id)))
-                rows.Add(new PlexMusicArtistGenres(stored.Id, metadata.PlexLibraryId, artist.Id));
+                rows.Add(new PlexMusicArtistGenres(stored.Id, artist.Id));
 
         var artistIds = artists.Select(x => x.Id).ToList();
-        await ctx
-            .PlexMusicArtistGenres.Where(x =>
-                x.PlexLibraryId == metadata.PlexLibraryId && artistIds.Contains(x.PlexMusicArtistId)
-            )
-            .ExecuteDeleteAsync(ct);
+        await ctx.PlexMusicArtistGenres.Where(x => artistIds.Contains(x.PlexMusicArtistId)).ExecuteDeleteAsync(ct);
         if (rows.Count > 0)
             await ctx.BulkInsertAsync(rows, bulkConfig, ct);
     }
@@ -564,14 +548,10 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
         foreach (var artist in artists)
         foreach (var country in artist.Countries)
             if (metadata.PlexCountries.TryGetValue(country.Key, out var stored) && keys.Add((stored.Id, artist.Id)))
-                rows.Add(new PlexMusicArtistCountries(stored.Id, metadata.PlexLibraryId, artist.Id));
+                rows.Add(new PlexMusicArtistCountries(stored.Id, artist.Id));
 
         var artistIds = artists.Select(x => x.Id).ToList();
-        await ctx
-            .PlexMusicArtistCountries.Where(x =>
-                x.PlexLibraryId == metadata.PlexLibraryId && artistIds.Contains(x.PlexMusicArtistId)
-            )
-            .ExecuteDeleteAsync(ct);
+        await ctx.PlexMusicArtistCountries.Where(x => artistIds.Contains(x.PlexMusicArtistId)).ExecuteDeleteAsync(ct);
         if (rows.Count > 0)
             await ctx.BulkInsertAsync(rows, bulkConfig, ct);
     }
@@ -589,14 +569,10 @@ public class SyncPlexMusicCommandHandler : ICommandHandler<SyncPlexMusicCommand,
         foreach (var album in albums)
         foreach (var country in album.Countries)
             if (metadata.PlexCountries.TryGetValue(country.Key, out var stored) && keys.Add((stored.Id, album.Id)))
-                rows.Add(new PlexMusicAlbumCountries(stored.Id, metadata.PlexLibraryId, album.Id));
+                rows.Add(new PlexMusicAlbumCountries(stored.Id, album.Id));
 
         var albumIds = albums.Select(x => x.Id).ToList();
-        await ctx
-            .PlexMusicAlbumCountries.Where(x =>
-                x.PlexLibraryId == metadata.PlexLibraryId && albumIds.Contains(x.PlexMusicAlbumId)
-            )
-            .ExecuteDeleteAsync(ct);
+        await ctx.PlexMusicAlbumCountries.Where(x => albumIds.Contains(x.PlexMusicAlbumId)).ExecuteDeleteAsync(ct);
         if (rows.Count > 0)
             await ctx.BulkInsertAsync(rows, bulkConfig, ct);
     }

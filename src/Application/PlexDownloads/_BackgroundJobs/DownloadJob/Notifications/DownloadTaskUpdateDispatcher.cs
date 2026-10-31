@@ -476,7 +476,10 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         {
             return await Result.Try(async Task () =>
             {
-                if (_finalizedProgressNodes.ContainsKey(bufferedProgress.NodeId) && bufferedProgress.Progress is not null)
+                if (
+                    _finalizedProgressNodes.ContainsKey(bufferedProgress.NodeId)
+                    && bufferedProgress.Progress is not null
+                )
                     return;
 
                 if (bufferedProgress.Progress is not null)

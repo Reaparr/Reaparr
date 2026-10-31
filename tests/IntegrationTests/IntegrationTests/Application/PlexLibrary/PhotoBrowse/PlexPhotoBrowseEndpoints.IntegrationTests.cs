@@ -1,3 +1,4 @@
+using System.Text.Json;
 using NaturalSort.Extension;
 
 namespace Reaparr.IntegrationTests;
@@ -26,29 +27,32 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
             }
         );
         var context = container.DbContext;
-        var library = await context.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await context.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var root = await context.PlexPhotoFolders.SingleAsync(
             x => x.PlexLibraryId == library.Id && x.ParentId == null,
             CancellationToken
         );
-        var albums = await context.PlexPhotoAlbums
-            .Where(x => x.PlexLibraryId == library.Id)
+        var albums = await context
+            .PlexPhotoAlbums.Where(x => x.PlexLibraryId == library.Id)
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
-        var assets = await context.PlexPhotoMediaData
-            .Where(x => x.PlexLibraryId == library.Id)
+        var assets = await context
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
         var album = albums[0];
         var asset = assets[0];
-        var albumAssetIds = await context.PlexPhotoAlbumMemberships
-            .Where(x => x.PlexPhotoAlbumId == album.Id)
+        var albumAssetIds = await context
+            .PlexPhotoAlbumMemberships.Where(x => x.PlexPhotoAlbumId == album.Id)
             .OrderBy(x => x.PlexPhotoMediaDataId)
             .Select(x => x.PlexPhotoMediaDataId)
             .ToListAsync(CancellationToken);
         var searchTerm = "browseable";
-        await context.PlexPhotoMediaData
-            .Where(x => x.Id == asset.Id)
+        await context
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, searchTerm), CancellationToken);
 
         using var client = container.GetApiClient();
@@ -74,7 +78,110 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         await AssertMembersAsync(fixture);
         await AssertInspectionAsync(fixture);
         await AssertSearchAsync(fixture);
+        await AssertInvalidSortAsync(fixture);
         await AssertDisabledLibraryAsync(fixture);
+    }
+
+    [Test]
+    [Arguments("mediaSize:asc", new[] { 1, 3, 2, 0 })]
+    [Arguments("mediaSize:desc", new[] { 0, 2, 3, 1 })]
+    [Arguments("addedAt:asc", new[] { 2, 0, 3, 1 })]
+    [Arguments("addedAt:desc", new[] { 1, 3, 0, 2 })]
+    [Arguments("updatedAt:asc", new[] { 0, 3, 2, 1 })]
+    [Arguments("updatedAt:desc", new[] { 1, 2, 3, 0 })]
+    [Arguments("duration:asc", new[] { 1, 3, 0, 2 })]
+    [Arguments("duration:desc", new[] { 2, 0, 3, 1 })]
+    public async Task ShouldApplySharedSortFieldsBeforePagingPhotoAssets(string sort, int[] expectedOrder)
+    {
+        // Arrange
+        var seed = new Seed(29005);
+        using var container = await CreateContainer(
+            seed,
+            config =>
+            {
+                config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
+                config.DatabaseOptions = x =>
+                {
+                    x.PlexAccountCount = 1;
+                    x.PlexServerCount = 1;
+                    x.PlexPhotoLibraryCount = 2;
+                    x.PhotoAlbumCount = 1;
+                    x.PhotoCount = 0;
+                    x.PhotoClipCount = 4;
+                };
+            }
+        );
+        var context = container.DbContext;
+        var libraryId = await context
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
+            .OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .FirstAsync();
+        var assetIds = await context
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == libraryId)
+            .OrderBy(x => x.Id)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken);
+        assetIds.Count.ShouldBe(4);
+        await ArrangeAssetSortValuesAsync(context, assetIds);
+        await context.SetPhotoMediaMetrics(libraryId, 1, 0, assetIds.Count, 1000L, CancellationToken);
+        using var client = container.GetApiClient();
+        await client.SignIn();
+
+        for (var page = 1; page <= 2; page++)
+        {
+            // Act
+            var response = await client.GETAsync<
+                GetPhotoAssetsEndpoint,
+                GetPhotoAssetsRequest,
+                ResultDTO<PhotoAssetPageDTO>
+            >(
+                new GetPhotoAssetsRequest
+                {
+                    PlexLibraryId = libraryId,
+                    Page = page,
+                    PageSize = 3,
+                    Sort = sort,
+                }
+            );
+
+            // Assert
+            response.Response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            response.Result.IsSuccess.ShouldBeTrue();
+            response.Result.Errors.Count.ShouldBe(0);
+            var value = response.Result.Value.ShouldNotBeNull();
+            (value.Page, value.PageSize, value.TotalCount, value.TotalBytes).ShouldBe((page, 3, 4, 1000L));
+            value
+                .Items.Select(x => x.Id)
+                .ShouldBe(expectedOrder.Skip((page - 1) * 3).Take(3).Select(index => assetIds[index]));
+            value.Items.ShouldAllBe(x => x.PlexLibraryId == libraryId);
+        }
+    }
+
+    private async Task ArrangeAssetSortValuesAsync(IReaparrDbContext context, IReadOnlyList<int> assetIds)
+    {
+        var sizes = new[] { 400L, 100L, 300L, 200L };
+        var addedDays = new[] { 2, 4, 1, 3 };
+        var durations = new int?[] { 60, null, 120, 30 };
+        for (var index = 0; index < assetIds.Count; index++)
+        {
+            var id = assetIds[index];
+            await context
+                .PlexPhotoMediaData.Where(x => x.Id == id)
+                .ExecuteUpdateAsync(
+                    update =>
+                        update
+                            .SetProperty(x => x.Title, $"Asset {index}")
+                            .SetProperty(x => x.Size, sizes[index])
+                            .SetProperty(x => x.AddedAt, new DateTime(2026, 1, addedDays[index]))
+                            .SetProperty(
+                                x => x.UpdatedAt,
+                                index == 0 ? (DateTime?)null : new DateTime(2026, 2, 4 - index)
+                            )
+                            .SetProperty(x => x.Duration, durations[index]),
+                    CancellationToken
+                );
+        }
     }
 
     private static T AssertSuccess<T>(HttpStatusCode statusCode, ResultDTO<T> result)
@@ -98,7 +205,7 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
                 PlexLibraryId = fixture.Library.Id,
                 Page = 1,
                 PageSize = 1,
-                Sort = "title:asc",
+                Sort = "sortIndex:asc",
             }
         );
         var value = AssertSuccess(response.Response.StatusCode, response.Result);
@@ -122,18 +229,43 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
                 PageSize = 2,
             }
         );
+        var descendingResponse = await fixture.Client.GETAsync<
+            GetPhotoAssetsEndpoint,
+            GetPhotoAssetsRequest,
+            ResultDTO<PhotoAssetPageDTO>
+        >(
+            new GetPhotoAssetsRequest
+            {
+                PlexLibraryId = fixture.Library.Id,
+                Page = 1,
+                PageSize = 2,
+                Sort = "sortIndex:desc",
+            }
+        );
+        var descendingValue = AssertSuccess(descendingResponse.Response.StatusCode, descendingResponse.Result);
         var value = AssertSuccess(response.Response.StatusCode, response.Result);
         value.Items.Count.ShouldBe(Math.Min(2, fixture.Assets.Count));
         value.TotalCount.ShouldBe(fixture.Assets.Count);
         value.TotalBytes.ShouldBe(fixture.Assets.Sum(x => x.Size));
-        value.Items.Select(x => x.Id).ShouldBe(
-            fixture.Assets
-                .OrderBy(x => x.Title, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
-                .ThenBy(x => x.Id)
-                .Take(2)
-                .Select(x => x.Id)
-        );
+        value
+            .Items.Select(x => x.Id)
+            .ShouldBe(
+                fixture
+                    .Assets.OrderBy(x => x.Title, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
+                    .ThenBy(x => x.Id)
+                    .Take(2)
+                    .Select(x => x.Id)
+            );
         value.Items.ShouldAllBe(x => x.SourceRootTitle == fixture.Root.Title);
+        descendingValue
+            .Items.Select(x => x.Id)
+            .ShouldBe(
+                fixture
+                    .Assets.OrderByDescending(x => x.Title, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
+                    .ThenByDescending(x => x.Id)
+                    .Take(2)
+                    .Select(x => x.Id)
+            );
     }
 
     private async Task AssertRootsAsync(BrowseFixture fixture)
@@ -160,19 +292,11 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
             GetPhotoFolderChildrenEndpoint,
             GetPhotoFolderChildrenRequest,
             ResultDTO<PhotoFolderChildrenDTO>
-        >(
-            new GetPhotoFolderChildrenRequest
-            {
-                PlexLibraryId = fixture.Library.Id,
-                FolderId = fixture.Root.Id,
-            }
-        );
+        >(new GetPhotoFolderChildrenRequest { PlexLibraryId = fixture.Library.Id, FolderId = fixture.Root.Id });
         var value = AssertSuccess(response.Response.StatusCode, response.Result);
         value.Folder.Id.ShouldBe(fixture.Root.Id);
         value.Breadcrumbs.Select(x => x.Id).ShouldBe([fixture.Root.Id]);
-        value.Assets.TotalCount.ShouldBe(
-            fixture.Assets.Count(x => x.PlexPhotoFolderId == fixture.Root.Id)
-        );
+        value.Assets.TotalCount.ShouldBe(fixture.Assets.Count(x => x.PlexPhotoFolderId == fixture.Root.Id));
     }
 
     private async Task AssertMembersAsync(BrowseFixture fixture)
@@ -181,21 +305,17 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
             GetPhotoAlbumMembersEndpoint,
             GetPhotoAlbumMembersRequest,
             ResultDTO<PhotoAssetPageDTO>
-        >(
-            new GetPhotoAlbumMembersRequest
-            {
-                PlexLibraryId = fixture.Library.Id,
-                AlbumId = fixture.Album.Id,
-            }
-        );
+        >(new GetPhotoAlbumMembersRequest { PlexLibraryId = fixture.Library.Id, AlbumId = fixture.Album.Id });
         var value = AssertSuccess(response.Response.StatusCode, response.Result);
-        value.Items.Select(x => x.Id).ShouldBe(
-            fixture.Assets
-                .Where(x => fixture.AlbumAssetIds.Contains(x.Id))
-                .OrderBy(x => x.Title, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
-                .ThenBy(x => x.Id)
-                .Select(x => x.Id)
-        );
+        value
+            .Items.Select(x => x.Id)
+            .ShouldBe(
+                fixture
+                    .Assets.Where(x => fixture.AlbumAssetIds.Contains(x.Id))
+                    .OrderBy(x => x.Title, StringComparison.OrdinalIgnoreCase.WithNaturalSort())
+                    .ThenBy(x => x.Id)
+                    .Select(x => x.Id)
+            );
     }
 
     private async Task AssertInspectionAsync(BrowseFixture fixture)
@@ -204,19 +324,11 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
             GetPhotoAssetInspectionEndpoint,
             GetPhotoAssetInspectionRequest,
             ResultDTO<PhotoAssetInspectionDTO>
-        >(
-            new GetPhotoAssetInspectionRequest
-            {
-                PlexLibraryId = fixture.Library.Id,
-                AssetId = fixture.Asset.Id,
-            }
-        );
+        >(new GetPhotoAssetInspectionRequest { PlexLibraryId = fixture.Library.Id, AssetId = fixture.Asset.Id });
         var value = AssertSuccess(response.Response.StatusCode, response.Result);
         value.Id.ShouldBe(fixture.Asset.Id);
         value.PlexApiRatingKey.ShouldBe(fixture.Asset.PlexApiRatingKey);
-        value.Albums.TotalCount.ShouldBe(
-            fixture.AlbumAssetIds.Count(x => x == fixture.Asset.Id)
-        );
+        value.Albums.TotalCount.ShouldBe(fixture.AlbumAssetIds.Count(x => x == fixture.Asset.Id));
         if (fixture.Asset.SourcePath is not null)
             value.RelativeFolderPath.ShouldNotBe(fixture.Asset.SourcePath);
     }
@@ -237,15 +349,28 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         );
         var value = AssertSuccess(response.Response.StatusCode, response.Result);
         value.Items.Select(x => x.Id).ShouldContain(fixture.Asset.Id);
-        value.Items.Select(x => x.Id).Distinct().Count().ShouldBe(
-            value.Items.Count
+        value.Items.Select(x => x.Id).Distinct().Count().ShouldBe(value.Items.Count);
+    }
+
+    private async Task AssertInvalidSortAsync(BrowseFixture fixture)
+    {
+        using var response = await fixture.Client.GetAsync(
+            $"{ApiRoutes.PlexPhotoController}/assets?plexLibraryId={fixture.Library.Id}&sort=unknown:asc",
+            CancellationToken
         );
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(CancellationToken));
+        var result = document.RootElement;
+        result.GetProperty("isSuccess").GetBoolean().ShouldBeFalse();
+        result.GetProperty("errors").GetArrayLength().ShouldBe(1);
+        result.GetProperty("successes").GetArrayLength().ShouldBe(0);
+        result.TryGetProperty("value", out _).ShouldBeFalse();
     }
 
     private async Task AssertDisabledLibraryAsync(BrowseFixture fixture)
     {
-        await fixture.Context.PlexLibraries
-            .Where(x => x.Id == fixture.Library.Id)
+        await fixture
+            .Context.PlexLibraries.Where(x => x.Id == fixture.Library.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
         var response = await fixture.Client.GETAsync<
             GetPhotoAssetsEndpoint,
@@ -294,8 +419,10 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         var libraries = await context.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var serverId = libraries[0].PlexServerId;
         var allAssets = await context.PlexPhotoMediaData.CountAsync(CancellationToken);
-        var firstAssets = await context.PlexPhotoMediaData
-            .CountAsync(x => x.PlexLibraryId == libraries[0].Id, CancellationToken);
+        var firstAssets = await context.PlexPhotoMediaData.CountAsync(
+            x => x.PlexLibraryId == libraries[0].Id,
+            CancellationToken
+        );
         using var client = container.GetApiClient();
         await client.SignIn();
         var fixture = new ScopeFixture(context, client, libraries, serverId, allAssets, firstAssets);
@@ -307,8 +434,8 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
 
     private async Task AssertOfflineAndUnlinkedScopesAsync(ScopeFixture fixture)
     {
-        await fixture.Context.PlexServerStatuses
-            .Where(x => x.PlexServerId == fixture.ServerId)
+        await fixture
+            .Context.PlexServerStatuses.Where(x => x.PlexServerId == fixture.ServerId)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsSuccessful, false), CancellationToken);
         var offlineResponse = await fixture.Client.GETAsync<
             GetPhotoAssetsEndpoint,
@@ -319,8 +446,8 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         offlineResponse.Result.Value.ShouldNotBeNull();
         offlineResponse.Result.Value.TotalCount.ShouldBe(fixture.AllAssets);
 
-        await fixture.Context.PlexAccountLibraries
-            .Where(x => x.PlexLibraryId == fixture.Libraries[1].Id)
+        await fixture
+            .Context.PlexAccountLibraries.Where(x => x.PlexLibraryId == fixture.Libraries[1].Id)
             .ExecuteDeleteAsync(CancellationToken);
         var unlinkedAggregate = await fixture.Client.GETAsync<
             GetPhotoAssetsEndpoint,
@@ -335,16 +462,14 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         unlinkedAggregate.Response.StatusCode.ShouldBe(HttpStatusCode.OK);
         unlinkedAggregate.Result.Value.ShouldNotBeNull();
         unlinkedAggregate.Result.Value.TotalCount.ShouldBe(fixture.FirstAssets);
-        unlinkedAggregate.Result.Value.Items.ShouldAllBe(
-            x => x.PlexLibraryId == fixture.Libraries[0].Id
-        );
+        unlinkedAggregate.Result.Value.Items.ShouldAllBe(x => x.PlexLibraryId == fixture.Libraries[0].Id);
         unlinkedExplicit.Response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
     private async Task AssertDisabledScopesAsync(ScopeFixture fixture)
     {
-        await fixture.Context.PlexLibraries
-            .IgnoreIsEnabledFilter()
+        await fixture
+            .Context.PlexLibraries.IgnoreIsEnabledFilter()
             .Where(x => x.Id == fixture.Libraries[0].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
         var disabledLibraryAggregate = await fixture.Client.GETAsync<
@@ -363,12 +488,12 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
         disabledLibraryAggregate.Result.Value.TotalBytes.ShouldBe(0);
         disabledLibraryExplicit.Response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        await fixture.Context.PlexLibraries
-            .IgnoreIsEnabledFilter()
+        await fixture
+            .Context.PlexLibraries.IgnoreIsEnabledFilter()
             .Where(x => x.Id == fixture.Libraries[0].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true), CancellationToken);
-        await fixture.Context.PlexServers
-            .IgnoreIsEnabledFilter()
+        await fixture
+            .Context.PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == fixture.ServerId)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
         var disabledServerAggregate = await fixture.Client.GETAsync<
@@ -417,7 +542,10 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
                 };
             }
         );
-        var library = await container.DbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await container.DbContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         using var client = container.GetApiClient();
         await client.SignIn();
         using var content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");

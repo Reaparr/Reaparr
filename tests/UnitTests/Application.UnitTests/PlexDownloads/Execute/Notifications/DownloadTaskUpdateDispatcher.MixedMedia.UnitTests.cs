@@ -67,11 +67,19 @@ public class DownloadTaskUpdateDispatcherMixedMediaUnitTests : BaseUnitTest<Down
             .Select(x => (x.Id, x.DownloadTaskFileId, x.DownloadTaskTvShowEpisodeId, x.Status, x.LogLevel))
             .ShouldBe([(1, episode.Id, episode.ParentId, DownloadStatus.Downloading, NotificationLevel.Debug)]);
         var persistedMovie = await assertContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
-        (persistedMovie.DataTotal, persistedMovie.DataReceived, persistedMovie.Percentage, persistedMovie.DownloadSpeed)
-            .ShouldBe((1000L, 250L, 25m, 100L));
+        (
+            persistedMovie.DataTotal,
+            persistedMovie.DataReceived,
+            persistedMovie.Percentage,
+            persistedMovie.DownloadSpeed
+        ).ShouldBe((1000L, 250L, 25m, 100L));
         var persistedEpisode = await assertContext.DownloadTaskTvShowEpisodeFile.SingleAsync(CancellationToken);
-        (persistedEpisode.DataTotal, persistedEpisode.DataReceived, persistedEpisode.Percentage, persistedEpisode.DownloadSpeed)
-            .ShouldBe((1000L, 250L, 25m, 100L));
+        (
+            persistedEpisode.DataTotal,
+            persistedEpisode.DataReceived,
+            persistedEpisode.Percentage,
+            persistedEpisode.DownloadSpeed
+        ).ShouldBe((1000L, 250L, 25m, 100L));
         Mock.Mock<IDownloadHubService>().Verify();
     }
 

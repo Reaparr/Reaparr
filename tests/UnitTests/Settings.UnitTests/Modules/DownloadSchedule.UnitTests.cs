@@ -51,7 +51,10 @@ public class DownloadScheduleUnitTests : BaseUnitTest
         var left = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["09:00"] = 100, ["17:00"] = null } },
+            Days = new()
+            {
+                ["Monday"] = new() { ["09:00"] = 100, ["17:00"] = null },
+            },
         };
         var right = left with { Days = new() { ["Monday"] = new(left.Days["Monday"]) } };
         switch (change)

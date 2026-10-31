@@ -1,3 +1,5 @@
+using SortDirection = Reaparr.Domain.SortDirection;
+
 namespace Reaparr.Application.UnitTests;
 
 public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQueryCommand>
@@ -35,7 +37,16 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
-            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, "title:asc")
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title)
+        );
+        var descending = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title, SortDirection.Desc)
+        );
+        var invalidSort = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, (SortType)999)
+        );
+        var invalidDirection = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title, (SortDirection)999)
         );
 
         // Assert
@@ -46,12 +57,117 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
         result.Value.TotalCount.ShouldBe(albums.Count);
         result.Value.Items.Select(x => x.Id).ShouldBe(albums.Take(2).Select(x => x.Id));
         result.Value.Items.ShouldAllBe(x => x.PlexLibraryId == libraries[0].Id);
+        descending.IsSuccess.ShouldBeTrue();
+        descending.Errors.Count.ShouldBe(0);
+        descending
+            .Value.Items.Select(x => x.Id)
+            .ShouldBe(albums.OrderByDescending(x => x.Id).Take(2).Select(x => x.Id));
+        invalidSort.IsFailed.ShouldBeTrue();
+        invalidSort.Errors.Count.ShouldBe(2);
+        invalidSort.Has400BadRequestError().ShouldBeTrue();
+        invalidDirection.IsFailed.ShouldBeTrue();
+        invalidDirection.Errors.Count.ShouldBe(2);
+        invalidDirection.Has400BadRequestError().ShouldBeTrue();
         result.Value.TotalAssetBytes.ShouldBe(
             await dbContext
                 .PlexPhotoMediaData.Where(x => x.PlexLibraryId == libraries[0].Id)
                 .Where(x => x.AlbumMemberships.Any(m => m.PlexPhotoAlbum!.PlexLibraryId == libraries[0].Id))
                 .SumAsync(x => x.Size, CancellationToken)
         );
+    }
+
+    [Test]
+    [Arguments(SortType.Title, SortDirection.Asc, new[] { 1, 3, 2, 0 })]
+    [Arguments(SortType.Title, SortDirection.Desc, new[] { 0, 2, 3, 1 })]
+    [Arguments(SortType.AddedAt, SortDirection.Asc, new[] { 1, 0, 3, 2 })]
+    [Arguments(SortType.AddedAt, SortDirection.Desc, new[] { 2, 3, 0, 1 })]
+    [Arguments(SortType.UpdatedAt, SortDirection.Asc, new[] { 0, 2, 1, 3 })]
+    [Arguments(SortType.UpdatedAt, SortDirection.Desc, new[] { 3, 1, 2, 0 })]
+    [Arguments(SortType.Duration, SortDirection.Asc, new[] { 0, 3, 1, 2 })]
+    [Arguments(SortType.Duration, SortDirection.Desc, new[] { 2, 1, 3, 0 })]
+    [Arguments(SortType.MediaSize, SortDirection.Asc, new[] { 2, 0, 3, 1 })]
+    [Arguments(SortType.MediaSize, SortDirection.Desc, new[] { 1, 3, 0, 2 })]
+    [Arguments(SortType.MediaSize, SortDirection.NoSort, new[] { 2, 0, 3, 1 })]
+    public async Task ShouldApplyAggregateAndDateSortFieldsBeforePaging(
+        SortType sort,
+        SortDirection direction,
+        int[] expectedOrder
+    )
+    {
+        // Arrange
+        var (libraryId, albums) = await ArrangeSortableAlbumsAsync();
+
+        // Act
+        var firstPage = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
+            new GetPhotoAlbumsQueryCommand(libraryId, 1, 2, sort, direction)
+        );
+        var secondPage = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
+            new GetPhotoAlbumsQueryCommand(libraryId, 2, 2, sort, direction)
+        );
+
+        // Assert
+        firstPage.IsSuccess.ShouldBeTrue();
+        firstPage.Errors.Count.ShouldBe(0);
+        secondPage.IsSuccess.ShouldBeTrue();
+        secondPage.Errors.Count.ShouldBe(0);
+        firstPage.Value.TotalCount.ShouldBe(4);
+        secondPage.Value.TotalCount.ShouldBe(4);
+        firstPage.Value.Items.Select(x => x.Id).ShouldBe(expectedOrder.Take(2).Select(index => albums[index].Id));
+        secondPage.Value.Items.Select(x => x.Id).ShouldBe(expectedOrder.Skip(2).Select(index => albums[index].Id));
+    }
+
+    private async Task<(int LibraryId, List<PlexPhotoAlbum> Albums)> ArrangeSortableAlbumsAsync()
+    {
+        await SetupDatabase(
+            71013,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 4;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
+        var albums = await dbContext.PlexPhotoAlbums.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var assets = await dbContext
+            .PlexPhotoAlbumMemberships.Where(x => x.PlexPhotoAlbum!.PlexLibraryId == library.Id)
+            .OrderBy(x => x.PlexPhotoAlbumId)
+            .Select(x => x.PlexPhotoMediaData!)
+            .ToListAsync(CancellationToken);
+        albums.Count.ShouldBe(4);
+        assets.Count.ShouldBe(4);
+        var date = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var values = new (int? Duration, long Size, DateTime AddedAt, DateTime? UpdatedAt)[]
+        {
+            (null, 200, date.AddDays(1), null),
+            (10, 400, date, date.AddDays(1)),
+            (10, 100, date.AddDays(3), date),
+            (null, 300, date.AddDays(2), date.AddDays(2)),
+        };
+        var titles = new[] { "Zulu", "Alpha", "Charlie", "Bravo" };
+        for (var index = 0; index < albums.Count; index++)
+        {
+            var value = values[index];
+            await dbContext
+                .PlexPhotoAlbums.Where(x => x.Id == albums[index].Id)
+                .ExecuteUpdateAsync(
+                    setters =>
+                        setters
+                            .SetProperty(x => x.Title, titles[index])
+                            .SetProperty(x => x.AddedAt, value.AddedAt)
+                            .SetProperty(x => x.UpdatedAt, value.UpdatedAt),
+                    CancellationToken
+                );
+            await dbContext
+                .PlexPhotoMediaData.Where(x => x.Id == assets[index].Id)
+                .ExecuteUpdateAsync(
+                    setters =>
+                        setters.SetProperty(x => x.Duration, value.Duration).SetProperty(x => x.Size, value.Size),
+                    CancellationToken
+                );
+        }
+        return (library.Id, albums);
     }
 
     [Test]

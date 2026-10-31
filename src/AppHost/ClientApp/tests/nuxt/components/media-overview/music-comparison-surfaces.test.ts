@@ -4,7 +4,7 @@ import { createPinia, setActivePinia, type Pinia } from 'pinia';
 import { defineComponent } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { baseSetup } from '@services-test-base';
-import { generatePlexMedia, generatePlexLibrary, generatePlexServer, Seed } from '@mock';
+import { generatePlexMedia, generatePlexLibrary, generatePlexServer, generateSupportedSorts, Seed } from '@mock';
 import { PlexMediaComparisonState, PlexMediaType } from '@dto';
 import { MediaMetaDataTypes } from '@enums';
 import { useDialogStore, useLibraryStore, useMediaOverviewStore, useServerStore, useSettingsStore } from '@store';
@@ -124,7 +124,12 @@ describe('Music comparison overview surfaces', () => {
 		useSettingsStore().displaySettings.allOverviewViewMode = PlexMediaType.MusicArtist;
 		useLibraryStore().updateLibrary(generatePlexLibrary({ seed, plexServerId: 2, type: PlexMediaType.MusicArtist, partialData: { id: 4 } }));
 		useServerStore().servers.push(generatePlexServer({ id: 2, config: { seed: 624 }, partialData: { owned } }));
-		useMediaOverviewStore().libraryId = 4;
+		const mediaOverviewStore = useMediaOverviewStore();
+		mediaOverviewStore.libraryId = 4;
+		mediaOverviewStore.metadataList = {
+			...mediaOverviewStore.metadataList,
+			supportedSorts: generateSupportedSorts(PlexMediaType.MusicArtist),
+		};
 		const wrapper = await mountSuspended(MediaFilterMenu, {
 			global: { plugins: plugins(), stubs: { QMenu: menuShell } },
 		});

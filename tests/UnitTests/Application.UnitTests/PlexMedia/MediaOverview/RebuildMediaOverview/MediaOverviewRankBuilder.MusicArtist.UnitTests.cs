@@ -31,16 +31,6 @@ public class MediaOverviewRankBuilderMusicArtistUnitTests
                     .ToArray()
             );
         result
-            .OrderBy(x => x.YearRank)
-            .Select(x => x.PlexArtistId)
-            .ShouldBe(
-                snapshots
-                    .OrderBy(x => valuesById[x.PlexArtistId].Year)
-                    .ThenBy(x => x.PlexArtistId)
-                    .Select(x => x.PlexArtistId)
-                    .ToArray()
-            );
-        result
             .OrderBy(x => x.AddedAtRank)
             .Select(x => x.PlexArtistId)
             .ShouldBe(
@@ -81,7 +71,6 @@ public class MediaOverviewRankBuilderMusicArtistUnitTests
                     .ToArray()
             );
         result.Select(x => x.TitleRank).OrderBy(x => x).ShouldBe(expectedRanks);
-        result.Select(x => x.YearRank).OrderBy(x => x).ShouldBe(expectedRanks);
         result.Select(x => x.AddedAtRank).OrderBy(x => x).ShouldBe(expectedRanks);
         result.Select(x => x.UpdatedAtRank).OrderBy(x => x).ShouldBe(expectedRanks);
         result.Select(x => x.DurationRank).OrderBy(x => x).ShouldBe(expectedRanks);

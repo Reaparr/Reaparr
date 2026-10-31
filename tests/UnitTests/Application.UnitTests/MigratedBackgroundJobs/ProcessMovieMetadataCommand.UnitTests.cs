@@ -18,14 +18,12 @@ public class ProcessMovieMetadataCommandUnitTests : BaseCommandUnitTest<ProcessM
 
         var dbContext = IDbContext;
         var targetServer = await dbContext.PlexServers.OrderBy(x => x.Id).FirstAsync(CancellationToken);
-        var target = await dbContext.PlexMovieData.AsTracking().SingleAsync(
-            x => x.PlexServerId == targetServer.Id,
-            CancellationToken
-        );
-        var control = await dbContext.PlexMovieData.AsTracking().SingleAsync(
-            x => x.PlexServerId != targetServer.Id,
-            CancellationToken
-        );
+        var target = await dbContext
+            .PlexMovieData.AsTracking()
+            .SingleAsync(x => x.PlexServerId == targetServer.Id, CancellationToken);
+        var control = await dbContext
+            .PlexMovieData.AsTracking()
+            .SingleAsync(x => x.PlexServerId != targetServer.Id, CancellationToken);
 
         target.NeedsGeneratedName = true;
         target.GeneratedFilename = null;
@@ -155,16 +153,8 @@ public class ProcessMovieMetadataCommandUnitTests : BaseCommandUnitTest<ProcessM
             Id = target.PlexApiPartId,
             Stream = [audioStream],
         };
-        var media = metadata.Media.Single() with
-        {
-            Id = target.PlexApiMediaId,
-            Parts = [part],
-        };
-        metadata = metadata with
-        {
-            RatingKey = target.PlexApiRatingKey,
-            Media = [media],
-        };
+        var media = metadata.Media.Single() with { Id = target.PlexApiMediaId, Parts = [part] };
+        metadata = metadata with { RatingKey = target.PlexApiRatingKey, Media = [media] };
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -180,7 +170,9 @@ public class ProcessMovieMetadataCommandUnitTests : BaseCommandUnitTest<ProcessM
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestHandlerExecuteAsync<int>(new ProcessMovieMetadataCommand(targetServer.Id, targetServer.Name));
+        var result = await TestHandlerExecuteAsync<int>(
+            new ProcessMovieMetadataCommand(targetServer.Id, targetServer.Name)
+        );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();

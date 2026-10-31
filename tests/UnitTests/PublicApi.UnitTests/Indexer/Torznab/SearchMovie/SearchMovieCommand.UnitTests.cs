@@ -243,7 +243,8 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
         // Assert
         result.ShouldNotBeNull();
         result.Value.Channel.Items.ShouldNotBeEmpty();
-        result.Value.Channel.Items.Select(i => i.Attributes.Single(a => a.Name == "imdb").Value)
+        result
+            .Value.Channel.Items.Select(i => i.Attributes.Single(a => a.Name == "imdb").Value)
             .ShouldBe(Enumerable.Repeat(imdb[2..], result.Value.Channel.Items.Count));
 
         var expectedTitles = movie.MediaDataList.OrderBy(md => md.PlexApiPartId).Select(md => md.GetFileName).ToList();
@@ -509,7 +510,8 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.Channel.Items.ShouldNotBeEmpty();
-        result.Value.Channel.Items.Select(item => item.Attributes.Single(attribute => attribute.Name == "imdb").Value)
+        result
+            .Value.Channel.Items.Select(item => item.Attributes.Single(attribute => attribute.Name == "imdb").Value)
             .ShouldBe(Enumerable.Repeat(movie.Guid_IMDB![2..], result.Value.Channel.Items.Count));
     }
 
@@ -694,6 +696,7 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
         networkSettings.Verify();
         return result;
     }
+
     private static SearchMovieCommand CreateCommand(
         int limit = 100,
         int offset = 0,
@@ -722,5 +725,4 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
                 Integration = integration ?? new IntegrationIdentity(IntegrationType.Radarr, Guid.Empty),
             }
         );
-
 }

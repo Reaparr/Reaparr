@@ -1,10 +1,19 @@
 namespace Reaparr.Application;
 
-public sealed record RebuildMediaOverviewCommand : ICommand<Result>;
+public sealed record RebuildMediaOverviewCommand(IReadOnlyCollection<PlexMediaType>? MediaTypes = null)
+    : ICommand<Result>;
 
 public sealed class RebuildMediaOverviewCommandValidator : AbstractValidator<RebuildMediaOverviewCommand>
 {
-    public RebuildMediaOverviewCommandValidator() => RuleFor(x => x).NotNull();
+    public RebuildMediaOverviewCommandValidator()
+    {
+        RuleFor(x => x).NotNull();
+        RuleFor(x => x.MediaTypes)
+            .Must(types =>
+                types is null
+                || (types.Count > 0 && types.All(type => MediaOverviewRebuildCoordinator.AllMediaTypes.Contains(type)))
+            );
+    }
 }
 
 public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<RebuildMediaOverviewCommand, Result>
@@ -28,19 +37,16 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
     {
         using var lease = await _coordinator.AcquireRebuildLeaseAsync(cancellationToken);
 
-        // TODO allow rebuilding specific media types, or all of them
-        var movieResult = await RebuildRootAsync(PlexMediaType.Movie, cancellationToken);
-        movieResult.LogIfFailed();
-        var tvShowResult = await RebuildRootAsync(PlexMediaType.TvShow, cancellationToken);
-        tvShowResult.LogIfFailed();
-        var musicResult = await RebuildRootAsync(PlexMediaType.MusicArtist, cancellationToken);
-        musicResult.LogIfFailed();
-        var photoAlbumResult = await RebuildRootAsync(PlexMediaType.PhotoAlbum, cancellationToken);
-        photoAlbumResult.LogIfFailed();
-        var otherVideoResult = await RebuildRootAsync(PlexMediaType.OtherVideos, cancellationToken);
-        otherVideoResult.LogIfFailed();
+        var mediaTypes = command.MediaTypes ?? MediaOverviewRebuildCoordinator.AllMediaTypes;
+        var results = new List<Result>(mediaTypes.Count);
+        foreach (var mediaType in mediaTypes.Distinct())
+        {
+            var result = await RebuildRootAsync(mediaType, cancellationToken);
+            result.LogIfFailed();
+            results.Add(result);
+        }
 
-        return Result.Merge(movieResult, tvShowResult, musicResult, photoAlbumResult, otherVideoResult);
+        return Result.Merge(results.ToArray());
     }
 
     private async Task<Result> RebuildRootAsync(PlexMediaType mediaType, CancellationToken cancellationToken)
@@ -137,7 +143,6 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                         x.Id,
                         x.PlexLibraryId,
                         x.SearchTitle,
-                        x.Year,
                         x.AddedAt,
                         x.UpdatedAt,
                         x.Duration,
@@ -149,8 +154,13 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                     {
                         PlexArtistId = x.Id,
                         PlexLibraryId = x.PlexLibraryId,
+                        SearchTitle = x.SearchTitle,
+                        NavigationTitleLabel = MediaNavigationIndexBuilder.GetTitleLabel(x.SearchTitle),
+                        Duration = x.Duration,
+                        AddedAt = x.AddedAt,
+                        UpdatedAt = x.UpdatedAt,
+                        MediaSize = x.MediaSize,
                         TitleRank = 0,
-                        YearRank = 0,
                         AddedAtRank = 0,
                         UpdatedAtRank = 0,
                         DurationRank = 0,
@@ -162,7 +172,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                         x => x.Id,
                         x => new MediaOverviewRankValue(
                             x.SearchTitle,
-                            x.Year,
+                            null,
                             x.AddedAt,
                             x.UpdatedAt,
                             x.Duration,
@@ -185,7 +195,6 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                         x.Id,
                         x.PlexLibraryId,
                         x.SearchTitle,
-                        Year = 0,
                         x.AddedAt,
                         x.UpdatedAt,
                         Duration = x.Memberships.Sum(edge => edge.PlexPhotoMediaData!.Duration ?? 0),
@@ -197,8 +206,13 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                     {
                         PlexPhotoAlbumId = x.Id,
                         PlexLibraryId = x.PlexLibraryId,
+                        SearchTitle = x.SearchTitle,
+                        NavigationTitleLabel = MediaNavigationIndexBuilder.GetTitleLabel(x.SearchTitle),
+                        Duration = x.Duration,
+                        AddedAt = x.AddedAt,
+                        UpdatedAt = x.UpdatedAt,
+                        MediaSize = x.MediaSize,
                         TitleRank = 0,
-                        YearRank = 0,
                         AddedAtRank = 0,
                         UpdatedAtRank = 0,
                         DurationRank = 0,
@@ -210,7 +224,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                         x => x.Id,
                         x => new MediaOverviewRankValue(
                             x.SearchTitle,
-                            x.Year,
+                            null,
                             x.AddedAt,
                             x.UpdatedAt,
                             x.Duration,
@@ -246,14 +260,21 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
                     {
                         PlexOtherVideoId = x.Id,
                         PlexLibraryId = x.PlexLibraryId,
+                        SearchTitle = x.SearchTitle,
+                        NavigationTitleLabel = MediaNavigationIndexBuilder.GetTitleLabel(x.SearchTitle),
+                        Year = x.Year,
+                        AddedAt = x.AddedAt,
+                        UpdatedAt = x.UpdatedAt,
+                        Duration = x.Duration,
+                        MediaSize = x.MediaSize,
+                        VideoQuality = x.VideoQuality,
                         TitleRank = 0,
                         YearRank = 0,
                         AddedAtRank = 0,
-                        VideoQuality = x.VideoQuality,
-                        QualityRank = 0,
                         UpdatedAtRank = 0,
                         DurationRank = 0,
                         MediaSizeRank = 0,
+                        QualityRank = 0,
                     })
                     .ToList();
                 snapshots.AssignRanks(

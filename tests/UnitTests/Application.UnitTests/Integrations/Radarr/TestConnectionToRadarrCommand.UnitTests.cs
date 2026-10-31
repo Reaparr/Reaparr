@@ -151,7 +151,6 @@ public class TestConnectionToRadarrCommandUnitTests : BaseCommandUnitTest<TestCo
         Mock.Mock<IRadarrHttpClientFactory>().Verify();
     }
 
-
     [Test]
     public async Task ShouldRejectInvalidUrl_WhenDraftConnectionHasNoIntegrationId()
     {
@@ -212,7 +211,7 @@ public class TestConnectionToRadarrCommandUnitTests : BaseCommandUnitTest<TestCo
         result.Has404NotFoundError().ShouldBeTrue();
         Mock.Mock<IRadarrHttpClientFactory>().Verify();
     }
- 
+
     private sealed class StatusCodeHandler(HttpStatusCode statusCode, string reasonPhrase) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

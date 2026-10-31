@@ -2,11 +2,13 @@ import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { of } from 'rxjs';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
-import { generatePlexLibrary, generateResultDTO, Seed } from '@mock';
-import { plexPhotoApi } from '@api';
-import { PhotoAssetKind, PhotoItemKind, PlexMediaType, type PhotoAlbumBrowseDTO, type PhotoAlbumPageDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderChildrenDTO, type PhotoFolderPageDTO } from '@dto';
+import { generatePlexLibrary, generateResultDTO, generateSupportedSorts, Seed } from '@mock';
+import { plexLibraryApi, plexPhotoApi } from '@api';
+import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortDirection, SortType, type PhotoAlbumBrowseDTO, type PhotoAlbumPageDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderChildrenDTO, type PhotoFolderPageDTO } from '@dto';
 import { useLibraryStore, usePhotoBrowsingStore } from '@store';
+import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
 
 describe('PhotoBrowsingStore - range request contracts', () => {
 	const owner = {};
@@ -15,6 +17,7 @@ describe('PhotoBrowsingStore - range request contracts', () => {
 		getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		mockPhotoMetadata();
 		useLibraryStore().updateLibrary(generatePlexLibrary({
 			seed: new Seed(7),
 			plexServerId: 1,
@@ -28,7 +31,7 @@ describe('PhotoBrowsingStore - range request contracts', () => {
 		view: 'assets',
 		folderId: null,
 		searchQuery: '',
-		sort: 'title:asc',
+		sort: createDefaultMediaOverviewSort(),
 		...partial,
 	});
 	const album = (id: number): PhotoAlbumBrowseDTO => ({
@@ -61,6 +64,24 @@ describe('PhotoBrowsingStore - range request contracts', () => {
 		size: 10,
 	});
 
+	test('loads folder sort capabilities before requesting the folder root', async () => {
+		const roots = vi.spyOn(plexPhotoApi, 'getPhotoSourceRootsEndpoint').mockReturnValue(of(generateResultDTO({
+			items: [], page: 1, pageSize: 100, totalCount: 0,
+		} as PhotoFolderPageDTO)));
+		const store = usePhotoBrowsingStore();
+		expect(store.supportedSorts).toEqual([]);
+
+		await subscribeSpyTo(store.activate(route({ view: 'folders' }), owner)).onComplete();
+
+		expect(vi.mocked(plexLibraryApi.getLibraryMediaMetadata)).toHaveBeenCalledWith(7, {
+			mediaType: PlexMediaType.PhotoAlbum,
+			photoView: PhotoItemKind.Folder,
+		}, expect.any(Object));
+		expect(store.supportedSorts).toEqual([SortType.Title]);
+		expect(vi.mocked(plexLibraryApi.getLibraryMediaMetadata).mock.invocationCallOrder[0]).toBeLessThan(roots.mock.invocationCallOrder[0]!);
+		expect(roots).toHaveBeenCalled();
+	});
+
 	test('requests only the selected aggregate feed without route page fields', async () => {
 		const albums = vi.spyOn(plexPhotoApi, 'getPhotoAlbumsEndpoint').mockReturnValue(of(generateResultDTO({
 			items: [album(1)], page: 1, pageSize: 100, totalCount: 1, totalAssetBytes: 1,
@@ -68,12 +89,26 @@ describe('PhotoBrowsingStore - range request contracts', () => {
 		const assets = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint');
 		const store = usePhotoBrowsingStore();
 
-		await subscribeSpyTo(store.activate({ mode: 'aggregate', libraryId: 0, view: 'albums', folderId: null, searchQuery: '', sort: 'title:desc' }, owner)).onComplete();
+		await subscribeSpyTo(store.activate({ mode: 'aggregate', libraryId: 0, view: 'albums', folderId: null, searchQuery: '', sort: toggleMediaOverviewSort(createDefaultMediaOverviewSort(), SortType.Title) }, owner)).onComplete();
 
-		expect(albums).toHaveBeenCalledWith({ page: 1, size: 100, sort: 'title:desc' }, expect.any(Object));
+		expect(albums).toHaveBeenCalledWith({ page: 1, size: 100, sort: `${SortType.Title}:desc` }, expect.any(Object));
 		expect(assets).not.toHaveBeenCalled();
 		expect(store.overviewCount).toBe(1);
 		expect(store.overviewItemAt(0)).toEqual({ kind: 'Album', album: album(1), index: 0 });
+	});
+	test.each([
+		{ field: SortType.AddedAt, sort: SortDirection.Desc, wire: `${SortType.AddedAt}:desc` },
+		{ field: SortType.MediaSize, sort: SortDirection.Asc, wire: `${SortType.MediaSize}:asc` },
+	])('serializes $field/$sort using the shared photo sort DSL', async ({ field, sort, wire }) => {
+		const request = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockReturnValue(of(generateResultDTO({
+			items: [asset(1)], page: 1, pageSize: 100, totalCount: 1, totalBytes: 10,
+		} as PhotoAssetPageDTO)));
+		const store = usePhotoBrowsingStore();
+
+		await subscribeSpyTo(store.activate(route({ sort: { field, sort } }), owner)).onComplete();
+
+		expect(request).toHaveBeenCalledWith({ page: 1, size: 100, sort: wire, plexLibraryId: 7 }, expect.any(Object));
+		expect(store.supportedSorts).toEqual(generateSupportedSorts(PlexMediaType.PhotoAlbum));
 	});
 
 	test('loads a distant asset range without requesting preceding pages', async () => {
@@ -89,7 +124,7 @@ describe('PhotoBrowsingStore - range request contracts', () => {
 		await subscribeSpyTo(store.requestRange(200, 220)).onComplete();
 
 		expect(request).toHaveBeenCalledTimes(1);
-		expect(request).toHaveBeenCalledWith({ page: 3, size: 100, sort: 'title:asc', plexLibraryId: 7 }, expect.any(Object));
+		expect(request).toHaveBeenCalledWith({ page: 3, size: 100, sort: `${SortType.Title}:asc`, plexLibraryId: 7 }, expect.any(Object));
 		expect(store.overviewCount).toBe(250);
 		expect(store.overviewItemAt(200)).toEqual(expect.objectContaining({ kind: 'Asset', index: 200 }));
 	});
@@ -105,7 +140,7 @@ describe('PhotoBrowsingStore - range request contracts', () => {
 		const store = usePhotoBrowsingStore();
 		await subscribeSpyTo(store.activate(route({ view: 'folders' }), owner)).onComplete();
 
-		expect(roots).toHaveBeenCalledWith(7, { page: 1, size: 100, sort: 'title:asc' }, expect.any(Object));
+		expect(roots).toHaveBeenCalledWith(7, { page: 1, size: 100, sort: `${SortType.Title}:asc` }, expect.any(Object));
 		expect(assets).toHaveBeenCalledWith(expect.objectContaining({ plexLibraryId: 7, unmappedOnly: true }), expect.any(Object));
 		expect(store.overviewCount).toBe(2);
 		expect(store.overviewFolderCount).toBe(1);
@@ -125,7 +160,7 @@ describe('PhotoBrowsingStore - range request contracts', () => {
 
 		await subscribeSpyTo(store.requestRange(200, 220)).onComplete();
 
-		expect(children).toHaveBeenCalledWith(7, 99, { folderPage: 3, folderSize: 100, assetPage: 1, assetSize: 100, sort: 'title:asc' }, expect.any(Object));
+		expect(children).toHaveBeenCalledWith(7, 99, { folderPage: 3, folderSize: 100, assetPage: 1, assetSize: 100, sort: `${SortType.Title}:asc` }, expect.any(Object));
 		expect(store.overviewItemAt(200)).toEqual(expect.objectContaining({ kind: 'Folder', index: 200 }));
 	});
 	test('fetches the second root asset page for an unaligned range', async () => {
@@ -187,7 +222,7 @@ describe('PhotoBrowsingStore - range request contracts', () => {
 
 		await subscribeSpyTo(store.activate(route({ mode: 'aggregate', libraryId: 0, view, searchQuery: 'sun' }), owner)).onComplete();
 
-		expect(search).toHaveBeenCalledWith({ q: 'sun', page: 1, size: 100, sort: 'title:asc' }, expect.any(Object));
+		expect(search).toHaveBeenCalledWith({ q: 'sun', page: 1, size: 100, sort: `${SortType.Title}:asc` }, expect.any(Object));
 		expect(albums).not.toHaveBeenCalled();
 		expect(roots).not.toHaveBeenCalled();
 		expect(store.overviewCount).toBe(1);

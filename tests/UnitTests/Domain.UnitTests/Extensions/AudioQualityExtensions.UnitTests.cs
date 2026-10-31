@@ -543,7 +543,6 @@ public class AudioQualityExtensionsUnitTests : BaseUnitTest
             VideoCodec = string.Empty,
             AudioCodec = codec,
             OriginalFilename = "track.test",
-            NeedsGeneratedName = false,
             PlexLibraryId = 1,
             PlexServerId = 1,
             AudioBitrateKbps = bitrateKbps,

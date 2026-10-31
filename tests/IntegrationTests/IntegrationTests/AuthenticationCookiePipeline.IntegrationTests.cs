@@ -10,7 +10,9 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
     [Test]
     [Arguments(false)]
     [Arguments(true)]
-    public async Task ShouldIssueAuthoritativeCookieWithIdentityAndPersistence_WhenPasswordLoginSucceeds(bool rememberMe)
+    public async Task ShouldIssueAuthoritativeCookieWithIdentityAndPersistence_WhenPasswordLoginSucceeds(
+        bool rememberMe
+    )
     {
         // Arrange
         using var container = await CreateRealAuthenticationContainer(17014);
@@ -21,9 +23,9 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
             { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
             { new StringContent(rememberMe.ToString()), "RememberMe" },
         };
-        var seededUser = await container.Resolve<IUserService>().FindByNameAsync(
-            DefaultUserAppCredentials.DefaultUsername
-        );
+        var seededUser = await container
+            .Resolve<IUserService>()
+            .FindByNameAsync(DefaultUserAppCredentials.DefaultUsername);
         seededUser.ShouldNotBeNull();
 
         // Act
@@ -116,9 +118,9 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
     private static AuthenticationTicket UnprotectCookie(BaseContainer container, string cookie)
     {
         var cookieValue = cookie[(cookie.IndexOf('=') + 1)..];
-        var options = container.Resolve<IOptionsMonitor<CookieAuthenticationOptions>>().Get(
-            CookieAuthenticationDefaults.AuthenticationScheme
-        );
+        var options = container
+            .Resolve<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
 
         return options.TicketDataFormat!.Unprotect(cookieValue).ShouldNotBeNull();
     }

@@ -5,10 +5,10 @@ public static partial class FakeData
     private static readonly Faker<PlexOtherVideo> _plexOtherVideo = new Faker<PlexOtherVideo>()
         .ApplyBasePlexMedia()
         .RuleFor(x => x.Title, f => f.Lorem.Sentence(3))
+        .RuleFor(x => x.Year, f => f.Random.Int(1900, 2030))
+        .RuleFor(x => x.Summary, f => f.Lorem.Sentences(2))
+        .RuleFor(x => x.OriginallyAvailableAt, f => f.Date.Recent(30))
         .RuleFor(x => x.Guid, (_, x) => $"com.plexapp.agents.none://{x.PlexApiRatingKey}")
-        .RuleFor(x => x.Guid_IMDB, _ => null)
-        .RuleFor(x => x.Guid_TMDB, _ => null)
-        .RuleFor(x => x.Guid_TVDB, _ => null)
         .RuleFor(x => x.ChildCount, _ => 0)
         .RuleFor(x => x.SortIndex, f => f.IndexFaker + 1)
         .Ignore(x => x.MediaDataList)
@@ -22,7 +22,6 @@ public static partial class FakeData
                 original.PlexOtherVideo = video;
                 original.PlexOtherVideoId = video.Id;
                 original.UpdateInitProperty(nameof(original.PlexApiRatingKey), video.PlexApiRatingKey);
-                video.FullTitle = video.Title;
                 video.Duration = original.Duration / 1000;
                 video.MediaSize = original.Size;
                 video.VideoQuality = original.VideoQuality;
@@ -45,18 +44,13 @@ public static partial class FakeData
             .Ignore(x => x.PlexOtherVideo)
             .Ignore(x => x.Streams)
             .RuleFor(x => x.PartIndex, _ => 0)
-            .RuleFor(x => x.Width, _ => 1920)
-            .RuleFor(x => x.Height, _ => 1080)
             .RuleFor(x => x.VideoCodec, _ => "h264")
             .RuleFor(x => x.AudioCodec, _ => "aac")
-            .RuleFor(x => x.VideoProfile, _ => "high")
-            .RuleFor(x => x.VideoFrameRate, _ => 24m)
             .RuleFor(x => x.VideoQuality, _ => VideoQuality.FullHD)
             .RuleFor(x => x.Container, _ => "mp4")
             .RuleFor(x => x.Source, _ => ReleaseSource.None)
             .RuleFor(x => x.OriginalFilename, (_, x) => $"video-{x.PlexApiPartId}.mp4")
-            .RuleFor(x => x.Key, (_, x) => $"/library/parts/{x.PlexApiPartId}/file.mp4")
-            .RuleFor(x => x.GeneratedNameSyncedAt, _ => null);
+            .RuleFor(x => x.Key, (_, x) => $"/library/parts/{x.PlexApiPartId}/file.mp4");
 
     public static Faker<PlexOtherVideoMediaData> GetPlexOtherVideoMediaData(
         Seed seed,

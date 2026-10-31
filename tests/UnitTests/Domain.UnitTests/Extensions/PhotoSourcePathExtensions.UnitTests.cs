@@ -14,7 +14,9 @@ public class PhotoSourcePathExtensionsUnitTests
 
         // Assert
         matched.ShouldBeTrue();
-        (match.Root.Id, match.RelativePath, match.CanonicalRelativePath).ShouldBe((1, "2026/photo.jpg", "2026/photo.jpg"));
+        (match.Root.Id, match.RelativePath, match.CanonicalRelativePath).ShouldBe(
+            (1, "2026/photo.jpg", "2026/photo.jpg")
+        );
         differentCase.ShouldBeFalse();
     }
 
@@ -37,8 +39,9 @@ public class PhotoSourcePathExtensionsUnitTests
         // Assert
         root.SourceRootPath.ShouldBe(canonicalRoot);
         matched.ShouldBeTrue();
-        (match.Root.Id, match.RelativePath, match.CanonicalRelativePath)
-            .ShouldBe((7, "Family/photo.jpg", "FAMILY/PHOTO.JPG"));
+        (match.Root.Id, match.RelativePath, match.CanonicalRelativePath).ShouldBe(
+            (7, "Family/photo.jpg", "FAMILY/PHOTO.JPG")
+        );
         fileName.ShouldBe("photo.jpg");
     }
 
@@ -64,20 +67,16 @@ public class PhotoSourcePathExtensionsUnitTests
         valid.ShouldBeTrue(error);
         identity.ShouldBe(expectedIdentity);
         matched.ShouldBeTrue();
-        (match.Root.Id, match.RelativePath, match.CanonicalRelativePath)
-            .ShouldBe((8, "photo.jpg", canonicalRelativePath));
+        (match.Root.Id, match.RelativePath, match.CanonicalRelativePath).ShouldBe(
+            (8, "photo.jpg", canonicalRelativePath)
+        );
     }
 
     [Test]
     public void ShouldUseTheLongestContainingRoot_WhenLessSpecificRootsAreAmbiguous()
     {
         // Arrange
-        var roots = new[]
-        {
-            CreateRoot(1, "/photos"),
-            CreateRoot(2, "/photos"),
-            CreateRoot(3, "/photos/family"),
-        };
+        var roots = new[] { CreateRoot(1, "/photos"), CreateRoot(2, "/photos"), CreateRoot(3, "/photos/family") };
 
         // Act
         var matched = "/photos/family/one.jpg".TryResolvePhotoSourcePath(roots, out var match);
@@ -96,7 +95,9 @@ public class PhotoSourcePathExtensionsUnitTests
         var roots = new[] { CreateRoot(1, rootPath), CreateRoot(2, rootPath) };
 
         // Act
-        var exception = Should.Throw<InvalidOperationException>(() => sourcePath.TryResolvePhotoSourcePath(roots, out _));
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            sourcePath.TryResolvePhotoSourcePath(roots, out _)
+        );
 
         // Assert
         exception.Message.ShouldContain("equally specific");
@@ -146,8 +147,9 @@ public class PhotoSourcePathExtensionsUnitTests
 
         // Assert
         matched.ShouldBeTrue();
-        (match.RelativePath, match.CanonicalRelativePath, fileName)
-            .ShouldBe(("back\\slash.jpg", "back\\slash.jpg", "back\\slash.jpg"));
+        (match.RelativePath, match.CanonicalRelativePath, fileName).ShouldBe(
+            ("back\\slash.jpg", "back\\slash.jpg", "back\\slash.jpg")
+        );
     }
 
     [Test]

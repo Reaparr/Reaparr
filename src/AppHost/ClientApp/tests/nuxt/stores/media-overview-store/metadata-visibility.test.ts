@@ -7,6 +7,7 @@ import {
 	generatePlexMedia,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
+	generateSupportedSorts,
 	Seed,
 } from '@mock';
 import { plexLibraryApi, plexMediaApi } from '@api';
@@ -20,7 +21,7 @@ import {
 } from '@dto';
 import type { ResultDTO } from '@interfaces';
 
-function metadataFor(scopeId: number): PlexMediaMetadataDTO {
+function metadataFor(scopeId: number, mediaType: PlexMediaType): PlexMediaMetadataDTO {
 	return {
 		countries: [{ id: scopeId, name: `Country ${scopeId}` }],
 		countryCount: 1,
@@ -36,6 +37,7 @@ function metadataFor(scopeId: number): PlexMediaMetadataDTO {
 		qualityCount: 1,
 		roleCount: 1,
 		roles: [{ id: scopeId, name: `Role ${scopeId}` }],
+		supportedSorts: generateSupportedSorts(mediaType),
 	};
 }
 
@@ -116,7 +118,7 @@ describe('MediaOverviewStore metadata visibility scope', () => {
 		settingsStore.generalSettings.hideMediaFromOwnedServers = owned;
 		settingsStore.generalSettings.hideMediaFromOfflineServers = offline;
 		const store = useMediaOverviewStore();
-		mock.onGet('/api/PlexLibrary/0/metadata').reply(200, generateResultDTO(metadataFor(1)));
+		mock.onGet('/api/PlexLibrary/0/metadata').reply((request) => [200, generateResultDTO(metadataFor(1, request.params.mediaType as PlexMediaType))]);
 		mock.onGet('/api/PlexLibrary/0/metadata-filter').reply(200, generateResultDTO(filterMetadataFor(1)));
 
 		// Act
@@ -152,7 +154,7 @@ describe('MediaOverviewStore metadata visibility scope', () => {
 		useLibraryStore().updateLibrary(library);
 		const store = useMediaOverviewStore();
 		store.libraryId = library.id;
-		mock.onGet(`/api/PlexLibrary/${library.id}/metadata`).reply(200, generateResultDTO(metadataFor(1)));
+		mock.onGet(`/api/PlexLibrary/${library.id}/metadata`).reply(200, generateResultDTO(metadataFor(1, library.type)));
 		mock.onGet(`/api/PlexLibrary/${library.id}/metadata-filter`).reply(200, generateResultDTO(filterMetadataFor(1)));
 
 		// Act
@@ -177,8 +179,8 @@ describe('MediaOverviewStore metadata visibility scope', () => {
 
 		// Act
 		const first = subscribeSpyTo(store.refreshMediaDataWithMetadata());
+		mediaMetadataRequests[0]!.next(generateResultDTO(metadataFor(1, PlexMediaType.Movie)));
 		mediaRequests[0]!.next(generateResultDTO(mediaFor(1)));
-		mediaMetadataRequests[0]!.next(generateResultDTO(metadataFor(1)));
 		filterMetadataRequests[0]!.next(generateResultDTO(filterMetadataFor(1)));
 		mediaRequests[0]!.complete();
 		mediaMetadataRequests[0]!.complete();
@@ -188,8 +190,8 @@ describe('MediaOverviewStore metadata visibility scope', () => {
 		settingsStore.generalSettings.hideMediaFromOwnedServers = true;
 		settingsStore.generalSettings.hideMediaFromOfflineServers = true;
 		const second = subscribeSpyTo(store.refreshMediaDataWithMetadata());
+		mediaMetadataRequests[1]!.next(generateResultDTO(metadataFor(2, PlexMediaType.Movie)));
 		mediaRequests[1]!.next(generateResultDTO(mediaFor(2)));
-		mediaMetadataRequests[1]!.next(generateResultDTO(metadataFor(2)));
 		filterMetadataRequests[1]!.next(generateResultDTO(filterMetadataFor(2)));
 		mediaRequests[1]!.complete();
 		mediaMetadataRequests[1]!.complete();
@@ -207,7 +209,7 @@ describe('MediaOverviewStore metadata visibility scope', () => {
 		expect(store.metadata.genreId).toBe(77);
 	});
 
-	test('Should keep metadata updates alive when a search refresh supersedes the visibility media request', async () => {
+	test('Should load metadata once before media when visibility refresh starts without sort capabilities', async () => {
 		// Arrange
 		const settingsStore = useSettingsStore();
 		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.Movie;
@@ -215,13 +217,44 @@ describe('MediaOverviewStore metadata visibility scope', () => {
 		const { mediaMetadataRequests, filterMetadataRequests, mediaRequests } = setupControlledRequests();
 
 		// Act
+		const refresh = subscribeSpyTo(store.refreshMediaDataWithMetadata());
+		expect(store.metadataList.supportedSorts).toEqual([]);
+		expect(mediaMetadataRequests).toHaveLength(1);
+		expect(mediaRequests).toHaveLength(0);
+		mediaMetadataRequests[0]!.next(generateResultDTO(metadataFor(5, PlexMediaType.Movie)));
+		expect(mediaMetadataRequests).toHaveLength(1);
+		expect(mediaRequests).toHaveLength(1);
+		mediaRequests[0]!.next(generateResultDTO(mediaFor(5)));
+		filterMetadataRequests[0]!.next(generateResultDTO(filterMetadataFor(5)));
+		mediaRequests[0]!.complete();
+		mediaMetadataRequests[0]!.complete();
+		filterMetadataRequests[0]!.complete();
+		await refresh.onComplete();
+
+		// Assert
+		expect(mediaMetadataRequests).toHaveLength(1);
+		expect(mediaRequests).toHaveLength(1);
+		expect(store.getMediaItems.map((item) => item.id)).toEqual([5]);
+		expect(store.loading).toBe(false);
+		expect(store.mediaLoadError).toBe(false);
+	});
+
+	test('Should keep metadata updates alive when a search refresh supersedes the visibility media request', async () => {
+		// Arrange
+		const settingsStore = useSettingsStore();
+		settingsStore.displaySettings.allOverviewViewMode = PlexMediaType.Movie;
+		const store = useMediaOverviewStore();
+		const { mediaMetadataRequests, filterMetadataRequests, mediaRequests } = setupControlledRequests();
+
 		const visibilityRefresh = subscribeSpyTo(store.refreshMediaDataWithMetadata());
+		mediaMetadataRequests[0]!.next(generateResultDTO(metadataFor(2, PlexMediaType.Movie)));
 		const searchRefresh = subscribeSpyTo(store.setFilterQuery('new-query'));
 		mediaRequests[1]!.next(generateResultDTO(mediaFor(3)));
 		mediaRequests[1]!.complete();
 		await searchRefresh.onComplete();
+		mediaRequests[0]!.next(generateResultDTO(mediaFor(2)));
+		mediaRequests[0]!.complete();
 		expect(store.filterMetadataLoading).toBe(true);
-		mediaMetadataRequests[0]!.next(generateResultDTO(metadataFor(2)));
 		filterMetadataRequests[0]!.next(generateResultDTO(filterMetadataFor(2)));
 		mediaMetadataRequests[0]!.complete();
 		filterMetadataRequests[0]!.complete();
@@ -245,18 +278,19 @@ describe('MediaOverviewStore metadata visibility scope', () => {
 
 		// Act
 		const first = subscribeSpyTo(store.refreshMediaDataWithMetadata());
+		mediaMetadataRequests[0]!.next(generateResultDTO(metadataFor(1, PlexMediaType.Movie)));
 		settingsStore.generalSettings.hideMediaFromOwnedServers = true;
 		settingsStore.generalSettings.hideMediaFromOfflineServers = true;
 		const second = subscribeSpyTo(store.refreshMediaDataWithMetadata());
+		mediaMetadataRequests[1]!.next(generateResultDTO(metadataFor(2, PlexMediaType.Movie)));
 		mediaRequests[1]!.next(generateResultDTO(mediaFor(2)));
-		mediaMetadataRequests[1]!.next(generateResultDTO(metadataFor(2)));
 		filterMetadataRequests[1]!.next(generateResultDTO(filterMetadataFor(2)));
 		mediaRequests[1]!.complete();
 		mediaMetadataRequests[1]!.complete();
 		filterMetadataRequests[1]!.complete();
 		await second.onComplete();
 		mediaRequests[0]!.next(generateResultDTO(mediaFor(1)));
-		mediaMetadataRequests[0]!.next(generateResultDTO(metadataFor(1)));
+		mediaMetadataRequests[0]!.next(generateResultDTO(metadataFor(1, PlexMediaType.Movie)));
 		filterMetadataRequests[0]!.next(generateResultDTO(filterMetadataFor(1)));
 		mediaRequests[0]!.complete();
 		mediaMetadataRequests[0]!.complete();

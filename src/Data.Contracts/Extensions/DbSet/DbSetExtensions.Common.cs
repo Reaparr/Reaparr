@@ -101,4 +101,17 @@ public static partial class DbSetExtensions
         var exists = predicate != null ? dbSet.Any(predicate) : dbSet.Any();
         return !exists ? dbSet.Add(entity) : null;
     }
+
+    public static IQueryable<TSource> ApplyOrderBy<TSource, TKey>(
+        this IQueryable<TSource> query,
+        SortDirection direction,
+        Expression<Func<TSource, TKey>> predicate
+    ) =>
+        direction switch
+        {
+            SortDirection.Asc => query.OrderBy(predicate),
+            SortDirection.Desc => query.OrderByDescending(predicate),
+            SortDirection.NoSort => query,
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null),
+        };
 }

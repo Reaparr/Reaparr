@@ -201,11 +201,12 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
         );
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Verify(
-                x => x.OnStatusChangedAsync(
-                    It.IsAny<DownloadTaskKey>(),
-                    It.IsAny<DownloadStatus>(),
-                    It.IsAny<CancellationToken>()
-                ),
+                x =>
+                    x.OnStatusChangedAsync(
+                        It.IsAny<DownloadTaskKey>(),
+                        It.IsAny<DownloadStatus>(),
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Never()
             );
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
@@ -613,5 +614,4 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
         Mock.Mock<IDownloadTaskUpdateDispatcher>().Verify();
         Mock.VerifyEventPublished(It.IsAny<CheckDownloadQueueEvent>, Times.Once());
     }
-
 }

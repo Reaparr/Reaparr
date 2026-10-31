@@ -315,7 +315,8 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
             if (createDirectoryResult.IsFailed)
                 return await ErrorDownloadTask(key, createDirectoryResult);
 
-            var isResumingMove = downloadTask.DownloadStatus is DownloadStatus.MovePaused or DownloadStatus.AutoMovePaused;
+            var isResumingMove =
+                downloadTask.DownloadStatus is DownloadStatus.MovePaused or DownloadStatus.AutoMovePaused;
 
             // Fresh moves intentionally overwrite any stale destination. Paused moves may only resume
             // when their durable offset is confirmed by the on-disk destination length.
@@ -579,8 +580,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
         return result.LogError();
     }
 
-    private Result<long> GetFileLength(string path) =>
-        Result.Try(() => _file.FileSystem.FileInfo.New(path).Length);
+    private Result<long> GetFileLength(string path) => Result.Try(() => _file.FileSystem.FileInfo.New(path).Length);
 
     private bool ShouldKeepInDownloads(DownloadTaskFileBase downloadTask) =>
         downloadTask.DirectoryMeta.KeepCompletedInDownloadFolder

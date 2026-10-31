@@ -6,31 +6,57 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldReportFailureAndPreserveAccess_WhenRevocationTransactionFails()
     {
         // Arrange
-        await SetupDatabase(77606, config =>
-        {
-            config.PlexAccountCount = 1;
-            config.PlexServerCount = 1;
-            config.PlexMovieLibraryCount = 1;
-        });
+        await SetupDatabase(
+            77606,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var account = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
-        var beforeServers = await dbContext.PlexAccountServers
-            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.AuthToken }).ToListAsync(CancellationToken);
-        var beforeLibraries = await dbContext.PlexAccountLibraries
-            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.PlexLibraryId }).ToListAsync(CancellationToken);
+        var beforeServers = await dbContext
+            .PlexAccountServers.Select(x => new
+            {
+                x.PlexAccountId,
+                x.PlexServerId,
+                x.AuthToken,
+            })
+            .ToListAsync(CancellationToken);
+        var beforeLibraries = await dbContext
+            .PlexAccountLibraries.Select(x => new
+            {
+                x.PlexAccountId,
+                x.PlexServerId,
+                x.PlexLibraryId,
+            })
+            .ToListAsync(CancellationToken);
         beforeServers.Single().PlexAccountId.ShouldBe(account.Id);
         beforeLibraries.Single().PlexAccountId.ShouldBe(account.Id);
         await ((DbContext)dbContext).Database.ExecuteSqlRawAsync(
             "CREATE TRIGGER RejectAccessRevocation BEFORE DELETE ON PlexAccountServers "
-            + "BEGIN SELECT RAISE(ABORT, 'Injected revocation failure'); END;", CancellationToken);
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-                It.Is<ValidatePlexTokenCommand>(c => c.AuthenticationToken == account.GetAuthToken), CancellationToken))
+                + "BEGIN SELECT RAISE(ABORT, 'Injected revocation failure'); END;",
+            CancellationToken
+        );
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<ValidatePlexTokenCommand>(c => c.AuthenticationToken == account.GetAuthToken),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Fail<ValidatePlexTokenCommandResult>("Unauthorized").AddPlex401UnauthorizedError())
             .Verifiable(Times.Once());
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
-        Mock.Mock<INotificationHubService>().Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
-            .Returns(Task.CompletedTask).Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.Mock<INotificationHubService>()
+            .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(account.Id), CancellationToken);
@@ -41,18 +67,35 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
         result.Errors.Count.ShouldBe(1);
         result.Errors.Single().ShouldBeOfType<ExceptionalError>();
         (await dbContext.PlexAccounts.SingleAsync(CancellationToken)).IsValidated.ShouldBeFalse();
-        (await dbContext.PlexAccountServers
-            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.AuthToken }).ToListAsync(CancellationToken))
-            .ShouldBe(beforeServers);
-        (await dbContext.PlexAccountLibraries
-            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.PlexLibraryId }).ToListAsync(CancellationToken))
-            .ShouldBe(beforeLibraries);
+        (
+            await dbContext
+                .PlexAccountServers.Select(x => new
+                {
+                    x.PlexAccountId,
+                    x.PlexServerId,
+                    x.AuthToken,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(beforeServers);
+        (
+            await dbContext
+                .PlexAccountLibraries.Select(x => new
+                {
+                    x.PlexAccountId,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(beforeLibraries);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(
-            It.IsAny<RefreshPlexServerAccessCommand>(), It.IsAny<CancellationToken>()), Times.Never());
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(
-            It.IsAny<RefreshLibraryAccessCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<RefreshPlexServerAccessCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<RefreshLibraryAccessCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -74,13 +117,23 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
         // Arrange
         await SetupDatabase(77604, config => config.PlexAccountCount = includeSuccessfulAccount ? 2 : 1);
         var dbContext = IDbContext;
-        await dbContext.PlexAccounts.ExecuteUpdateAsync(x => x.SetProperty(a => a.IsValidated, false)
-            .SetProperty(a => a.ValidatedAt, (DateTime?)null), CancellationToken);
+        await dbContext.PlexAccounts.ExecuteUpdateAsync(
+            x => x.SetProperty(a => a.IsValidated, false).SetProperty(a => a.ValidatedAt, (DateTime?)null),
+            CancellationToken
+        );
         var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var targetId = accounts[0].Id;
         accounts.Select(x => x.GetAuthToken).Distinct().Count().ShouldBe(accounts.Count);
-        var before = await dbContext.PlexAccountServers.OrderBy(x => x.PlexAccountId).ThenBy(x => x.PlexServerId)
-            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.AuthToken }).ToListAsync(CancellationToken);
+        var before = await dbContext
+            .PlexAccountServers.OrderBy(x => x.PlexAccountId)
+            .ThenBy(x => x.PlexServerId)
+            .Select(x => new
+            {
+                x.PlexAccountId,
+                x.PlexServerId,
+                x.AuthToken,
+            })
+            .ToListAsync(CancellationToken);
         var failureResult = cancelled
             ? ResultExtensions.TaskIsCancelled("refresh-stage")
             : Result.Fail(new Error("Refresh stage failed").WithMetadata("Stage", failingStage));
@@ -90,38 +143,73 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             var isTarget = account.Id == targetId;
             var validation = new ValidatePlexTokenCommandResult
             {
-                ClientId = account.ClientId, Username = account.Username, Email = account.Email,
-                Title = account.Title, PlexId = account.PlexId, Uuid = account.Uuid,
-                AuthenticationToken = account.GetAuthToken, IsValidated = true,
-                ValidatedAt = DateTime.UtcNow, Is2Fa = account.Is2Fa,
+                ClientId = account.ClientId,
+                Username = account.Username,
+                Email = account.Email,
+                Title = account.Title,
+                PlexId = account.PlexId,
+                Uuid = account.Uuid,
+                AuthenticationToken = account.GetAuthToken,
+                IsValidated = true,
+                ValidatedAt = DateTime.UtcNow,
+                Is2Fa = account.Is2Fa,
             };
-            Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-                    It.Is<ValidatePlexTokenCommand>(c => c.AuthenticationToken == account.GetAuthToken), CancellationToken))
-                .ReturnsAsync(isTarget && failingStage == "validation"
-                    ? failureResult.ToResult<ValidatePlexTokenCommandResult>() : Result.Ok(validation))
+            Mock.Mock<ICommandExecutor>()
+                .Setup(x =>
+                    x.Send(
+                        It.Is<ValidatePlexTokenCommand>(c => c.AuthenticationToken == account.GetAuthToken),
+                        CancellationToken
+                    )
+                )
+                .ReturnsAsync(
+                    isTarget && failingStage == "validation"
+                        ? failureResult.ToResult<ValidatePlexTokenCommandResult>()
+                        : Result.Ok(validation)
+                )
                 .Verifiable(Times.Once());
-            Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-                    It.Is<RefreshPlexServerAccessCommand>(c => c.PlexAccountId == account.Id), CancellationToken))
-                .ReturnsAsync(isTarget && failingStage == "server"
-                    ? failureResult.ToResult<RefreshPlexServerAccessRapport>()
-                    : Result.Ok(new RefreshPlexServerAccessRapport(account.Id, account.DisplayName)))
+            Mock.Mock<ICommandExecutor>()
+                .Setup(x =>
+                    x.Send(It.Is<RefreshPlexServerAccessCommand>(c => c.PlexAccountId == account.Id), CancellationToken)
+                )
+                .ReturnsAsync(
+                    isTarget && failingStage == "server"
+                        ? failureResult.ToResult<RefreshPlexServerAccessRapport>()
+                        : Result.Ok(new RefreshPlexServerAccessRapport(account.Id, account.DisplayName))
+                )
                 .Verifiable(isTarget && failingStage == "validation" ? Times.Never() : Times.Once());
-            Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-                    It.Is<RefreshLibraryAccessCommand>(c => c.PlexAccountId == account.Id), CancellationToken))
-                .ReturnsAsync(isTarget && failingStage == "library"
-                    ? failureResult.ToResult<PlexLibraryAccessRefreshResponse>()
-                    : Result.Ok(new PlexLibraryAccessRefreshResponse { Reports = [], OfflineServers = [] }))
+            Mock.Mock<ICommandExecutor>()
+                .Setup(x =>
+                    x.Send(It.Is<RefreshLibraryAccessCommand>(c => c.PlexAccountId == account.Id), CancellationToken)
+                )
+                .ReturnsAsync(
+                    isTarget && failingStage == "library"
+                        ? failureResult.ToResult<PlexLibraryAccessRefreshResponse>()
+                        : Result.Ok(new PlexLibraryAccessRefreshResponse { Reports = [], OfflineServers = [] })
+                )
                 .Verifiable(isTarget && failingStage != "library" ? Times.Never() : Times.Once());
         }
-        Mock.Mock<INotificationHubService>().Setup(x => x.SendRefreshNotificationAsync(
-                It.Is<List<RefreshDataType>>(types => types.SequenceEqual(new[]
-                {
-                    RefreshDataType.PlexAccount, RefreshDataType.PlexServer,
-                    RefreshDataType.PlexServerConnection, RefreshDataType.PlexLibrary,
-                }))))
-            .Returns(Task.CompletedTask).Verifiable(cancelled ? Times.Never() : Times.Once());
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(cancelled ? Times.Never() : Times.Once());
+        Mock.Mock<INotificationHubService>()
+            .Setup(x =>
+                x.SendRefreshNotificationAsync(
+                    It.Is<List<RefreshDataType>>(types =>
+                        types.SequenceEqual(
+                            new[]
+                            {
+                                RefreshDataType.PlexAccount,
+                                RefreshDataType.PlexServer,
+                                RefreshDataType.PlexServerConnection,
+                                RefreshDataType.PlexLibrary,
+                            }
+                        )
+                    )
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(cancelled ? Times.Never() : Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(cancelled ? Times.Never() : Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(), CancellationToken);
@@ -139,9 +227,18 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             after.Single(x => x.Id != targetId).IsValidated.ShouldBeTrue();
             after.Single(x => x.Id != targetId).ValidatedAt.ShouldNotBeNull();
         }
-        (await dbContext.PlexAccountServers.OrderBy(x => x.PlexAccountId).ThenBy(x => x.PlexServerId)
-            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.AuthToken }).ToListAsync(CancellationToken))
-            .ShouldBe(before);
+        (
+            await dbContext
+                .PlexAccountServers.OrderBy(x => x.PlexAccountId)
+                .ThenBy(x => x.PlexServerId)
+                .Select(x => new
+                {
+                    x.PlexAccountId,
+                    x.PlexServerId,
+                    x.AuthToken,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(before);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
     }

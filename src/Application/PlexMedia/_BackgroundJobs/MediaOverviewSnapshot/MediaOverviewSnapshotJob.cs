@@ -30,11 +30,11 @@ public sealed class MediaOverviewSnapshotJob : IJob
     public async Task Execute(IJobExecutionContext context)
     {
         var cancellationToken = context.CancellationToken;
-        if (!_coordinator.BeginRebuild(DateTimeOffset.UtcNow))
+        var scope = _coordinator.BeginRebuild(DateTimeOffset.UtcNow);
+        if (scope is null)
         {
             context.SetResult(JobStatus.Completed);
-            _log.Here()
-                .Debug("Media overview snapshot rebuild skipped because a successful rebuild completed recently");
+            _log.Here().Debug("Media overview snapshot rebuild skipped because no pending media types were requested");
             return;
         }
 
@@ -43,9 +43,14 @@ public sealed class MediaOverviewSnapshotJob : IJob
         {
             Result? rebuildResult = null;
             var dispatchResult = await Result.Try(async Task () =>
-                rebuildResult = await _commandExecutor.Send(new RebuildMediaOverviewCommand(), cancellationToken)
+                rebuildResult = await _commandExecutor.Send(
+                    scope.RebuildAll
+                        ? new RebuildMediaOverviewCommand()
+                        : new RebuildMediaOverviewCommand(scope.MediaTypes),
+                    cancellationToken
+                )
             );
-            var result = dispatchResult.IsFailed ? dispatchResult : rebuildResult!;
+            var result = dispatchResult.IsCancelledOrFailed ? dispatchResult : rebuildResult!;
 
             if (result.IsCancelled)
             {
@@ -68,7 +73,8 @@ public sealed class MediaOverviewSnapshotJob : IJob
         }
         finally
         {
-            if (_coordinator.CompleteRebuild(succeeded, DateTimeOffset.UtcNow))
+            var followUpScope = _coordinator.CompleteRebuild(succeeded, DateTimeOffset.UtcNow);
+            if (followUpScope is not null)
             {
                 var triggerResult = await TriggerFollowUpRebuildAsync(cancellationToken);
                 triggerResult.LogIfFailed();

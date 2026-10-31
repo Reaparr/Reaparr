@@ -1,5 +1,5 @@
 import { route, headers } from '@fixtures';
-import { generateResultDTO } from '@mock';
+import { generateResultDTO, generateSupportedSorts } from '@mock';
 import { PlexMediaPaths } from '@api/api-paths';
 import { PlexMediaComparisonState, PlexMediaType, VideoQuality } from '@dto';
 import { getPlexMediaComparisonStateId } from '@composables';
@@ -18,7 +18,16 @@ describe('Comparison poster status UX', () => {
 		});
 		cy.intercept('GET', '**/api/Integration', { statusCode: 200, body: generateResultDTO([]), ...headers });
 		cy.intercept('GET', '**/api/PlexLibrary/0/metadata-filter*', { statusCode: 200, body: generateResultDTO({ countries: [], genres: [], roles: [], qualities: [] }), ...headers });
-		cy.intercept('GET', '**/api/PlexLibrary/0/metadata?*', { statusCode: 200, body: generateResultDTO({ countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], qualityCount: 0, mediaCount: 0 }), ...headers });
+		cy.intercept('GET', '**/api/PlexLibrary/0/metadata?*', (request) => {
+			request.reply({
+				statusCode: 200,
+				body: generateResultDTO({
+					countries: [], countryCount: 0, genres: [], genreCount: 0, roles: [], roleCount: 0, qualities: [], mediaCount: 0,
+					supportedSorts: generateSupportedSorts(request.query.mediaType as PlexMediaType),
+				}),
+				...headers,
+			});
+		});
 	});
 
 	it('Should show comparison badges in the filter menu for all-media movie overview', () => {

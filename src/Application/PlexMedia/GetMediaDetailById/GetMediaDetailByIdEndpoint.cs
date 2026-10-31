@@ -91,7 +91,7 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         }
         else if (req.Type == PlexMediaType.MusicArtist)
         {
-            var plexMusicArtistResult = await GetPlexMusicArtist(req.PlexMediaId, ct);
+            var plexMusicArtistResult = await GetPlexMusicArtist(req.PlexMediaId);
             if (plexMusicArtistResult.IsFailed)
             {
                 await Send.FluentResult(plexMusicArtistResult.ToResult(), ct);
@@ -124,8 +124,6 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
                 return;
             }
 
-            await SetNestedOtherVideoProperties(plexOtherVideo, ct);
-
             await Send.FluentResult(Result.Ok(plexOtherVideo), x => x.ToDTO(), ct);
         }
     }
@@ -156,47 +154,50 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         return Result.Ok(plexTvShow);
     }
 
-    private async Task<Result<PlexMusicArtist>> GetPlexMusicArtist(int plexMusicArtistId, CancellationToken ct)
+    private async Task<Result<PlexMusicArtist>> GetPlexMusicArtist(int plexMusicArtistId)
     {
-        var plexMusicArtist = _dbContext
+        var plexMusicArtist = await _dbContext
             .PlexMusicArtists.Include(x => x.Qualities)
             .Include(x => x.Genres)
-            .FirstOrDefault(x => x.Id == plexMusicArtistId);
+            .FirstOrDefaultAsync(x => x.Id == plexMusicArtistId, CancellationToken.None);
 
         if (plexMusicArtist is null)
             return ResultExtensions.EntityNotFound(nameof(PlexMusicArtist), plexMusicArtistId).LogError();
 
-        plexMusicArtist.Albums = _dbContext
+        // Preserve the existing limited selection before adding the artist's library scope.
+        plexMusicArtist.Albums = await _dbContext
             .PlexMusicAlbums.Include(x => x.Qualities)
             .Where(x => x.PlexArtistId == plexMusicArtistId)
             .Take(plexMusicArtist.ChildCount)
-            .ToList();
+            .Where(x => x.PlexLibraryId == plexMusicArtist.PlexLibraryId)
+            .ToListAsync(CancellationToken.None);
 
         plexMusicArtist.Albums = plexMusicArtist.Albums.OrderBy(x => x.SortIndex).ToList();
 
-        foreach (var album in plexMusicArtist.Albums)
-            album.Tracks = _dbContext
+        if (plexMusicArtist.Albums.Count > 0)
+        {
+            var albumIds = plexMusicArtist.Albums.Select(x => x.Id).ToList();
+            var tracks = await _dbContext
                 .PlexMusicTracks.Include(x => x.MediaDataList)
-                .Where(x => x.PlexAlbumId == album.Id)
-                .Take(album.ChildCount)
-                .ToList();
-
-        await SetNestedMusicArtistProperties(plexMusicArtist, ct);
+                .Where(x => x.PlexLibraryId == plexMusicArtist.PlexLibraryId && albumIds.Contains(x.PlexAlbumId))
+                .ToListAsync(CancellationToken.None);
+            var tracksByAlbum = tracks.ToLookup(x => x.PlexAlbumId);
+            foreach (var album in plexMusicArtist.Albums)
+                album.Tracks = tracksByAlbum[album.Id].Take(album.ChildCount).ToList();
+        }
 
         return Result.Ok(plexMusicArtist);
     }
 
     private async Task<Result<PlexPhotoAlbum>> GetPlexPhotoAlbum(int plexPhotoAlbumId, CancellationToken ct)
     {
-        var plexPhotoAlbum = await _dbContext.PlexPhotoAlbums
-            .Include(x => x.Memberships)
-            .ThenInclude(x => x.PlexPhotoMediaData)
+        var plexPhotoAlbum = await _dbContext
+            .PlexPhotoAlbums.Include(x => x.Memberships)
+                .ThenInclude(x => x.PlexPhotoMediaData)
             .FirstOrDefaultAsync(x => x.Id == plexPhotoAlbumId, ct);
 
         if (plexPhotoAlbum is null)
             return ResultExtensions.EntityNotFound(nameof(PlexPhotoAlbum), plexPhotoAlbumId).LogError();
-
-        await SetNestedPhotoAlbumProperties(plexPhotoAlbum, ct);
 
         return Result.Ok(plexPhotoAlbum);
     }
@@ -288,45 +289,6 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         }
 
         var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexTvShow.PlexServerId, ct);
-        plexServerToken.LogIfFailed();
-    }
-
-    private async Task SetNestedMusicArtistProperties(PlexMusicArtist plexMusicArtist, CancellationToken ct = default)
-    {
-        var plexServerConnection = await _dbContext.ChoosePlexServerConnection(plexMusicArtist.PlexServerId, ct);
-        if (plexServerConnection.IsFailed)
-        {
-            plexServerConnection.ToResult().LogError();
-            return;
-        }
-
-        var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexMusicArtist.PlexServerId, ct);
-        plexServerToken.LogIfFailed();
-    }
-
-    private async Task SetNestedPhotoAlbumProperties(PlexPhotoAlbum plexPhotoAlbum, CancellationToken ct = default)
-    {
-        var plexServerConnection = await _dbContext.ChoosePlexServerConnection(plexPhotoAlbum.PlexServerId, ct);
-        if (plexServerConnection.IsFailed)
-        {
-            plexServerConnection.ToResult().LogError();
-            return;
-        }
-
-        var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexPhotoAlbum.PlexServerId, ct);
-        plexServerToken.LogIfFailed();
-    }
-
-    private async Task SetNestedOtherVideoProperties(PlexOtherVideo plexOtherVideo, CancellationToken ct = default)
-    {
-        var plexServerConnection = await _dbContext.ChoosePlexServerConnection(plexOtherVideo.PlexServerId, ct);
-        if (plexServerConnection.IsFailed)
-        {
-            plexServerConnection.ToResult().LogError();
-            return;
-        }
-
-        var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexOtherVideo.PlexServerId, ct);
         plexServerToken.LogIfFailed();
     }
 }

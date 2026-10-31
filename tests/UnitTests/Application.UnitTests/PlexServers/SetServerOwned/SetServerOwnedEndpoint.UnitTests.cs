@@ -237,12 +237,17 @@ public class SetServerOwnedEndpointUnitTests
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new SetServerOwnedRequest { PlexServerId = server.Id, IsOwned = true });
+            new SetServerOwnedRequest { PlexServerId = server.Id, IsOwned = true }
+        );
 
         // Assert
         endpointResult.Response.ShouldNotBeNull();
         endpointResult.Response.IsSuccess.ShouldBe(true);
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()),
+                Times.AtLeastOnce()
+            );
     }
 
     [Test]

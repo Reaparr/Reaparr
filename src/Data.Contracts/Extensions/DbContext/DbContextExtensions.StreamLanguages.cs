@@ -10,10 +10,11 @@ public static partial class DbContextExtensions
             static (left, right) =>
                 StringComparer.OrdinalIgnoreCase.Equals(left.LanguageCode, right.LanguageCode)
                 && StringComparer.OrdinalIgnoreCase.Equals(left.LanguageTag, right.LanguageTag),
-            static language => HashCode.Combine(
-                StringComparer.OrdinalIgnoreCase.GetHashCode(language.LanguageCode),
-                StringComparer.OrdinalIgnoreCase.GetHashCode(language.LanguageTag)
-            )
+            static language =>
+                HashCode.Combine(
+                    StringComparer.OrdinalIgnoreCase.GetHashCode(language.LanguageCode),
+                    StringComparer.OrdinalIgnoreCase.GetHashCode(language.LanguageTag)
+                )
         );
 
     /// <summary>

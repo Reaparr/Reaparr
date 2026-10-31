@@ -22,15 +22,14 @@ public class StopDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<St
             }
         );
         var dbContext = IDbContext;
-        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
-            .Include(x => x.Parent)
+        var otherVideoFiles = await dbContext
+            .DownloadTaskOtherVideoFiles.Include(x => x.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         DownloadTaskFileBase target = otherVideoFiles[0];
         DownloadTaskFileBase control = otherVideoFiles[1];
-        DownloadTaskBase node = selection == DownloadTaskType.OtherVideo
-            ? ((DownloadTaskOtherVideoFile)target).Parent!
-            : target;
+        DownloadTaskBase node =
+            selection == DownloadTaskType.OtherVideo ? ((DownloadTaskOtherVideoFile)target).Parent! : target;
         target.DataReceived = 128;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -94,6 +93,7 @@ public class StopDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<St
                 Times.Never()
             );
     }
+
     [Test]
     public async Task ShouldStopAllOtherVideoChildren_WhenStoppingOtherVideo()
     {
@@ -151,9 +151,21 @@ public class StopDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<St
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         var after = await dbContext.DownloadTaskOtherVideoFiles.OrderBy(x => x.Id).ToListAsync(CancellationToken);
-        after.Select(x => new { x.Id, x.ParentId, x.DownloadStatus }).ShouldBe(
-            files.Select(x => new { x.Id, x.ParentId, DownloadStatus = DownloadStatus.Stopped })
-        );
+        after
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.DownloadStatus,
+            })
+            .ShouldBe(
+                files.Select(x => new
+                {
+                    x.Id,
+                    x.ParentId,
+                    DownloadStatus = DownloadStatus.Stopped,
+                })
+            );
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();

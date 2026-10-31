@@ -99,7 +99,6 @@
             "image-loading": "Loading image",
             "image-load-error": "This image could not be displayed.",
             "image-retry": "Retry image",
-            "image-preview": "Preview — original unavailable",
             "filename": "Filename",
             "format": "Format",
             "size": "Size",
@@ -374,7 +373,7 @@
                     "headers": {
                         "created-on": "Created On:",
                         "current-status": "Current status:",
-                        "last-seen-at": "Last Seen At:",
+                        "last-seen-at": "Last seen by Plex:",
                         "machine-id": "Machine Identifier:",
                         "plex-version": "Plex Version:",
                         "device": "Device:",
@@ -761,7 +760,8 @@
             "updated-at": "Updated",
             "duration": "Duration",
             "size": "Size",
-            "quality": "Quality"
+            "quality": "Quality",
+            "audio-quality": "Audio Quality"
         },
         "units": {
             "per-second": "/s"

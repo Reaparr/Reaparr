@@ -47,29 +47,18 @@ internal sealed class MetadataScopeTestFixture
         config.MovieCount = 1;
     }
 
-    public async Task<VideoMetadataRows> AddVideoMetadataAsync(
-        IReadOnlyList<PlexLibrary> libraries,
-        string keyPrefix
-    )
+    public async Task<VideoMetadataRows> AddVideoMetadataAsync(IReadOnlyList<PlexLibrary> libraries, string keyPrefix)
     {
         var actors = libraries
             .Select(
                 (library, index) =>
-                    new PlexActor
-                    {
-                        Key = $"{keyPrefix}-role-{library.Id}",
-                        Name = $"{keyPrefix} role {index}",
-                    }
+                    new PlexActor { Key = $"{keyPrefix}-role-{library.Id}", Name = $"{keyPrefix} role {index}" }
             )
             .ToArray();
         var countries = libraries
             .Select(
                 (library, index) =>
-                    new PlexCountry
-                    {
-                        Key = $"{keyPrefix}-country-{library.Id}",
-                        Name = $"{keyPrefix} country {index}",
-                    }
+                    new PlexCountry { Key = $"{keyPrefix}-country-{library.Id}", Name = $"{keyPrefix} country {index}" }
             )
             .ToArray();
         var genres = libraries
@@ -113,24 +102,24 @@ internal sealed class MetadataScopeTestFixture
             switch (mediaType)
             {
                 case PlexMediaType.Movie:
-                    await _dbContext.PlexMovieData
-                        .Where(x => x.PlexLibraryId == library.Id)
+                    await _dbContext
+                        .PlexMovieData.Where(x => x.PlexLibraryId == library.Id)
                         .ExecuteUpdateAsync(
                             x => x.SetProperty(y => y.VideoQuality, qualities[index]),
                             _cancellationToken
                         );
                     break;
                 case PlexMediaType.TvShow:
-                    await _dbContext.PlexTvShowMediaQualities
-                        .Where(x => x.PlexLibraryId == library.Id)
+                    await _dbContext
+                        .PlexTvShowMediaQualities.Where(x => x.PlexLibraryId == library.Id)
                         .ExecuteUpdateAsync(
                             x => x.SetProperty(y => y.VideoQuality, qualities[index]),
                             _cancellationToken
                         );
                     break;
                 case PlexMediaType.OtherVideos:
-                    await _dbContext.PlexOtherVideoData
-                        .Where(x => x.PlexLibraryId == library.Id)
+                    await _dbContext
+                        .PlexOtherVideoData.Where(x => x.PlexLibraryId == library.Id)
                         .ExecuteUpdateAsync(
                             x => x.SetProperty(y => y.VideoQuality, qualities[index]),
                             _cancellationToken
@@ -168,12 +157,12 @@ internal sealed class MetadataScopeTestFixture
 
     public async Task ConfigureOwnedOfflineLibrariesAsync(PlexAccount account, IReadOnlyList<PlexLibrary> libraries)
     {
-        var accountServers = await _dbContext.PlexAccountServers
-            .Where(x => x.PlexAccountId == account.Id)
+        var accountServers = await _dbContext
+            .PlexAccountServers.Where(x => x.PlexAccountId == account.Id)
             .AsTracking()
             .ToListAsync(_cancellationToken);
-        var accountLibraries = await _dbContext.PlexAccountLibraries
-            .Where(x => x.PlexAccountId == account.Id)
+        var accountLibraries = await _dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == account.Id)
             .AsTracking()
             .ToListAsync(_cancellationToken);
         foreach (var accountServer in accountServers.Where(x => x.PlexServerId != libraries[0].PlexServerId))
@@ -182,8 +171,8 @@ internal sealed class MetadataScopeTestFixture
             accountLibrary.IsLibraryOwned = false;
         await _dbContext.SaveChangesAsync(_cancellationToken);
         var offlineServerId = libraries[^1].PlexServerId;
-        await _dbContext.PlexServerStatuses
-            .Where(x => x.PlexServerId == offlineServerId)
+        await _dbContext
+            .PlexServerStatuses.Where(x => x.PlexServerId == offlineServerId)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsSuccessful, false), _cancellationToken);
     }
 
@@ -195,11 +184,7 @@ internal sealed class MetadataScopeTestFixture
         var genres = libraries
             .Select(
                 (library, index) =>
-                    new PlexGenreAudio
-                    {
-                        Key = $"{keyPrefix}-genre-{library.Id}",
-                        Name = $"{keyPrefix} genre {index}",
-                    }
+                    new PlexGenreAudio { Key = $"{keyPrefix}-genre-{library.Id}", Name = $"{keyPrefix} genre {index}" }
             )
             .ToArray();
         _dbContext.PlexGenresAudio.AddRange(genres);

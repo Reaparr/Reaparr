@@ -27,7 +27,7 @@ public static partial class PlexMediaDTOMapper
             Qualities = [],
             ComparisonId = PlexMediaComparisonState.NotCompared.ToComparisonId(),
             PlexApiRatingKey = source.PlexApiRatingKey,
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = source.PlexApiRatingKey,
             HasArt = false,
             HasTheme = false,
             Studio = string.Empty,
@@ -36,10 +36,9 @@ public static partial class PlexMediaDTOMapper
             Rating = 0,
             OriginallyAvailableAt = null,
             RecordLabel = null,
-            ReleaseDate = null,
             Genres = [],
-            Children = source.Memberships
-                .Select(x => x.PlexPhotoMediaData)
+            Children = source
+                .Memberships.Select(x => x.PlexPhotoMediaData)
                 .OfType<PlexPhotoMediaData>()
                 .OrderBy(x => x.Id)
                 .OrderByNatural(x => x.Title)
@@ -74,7 +73,7 @@ public static partial class PlexMediaDTOMapper
             Qualities = [],
             ComparisonId = PlexMediaComparisonState.NotCompared.ToComparisonId(),
             PlexApiRatingKey = source.PlexApiRatingKey,
-            PlexApiMetaDataKey = source.PlexApiMetaDataKey,
+            PlexApiMetaDataKey = source.PlexApiRatingKey,
             HasArt = false,
             HasTheme = false,
             Studio = string.Empty,
@@ -83,11 +82,9 @@ public static partial class PlexMediaDTOMapper
             Rating = 0,
             OriginallyAvailableAt = source.OriginallyAvailableAt,
             RecordLabel = null,
-            ReleaseDate = null,
             Genres = [],
             Children = [],
             DiscNumber = null,
             TrackNumber = null,
         };
-
 }

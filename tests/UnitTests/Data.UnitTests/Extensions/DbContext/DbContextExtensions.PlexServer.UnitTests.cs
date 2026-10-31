@@ -140,10 +140,7 @@ public class DbContextExtensionsPlexServerUnitTests : BaseUnitTest
 
         await dbContext
             .PlexServers.Where(x => x.Id == pausedServer.Id)
-            .ExecuteUpdateAsync(
-                x => x.SetProperty(y => y.IsDownloadsPausedByUser, true),
-                CancellationToken
-            );
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsDownloadsPausedByUser, true), CancellationToken);
         await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == disabledServer.Id)

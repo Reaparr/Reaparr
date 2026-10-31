@@ -31,11 +31,19 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         library.Albums.Add(album);
         library.Tracks.Add(track);
         var artistState = (artist.ChildCount, artist.Duration, artist.MediaSize);
-        var albumState = (album.ChildCount, album.TrackCount, album.Duration, album.MediaSize);
+        var albumState = (album.ChildCount, album.Duration, album.MediaSize);
         var response = new InsertMediaMetaDataCommandResponse(library);
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
-            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -71,9 +79,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .ReturnsAsync(Result.Ok(new LibraryMetadata(library)))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken)
-            )
+            .Setup(x => x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -92,7 +98,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         album.PlexArtist.ShouldBeSameAs(artist);
         track.PlexAlbum.ShouldBeSameAs(album);
         (artist.ChildCount, artist.Duration, artist.MediaSize).ShouldBe(artistState);
-        (album.ChildCount, album.TrackCount, album.Duration, album.MediaSize).ShouldBe(albumState);
+        (album.ChildCount, album.Duration, album.MediaSize).ShouldBe(albumState);
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
@@ -119,9 +125,17 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var response = new InsertMediaMetaDataCommandResponse(library);
         var failure = Result.Fail("catalog retrieval incomplete");
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
-            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -157,9 +171,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .ReturnsAsync(Result.Ok(new LibraryMetadata(library)))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken)
-            )
+            .Setup(x => x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -186,12 +198,51 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 Times.Never()
             );
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldPreserveCancellationWithoutPublishingError_WhenAlbumMetadataInsertionIsCancelled()
+    {
+        await SetupDatabase(
+            625625,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        await dbContext.PlexLibraries.ExecuteUpdateAsync(
+            update => update.SetProperty(entity => entity.Type, PlexMediaType.MusicArtist),
+            CancellationToken
+        );
+        var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var cancellation = ResultExtensions.TaskIsCancelled("album metadata");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(executor => executor.Send(
+                It.Is<GetLibraryMediaFromPlexApiCommand>(command =>
+                    command.PlexLibrary == library && command.MediaType == PlexMediaType.MusicAlbum
+                ),
+                CancellationToken
+            ))
+            .ReturnsAsync(Result.Ok(new LibraryMetadata(library)));
+        Mock.Mock<ICommandExecutor>()
+            .Setup(executor => executor.Send(It.IsAny<InsertMediaMetaDataCommand>(), CancellationToken))
+            .ReturnsAsync(cancellation);
+
+        var result = await TestHandlerExecuteAsync<PlexLibrary>(
+            new RefreshPlexMusicLibraryCommand(new InsertMediaMetaDataCommandResponse(library))
+        );
+
+        result.IsCancelled.ShouldBeTrue();
+        result.Errors.ShouldBe(cancellation.Errors);
+        Mock.Mock<ILibrarySyncProgressStore>()
+            .Verify(store => store.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(executor => executor.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -224,9 +275,17 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var failure = cancelled
             ? ResultExtensions.TaskIsCancelled("descendants")
             : Result.Fail("incomplete descendants");
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
-            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
 
         if (mediaType == PlexMediaType.MusicTrack)
         {
@@ -263,9 +322,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .ReturnsAsync(failure)
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken)
-            )
+            .Setup(x => x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
             .Returns(Task.CompletedTask)
             .Verifiable(cancelled ? Times.Never() : Times.Once());
 
@@ -295,16 +352,10 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 Times.Never()
             );
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.Never());
         if (cancelled)
             Mock.Mock<ILibrarySyncProgressStore>()
-                .Verify(
-                    x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                    Times.Never()
-                );
+                .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
     }
@@ -342,13 +393,26 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         track.ParentKey = albums[0].PlexApiRatingKey;
         library.Tracks.Add(track);
         var albumCountry = new PlexCountry { Name = "Album Country", Key = "album-country" };
-        var insertedAlbumCountry = new PlexCountry { Id = 501, Name = albumCountry.Name, Key = albumCountry.Key };
+        var insertedAlbumCountry = new PlexCountry
+        {
+            Id = 501,
+            Name = albumCountry.Name,
+            Key = albumCountry.Key,
+        };
         var albumMetadata = new LibraryMetadata(library) { Countries = [albumCountry] };
         var response = new InsertMediaMetaDataCommandResponse(library);
         InsertMediaMetaDataCommandResponse? captured = null;
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
-            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -413,7 +477,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.MusicArtist))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
@@ -425,8 +489,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         && p.Received == 1
                         && p.Total == 1
                         && p.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -440,8 +503,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         && p.Received == 2
                         && p.Total == 2
                         && p.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -455,8 +517,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         && p.Received == 1
                         && p.Total == 1
                         && p.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -481,13 +542,10 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         albums.ShouldAllBe(x => x.PlexArtist == artist);
         track.PlexAlbum.ShouldBeSameAs(albums[0]);
         albums[1].Tracks.ShouldBeEmpty();
-        (albums[0].TrackCount, albums[0].Duration, albums[0].MediaSize).ShouldBe((1, track.Duration, track.MediaSize));
+        (albums[0].ChildCount, albums[0].Duration, albums[0].MediaSize).ShouldBe((1, track.Duration, track.MediaSize));
         (artist.ChildCount, artist.Duration, artist.MediaSize).ShouldBe((2, track.Duration, track.MediaSize));
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
     }

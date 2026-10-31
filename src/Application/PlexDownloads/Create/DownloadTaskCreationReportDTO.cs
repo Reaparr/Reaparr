@@ -16,6 +16,15 @@ public sealed record DownloadTaskCreationReportDTO
     public required int MusicTracks { get; init; }
     public required int OtherVideos { get; init; }
 
-    public int Total => Movies + TvShows + Seasons + Episodes + PhotoFolders + PhotoImages
-        + MusicArtists + MusicAlbums + MusicTracks + OtherVideos;
+    public int Total =>
+        Movies
+        + TvShows
+        + Seasons
+        + Episodes
+        + PhotoFolders
+        + PhotoImages
+        + MusicArtists
+        + MusicAlbums
+        + MusicTracks
+        + OtherVideos;
 }

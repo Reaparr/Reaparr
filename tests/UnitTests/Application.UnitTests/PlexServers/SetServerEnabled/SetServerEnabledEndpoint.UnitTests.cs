@@ -296,8 +296,7 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
-        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
-            .ReturnsAsync(Result.Ok());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand()).ReturnsAsync(Result.Ok());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -307,7 +306,11 @@ public class SetServerEnabledEndpointUnitTests
         // Assert
         endpointResult.Response.ShouldNotBeNull();
         endpointResult.Response.IsSuccess.ShouldBe(true);
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), It.IsAny<CancellationToken>()),
+                Times.Once()
+            );
     }
 
     [Test]

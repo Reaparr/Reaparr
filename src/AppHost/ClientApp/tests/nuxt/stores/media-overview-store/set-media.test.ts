@@ -5,6 +5,7 @@ import {
 	generatePlexMediaSlims,
 	generatePlexMediaStatisticsDTO,
 	generateResultDTO,
+	generateSupportedSorts,
 } from '@mock';
 import { useMediaOverviewStore, useSettingsStore } from '@store';
 import { type PlexMediaStatisticsDTO, PlexMediaType } from '@dto';
@@ -23,7 +24,7 @@ describe('MediaOverviewStore.setMedia()', () => {
 
 	function setupMocks(mediaStats: PlexMediaStatisticsDTO) {
 		mock.onGet(new RegExp(`/api/PlexMedia`)).reply(200, generateResultDTO(mediaStats));
-		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply(200, generateResultDTO({
+		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply((request) => [200, generateResultDTO({
 			episodeCount: 0,
 			mediaCount: 0,
 			mediaSize: 0,
@@ -39,7 +40,8 @@ describe('MediaOverviewStore.setMedia()', () => {
 			countryCount: 0,
 			genreCount: 0,
 			qualityCount: 0,
-		}));
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 	}
 
 	test('Should preserve filterQuery when new media is set', async () => {
@@ -95,7 +97,7 @@ describe('MediaOverviewStore.setMedia()', () => {
 			successes: [],
 			value: null,
 		});
-		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply(200, generateResultDTO({
+		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply((request) => [200, generateResultDTO({
 			episodeCount: 0,
 			mediaCount: 0,
 			mediaSize: 0,
@@ -111,7 +113,8 @@ describe('MediaOverviewStore.setMedia()', () => {
 			countryCount: 0,
 			genreCount: 0,
 			qualityCount: 0,
-		}));
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 
 		// Act
 		const result = subscribeSpyTo(store.refreshMediaData());
@@ -222,7 +225,7 @@ describe('MediaOverviewStore.setMedia()', () => {
 			partialData: { plexServerId: 1, plexLibraryId: 0, type },
 		}));
 		mock.onGet(new RegExp(`/api/PlexMedia`)).reply(200, generateResultDTO(tvShows));
-		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply(200, generateResultDTO({
+		mock.onGet(new RegExp(`/api/PlexLibrary/0/metadata`)).reply((request) => [200, generateResultDTO({
 			episodeCount: 0,
 			mediaCount: 0,
 			mediaSize: 0,
@@ -238,7 +241,8 @@ describe('MediaOverviewStore.setMedia()', () => {
 			countryCount: 0,
 			genreCount: 0,
 			qualityCount: 0,
-		}));
+			supportedSorts: generateSupportedSorts(request.params.mediaType as PlexMediaType),
+		})]);
 
 		// Act
 		const result = subscribeSpyTo(store.refreshMediaData());

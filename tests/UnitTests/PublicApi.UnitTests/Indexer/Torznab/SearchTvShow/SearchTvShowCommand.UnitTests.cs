@@ -1,7 +1,7 @@
-using Reaparr.PublicAPI.Contracts;
 using Reaparr.Application.Contracts;
-
+using Reaparr.PublicAPI.Contracts;
 using Reaparr.Settings.Contracts;
+
 namespace Reaparr.PublicAPI.UnitTests;
 
 public class SearchTvShowCommandUnitTests : BaseCommandUnitTest<SearchTvShowCommand>
@@ -500,7 +500,8 @@ public class SearchTvShowCommandUnitTests : BaseCommandUnitTest<SearchTvShowComm
                 i.Attributes.Any(a => a.Name == "episode" && a.Value == episodeNumber.ToString())
             )
             .ShouldBeTrue();
-        result.Value.Channel.Items.Select(i => i.Attributes.Single(a => a.Name == "imdb").Value)
+        result
+            .Value.Channel.Items.Select(i => i.Attributes.Single(a => a.Name == "imdb").Value)
             .ShouldBe(Enumerable.Repeat(imdb[2..], result.Value.Channel.Items.Count));
 
         // Titles should equal the part file name used during mapping
@@ -1000,7 +1001,8 @@ public class SearchTvShowCommandUnitTests : BaseCommandUnitTest<SearchTvShowComm
 
         // Assert
         result.Value.Channel.Items.ShouldNotBeEmpty();
-        result.Value.Channel.Items.Select(i => i.Attributes.Single(a => a.Name == "imdb").Value)
+        result
+            .Value.Channel.Items.Select(i => i.Attributes.Single(a => a.Name == "imdb").Value)
             .ShouldBe(Enumerable.Repeat(imdb[2..], result.Value.Channel.Items.Count));
         result
             .Value.Channel.Items.All(i => i.Attributes.Any(a => a.Name == "tmdbid" && a.Value == tmdb.ToString()))
@@ -1009,6 +1011,7 @@ public class SearchTvShowCommandUnitTests : BaseCommandUnitTest<SearchTvShowComm
             .Value.Channel.Items.All(i => i.Attributes.Any(a => a.Name == "tvdbid" && a.Value == tvdb.ToString()))
             .ShouldBeTrue();
     }
+
     private async Task<Result<TorznabMediaSearchResponseDTO>> ExecuteCommandAsync(SearchTvShowCommand command)
     {
         var networkSettings = Mock.Mock<INetworkSettings>();
@@ -1048,5 +1051,4 @@ public class SearchTvShowCommandUnitTests : BaseCommandUnitTest<SearchTvShowComm
                 Integration = new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty),
             }
         );
-
 }

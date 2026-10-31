@@ -83,11 +83,11 @@
 						</QCol>
 
 						<QCol
-							v-if="album.releaseDate"
+							v-if="album.originallyAvailableAt"
 							cols="1">
 							{{ t('components.music-media-list.release-date') }}:
 							<QDateTime
-								:text="album.releaseDate"
+								:text="album.originallyAvailableAt"
 								short-date />
 						</QCol>
 					</QRow>

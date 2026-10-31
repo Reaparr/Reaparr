@@ -154,9 +154,11 @@ public class DownloadTorrentEndpointUnitTests
         // Assert
         endpointResult.IsValid.ShouldBeFalse();
         endpointResult.ValidationErrors.Count.ShouldBe(1);
-        endpointResult.ValidationErrors.Single().ErrorMessage.ShouldBe(
-            $"{nameof(TorrentMetadataDTO.DataId)} and {nameof(TorrentMetadataDTO.PartId)} must match."
-        );
+        endpointResult
+            .ValidationErrors.Single()
+            .ErrorMessage.ShouldBe(
+                $"{nameof(TorrentMetadataDTO.DataId)} and {nameof(TorrentMetadataDTO.PartId)} must match."
+            );
     }
 
     [Test]

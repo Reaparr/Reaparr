@@ -22,5 +22,4 @@ public record DownloadTaskDirectory
     public required string OtherVideoFolder { get; set; }
 
     public required bool KeepCompletedInDownloadFolder { get; set; }
-
 }

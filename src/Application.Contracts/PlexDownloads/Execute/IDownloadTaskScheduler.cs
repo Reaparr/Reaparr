@@ -14,6 +14,5 @@ public interface IDownloadTaskScheduler
 
     Task<bool> IsServerDownloading(int plexServerId);
 
-
     Task<List<DownloadTaskKey>> GetCurrentlyDownloadingKeysByServer(int plexServerId);
 }

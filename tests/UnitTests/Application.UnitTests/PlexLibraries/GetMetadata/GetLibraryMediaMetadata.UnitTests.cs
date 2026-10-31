@@ -118,12 +118,25 @@ public class GetLibraryMediaMetadataUnitTests
         accountServers.ShouldBe(servers.Select(x => x.Id));
         await fixture.RevokeAndDisableLibrariesAsync(account, libraries[1], libraries[2], libraries[3]);
 
-        (await dbContext.PlexAccountServers.Select(x => x.PlexServerId).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(servers.Where(x => x.Id != libraries[1].PlexServerId).Select(x => x.Id));
-        (await dbContext.PlexAccountLibraries.Select(x => x.PlexLibraryId).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(libraries.Where(x => x.Id != libraries[2].Id).Select(x => x.Id));
-        (await dbContext.PlexLibraries.IgnoreQueryFilters().Where(x => x.Id == libraries[3].Id).Select(x => x.IsEnabled).SingleAsync(CancellationToken))
-            .ShouldBeFalse();
+        (
+            await dbContext
+                .PlexAccountServers.Select(x => x.PlexServerId)
+                .OrderBy(x => x)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(servers.Where(x => x.Id != libraries[1].PlexServerId).Select(x => x.Id));
+        (
+            await dbContext
+                .PlexAccountLibraries.Select(x => x.PlexLibraryId)
+                .OrderBy(x => x)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(libraries.Where(x => x.Id != libraries[2].Id).Select(x => x.Id));
+        (
+            await dbContext
+                .PlexLibraries.IgnoreQueryFilters()
+                .Where(x => x.Id == libraries[3].Id)
+                .Select(x => x.IsEnabled)
+                .SingleAsync(CancellationToken)
+        ).ShouldBeFalse();
 
         // Act
         var request = new GetLibraryMediaMetadataRequest { PlexLibraryId = 0, MediaType = mediaType };
@@ -132,7 +145,9 @@ public class GetLibraryMediaMetadataUnitTests
         // Assert
         endpointResult.IsValid.ShouldBeTrue();
         endpointResult.StatusCode.ShouldBe(200);
-        var response = (await ReadMetadataResponseAsync(endpointResult.Endpoint.HttpContext.Response.Body)).ShouldNotBeNull();
+        var response = (
+            await ReadMetadataResponseAsync(endpointResult.Endpoint.HttpContext.Response.Body)
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         var metadata = response.Value.ShouldNotBeNull();
@@ -141,7 +156,10 @@ public class GetLibraryMediaMetadataUnitTests
         metadata.CountryCount.ShouldBe(1);
         metadata.GenreCount.ShouldBe(1);
         metadata.QualityCount.ShouldBe(1);
-        metadata.Roles.OrderBy(x => x.Id).Select(x => (x.Id, x.Name)).ShouldBe([(rows.Actors[0].Id, rows.Actors[0].Name)]);
+        metadata
+            .Roles.OrderBy(x => x.Id)
+            .Select(x => (x.Id, x.Name))
+            .ShouldBe([(rows.Actors[0].Id, rows.Actors[0].Name)]);
         metadata
             .Countries.OrderBy(x => x.Id)
             .Select(x => (x.Id, x.Name))
@@ -167,7 +185,10 @@ public class GetLibraryMediaMetadataUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(8243, config => MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 3));
+        await SetupDatabase(
+            8243,
+            config => MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 3)
+        );
         var dbContext = IDbContext;
         var fixture = new MetadataScopeTestFixture(dbContext, CancellationToken);
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
@@ -179,8 +200,12 @@ public class GetLibraryMediaMetadataUnitTests
             [VideoQuality.FullHD, VideoQuality.FullHD, VideoQuality.FullHD]
         );
         var account = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
-        var accountServers = await dbContext.PlexAccountServers.Where(x => x.PlexAccountId == account.Id).ToListAsync(CancellationToken);
-        var accountLibraries = await dbContext.PlexAccountLibraries.Where(x => x.PlexAccountId == account.Id).ToListAsync(CancellationToken);
+        var accountServers = await dbContext
+            .PlexAccountServers.Where(x => x.PlexAccountId == account.Id)
+            .ToListAsync(CancellationToken);
+        var accountLibraries = await dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == account.Id)
+            .ToListAsync(CancellationToken);
         accountServers.Count.ShouldBe(3);
         accountLibraries.Count.ShouldBe(3);
         await fixture.ConfigureOwnedOfflineLibrariesAsync(account, libraries);
@@ -208,7 +233,9 @@ public class GetLibraryMediaMetadataUnitTests
         // Assert
         endpointResult.IsValid.ShouldBeTrue();
         endpointResult.StatusCode.ShouldBe(200);
-        var response = (await ReadMetadataResponseAsync(endpointResult.Endpoint.HttpContext.Response.Body)).ShouldNotBeNull();
+        var response = (
+            await ReadMetadataResponseAsync(endpointResult.Endpoint.HttpContext.Response.Body)
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         var metadata = response.Value.ShouldNotBeNull();
@@ -249,22 +276,24 @@ public class GetLibraryMediaMetadataUnitTests
         libraries.Count.ShouldBe(2);
         (await dbContext.PlexAccounts.CountAsync(CancellationToken)).ShouldBe(0);
         var rows = await fixture.AddVideoMetadataAsync(libraries, "fallback");
-        await fixture.SetVideoQualitiesAsync(PlexMediaType.Movie, libraries, [VideoQuality.FullHD, VideoQuality.UHD_4K]);
+        await fixture.SetVideoQualitiesAsync(
+            PlexMediaType.Movie,
+            libraries,
+            [VideoQuality.FullHD, VideoQuality.UHD_4K]
+        );
         await fixture.DisableLibraryAsync(libraries[1]);
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new GetLibraryMediaMetadataRequest
-            {
-                PlexLibraryId = 0,
-                MediaType = PlexMediaType.Movie,
-            }
+            new GetLibraryMediaMetadataRequest { PlexLibraryId = 0, MediaType = PlexMediaType.Movie }
         );
 
         // Assert
         endpointResult.IsValid.ShouldBeTrue();
         endpointResult.StatusCode.ShouldBe(200);
-        var response = (await ReadMetadataResponseAsync(endpointResult.Endpoint.HttpContext.Response.Body)).ShouldNotBeNull();
+        var response = (
+            await ReadMetadataResponseAsync(endpointResult.Endpoint.HttpContext.Response.Body)
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         var metadata = response.Value.ShouldNotBeNull();
@@ -276,9 +305,7 @@ public class GetLibraryMediaMetadataUnitTests
         metadata.Roles.Select(x => x.Id).ShouldBe([rows.Actors[0].Id]);
         metadata.Countries.Select(x => x.Id).ShouldBe([rows.Countries[0].Id]);
         metadata.Genres.Select(x => x.Id).ShouldBe([rows.Genres[0].Id]);
-        metadata
-            .Qualities.Select(x => (x.Quality, x.Count))
-            .ShouldBe([(VideoQuality.FullHD, 1)]);
+        metadata.Qualities.Select(x => (x.Quality, x.Count)).ShouldBe([(VideoQuality.FullHD, 1)]);
     }
 
     [Test]
@@ -308,17 +335,15 @@ public class GetLibraryMediaMetadataUnitTests
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new GetLibraryMediaMetadataRequest
-            {
-                PlexLibraryId = 0,
-                MediaType = PlexMediaType.MusicArtist,
-            }
+            new GetLibraryMediaMetadataRequest { PlexLibraryId = 0, MediaType = PlexMediaType.MusicArtist }
         );
 
         // Assert
         endpointResult.IsValid.ShouldBeTrue();
         endpointResult.StatusCode.ShouldBe(200);
-        var response = (await ReadMetadataResponseAsync(endpointResult.Endpoint.HttpContext.Response.Body)).ShouldNotBeNull();
+        var response = (
+            await ReadMetadataResponseAsync(endpointResult.Endpoint.HttpContext.Response.Body)
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         var metadata = response.Value.ShouldNotBeNull();
@@ -333,10 +358,81 @@ public class GetLibraryMediaMetadataUnitTests
         metadata.Qualities.ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies metadata publishes only its root media type's supported sorts, including empty or disabled scopes.
+    /// </summary>
+    /// <remarks>
+    /// Assertions inspect the serialized response so an incorrect object-shaped catalog, omitted field,
+    /// or incorrect enum wire values cannot be concealed by deserialization defaults.
+    /// </remarks>
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(false, true)]
+    [Arguments(true, false)]
+    [Arguments(true, true)]
+    public async Task ShouldPublishFamilySortCapabilities_WhenMetadataScopeIsEmptyOrDisabled(
+        bool allLibraries,
+        bool disabled
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            8250,
+            config =>
+            {
+                MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 1);
+                config.MovieCount = 0;
+            }
+        );
+        var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync();
+        if (disabled)
+            await new MetadataScopeTestFixture(dbContext, CancellationToken).DisableLibraryAsync(library);
+
+        var expected = new[]
+        {
+            "title",
+            "year",
+            "addedAt",
+            "updatedAt",
+            "duration",
+            "mediaSize",
+            "videoQuality",
+            "comparisonState",
+        };
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(
+            new GetLibraryMediaMetadataRequest
+            {
+                PlexLibraryId = allLibraries ? 0 : library.Id,
+                MediaType = PlexMediaType.Movie,
+            }
+        );
+        endpointResult.Endpoint.HttpContext.Response.Body.Position = 0;
+        var root = await System.Text.Json.Nodes.JsonNode.ParseAsync(
+            endpointResult.Endpoint.HttpContext.Response.Body,
+            new System.Text.Json.Nodes.JsonNodeOptions { PropertyNameCaseInsensitive = true },
+            cancellationToken: CancellationToken
+        );
+
+        // Assert
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.StatusCode.ShouldBe(200);
+        root.ShouldNotBeNull();
+        root["isSuccess"]!.GetValue<bool>().ShouldBeTrue();
+        root["errors"]!.AsArray().Count.ShouldBe(0);
+        var capabilities = root["value"]!["supportedSorts"]!.AsArray();
+        capabilities.Select(field => field!.GetValue<string>()).ShouldBe(expected);
+    }
+
     private async Task<ResultDTO<PlexMediaMetadataDTO>?> ReadMetadataResponseAsync(Stream body)
     {
         body.Position = 0;
         return await System.Text.Json.JsonSerializer.DeserializeAsync<ResultDTO<PlexMediaMetadataDTO>>(
-            body, DefaultJsonSerializerOptions.ConfigStandard, CancellationToken);
+            body,
+            DefaultJsonSerializerOptions.ConfigStandard,
+            CancellationToken
+        );
     }
 }
