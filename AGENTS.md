@@ -26,6 +26,7 @@ Reaparr is a cross-platform Plex media downloader hosted on GitHub: https://gith
 - Keep behavior **deterministic** (especially in tests).
 - Fix **root causes** — do not add hacks to suppress symptoms.
 - Respect formatting, analyzers, EditorConfig, and linters.
+- Formatting is automatic for both backend and frontend code. Leave it to the configured automation: never manually reformat code or run formatting-only commands, IDE reformat actions, or builds solely to format code. Keep edits focused on the requested behavior.
 - Match existing naming conventions and folder layout.
 - Prefer `==` or `is` for canonical internal string comparisons. Normalize external representations at their owning boundary; reserve case-insensitive matching for external contracts that require it rather than scattering `string.Equals` or `StringComparison.OrdinalIgnoreCase` through internal code.
 - Avoid breaking public APIs unless explicitly coordinated.
