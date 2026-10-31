@@ -148,7 +148,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		expect(store.getMediaItems).toEqual(secondPage.mediaList);
 	});
 
-	test('Should retain library metadata when a query supersedes the initial media request', async () => {
+	test('Should retain metadata and successful empty search status when initialization is superseded', async () => {
 		// Arrange
 		const store = useMediaOverviewStore();
 		const libraryStore = useLibraryStore();
@@ -166,7 +166,8 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 				: queryMetadataResponse.asObservable());
 		const filterMetadataRequest = vi.spyOn(plexLibraryApi, 'getMetadataFilter').mockReturnValue(filterMetadataResponse.asObservable());
 		vi.spyOn(plexLibraryApi, 'getPlexLibraryByIdEndpoint').mockReturnValue(of(generateResultDTO(library)));
-		const queryPage = createPage('Q', 'query-new', 1);
+		const queryPage = createPage('Q', 'query-new', 0);
+		queryPage.mediaList = [];
 		const mediaRequest = vi.spyOn(plexMediaApi, 'getAllMediaByTypeEndpoint').mockImplementation((query) =>
 			query.q === 'new-query' ? queryMediaResponse.asObservable() : initialMediaResponse.asObservable());
 		const initialization = subscribeSpyTo(store.initializeLibrary(library.id));
@@ -180,10 +181,14 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		expect(mediaRequest).not.toHaveBeenCalled();
 		expect(initialMediaResponse.observers).toHaveLength(0);
 
+		expect(store.loading).toBe(true);
+		expect(store.mediaLoadError).toBe(false);
 		// Act
 		initialMetadataResponse.next(generateResultDTO(createMetadata(11, PlexMediaType.Movie)));
 		initialMetadataResponse.complete();
 		expect(mediaRequest).not.toHaveBeenCalled();
+		expect(store.loading).toBe(true);
+		expect(store.mediaLoadError).toBe(false);
 		queryMetadataResponse.next(generateResultDTO(createMetadata(42, PlexMediaType.Movie)));
 		queryMetadataResponse.complete();
 		expect(mediaRequest).toHaveBeenCalledTimes(1);
@@ -202,6 +207,8 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		expect(store.availableQualityIds).toEqual([42]);
 		expect(store.availableRoleIds).toEqual([43]);
 		expect(store.getMediaItems).toEqual(queryPage.mediaList);
+		expect(store.loading).toBe(false);
+		expect(store.mediaLoadError).toBe(false);
 	});
 	test('Should cancel obsolete library metadata and media when switching libraries', async () => {
 		// Arrange

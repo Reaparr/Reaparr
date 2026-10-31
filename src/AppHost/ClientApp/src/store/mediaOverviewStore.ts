@@ -18,7 +18,7 @@ import {
 import type { IMediaOverviewSort } from '@composables/event-bus';
 import { type IMetaDataMediaFilter, type ISelection, type ISortOption, StoreNames } from '@interfaces';
 import { plexLibraryApi, plexMediaApi } from '@api';
-import { defaultIfEmpty, map, shareReplay, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { defaultIfEmpty, filter, map, shareReplay, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { BehaviorSubject, defer, finalize, forkJoin, type Observable, of, Subject } from 'rxjs';
 import { useLibraryStore, useSettingsStore } from '@store';
 import {
@@ -260,6 +260,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 
 					const filterMetadataRequest = actions.refreshFilterMetadata();
 					const mediaRequest = actions.refreshMetaData().pipe(
+						filter(() => isRequestGenerationActive(generation)),
 						switchMap((result) => {
 							if (!hasSuccessfulSortMetadata(result)) {
 								state.loading = false;
@@ -267,8 +268,9 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 								return of(null);
 							}
 
-							return refreshMediaDataForGeneration(generation).pipe(defaultIfEmpty(null));
+							return refreshMediaDataForGeneration(generation);
 						}),
+						defaultIfEmpty(null),
 					);
 					return forkJoin([filterMetadataRequest, mediaRequest]).pipe(map(([, requestMediaResult]) => requestMediaResult));
 				}),
