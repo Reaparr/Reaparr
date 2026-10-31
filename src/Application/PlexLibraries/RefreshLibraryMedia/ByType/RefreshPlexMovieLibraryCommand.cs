@@ -64,8 +64,7 @@ public class RefreshPlexMovieLibraryCommandHandler
                     Received = 0,
                     Total = movieCount,
                     TimeRemaining = TimeSpan.Zero,
-                },
-                cancellationToken
+                }
             );
 
             return syncResult.ToResult().LogError();
@@ -97,8 +96,7 @@ public class RefreshPlexMovieLibraryCommandHandler
                 Received = movieCount,
                 Total = movieCount,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
 
         var rebuildResult = await _commandExecutor.Send(

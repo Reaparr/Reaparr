@@ -107,7 +107,7 @@ public class RefreshPlexTvShowLibraryCommandEmptyUnitTests : BaseCommandUnitTest
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateItemAsync(target.Id, It.IsAny<LibraryProgressItem>(), CancellationToken))
+            .Setup(x => x.UpdateItemAsync(target.Id, It.IsAny<LibraryProgressItem>()))
             .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => progress.Add(item))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Exactly(3));
@@ -178,9 +178,6 @@ public class RefreshPlexTvShowLibraryCommandEmptyUnitTests : BaseCommandUnitTest
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
     }
 }

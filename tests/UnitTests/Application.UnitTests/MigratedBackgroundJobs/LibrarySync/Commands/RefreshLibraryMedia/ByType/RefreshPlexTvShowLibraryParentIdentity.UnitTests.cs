@@ -92,8 +92,7 @@ public class RefreshPlexTvShowLibraryParentIdentityUnitTests : BaseCommandUnitTe
                         && item.Received == 2
                         && item.Total == 2
                         && item.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -131,10 +130,7 @@ public class RefreshPlexTvShowLibraryParentIdentityUnitTests : BaseCommandUnitTe
             .Select(show => (show.ChildCount, show.GrandChildCount, show.MediaSize, show.Duration))
             .ShouldBe([(1, 1, 100L, episodes[0].Duration), (1, 1, 101L, episodes[1].Duration)]);
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
     }

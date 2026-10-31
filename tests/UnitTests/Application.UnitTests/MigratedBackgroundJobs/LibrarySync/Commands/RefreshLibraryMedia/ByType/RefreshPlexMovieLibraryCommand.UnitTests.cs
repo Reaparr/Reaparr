@@ -19,9 +19,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         var originalSyncedAt = testLibrary.SyncedAt;
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()))
             .Returns(Task.CompletedTask);
 
         Mock.Mock<ICommandExecutor>()
@@ -47,10 +45,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         updatedLibrary.ShouldNotBeNull();
         updatedLibrary.SyncedAt.ShouldBe(originalSyncedAt);
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.AtLeastOnce()
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.AtLeastOnce());
     }
 
     [Test]
@@ -70,9 +65,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         var capturedItems = new List<LibraryProgressItem>();
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()))
             .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => capturedItems.Add(item))
             .Returns(Task.CompletedTask);
 
@@ -115,9 +108,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         var originalSyncedAt = testLibrary.SyncedAt;
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()))
             .Returns(Task.CompletedTask);
 
         Mock.Mock<ICommandExecutor>()
@@ -145,10 +136,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<SyncPlexMoviesCommand>(), It.IsAny<CancellationToken>()), Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.Exactly(1)
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.Exactly(1));
     }
 
     [Test]
@@ -172,9 +160,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         }
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()))
             .Returns(Task.CompletedTask);
 
         Mock.Mock<ICommandExecutor>()
@@ -200,10 +186,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         updatedLibrary.SyncedAt.ShouldBe(originalSyncedAt);
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.AtLeastOnce()
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.AtLeastOnce());
     }
 
     [Test]
@@ -223,9 +206,7 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         LibraryProgressItem? capturedItem = null;
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()))
             .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => capturedItem = item)
             .Returns(Task.CompletedTask);
         Mock.Mock<ICommandExecutor>()
@@ -247,9 +228,6 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
         capturedItem.Received.ShouldBe(0);
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.Once());
     }
 }

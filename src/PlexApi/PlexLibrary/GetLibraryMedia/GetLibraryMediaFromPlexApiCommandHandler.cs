@@ -165,7 +165,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         result.LogIfFailed();
 
         if (result.IsFailed && command.MediaType is null)
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibrary.Id, result.ToResult(), ct);
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibrary.Id, result.ToResult());
 
         return result;
     }

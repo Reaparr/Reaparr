@@ -56,7 +56,7 @@ public class RefreshPlexOtherVideoLibraryCommandHandler
 
         if (syncResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, syncResult.ToResult(), cancellationToken);
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, syncResult.ToResult());
             return syncResult.ToResult().LogError();
         }
 
@@ -74,8 +74,7 @@ public class RefreshPlexOtherVideoLibraryCommandHandler
                 Received = plexLibrary.OtherVideos.Count,
                 Total = plexLibrary.OtherVideos.Count,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
         var rebuildResult = await _commandExecutor.Send(
             new QueueMediaOverviewRebuildCommand(PlexMediaType.OtherVideos),

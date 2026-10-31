@@ -50,7 +50,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .ReturnsAsync(failure)
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed), CancellationToken))
+            .Setup(x => x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed)))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -114,8 +114,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         && p.Received == metadata.PlexLibrary.PhotoAlbums.Count
                         && p.Total == metadata.PlexLibrary.PhotoAlbums.Count
                         && p.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -129,8 +128,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         && p.Received == metadata.PlexLibrary.PhotoMediaData.Count
                         && p.Total == metadata.PlexLibrary.PhotoMediaData.Count
                         && p.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -211,21 +209,13 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
-                x.UpdateItemAsync(
-                    library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoAlbum),
-                    CancellationToken
-                )
+                x.UpdateItemAsync(library.Id, It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoAlbum))
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
-                x.UpdateItemAsync(
-                    library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoImage),
-                    CancellationToken
-                )
+                x.UpdateItemAsync(library.Id, It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoImage))
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
@@ -301,21 +291,13 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
-                x.UpdateItemAsync(
-                    library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoAlbum),
-                    CancellationToken
-                )
+                x.UpdateItemAsync(library.Id, It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoAlbum))
             )
             .ThrowsAsync(new InvalidOperationException("progress hub failed"))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
-                x.UpdateItemAsync(
-                    library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoImage),
-                    CancellationToken
-                )
+                x.UpdateItemAsync(library.Id, It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoImage))
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
@@ -333,10 +315,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never);
     }
 
     [Test]
@@ -374,21 +353,13 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
-                x.UpdateItemAsync(
-                    library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoAlbum),
-                    CancellationToken
-                )
+                x.UpdateItemAsync(library.Id, It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoAlbum))
             )
             .Returns(Task.FromCanceled(progressCancellation.Token))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
-                x.UpdateItemAsync(
-                    library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoImage),
-                    CancellationToken
-                )
+                x.UpdateItemAsync(library.Id, It.Is<LibraryProgressItem>(p => p.MediaType == PlexMediaType.PhotoImage))
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
@@ -406,10 +377,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never);
     }
 
     [Test]
@@ -444,10 +412,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 Times.Never
             );
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.Never
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.Never);
     }
 
     private static InsertMediaMetaDataCommandResponse CreateMetadata(

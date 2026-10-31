@@ -344,13 +344,7 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateErrorAsync(
-                    original.Id,
-                    It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1),
-                    It.Is<CancellationToken>(ct => ct == CancellationToken)
-                )
-            )
+            .Setup(x => x.UpdateErrorAsync(original.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         transport

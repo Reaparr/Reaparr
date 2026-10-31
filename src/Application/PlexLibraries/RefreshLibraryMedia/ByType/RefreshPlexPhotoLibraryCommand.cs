@@ -51,7 +51,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
             return syncResult.ToResult().LogWarning();
         if (syncResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(library.Id, syncResult.ToResult(), ct);
+            await _librarySyncProgressStore.UpdateErrorAsync(library.Id, syncResult.ToResult());
             return syncResult.ToResult().LogError();
         }
 
@@ -73,8 +73,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
                     Received = library.PhotoAlbums.Count,
                     Total = library.PhotoAlbums.Count,
                     TimeRemaining = TimeSpan.Zero,
-                },
-                ct
+                }
             )
         );
         albumProgressResult.LogIfFailed();
@@ -88,8 +87,7 @@ public class RefreshPlexPhotoLibraryCommandHandler
                     Received = library.PhotoMediaData.Count,
                     Total = library.PhotoMediaData.Count,
                     TimeRemaining = TimeSpan.Zero,
-                },
-                ct
+                }
             )
         );
         imageProgressResult.LogIfFailed();

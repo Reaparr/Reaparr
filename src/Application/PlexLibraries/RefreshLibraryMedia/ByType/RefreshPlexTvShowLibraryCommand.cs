@@ -60,11 +60,7 @@ public class RefreshPlexTvShowLibraryCommandHandler
 
         if (rawSeasonDataResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(
-                plexLibraryId,
-                rawSeasonDataResult.ToResult(),
-                cancellationToken
-            );
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, rawSeasonDataResult.ToResult());
             return rawSeasonDataResult.ToResult();
         }
 
@@ -77,11 +73,7 @@ public class RefreshPlexTvShowLibraryCommandHandler
 
         if (rawEpisodesDataResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(
-                plexLibraryId,
-                rawEpisodesDataResult.ToResult(),
-                cancellationToken
-            );
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, rawEpisodesDataResult.ToResult());
             return rawEpisodesDataResult.ToResult();
         }
 
@@ -114,7 +106,7 @@ public class RefreshPlexTvShowLibraryCommandHandler
 
         if (syncResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, syncResult.ToResult(), cancellationToken);
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, syncResult.ToResult());
             return syncResult.ToResult().LogError();
         }
 
@@ -158,8 +150,7 @@ public class RefreshPlexTvShowLibraryCommandHandler
                 Received = totalTvShows,
                 Total = totalTvShows,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
         await _librarySyncProgressStore.UpdateItemAsync(
             plexLibraryId,
@@ -169,8 +160,7 @@ public class RefreshPlexTvShowLibraryCommandHandler
                 Received = totalSeasons,
                 Total = totalSeasons,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
         await _librarySyncProgressStore.UpdateItemAsync(
             plexLibraryId,
@@ -180,8 +170,7 @@ public class RefreshPlexTvShowLibraryCommandHandler
                 Received = totalEpisodes,
                 Total = totalEpisodes,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
 
         _log.Here()

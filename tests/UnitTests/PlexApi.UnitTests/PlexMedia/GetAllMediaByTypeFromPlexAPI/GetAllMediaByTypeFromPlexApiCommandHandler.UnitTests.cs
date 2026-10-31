@@ -58,8 +58,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
                     library.Id,
                     It.Is<LibraryProgressItem>(p =>
                         p.MediaType == PlexMediaType.OtherVideos && p.Received == 0 && p.Total == 0
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -159,7 +158,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
         Mock.Mock<ILibrarySyncProgressStore>().Setup(x => x.Get(library.Id)).Returns(progress);
 
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateItemAsync(library.Id, It.IsAny<LibraryProgressItem>(), CancellationToken))
+            .Setup(x => x.UpdateItemAsync(library.Id, It.IsAny<LibraryProgressItem>()))
             .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => item.Total.ShouldBe(3))
             .Returns(Task.CompletedTask);
 
@@ -258,8 +257,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
             .Setup(x =>
                 x.UpdateItemAsync(
                     library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == mediaType && p.Received == 2 && p.Total == 3),
-                    CancellationToken
+                    It.Is<LibraryProgressItem>(p => p.MediaType == mediaType && p.Received == 2 && p.Total == 3)
                 )
             )
             .Returns(Task.CompletedTask)
@@ -268,8 +266,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
             .Setup(x =>
                 x.UpdateItemAsync(
                     library.Id,
-                    It.Is<LibraryProgressItem>(p => p.MediaType == mediaType && p.Received == 3 && p.Total == 3),
-                    CancellationToken
+                    It.Is<LibraryProgressItem>(p => p.MediaType == mediaType && p.Received == 3 && p.Total == 3)
                 )
             )
             .Returns(Task.CompletedTask)
