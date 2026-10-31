@@ -8,6 +8,7 @@ import { PhotoAssetKind, PlexMediaType, type PhotoAssetBrowseDTO, type PhotoAsse
 import { useLibraryStore, useMediaStore, usePhotoBrowsingStore } from '@store';
 import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
+import type { ResultDTO } from '@interfaces';
 import { createDefaultMediaOverviewSort } from '@composables';
 
 describe('PhotoBrowsingStore - bounded viewer sequence', () => {
@@ -203,6 +204,37 @@ describe('PhotoBrowsingStore - bounded viewer sequence', () => {
 			]);
 		expect(request.mock.calls.map(([photo]) => photo.id).sort()).toEqual([1, 2, 3]);
 		expect(vi.mocked(media.releasePhotoImageUrl).mock.calls.map(([url]) => url).sort()).toEqual(previousUrls.sort());
+	});
+
+	test('keeps a page-boundary navigation alive while resizing the viewer', async () => {
+		// Arrange
+		const pageOne = Array.from({ length: 100 }, (_, index) => asset(index + 1));
+		const pageTwoAsset = asset(101);
+		const pageTwo = new Subject<ResultDTO<PhotoAssetPageDTO>>();
+		vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockImplementation((query) =>
+			query?.page === 1
+				? of(generateResultDTO({ items: pageOne, page: 1, pageSize: 100, totalCount: 101, totalBytes: 101 } as PhotoAssetPageDTO))
+				: pageTwo.asObservable());
+		useLibraryStore().updateLibrary({ id: 7, plexServerId: 1, type: PlexMediaType.PhotoAlbum, isEnabled: true } as PlexLibraryDTO);
+		const media = useMediaStore();
+		vi.spyOn(media, 'getPhotoImageUrl').mockImplementation((photo) => of(`image-${photo.id}`));
+		vi.spyOn(media, 'releasePhotoImageUrl');
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		const opening = subscribeSpyTo(store.showAsset(99));
+		expect(pageTwo.observed).toBe(true);
+
+		// Act
+		await subscribeSpyTo(store.resizeImages()).onComplete();
+		pageTwo.next(generateResultDTO({ items: [pageTwoAsset], page: 2, pageSize: 100, totalCount: 101, totalBytes: 101 } as PhotoAssetPageDTO));
+		pageTwo.complete();
+		await opening.onComplete();
+
+		// Assert
+		expect(store.current?.id).toBe(100);
+		expect(store.index).toBe(99);
+		expect(store.slides.map((slide) => slide.asset.id).sort((left, right) => left - right)).toEqual([99, 100, 101]);
+		expect(store.slides.every((slide) => slide.url === `image-${slide.asset.id}` && !slide.loading && !slide.error)).toBe(true);
 	});
 
 	test('closes the viewer when its active context is replaced', async () => {

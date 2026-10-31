@@ -298,6 +298,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	let eligibleLibraryIds = new Set<number>();
 	let selectionGeneration = 0;
 	let viewerGeneration = 0;
+	let viewerImageGeneration = 0;
 	let inspectionGeneration = 0;
 	const observedQueues = new Map<string, { status: LibrarySyncJobStatus; completedAt?: string | null; eligible: boolean }>();
 	const pendingRefreshLibraries = new Set<number>();
@@ -492,7 +493,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 		resizeImages(): Observable<void> {
 			cancelImagePreloads();
-			cancelViewerLoads();
+			cancelViewerImageLoads();
 			imagePreloadChanges$.next();
 			return reloadViewerImages();
 		},
@@ -1181,11 +1182,16 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		state.selectionLoading = false;
 	}
 
-	function cancelViewerLoads(): void {
+	function cancelViewerImageLoads(): void {
 		viewerCancel$.next();
 		viewerCancel$.complete();
 		viewerCancel$ = new Subject<void>();
+		viewerImageGeneration += 1;
+	}
+
+	function cancelViewerLoads(): void {
 		viewerGeneration += 1;
+		cancelViewerImageLoads();
 	}
 
 	function cancelBrowseRequests(): void {
@@ -1879,8 +1885,13 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		const { asset, index } = slide;
 		const key = slideKey(asset);
 		const contextAtStart = activeContextKey;
-		const generation = viewerGeneration;
-		const valid = () => generation === viewerGeneration && slideVersions.get(key) === version && contextAtStart === activeContextKey && state.dialog.open && state.slides.includes(slide);
+		const imageGeneration = viewerImageGeneration;
+		const valid = () =>
+			imageGeneration === viewerImageGeneration
+			&& slideVersions.get(key) === version
+			&& contextAtStart === activeContextKey
+			&& state.dialog.open
+			&& state.slides.includes(slide);
 		const source = asset.assetKind === PhotoAssetKind.VideoClip
 			? thumbnailUrl(asset)
 			: mediaStore.getPhotoImageUrl(asset);
@@ -1954,7 +1965,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		}
 		const targetIndex = count > 0 ? normalizeAssetIndex(indexValue, count) : 0;
 		const generation = ++viewerGeneration;
-		viewerCancel$.next();
+		cancelViewerImageLoads();
 		const context = currentContext(false);
 		if (!context) {
 			if (!fallbackAsset) return of(undefined);
