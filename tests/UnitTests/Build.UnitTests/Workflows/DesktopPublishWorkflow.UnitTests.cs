@@ -295,7 +295,14 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         );
         fileSystem.File.WriteAllText(
             fileSystem.Path.Combine(root, "NuGet.Config"),
-            "<configuration><packageSources><clear /></packageSources></configuration>"
+            """
+            <configuration>
+              <packageSources>
+                <clear />
+                <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+              </packageSources>
+            </configuration>
+            """
         );
         fileSystem.Directory.CreateDirectory(paths.FrontendPublicDirectory);
         fileSystem.File.WriteAllText(
