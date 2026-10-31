@@ -167,8 +167,12 @@ interface PhotoBrowseReadContext extends IPhotoBrowseRoute {
 	key: string;
 }
 
-type Surface = 'albums' | 'assets' | 'folders' | 'folderAssets' | 'albumMembers' | 'search';
 type PageItem = PhotoAlbumBrowseDTO | PhotoAssetBrowseDTO | PhotoFolderBrowseDTO;
+interface PhotoPageIdentity {
+	id: number;
+	plexServerId: number;
+	plexLibraryId: number;
+}
 type PageDTO = PhotoAlbumPageDTO | PhotoAssetPageDTO | PhotoFolderPageDTO;
 type SelectionPage = PageDTO | PhotoFolderChildrenDTO;
 type ApiResult<T> = ResultDTO<T>;
@@ -325,6 +329,14 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		folderAssets: new Set<number>(),
 		albumMembers: new Set<number>(),
 		search: new Set<number>(),
+	};
+	const forcedReadIdentities: Record<Surface, Map<number, PhotoPageIdentity[]>> = {
+		albums: new Map<number, PhotoPageIdentity[]>(),
+		assets: new Map<number, PhotoPageIdentity[]>(),
+		folders: new Map<number, PhotoPageIdentity[]>(),
+		folderAssets: new Map<number, PhotoPageIdentity[]>(),
+		albumMembers: new Map<number, PhotoPageIdentity[]>(),
+		search: new Map<number, PhotoPageIdentity[]>(),
 	};
 	const cacheOrder: Array<{ surface: Surface; index: number }> = [];
 	const contextCache = new Map<string, CachedBrowseContext>();
@@ -949,6 +961,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	}
 
 	function clearContextResults(): void {
+		clearForcedReadIdentities();
 		for (const surface of surfaces()) clearSurface(surface);
 		cacheOrder.length = 0;
 		state.folder = null;
@@ -961,17 +974,28 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		state.allVisibleSelected = false;
 	}
 
+	function clearForcedReadIdentities(): void {
+		for (const surface of surfaces()) forcedReadIdentities[surface].clear();
+	}
+
 	function prepareForcedRead(force: boolean): void {
 		if (!force) return;
 		cancelBrowseRequests();
 		invalidatePreloadedImages(state.libraryId > 0 && !state.searchQuery ? new Set([state.libraryId]) : null);
 		contextGeneration += 1;
-		// Keep the first published page visible, but never expose stale distant rows as loaded.
 		for (const surface of surfaces()) {
-			loadedPages[surface].clear();
-			for (const index of feedMaps[surface].keys()) {
+			for (const [index, item] of feedMaps[surface]) {
+				const pageNumber = Math.floor(index / PAGE_SIZE) + 1;
+				const identities = forcedReadIdentities[surface].get(pageNumber) ?? [];
+				identities.push({
+					id: item.id,
+					plexServerId: item.plexServerId,
+					plexLibraryId: item.plexLibraryId,
+				});
+				forcedReadIdentities[surface].set(pageNumber, identities);
 				if (index >= PAGE_SIZE) feedMaps[surface].delete(index);
 			}
+			loadedPages[surface].clear();
 			syncPageState(surface);
 		}
 		compactCacheOrder();
@@ -1109,7 +1133,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		let kind = PhotoItemKind.Asset;
 		if (surface === 'albums') kind = PhotoItemKind.Album;
 		else if (surface === 'folders') kind = PhotoItemKind.Folder;
-		if (force) markSelectorsMissing(previousItems, items, kind);
+		if (force) markSelectorsMissing([...previousItems, ...(forcedReadIdentities[surface].get(pageNumber) ?? [])], items, kind);
 		const first = (pageNumber - 1) * PAGE_SIZE;
 		items.forEach((item, offset) => cacheSurfaceItem(surface, first + offset, item));
 		loadedPages[surface].add(pageNumber);
@@ -1195,6 +1219,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 	}
 
 	function cancelBrowseRequests(): void {
+		clearForcedReadIdentities();
 		cancelImagePreloads();
 		browseCancel$.next();
 		browseCancel$.complete();

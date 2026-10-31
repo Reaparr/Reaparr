@@ -5,7 +5,7 @@ import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateFailedResultDTO, generatePlexLibrary, generateResultDTO, Seed } from '@mock';
 import { plexPhotoApi } from '@api';
 import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
-import { useLibraryStore, usePhotoBrowsingStore } from '@store';
+import { useLibraryStore, useMediaStore, usePhotoBrowsingStore } from '@store';
 import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
@@ -56,6 +56,38 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 		expect(store.selectedSelectors.map((selector) => selector.id)).toEqual([1, 2, 201]);
 		expect(store.allVisibleSelected).toBe(true);
 		expect(store.overviewItemAt(200)).toBeNull();
+	});
+
+	test('keeps a selected later-page identity fresh when a forced viewer refresh republishes it', async () => {
+		const pageOne = Array.from({ length: 100 }, (_, index) => asset(index + 1));
+		const selected = asset(101);
+		const request = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockImplementation((query) => {
+			const page = query?.page ?? 1;
+			const items = page === 1 ? pageOne : [selected];
+			return of(generateResultDTO({ items, page, pageSize: 100, totalCount: 101, totalBytes: 101 } as PhotoAssetPageDTO));
+		});
+		const media = useMediaStore();
+		vi.spyOn(media, 'getPhotoImageUrl').mockImplementation((photo) => of(`image-${photo.id}`));
+		vi.spyOn(media, 'releasePhotoImageUrl');
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		await subscribeSpyTo(store.requestRange(100, 101)).onComplete();
+		store.toggleAsset(selected, true);
+		await subscribeSpyTo(store.openAsset(selected, 100)).onComplete();
+
+		await subscribeSpyTo(store.loadCurrent(true)).onComplete();
+
+		expect(request.mock.calls.filter(([query]) => query?.page === 2).length).toBeGreaterThan(1);
+		expect(store.selectionStale).toBe(false);
+		expect(store.selectedSelectors).toEqual([{
+			id: selected.id,
+			plexServerId: selected.plexServerId,
+			plexLibraryId: selected.plexLibraryId,
+			kind: PhotoItemKind.Asset,
+			type: PlexMediaType.PhotoImage,
+			title: selected.title,
+			stale: false,
+		}]);
 	});
 
 	test('does not partially mutate selection when a later enumeration page fails', async () => {
