@@ -110,6 +110,13 @@ Deferred proposals, requests for details, and unanswered questions do not belong
 - **Affected code:** `src/Application/Integrations/Radarr/UpdateRadarrIntegration/UpdateRadarrIntegrationEndpoint.cs`; `src/Application/Integrations/Sonarr/UpdateSonarrIntegration/UpdateSonarrIntegrationEndpoint.cs`; setup/delete consumers and target-change regression tests.
 - **Reason:** Not provided.
 
+## I96 — 2026-10-22 — Prevent overlapping library destination saves
+
+- **Problem:** Two destination saves for the same library can finish out of order, restoring an older selection in the UI or database.
+- **Proposed fix:** Allow one store-owned destination save per library at a time, disable its picker while pending, retain the previous value on failure, and allow retry without cancelling an accepted save when the dialog closes.
+- **Affected code:** `src/AppHost/ClientApp/src/store/libraryStore.ts`; `src/AppHost/ClientApp/src/components/Dialogs/ServerDialog/Tabs/ServerLibrariesTabContent.vue`; destination-save regression tests.
+- **Reason:** Not provided.
+
 ## Record format
 
 For each denial, record:
