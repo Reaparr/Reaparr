@@ -58,11 +58,7 @@ public class ScheduleAffectedLibraryComparisonJobsCommandHandler
             return Result.Fail("Library {PlexLibraryId} was not found or was disabled", command.PlexLibraryId);
 
         if (!sourceLibrary.Type.SupportsComparison())
-            return Result.Fail(
-                "Library {PlexLibraryId} is of type {PlexLibraryType} which does not support comparison",
-                sourceLibrary.Id,
-                sourceLibrary.Type
-            );
+            return Result.Ok();
 
         var targetLibraries = await _dbContext
             .PlexLibraries.Where(x => x.Id != sourceLibrary.Id && x.Type == sourceLibrary.Type)

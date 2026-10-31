@@ -96,6 +96,121 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
     }
 
     [Test]
+    [Arguments(PlexMediaType.OtherVideos)]
+    [Arguments(PlexMediaType.PhotoAlbum)]
+    public async Task ShouldReturnSuccessWithoutScheduling_WhenLibraryTypeDoesNotSupportComparison(
+        PlexMediaType type
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            91117,
+            config =>
+            {
+                config.PlexServerCount = 2;
+                config.PlexMovieLibraryCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        libraries.Count.ShouldBe(2);
+        await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.Type, type), CancellationToken);
+        await dbContext.PlexServers.ExecuteUpdateAsync(
+            x => x.SetProperty(y => y.OwnedOverride, false),
+            CancellationToken
+        );
+        await SetOwnedOverrideAsync(libraries[0].PlexServerId, true);
+        var ownership = await dbContext.PlexLibraries
+            .OrderBy(x => x.Id)
+            .SelectOwnership()
+            .ToListAsync(CancellationToken);
+        ownership.ShouldBe(
+            [
+                new PlexLibraryOwnership(libraries[0].Id, type, true),
+                new PlexLibraryOwnership(libraries[1].Id, type, false),
+            ]
+        );
+
+        // Act
+        var result = await TestHandlerExecuteAsync(
+            new ScheduleAffectedLibraryComparisonJobsCommand(libraries[0].Id)
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        Mock.Mock<IScheduler>()
+            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>()
+            .Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>()
+            .Verify(
+                x =>
+                    x.ScheduleJobs(
+                        It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
+                        false,
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Never()
+            );
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldReturnFailure_WhenLibraryIsMissingOrDisabled(bool disabled)
+    {
+        // Arrange
+        await SetupDatabase(
+            91118,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var libraryId = library.Id;
+        if (disabled)
+        {
+            var updated = await dbContext
+                .PlexLibraries.IgnoreIsEnabledFilter()
+                .Where(x => x.Id == libraryId)
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+            updated.ShouldBe(1);
+            (await dbContext.PlexLibraries.IgnoreIsEnabledFilter().SingleAsync(CancellationToken)).IsEnabled.ShouldBeFalse();
+        }
+        else
+        {
+            libraryId = int.MaxValue;
+            (await dbContext.PlexLibraries.IgnoreIsEnabledFilter().AnyAsync(x => x.Id == libraryId, CancellationToken))
+                .ShouldBeFalse();
+        }
+
+        // Act
+        var result = await TestHandlerExecuteAsync(new ScheduleAffectedLibraryComparisonJobsCommand(libraryId));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        Mock.Mock<IScheduler>()
+            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>()
+            .Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>()
+            .Verify(
+                x =>
+                    x.ScheduleJobs(
+                        It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
+                        false,
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Never()
+            );
+    }
+
+    [Test]
     [Arguments(false, false)]
     [Arguments(false, true)]
     [Arguments(true, false)]
@@ -282,8 +397,6 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
 
     [Test]
     [Arguments(PlexMediaType.MusicArtist)]
-    [Arguments(PlexMediaType.OtherVideos)]
-    [Arguments(PlexMediaType.PhotoAlbum)]
     public async Task ShouldNotSchedule_WhenNoEligiblePairExists(PlexMediaType type)
     {
         // Arrange
