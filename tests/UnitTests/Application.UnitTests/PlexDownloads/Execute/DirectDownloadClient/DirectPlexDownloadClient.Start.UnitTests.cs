@@ -1475,7 +1475,14 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
     }
 
     [Test]
-    public async Task ShouldReportVerifiedFileSizeAsDataTotal_WhenCompletedFileIsLargerThanSeededMetadata()
+    [Arguments(-1024, true)]
+    [Arguments(1024, true)]
+    [Arguments(-1024, false)]
+    [Arguments(1024, false)]
+    public async Task ShouldReportTransferSize_WhenCompletedFileDiffersFromSeededMetadata(
+        long sizeDifference,
+        bool raiseCompletionEvent
+    )
     {
         // Arrange
         await SetupDatabase(
@@ -1491,7 +1498,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var seededMetadataSize = downloadTask.DataTotal;
-        var verifiedFileSize = seededMetadataSize + 1024;
+        var verifiedFileSize = seededMetadataSize + sizeDifference;
         var serverMachineIdentifier = await dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
         var completionPackage = MakeDownloadPackage(verifiedFileSize);
         var fileMock = new Mock<IFile>();
@@ -1530,11 +1537,12 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                 {
                     SetupVerifiedFile(fileMock, fileInfoFactoryMock, targetPath, verifiedFileSize);
 
-                    downloadServiceMock.Raise(
-                        x => x.DownloadFileCompleted += null,
-                        downloadServiceMock.Object,
-                        new AsyncCompletedEventArgs(null, false, completionPackage)
-                    );
+                    if (raiseCompletionEvent)
+                        downloadServiceMock.Raise(
+                            x => x.DownloadFileCompleted += null,
+                            downloadServiceMock.Object,
+                            new AsyncCompletedEventArgs(null, false, completionPackage)
+                        );
                     return Task.CompletedTask;
                 }
             );
@@ -1545,6 +1553,22 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .Verify(
+                x => x.OnStatusChangedAsync(downloadTask.ToKey(), DomainDownloadStatus.DownloadFinished, CancellationToken.None),
+                Times.Once()
+            );
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .Verify(
+                x => x.OnStatusChangedAsync(
+                    It.IsAny<DownloadTaskKey>(),
+                    It.IsAny<DomainDownloadStatus>(),
+                    It.IsAny<Result?>(),
+                    It.IsAny<CancellationToken>()
+                ),
+                Times.Never()
+            );
 
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Verify(
@@ -1743,7 +1767,13 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
     }
 
     [Test]
-    public async Task ShouldRejectCompletedEvent_WhenVerifiedFileIsIncomplete()
+    [Arguments(-1, true)]
+    [Arguments(1, true)]
+    [Arguments(-1, false)]
+    public async Task ShouldRejectCompletedEvent_WhenFileLengthDoesNotMatchExpectedSize(
+        long sizeDifference,
+        bool hasTransferSize
+    )
     {
         // Arrange
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
@@ -1795,8 +1825,9 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         var fileMock = new Mock<IFile>();
         var fileInfoFactoryMock = new Mock<IFileInfoFactory>();
-        var package = MakeDownloadPackage(downloadTask.DataTotal);
-        var incompleteSize = downloadTask.DataTotal / 4;
+        var expectedSize = hasTransferSize ? downloadTask.DataTotal / 2 : downloadTask.DataTotal;
+        var package = MakeDownloadPackage(hasTransferSize ? expectedSize : 0);
+        var incompleteSize = expectedSize + sizeDifference;
         var downloadServiceMock = new Mock<IDownloadService>();
         downloadServiceMock.Setup(x => x.Clear()).Returns(Task.CompletedTask);
         downloadServiceMock.Setup(x => x.CancelTaskAsync()).Returns(Task.CompletedTask);
@@ -1824,6 +1855,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         // Assert
         result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
         result.ToString().ShouldContain("file is incomplete");
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Verify(

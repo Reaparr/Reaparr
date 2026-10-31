@@ -302,11 +302,14 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
             && snapshot.TotalFileSize == downloadTask.DataTotal
         )
         {
-            var artifactResult = ValidateResumeArtifact(snapshot);
-            if (artifactResult.IsFailed)
-                return artifactResult;
+            if (!HasRenamedDownloadFile(snapshot))
+            {
+                var artifactResult = ValidateResumeArtifact(snapshot);
+                if (artifactResult.IsFailed)
+                    return artifactResult;
 
-            requiredBytes = GetRemainingDownloadBytes(snapshot);
+                requiredBytes = GetRemainingDownloadBytes(snapshot);
+            }
         }
 
         // A fully persisted resume already has its directory and needs no more file data.
@@ -348,6 +351,11 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         CancellationToken cancellationToken
     )
     {
+        // Downloader renames a completed file before Reaparr verifies it. Saved offsets
+        // from a rejected completion cannot be resumed against that renamed file.
+        if (snapshot is not null && HasRenamedDownloadFile(snapshot))
+            snapshot = null;
+
         if (snapshot is { Chunks.Count: > 0 })
         {
             var artifactResult = ValidateResumeArtifact(snapshot);
@@ -379,6 +387,9 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         await _downloader.DownloadFileTaskAsync(downloadUrl, downloaderTargetPath, cancellationToken);
         return Result.Ok();
     }
+
+    private bool HasRenamedDownloadFile(DirectDownloadSnapshot snapshot) =>
+        _file.Exists(snapshot.FileName) && !_file.Exists(snapshot.FileName + snapshot.DownloadingFileExtension);
 
     private Result ValidateResumeArtifact(DirectDownloadSnapshot snapshot) =>
         Result.Try(() =>
@@ -591,6 +602,10 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                 .LogError();
         }
 
+        // Plex's indexed media size can differ from the representation served for download.
+        // Prefer the transfer's total; retain the indexed size when no transfer length is available.
+        expectedFileSize = package.TotalFileSize > 0 ? package.TotalFileSize : expectedFileSize;
+
         var completedFilePath = downloadFilePath.RemoveReapTempSuffix();
         var existingPath = _file.Exists(completedFilePath) ? completedFilePath : downloadFilePath;
 
@@ -604,7 +619,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         }
 
         var actualFileSize = _fileInfoFactory.New(existingPath).Length;
-        if (actualFileSize < expectedFileSize)
+        if (actualFileSize != expectedFileSize)
         {
             return Result
                 .Fail<long>(
