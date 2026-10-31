@@ -7,7 +7,7 @@ import { generateLibrarySyncJobQueue, generatePlexAccount, generatePlexLibrary, 
 import { plexPhotoApi } from '@api';
 import { useAccountStore, useLibraryStore, useMediaStore, usePhotoBrowsingStore, useSignalrStore } from '@store';
 import { mockPhotoMetadata } from '../../helpers/photo-metadata';
-import { LibrarySyncJobStatus, PhotoAssetKind, PlexMediaType, type PhotoAssetBrowseDTO } from '@dto';
+import { LibrarySyncJobStatus, PhotoAssetKind, PhotoImageRepresentation, PlexMediaType, type PhotoAssetBrowseDTO } from '@dto';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
 
@@ -17,7 +17,7 @@ const route = (libraryId = 7): IPhotoBrowseActivation => ({
 });
 const asset = (id: number, libraryId = 7): PhotoAssetBrowseDTO => ({
 	id, plexServerId: 1, plexLibraryId: libraryId, plexServerName: 'Server', plexLibraryTitle: 'Photos', title: `Asset ${id}`,
-	assetKind: PhotoAssetKind.Image, container: 'jpg', originalFilename: `${id}.jpg`, hasThumbnail: false,
+	assetKind: PhotoAssetKind.Image, container: 'jpg', originalFilename: `${id}.jpg`, hasThumbnail: true,
 	plexApiRatingKey: id, plexApiMetaDataKey: id, size: 10,
 });
 const activate = async (libraryId = 7) => {
@@ -120,6 +120,28 @@ describe('PhotoBrowsingStore - background image preloading', () => {
 		expect(pending.observed).toBe(false);
 	});
 
+
+	test('Should replace in-flight background previews when the viewport changes', async () => {
+		// Arrange
+		const oldSize = new Subject<void>();
+		const newSize = new Subject<void>();
+		vi.spyOn(useMediaStore(), 'preloadPhotoImage').mockReturnValueOnce(oldSize).mockReturnValue(newSize);
+		await activate();
+		const store = usePhotoBrowsingStore();
+		store.setImagePreloadCandidate(asset(1), true, owner);
+		await settle();
+		expect(oldSize.observed).toBe(true);
+
+		// Act
+		await subscribeSpyTo(store.resizeImages()).onComplete();
+		await settle();
+
+		// Assert
+		expect(oldSize.observed).toBe(false);
+		expect(newSize.observed).toBe(true);
+		store.setImagePreloadCandidate(asset(1), false, owner);
+		expect(newSize.observed).toBe(false);
+	});
 	test('Should cancel old folder work and allow the new context to preload immediately', async () => {
 		// Arrange
 		const old = new Subject<void>();
@@ -147,7 +169,7 @@ describe('PhotoBrowsingStore - background image preloading', () => {
 		const stopped: number[] = [];
 		const preload = vi.spyOn(useMediaStore(), 'preloadPhotoImage').mockImplementation((photo) =>
 			new Subject<void>().pipe(finalize(() => stopped.push(photo.id))));
-		const foreground = vi.spyOn(useMediaStore(), 'getPhotoImageUrl').mockImplementation((photo) => of(`original-${photo.id}`));
+		const foreground = vi.spyOn(useMediaStore(), 'getPhotoImageUrl').mockImplementation((photo) => of(`thumbnail-${photo.id}`));
 		await activate();
 		const store = usePhotoBrowsingStore();
 		for (const id of [4, 5, 1]) store.setImagePreloadCandidate(asset(id), true, owner);
@@ -160,7 +182,7 @@ describe('PhotoBrowsingStore - background image preloading', () => {
 		// Assert
 		expect(foreground.mock.calls.map(([photo]) => photo.id)).toEqual([2, 3, 1]);
 		expect(store.current?.id).toBe(2);
-		expect(store.slides.find((slide) => slide.asset.id === 2)?.url).toBe('original-2');
+		expect(store.slides.find((slide) => slide.asset.id === 2)?.url).toBe('thumbnail-2');
 		expect(stopped).toEqual([4, 5]);
 		await settle();
 		expect(preload.mock.calls.map(([photo]) => photo.id)).toEqual([4, 5]);
@@ -216,11 +238,13 @@ describe('PhotoBrowsingStore - background image preloading', () => {
 			await nextTick();
 			await activate();
 		} else await subscribeSpyTo(store.loadCurrent(true)).onComplete();
-		const response = subscribeSpyTo(useMediaStore().getPhotoImageUrl(asset(1), 'original'));
+		const response = subscribeSpyTo(useMediaStore().getPhotoImageUrl(asset(1)));
 		await response.onComplete();
 
 		// Assert
-		expect(mock.history.get.filter((request) => request.url?.endsWith('/image'))).toHaveLength(2);
+		const previewRequests = mock.history.get.filter((request) => request.url?.endsWith('/image'));
+		expect(previewRequests).toHaveLength(2);
+		expect(previewRequests.every((request) => request.params.representation === PhotoImageRepresentation.Converted)).toBe(true);
 		expect(response.getLastValue()).toBe('blob:image-2');
 		useMediaStore().releasePhotoImageUrl(response.getLastValue()!);
 	});

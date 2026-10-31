@@ -176,8 +176,12 @@ export class PlexPhoto {
     plexLibraryId: number,
     assetId: number,
     query: {
+      /** @format int32 */
+      height?: number | null;
       /** @example "original" */
       representation: PhotoImageRepresentation;
+      /** @format int32 */
+      width?: number | null;
     },
     params: RequestParams = {},
   ) =>
@@ -317,8 +321,12 @@ export class PlexPhotoPaths {
     plexLibraryId: number,
     assetId: number,
     query: {
+      /** @format int32 */
+      height?: number | null;
       /** @example "original" */
       representation: PhotoImageRepresentation;
+      /** @format int32 */
+      width?: number | null;
     },
   ) =>
     queryString.stringifyUrl({

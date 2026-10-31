@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog.Sinks.TestCorrelator;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -69,7 +71,7 @@ public class GetPhotoAssetImageEndpointUnitTests
     }
 
     [Test]
-    public async Task ShouldConvertFromOriginalPartWithNativeDimensionsAndTransparentFormat()
+    public async Task ShouldConvertFromOriginalPartWithRequestedDimensionsAndTransparentFormat()
     {
         // Arrange
         await SetupDatabase(
@@ -113,6 +115,8 @@ public class GetPhotoAssetImageEndpointUnitTests
                 PlexLibraryId = asset.PlexLibraryId,
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Converted,
+                Width = 320,
+                Height = 240,
             },
             services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
         );
@@ -127,20 +131,21 @@ public class GetPhotoAssetImageEndpointUnitTests
         uri.AbsolutePath.ShouldBe("/photo/:/transcode");
         var query = QueryHelpers.ParseQuery(uri.Query);
         query["format"].ToString().ShouldBe("png");
-        query["width"].ToString().ShouldBe("6000");
-        query["height"].ToString().ShouldBe("4000");
+        query["width"].ToString().ShouldBe("320");
+        query["height"].ToString().ShouldBe("240");
         query["quality"].ToString().ShouldBe("-1");
         query["upscale"].ToString().ShouldBe("0");
         query["minSize"].ToString().ShouldBe("0");
         query["rotate"].ToString().ShouldBe("1");
         query["url"].ToString().ShouldContain(partKey);
+        query["url"].ToString().ShouldNotContain("/library/metadata/");
         query["url"].ToString().ShouldContain("X-Plex-Token=");
         uri.ToString().ShouldNotContain(sourcePath);
         clientFactory.Verify(x => x.CreateClient(HttpClientModule.PlexThumbnailClientName), Times.Once);
     }
 
     [Test]
-    public async Task ShouldKeepNativeOriginalAvailableButRejectConversion_WhenDimensionsAreAbsent()
+    public async Task ShouldKeepNativeOriginalAvailableButRejectConversion_WhenSourceDimensionsAreAbsent()
     {
         // Arrange
         await SetupDatabase(
@@ -173,6 +178,8 @@ public class GetPhotoAssetImageEndpointUnitTests
                 PlexLibraryId = asset.PlexLibraryId,
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Converted,
+                Width = 320,
+                Height = 240,
             },
             services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(conversionFactory.Object)
         );
@@ -200,6 +207,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         original.ContentType.ShouldBe("image/jpeg");
         ((MemoryStream)original.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe([5, 6]);
         originalHandler.RequestUris.Count.ShouldBe(1);
+        originalHandler.RequestUris[0].AbsolutePath.ShouldBe(asset.Key);
         conversionFactory.Verify();
         originalFactory.Verify();
     }
@@ -388,6 +396,40 @@ public class GetPhotoAssetImageEndpointUnitTests
     }
 
     [Test]
+    [Arguments(null, 100)]
+    [Arguments(100, null)]
+    [Arguments(0, 100)]
+    [Arguments(100, 0)]
+    [Arguments(4097, 100)]
+    [Arguments(100, 4097)]
+    public async Task ShouldRejectConvertedDimensionsBeforeRequestingPlex(int? width, int? height)
+    {
+        // Arrange
+        var handler = new StubHttpMessageHandler();
+        var clientFactory = CreateClientFactory(handler, expectedCalls: 0);
+        var request = new GetPhotoAssetImageRequest
+        {
+            PlexLibraryId = 1,
+            AssetId = 1,
+            Representation = PhotoImageRepresentation.Converted,
+            Width = width,
+            Height = height,
+        };
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            request,
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+
+        // Assert
+        result.IsValid.ShouldBeFalse();
+        result.ValidationErrors.Count.ShouldBe(1);
+        handler.RequestUris.ShouldBeEmpty();
+        clientFactory.Verify();
+    }
+
+    [Test]
     [Arguments("")]
     [Arguments("W/")]
     [Arguments("\"unrelated\", ")]
@@ -486,7 +528,12 @@ public class GetPhotoAssetImageEndpointUnitTests
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var originalETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
         if (changeRepresentation)
-            request = request with { Representation = PhotoImageRepresentation.Converted };
+            request = request with
+            {
+                Representation = PhotoImageRepresentation.Converted,
+                Width = 320,
+                Height = 240,
+            };
         else
         {
             var updatedAt = (asset.UpdatedAt ?? asset.AddedAt).AddSeconds(1);
@@ -508,6 +555,121 @@ public class GetPhotoAssetImageEndpointUnitTests
         handler
             .RequestUris.Select(x => x.AbsolutePath)
             .ShouldBe([asset.Key, changeRepresentation ? "/photo/:/transcode" : asset.Key]);
+        clientFactory.Verify();
+    }
+
+    [Test]
+    public async Task ShouldReturnNotModifiedWithoutRequestingPlex_WhenConvertedETagMatches()
+    {
+        // Arrange
+        await SetupDatabase(
+            84014,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        var handler = new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) }
+        );
+        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        var clientFactory = CreateClientFactory(handler);
+        var request = new GetPhotoAssetImageRequest
+        {
+            PlexLibraryId = asset.PlexLibraryId,
+            AssetId = asset.Id,
+            Representation = PhotoImageRepresentation.Converted,
+            Width = 320,
+            Height = 240,
+        };
+        var initial = await TestEndpointHandleAsync(
+            request,
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+        initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var etag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
+        var endpoint = initial.Endpoint;
+        endpoint.HttpContext.Response.Clear();
+        endpoint.HttpContext.Request.Headers.IfNoneMatch = $"W/{etag}";
+
+        // Act
+        await endpoint.HandleAsync(request, CancellationToken);
+
+        // Assert
+        endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status304NotModified);
+        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe(Array.Empty<byte>());
+        endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBe(etag);
+        endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.Private.ShouldBeTrue();
+        endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.MaxAge.ShouldBe(TimeSpan.FromDays(3));
+        handler.RequestUris.Count.ShouldBe(1);
+        clientFactory.Verify();
+    }
+
+    [Test]
+    public async Task ShouldFetchNewConvertedImage_WhenConditionalETagHasDifferentTargetDimensions()
+    {
+        // Arrange
+        await SetupDatabase(
+            84015,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        var handler = new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2]) },
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([3, 4]) }
+        );
+        foreach (var response in handler.Responses)
+            response.Content.Headers.ContentType = new("image/jpeg");
+        var clientFactory = CreateClientFactory(handler, expectedCalls: 2);
+        var request = new GetPhotoAssetImageRequest
+        {
+            PlexLibraryId = asset.PlexLibraryId,
+            AssetId = asset.Id,
+            Representation = PhotoImageRepresentation.Converted,
+            Width = 320,
+            Height = 240,
+        };
+        var initial = await TestEndpointHandleAsync(
+            request,
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+        initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var firstETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
+        firstETag.ShouldContain("320x240");
+        var endpoint = initial.Endpoint;
+        endpoint.HttpContext.Response.Clear();
+        request = request with
+        {
+            Width = 640,
+            Height = 480,
+        };
+        endpoint.HttpContext.Request.Headers.IfNoneMatch = firstETag;
+
+        // Act
+        await endpoint.HandleAsync(request, CancellationToken);
+
+        // Assert
+        endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe([3, 4]);
+        var secondETag = endpoint.HttpContext.Response.Headers.ETag.ToString();
+        secondETag.ShouldNotBe(firstETag);
+        secondETag.ShouldContain("640x480");
+        var secondQuery = QueryHelpers.ParseQuery(handler.RequestUris[1].Query);
+        secondQuery["width"].ToString().ShouldBe("640");
+        secondQuery["height"].ToString().ShouldBe("480");
+        handler.RequestUris.Count.ShouldBe(2);
         clientFactory.Verify();
     }
 
@@ -710,11 +872,13 @@ public class GetPhotoAssetImageEndpointUnitTests
         );
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        var failure = new IOException("The upstream image stream failed.");
         var handler = new StubHttpMessageHandler(
-            new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnreadableImageContent() }
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnreadableImageContent(failure) }
         );
         handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
+        using var logContext = TestCorrelator.CreateContext();
 
         // Act
         var result = await TestEndpointHandleAsync(
@@ -724,7 +888,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object).AddSingleton<ILogger>(Serilog.Log.Logger)
         );
 
         // Assert
@@ -733,13 +897,116 @@ public class GetPhotoAssetImageEndpointUnitTests
         result.Endpoint.HttpContext.Response.Headers.CacheControl.ToString().ShouldBe("no-store");
         result.Endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBeEmpty();
         handler.RequestUris.Count.ShouldBe(1);
+        var warnings = TestCorrelator.GetLogEventsFromCurrentContext()
+            .Where(x => x.MessageTemplate.Text == "{Message}" && x.Exception is not null)
+            .ToList();
+        warnings.Count.ShouldBe(1);
+        warnings.Single().Exception!.GetBaseException().ShouldBeSameAs(failure);
         clientFactory.Verify();
     }
 
-    private sealed class UnreadableImageContent : HttpContent
+    [Test]
+    public async Task ShouldAbortPartialImageAndPreserveFailure_WhenUpstreamStreamFailsAfterWritingBytes()
+    {
+        // Arrange
+        await SetupDatabase(
+            84013,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        byte[] payload = [1, 2, 3];
+        var failure = new IOException("The upstream connection ended during the image.");
+        var handler = new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new FailingImageStream(payload, failure)) }
+        );
+        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        var clientFactory = CreateClientFactory(handler);
+        using var body = new MemoryStream();
+        var lifetime = new Mock<IHttpRequestLifetimeFeature>(MockBehavior.Strict);
+        lifetime.Setup(x => x.Abort()).Verifiable(Times.Once());
+        var endpoint = SetupEndpointUnitTest<GetPhotoAssetImageEndpoint>(services =>
+            services.AddMemoryCache()
+                .AddSingleton<IHttpClientFactory>(clientFactory.Object)
+                .AddSingleton<ILogger>(Serilog.Log.Logger)
+        );
+        endpoint.HttpContext.Features.Set<IHttpResponseFeature>(new StreamingResponseFeature(body));
+        endpoint.HttpContext.Response.Body = body;
+        endpoint.HttpContext.Features.Set(lifetime.Object);
+        var request = new GetPhotoAssetImageRequest
+        {
+            PlexLibraryId = asset.PlexLibraryId,
+            AssetId = asset.Id,
+            Representation = PhotoImageRepresentation.Original,
+        };
+        var validation = await ValidateEndpointRequestAsync(request, CancellationToken);
+        validation.ShouldNotBeNull();
+        validation.IsValid.ShouldBeTrue();
+        endpoint.HttpContext.Response.HasStarted.ShouldBeFalse();
+        using var logContext = TestCorrelator.CreateContext();
+
+        // Act
+        await endpoint.HandleAsync(request, CancellationToken);
+
+        // Assert
+        body.ToArray().ShouldBe(payload);
+        endpoint.HttpContext.Response.HasStarted.ShouldBeTrue();
+        endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        endpoint.HttpContext.Response.ContentType.ShouldBe("image/jpeg");
+        handler.RequestUris.Select(x => x.AbsolutePath).ShouldBe([asset.Key]);
+        var warnings = TestCorrelator.GetLogEventsFromCurrentContext()
+            .Where(x => x.MessageTemplate.Text == "Photo image transport failed after response started: {Message}")
+            .ToList();
+        warnings.Count.ShouldBe(1);
+        warnings.Single().Exception.ShouldBeSameAs(failure);
+        lifetime.Verify();
+        clientFactory.Verify();
+    }
+
+    private sealed class StreamingResponseFeature(MemoryStream body) : HttpResponseFeature
+    {
+        public override bool HasStarted => body.Length > 0;
+    }
+
+    private sealed class FailingImageStream(byte[] payload, IOException failure) : Stream
+    {
+        private bool _read;
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (_read)
+                return ValueTask.FromException<int>(failure);
+            payload.CopyTo(buffer.Span);
+            _read = true;
+            return ValueTask.FromResult(payload.Length);
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    private sealed class UnreadableImageContent(IOException failure) : HttpContent
     {
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
-            Task.FromException(new IOException("The upstream image stream failed."));
+            Task.FromException(failure);
 
         protected override bool TryComputeLength(out long length)
         {

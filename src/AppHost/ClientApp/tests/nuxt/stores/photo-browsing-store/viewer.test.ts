@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { of } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateResultDTO } from '@mock';
 import { plexPhotoApi } from '@api';
@@ -33,7 +33,7 @@ describe('PhotoBrowsingStore - bounded viewer sequence', () => {
 		vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockReturnValue(of(generateResultDTO({ items, page: 1, pageSize: 100, totalCount, totalBytes: totalCount } as PhotoAssetPageDTO)));
 		useLibraryStore().updateLibrary({ id: 7, plexServerId: 1, type: PlexMediaType.PhotoAlbum, isEnabled: true } as PlexLibraryDTO);
 		const media = useMediaStore();
-		vi.spyOn(media, 'getPhotoImageUrl').mockImplementation((photo, representation) => of(`${representation}-${photo.id}`));
+		vi.spyOn(media, 'getPhotoImageUrl').mockImplementation((photo) => of(`image-${photo.id}`));
 		vi.spyOn(media, 'getMediaThumbnailUrl').mockReturnValue(of('thumb'));
 		vi.spyOn(media, 'releasePhotoImageUrl');
 	}
@@ -66,7 +66,7 @@ describe('PhotoBrowsingStore - bounded viewer sequence', () => {
 		expect(store.focusIndex).toBeNull();
 	});
 
-	test('keeps at most three unique slides and releases original URLs outside the window', async () => {
+	test('keeps at most three unique slides and releases image thumbnail URLs outside the window', async () => {
 		const items = Array.from({ length: 10 }, (_, index) => asset(index + 1));
 		setupAssets(items, 10);
 		const media = useMediaStore();
@@ -80,39 +80,129 @@ describe('PhotoBrowsingStore - bounded viewer sequence', () => {
 		expect(media.releasePhotoImageUrl).toHaveBeenCalled();
 	});
 
-	test('uses converted originals after original failure and thumbnails only for clips', async () => {
+	test('uses leased thumbnails for images and unleased thumbnails for clips', async () => {
 		const still = asset(1);
 		const clip = asset(2, PhotoAssetKind.VideoClip);
 		setupAssets([still, clip]);
 		const media = useMediaStore();
-		vi.spyOn(media, 'getPhotoImageUrl').mockImplementation((_photo, representation) => of(representation === 'original' ? '' : 'converted-url'));
+		const imageRequest = vi.spyOn(media, 'getPhotoImageUrl').mockReturnValue(of('image-url'));
+		const thumbnailRequest = vi.spyOn(media, 'getMediaThumbnailUrl').mockReturnValue(of('thumb-url'));
 		const store = usePhotoBrowsingStore();
 		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
 		await subscribeSpyTo(store.openAsset(still, 0)).onComplete();
-		expect(store.slides.find((slide) => slide.asset.id === 1)?.representation).toBe('converted');
+
+		expect(store.slides.find((slide) => slide.asset.id === 1)).toEqual(expect.objectContaining({ url: 'image-url', error: false }));
+		expect(imageRequest).toHaveBeenCalledTimes(1);
+		expect(imageRequest).toHaveBeenCalledWith(still);
+
 		await subscribeSpyTo(store.showAsset(1)).onComplete();
-		expect(store.slides.find((slide) => slide.asset.id === 2)?.representation).toBe('preview');
-		expect(media.getPhotoImageUrl).toHaveBeenCalledTimes(2);
+		expect(store.slides.find((slide) => slide.asset.id === 2)).toEqual(expect.objectContaining({ url: 'thumb-url', error: false }));
+		expect(imageRequest).toHaveBeenCalledTimes(1);
+		expect(thumbnailRequest).toHaveBeenCalled();
+
+		store.closeAssetDialog();
+		expect(media.releasePhotoImageUrl).toHaveBeenCalledWith('image-url');
+		expect(media.releasePhotoImageUrl).not.toHaveBeenCalledWith('thumb-url');
 	});
 
-	test('advances decoded-image failures from converted to preview to terminal error without looping', async () => {
+	test.each([PhotoAssetKind.Image, PhotoAssetKind.VideoClip])('shows a display error when a %s preview request fails', async (kind) => {
+		// Arrange
+		const item = asset(1, kind);
+		setupAssets([item]);
+		const media = useMediaStore();
+		const failure = throwError(() => new Error('Preview unavailable'));
+		vi.spyOn(media, 'getPhotoImageUrl').mockReturnValue(failure);
+		vi.spyOn(media, 'getMediaThumbnailUrl').mockReturnValue(failure);
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+
+		// Act
+		await subscribeSpyTo(store.openAsset(item, 0)).onComplete();
+
+		// Assert
+		expect(store.slides[0]).toEqual(expect.objectContaining({ asset: item, url: '', loading: false, error: true }));
+		expect(store.current?.id).toBe(item.id);
+		expect(store.dialog.open).toBe(true);
+		expect(store.navigating).toBe(false);
+	});
+
+	test('keeps decoded-image failures terminal without fallback loops and retries the thumbnail', async () => {
 		const item = asset(1);
 		setupAssets([item]);
 		const media = useMediaStore();
-		const imageRequest = vi.spyOn(media, 'getPhotoImageUrl').mockImplementation((_photo, representation) => of(`${representation}-url`));
-		const thumbnailRequest = vi.spyOn(media, 'getMediaThumbnailUrl').mockReturnValue(of('preview-url'));
+		const imageRequest = vi.spyOn(media, 'getPhotoImageUrl').mockReturnValue(of('image-url'));
+		const thumbnailRequest = vi.spyOn(media, 'getMediaThumbnailUrl').mockReturnValue(of('thumb-url'));
 		const store = usePhotoBrowsingStore();
 		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
 		await subscribeSpyTo(store.openAsset(item, 0)).onComplete();
 
+		expect(imageRequest).toHaveBeenCalledTimes(1);
 		await subscribeSpyTo(store.imageFailed(0)).onComplete();
-		expect(store.slides[0]!.representation).toBe('converted');
+		expect(store.slides[0]).toEqual(expect.objectContaining({ url: '', loading: false, error: true }));
+		expect(imageRequest).toHaveBeenCalledTimes(1);
+		expect(thumbnailRequest).not.toHaveBeenCalled();
+
 		await subscribeSpyTo(store.imageFailed(0)).onComplete();
-		expect(store.slides[0]).toEqual(expect.objectContaining({ representation: 'preview', url: 'preview-url', error: false }));
-		await subscribeSpyTo(store.imageFailed(0)).onComplete();
-		expect(store.slides[0]).toEqual(expect.objectContaining({ representation: 'preview', url: '', loading: false, error: true }));
+		expect(store.slides[0]).toEqual(expect.objectContaining({ url: '', loading: false, error: true }));
+		expect(imageRequest).toHaveBeenCalledTimes(1);
+
+		await subscribeSpyTo(store.retryImage()).onComplete();
+		expect(store.slides[0]).toEqual(expect.objectContaining({ url: 'image-url', loading: false, error: false }));
 		expect(imageRequest).toHaveBeenCalledTimes(2);
-		expect(thumbnailRequest).toHaveBeenCalledTimes(1);
+	});
+
+	test('cancels unfinished previews before loading the resized image', async () => {
+		// Arrange
+		const item = asset(1);
+		setupAssets([item]);
+		const pending = new Subject<string>();
+		const media = useMediaStore();
+		const request = vi.spyOn(media, 'getPhotoImageUrl').mockReturnValueOnce(pending).mockReturnValue(of('resized-image'));
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		const opening = subscribeSpyTo(store.openAsset(item, 0));
+		expect(pending.observed).toBe(true);
+
+		// Act
+		await subscribeSpyTo(store.resizeImages()).onComplete();
+		await opening.onComplete();
+		pending.next('obsolete-image');
+
+		// Assert
+		expect(pending.observed).toBe(false);
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(store.slides[0]).toEqual(expect.objectContaining({ url: 'resized-image', loading: false, error: false }));
+		expect(store.current?.id).toBe(item.id);
+		expect(store.navigating).toBe(false);
+	});
+
+	test('reloads the visible preview window without losing the current photo when the viewport changes', async () => {
+		// Arrange
+		const items = [asset(1), asset(2), asset(3)];
+		setupAssets(items);
+		const media = useMediaStore();
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		await subscribeSpyTo(store.openAsset(items[1]!, 1)).onComplete();
+		const previousUrls = store.slides.map((slide) => slide.url);
+		const request = vi.spyOn(media, 'getPhotoImageUrl').mockImplementation((photo) => of(`resized-${photo.id}`));
+		request.mockClear();
+		vi.mocked(media.releasePhotoImageUrl).mockClear();
+
+		// Act
+		await subscribeSpyTo(store.resizeImages()).onComplete();
+
+		// Assert
+		expect(store.current?.id).toBe(2);
+		expect(store.index).toBe(1);
+		expect(store.slides.map((slide) => ({ id: slide.asset.id, url: slide.url, loading: slide.loading, error: slide.error })).sort((left, right) => left.id - right.id))
+			.toEqual([
+				{ id: 1, url: 'resized-1', loading: false, error: false },
+				{ id: 2, url: 'resized-2', loading: false, error: false },
+				{ id: 3, url: 'resized-3', loading: false, error: false },
+			]);
+		expect(request.mock.calls.map(([photo]) => photo.id).sort()).toEqual([1, 2, 3]);
+		expect(vi.mocked(media.releasePhotoImageUrl).mock.calls.map(([url]) => url).sort()).toEqual(previousUrls.sort());
 	});
 
 	test('closes the viewer when its active context is replaced', async () => {

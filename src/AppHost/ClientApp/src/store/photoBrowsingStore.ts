@@ -88,7 +88,6 @@ export interface PhotoViewerSlide {
 	asset: PhotoAssetBrowseDTO;
 	index: number;
 	url: string;
-	representation: 'original' | 'converted' | 'preview';
 	loading: boolean;
 	error: boolean;
 }
@@ -488,17 +487,21 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 
 		retryImage(): Observable<void> {
 			const slide = state.slides.find((candidate) => candidate.index === state.index);
-			return slide ? retrySlide(slide, 'original') : of(undefined);
+			return slide ? retrySlide(slide) : of(undefined);
+		},
+
+		resizeImages(): Observable<void> {
+			cancelImagePreloads();
+			cancelViewerLoads();
+			imagePreloadChanges$.next();
+			return reloadViewerImages();
 		},
 
 		imageFailed(index: number): Observable<void> {
 			const slide = state.slides.find((candidate) => candidate.index === index);
 			if (!slide) return of(undefined);
-			if (slide.representation === 'original') return retrySlide(slide, 'converted');
-			if (slide.representation === 'converted') return retrySlide(slide, 'preview');
 			releaseSlideUrl(slide);
 			slide.url = '';
-			slide.representation = 'preview';
 			slide.loading = false;
 			slide.error = true;
 			nextSlideVersion(slideKey(slide.asset));
@@ -1858,69 +1861,39 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		}, { handleErrorsLocally: true }).pipe(catchError(() => of('')));
 	}
 
-	function originalUrl(asset: PhotoAssetBrowseDTO, representation: 'original' | 'converted'): Observable<string> {
-		return mediaStore.getPhotoImageUrl(asset, representation).pipe(
-			catchError((error) => responseStatus(error) === 404 ? throwError(() => error) : of('')),
-		);
-	}
-
-	function setSlideResult(slide: PhotoViewerSlide, url: string, representation: 'original' | 'converted' | 'preview', error: boolean): void {
+	function setSlideResult(slide: PhotoViewerSlide, url: string, error: boolean): void {
 		slide.url = url;
-		slide.representation = representation;
 		slide.loading = false;
 		slide.error = error;
 	}
 
-	function retrySlide(slide: PhotoViewerSlide, start: 'original' | 'converted' | 'preview'): Observable<void> {
+	function retrySlide(slide: PhotoViewerSlide): Observable<void> {
 		releaseSlideUrl(slide);
 		slide.url = '';
-		slide.representation = start;
 		slide.loading = true;
 		slide.error = false;
-		return loadSlide(slide.asset, slide.index, nextSlideVersion(slideKey(slide.asset)), start).pipe(map(() => undefined));
+		return loadSlide(slide, nextSlideVersion(slideKey(slide.asset))).pipe(map(() => undefined));
 	}
 
-	function loadSlide(
-		asset: PhotoAssetBrowseDTO,
-		index: number,
-		version: number,
-		start: 'original' | 'converted' | 'preview' = 'original',
-	): Observable<string> {
+	function loadSlide(slide: PhotoViewerSlide, version: number): Observable<string> {
+		const { asset, index } = slide;
 		const key = slideKey(asset);
 		const contextAtStart = activeContextKey;
 		const generation = viewerGeneration;
-		const slide = state.slides.find((candidate) => candidate.index === index && slideKey(candidate.asset) === key);
-		if (!slide) return of('');
 		const valid = () => generation === viewerGeneration && slideVersions.get(key) === version && contextAtStart === activeContextKey && state.dialog.open && state.slides.includes(slide);
-		const preview = () => thumbnailUrl(asset).pipe(map((url) => ({ url, representation: 'preview' as const })));
-		const converted = () => originalUrl(asset, 'converted').pipe(
-			switchMap((url) => url ? of({ url, representation: 'converted' as const }) : preview()),
-		);
-		const original = () => originalUrl(asset, 'original').pipe(
-			switchMap((url) => url ? of({ url, representation: 'original' as const }) : converted()),
-		);
-		let source: Observable<{ url: string; representation: PhotoViewerSlide['representation'] }>;
-		if (asset.assetKind === PhotoAssetKind.VideoClip || start === 'preview') source = preview();
-		else if (start === 'converted') source = converted();
-		else source = original();
+		const source = asset.assetKind === PhotoAssetKind.VideoClip
+			? thumbnailUrl(asset)
+			: mediaStore.getPhotoImageUrl(asset);
 		return source.pipe(
 			tap({ subscribe: () => {
 				// Let the foreground subscriber join its shared request before background subscribers detach.
 				if (index === state.index) asapScheduler.schedule(pauseImagePreloads);
 			} }),
 			takeUntil(viewerCancel$),
-			tap(({ url, representation }) => {
+			catchError(() => of('')),
+			tap((url) => {
 				if (!valid()) return;
-				setSlideResult(slide, url, representation, !url);
-			}),
-			map(({ url }) => url),
-			catchError((error) => {
-				if (responseStatus(error) === 404 && valid()) {
-					closeViewerForInvalidAsset();
-					return of('');
-				}
-				if (valid()) setSlideResult(slide, '', 'preview', true);
-				return of('');
+				setSlideResult(slide, url, !url);
 			}),
 		);
 	}
@@ -1929,16 +1902,15 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		const loads = state.slides.map((slide) => {
 			releaseSlideUrl(slide);
 			slide.url = '';
-			slide.representation = 'original';
 			slide.loading = true;
 			slide.error = false;
-			return loadSlide(slide.asset, slide.index, nextSlideVersion(slideKey(slide.asset)));
+			return loadSlide(slide, nextSlideVersion(slideKey(slide.asset)));
 		});
 		return forkJoin(loads).pipe(map(() => undefined));
 	}
 
 	function releaseSlideUrl(slide: PhotoViewerSlide): void {
-		if (slide.url && slide.representation !== 'preview') mediaStore.releasePhotoImageUrl(slide.url);
+		if (slide.asset.assetKind === PhotoAssetKind.Image && slide.url) mediaStore.releasePhotoImageUrl(slide.url);
 	}
 
 	function clearViewer(): void {
@@ -1995,12 +1967,11 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 				asset: fallbackAsset,
 				index: 0,
 				url: '',
-				representation: 'preview',
 				loading: true,
 				error: false,
 			};
 			state.slides = [fallbackSlide];
-			return loadSlide(fallbackAsset, 0, nextSlideVersion(slideKey(fallbackAsset))).pipe(
+			return loadSlide(fallbackSlide, nextSlideVersion(slideKey(fallbackAsset))).pipe(
 				map(() => undefined),
 				finalize(() => { if (generation === viewerGeneration) state.navigating = false; }),
 			);
@@ -2055,11 +2026,11 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 					const existing = state.slides.find((candidate) => slideKey(candidate.asset) === slideKey(asset));
 					return existing
 						? { ...existing, asset, index: slideIndex }
-						: { asset, index: slideIndex, url: '', representation: 'preview' as const, loading: true, error: false };
+						: { asset, index: slideIndex, url: '', loading: true, error: false };
 				});
 				const loads = state.slides
 					.filter((slide) => slide.loading || !slide.url)
-					.map((slide) => loadSlide(slide.asset, slide.index, nextSlideVersion(slideKey(slide.asset))));
+					.map((slide) => loadSlide(slide, nextSlideVersion(slideKey(slide.asset))));
 				return loads.length > 0 ? forkJoin(loads).pipe(map(() => undefined)) : of(undefined);
 			}),
 			catchError((error) => {
