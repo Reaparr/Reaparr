@@ -36,10 +36,22 @@ Reaparr is a cross-platform Plex media downloader hosted on GitHub: https://gith
 
 ## CodeScene
 
-- Use the CodeScene MCP tools for Code Health checks. After completing the related implementation and test edits, run `code_health_review` on every changed source file.
-- Address introduced Code Health regressions within the approved scope, then repeat the affected review and confirm the result with `code_health_score`.
-- Before committing, run `pre_commit_code_health_safeguard` and require it to pass. Report unavailable checks or out-of-scope findings as blockers rather than expanding the change.
-- Code Health supplements behavioral tests and technical review; it does not replace them or authorize commits.
+- Use the CodeScene MCP tools for Code Health checks. After completing related implementation and test edits, run `code_health_review` on every changed production source file.
+- Exclude test files, fixtures, generated test data, and shared test infrastructure from per-file Code Health reviews and scoring. Do not restructure tests to satisfy CodeScene complexity or file-length metrics.
+- Treat findings as diagnostic evidence, not instructions to optimize a number. A higher score alone does not establish a maintainability improvement.
+- Address introduced production regressions within the approved scope by simplifying the underlying logic: remove redundant work and state, reduce nesting, consolidate duplicated decisions, and separate genuinely distinct responsibilities.
+- Existing Code Health findings in touched files are not automatically in scope. Remediate only findings introduced or materially worsened by the current change, unless broader refactoring was explicitly requested. Report unrelated findings without modifying them.
+- Extract a method only when it introduces a meaningful domain operation, encapsulates a coherent responsibility, or removes substantive duplication. Its name and contract must let callers understand the operation without reading its implementation. Before extracting, identify the concrete comprehension or maintenance benefit independently of the score; if there is none, keep the code inline.
+- Do not extract trivial expressions, single statements, forwarding wrappers, or arbitrary fragments solely to reduce method length or complexity scores. Moving branches into helpers without improving comprehension is not a fix. Method length alone neither justifies nor disqualifies an extraction.
+- Evaluate the complete affected call chain. Prefer clearer control flow, fewer unnecessary parameters and dependencies, and less navigation—not merely smaller individual methods. Keep or restore the inline version when extraction only adds indirection.
+- Useful extraction must preserve existing architectural boundaries. Keep business decisions, data access, mapping, and orchestration in their established owning layers. Do not move logic into a mapper, generic utility, base class, or new service merely to improve a metric.
+- After addressing a regression, repeat the affected review and confirm the result with `code_health_score`. Explain the concrete maintainability improvement independently of the score.
+- If resolving a finding would require artificial fragmentation, an out-of-scope redesign, or a behavior change, report the finding and tradeoff for user review rather than forcing a passing score or changing thresholds.
+- Place regression tests according to behavior, fixture cohesion, and existing test conventions—not class length. Extend the existing test class when the regressions belong to its responsibility. Create a sibling test file only for a genuinely distinct behavioral responsibility or materially different setup.
+- Naming an existing test file in a plan does not freeze test placement unless the user explicitly imposed that constraint. Routine placement decisions within the approved behavior and test scope do not require additional approval.
+- For changes containing only tests, fixtures, or documentation, skip CodeScene checks. For mixed changes, evaluate production findings only.
+- Before committing changes that include production source files, run `pre_commit_code_health_safeguard`. Production findings must pass, subject to the scope rules above; report failures or unavailable checks as blockers rather than gaming or bypassing the safeguard. Report test-file findings separately without treating them as production Code Health blockers. If the safeguard cannot distinguish production findings from excluded files, report the limitation rather than assuming production passed or refactoring excluded files.
+- Code Health supplements behavioral tests and technical review; it does not replace them, relax test requirements, or authorize commits.
 
 ---
 
