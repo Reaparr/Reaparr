@@ -91,7 +91,7 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         }
         else if (req.Type == PlexMediaType.MusicArtist)
         {
-            var plexMusicArtistResult = GetPlexMusicArtist(req.PlexMediaId);
+            var plexMusicArtistResult = await GetPlexMusicArtist(req.PlexMediaId);
             if (plexMusicArtistResult.IsFailed)
             {
                 await Send.FluentResult(plexMusicArtistResult.ToResult(), ct);
@@ -154,30 +154,37 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         return Result.Ok(plexTvShow);
     }
 
-    private Result<PlexMusicArtist> GetPlexMusicArtist(int plexMusicArtistId)
+    private async Task<Result<PlexMusicArtist>> GetPlexMusicArtist(int plexMusicArtistId)
     {
-        var plexMusicArtist = _dbContext
+        var plexMusicArtist = await _dbContext
             .PlexMusicArtists.Include(x => x.Qualities)
             .Include(x => x.Genres)
-            .FirstOrDefault(x => x.Id == plexMusicArtistId);
+            .FirstOrDefaultAsync(x => x.Id == plexMusicArtistId, CancellationToken.None);
 
         if (plexMusicArtist is null)
             return ResultExtensions.EntityNotFound(nameof(PlexMusicArtist), plexMusicArtistId).LogError();
 
-        plexMusicArtist.Albums = _dbContext
+        // Preserve the existing limited selection before adding the artist's library scope.
+        plexMusicArtist.Albums = await _dbContext
             .PlexMusicAlbums.Include(x => x.Qualities)
             .Where(x => x.PlexArtistId == plexMusicArtistId)
             .Take(plexMusicArtist.ChildCount)
-            .ToList();
+            .Where(x => x.PlexLibraryId == plexMusicArtist.PlexLibraryId)
+            .ToListAsync(CancellationToken.None);
 
         plexMusicArtist.Albums = plexMusicArtist.Albums.OrderBy(x => x.SortIndex).ToList();
 
-        foreach (var album in plexMusicArtist.Albums)
-            album.Tracks = _dbContext
+        if (plexMusicArtist.Albums.Count > 0)
+        {
+            var albumIds = plexMusicArtist.Albums.Select(x => x.Id).ToList();
+            var tracks = await _dbContext
                 .PlexMusicTracks.Include(x => x.MediaDataList)
-                .Where(x => x.PlexAlbumId == album.Id)
-                .Take(album.ChildCount)
-                .ToList();
+                .Where(x => x.PlexLibraryId == plexMusicArtist.PlexLibraryId && albumIds.Contains(x.PlexAlbumId))
+                .ToListAsync(CancellationToken.None);
+            var tracksByAlbum = tracks.ToLookup(x => x.PlexAlbumId);
+            foreach (var album in plexMusicArtist.Albums)
+                album.Tracks = tracksByAlbum[album.Id].Take(album.ChildCount).ToList();
+        }
 
         return Result.Ok(plexMusicArtist);
     }
@@ -284,5 +291,4 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexTvShow.PlexServerId, ct);
         plexServerToken.LogIfFailed();
     }
-
 }
