@@ -385,7 +385,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 			statusCode: 500,
 			errors: [],
 			successes: [],
-			value: null,
+			value: undefined,
 		});
 		metadataResponse.complete();
 		await initialization.onComplete();
@@ -424,7 +424,7 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 			statusCode: 500,
 			errors: [],
 			successes: [],
-			value: null,
+			value: undefined,
 		});
 		firstMetadataResponse.complete();
 		await initialization.onComplete();
