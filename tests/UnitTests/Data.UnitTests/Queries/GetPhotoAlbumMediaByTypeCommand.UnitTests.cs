@@ -6,7 +6,9 @@ namespace Reaparr.Data.UnitTests;
 public class GetPhotoAlbumMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetPhotoAlbumMediaByTypeCommand>
 {
     [Test]
-    public void ShouldRejectComparisonSorting_WhenPhotoAlbumsAreRequested()
+    [Arguments("comparisonState:asc")]
+    [Arguments("videoQuality:desc,Title:desc")]
+    public void ShouldRejectUnsupportedSorting_WhenPhotoAlbumsAreRequested(string sort)
     {
         // Arrange
         var command = new GetPhotoAlbumMediaByTypeCommand(
@@ -16,7 +18,7 @@ public class GetPhotoAlbumMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetP
                 PlexLibraryId = 1,
                 FilterOfflineMedia = false,
                 FilterOwnedMedia = false,
-                Parameters = new FlexQueryParameters { Sort = "comparisonState:asc" },
+                Parameters = new FlexQueryParameters { Sort = sort },
             }
         );
 
@@ -31,7 +33,7 @@ public class GetPhotoAlbumMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetP
     [Test]
     [Arguments("sortIndex:asc", 3, 4)]
     [Arguments("Title:desc", 3, 2)]
-    [Arguments("videoQuality:desc,Title:desc", 3, 2)]
+    [Arguments("mediaSize:desc,Title:desc", 3, 2)]
     public async Task ShouldPageScopedPhotoAlbumsWithDerivedFileTotals_WhenFilteringCanonicalMedia(
         string sort,
         int firstIndex,
