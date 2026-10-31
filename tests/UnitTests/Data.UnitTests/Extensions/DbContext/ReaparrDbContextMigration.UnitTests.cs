@@ -28,6 +28,10 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         const int tvLegacyQuality = (int)VideoQuality.UHD_4K;
         const int movieVideoResolution = (int)VideoQuality.QHD;
         const int tvVideoResolution = (int)VideoQuality.UHD_4K;
+        const int movieSecondaryQuality = (int)VideoQuality.FullHD;
+        const int movieSecondaryVideoResolution = (int)VideoQuality.FullHD;
+        const int tvSecondaryQuality = (int)VideoQuality.QHD;
+        const int tvSecondaryVideoResolution = (int)VideoQuality.QHD;
         const int movieDownloadFileQuality = (int)VideoQuality.FullHD;
         const int tvDownloadFileQuality = (int)VideoQuality.HD;
         const int musicCount = 7;
@@ -169,6 +173,96 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             WHERE "PlexTvShowEpisodeId" = {tvShowEpisodeId};
             UPDATE "DownloadTaskMovieFile" SET "Quality" = {movieDownloadFileQuality};
             UPDATE "DownloadTaskTvShowEpisodeFile" SET "Quality" = {tvDownloadFileQuality};
+            INSERT INTO "PlexMovieData" (
+                "PlexApiRatingKey",
+                "PlexApiMediaId",
+                "PlexApiPartId",
+                "VideoResolution",
+                "OriginalFilename",
+                "GeneratedFilename",
+                "Container",
+                "Duration",
+                "Size",
+                "Key",
+                "Source",
+                "VideoCodec",
+                "AudioCodec",
+                "NeedsGeneratedName",
+                "GeneratedNameSyncedAt",
+                "PlexMovieId",
+                "PlexLibraryId",
+                "PlexServerId",
+                "Quality"
+            )
+            SELECT
+                "PlexApiRatingKey" + 10000,
+                "PlexApiMediaId" + 10000,
+                "PlexApiPartId" + 10000,
+                {movieSecondaryVideoResolution},
+                "OriginalFilename",
+                "GeneratedFilename",
+                "Container",
+                "Duration",
+                "Size",
+                "Key",
+                "Source",
+                "VideoCodec",
+                "AudioCodec",
+                "NeedsGeneratedName",
+                "GeneratedNameSyncedAt",
+                "PlexMovieId",
+                "PlexLibraryId",
+                "PlexServerId",
+                {movieSecondaryQuality}
+            FROM "PlexMovieData"
+            WHERE "PlexMovieId" = {movieId}
+            ORDER BY "Id"
+            LIMIT 1;
+            INSERT INTO "PlexTvShowEpisodeData" (
+                "PlexApiRatingKey",
+                "PlexApiMediaId",
+                "PlexApiPartId",
+                "VideoResolution",
+                "OriginalFilename",
+                "GeneratedFilename",
+                "Container",
+                "Duration",
+                "Size",
+                "Key",
+                "Source",
+                "VideoCodec",
+                "AudioCodec",
+                "NeedsGeneratedName",
+                "GeneratedNameSyncedAt",
+                "PlexTvShowEpisodeId",
+                "PlexLibraryId",
+                "PlexServerId",
+                "Quality"
+            )
+            SELECT
+                "PlexApiRatingKey" + 10000,
+                "PlexApiMediaId" + 10000,
+                "PlexApiPartId" + 10000,
+                {tvSecondaryVideoResolution},
+                "OriginalFilename",
+                "GeneratedFilename",
+                "Container",
+                "Duration",
+                "Size",
+                "Key",
+                "Source",
+                "VideoCodec",
+                "AudioCodec",
+                "NeedsGeneratedName",
+                "GeneratedNameSyncedAt",
+                "PlexTvShowEpisodeId",
+                "PlexLibraryId",
+                "PlexServerId",
+                {tvSecondaryQuality}
+            FROM "PlexTvShowEpisodeData"
+            WHERE "PlexTvShowEpisodeId" = {tvShowEpisodeId}
+            ORDER BY "Id"
+            LIMIT 1;
             """,
             CancellationToken
         );
@@ -221,12 +315,16 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             "VideoResolution",
             CancellationToken
         );
-        movieMediaRowsBefore.ShouldHaveSingleItem();
-        movieMediaRowsBefore[0].ParentId.ShouldBe(movieId);
-        movieMediaRowsBefore[0].Quality.ShouldBe(movieVideoResolution);
+        movieMediaRowsBefore.Select(x => x.ParentId).ShouldBe([movieId, movieId]);
+        movieMediaRowsBefore.Select(x => x.Quality).ShouldBe([movieVideoResolution, movieSecondaryVideoResolution]);
         (
             await ReadMediaQualityRowsAsync(connection, "PlexMovieData", "PlexMovieId", "Quality", CancellationToken)
-        ).ShouldBe([(movieMediaRowsBefore[0].Id, movieId, movieLegacyQuality)]);
+        ).ShouldBe(
+            [
+                (movieMediaRowsBefore[0].Id, movieId, movieLegacyQuality),
+                (movieMediaRowsBefore[1].Id, movieId, movieSecondaryQuality),
+            ]
+        );
 
         var tvMediaRowsBefore = await ReadMediaQualityRowsAsync(
             connection,
@@ -235,9 +333,8 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             "VideoResolution",
             CancellationToken
         );
-        tvMediaRowsBefore.ShouldHaveSingleItem();
-        tvMediaRowsBefore[0].ParentId.ShouldBe(tvShowEpisodeId);
-        tvMediaRowsBefore[0].Quality.ShouldBe(tvVideoResolution);
+        tvMediaRowsBefore.Select(x => x.ParentId).ShouldBe([tvShowEpisodeId, tvShowEpisodeId]);
+        tvMediaRowsBefore.Select(x => x.Quality).ShouldBe([tvVideoResolution, tvSecondaryVideoResolution]);
         (
             await ReadMediaQualityRowsAsync(
                 connection,
@@ -246,7 +343,12 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "Quality",
                 CancellationToken
             )
-        ).ShouldBe([(tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvLegacyQuality)]);
+        ).ShouldBe(
+            [
+                (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvLegacyQuality),
+                (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryQuality),
+            ]
+        );
 
         var movieDownloadFileRowsBefore = await ReadDownloadFileQualityRowsAsync(
             connection,
@@ -414,6 +516,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             (
                 await upgradedContext
                     .PlexMovieData.Where(x => x.PlexMovieId == movieId)
+                    .OrderBy(x => x.Id)
                     .Select(x => new { x.Id, x.PlexMovieId, x.VideoQuality })
                     .ToListAsync(CancellationToken)
             ).ShouldBe(
@@ -424,11 +527,18 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                         PlexMovieId = movieId,
                         VideoQuality = (VideoQuality)movieVideoResolution,
                     },
+                    new
+                    {
+                        Id = movieMediaRowsBefore[1].Id,
+                        PlexMovieId = movieId,
+                        VideoQuality = (VideoQuality)movieSecondaryVideoResolution,
+                    },
                 ]
             );
             (
                 await upgradedContext
                     .PlexTvShowEpisodeData.Where(x => x.PlexTvShowEpisodeId == tvShowEpisodeId)
+                    .OrderBy(x => x.Id)
                     .Select(x => new { x.Id, x.PlexTvShowEpisodeId, x.VideoQuality })
                     .ToListAsync(CancellationToken)
             ).ShouldBe(
@@ -438,6 +548,12 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                         Id = tvMediaRowsBefore[0].Id,
                         PlexTvShowEpisodeId = tvShowEpisodeId,
                         VideoQuality = (VideoQuality)tvVideoResolution,
+                    },
+                    new
+                    {
+                        Id = tvMediaRowsBefore[1].Id,
+                        PlexTvShowEpisodeId = tvShowEpisodeId,
+                        VideoQuality = (VideoQuality)tvSecondaryVideoResolution,
                     },
                 ]
             );
@@ -671,7 +787,12 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "Quality",
                 CancellationToken
             )
-        ).ShouldBe([(movieMediaRowsBefore[0].Id, movieId, movieVideoResolution)]);
+        ).ShouldBe(
+            [
+                (movieMediaRowsBefore[0].Id, movieId, movieLegacyQuality),
+                (movieMediaRowsBefore[1].Id, movieId, movieSecondaryQuality),
+            ]
+        );
         (
             await ReadMediaQualityRowsAsync(
                 connection,
@@ -680,7 +801,12 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "Quality",
                 CancellationToken
             )
-        ).ShouldBe([(tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvVideoResolution)]);
+        ).ShouldBe(
+            [
+                (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvLegacyQuality),
+                (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryQuality),
+            ]
+        );
         (
             await ReadMediaQualityRowsAsync(
                 connection,
@@ -689,7 +815,12 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "VideoResolution",
                 CancellationToken
             )
-        ).ShouldBe([(movieMediaRowsBefore[0].Id, movieId, movieVideoResolution)]);
+        ).ShouldBe(
+            [
+                (movieMediaRowsBefore[0].Id, movieId, movieVideoResolution),
+                (movieMediaRowsBefore[1].Id, movieId, movieSecondaryVideoResolution),
+            ]
+        );
         (
             await ReadMediaQualityRowsAsync(
                 connection,
@@ -698,7 +829,12 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "VideoResolution",
                 CancellationToken
             )
-        ).ShouldBe([(tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvVideoResolution)]);
+        ).ShouldBe(
+            [
+                (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvVideoResolution),
+                (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryVideoResolution),
+            ]
+        );
         (
             await ReadDownloadFileQualityRowsAsync(connection, "DownloadTaskMovieFile", CancellationToken)
         ).ShouldBe([(movieDownloadFileRowsBefore[0].Id, movieDownloadFileQuality)]);
