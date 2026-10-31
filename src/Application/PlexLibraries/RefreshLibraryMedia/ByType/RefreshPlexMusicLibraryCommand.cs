@@ -53,10 +53,7 @@ public class RefreshPlexMusicLibraryCommandHandler
         );
 
         if (albumsResult.IsCancelledOrFailed)
-        {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, albumsResult.ToResult());
-            return albumsResult.ToResult().LogIfFailed();
-        }
+            return await PublishMusicRefreshFailureAsync(plexLibraryId, albumsResult.ToResult());
 
         var albumMetadataResult = await Result.Try(() =>
             _commandExecutor.Send(
@@ -68,10 +65,7 @@ public class RefreshPlexMusicLibraryCommandHandler
         );
 
         if (albumMetadataResult.IsCancelledOrFailed)
-        {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, albumMetadataResult.ToResult());
-            return albumMetadataResult.ToResult().LogIfFailed();
-        }
+            return await PublishMusicRefreshFailureAsync(plexLibraryId, albumMetadataResult.ToResult());
 
         foreach (var (key, country) in albumMetadataResult.Value.PlexCountries)
             command.LibraryMetadata.PlexCountries[key] = country;
@@ -84,10 +78,7 @@ public class RefreshPlexMusicLibraryCommandHandler
         );
 
         if (tracksResult.IsCancelledOrFailed)
-        {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, tracksResult.ToResult());
-            return tracksResult.ToResult().LogIfFailed();
-        }
+            return await PublishMusicRefreshFailureAsync(plexLibraryId, tracksResult.ToResult());
 
         var albums = albumsResult.Value.Library.Albums;
         var tracks = tracksResult.Value.Library.Tracks;
@@ -106,10 +97,7 @@ public class RefreshPlexMusicLibraryCommandHandler
         );
 
         if (syncResult.IsCancelledOrFailed)
-        {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, syncResult.ToResult());
-            return syncResult.ToResult().LogIfFailed();
-        }
+            return await PublishMusicRefreshFailureAsync(plexLibraryId, syncResult.ToResult());
 
         var comparisonResult = await ReconcileMusicComparisonStateAsync(command, syncResult.Value, cancellationToken);
         if (comparisonResult.IsCancelledOrFailed)
@@ -168,6 +156,13 @@ public class RefreshPlexMusicLibraryCommandHandler
         return plexLibraryDb is null
             ? ResultExtensions.EntityNotFound(nameof(PlexLibrary), plexLibraryId)
             : Result.Ok(plexLibraryDb);
+    }
+
+    private async Task<Result> PublishMusicRefreshFailureAsync(int plexLibraryId, Result result)
+    {
+        if (!result.IsCancelled)
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, result);
+        return result.LogIfFailed();
     }
 
     private async Task<Result> ReconcileMusicComparisonStateAsync(

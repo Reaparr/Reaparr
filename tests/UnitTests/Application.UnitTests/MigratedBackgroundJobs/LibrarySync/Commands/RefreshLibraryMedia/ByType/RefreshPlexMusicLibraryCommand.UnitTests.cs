@@ -204,6 +204,48 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
     }
 
     [Test]
+    public async Task ShouldPreserveCancellationWithoutPublishingError_WhenAlbumMetadataInsertionIsCancelled()
+    {
+        await SetupDatabase(
+            625625,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        await dbContext.PlexLibraries.ExecuteUpdateAsync(
+            update => update.SetProperty(entity => entity.Type, PlexMediaType.MusicArtist),
+            CancellationToken
+        );
+        var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var cancellation = ResultExtensions.TaskIsCancelled("album metadata");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(executor => executor.Send(
+                It.Is<GetLibraryMediaFromPlexApiCommand>(command =>
+                    command.PlexLibrary == library && command.MediaType == PlexMediaType.MusicAlbum
+                ),
+                CancellationToken
+            ))
+            .ReturnsAsync(Result.Ok(new LibraryMetadata(library)));
+        Mock.Mock<ICommandExecutor>()
+            .Setup(executor => executor.Send(It.IsAny<InsertMediaMetaDataCommand>(), CancellationToken))
+            .ReturnsAsync(cancellation);
+
+        var result = await TestHandlerExecuteAsync<PlexLibrary>(
+            new RefreshPlexMusicLibraryCommand(new InsertMediaMetaDataCommandResponse(library))
+        );
+
+        result.IsCancelled.ShouldBeTrue();
+        result.Errors.ShouldBe(cancellation.Errors);
+        Mock.Mock<ILibrarySyncProgressStore>()
+            .Verify(store => store.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(executor => executor.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    [Test]
     [Arguments(PlexMediaType.MusicAlbum, false)]
     [Arguments(PlexMediaType.MusicTrack, false)]
     [Arguments(PlexMediaType.MusicAlbum, true)]
