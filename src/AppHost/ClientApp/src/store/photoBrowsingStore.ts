@@ -599,7 +599,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 			state.selectionLoading = true;
 			state.selectionError = false;
 			return ensureSortMetadata(context, contextGeneration).pipe(
-				switchMap((sortSupported) => sortSupported ? enumerateContext(context) : of([] as IPhotoSelector[])),
+				switchMap((sortSupported) => sortSupported ? enumerateContext(context) : throwError(() => new Error('Photo sort metadata is unavailable'))),
 				takeUntil(selectionCancel$),
 				tap((selectors) => {
 					if (!isSelectionCurrent(generation, session, contextGenerationAtStart, context.key)) return;

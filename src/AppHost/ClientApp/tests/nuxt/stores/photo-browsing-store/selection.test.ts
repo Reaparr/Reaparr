@@ -1,14 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateFailedResultDTO, generatePlexLibrary, generateResultDTO, Seed } from '@mock';
 import { plexPhotoApi } from '@api';
-import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
+import { PhotoAssetKind, PhotoItemKind, PlexMediaType, SortType, type PlexMediaMetadataDTO, type PhotoAlbumBrowseDTO, type PhotoAssetBrowseDTO, type PhotoAssetPageDTO, type PhotoFolderPageDTO } from '@dto';
 import { useLibraryStore, useMediaStore, usePhotoBrowsingStore } from '@store';
 import { mockPhotoMetadata } from '../../helpers/photo-metadata';
 import type { IPhotoBrowseActivation } from '@/store/photoBrowsingStore';
 import { createDefaultMediaOverviewSort } from '@composables';
+import type { ResultDTO } from '@interfaces';
 
 describe('PhotoBrowsingStore - complete-result selection', () => {
 	const owner = {};
@@ -88,6 +89,38 @@ describe('PhotoBrowsingStore - complete-result selection', () => {
 			title: selected.title,
 			stale: false,
 		}]);
+	});
+
+	test('reports failed metadata when selecting all restored cached rows', async () => {
+		const metadata = mockPhotoMetadata();
+		const assets = vi.spyOn(plexPhotoApi, 'getPhotoAssetsEndpoint').mockReturnValue(of(generateResultDTO({
+			items: [asset(1)], page: 1, pageSize: 100, totalCount: 1, totalBytes: 10,
+		} as PhotoAssetPageDTO)));
+		vi.spyOn(plexPhotoApi, 'getPhotoAlbumsEndpoint').mockReturnValue(of(generateResultDTO({
+			items: [], page: 1, pageSize: 100, totalCount: 0, totalAssetBytes: 0,
+		})));
+		const store = usePhotoBrowsingStore();
+		await subscribeSpyTo(store.activate(route(), owner)).onComplete();
+		await subscribeSpyTo(store.activate(route({ view: 'albums' }), owner)).onComplete();
+		const metadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		metadata.mockReturnValue(metadataResponse.asObservable());
+		const restored = subscribeSpyTo(store.activate(route(), owner));
+		expect(store.overviewItemAt(0)).toEqual({ kind: PhotoItemKind.Asset, index: 0, asset: asset(1) });
+
+		const selection = subscribeSpyTo(store.selectAll(true));
+		expect(store.selectionLoading).toBe(true);
+		metadataResponse.next(generateFailedResultDTO({ statusCode: 503 }));
+		metadataResponse.complete();
+		await restored.onComplete();
+		await selection.onComplete();
+
+		expect(assets).toHaveBeenCalledTimes(1);
+		expect(metadata).toHaveBeenCalledTimes(3);
+		expect(store.selectionError).toBe(true);
+		expect(store.selectionLoading).toBe(false);
+		expect(store.allVisibleSelected).toBe(false);
+		expect(store.selectedSelectors).toEqual([]);
+		expect(store.getDownloadSelectors()).toEqual([]);
 	});
 
 	test('does not partially mutate selection when a later enumeration page fails', async () => {
