@@ -21,11 +21,12 @@ public sealed class GetPhotoAssetsQueryValidator : AbstractValidator<GetPhotoAss
         RuleFor(x => x.Direction).IsInEnum();
         RuleFor(x => x.Sort)
             .Must(sort =>
-                sort is SortType.Title
-                or SortType.AddedAt
-                or SortType.UpdatedAt
-                or SortType.Duration
-                or SortType.MediaSize
+                sort
+                    is SortType.Title
+                        or SortType.AddedAt
+                        or SortType.UpdatedAt
+                        or SortType.Duration
+                        or SortType.MediaSize
             )
             .WithMessage("Unsupported photo asset sort.");
         RuleFor(x => x)
@@ -52,10 +53,7 @@ public sealed class GetPhotoAssetsQueryHandler : ICommandHandler<GetPhotoAssetsQ
     )
     {
         using var context = await _dbContextFactory.CreateAsync();
-        var scopeResult = await context.ResolvePlexPhotoBrowseScopeAsync(
-            query.PlexLibraryId,
-            cancellationToken
-        );
+        var scopeResult = await context.ResolvePlexPhotoBrowseScopeAsync(query.PlexLibraryId, cancellationToken);
         if (scopeResult.IsCancelledOrFailed)
             return scopeResult.ToResult<PhotoAssetPageDTO>();
 
@@ -65,20 +63,18 @@ public sealed class GetPhotoAssetsQueryHandler : ICommandHandler<GetPhotoAssetsQ
             query,
             cancellationToken
         );
-        var items = await PhotoBrowseQuerySupport.LoadAssetItemsAsync(
-            context,
-            assetIds,
-            cancellationToken
-        );
+        var items = await PhotoBrowseQuerySupport.LoadAssetItemsAsync(context, assetIds, cancellationToken);
 
-        return Result.Ok(new PhotoAssetPageDTO
-        {
-            Items = items,
-            Page = query.Page,
-            PageSize = query.PageSize,
-            TotalCount = totalCount,
-            TotalBytes = totalBytes,
-        });
+        return Result.Ok(
+            new PhotoAssetPageDTO
+            {
+                Items = items,
+                Page = query.Page,
+                PageSize = query.PageSize,
+                TotalCount = totalCount,
+                TotalBytes = totalBytes,
+            }
+        );
     }
 
     private static async Task<(int TotalCount, long TotalBytes, List<int> AssetIds)> LoadAssetPageAsync(
@@ -91,14 +87,12 @@ public sealed class GetPhotoAssetsQueryHandler : ICommandHandler<GetPhotoAssetsQ
         var assets = context.PlexPhotoMediaData.Where(x => allowedLibraryIds.Contains(x.PlexLibraryId));
         if (query.UnmappedOnly)
         {
-            assets = assets.Where(x =>
-                x.PlexLibraryId == query.PlexLibraryId!.Value
-                && x.PlexPhotoFolderId == null
-            );
+            assets = assets.Where(x => x.PlexLibraryId == query.PlexLibraryId!.Value && x.PlexPhotoFolderId == null);
         }
 
-        var totalCount = await assets.CountAsync(cancellationToken);
-        var totalBytes = await assets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
+        var (totalCount, totalBytes) = query.UnmappedOnly
+            ? await assets.GetPlexPhotoAssetTotalsAsync()
+            : await LoadLibraryTotalsAsync(context, allowedLibraryIds);
         var sortOptions = MediaOverviewExtensions.BuildSortOptions(
             new Sort(query.Sort, query.Direction),
             nameof(PlexMediaSlimDTO.Title),
@@ -115,5 +109,20 @@ public sealed class GetPhotoAssetsQueryHandler : ICommandHandler<GetPhotoAssetsQ
         return (totalCount, totalBytes, assetIds);
     }
 
+    private static async Task<(int TotalCount, long TotalBytes)> LoadLibraryTotalsAsync(
+        IReaparrDbContext context,
+        IReadOnlyList<int> allowedLibraryIds
+    )
+    {
+        var aggregate = await context
+            .PlexLibraries.Where(x => allowedLibraryIds.Contains(x.Id))
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Sum(x => x.PhotoImageCount + x.PhotoClipCount),
+                TotalBytes = group.Sum(x => (long?)x.MediaSize),
+            })
+            .FirstOrDefaultAsync(CancellationToken.None);
+        return (aggregate?.TotalCount ?? 0, aggregate?.TotalBytes ?? 0L);
+    }
 }
-

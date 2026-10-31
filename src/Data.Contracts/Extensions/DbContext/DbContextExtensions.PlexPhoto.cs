@@ -1,10 +1,31 @@
 namespace Reaparr.Data.Contracts;
 
-/// <summary>Recursive catalog operations shared by photo browsing and download selection.</summary>
+/// <summary>Photo catalog operations shared by photo browsing and download selection.</summary>
 // SQLite otherwise favors a server-wide child scan on sparse catalogs. The recursive parent must
 // remain the outer loop, with existing parent/folder foreign-key indexes providing bounded seeks.
 public static partial class DbContextExtensions
 {
+    /// <summary>
+    /// Returns the asset count and total file size in bytes for the supplied photo asset query
+    /// using a single database aggregate command. An empty query returns zero for both totals.
+    /// </summary>
+    /// <param name="assets">
+    ///     The unpaged asset query, with the caller's visibility, library, folder, album, or search
+    ///     filters already applied. Rows are counted as supplied; this method does not deduplicate
+    ///     assets or traverse descendant folders.
+    /// </param>
+    /// <returns>The count and byte total across all matching assets, before paging.</returns>
+    public static async Task<(int TotalCount, long TotalBytes)> GetPlexPhotoAssetTotalsAsync(
+        this IQueryable<PlexPhotoMediaData> assets
+    )
+    {
+        var aggregate = await assets
+            .GroupBy(_ => 1)
+            .Select(group => new { TotalCount = group.Count(), TotalBytes = group.Sum(x => (long?)x.Size) })
+            .FirstOrDefaultAsync(CancellationToken.None);
+        return (aggregate?.TotalCount ?? 0, aggregate?.TotalBytes ?? 0L);
+    }
+
     /// <summary>
     /// Resolves a folder and all mapped descendants in one scoped recursive traversal. The selected
     /// folder is included in <see cref="PhotoFolderSubtree.Folders"/> and directly assigned files are
@@ -30,8 +51,8 @@ public static partial class DbContextExtensions
             return null;
 
         var folderIds = folders.Select(x => x.Id).ToList();
-        var assets = await dbContext.PlexPhotoMediaData
-            .Where(x =>
+        var assets = await dbContext
+            .PlexPhotoMediaData.Where(x =>
                 x.PlexServerId == scope.ServerId
                 && x.PlexLibraryId == scope.LibraryId
                 && x.PlexPhotoFolderId.HasValue
@@ -60,7 +81,9 @@ public static partial class DbContextExtensions
                 UNION ALL
                 SELECT parent.*
                 FROM "{{nameof(IReaparrDbContext.PlexPhotoFolders)}}" AS parent
-                INNER JOIN ancestors AS child ON parent."{{nameof(PlexPhotoFolder.Id)}}" = child."{{nameof(PlexPhotoFolder.ParentId)}}"
+                INNER JOIN ancestors AS child ON parent."{{nameof(PlexPhotoFolder.Id)}}" = child."{{nameof(
+                PlexPhotoFolder.ParentId
+            )}}"
                 WHERE parent."{{nameof(PlexPhotoFolder.PlexServerId)}}" = {1}
                   AND parent."{{nameof(PlexPhotoFolder.PlexLibraryId)}}" = {2}
             )
@@ -72,13 +95,11 @@ public static partial class DbContextExtensions
             scope.ServerId,
             scope.LibraryId
         );
-        var folders = await dbContext.PlexPhotoFolders
-            .FromSqlInterpolated(sql)
-            .ToListAsync(cancellationToken);
+        var folders = await dbContext.PlexPhotoFolders.FromSqlInterpolated(sql).ToListAsync(cancellationToken);
 
         return folders.OrderBy(x => x.RelativePath.Length).ThenBy(x => x.Id).ToList();
     }
- 
+
     /// <summary>
     /// Resolves the configured source root for every supplied folder in one parameterized
     /// recursive traversal. Missing or orphaned folders are omitted.
@@ -95,8 +116,7 @@ public static partial class DbContextExtensions
             return new Dictionary<int, PlexPhotoFolder>();
 
         var sql = CreateRootsQuery(scope, requestedIds);
-        var rootRows = await dbContext.SqlQuery<PhotoFolderRootRow>(sql)
-            .ToListAsync(cancellationToken);
+        var rootRows = await dbContext.SqlQuery<PhotoFolderRootRow>(sql).ToListAsync(cancellationToken);
         return rootRows.ToDictionary(row => row.RequestedFolderId, MapRoot);
     }
 
@@ -111,29 +131,27 @@ public static partial class DbContextExtensions
         return roots.GetValueOrDefault(folderId);
     }
 
-    private static PlexPhotoFolder MapRoot(PhotoFolderRootRow row) => new()
-    {
-        Id = row.RootId,
-        PlexServerId = row.PlexServerId,
-        PlexLibraryId = row.PlexLibraryId,
-        ParentId = row.ParentId,
-        RelativePath = row.RelativePath,
-        Title = row.Title,
-        RootIdentityKey = row.RootIdentityKey,
-        SourceRootPath = row.SourceRootPath,
-        PlexApiLocationId = row.PlexApiLocationId,
-        IsActive = row.IsActive,
-    };
+    private static PlexPhotoFolder MapRoot(PhotoFolderRootRow row) =>
+        new()
+        {
+            Id = row.RootId,
+            PlexServerId = row.PlexServerId,
+            PlexLibraryId = row.PlexLibraryId,
+            ParentId = row.ParentId,
+            RelativePath = row.RelativePath,
+            Title = row.Title,
+            RootIdentityKey = row.RootIdentityKey,
+            SourceRootPath = row.SourceRootPath,
+            PlexApiLocationId = row.PlexApiLocationId,
+            IsActive = row.IsActive,
+        };
 
     private static FormattableString CreateRootsQuery(
         (int ServerId, int LibraryId) scope,
         IReadOnlyCollection<int> requestedIds
     )
     {
-        var idPlaceholders = string.Join(
-            ",",
-            requestedIds.Select((_, index) => $"{{{index + 2}}}")
-        );
+        var idPlaceholders = string.Join(",", requestedIds.Select((_, index) => $"{{{index + 2}}}"));
         var format = $$"""
             WITH RECURSIVE ancestors AS (
                 SELECT f."{{nameof(PlexPhotoFolder.Id)}}" AS "{{nameof(PlexPhotoFolder.Id)}}",
@@ -208,10 +226,7 @@ public static partial class DbContextExtensions
         if (requestedIds.Length == 0)
             return new Dictionary<int, PhotoFolderTotals>();
 
-        var idPlaceholders = string.Join(
-            ",",
-            requestedIds.Select((_, index) => $"{{{index + 2}}}")
-        );
+        var idPlaceholders = string.Join(",", requestedIds.Select((_, index) => $"{{{index + 2}}}"));
         var format = $$"""
             WITH RECURSIVE descendants AS (
                 SELECT f."{{nameof(PlexPhotoFolder.Id)}}", f."{{nameof(PlexPhotoFolder.ParentId)}}", f."{{nameof(PlexPhotoFolder.Id)}}" AS "{{nameof(PhotoFolderRootRow.RequestedFolderId)}}"
@@ -251,12 +266,8 @@ public static partial class DbContextExtensions
             arguments[index + 2] = requestedIds[index];
 
         var sql = System.Runtime.CompilerServices.FormattableStringFactory.Create(format, arguments);
-        var rows = await dbContext.SqlQuery<PhotoFolderTotalsRow>(sql)
-            .ToListAsync(cancellationToken);
-        return rows.ToDictionary(
-            row => row.FolderId,
-            row => new PhotoFolderTotals(row.AssetCount, row.AssetBytes)
-        );
+        var rows = await dbContext.SqlQuery<PhotoFolderTotalsRow>(sql).ToListAsync(cancellationToken);
+        return rows.ToDictionary(row => row.FolderId, row => new PhotoFolderTotals(row.AssetCount, row.AssetBytes));
     }
 
     private static async Task<List<PlexPhotoFolder>> LoadSubtreeFoldersAsync(
@@ -276,7 +287,9 @@ public static partial class DbContextExtensions
                 UNION ALL
                 SELECT child.*
                 FROM descendants AS parent
-                CROSS JOIN "{{nameof(IReaparrDbContext.PlexPhotoFolders)}}" AS child INDEXED BY "IX_{{nameof(IReaparrDbContext.PlexPhotoFolders)}}_{{nameof(PlexPhotoFolder.ParentId)}}_{{nameof(PlexPhotoFolder.RelativePath)}}"
+                CROSS JOIN "{{nameof(IReaparrDbContext.PlexPhotoFolders)}}" AS child INDEXED BY "IX_{{nameof(
+                IReaparrDbContext.PlexPhotoFolders
+            )}}_{{nameof(PlexPhotoFolder.ParentId)}}_{{nameof(PlexPhotoFolder.RelativePath)}}"
                   ON child."{{nameof(PlexPhotoFolder.ParentId)}}" = parent."{{nameof(PlexPhotoFolder.Id)}}"
                 WHERE child."{{nameof(PlexPhotoFolder.ParentId)}}" IS NOT NULL
                   AND child."{{nameof(PlexPhotoFolder.PlexServerId)}}" = {1}
@@ -290,9 +303,7 @@ public static partial class DbContextExtensions
             scope.ServerId,
             scope.LibraryId
         );
-        return await dbContext.PlexPhotoFolders
-            .FromSqlInterpolated(sql)
-            .ToListAsync(cancellationToken);
+        return await dbContext.PlexPhotoFolders.FromSqlInterpolated(sql).ToListAsync(cancellationToken);
     }
 
     /// <summary>
@@ -314,12 +325,7 @@ public static partial class DbContextExtensions
         if (plexLibraryId is not int requestedLibraryId)
             return Result.Ok(new PhotoBrowseScope(allowedLibraryIds));
 
-        return await ResolveExplicitLibraryAsync(
-            dbContext,
-            requestedLibraryId,
-            allowedLibraryIds,
-            cancellationToken
-        );
+        return await ResolveExplicitLibraryAsync(dbContext, requestedLibraryId, allowedLibraryIds, cancellationToken);
     }
 
     private static async Task<Result<PhotoBrowseScope>> ResolveExplicitLibraryAsync(
@@ -329,8 +335,8 @@ public static partial class DbContextExtensions
         CancellationToken cancellationToken
     )
     {
-        var requestedLibrary = await dbContext.PlexLibraries
-            .IgnoreIsEnabledFilter()
+        var requestedLibrary = await dbContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
             .Where(x => x.Id == requestedLibraryId && x.Type == PlexMediaType.PhotoAlbum)
             .Select(x => new
             {
@@ -344,8 +350,8 @@ public static partial class DbContextExtensions
         if (requestedLibrary is null)
             return ResultExtensions.EntityNotFound(nameof(PlexLibrary), requestedLibraryId);
 
-        var serverEnabled = await dbContext.PlexServers
-            .IgnoreIsEnabledFilter()
+        var serverEnabled = await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == requestedLibrary.PlexServerId)
             .Select(x => (bool?)x.IsEnabled)
             .FirstOrDefaultAsync(cancellationToken);
@@ -368,18 +374,18 @@ public static partial class DbContextExtensions
         CancellationToken cancellationToken
     )
     {
-        var libraries = dbContext.PlexLibraries
-            .Where(x =>
+        var libraries = dbContext
+            .PlexLibraries.Where(x =>
                 x.Type == PlexMediaType.PhotoAlbum
                 && x.IsEnabled
                 && x.PlexServer!.IsEnabled
-                && (!hasLinkedAccounts
-                    || (x.PlexServer.PlexAccountServers.Any() && x.PlexAccountLibraries.Any()))
+                && (!hasLinkedAccounts || (x.PlexServer.PlexAccountServers.Any() && x.PlexAccountLibraries.Any()))
             )
             .Select(x => x.Id);
         return await libraries.ToListAsync(cancellationToken);
     }
 }
+
 internal sealed class PhotoFolderRootRow
 {
     public int RequestedFolderId { get; set; }
@@ -402,7 +408,6 @@ internal sealed class PhotoFolderTotalsRow
     public long AssetBytes { get; set; }
 }
 
-
 public sealed record PhotoFolderSubtree(
     PlexPhotoFolder Folder,
     PlexPhotoFolder Root,
@@ -411,4 +416,5 @@ public sealed record PhotoFolderSubtree(
 );
 
 public sealed record PhotoFolderTotals(int AssetCount, long AssetBytes);
+
 public sealed record PhotoBrowseScope(IReadOnlyList<int> LibraryIds);

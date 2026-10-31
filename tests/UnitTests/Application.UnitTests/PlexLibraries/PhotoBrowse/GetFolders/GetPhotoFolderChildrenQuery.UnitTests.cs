@@ -1,9 +1,89 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using SortDirection = Reaparr.Domain.SortDirection;
 
 namespace Reaparr.Application.UnitTests;
 
 public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhotoFolderChildrenQuery>
 {
+    [Test]
+    [Arguments(0, 1)]
+    [Arguments(1, 1)]
+    [Arguments(3, 1)]
+    [Arguments(3, 2)]
+    public async Task ShouldReturnDirectTotalsInOneAggregate_WhenPagingFolderAssets(int assetCount, int page)
+    {
+        // Arrange
+        await SetupDatabase(71022, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 3;
+        });
+        var dbContext = IDbContext;
+        var root = await dbContext.PlexPhotoFolders
+            .Where(x => x.ParentId == null)
+            .OrderBy(x => x.Id)
+            .FirstAsync(CancellationToken);
+        var assets = await dbContext.PlexPhotoMediaData
+            .Where(x => x.PlexLibraryId == root.PlexLibraryId)
+            .AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
+        assets.Count.ShouldBe(3);
+        for (var index = 0; index < assets.Count; index++)
+        {
+            assets[index].Title = "Same title";
+            await dbContext.PlexPhotoMediaData.Where(x => x.Id == assets[index].Id).ExecuteUpdateAsync(
+                setters => setters.SetProperty(x => x.Size, index * 100L), CancellationToken
+            );
+            assets[index].PlexPhotoFolderId = index < assetCount ? root.Id : null;
+        }
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var expectedAssets = assets.Take(assetCount).ToList();
+        var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
+        var commands = new ConcurrentQueue<string>();
+        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        using var listeners = DiagnosticListener.AllListeners
+            .Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
+            .Subscribe(listener => commandSubscriptions.Add(listener
+                .Select(entry => entry.Value!)
+                .OfType<CommandExecutedEventData>()
+                .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
+                .Subscribe(command => commands.Enqueue(command.Command.CommandText))));
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
+            new GetPhotoFolderChildrenQuery(root.PlexLibraryId, root.Id, AssetPage: page, AssetPageSize: 2)
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Folder.Id.ShouldBe(root.Id);
+        result.Value.Folder.RecursiveAssetCount.ShouldBe(assetCount);
+        result.Value.Folder.RecursiveAssetBytes.ShouldBe(Enumerable.Range(0, assetCount).Sum(index => index * 100L));
+        result.Value.Assets.Page.ShouldBe(page);
+        result.Value.Assets.PageSize.ShouldBe(2);
+        result.Value.Assets.TotalCount.ShouldBe(assetCount);
+        result.Value.Assets.TotalBytes.ShouldBe(Enumerable.Range(0, assetCount).Sum(index => index * 100L));
+        result.Value.Assets.Items.Select(x => x.Id).ShouldBe(
+            expectedAssets.Skip((page - 1) * 2).Take(2).Select(x => x.Id)
+        );
+        result.Value.Assets.Items.ShouldAllBe(x => x.PlexLibraryId == root.PlexLibraryId);
+        result.Value.Folders.Items.ShouldBeEmpty();
+        result.Value.Breadcrumbs.Select(x => x.Id).ShouldBe([root.Id]);
+        var aggregateCommands = commands
+            .Where(sql => !sql.Contains("WITH RECURSIVE")
+                && sql.Contains("\"PlexPhotoMediaData\"")
+                && (sql.Contains("COUNT(") || sql.Contains("SUM(")))
+            .ToList();
+        aggregateCommands.Count.ShouldBe(1);
+        aggregateCommands[0].ShouldContain("COUNT(");
+        aggregateCommands[0].ShouldContain("SUM(");
+    }
+
     [Test]
     public async Task ShouldPageDirectFoldersAndAssetsIndependentlyWithCompleteBreadcrumbs()
     {

@@ -24,9 +24,7 @@ public sealed class GetPhotoFolderChildrenQueryValidator : AbstractValidator<Get
         RuleFor(x => x.AssetPage).GreaterThan(0);
         RuleFor(x => x.AssetPageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
         RuleFor(x => x.Direction).IsInEnum();
-        RuleFor(x => x.Sort)
-            .Equal(SortType.Title)
-            .WithMessage("Photo folders support title sorting only.");
+        RuleFor(x => x.Sort).Equal(SortType.Title).WithMessage("Photo folders support title sorting only.");
         RuleFor(x => x)
             .Must(x =>
                 (long)(x.FolderPage - 1) * x.FolderPageSize <= int.MaxValue
@@ -67,19 +65,14 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         );
         var childPage = await LoadChildFolderPageAsync(context, folderContext.Folder, query, cancellationToken);
         var assetPage = await LoadDirectAssetPageAsync(context, folderContext.Folder, query, cancellationToken);
-        var assetItems = await LoadAssetItemsAsync(
-            context,
-            assetPage.AssetIds,
-            folderContext.Root,
-            cancellationToken
-        );
+        var assetItems = await LoadAssetItemsAsync(context, assetPage.AssetIds, folderContext.Root, cancellationToken);
 
         var folderDTO = PhotoBrowseQuerySupport.ToFolderDTO(
             folderContext.Folder,
             folderTotals.GetValueOrDefault(folderContext.Folder.Id) ?? new PhotoFolderTotals(0, 0L)
         );
-        var folderItems = childPage.Rows
-            .Where(row => childPage.Entities.ContainsKey(row.Id))
+        var folderItems = childPage
+            .Rows.Where(row => childPage.Entities.ContainsKey(row.Id))
             .Select(row =>
                 PhotoBrowseQuerySupport.ToFolderDTO(
                     childPage.Entities[row.Id],
@@ -88,26 +81,28 @@ public sealed class GetPhotoFolderChildrenQueryHandler
             )
             .ToList();
 
-        return Result.Ok(new PhotoFolderChildrenDTO
-        {
-            Folder = folderDTO,
-            Breadcrumbs = folderContext.Breadcrumbs.Select(PhotoBrowseQuerySupport.ToBreadcrumbDTO).ToList(),
-            Folders = new PhotoFolderPageDTO
+        return Result.Ok(
+            new PhotoFolderChildrenDTO
             {
-                Items = folderItems,
-                Page = query.FolderPage,
-                PageSize = query.FolderPageSize,
-                TotalCount = childPage.TotalCount,
-            },
-            Assets = new PhotoAssetPageDTO
-            {
-                Items = assetItems,
-                Page = query.AssetPage,
-                PageSize = query.AssetPageSize,
-                TotalCount = assetPage.TotalCount,
-                TotalBytes = assetPage.TotalBytes,
-            },
-        });
+                Folder = folderDTO,
+                Breadcrumbs = folderContext.Breadcrumbs.Select(PhotoBrowseQuerySupport.ToBreadcrumbDTO).ToList(),
+                Folders = new PhotoFolderPageDTO
+                {
+                    Items = folderItems,
+                    Page = query.FolderPage,
+                    PageSize = query.FolderPageSize,
+                    TotalCount = childPage.TotalCount,
+                },
+                Assets = new PhotoAssetPageDTO
+                {
+                    Items = assetItems,
+                    Page = query.AssetPage,
+                    PageSize = query.AssetPageSize,
+                    TotalCount = assetPage.TotalCount,
+                    TotalBytes = assetPage.TotalBytes,
+                },
+            }
+        );
     }
 
     private async Task<FolderContext?> LoadFolderContextAsync(
@@ -116,18 +111,14 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var serverId = await context.PlexLibraries
-            .Where(x => x.Id == query.PlexLibraryId)
+        var serverId = await context
+            .PlexLibraries.Where(x => x.Id == query.PlexLibraryId)
             .Select(x => x.PlexServerId)
             .FirstAsync(cancellationToken);
-        var folder = await context.PlexPhotoFolders
-            .FirstOrDefaultAsync(
-                x =>
-                    x.Id == query.FolderId
-                    && x.PlexServerId == serverId
-                    && x.PlexLibraryId == query.PlexLibraryId,
-                cancellationToken
-            );
+        var folder = await context.PlexPhotoFolders.FirstOrDefaultAsync(
+            x => x.Id == query.FolderId && x.PlexServerId == serverId && x.PlexLibraryId == query.PlexLibraryId,
+            cancellationToken
+        );
         if (folder is null)
             return null;
 
@@ -137,9 +128,7 @@ public sealed class GetPhotoFolderChildrenQueryHandler
             cancellationToken
         );
         var root = breadcrumbs.FirstOrDefault(x => x.ParentId is null);
-        return root is null || root.IsActive != true
-            ? null
-            : new FolderContext(folder, root, breadcrumbs);
+        return root is null || root.IsActive != true ? null : new FolderContext(folder, root, breadcrumbs);
     }
 
     private async Task<ChildFolderPage> LoadChildFolderPageAsync(
@@ -150,9 +139,7 @@ public sealed class GetPhotoFolderChildrenQueryHandler
     )
     {
         var childFolders = context.PlexPhotoFolders.Where(x =>
-            x.PlexServerId == folder.PlexServerId
-            && x.PlexLibraryId == query.PlexLibraryId
-            && x.ParentId == folder.Id
+            x.PlexServerId == folder.PlexServerId && x.PlexLibraryId == query.PlexLibraryId && x.ParentId == folder.Id
         );
         var folderCount = await childFolders.CountAsync(cancellationToken);
         var folderOptions = MediaOverviewExtensions.BuildSortOptions(
@@ -166,8 +153,8 @@ public sealed class GetPhotoFolderChildrenQueryHandler
             .Take(query.FolderPageSize)
             .Select(x => new { x.Id, x.PlexServerId })
             .ToListAsync(cancellationToken);
-        var entities = await context.PlexPhotoFolders
-            .Where(x => rows.Select(row => row.Id).Contains(x.Id))
+        var entities = await context
+            .PlexPhotoFolders.Where(x => rows.Select(row => row.Id).Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
         var totals = new Dictionary<int, PhotoFolderTotals>();
         foreach (var group in rows.GroupBy(x => x.PlexServerId))
@@ -201,8 +188,7 @@ public sealed class GetPhotoFolderChildrenQueryHandler
             && x.PlexLibraryId == query.PlexLibraryId
             && x.PlexPhotoFolderId == folder.Id
         );
-        var assetCount = await directAssets.CountAsync(cancellationToken);
-        var assetBytes = await directAssets.Select(x => (long?)x.Size).SumAsync(cancellationToken) ?? 0L;
+        var (assetCount, assetBytes) = await directAssets.GetPlexPhotoAssetTotalsAsync();
         var assetOptions = MediaOverviewExtensions.BuildSortOptions(
             new Sort(query.Sort, query.Direction),
             nameof(PlexMediaSlimDTO.Title),
@@ -225,8 +211,8 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var rows = await context.PlexPhotoMediaData
-            .Where(x => assetIds.Contains(x.Id))
+        var rows = await context
+            .PlexPhotoMediaData.Where(x => assetIds.Contains(x.Id))
             .Select(x => new
             {
                 Asset = x,
