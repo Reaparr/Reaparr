@@ -374,7 +374,7 @@
                     "headers": {
                         "created-on": "Created On:",
                         "current-status": "Current status:",
-                        "last-seen-at": "Last Seen At:",
+                        "last-seen-at": "Last seen by Plex:",
                         "machine-id": "Machine Identifier:",
                         "plex-version": "Plex Version:",
                         "device": "Device:",
