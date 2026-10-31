@@ -159,7 +159,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
 
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.UpdateItemAsync(library.Id, It.IsAny<LibraryProgressItem>()))
-            .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => item.Total.ShouldBe(3))
+            .Callback<int, LibraryProgressItem>((_, item) => item.Total.ShouldBe(3))
             .Returns(Task.CompletedTask);
 
         // Act

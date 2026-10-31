@@ -108,7 +108,7 @@ public class RefreshPlexTvShowLibraryCommandEmptyUnitTests : BaseCommandUnitTest
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.UpdateItemAsync(target.Id, It.IsAny<LibraryProgressItem>()))
-            .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => progress.Add(item))
+            .Callback<int, LibraryProgressItem>((_, item) => progress.Add(item))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Exactly(3));
 

@@ -6,7 +6,7 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     {
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()))
-            .Callback<int, LibraryProgressItem, CancellationToken>((_, item, _) => capturedItems?.Add(item))
+            .Callback<int, LibraryProgressItem>((_, item) => capturedItems?.Add(item))
             .Returns(Task.CompletedTask);
 
         Mock.Mock<ILibrarySyncProgressStore>()
