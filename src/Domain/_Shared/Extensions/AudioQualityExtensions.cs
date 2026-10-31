@@ -25,10 +25,7 @@ public static class AudioQualityExtensions
         return AudioQuality.Unknown;
     }
 
-    public static bool IsHigherAudioQualityThan(
-        this PlexMusicTrackMediaData file,
-        PlexMusicTrackMediaData other
-    )
+    public static bool IsHigherAudioQualityThan(this PlexMusicTrackMediaData file, PlexMusicTrackMediaData other)
     {
         var fileQuality = file.ClassifyAudioQuality();
         var otherQuality = other.ClassifyAudioQuality();
@@ -54,8 +51,7 @@ public static class AudioQualityExtensions
 
             return file.AudioBitDepth >= other.AudioBitDepth
                 && file.AudioSampleRateHz >= other.AudioSampleRateHz
-                && (file.AudioBitDepth > other.AudioBitDepth
-                    || file.AudioSampleRateHz > other.AudioSampleRateHz);
+                && (file.AudioBitDepth > other.AudioBitDepth || file.AudioSampleRateHz > other.AudioSampleRateHz);
         }
 
         return IsLosslessCodec(fileCodec)
@@ -63,10 +59,7 @@ public static class AudioQualityExtensions
             && AreCompatibleEncodingProperties(file, other, fileCodec, otherCodec);
     }
 
-    public static bool IsEquivalentAudioQualityTo(
-        this PlexMusicTrackMediaData file,
-        PlexMusicTrackMediaData other
-    )
+    public static bool IsEquivalentAudioQualityTo(this PlexMusicTrackMediaData file, PlexMusicTrackMediaData other)
     {
         var fileQuality = file.ClassifyAudioQuality();
         var otherQuality = other.ClassifyAudioQuality();
@@ -88,16 +81,13 @@ public static class AudioQualityExtensions
 
         if (IsLosslessCodec(fileCodec) && IsLosslessCodec(otherCodec))
         {
-            return file.AudioBitDepth == other.AudioBitDepth
-                && file.AudioSampleRateHz == other.AudioSampleRateHz;
+            return file.AudioBitDepth == other.AudioBitDepth && file.AudioSampleRateHz == other.AudioSampleRateHz;
         }
 
         return false;
     }
 
-    public static PlexMusicTrackMediaData? GetBestAudioFile(
-        this IEnumerable<PlexMusicTrackMediaData> files
-    )
+    public static PlexMusicTrackMediaData? GetBestAudioFile(this IEnumerable<PlexMusicTrackMediaData> files)
     {
         PlexMusicTrackMediaData? best = null;
         foreach (var candidate in files)
@@ -107,8 +97,12 @@ public static class AudioQualityExtensions
                 || candidate.IsHigherAudioQualityThan(best)
                 || (
                     candidate.IsEquivalentAudioQualityTo(best)
-                    && ((int)candidate.Source, candidate.PlexApiMediaId, candidate.PlexApiPartId, candidate.Id)
-                        .CompareTo(((int)best.Source, best.PlexApiMediaId, best.PlexApiPartId, best.Id)) < 0
+                    && (
+                        (int)candidate.Source,
+                        candidate.PlexApiMediaId,
+                        candidate.PlexApiPartId,
+                        candidate.Id
+                    ).CompareTo(((int)best.Source, best.PlexApiMediaId, best.PlexApiPartId, best.Id)) < 0
                 )
             )
                 best = candidate;
@@ -152,16 +146,12 @@ public static class AudioQualityExtensions
         if (fileLayout.Length == 0 || otherLayout.Length == 0 || fileLayout != otherLayout)
             return false;
 
-        if (fileCodec.Equals("aac", StringComparison.Ordinal)
-            || otherCodec.Equals("aac", StringComparison.Ordinal))
+        if (fileCodec.Equals("aac", StringComparison.Ordinal) || otherCodec.Equals("aac", StringComparison.Ordinal))
         {
-            if (fileCodec.Equals("aac", StringComparison.Ordinal)
-                && otherCodec.Equals("aac", StringComparison.Ordinal))
+            if (fileCodec.Equals("aac", StringComparison.Ordinal) && otherCodec.Equals("aac", StringComparison.Ordinal))
                 return ProfilesMatch(file.AudioProfile, other.AudioProfile);
 
-            var aacProfile = fileCodec.Equals("aac", StringComparison.Ordinal)
-                ? file.AudioProfile
-                : other.AudioProfile;
+            var aacProfile = fileCodec.Equals("aac", StringComparison.Ordinal) ? file.AudioProfile : other.AudioProfile;
             return Normalize(aacProfile).Length > 0;
         }
 
@@ -230,16 +220,17 @@ public static class AudioQualityExtensions
         AudioQuality at192,
         AudioQuality at256,
         AudioQuality at320
-    ) => bitrateKbps switch
-    {
-        < 96 => below96,
-        < 128 => at96,
-        < 160 => at128,
-        < 192 => at160,
-        < 256 => at192,
-        < 320 => at256,
-        _ => at320,
-    };
+    ) =>
+        bitrateKbps switch
+        {
+            < 96 => below96,
+            < 128 => at96,
+            < 160 => at128,
+            < 192 => at160,
+            < 256 => at192,
+            < 320 => at256,
+            _ => at320,
+        };
 
     private static AudioQuality ClassifyLossless(string codec, int bitDepth, int sampleRateHz) =>
         codec switch
@@ -310,25 +301,25 @@ public static class AudioQualityExtensions
         AudioQuality bit24Rate96000,
         AudioQuality bit24Rate176400,
         AudioQuality bit24Rate192000
-    ) => (bitDepth, sampleRateHz) switch
-    {
-        (16, 44100) => bit16Rate44100,
-        (16, 48000) => bit16Rate48000,
-        (16, 88200) => bit16Rate88200,
-        (16, 96000) => bit16Rate96000,
-        (16, 176400) => bit16Rate176400,
-        (16, 192000) => bit16Rate192000,
-        (24, 44100) => bit24Rate44100,
-        (24, 48000) => bit24Rate48000,
-        (24, 88200) => bit24Rate88200,
-        (24, 96000) => bit24Rate96000,
-        (24, 176400) => bit24Rate176400,
-        (24, 192000) => bit24Rate192000,
-        _ => AudioQuality.Unknown,
-    };
+    ) =>
+        (bitDepth, sampleRateHz) switch
+        {
+            (16, 44100) => bit16Rate44100,
+            (16, 48000) => bit16Rate48000,
+            (16, 88200) => bit16Rate88200,
+            (16, 96000) => bit16Rate96000,
+            (16, 176400) => bit16Rate176400,
+            (16, 192000) => bit16Rate192000,
+            (24, 44100) => bit24Rate44100,
+            (24, 48000) => bit24Rate48000,
+            (24, 88200) => bit24Rate88200,
+            (24, 96000) => bit24Rate96000,
+            (24, 176400) => bit24Rate176400,
+            (24, 192000) => bit24Rate192000,
+            _ => AudioQuality.Unknown,
+        };
 
-    private static bool IsLossyCodec(string codec) =>
-        codec is "mp3" or "aac" or "vorbis" or "opus";
+    private static bool IsLossyCodec(string codec) => codec is "mp3" or "aac" or "vorbis" or "opus";
 
     private static bool IsLosslessCodec(string codec) => codec is "flac" or "alac" or "pcm";
 

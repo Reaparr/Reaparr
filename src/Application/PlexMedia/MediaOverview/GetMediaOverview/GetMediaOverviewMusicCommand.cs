@@ -184,11 +184,7 @@ public sealed class GetMediaOverviewMusicCommandHandler
             mediaSize,
             cancellationToken
         );
-        result.NavigationIndexes = await BuildNavigationIndexesAsync(
-            snapshots,
-            sort.Value,
-            cancellationToken
-        );
+        result.NavigationIndexes = await BuildNavigationIndexesAsync(snapshots, sort.Value, cancellationToken);
         LogPhase(filter, "Statistics", stopwatch.Elapsed, allowedLibraryIds.Count);
         stopwatch.Restart();
         result.Roles = await context
@@ -236,5 +232,4 @@ public sealed class GetMediaOverviewMusicCommandHandler
                 rowCount,
                 elapsed.TotalMilliseconds
             );
-
 }

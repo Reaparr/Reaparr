@@ -162,7 +162,9 @@ public static partial class DbContextExtensions
                        f."{{nameof(PlexPhotoFolder.Title)}}" AS "{{nameof(PlexPhotoFolder.Title)}}",
                        f."{{nameof(PlexPhotoFolder.RootIdentityKey)}}" AS "{{nameof(PlexPhotoFolder.RootIdentityKey)}}",
                        f."{{nameof(PlexPhotoFolder.SourceRootPath)}}" AS "{{nameof(PlexPhotoFolder.SourceRootPath)}}",
-                       f."{{nameof(PlexPhotoFolder.PlexApiLocationId)}}" AS "{{nameof(PlexPhotoFolder.PlexApiLocationId)}}",
+                       f."{{nameof(PlexPhotoFolder.PlexApiLocationId)}}" AS "{{nameof(
+                PlexPhotoFolder.PlexApiLocationId
+            )}}",
                        f."{{nameof(PlexPhotoFolder.IsActive)}}" AS "{{nameof(PlexPhotoFolder.IsActive)}}",
                        f."{{nameof(PlexPhotoFolder.Id)}}" AS "{{nameof(PhotoFolderRootRow.RequestedFolderId)}}"
                 FROM "{{nameof(IReaparrDbContext.PlexPhotoFolders)}}" AS f
@@ -182,20 +184,28 @@ public static partial class DbContextExtensions
                        parent."{{nameof(PlexPhotoFolder.IsActive)}}",
                        ancestors."{{nameof(PhotoFolderRootRow.RequestedFolderId)}}"
                 FROM "{{nameof(IReaparrDbContext.PlexPhotoFolders)}}" AS parent
-                INNER JOIN ancestors ON parent."{{nameof(PlexPhotoFolder.Id)}}" = ancestors."{{nameof(PlexPhotoFolder.ParentId)}}"
+                INNER JOIN ancestors ON parent."{{nameof(PlexPhotoFolder.Id)}}" = ancestors."{{nameof(
+                PlexPhotoFolder.ParentId
+            )}}"
                 WHERE parent."{{nameof(PlexPhotoFolder.PlexServerId)}}" = {0}
                   AND parent."{{nameof(PlexPhotoFolder.PlexLibraryId)}}" = {1}
             )
-            SELECT CAST(root."{{nameof(PhotoFolderRootRow.RequestedFolderId)}}" AS INTEGER) AS "{{nameof(PhotoFolderRootRow.RequestedFolderId)}}",
+            SELECT CAST(root."{{nameof(PhotoFolderRootRow.RequestedFolderId)}}" AS INTEGER) AS "{{nameof(
+                PhotoFolderRootRow.RequestedFolderId
+            )}}",
                    root."{{nameof(PlexPhotoFolder.Id)}}" AS "{{nameof(PhotoFolderRootRow.RootId)}}",
                    root."{{nameof(PlexPhotoFolder.PlexServerId)}}" AS "{{nameof(PhotoFolderRootRow.PlexServerId)}}",
                    root."{{nameof(PlexPhotoFolder.PlexLibraryId)}}" AS "{{nameof(PhotoFolderRootRow.PlexLibraryId)}}",
                    root."{{nameof(PlexPhotoFolder.ParentId)}}" AS "{{nameof(PhotoFolderRootRow.ParentId)}}",
                    root."{{nameof(PlexPhotoFolder.RelativePath)}}" AS "{{nameof(PhotoFolderRootRow.RelativePath)}}",
                    root."{{nameof(PlexPhotoFolder.Title)}}" AS "{{nameof(PhotoFolderRootRow.Title)}}",
-                   root."{{nameof(PlexPhotoFolder.RootIdentityKey)}}" AS "{{nameof(PhotoFolderRootRow.RootIdentityKey)}}",
+                   root."{{nameof(PlexPhotoFolder.RootIdentityKey)}}" AS "{{nameof(
+                PhotoFolderRootRow.RootIdentityKey
+            )}}",
                    root."{{nameof(PlexPhotoFolder.SourceRootPath)}}" AS "{{nameof(PhotoFolderRootRow.SourceRootPath)}}",
-                   root."{{nameof(PlexPhotoFolder.PlexApiLocationId)}}" AS "{{nameof(PhotoFolderRootRow.PlexApiLocationId)}}",
+                   root."{{nameof(PlexPhotoFolder.PlexApiLocationId)}}" AS "{{nameof(
+                PhotoFolderRootRow.PlexApiLocationId
+            )}}",
                    root."{{nameof(PlexPhotoFolder.IsActive)}}" AS "{{nameof(PhotoFolderRootRow.IsActive)}}"
             FROM ancestors AS root
             WHERE root."{{nameof(PlexPhotoFolder.ParentId)}}" IS NULL
@@ -229,34 +239,56 @@ public static partial class DbContextExtensions
         var idPlaceholders = string.Join(",", requestedIds.Select((_, index) => $"{{{index + 2}}}"));
         var format = $$"""
             WITH RECURSIVE descendants AS (
-                SELECT f."{{nameof(PlexPhotoFolder.Id)}}", f."{{nameof(PlexPhotoFolder.ParentId)}}", f."{{nameof(PlexPhotoFolder.Id)}}" AS "{{nameof(PhotoFolderRootRow.RequestedFolderId)}}"
+                SELECT f."{{nameof(PlexPhotoFolder.Id)}}", f."{{nameof(PlexPhotoFolder.ParentId)}}", f."{{nameof(
+                PlexPhotoFolder.Id
+            )}}" AS "{{nameof(PhotoFolderRootRow.RequestedFolderId)}}"
                 FROM "{{nameof(IReaparrDbContext.PlexPhotoFolders)}}" AS f
                 WHERE f."{{nameof(PlexPhotoFolder.PlexServerId)}}" = {0}
                   AND f."{{nameof(PlexPhotoFolder.PlexLibraryId)}}" = {1}
                   AND f."{{nameof(PlexPhotoFolder.Id)}}" IN ({{idPlaceholders}})
                 UNION ALL
-                SELECT child."{{nameof(PlexPhotoFolder.Id)}}", child."{{nameof(PlexPhotoFolder.ParentId)}}", descendants."{{nameof(PhotoFolderRootRow.RequestedFolderId)}}"
+                SELECT child."{{nameof(PlexPhotoFolder.Id)}}", child."{{nameof(
+                PlexPhotoFolder.ParentId
+            )}}", descendants."{{nameof(PhotoFolderRootRow.RequestedFolderId)}}"
                 FROM descendants
-                CROSS JOIN "{{nameof(IReaparrDbContext.PlexPhotoFolders)}}" AS child INDEXED BY "IX_{{nameof(IReaparrDbContext.PlexPhotoFolders)}}_{{nameof(PlexPhotoFolder.ParentId)}}_{{nameof(PlexPhotoFolder.RelativePath)}}"
+                CROSS JOIN "{{nameof(IReaparrDbContext.PlexPhotoFolders)}}" AS child INDEXED BY "IX_{{nameof(
+                IReaparrDbContext.PlexPhotoFolders
+            )}}_{{nameof(PlexPhotoFolder.ParentId)}}_{{nameof(PlexPhotoFolder.RelativePath)}}"
                   ON child."{{nameof(PlexPhotoFolder.ParentId)}}" = descendants."{{nameof(PlexPhotoFolder.Id)}}"
                 WHERE child."{{nameof(PlexPhotoFolder.ParentId)}}" IS NOT NULL
                   AND child."{{nameof(PlexPhotoFolder.PlexServerId)}}" = {0}
                   AND child."{{nameof(PlexPhotoFolder.PlexLibraryId)}}" = {1}
             ),
             aggregates AS (
-                SELECT descendants."{{nameof(PhotoFolderRootRow.RequestedFolderId)}}" AS "{{nameof(PhotoFolderTotalsRow.FolderId)}}",
-                       COUNT(media."{{nameof(PlexPhotoMediaData.Id)}}") AS "{{nameof(PhotoFolderTotalsRow.AssetCount)}}",
-                       COALESCE(SUM(media."{{nameof(PlexPhotoMediaData.Size)}}"), 0) AS "{{nameof(PhotoFolderTotalsRow.AssetBytes)}}"
+                SELECT descendants."{{nameof(PhotoFolderRootRow.RequestedFolderId)}}" AS "{{nameof(
+                PhotoFolderTotalsRow.FolderId
+            )}}",
+                       COUNT(media."{{nameof(PlexPhotoMediaData.Id)}}") AS "{{nameof(
+                PhotoFolderTotalsRow.AssetCount
+            )}}",
+                       COALESCE(SUM(media."{{nameof(PlexPhotoMediaData.Size)}}"), 0) AS "{{nameof(
+                PhotoFolderTotalsRow.AssetBytes
+            )}}"
                 FROM descendants
-                LEFT JOIN "{{nameof(IReaparrDbContext.PlexPhotoMediaData)}}" AS media INDEXED BY "IX_{{nameof(IReaparrDbContext.PlexPhotoMediaData)}}_{{nameof(PlexPhotoMediaData.PlexPhotoFolderId)}}"
-                  ON media."{{nameof(PlexPhotoMediaData.PlexPhotoFolderId)}}" = descendants."{{nameof(PlexPhotoFolder.Id)}}"
+                LEFT JOIN "{{nameof(IReaparrDbContext.PlexPhotoMediaData)}}" AS media INDEXED BY "IX_{{nameof(
+                IReaparrDbContext.PlexPhotoMediaData
+            )}}_{{nameof(PlexPhotoMediaData.PlexPhotoFolderId)}}"
+                  ON media."{{nameof(PlexPhotoMediaData.PlexPhotoFolderId)}}" = descendants."{{nameof(
+                PlexPhotoFolder.Id
+            )}}"
                  AND media."{{nameof(PlexPhotoMediaData.PlexServerId)}}" = {0}
                  AND media."{{nameof(PlexPhotoMediaData.PlexLibraryId)}}" = {1}
                 GROUP BY descendants."{{nameof(PhotoFolderRootRow.RequestedFolderId)}}"
             )
-            SELECT CAST(aggregates."{{nameof(PhotoFolderTotalsRow.FolderId)}}" AS INTEGER) AS "{{nameof(PhotoFolderTotalsRow.FolderId)}}",
-                   CAST(aggregates."{{nameof(PhotoFolderTotalsRow.AssetCount)}}" AS INTEGER) AS "{{nameof(PhotoFolderTotalsRow.AssetCount)}}",
-                   CAST(aggregates."{{nameof(PhotoFolderTotalsRow.AssetBytes)}}" AS INTEGER) AS "{{nameof(PhotoFolderTotalsRow.AssetBytes)}}"
+            SELECT CAST(aggregates."{{nameof(PhotoFolderTotalsRow.FolderId)}}" AS INTEGER) AS "{{nameof(
+                PhotoFolderTotalsRow.FolderId
+            )}}",
+                   CAST(aggregates."{{nameof(PhotoFolderTotalsRow.AssetCount)}}" AS INTEGER) AS "{{nameof(
+                PhotoFolderTotalsRow.AssetCount
+            )}}",
+                   CAST(aggregates."{{nameof(PhotoFolderTotalsRow.AssetBytes)}}" AS INTEGER) AS "{{nameof(
+                PhotoFolderTotalsRow.AssetBytes
+            )}}"
             FROM aggregates
             """;
         var arguments = new object[requestedIds.Length + 2];

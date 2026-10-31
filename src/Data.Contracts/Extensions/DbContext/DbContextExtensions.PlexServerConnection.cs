@@ -155,8 +155,11 @@ public static partial class DbContextExtensions
             var nonMainServerToken = await dbContext
                 .PlexAccountServers.Include(x => x.PlexAccount)
                 .FirstOrDefaultAsync(
-                    x => x.PlexServerId == plexServerId && !x.PlexAccount!.IsMain
-                        && x.PlexAccount.IsValidated && x.PlexAccount.IsEnabled,
+                    x =>
+                        x.PlexServerId == plexServerId
+                        && !x.PlexAccount!.IsMain
+                        && x.PlexAccount.IsValidated
+                        && x.PlexAccount.IsEnabled,
                     cancellationToken
                 );
 

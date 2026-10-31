@@ -10,8 +10,16 @@ public class PlexOtherVideoConfiguration : IEntityTypeConfiguration<PlexOtherVid
         builder.HasIndex(x => new { x.PlexLibraryId, x.SearchTitle });
         builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
         builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
-        builder.HasOne(x => x.PlexLibrary).WithMany(x => x.OtherVideos).HasForeignKey(x => x.PlexLibraryId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne(x => x.PlexServer).WithMany().HasForeignKey(x => x.PlexServerId).OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasOne(x => x.PlexLibrary)
+            .WithMany(x => x.OtherVideos)
+            .HasForeignKey(x => x.PlexLibraryId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasOne(x => x.PlexServer)
+            .WithMany()
+            .HasForeignKey(x => x.PlexServerId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder
             .HasMany(x => x.Actors)

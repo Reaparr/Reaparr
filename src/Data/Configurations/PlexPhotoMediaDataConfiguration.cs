@@ -9,8 +9,19 @@ public sealed class PlexPhotoMediaDataConfiguration : IEntityTypeConfiguration<P
         builder.HasIndex(x => new { x.PlexLibraryId, x.PlexApiRatingKey }).IsUnique();
         builder.HasIndex(x => new { x.PlexApiRatingKey, x.PlexServerId });
         builder.HasIndex(x => new { x.PlexLibraryId, x.PlexApiPartId }).IsUnique();
-        builder.HasIndex(x => new { x.PlexLibraryId, x.PlexPhotoFolderId, x.Title, x.Id });
-        builder.HasIndex(x => new { x.PlexLibraryId, x.Title, x.Id });
+        builder.HasIndex(x => new
+        {
+            x.PlexLibraryId,
+            x.PlexPhotoFolderId,
+            x.Title,
+            x.Id,
+        });
+        builder.HasIndex(x => new
+        {
+            x.PlexLibraryId,
+            x.Title,
+            x.Id,
+        });
         builder.HasIndex(x => new { x.PlexLibraryId, x.SearchTitle });
         builder
             .HasOne(x => x.PlexPhotoFolder)

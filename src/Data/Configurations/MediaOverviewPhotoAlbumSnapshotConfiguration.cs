@@ -6,7 +6,12 @@ public class MediaOverviewPhotoAlbumSnapshotConfiguration
     public override void Configure(EntityTypeBuilder<MediaOverviewPhotoAlbumSnapshot> builder)
     {
         base.Configure(builder);
-        builder.HasIndex(x => new { x.TitleRank, x.PlexLibraryId, x.PlexPhotoAlbumId });
+        builder.HasIndex(x => new
+        {
+            x.TitleRank,
+            x.PlexLibraryId,
+            x.PlexPhotoAlbumId,
+        });
 
         builder
             .HasOne(x => x.PlexPhotoAlbum)

@@ -13,9 +13,7 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
         var outputFileInfoMock = new Mock<IFileInfo>();
         outputFileInfoMock.Setup(x => x.Exists).Returns(true);
         outputFileInfoMock.Setup(x => x.Length).Returns(0);
-        Mock.Mock<IFileInfoFactory>()
-            .Setup(x => x.New(It.IsAny<string>()))
-            .Returns(outputFileInfoMock.Object);
+        Mock.Mock<IFileInfoFactory>().Setup(x => x.New(It.IsAny<string>())).Returns(outputFileInfoMock.Object);
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Setup(x =>
                 x.PersistProgressAsync(
@@ -164,7 +162,7 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
             runnerStopRelease.TrySetResult();
             stoppedWriteRelease.TrySetResult();
         }
-        }
+    }
 
     [Test]
     public async Task ShouldAcceptCancelledRunnerStop_AndAwaitTerminalWorkBeforePersistingStopped()
@@ -241,12 +239,9 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
         var stopResult = await stopTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
         stopResult.IsSuccess.ShouldBeTrue();
         stopResult.Errors.Count.ShouldBe(0);
-        statusOrder.ShouldBe(
-            [DownloadStatus.Downloading, DownloadStatus.DownloadFinished, DownloadStatus.Stopped]
-        );
+        statusOrder.ShouldBe([DownloadStatus.Downloading, DownloadStatus.DownloadFinished, DownloadStatus.Stopped]);
         dashWrapperMock.Verify(x => x.StopAsync(), Times.Once());
     }
-
 
     [Test]
     public async Task ShouldReturnSuccess_WhenStopAsyncIsCalledTwice()
@@ -424,6 +419,5 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
             runnerDisposeRelease.TrySetResult();
             terminalWriteRelease.TrySetResult();
         }
-        }
+    }
 }
-

@@ -10,7 +10,6 @@ public class PlexMusicAlbumCountries
         PlexMusicAlbumId = plexMusicAlbumId;
     }
 
-
     /// <summary>
     /// Gets the identifier of the country catalogue entry.
     /// </summary>

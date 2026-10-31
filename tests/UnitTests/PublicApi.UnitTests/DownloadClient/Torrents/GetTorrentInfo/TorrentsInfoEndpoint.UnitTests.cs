@@ -41,9 +41,7 @@ public class TorrentsInfoEndpointUnitTests
         await dbContext
             .DownloadTaskMovieFile.Where(x => x.Id == movieFile.Id)
             .ExecuteUpdateAsync(
-                x =>
-                    x.SetProperty(p => p.HashId, hash)
-                        .SetProperty(p => p.DownloadStatus, DownloadStatus.Completed),
+                x => x.SetProperty(p => p.HashId, hash).SetProperty(p => p.DownloadStatus, DownloadStatus.Completed),
                 CancellationToken
             );
 
@@ -323,53 +321,89 @@ public class TorrentsInfoEndpointUnitTests
     [Arguments(DownloadStatus.Moving, "moving")]
     [Arguments(DownloadStatus.Unknown, "stalledDL")]
     public async Task ShouldReportFileStateWithoutChangingTasksOrLeakingOtherOwnership(
-        DownloadStatus status, string expectedState)
+        DownloadStatus status,
+        string expectedState
+    )
     {
         // Arrange
-        await SetupDatabase(5138, config =>
-        {
-            config.PlexServerCount = 1;
-            config.MovieDownloadTasksCount = 2;
-            config.RadarrIntegrationCount = 2;
-        });
+        await SetupDatabase(
+            5138,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.MovieDownloadTasksCount = 2;
+                config.RadarrIntegrationCount = 2;
+            }
+        );
         var dbContext = IDbContext;
         var integrations = await dbContext.RadarrIntegrations.OrderBy(x => x.Id).ToListAsync(CancellationToken);
-        var files = await dbContext.DownloadTaskMovieFile.AsTracking().Include(x => x.Parent)
-            .OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var files = await dbContext
+            .DownloadTaskMovieFile.AsTracking()
+            .Include(x => x.Parent)
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         files.Count.ShouldBe(2);
         integrations.Count.ShouldBe(2);
         for (var index = 0; index < files.Count; index++)
         {
             files[index].RadarrIntegrationId = integrations[index].Id;
             files[index].Parent!.RadarrIntegrationId = integrations[index].Id;
-            dbContext.Entry(files[index]).CurrentValues.SetValues(new { HashId = new string(index == 0 ? 'a' : 'b', 40) });
+            dbContext
+                .Entry(files[index])
+                .CurrentValues.SetValues(new { HashId = new string(index == 0 ? 'a' : 'b', 40) });
             files[index].DownloadStatus = status;
         }
         await dbContext.SaveChangesAsync(CancellationToken);
-        await dbContext.PlexServers.ExecuteUpdateAsync(update =>
-            update.SetProperty(server => server.IsEnabled, true).SetProperty(server => server.OwnedOverride, false),
-            CancellationToken);
-        var before = await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.ParentId, x.HashId, x.DownloadStatus, x.RadarrIntegrationId })
+        await dbContext.PlexServers.ExecuteUpdateAsync(
+            update =>
+                update.SetProperty(server => server.IsEnabled, true).SetProperty(server => server.OwnedOverride, false),
+            CancellationToken
+        );
+        var before = await dbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.HashId,
+                x.DownloadStatus,
+                x.RadarrIntegrationId,
+            })
             .ToListAsync(CancellationToken);
         before.Select(x => x.DownloadStatus).ShouldBe([status, status]);
 
         // Act
-        var response = await TestEndpointHandleAsync(new TorrentsInfoEndpointRequest { Hashes = "all" },
-            integrationIdentity: integrations[0].Id.ToRadarrIdentity());
+        var response = await TestEndpointHandleAsync(
+            new TorrentsInfoEndpointRequest { Hashes = "all" },
+            integrationIdentity: integrations[0].Id.ToRadarrIdentity()
+        );
 
         // Assert
         response.IsValid.ShouldBeTrue();
         response.ValidationErrors.Count.ShouldBe(0);
         response.StatusCode.ShouldBe(200);
         response.Response.ShouldNotBeNull();
-        response.Response.Select(torrent => (torrent.Hash, torrent.State, torrent.Category, torrent.RatioLimit))
+        response
+            .Response.Select(torrent => (torrent.Hash, torrent.State, torrent.Category, torrent.RatioLimit))
             .ShouldBe([(files[0].HashId!, expectedState, integrations[0].Category, -2f)]);
-        (await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.ParentId, x.HashId, x.DownloadStatus, x.RadarrIntegrationId })
-            .ToListAsync(CancellationToken)).ShouldBe(before);
-        Mock.Mock<ICommandExecutor>().Verify(executor => executor.Send(
-            It.IsAny<CreateDownloadTasksCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        (
+            await dbContext
+                .DownloadTaskMovieFile.OrderBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.ParentId,
+                    x.HashId,
+                    x.DownloadStatus,
+                    x.RadarrIntegrationId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(before);
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                executor => executor.Send(It.IsAny<CreateDownloadTasksCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     private async Task<(

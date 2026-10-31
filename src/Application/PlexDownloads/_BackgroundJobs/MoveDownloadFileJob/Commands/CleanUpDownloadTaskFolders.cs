@@ -186,8 +186,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
                     ? IsAtOrAbovePhotoProtectedDirectory(directory, protectedDirectory)
                         || !IsWithinProtectedDirectory(directory, protectedDirectory)
                     : IsAtOrAboveProtectedDirectory(directory, protectedDirectory)
-            )
-            || (activeDirectories is not null && activeDirectories.Contains(NormalizeDirectory(directory)))
+            ) || (activeDirectories is not null && activeDirectories.Contains(NormalizeDirectory(directory)))
         )
             return Result.Ok(false);
 
@@ -226,11 +225,9 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
         if (string.IsNullOrEmpty(protectedDirectory))
             return false;
 
-        var normalizedDirectory = Path
-            .GetFullPath(directory)
+        var normalizedDirectory = Path.GetFullPath(directory)
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var normalizedProtectedDirectory = Path
-            .GetFullPath(protectedDirectory)
+        var normalizedProtectedDirectory = Path.GetFullPath(protectedDirectory)
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
         return string.Equals(normalizedDirectory, normalizedProtectedDirectory, StringComparison.OrdinalIgnoreCase)
@@ -270,4 +267,3 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
             );
     }
 }
-

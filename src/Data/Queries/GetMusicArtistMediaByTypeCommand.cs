@@ -99,10 +99,9 @@ public sealed class GetMusicArtistMediaByTypeCommandHandler
 
         if (filter.ComparisonState.HasValue)
         {
-            var comparisonQuery = _dbContext.PlexMusicArtists.ApplyFilter(options).ApplyMusicArtistSortIfRequired(
-                options,
-                filter.PlexLibraryId == 0
-            );
+            var comparisonQuery = _dbContext
+                .PlexMusicArtists.ApplyFilter(options)
+                .ApplyMusicArtistSortIfRequired(options, filter.PlexLibraryId == 0);
             var candidateResult = await LoadComparisonCandidatesAsync(
                 comparisonQuery.ProjectMusicArtistPage(),
                 _commandExecutor,
@@ -132,10 +131,9 @@ public sealed class GetMusicArtistMediaByTypeCommandHandler
             return Result.Ok(response);
         }
 
-        var artistQuery = _dbContext.PlexMusicArtists.ApplyFilter(options).ApplyMusicArtistSortIfRequired(
-            options,
-            filter.PlexLibraryId == 0
-        );
+        var artistQuery = _dbContext
+            .PlexMusicArtists.ApplyFilter(options)
+            .ApplyMusicArtistSortIfRequired(options, filter.PlexLibraryId == 0);
         response.TotalCount = await artistQuery.CountAsync(ct);
         response.MediaSize = await artistQuery.SumAsync(x => x.MediaSize, ct);
         response.TotalMediaSize = response.MediaSize;

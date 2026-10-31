@@ -43,12 +43,11 @@ public static partial class PlexMediaQueryMapper
 
     internal static IQueryable<MediaMetadataProjectionRow> ProjectMusicArtistMetadataRows(
         this IQueryable<PlexMusicArtist> source
-    ) => source.Select(
-        x => new MediaMetadataProjectionRow
+    ) =>
+        source.Select(x => new MediaMetadataProjectionRow
         {
             Roles = x.Actors.Select(actor => actor.Id).ToList(),
             Countries = x.Countries.Select(country => country.Id).ToList(),
             Genres = x.Genres.Select(genre => genre.Id).ToList(),
-        }
-    );
+        });
 }

@@ -48,5 +48,4 @@ public class PlexServerSettingsModuleUnitTests : BaseUnitTest<PlexServerSettings
         // Assert
         speedLimit.ShouldBe(200);
     }
-
 }

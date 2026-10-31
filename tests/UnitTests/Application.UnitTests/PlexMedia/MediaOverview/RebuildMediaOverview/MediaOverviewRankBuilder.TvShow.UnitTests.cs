@@ -1,4 +1,3 @@
-
 namespace Reaparr.Application.UnitTests;
 
 public class MediaOverviewRankBuilderTvShowUnitTests
@@ -12,16 +11,20 @@ public class MediaOverviewRankBuilderTvShowUnitTests
             .RuleFor(x => x.PlexTvShowId, f => new[] { 40, 10, 30, 20 }[f.IndexFaker])
             .RuleFor(x => x.SearchTitle, f => new[] { "zulu", "alpha", "mike", "bravo" }[f.IndexFaker])
             .RuleFor(x => x.Year, f => new[] { 2022, 2020, 2021, 2019 }[f.IndexFaker])
-            .RuleFor(x => x.AddedAt, f => new[] { 4, 1, 3, 2 }.Select(day => new DateTime(2024, 1, day)).ElementAt(f.IndexFaker))
+            .RuleFor(
+                x => x.AddedAt,
+                f => new[] { 4, 1, 3, 2 }.Select(day => new DateTime(2024, 1, day)).ElementAt(f.IndexFaker)
+            )
             .RuleFor(
                 x => x.UpdatedAt,
-                f => new[] { 4, 1, 3, 2 }
-                    .Select(day => (DateTime?)new DateTime(2024, 2, day))
-                    .ElementAt(f.IndexFaker)
+                f => new[] { 4, 1, 3, 2 }.Select(day => (DateTime?)new DateTime(2024, 2, day)).ElementAt(f.IndexFaker)
             )
             .RuleFor(x => x.Duration, f => new[] { 400, 100, 300, 200 }[f.IndexFaker])
             .RuleFor(x => x.MediaSize, f => new[] { 4000L, 1000L, 3000L, 2000L }[f.IndexFaker])
-            .RuleFor(x => x.Quality, f => new[] { VideoQuality.UHD_4K, VideoQuality.SD, VideoQuality.FullHD, VideoQuality.HD }[f.IndexFaker])
+            .RuleFor(
+                x => x.Quality,
+                f => new[] { VideoQuality.UHD_4K, VideoQuality.SD, VideoQuality.FullHD, VideoQuality.HD }[f.IndexFaker]
+            )
             .Generate(4);
 
         // Act

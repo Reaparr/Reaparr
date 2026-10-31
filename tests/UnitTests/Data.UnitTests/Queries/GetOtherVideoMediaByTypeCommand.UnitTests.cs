@@ -5,7 +5,6 @@ namespace Reaparr.Data.UnitTests;
 
 public class GetOtherVideoMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetOtherVideoMediaByTypeCommand>
 {
-
     [Test]
     [Arguments(false, "Actors")]
     [Arguments(true, "Actors")]

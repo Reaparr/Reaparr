@@ -56,7 +56,9 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(MoveDownloadFileJob.MaxRetryCount + 1));
         scheduler
-            .Setup(x => x.CheckExists(It.Is<TriggerKey>(triggerKey => triggerKey.Group == jobKey.Group), CancellationToken))
+            .Setup(x =>
+                x.CheckExists(It.Is<TriggerKey>(triggerKey => triggerKey.Group == jobKey.Group), CancellationToken)
+            )
             .ReturnsAsync(false)
             .Verifiable(Times.Exactly(MoveDownloadFileJob.MaxRetryCount));
         scheduler
@@ -91,9 +93,11 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
         }
 
         pending.Count.ShouldBe(MoveDownloadFileJob.MaxRetryCount);
-        pending.Select(trigger => (int)trigger.JobDataMap[MoveDownloadFileJob.RetryCountKey])
+        pending
+            .Select(trigger => (int)trigger.JobDataMap[MoveDownloadFileJob.RetryCountKey])
             .ShouldBe(Enumerable.Range(1, MoveDownloadFileJob.MaxRetryCount).ToArray());
-        pending.Select(trigger => trigger.Key.Name)
+        pending
+            .Select(trigger => trigger.Key.Name)
             .ShouldBe(
                 Enumerable
                     .Range(0, MoveDownloadFileJob.MaxRetryCount)

@@ -200,10 +200,7 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
             {
                 _log.Here().Verbose("Plex thumbnail not found at {Url}", SanitizeUrl(directUrl));
                 HttpContext.Response.Headers.CacheControl = "no-store";
-                await Send.FluentResult(
-                    Result.Fail("Plex thumbnail not found").Add404NotFoundError(),
-                    ct
-                );
+                await Send.FluentResult(Result.Fail("Plex thumbnail not found").Add404NotFoundError(), ct);
                 return;
             }
 

@@ -17,10 +17,7 @@ public sealed class QueueMediaOverviewRebuildCommandHandler : ICommandHandler<Qu
     private readonly IScheduler _scheduler;
     private readonly IMediaOverviewRebuildCoordinator _coordinator;
 
-    public QueueMediaOverviewRebuildCommandHandler(
-        IScheduler scheduler,
-        IMediaOverviewRebuildCoordinator coordinator
-    )
+    public QueueMediaOverviewRebuildCommandHandler(IScheduler scheduler, IMediaOverviewRebuildCoordinator coordinator)
     {
         _scheduler = scheduler;
         _coordinator = coordinator;

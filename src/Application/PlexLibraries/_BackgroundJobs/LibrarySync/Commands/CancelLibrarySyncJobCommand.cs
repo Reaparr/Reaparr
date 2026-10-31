@@ -94,9 +94,7 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
         // Cancellation has already been accepted; persist and inspect its outcome independently of the request token.
         var cancelled = await _dbContext
             .LibrarySyncJobQueues.Where(x =>
-                x.PlexServerId == serverId
-                && x.PlexLibraryId == plexLibraryId
-                && x.CreatedAt == createdAt
+                x.PlexServerId == serverId && x.PlexLibraryId == plexLibraryId && x.CreatedAt == createdAt
             )
             .Where(x =>
                 x.Status == LibrarySyncJobStatus.Queued
@@ -113,9 +111,7 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
         if (cancelled != 1)
         {
             var currentStatus = await _dbContext
-                .LibrarySyncJobQueues.Where(x =>
-                    x.PlexServerId == serverId && x.PlexLibraryId == plexLibraryId
-                )
+                .LibrarySyncJobQueues.Where(x => x.PlexServerId == serverId && x.PlexLibraryId == plexLibraryId)
                 .Select(x => x.Status)
                 .FirstOrDefaultAsync(CancellationToken.None);
             if (IsTerminalStatus(currentStatus))
@@ -159,8 +155,5 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
     }
 
     private static bool IsTerminalStatus(LibrarySyncJobStatus status) =>
-        status
-        is LibrarySyncJobStatus.Completed
-            or LibrarySyncJobStatus.Cancelled
-            or LibrarySyncJobStatus.Failed;
+        status is LibrarySyncJobStatus.Completed or LibrarySyncJobStatus.Cancelled or LibrarySyncJobStatus.Failed;
 }

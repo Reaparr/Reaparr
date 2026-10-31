@@ -6,7 +6,12 @@ public class MediaOverviewArtistSnapshotConfiguration
     public override void Configure(EntityTypeBuilder<MediaOverviewMusicArtistSnapshot> builder)
     {
         base.Configure(builder);
-        builder.HasIndex(x => new { x.TitleRank, x.PlexLibraryId, x.PlexArtistId });
+        builder.HasIndex(x => new
+        {
+            x.TitleRank,
+            x.PlexLibraryId,
+            x.PlexArtistId,
+        });
 
         builder
             .HasOne(x => x.PlexArtist)

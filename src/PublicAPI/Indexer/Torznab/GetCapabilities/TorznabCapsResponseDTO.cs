@@ -20,7 +20,6 @@ public record TorznabCapsResponseDTO
     [XmlArray("categories")]
     [XmlArrayItem("category")]
     public List<TorznabCategory> Categories { get; set; } = new();
-
 }
 
 public record TorznabServer
@@ -78,4 +77,3 @@ public record TorznabCategory
     [XmlAttribute("name")]
     public string Name { get; set; } = string.Empty;
 }
-

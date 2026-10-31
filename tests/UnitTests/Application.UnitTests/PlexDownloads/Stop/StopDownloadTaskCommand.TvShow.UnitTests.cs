@@ -215,6 +215,7 @@ public class StopDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StopDownloadT
         downloadTasks.First(x => x.Id == seasonChildTasks.First().Id).DownloadStatus.ShouldBe(DownloadStatus.Stopped);
         downloadTasks.First(x => x.Id == seasonChildTasks.Last().Id).DownloadStatus.ShouldBe(DownloadStatus.Queued);
     }
+
     [Test]
     public async Task ShouldStopBothDownloadingAndMovingChildren_WhenTvShowHasOneChildDownloadingAndOneMoving()
     {

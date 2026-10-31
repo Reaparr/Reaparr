@@ -172,20 +172,24 @@ public static partial class FakeData
 
     #region LibraryMediaItemStreamDTO
 
-    private static readonly Faker<LibraryMediaItemStreamDTO> _videoStreamFaker =
-        CreateLibraryMediaItemStreamDTOFaker(StreamType.Video);
+    private static readonly Faker<LibraryMediaItemStreamDTO> _videoStreamFaker = CreateLibraryMediaItemStreamDTOFaker(
+        StreamType.Video
+    );
 
-    private static readonly Faker<LibraryMediaItemStreamDTO> _audioStreamFaker =
-        CreateLibraryMediaItemStreamDTOFaker(StreamType.Audio);
+    private static readonly Faker<LibraryMediaItemStreamDTO> _audioStreamFaker = CreateLibraryMediaItemStreamDTOFaker(
+        StreamType.Audio
+    );
 
     private static readonly Faker<LibraryMediaItemStreamDTO> _subtitleStreamFaker =
         CreateLibraryMediaItemStreamDTOFaker(StreamType.Subtitle);
 
-    private static readonly Faker<LibraryMediaItemStreamDTO> _lyricsStreamFaker =
-        CreateLibraryMediaItemStreamDTOFaker(StreamType.Lyrics);
+    private static readonly Faker<LibraryMediaItemStreamDTO> _lyricsStreamFaker = CreateLibraryMediaItemStreamDTOFaker(
+        StreamType.Lyrics
+    );
 
-    private static readonly Faker<LibraryMediaItemStreamDTO> _unknownStreamFaker =
-        CreateLibraryMediaItemStreamDTOFaker(StreamType.Unknown);
+    private static readonly Faker<LibraryMediaItemStreamDTO> _unknownStreamFaker = CreateLibraryMediaItemStreamDTOFaker(
+        StreamType.Unknown
+    );
 
     private static Faker<LibraryMediaItemStreamDTO> CreateLibraryMediaItemStreamDTOFaker(StreamType streamType)
     {
@@ -193,17 +197,19 @@ public static partial class FakeData
             .StrictMode(true)
             .RuleFor(x => x.Id, _ => GetUniqueNumber())
             .RuleFor(x => x.Key, (_, x) => $"/library/streams/{x.Id}")
-
             .RuleFor(x => x.StreamType, _ => streamType)
             .RuleFor(x => x.Default, f => f.Random.Bool())
             .RuleFor(x => x.Codec, f => GetCodecForStreamType(f, streamType))
-            .RuleFor(x => x.Format, (_, x) => streamType switch
-            {
-                StreamType.Subtitle => "srt",
-                StreamType.Lyrics => "lrc",
-                _ => null,
-            })
-
+            .RuleFor(
+                x => x.Format,
+                (_, x) =>
+                    streamType switch
+                    {
+                        StreamType.Subtitle => "srt",
+                        StreamType.Lyrics => "lrc",
+                        _ => null,
+                    }
+            )
             .RuleFor(x => x.Index, f => f.Random.Int(0, 10))
             .RuleFor(x => x.Bitrate, f => f.Random.Int(1000, 10000000))
             .RuleFor(x => x.Language, f => f.Address.CountryCode())
@@ -331,16 +337,17 @@ public static partial class FakeData
         };
 
     public static Faker<LibraryMediaItemStreamDTO> GetLibraryMediaItemStreamDTO(Seed seed, StreamType streamType) =>
-        (streamType switch
-        {
-            StreamType.Video => _videoStreamFaker,
-            StreamType.Audio => _audioStreamFaker,
-            StreamType.Subtitle => _subtitleStreamFaker,
-            StreamType.Lyrics => _lyricsStreamFaker,
-            StreamType.Unknown => _unknownStreamFaker,
-            _ => throw new ArgumentOutOfRangeException(nameof(streamType), streamType, null),
-        })
-            .UseSeed(seed.Next());
+        (
+            streamType switch
+            {
+                StreamType.Video => _videoStreamFaker,
+                StreamType.Audio => _audioStreamFaker,
+                StreamType.Subtitle => _subtitleStreamFaker,
+                StreamType.Lyrics => _lyricsStreamFaker,
+                StreamType.Unknown => _unknownStreamFaker,
+                _ => throw new ArgumentOutOfRangeException(nameof(streamType), streamType, null),
+            }
+        ).UseSeed(seed.Next());
 
     #endregion
 

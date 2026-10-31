@@ -13,10 +13,7 @@ public static partial class PlexMediaDataMapper
     public static PlexPhotoAlbum ToPlexPhotoAlbum(this LibraryMediaItemDTO source) =>
         source.ToPlexPhotoAlbum(source.Summary);
 
-    private static PlexPhotoAlbum ToPlexPhotoAlbum(
-        this LibraryMediaItemDTO source,
-        string? summary
-    ) =>
+    private static PlexPhotoAlbum ToPlexPhotoAlbum(this LibraryMediaItemDTO source, string? summary) =>
         new()
         {
             Id = 0,

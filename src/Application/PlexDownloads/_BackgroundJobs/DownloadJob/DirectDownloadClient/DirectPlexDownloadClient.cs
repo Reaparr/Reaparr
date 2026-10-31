@@ -219,7 +219,12 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                                 snapshot?.SaveProgress ?? 0,
                                 snapshot?.Chunks.Count ?? 0
                             );
-                        var downloadResult = await DownloadAttemptAsync(downloadTask, snapshot, attemptDownloadUrl, token);
+                        var downloadResult = await DownloadAttemptAsync(
+                            downloadTask,
+                            snapshot,
+                            attemptDownloadUrl,
+                            token
+                        );
                         if (downloadResult.IsCancelledOrFailed)
                             return downloadResult;
 
@@ -364,10 +369,11 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         }
 
         if (snapshot is not null)
-            _log.Here().Warning(
-                "Ignoring invalid resume snapshot without chunks for {MediaFileName}; starting a fresh download",
-                _filename
-            );
+            _log.Here()
+                .Warning(
+                    "Ignoring invalid resume snapshot without chunks for {MediaFileName}; starting a fresh download",
+                    _filename
+                );
 
         var downloaderTargetPath = Path.Combine(downloadTask.DownloadDirectory, downloadTask.FileName);
         await _downloader.DownloadFileTaskAsync(downloadUrl, downloaderTargetPath, cancellationToken);
@@ -388,8 +394,11 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
             // The downloader can recreate a missing file without resetting valid saved offsets.
             var partialPath = snapshot.FileName + snapshot.DownloadingFileExtension;
             if (!_file.Exists(partialPath) || _fileInfoFactory.New(partialPath).Length < requiredLength)
-                return Result.Fail(new ExceptionalError(
-                    new IOException("The partial download file is missing or shorter than its saved progress.")));
+                return Result.Fail(
+                    new ExceptionalError(
+                        new IOException("The partial download file is missing or shorter than its saved progress.")
+                    )
+                );
 
             return Result.Ok();
         });

@@ -55,7 +55,8 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
     [Arguments(JobStatus.Failed, true)]
     public async Task ShouldPreserveFailureStatusAndNotPublish_WhenCheckDoesNotSucceed(
         JobStatus expectedStatus,
-        bool commandThrows)
+        bool commandThrows
+    )
     {
         // Arrange
         var context = SetupJobContext(CancellationToken);
@@ -63,14 +64,14 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
             .Setup(x => x.Send(It.IsAny<CheckForUpdatesCommand>(), CancellationToken));
         if (commandThrows)
         {
-            commandSetup.ThrowsAsync(new InvalidOperationException("Update check failed"))
-                .Verifiable(Times.Once());
+            commandSetup.ThrowsAsync(new InvalidOperationException("Update check failed")).Verifiable(Times.Once());
         }
         else
         {
-            var checkResult = expectedStatus == JobStatus.Cancelled
-                ? ResultExtensions.TaskIsCancelled(nameof(CheckForUpdatesCommand)).ToResult<AppUpdateCheckResult>()
-                : Result.Fail<AppUpdateCheckResult>("Update check failed");
+            var checkResult =
+                expectedStatus == JobStatus.Cancelled
+                    ? ResultExtensions.TaskIsCancelled(nameof(CheckForUpdatesCommand)).ToResult<AppUpdateCheckResult>()
+                    : Result.Fail<AppUpdateCheckResult>("Update check failed");
             commandSetup.ReturnsAsync(checkResult).Verifiable(Times.Once());
         }
 

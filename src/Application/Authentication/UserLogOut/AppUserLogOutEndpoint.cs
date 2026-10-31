@@ -1,4 +1,3 @@
-
 namespace Reaparr.Application;
 
 public class AppUserLogOutEndpoint : EndpointWithoutRequest<string>

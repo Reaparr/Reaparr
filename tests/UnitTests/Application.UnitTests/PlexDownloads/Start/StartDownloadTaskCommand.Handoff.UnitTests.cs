@@ -23,18 +23,22 @@ public class StartDownloadTaskCommandHandoffUnitTests : BaseCommandUnitTest<Star
         SetupDependencies(builder =>
             builder.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>().SingleInstance()
         );
-        await SetupDatabase(31831, config =>
-        {
-            config.PlexServerCount = 1;
-            config.MovieDownloadTasksCount = 1;
-            config.TvShowDownloadTasksCount = 2;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeCount = 3;
-            config.TvShowEpisodeDownloadTasksCount = 3;
-        });
+        await SetupDatabase(
+            31831,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.MovieDownloadTasksCount = 1;
+                config.TvShowDownloadTasksCount = 2;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeCount = 3;
+                config.TvShowEpisodeDownloadTasksCount = 3;
+            }
+        );
         var dbContext = IDbContext;
         await dbContext.DownloadTaskTvShowEpisodeFile.ExecuteUpdateAsync(
-            update => update.SetProperty(file => file.DownloadStatus, DownloadStatus.Completed), CancellationToken
+            update => update.SetProperty(file => file.DownloadStatus, DownloadStatus.Completed),
+            CancellationToken
         );
         var root = await dbContext.DownloadTaskTvShow.FirstAsync(CancellationToken);
         var children = await dbContext.GetDownloadableChildTasks(root.ToKey(), CancellationToken);
@@ -48,8 +52,10 @@ public class StartDownloadTaskCommandHandoffUnitTests : BaseCommandUnitTest<Star
         await dbContext.SetDownloadStatus(siblingKey, DownloadStatus.AutoPaused);
         await dbContext.SetDownloadStatus(retainedKey, DownloadStatus.MovePaused);
         await dbContext.SetDownloadStatus(activeKey, DownloadStatus.Downloading);
-        var before = await dbContext.DownloadTaskTvShowEpisodeFile
-            .OrderBy(file => file.Id).Select(file => new { file.Id, file.DownloadStatus }).ToListAsync(CancellationToken);
+        var before = await dbContext
+            .DownloadTaskTvShowEpisodeFile.OrderBy(file => file.Id)
+            .Select(file => new { file.Id, file.DownloadStatus })
+            .ToListAsync(CancellationToken);
         before.Single(file => file.Id == startedKey.Id).DownloadStatus.ShouldBe(DownloadStatus.Paused);
         before.Single(file => file.Id == siblingKey.Id).DownloadStatus.ShouldBe(DownloadStatus.AutoPaused);
         before.Single(file => file.Id == retainedKey.Id).DownloadStatus.ShouldBe(DownloadStatus.MovePaused);
@@ -59,29 +65,47 @@ public class StartDownloadTaskCommandHandoffUnitTests : BaseCommandUnitTest<Star
 
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(scheduler => scheduler.IsDownloading(startedKey, CancellationToken))
-            .ReturnsAsync(false).Verifiable(Times.Once());
+            .ReturnsAsync(false)
+            .Verifiable(Times.Once());
         Mock.Mock<IDownloadTaskScheduler>()
-            .Setup(scheduler => scheduler.IsDownloading(startedKey,
-                It.Is<CancellationToken>(token => token != CancellationToken && token.CanBeCanceled && !token.IsCancellationRequested)))
-            .ReturnsAsync(stillActive).Verifiable(Times.Once());
+            .Setup(scheduler =>
+                scheduler.IsDownloading(
+                    startedKey,
+                    It.Is<CancellationToken>(token =>
+                        token != CancellationToken && token.CanBeCanceled && !token.IsCancellationRequested
+                    )
+                )
+            )
+            .ReturnsAsync(stillActive)
+            .Verifiable(Times.Once());
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(scheduler => scheduler.StartDownloadTaskJob(startedKey, CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(scheduler => scheduler.GetCurrentlyDownloadingKeysByServer(startedKey.PlexServerId))
-            .ReturnsAsync([startedKey, activeKey]).Verifiable(Times.Once());
+            .ReturnsAsync([startedKey, activeKey])
+            .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
             .Setup(executor => executor.Send(new PauseDownloadTaskCommand(activeKey.Id), CancellationToken))
             .Returns(() =>
             {
                 enteredPause.SetResult();
                 return finishPause.Task;
-            }).Verifiable(Times.Once());
+            })
+            .Verifiable(Times.Once());
         if (stillActive)
         {
             var stopSetup = Mock.Mock<IDownloadTaskScheduler>()
-                .Setup(scheduler => scheduler.StopDownloadTaskJob(startedKey,
-                    It.Is<CancellationToken>(token => token != CancellationToken && token.CanBeCanceled && !token.IsCancellationRequested), true));
+                .Setup(scheduler =>
+                    scheduler.StopDownloadTaskJob(
+                        startedKey,
+                        It.Is<CancellationToken>(token =>
+                            token != CancellationToken && token.CanBeCanceled && !token.IsCancellationRequested
+                        ),
+                        true
+                    )
+                );
             if (stopFails && throwFailure)
                 stopSetup.ThrowsAsync(new InvalidOperationException("Stop failed")).Verifiable(Times.Once());
             else
@@ -115,24 +139,49 @@ public class StartDownloadTaskCommandHandoffUnitTests : BaseCommandUnitTest<Star
         if (stopFails)
             result.Errors.ShouldContain(error => error.Message.Contains("Stop failed"));
         var expectedStartedStatus = !stopFails && stillActive ? DownloadStatus.Paused : startedStatusDuringHandoff;
-        var expectedSiblingStatus = siblingStatusDuringHandoff == DownloadStatus.Queued
-            ? DownloadStatus.AutoPaused : siblingStatusDuringHandoff;
-        var after = await dbContext.DownloadTaskTvShowEpisodeFile
-            .OrderBy(file => file.Id).Select(file => new { file.Id, file.DownloadStatus }).ToListAsync(CancellationToken);
-        after.ShouldBe(before.Select(file => new
-        {
-            file.Id,
-            DownloadStatus = file.Id == startedKey.Id ? expectedStartedStatus
-                : file.Id == siblingKey.Id ? expectedSiblingStatus : file.DownloadStatus,
-        }).ToList());
+        var expectedSiblingStatus =
+            siblingStatusDuringHandoff == DownloadStatus.Queued
+                ? DownloadStatus.AutoPaused
+                : siblingStatusDuringHandoff;
+        var after = await dbContext
+            .DownloadTaskTvShowEpisodeFile.OrderBy(file => file.Id)
+            .Select(file => new { file.Id, file.DownloadStatus })
+            .ToListAsync(CancellationToken);
+        after.ShouldBe(
+            before
+                .Select(file => new
+                {
+                    file.Id,
+                    DownloadStatus = file.Id == startedKey.Id ? expectedStartedStatus
+                    : file.Id == siblingKey.Id ? expectedSiblingStatus
+                    : file.DownloadStatus,
+                })
+                .ToList()
+        );
         (await dbContext.GetDownloadStatusAsync(activeKey)).ShouldBe(DownloadStatus.Downloading);
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<IDownloadTaskScheduler>().Verify(scheduler => scheduler.StopDownloadTaskJob(
-            It.Is<DownloadTaskKey>(key => key != startedKey), It.IsAny<CancellationToken>(), It.IsAny<bool>()), Times.Never());
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Verify(
+                scheduler =>
+                    scheduler.StopDownloadTaskJob(
+                        It.Is<DownloadTaskKey>(key => key != startedKey),
+                        It.IsAny<CancellationToken>(),
+                        It.IsAny<bool>()
+                    ),
+                Times.Never()
+            );
         if (!stillActive)
-            Mock.Mock<IDownloadTaskScheduler>().Verify(scheduler => scheduler.StopDownloadTaskJob(
-                It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>(), It.IsAny<bool>()), Times.Never());
+            Mock.Mock<IDownloadTaskScheduler>()
+                .Verify(
+                    scheduler =>
+                        scheduler.StopDownloadTaskJob(
+                            It.IsAny<DownloadTaskKey>(),
+                            It.IsAny<CancellationToken>(),
+                            It.IsAny<bool>()
+                        ),
+                    Times.Never()
+                );
         Mock.VerifyEventPublished(It.IsAny<CheckDownloadQueueEvent>, Times.Never());
     }
 }

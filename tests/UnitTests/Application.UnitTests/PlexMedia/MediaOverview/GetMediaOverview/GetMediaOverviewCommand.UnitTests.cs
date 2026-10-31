@@ -52,10 +52,16 @@ public class GetMediaOverviewCommandUnitTests
     [Arguments(PlexMediaComparisonState.Partial, true)]
     [Arguments(PlexMediaComparisonState.HigherQuality, false)]
     [Arguments(PlexMediaComparisonState.PartialAndHigherQuality, false)]
-    public void ShouldLimitMusicToCoverageStates_WhenValidatingEveryOverviewBoundary(PlexMediaComparisonState state, bool valid)
+    public void ShouldLimitMusicToCoverageStates_WhenValidatingEveryOverviewBoundary(
+        PlexMediaComparisonState state,
+        bool valid
+    )
     {
         // Arrange
-        var filter = CreateFilter(PlexMediaType.MusicArtist) with { ComparisonState = state };
+        var filter = CreateFilter(PlexMediaType.MusicArtist) with
+        {
+            ComparisonState = state,
+        };
         var request = new GetAllMediaByTypeRequest { MediaType = PlexMediaType.MusicArtist, ComparisonState = state };
 
         // Act
@@ -78,7 +84,10 @@ public class GetMediaOverviewCommandUnitTests
     public void ShouldPreserveVideoUpgradeFilters_WhenValidatingOverview(PlexMediaType mediaType)
     {
         // Arrange
-        var filter = CreateFilter(mediaType) with { ComparisonState = PlexMediaComparisonState.PartialAndHigherQuality };
+        var filter = CreateFilter(mediaType) with
+        {
+            ComparisonState = PlexMediaComparisonState.PartialAndHigherQuality,
+        };
 
         // Act
         var result = new GetMediaOverviewCommandValidator().Validate(new GetMediaOverviewCommand(filter));
@@ -120,8 +129,7 @@ public class GetMediaOverviewCommandUnitTests
 
         // Assert
         result.IsValid.ShouldBe(expected);
-        result.Errors.Select(x => x.PropertyName)
-            .ShouldBe(expected ? [] : new[] { "Filter.Parameters.Sort" });
+        result.Errors.Select(x => x.PropertyName).ShouldBe(expected ? [] : new[] { "Filter.Parameters.Sort" });
     }
 
     private static MediaQueryFilter CreateFilter(PlexMediaType mediaType) =>
@@ -131,10 +139,6 @@ public class GetMediaOverviewCommandUnitTests
             PlexLibraryId = 0,
             FilterOfflineMedia = false,
             FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters
-            {
-                Page = 2,
-                PageSize = 25,
-            },
+            Parameters = new FlexQueryParameters { Page = 2, PageSize = 25 },
         };
 }

@@ -44,7 +44,9 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         fs.Directory.Exists(Path.GetDirectoryName(file.DownloadDirectory)!).ShouldBe(containsFile);
         if (containsFile)
             fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(file.Id);
+        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            file.Id
+        );
     }
 
     [Test]
@@ -54,18 +56,21 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectMovieSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(65002, config =>
-        {
-            config.PlexMusicLibraryCount = 1;
-            config.MusicArtistDownloadTasksCount = 2;
-            config.MusicAlbumDownloadTasksCount = 1;
-            config.MusicTrackDownloadTasksCount = 1;
-            config.MusicTrackFileDownloadTasksCount = 1;
-            config.MovieDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            65002,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.MovieDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
-            .OrderBy(x => x.PlexApiRatingKey)
+        var musicFiles = await dbContext
+            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var target = musicFiles[0];
         var control = musicFiles[1];
@@ -100,8 +105,9 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(musicFiles.Select(x => x.Id).Order());
+        (
+            await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(musicFiles.Select(x => x.Id).Order());
         (await dbContext.DownloadTaskMovieFile.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
     }
 
@@ -112,20 +118,23 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectEpisodeSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(65003, config =>
-        {
-            config.PlexMusicLibraryCount = 1;
-            config.MusicArtistDownloadTasksCount = 2;
-            config.MusicAlbumDownloadTasksCount = 1;
-            config.MusicTrackDownloadTasksCount = 1;
-            config.MusicTrackFileDownloadTasksCount = 1;
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            65003,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
-            .OrderBy(x => x.PlexApiRatingKey)
+        var musicFiles = await dbContext
+            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var target = musicFiles[0];
         var control = musicFiles[1];
@@ -161,9 +170,12 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(musicFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(musicFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
@@ -173,18 +185,21 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectPhotoSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(65004, config =>
-        {
-            config.PlexMusicLibraryCount = 1;
-            config.MusicArtistDownloadTasksCount = 2;
-            config.MusicAlbumDownloadTasksCount = 1;
-            config.MusicTrackDownloadTasksCount = 1;
-            config.MusicTrackFileDownloadTasksCount = 1;
-            config.PlexPhotoLibraryCount = 1;
-        });
+        await SetupDatabase(
+            65004,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
-            .OrderBy(x => x.PlexApiRatingKey)
+        var musicFiles = await dbContext
+            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var target = musicFiles[0];
         var control = musicFiles[1];
@@ -231,9 +246,12 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(musicFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(musicFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
@@ -255,8 +273,8 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
             }
         );
         var dbContext = IDbContext;
-        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
-            .OrderBy(x => x.PlexApiRatingKey)
+        var musicFiles = await dbContext
+            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var target = musicFiles[0];
         var sibling = musicFiles[1];
@@ -291,8 +309,9 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(new[] { target.Id, sibling.Id, control.Id }.Order());
+        (
+            await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(new[] { target.Id, sibling.Id, control.Id }.Order());
     }
 
     [Test]
@@ -302,20 +321,23 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectOtherVideoSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(65006, config =>
-        {
-            config.PlexMusicLibraryCount = 1;
-            config.MusicArtistDownloadTasksCount = 2;
-            config.MusicAlbumDownloadTasksCount = 1;
-            config.MusicTrackDownloadTasksCount = 1;
-            config.MusicTrackFileDownloadTasksCount = 1;
-            config.PlexOtherVideoLibraryCount = 1;
-            config.OtherVideoDownloadTasksCount = 1;
-            config.OtherVideoFileDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            65006,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 2;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
-        var musicFiles = await dbContext.DownloadTaskMusicTrackFiles
-            .OrderBy(x => x.PlexApiRatingKey)
+        var musicFiles = await dbContext
+            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         var sibling = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         var target = musicFiles[0];
@@ -350,9 +372,12 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(musicFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(musicFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
@@ -372,7 +397,9 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         );
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -421,7 +448,9 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         );
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -475,7 +504,9 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
         );
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         dbContext.Entry(target).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -494,10 +525,7 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
             .Verifiable(Times.Once());
         Mock.Mock<IDirectory>().Setup(x => x.Delete(target.DownloadDirectory)).Verifiable(Times.Once());
         Mock.Mock<IDirectory>().Setup(x => x.Exists(parent)).Returns(true).Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.GetFileSystemEntries(parent))
-            .Returns([])
-            .Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.GetFileSystemEntries(parent)).Returns([]).Verifiable(Times.Once());
         Mock.Mock<IDirectory>()
             .Setup(x => x.Delete(parent))
             .Throws(new UnauthorizedAccessException("second delete denied"))

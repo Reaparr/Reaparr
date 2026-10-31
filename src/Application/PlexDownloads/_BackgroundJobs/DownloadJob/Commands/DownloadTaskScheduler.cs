@@ -64,10 +64,10 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
         return Result.Ok();
     }
 
-
     public async Task<bool> IsDownloading(
         DownloadTaskKey downloadTaskKey,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var jobKey = DownloadJob.GetJobKey(downloadTaskKey.Id);
         return await _scheduler.IsJobScheduledOrExecuting(jobKey, cancellationToken);
@@ -90,8 +90,8 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
             if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
                 continue;
 
-            var key = (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))?.JobDataMap
-                .GetPayload<DownloadJobPayload>()
+            var key = (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))
+                ?.JobDataMap.GetPayload<DownloadJobPayload>()
                 ?.DownloadTaskKey;
             if (key is not null)
                 keysById[key.Id] = key;

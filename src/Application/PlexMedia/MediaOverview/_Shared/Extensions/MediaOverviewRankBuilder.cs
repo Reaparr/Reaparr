@@ -33,7 +33,8 @@ public static partial class MediaOverviewRankBuilder
             AssignRank(
                 snapshots,
                 permutation,
-                (left, right) => Compare(values[getId(left)].Year, values[getId(right)].Year, getId(left), getId(right)),
+                (left, right) =>
+                    Compare(values[getId(left)].Year, values[getId(right)].Year, getId(left), getId(right)),
                 setYearRank
             );
         }

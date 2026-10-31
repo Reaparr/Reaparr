@@ -1,4 +1,3 @@
-
 namespace Reaparr.Application.UnitTests;
 
 public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMediaMetaDataCommand>
@@ -100,7 +99,9 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
                 config.PlexMusicLibraryCount = 1;
             }
         );
-        var plexLibrary = await IDbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.Movie).SingleAsync(CancellationToken);
+        var plexLibrary = await IDbContext
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
+            .SingleAsync(CancellationToken);
         var videoGenre = new PlexGenreVideo
         {
             Name = "Shared Label",
@@ -109,11 +110,7 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
         };
         var audioGenre = new PlexGenreAudio { Name = "Shared Label", Key = "shared-label" };
         var command = new InsertMediaMetaDataCommand(
-            new LibraryMetadata(plexLibrary)
-            {
-                GenresVideo = [videoGenre],
-                GenresAudio = [audioGenre],
-            }
+            new LibraryMetadata(plexLibrary) { GenresVideo = [videoGenre], GenresAudio = [audioGenre] }
         );
 
         // Act
@@ -126,7 +123,9 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
         result.Value.PlexGenresAudio.ShouldContainKey("shared-label");
         var storedVideo = await IDbContext.PlexGenresVideo.SingleAsync(CancellationToken);
         var storedAudio = await IDbContext.PlexGenresAudio.SingleAsync(CancellationToken);
-        (storedVideo.Name, storedVideo.Key, storedVideo.Type).ShouldBe(("Shared Label", "shared-label", PlexGenreType.Documentary));
+        (storedVideo.Name, storedVideo.Key, storedVideo.Type).ShouldBe(
+            ("Shared Label", "shared-label", PlexGenreType.Documentary)
+        );
         (storedAudio.Name, storedAudio.Key).ShouldBe(("Shared Label", "shared-label"));
         storedVideo.Id.ShouldBe(storedAudio.Id);
     }
@@ -736,14 +735,7 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
         // Create actors with very long names
         var baseActors = FakeData.GetPlexActors(seed).GenerateUnique(3, x => x.Key);
         var longNameActors = baseActors
-            .Select(
-                (actor, index) =>
-                    new PlexActor
-                    {
-                        Key = actor.Key,
-                        Name = new string('A', 250) + index,
-                    }
-            )
+            .Select((actor, index) => new PlexActor { Key = actor.Key, Name = new string('A', 250) + index })
             .ToList();
 
         // Act
@@ -805,13 +797,16 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
 
         // Create data with zero keys
         var baseData = FakeData.GetPlexActors(seed).Generate(5);
-        var actorsWithZeroKeys = baseData
-            .Select(x => new PlexActor { Key = string.Empty, Name = x.Name })
-            .ToList();
+        var actorsWithZeroKeys = baseData.Select(x => new PlexActor { Key = string.Empty, Name = x.Name }).ToList();
 
         var baseGenres = FakeData.GetPlexGenresVideo(seed).Generate(3);
         var genresWithZeroKeys = baseGenres
-            .Select(x => new PlexGenreVideo { Key = string.Empty, Name = x.Name, Type = x.Type })
+            .Select(x => new PlexGenreVideo
+            {
+                Key = string.Empty,
+                Name = x.Name,
+                Type = x.Type,
+            })
             .ToList();
 
         var baseCountries = FakeData.GetPlexCountries(seed).Generate(3);
@@ -892,7 +887,10 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
 
         // Verify entities have valid database IDs
         result.Value.PlexActors.Values.ShouldAllBe(actor => actor.Id > 0, "All actors should have valid database IDs");
-        result.Value.PlexGenresVideo.Values.ShouldAllBe(genre => genre.Id > 0, "All genres should have valid database IDs");
+        result.Value.PlexGenresVideo.Values.ShouldAllBe(
+            genre => genre.Id > 0,
+            "All genres should have valid database IDs"
+        );
         result.Value.PlexCountries.Values.ShouldAllBe(
             country => country.Id > 0,
             "All countries should have valid database IDs"

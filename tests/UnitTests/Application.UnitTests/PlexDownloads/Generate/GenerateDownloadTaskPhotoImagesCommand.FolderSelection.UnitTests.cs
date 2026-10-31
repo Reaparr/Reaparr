@@ -56,8 +56,9 @@ public class GenerateDownloadTaskPhotoImagesFolderSelectionUnitTests
         result.IsSuccess.ShouldBeTrue();
         result.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 3, PhotoImages = 2 });
         (await dbContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(2);
-        (await dbContext.DownloadTaskPhotoFolders.Select(x => x.RelativePath).ToListAsync(CancellationToken))
-            .ShouldContain("Trips/Day 1");
+        (
+            await dbContext.DownloadTaskPhotoFolders.Select(x => x.RelativePath).ToListAsync(CancellationToken)
+        ).ShouldContain("Trips/Day 1");
     }
 
     private async Task<List<DownloadMediaDTO>> CreateOverlappingFolderSelectionsAsync(bool includeDirectSelection)
@@ -175,5 +176,4 @@ public class GenerateDownloadTaskPhotoImagesFolderSelectionUnitTests
             Qualities = [],
         };
     }
-
 }

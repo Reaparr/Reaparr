@@ -14,10 +14,7 @@ public static partial class PlexMediaDataMapper
     public static PlexPhotoMediaData ToPlexPhotoMediaData(this LibraryMediaItemDTO source) =>
         source.ToPlexPhotoMediaData(source.Summary);
 
-    private static PlexPhotoMediaData ToPlexPhotoMediaData(
-        this LibraryMediaItemDTO source,
-        string? summary
-    )
+    private static PlexPhotoMediaData ToPlexPhotoMediaData(this LibraryMediaItemDTO source, string? summary)
     {
         if (source.Media.Count != 1 || source.Media[0].Parts.Count != 1)
             throw new InvalidOperationException(

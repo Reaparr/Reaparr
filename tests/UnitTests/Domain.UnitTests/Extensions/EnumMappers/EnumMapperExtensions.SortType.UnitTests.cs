@@ -63,10 +63,7 @@ public class EnumMapperExtensionsSortTypeUnitTests
     [Arguments(SortType.VideoQuality, "\"videoQuality\"")]
     [Arguments(SortType.AudioQuality, "\"audioQuality\"")]
     [Arguments(SortType.ComparisonState, "\"comparisonState\"")]
-    public void ShouldSerializeEverySortTypeAsItsNamedJsonValue_WhenWritingJson(
-        SortType value,
-        string expectedJson
-    )
+    public void ShouldSerializeEverySortTypeAsItsNamedJsonValue_WhenWritingJson(SortType value, string expectedJson)
     {
         // Arrange
 
@@ -202,11 +199,7 @@ public class EnumMapperExtensionsSortTypeUnitTests
     [Arguments(PlexMediaType.OtherVideos, "videoQuality:asc,title:asc", true)]
     [Arguments(PlexMediaType.None, "title:asc", false)]
     [Arguments(PlexMediaType.None, "", true)]
-    public void ShouldValidateParsedSortTypesAgainstMediaSupport(
-        PlexMediaType mediaType,
-        string sort,
-        bool expected
-    )
+    public void ShouldValidateParsedSortTypesAgainstMediaSupport(PlexMediaType mediaType, string sort, bool expected)
     {
         // Arrange
         // Act

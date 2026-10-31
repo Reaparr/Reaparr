@@ -399,13 +399,24 @@ public class GetMediaDetailByIdEndpointUnitTests
             }
         );
         var dbContext = IDbContext;
-        var root = type == PlexMediaType.MusicArtist
-            ? await dbContext.PlexMusicArtists
-                .Select(x => new { x.Id, x.PlexLibraryId, ChildCount = x.ChildCount })
-                .SingleAsync(CancellationToken)
-            : await dbContext.PlexPhotoAlbums
-                .Select(x => new { x.Id, x.PlexLibraryId, ChildCount = x.Memberships.Count })
-                .SingleAsync(CancellationToken);
+        var root =
+            type == PlexMediaType.MusicArtist
+                ? await dbContext
+                    .PlexMusicArtists.Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        ChildCount = x.ChildCount,
+                    })
+                    .SingleAsync(CancellationToken)
+                : await dbContext
+                    .PlexPhotoAlbums.Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        ChildCount = x.Memberships.Count,
+                    })
+                    .SingleAsync(CancellationToken);
         root.ChildCount.ShouldBe(0);
         if (type == PlexMediaType.MusicArtist)
         {

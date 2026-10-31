@@ -37,8 +37,8 @@ public static partial class PlexMediaDTOMapper
             OriginallyAvailableAt = null,
             RecordLabel = null,
             Genres = [],
-            Children = source.Memberships
-                .Select(x => x.PlexPhotoMediaData)
+            Children = source
+                .Memberships.Select(x => x.PlexPhotoMediaData)
                 .OfType<PlexPhotoMediaData>()
                 .OrderBy(x => x.Id)
                 .OrderByNatural(x => x.Title)
@@ -87,5 +87,4 @@ public static partial class PlexMediaDTOMapper
             DiscNumber = null,
             TrackNumber = null,
         };
-
 }

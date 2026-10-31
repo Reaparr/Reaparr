@@ -156,27 +156,22 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
         var hasAdmission = itemsToAdd.Any() || itemsToReset.Any();
         if (hasAdmission)
         {
-            var notificationResult = await Result.Try(
-                async Task () =>
-                    await _notificationHubService.SendRefreshNotificationAsync([
-                        RefreshDataType.PlexLibrarySyncStatus,
-                    ])
+            var notificationResult = await Result.Try(async Task () =>
+                await _notificationHubService.SendRefreshNotificationAsync([RefreshDataType.PlexLibrarySyncStatus])
             );
             notificationResult.LogIfFailed();
         }
 
         if (hasAdmission || queuedOrProcessingIds.Any())
         {
-            var dispatchResult = await Result.Try(
-                async Task () =>
-                {
-                    var checkQueuedResult = await _commandExecutor.Send(
-                        new CheckQueuedPlexLibraryToSyncCommand(),
-                        cancellationToken
-                    );
-                    checkQueuedResult.LogIfFailed();
-                }
-            );
+            var dispatchResult = await Result.Try(async Task () =>
+            {
+                var checkQueuedResult = await _commandExecutor.Send(
+                    new CheckQueuedPlexLibraryToSyncCommand(),
+                    cancellationToken
+                );
+                checkQueuedResult.LogIfFailed();
+            });
             dispatchResult.LogIfFailed();
         }
 

@@ -10,12 +10,25 @@ public class PlexMusicTrackComparisonConfiguration : IEntityTypeConfiguration<Pl
         builder.HasIndex(x => new { x.OwnedPlexLibraryId, x.OwnedPlexMediaId });
         builder.HasIndex(x => x.RemotePlexMediaDataId);
         builder.HasIndex(x => x.OwnedPlexMediaDataId);
-        builder.HasIndex(x => new
-        {
-            x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.RemotePlexMediaId, x.OwnedPlexMediaId,
-        }).IsUnique();
-        builder.HasOne<PlexLibrary>().WithMany().HasForeignKey(x => x.RemotePlexLibraryId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<PlexLibrary>().WithMany().HasForeignKey(x => x.OwnedPlexLibraryId).OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasIndex(x => new
+            {
+                x.RemotePlexLibraryId,
+                x.OwnedPlexLibraryId,
+                x.RemotePlexMediaId,
+                x.OwnedPlexMediaId,
+            })
+            .IsUnique();
+        builder
+            .HasOne<PlexLibrary>()
+            .WithMany()
+            .HasForeignKey(x => x.RemotePlexLibraryId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder
+            .HasOne<PlexLibrary>()
+            .WithMany()
+            .HasForeignKey(x => x.OwnedPlexLibraryId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder
             .HasOne<PlexMusicTrack>()
             .WithMany()

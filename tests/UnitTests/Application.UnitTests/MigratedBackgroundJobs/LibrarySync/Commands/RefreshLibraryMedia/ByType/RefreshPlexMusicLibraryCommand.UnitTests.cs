@@ -33,9 +33,17 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var artistState = (artist.ChildCount, artist.Duration, artist.MediaSize);
         var albumState = (album.ChildCount, album.Duration, album.MediaSize);
         var response = new InsertMediaMetaDataCommandResponse(library);
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
-            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -119,9 +127,17 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var response = new InsertMediaMetaDataCommandResponse(library);
         var failure = Result.Fail("catalog retrieval incomplete");
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
-            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -224,9 +240,17 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var failure = cancelled
             ? ResultExtensions.TaskIsCancelled("descendants")
             : Result.Fail("incomplete descendants");
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
-            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Never());
 
         if (mediaType == PlexMediaType.MusicTrack)
         {
@@ -342,13 +366,26 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         track.ParentKey = albums[0].PlexApiRatingKey;
         library.Tracks.Add(track);
         var albumCountry = new PlexCountry { Name = "Album Country", Key = "album-country" };
-        var insertedAlbumCountry = new PlexCountry { Id = 501, Name = albumCountry.Name, Key = albumCountry.Key };
+        var insertedAlbumCountry = new PlexCountry
+        {
+            Id = 501,
+            Name = albumCountry.Name,
+            Key = albumCountry.Key,
+        };
         var albumMetadata = new LibraryMetadata(library) { Countries = [albumCountry] };
         var response = new InsertMediaMetaDataCommandResponse(library);
         InsertMediaMetaDataCommandResponse? captured = null;
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(It.Is<InvalidateLibraryComparisonJobsCommand>(
-            c => c.PlexLibraryIds.SequenceEqual(new[] { library.Id })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<InvalidateLibraryComparisonJobsCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>

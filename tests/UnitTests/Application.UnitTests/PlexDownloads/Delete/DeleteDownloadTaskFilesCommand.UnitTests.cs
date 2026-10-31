@@ -556,6 +556,7 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
         persistedControl.FileName.ShouldBe(control.FileName);
         persistedControl.DirectoryMeta.ShouldBe(control.DirectoryMeta);
     }
+
     [Test]
     public async Task ShouldDeletePhotoFilesFromFolder()
     {

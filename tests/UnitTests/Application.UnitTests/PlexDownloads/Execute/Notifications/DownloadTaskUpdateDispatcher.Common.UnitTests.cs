@@ -129,10 +129,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         capturedPatches
             .SelectMany(x => x)
             .ShouldContain(x =>
-                x.Id == key.Id
-                && x.DataTotal == 4_321
-                && x.DataReceived == 4_321
-                && x.Percentage == 100m
+                x.Id == key.Id && x.DataTotal == 4_321 && x.DataReceived == 4_321 && x.Percentage == 100m
             );
         Mock.Mock<IDownloadHubService>().Verify();
     }
@@ -173,10 +170,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                     if (
                         Volatile.Read(ref notifyRequested) != 0
                         && upserts.Any(x =>
-                            x.Id == key.Id
-                            && x.DataTotal == 4_321
-                            && x.DataReceived == 4_321
-                            && x.Percentage == 100m
+                            x.Id == key.Id && x.DataTotal == 4_321 && x.DataReceived == 4_321 && x.Percentage == 100m
                         )
                     )
                         transferPatchEntered.TrySetResult();
@@ -224,10 +218,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         capturedPatches
             .SelectMany(x => x)
             .ShouldContain(x =>
-                x.Id == key.Id
-                && x.DataTotal == 4_321
-                && x.DataReceived == 4_321
-                && x.Percentage == 100m
+                x.Id == key.Id && x.DataTotal == 4_321 && x.DataReceived == 4_321 && x.Percentage == 100m
             );
         Mock.Mock<IDownloadHubService>().Verify();
     }

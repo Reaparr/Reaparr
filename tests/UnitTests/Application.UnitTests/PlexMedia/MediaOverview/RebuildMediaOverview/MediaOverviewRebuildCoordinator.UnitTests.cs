@@ -180,7 +180,9 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         // Assert
         firstScope.ShouldNotBeNull();
         firstScope.RebuildAll.ShouldBeFalse();
-        firstScope.MediaTypes.OrderBy(x => x).ShouldBe(new[] { PlexMediaType.Movie, PlexMediaType.MusicArtist }.OrderBy(x => x));
+        firstScope
+            .MediaTypes.OrderBy(x => x)
+            .ShouldBe(new[] { PlexMediaType.Movie, PlexMediaType.MusicArtist }.OrderBy(x => x));
         followUpScope.ShouldNotBeNull();
         followUpScope.RebuildAll.ShouldBeFalse();
         followUpScope.MediaTypes.ShouldBe(new[] { PlexMediaType.PhotoAlbum });
@@ -197,8 +199,8 @@ public class MediaOverviewRebuildCoordinatorUnitTests
 
         // Act
         var requestResults = await Task.WhenAll(
-            MediaOverviewRebuildCoordinator.AllMediaTypes.Select(
-                mediaType => Task.Run(() => coordinator.RequestRebuild(mediaType, now))
+            MediaOverviewRebuildCoordinator.AllMediaTypes.Select(mediaType =>
+                Task.Run(() => coordinator.RequestRebuild(mediaType, now))
             )
         );
         var followUpScope = coordinator.CompleteRebuild(succeeded: false, now);
@@ -207,7 +209,9 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         requestResults.ShouldAllBe(triggered => !triggered);
         followUpScope.ShouldNotBeNull();
         followUpScope.RebuildAll.ShouldBeFalse();
-        followUpScope.MediaTypes.OrderBy(x => x).ShouldBe(MediaOverviewRebuildCoordinator.AllMediaTypes.OrderBy(x => x));
+        followUpScope
+            .MediaTypes.OrderBy(x => x)
+            .ShouldBe(MediaOverviewRebuildCoordinator.AllMediaTypes.OrderBy(x => x));
     }
 
     [Test]

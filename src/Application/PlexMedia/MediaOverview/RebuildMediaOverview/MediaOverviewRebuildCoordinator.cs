@@ -1,9 +1,6 @@
 namespace Reaparr.Application;
 
-public sealed record MediaOverviewRebuildScope(
-    bool RebuildAll,
-    IReadOnlyCollection<PlexMediaType> MediaTypes
-);
+public sealed record MediaOverviewRebuildScope(bool RebuildAll, IReadOnlyCollection<PlexMediaType> MediaTypes);
 
 public interface IMediaOverviewRebuildCoordinator
 {

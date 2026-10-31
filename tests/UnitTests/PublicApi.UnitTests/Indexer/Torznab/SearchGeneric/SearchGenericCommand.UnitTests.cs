@@ -1,5 +1,5 @@
-using Reaparr.PublicAPI.Contracts;
 using Reaparr.Application.Contracts;
+using Reaparr.PublicAPI.Contracts;
 using Reaparr.Settings.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;

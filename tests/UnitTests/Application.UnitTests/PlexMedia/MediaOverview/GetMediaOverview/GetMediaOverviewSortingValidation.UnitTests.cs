@@ -31,10 +31,18 @@ public class GetMediaOverviewSortingValidationUnitTests
         // Act
         var result = mediaType switch
         {
-            PlexMediaType.Movie => new GetMediaOverviewMovieCommandValidator().Validate(new GetMediaOverviewMovieCommand(filter)),
-            PlexMediaType.TvShow => new GetMediaOverviewTvShowCommandValidator().Validate(new GetMediaOverviewTvShowCommand(filter)),
-            PlexMediaType.PhotoAlbum => new GetMediaOverviewPhotoCommandValidator().Validate(new GetMediaOverviewPhotoCommand(filter)),
-            PlexMediaType.OtherVideos => new GetMediaOverviewOtherVideoCommandValidator().Validate(new GetMediaOverviewOtherVideoCommand(filter)),
+            PlexMediaType.Movie => new GetMediaOverviewMovieCommandValidator().Validate(
+                new GetMediaOverviewMovieCommand(filter)
+            ),
+            PlexMediaType.TvShow => new GetMediaOverviewTvShowCommandValidator().Validate(
+                new GetMediaOverviewTvShowCommand(filter)
+            ),
+            PlexMediaType.PhotoAlbum => new GetMediaOverviewPhotoCommandValidator().Validate(
+                new GetMediaOverviewPhotoCommand(filter)
+            ),
+            PlexMediaType.OtherVideos => new GetMediaOverviewOtherVideoCommandValidator().Validate(
+                new GetMediaOverviewOtherVideoCommand(filter)
+            ),
             _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
         };
 

@@ -68,6 +68,7 @@ public class PauseDownloadTaskCommandTvShowUnitTests : BaseUnitTest<PauseDownloa
         // Assert
         result.IsSuccess.ShouldBeTrue();
     }
+
     [Test]
     public async Task ShouldPauseDownloadingAndMovingTasks_WhenMultipleChildrenAreActive()
     {

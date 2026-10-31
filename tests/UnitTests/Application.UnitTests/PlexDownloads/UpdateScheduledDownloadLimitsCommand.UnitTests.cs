@@ -485,13 +485,18 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     [Arguments("America/New_York", "2026-11-01T05:45:00Z", 3000)]
     [Arguments("America/New_York", "2026-11-01T06:45:00Z", 3000)]
     public async Task ShouldEvaluateTheConfiguredWallClock_WhenLocalTimeIsOmitted(
-        string timeZone, string utc, int expectedKb)
+        string timeZone,
+        string utc,
+        int expectedKb
+    )
     {
         // Arrange
         await SetupDatabase(85334, config => config.MovieDownloadTasksCount = 1);
         var dbContext = IDbContext;
         await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
-            x => x.SetProperty(p => p.DownloadStatus, DownloadStatus.Downloading), CancellationToken);
+            x => x.SetProperty(p => p.DownloadStatus, DownloadStatus.Downloading),
+            CancellationToken
+        );
         var machineIdentifier = await dbContext.PlexServers.Select(x => x.MachineIdentifier).SingleAsync();
         var settings = new UserSettings();
         settings.DateTimeSettings.TimeZone = timeZone;

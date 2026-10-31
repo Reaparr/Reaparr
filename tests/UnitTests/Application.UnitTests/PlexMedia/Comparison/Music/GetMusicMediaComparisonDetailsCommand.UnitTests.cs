@@ -324,6 +324,7 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
+
     [Test]
     public async Task ShouldSelectHigherQualityHitAndExplainingFiles_WhenLowerIdHitIsOnlyMatched()
     {
@@ -344,31 +345,28 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
         await SetOwnedOverrideAsync(libraries[1].PlexServerId, true);
         await SetOwnedOverrideAsync(libraries[2].PlexServerId, true);
-        await dbContext.PlexLibraries.ExecuteUpdateAsync(
-            x => x.SetProperty(y => y.Outdated, false),
-            CancellationToken
-        );
+        await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.Outdated, false), CancellationToken);
         var remoteArtist = await dbContext.PlexMusicArtists.SingleAsync(
             x => x.PlexLibraryId == libraries[0].Id,
             CancellationToken
         );
-        var ownedArtists = await dbContext.PlexMusicArtists
-            .Where(x => x.PlexLibraryId != libraries[0].Id)
+        var ownedArtists = await dbContext
+            .PlexMusicArtists.Where(x => x.PlexLibraryId != libraries[0].Id)
             .OrderBy(x => x.PlexLibraryId)
             .ToListAsync(CancellationToken);
         var remoteAlbum = await dbContext.PlexMusicAlbums.SingleAsync(
             x => x.PlexLibraryId == libraries[0].Id,
             CancellationToken
         );
-        var ownedAlbums = await dbContext.PlexMusicAlbums
-            .Where(x => x.PlexLibraryId != libraries[0].Id)
+        var ownedAlbums = await dbContext
+            .PlexMusicAlbums.Where(x => x.PlexLibraryId != libraries[0].Id)
             .OrderBy(x => x.PlexLibraryId)
             .ToListAsync(CancellationToken);
-        var remoteTrack = await dbContext.PlexMusicTracks
-            .Include(x => x.MediaDataList)
+        var remoteTrack = await dbContext
+            .PlexMusicTracks.Include(x => x.MediaDataList)
             .SingleAsync(x => x.PlexLibraryId == libraries[0].Id, CancellationToken);
-        var ownedTracks = await dbContext.PlexMusicTracks
-            .Include(x => x.MediaDataList)
+        var ownedTracks = await dbContext
+            .PlexMusicTracks.Include(x => x.MediaDataList)
             .Where(x => x.PlexLibraryId != libraries[0].Id)
             .OrderBy(x => x.PlexLibraryId)
             .ToListAsync(CancellationToken);
@@ -409,13 +407,10 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
                     OwnedPlexLibraryId = ownedLibrary,
                     RemotePlexMediaId = remoteTrack.Id,
                     OwnedPlexMediaId = ownedTracks[index].Id,
-                    HitState = index == 0
-                        ? PlexMediaComparisonHitState.Matched
-                        : PlexMediaComparisonHitState.HigherQuality,
+                    HitState =
+                        index == 0 ? PlexMediaComparisonHitState.Matched : PlexMediaComparisonHitState.HigherQuality,
                     RemoteAudioQuality = AudioQuality.FLAC_16Bit_44_1kHz,
-                    OwnedAudioQuality = index == 0
-                        ? AudioQuality.FLAC_16Bit_44_1kHz
-                        : AudioQuality.FLAC_24Bit_96kHz,
+                    OwnedAudioQuality = index == 0 ? AudioQuality.FLAC_16Bit_44_1kHz : AudioQuality.FLAC_24Bit_96kHz,
                     RemotePlexMediaDataId = remoteData.Id,
                     OwnedPlexMediaDataId = index == 0 ? matchedOwnedData.Id : higherOwnedData.Id,
                     MatchType = PlexMediaComparisonMatchType.PlexTrackGuid,
@@ -479,5 +474,4 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
         trackRow.OwnedPlexMediaDataId.ShouldBe(higherOwnedData.Id);
         executor.Verify();
     }
-
 }

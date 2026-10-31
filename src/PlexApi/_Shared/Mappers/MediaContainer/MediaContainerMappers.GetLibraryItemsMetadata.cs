@@ -95,8 +95,11 @@ public static class MediaContainerMappers
             AudioCodec = media.AudioCodec ?? string.Empty,
             VideoCodec = media.VideoCodec ?? string.Empty,
             VideoResolution = inferVideoQuality
-                ? (media.VideoResolution ?? media.Part?.FirstOrDefault()?.File.ParseQualityFromFileName()
-                    ?? string.Empty).ToVideoQuality()
+                ? (
+                    media.VideoResolution
+                    ?? media.Part?.FirstOrDefault()?.File.ParseQualityFromFileName()
+                    ?? string.Empty
+                ).ToVideoQuality()
                 : VideoQuality.Unknown,
             Container = media.Container ?? string.Empty,
             VideoFrameRate = media.VideoFrameRate ?? string.Empty,

@@ -462,31 +462,65 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     )
     {
         // Arrange
-        await SetupDatabase(12107, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexAccountCount = 2;
-        });
+        await SetupDatabase(
+            12107,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexAccountCount = 2;
+            }
+        );
         var dbContext = IDbContext;
         var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var mainId = accounts[0].Id;
         var secondaryId = accounts[1].Id;
         var serverId = await dbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
-        await dbContext.PlexAccounts.Where(x => x.Id == mainId).ExecuteUpdateAsync(
-            x => x.SetProperty(a => a.IsMain, true).SetProperty(a => a.IsValidated, true)
-                .SetProperty(a => a.IsEnabled, mainEnabled), CancellationToken);
-        await dbContext.PlexAccounts.Where(x => x.Id == secondaryId).ExecuteUpdateAsync(
-            x => x.SetProperty(a => a.IsMain, false).SetProperty(a => a.IsValidated, true)
-                .SetProperty(a => a.IsEnabled, secondaryEnabled), CancellationToken);
-        await dbContext.PlexAccountServers.Where(x => x.PlexAccountId == mainId).ExecuteUpdateAsync(
-            x => x.SetProperty(a => a.AuthToken, "enabled-main"), CancellationToken);
-        await dbContext.PlexAccountServers.Where(x => x.PlexAccountId == secondaryId).ExecuteUpdateAsync(
-            x => x.SetProperty(a => a.AuthToken, "enabled-secondary"), CancellationToken);
-        var before = await dbContext.PlexAccountServers.OrderBy(x => x.PlexAccountId)
-            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.AuthToken }).ToListAsync(CancellationToken);
+        await dbContext
+            .PlexAccounts.Where(x => x.Id == mainId)
+            .ExecuteUpdateAsync(
+                x =>
+                    x.SetProperty(a => a.IsMain, true)
+                        .SetProperty(a => a.IsValidated, true)
+                        .SetProperty(a => a.IsEnabled, mainEnabled),
+                CancellationToken
+            );
+        await dbContext
+            .PlexAccounts.Where(x => x.Id == secondaryId)
+            .ExecuteUpdateAsync(
+                x =>
+                    x.SetProperty(a => a.IsMain, false)
+                        .SetProperty(a => a.IsValidated, true)
+                        .SetProperty(a => a.IsEnabled, secondaryEnabled),
+                CancellationToken
+            );
+        await dbContext
+            .PlexAccountServers.Where(x => x.PlexAccountId == mainId)
+            .ExecuteUpdateAsync(x => x.SetProperty(a => a.AuthToken, "enabled-main"), CancellationToken);
+        await dbContext
+            .PlexAccountServers.Where(x => x.PlexAccountId == secondaryId)
+            .ExecuteUpdateAsync(x => x.SetProperty(a => a.AuthToken, "enabled-secondary"), CancellationToken);
+        var before = await dbContext
+            .PlexAccountServers.OrderBy(x => x.PlexAccountId)
+            .Select(x => new
+            {
+                x.PlexAccountId,
+                x.PlexServerId,
+                x.AuthToken,
+            })
+            .ToListAsync(CancellationToken);
         before.ShouldBe([
-            new { PlexAccountId = mainId, PlexServerId = serverId, AuthToken = "enabled-main" },
-            new { PlexAccountId = secondaryId, PlexServerId = serverId, AuthToken = "enabled-secondary" },
+            new
+            {
+                PlexAccountId = mainId,
+                PlexServerId = serverId,
+                AuthToken = "enabled-main",
+            },
+            new
+            {
+                PlexAccountId = secondaryId,
+                PlexServerId = serverId,
+                AuthToken = "enabled-secondary",
+            },
         ]);
 
         // Act
@@ -505,9 +539,17 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
             result.Errors.Count.ShouldBe(0);
             result.Value.ShouldBe(expectedToken);
         }
-        (await dbContext.PlexAccountServers.OrderBy(x => x.PlexAccountId)
-            .Select(x => new { x.PlexAccountId, x.PlexServerId, x.AuthToken }).ToListAsync(CancellationToken))
-            .ShouldBe(before);
+        (
+            await dbContext
+                .PlexAccountServers.OrderBy(x => x.PlexAccountId)
+                .Select(x => new
+                {
+                    x.PlexAccountId,
+                    x.PlexServerId,
+                    x.AuthToken,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(before);
     }
 
     [Test]

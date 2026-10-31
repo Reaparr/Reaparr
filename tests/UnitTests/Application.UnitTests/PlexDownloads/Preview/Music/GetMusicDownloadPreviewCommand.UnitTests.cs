@@ -33,19 +33,17 @@ public class GetMusicDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMu
             PlexMediaType.MusicAlbum => album.Id,
             _ => track.Id,
         };
-        var query = new GetMusicDownloadPreviewCommand(
-            [
-                new DownloadMediaDTO
-                {
-                    Type = type,
-                    SelectionKind = null,
-                    PlexServerId = artist.PlexServerId,
-                    PlexLibraryId = artist.PlexLibraryId,
-                    MediaIds = [id],
-                    Qualities = [],
-                },
-            ]
-        );
+        var query = new GetMusicDownloadPreviewCommand([
+            new DownloadMediaDTO
+            {
+                Type = type,
+                SelectionKind = null,
+                PlexServerId = artist.PlexServerId,
+                PlexLibraryId = artist.PlexLibraryId,
+                MediaIds = [id],
+                Qualities = [],
+            },
+        ]);
 
         // Act
         var result = await TestHandlerExecuteAsync<IEnumerable<DownloadPreview>>(query);

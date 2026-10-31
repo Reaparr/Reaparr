@@ -51,9 +51,10 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
             .Select(x => x.Id)
             .ToListAsync(CancellationToken);
         libraryIds.Count.ShouldBe(2);
-        (
-            await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Type).ToListAsync(CancellationToken)
-        ).ShouldBe([PlexMediaType.PhotoAlbum, PlexMediaType.PhotoAlbum]);
+        (await dbContext.PlexLibraries.OrderBy(x => x.Id).Select(x => x.Type).ToListAsync(CancellationToken)).ShouldBe([
+            PlexMediaType.PhotoAlbum,
+            PlexMediaType.PhotoAlbum,
+        ]);
         var albums = await dbContext
             .PlexPhotoAlbums.Include(x => x.Memberships)
             .OrderBy(x => x.PlexLibraryId)
@@ -91,21 +92,20 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
             await dbContext
                 .PlexPhotoAlbums.Where(x => x.Id == album.Id)
                 .ExecuteUpdateAsync(
-                    x =>
-                        x.SetProperty(y => y.SearchTitle, title).SetProperty(y => y.HasThumb, true),
+                    x => x.SetProperty(y => y.SearchTitle, title).SetProperty(y => y.HasThumb, true),
                     CancellationToken
                 );
-            var fileIds = album.Memberships
-                .Where(x => x != sharedMembership)
+            var fileIds = album
+                .Memberships.Where(x => x != sharedMembership)
                 .Select(x => x.PlexPhotoMediaDataId)
                 .ToList();
             var mediaSize = targetIndex >= 0 ? (targetIndex + 1) * 100L : 9000L;
-            await dbContext.PlexPhotoMediaData.Where(x => fileIds.Contains(x.Id)).ExecuteUpdateAsync(
-                x => x.SetProperty(y => y.Size, mediaSize),
-                CancellationToken
-            );
+            await dbContext
+                .PlexPhotoMediaData.Where(x => fileIds.Contains(x.Id))
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.Size, mediaSize), CancellationToken);
             var albumFileIds = album.Memberships.Select(x => x.PlexPhotoMediaDataId).ToList();
-            var aggregate = await dbContext.PlexPhotoMediaData.Where(x => albumFileIds.Contains(x.Id))
+            var aggregate = await dbContext
+                .PlexPhotoMediaData.Where(x => albumFileIds.Contains(x.Id))
                 .GroupBy(_ => 1)
                 .Select(group => new { Duration = group.Sum(x => x.Duration ?? 0), MediaSize = group.Sum(x => x.Size) })
                 .SingleAsync(CancellationToken);
@@ -130,8 +130,8 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
         }
         await dbContext.SaveChangesAsync(CancellationToken);
         (
-            await dbContext.PlexPhotoAlbumMemberships
-                .Where(x => x.PlexPhotoMediaDataId == sharedFileId)
+            await dbContext
+                .PlexPhotoAlbumMemberships.Where(x => x.PlexPhotoMediaDataId == sharedFileId)
                 .OrderBy(x => x.PlexPhotoAlbumId)
                 .Select(x => x.PlexPhotoAlbumId)
                 .ToListAsync(CancellationToken)
@@ -158,16 +158,20 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
         (item.Type, item.SortIndex, item.ChildCount, item.GrandChildCount).ShouldBe(
             (PlexMediaType.PhotoAlbum, 2, 4, 0)
         );
-        (item.PlexLibraryId, item.PlexServerId, item.PlexApiRatingKey, item.HasThumb)
-            .ShouldBe((fixture.LibraryId, fixture.SelectedAlbum.PlexServerId, fixture.SelectedAlbum.PlexApiRatingKey, true));
+        (item.PlexLibraryId, item.PlexServerId, item.PlexApiRatingKey, item.HasThumb).ShouldBe(
+            (fixture.LibraryId, fixture.SelectedAlbum.PlexServerId, fixture.SelectedAlbum.PlexApiRatingKey, true)
+        );
         (item.SearchTitle, item.MediaSize).ShouldBe(("charlie", 1000L));
         item.Qualities.ShouldBeEmpty();
         result.Value.Qualities.ShouldBeEmpty();
-        result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe(
-            sort.EndsWith("asc") ? [("B", 0), ("C", 1), ("A", 2)] : [("A", 0), ("C", 1), ("B", 2)]
-        );
+        result
+            .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
+            .ShouldBe(sort.EndsWith("asc") ? [("B", 0), ("C", 1), ("A", 2)] : [("A", 0), ("C", 1), ("B", 2)]);
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetPhotoAlbumMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.Send(It.IsAny<GetPhotoAlbumMediaByTypeCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
@@ -183,12 +187,15 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
         var libraryId = 0;
         if (snapshotMissing)
         {
-            await SetupDatabase(84209, config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-            });
+            await SetupDatabase(
+                84209,
+                config =>
+                {
+                    config.PlexServerCount = 1;
+                    config.PlexPhotoLibraryCount = 1;
+                    config.PhotoAlbumCount = 1;
+                }
+            );
             var dbContext = IDbContext;
             libraryId = await dbContext.PlexPhotoAlbums.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
             (await dbContext.MediaOverviewPhotoAlbumSnapshots.CountAsync(CancellationToken)).ShouldBe(0);
@@ -225,5 +232,4 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
         if (!snapshotMissing)
             Mock.Mock<IReaparrDbContextFactory>().Verify(x => x.CreateAsync(), Times.Never());
     }
-
 }

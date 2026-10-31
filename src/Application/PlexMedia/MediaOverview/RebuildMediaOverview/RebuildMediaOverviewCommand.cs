@@ -1,6 +1,7 @@
 namespace Reaparr.Application;
 
-public sealed record RebuildMediaOverviewCommand(IReadOnlyCollection<PlexMediaType>? MediaTypes = null) : ICommand<Result>;
+public sealed record RebuildMediaOverviewCommand(IReadOnlyCollection<PlexMediaType>? MediaTypes = null)
+    : ICommand<Result>;
 
 public sealed class RebuildMediaOverviewCommandValidator : AbstractValidator<RebuildMediaOverviewCommand>
 {
@@ -10,10 +11,7 @@ public sealed class RebuildMediaOverviewCommandValidator : AbstractValidator<Reb
         RuleFor(x => x.MediaTypes)
             .Must(types =>
                 types is null
-                || (
-                    types.Count > 0
-                    && types.All(type => MediaOverviewRebuildCoordinator.AllMediaTypes.Contains(type))
-                )
+                || (types.Count > 0 && types.All(type => MediaOverviewRebuildCoordinator.AllMediaTypes.Contains(type)))
             );
     }
 }

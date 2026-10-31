@@ -543,6 +543,7 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         public PlexMusicTrack[] Tracks { get; } = tracks;
         private bool HasKnownDiscNumbers { get; } = tracks.Length > 0 && tracks.All(x => x.DiscNumber > 0);
         public bool HasOnlySingleDiscTracks { get; } = tracks.All(x => x.DiscNumber is null or 1);
+
         private bool HasCompleteDiscLayout(int childCount) => HasKnownDiscNumbers && Tracks.Length == childCount;
 
         // Advertised counts prevent partial snapshots from being mistaken for different editions.

@@ -198,13 +198,31 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
             .PlexMovies.AsNoTracking()
             .Where(x => x.PlexLibraryId == other.Id)
             .OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexLibraryId, x.PlexServerId, x.Title, x.MediaSize, x.UpdatedAt })
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexApiRatingKey,
+                x.PlexLibraryId,
+                x.PlexServerId,
+                x.Title,
+                x.MediaSize,
+                x.UpdatedAt,
+            })
             .ToList();
         var otherData = IDbContext
             .PlexMovieData.AsNoTracking()
             .Where(x => x.PlexLibraryId == other.Id)
             .OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.PlexMovieId, x.PlexLibraryId, x.PlexServerId, x.PlexApiMediaId, x.PlexApiPartId, x.Size })
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexMovieId,
+                x.PlexLibraryId,
+                x.PlexServerId,
+                x.PlexApiMediaId,
+                x.PlexApiPartId,
+                x.Size,
+            })
             .ToList();
 
         // Act
@@ -221,14 +239,32 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
             .PlexMovies.AsNoTracking()
             .Where(x => x.PlexLibraryId == other.Id)
             .OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexLibraryId, x.PlexServerId, x.Title, x.MediaSize, x.UpdatedAt })
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexApiRatingKey,
+                x.PlexLibraryId,
+                x.PlexServerId,
+                x.Title,
+                x.MediaSize,
+                x.UpdatedAt,
+            })
             .ToList()
             .ShouldBe(otherMovies);
         IDbContext
             .PlexMovieData.AsNoTracking()
             .Where(x => x.PlexLibraryId == other.Id)
             .OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.PlexMovieId, x.PlexLibraryId, x.PlexServerId, x.PlexApiMediaId, x.PlexApiPartId, x.Size })
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexMovieId,
+                x.PlexLibraryId,
+                x.PlexServerId,
+                x.PlexApiMediaId,
+                x.PlexApiPartId,
+                x.Size,
+            })
             .ToList()
             .ShouldBe(otherData);
     }
@@ -263,10 +299,8 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
         library.Movies.Clear();
         library.Movies.Add(secondMovie);
         var secondCommand = new SyncPlexMoviesCommand(new InsertMediaMetaDataCommandResponse(library));
-        var secondResult = await Mock.Create<SyncPlexMoviesCommandHandler>().ExecuteAsync(
-            secondCommand,
-            CancellationToken
-        );
+        var secondResult = await Mock.Create<SyncPlexMoviesCommandHandler>()
+            .ExecuteAsync(secondCommand, CancellationToken);
 
         // Assert
         firstResult.IsSuccess.ShouldBeTrue();
@@ -340,7 +374,6 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
         replacedMovies.Count.ShouldBe(2);
         replacedMovies.Select(x => x.Id).ShouldAllBe(id => !originalIds.Contains(id));
     }
-
 
     [Test]
     public async Task ShouldDeleteTwentyMovies_WhenSomeExist()
@@ -519,21 +552,19 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
                 Format = x.SidecarFormat,
             })
             .ToList();
-        persisted.ShouldBe(
-            [
-                new
-                {
-                    OwnerId = persistedOwnerId,
-                    SourceId = 7134601,
-                    Type = StreamType.Subtitle,
-                    LanguageId = language.Id,
-                    LanguageCode = "en",
-                    LanguageTag = "eng",
-                    External = (bool?)null,
-                    Format = (string?)"srt",
-                },
-            ]
-        );
+        persisted.ShouldBe([
+            new
+            {
+                OwnerId = persistedOwnerId,
+                SourceId = 7134601,
+                Type = StreamType.Subtitle,
+                LanguageId = language.Id,
+                LanguageCode = "en",
+                LanguageTag = "eng",
+                External = (bool?)null,
+                Format = (string?)"srt",
+            },
+        ]);
     }
 
     [Test]
@@ -565,7 +596,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
                 LanguageId = 0,
                 IsExternal = null,
                 SidecarFormat = "srt",
-                Language = new StreamLanguage { Id = 0, LanguageCode = "en", LanguageTag = "eng" },
+                Language = new StreamLanguage
+                {
+                    Id = 0,
+                    LanguageCode = "en",
+                    LanguageTag = "eng",
+                },
             }
         );
         added.Streams.Add(
@@ -578,19 +614,41 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
                 LanguageId = 0,
                 IsExternal = null,
                 SidecarFormat = null,
-                Language = new StreamLanguage { Id = 0, LanguageCode = "fr", LanguageTag = "fra" },
+                Language = new StreamLanguage
+                {
+                    Id = 0,
+                    LanguageCode = "fr",
+                    LanguageTag = "fra",
+                },
             }
         );
         movie.MediaDataList.Add(added);
         var beforeData = IDbContext
             .PlexMovieData.AsNoTracking()
             .Where(x => x.PlexMovieId == movie.Id)
-            .Select(x => new { x.Id, x.PlexMovieId, x.PlexLibraryId, x.PlexServerId, x.PlexApiMediaId, x.PlexApiPartId })
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexMovieId,
+                x.PlexLibraryId,
+                x.PlexServerId,
+                x.PlexApiMediaId,
+                x.PlexApiPartId,
+            })
             .OrderBy(x => x.Id)
             .ToList();
         var beforeStreams = IDbContext
             .PlexMovieDataStreams.AsNoTracking()
-            .Select(x => new { x.Id, x.MediaDataId, x.PlexApiStreamId, x.StreamType, x.LanguageId, x.IsExternal, x.SidecarFormat })
+            .Select(x => new
+            {
+                x.Id,
+                x.MediaDataId,
+                x.PlexApiStreamId,
+                x.StreamType,
+                x.LanguageId,
+                x.IsExternal,
+                x.SidecarFormat,
+            })
             .OrderBy(x => x.Id)
             .ToList();
         SetIds(library, [movie]);
@@ -609,18 +667,34 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
         IDbContext
             .PlexMovieData.AsNoTracking()
             .Where(x => x.PlexMovieId == movie.Id)
-            .Select(x => new { x.Id, x.PlexMovieId, x.PlexLibraryId, x.PlexServerId, x.PlexApiMediaId, x.PlexApiPartId })
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexMovieId,
+                x.PlexLibraryId,
+                x.PlexServerId,
+                x.PlexApiMediaId,
+                x.PlexApiPartId,
+            })
             .OrderBy(x => x.Id)
             .ToList()
             .ShouldBe(beforeData);
         IDbContext
             .PlexMovieDataStreams.AsNoTracking()
-            .Select(x => new { x.Id, x.MediaDataId, x.PlexApiStreamId, x.StreamType, x.LanguageId, x.IsExternal, x.SidecarFormat })
+            .Select(x => new
+            {
+                x.Id,
+                x.MediaDataId,
+                x.PlexApiStreamId,
+                x.StreamType,
+                x.LanguageId,
+                x.IsExternal,
+                x.SidecarFormat,
+            })
             .OrderBy(x => x.Id)
             .ToList()
             .ShouldBe(beforeStreams);
     }
-
 
     [Test]
     public async Task ShouldReconcileMovieStreamLifecycleWithoutChurn()
@@ -661,7 +735,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
                         LanguageId = 0,
                         IsExternal = changed,
                         SidecarFormat = changed ? "srt" : null,
-                        Language = new StreamLanguage { Id = 0, LanguageCode = "en", LanguageTag = "eng" },
+                        Language = new StreamLanguage
+                        {
+                            Id = 0,
+                            LanguageCode = "en",
+                            LanguageTag = "eng",
+                        },
                     }
                 );
             if (updateTimestamp)
@@ -777,7 +856,6 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
             })
             .Single()
             .ShouldBe(expectedInitial);
-
 
         var changed = await LoadMovie();
         SetIncoming(changed, includeStream: true, changed: true, updateTimestamp: true);
@@ -907,7 +985,6 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
             }
         );
     }
-
 
     [Test]
     public async Task ShouldPreserveStreamsWhenSynchronizationIsCancelled()

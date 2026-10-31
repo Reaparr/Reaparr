@@ -39,8 +39,8 @@ public static partial class PlexMediaQueryMapper
 
     public static IQueryable<MediaNavigationIndexRow> ProjectMovieNavigationIndexRows(
         this IQueryable<PlexMovie> source
-    ) => source.Select(
-        x => new MediaNavigationIndexRow
+    ) =>
+        source.Select(x => new MediaNavigationIndexRow
         {
             SearchTitle = x.SearchTitle,
             Year = x.Year,
@@ -49,19 +49,17 @@ public static partial class PlexMediaQueryMapper
             AddedAt = x.AddedAt,
             UpdatedAt = x.UpdatedAt,
             MediaSize = x.MediaSize,
-        }
-    );
+        });
 
     internal static IQueryable<MediaMetadataProjectionRow> ProjectMovieMetadataRows(
         this IQueryable<PlexMovie> source
-    ) => source.Select(
-        x => new MediaMetadataProjectionRow
+    ) =>
+        source.Select(x => new MediaMetadataProjectionRow
         {
             Roles = x.Actors.Select(actor => actor.Id).ToList(),
             Countries = x.Countries.Select(country => country.Id).ToList(),
             Genres = x.Genres.Select(genre => genre.Id).ToList(),
-        }
-    );
+        });
 }
 
 internal sealed class MediaMetadataProjectionRow

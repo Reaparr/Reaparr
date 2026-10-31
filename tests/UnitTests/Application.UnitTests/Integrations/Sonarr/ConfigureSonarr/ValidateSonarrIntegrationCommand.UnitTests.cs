@@ -49,7 +49,9 @@ public class ValidateSonarrIntegrationCommandUnitTests : BaseCommandUnitTest<Val
             CancellationToken cancellationToken
         )
         {
-            Requests.Add((request.RequestUri!.AbsolutePath, await request.Content!.ReadAsStringAsync(cancellationToken)));
+            Requests.Add(
+                (request.RequestUri!.AbsolutePath, await request.Content!.ReadAsStringAsync(cancellationToken))
+            );
             return new HttpResponseMessage(HttpStatusCode.BadRequest)
             {
                 RequestMessage = request,

@@ -178,9 +178,7 @@ public class ApplyOwnedMusicComparisonStateCommandHandler
 
             if (item.Type == PlexMediaType.MusicArtist)
             {
-                item.SetComparisonState(
-                    artistStateLookup.GetValueOrDefault(item.Id, PlexMediaComparisonState.Owned)
-                );
+                item.SetComparisonState(artistStateLookup.GetValueOrDefault(item.Id, PlexMediaComparisonState.Owned));
                 continue;
             }
 

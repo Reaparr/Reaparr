@@ -209,10 +209,7 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
                 albums
                     .OrderBy(x => x.PlexApiRatingKey)
                     .Select(x =>
-                        (
-                            x.PlexApiRatingKey,
-                            afterArtists.Single(artist => artist.PlexApiRatingKey == x.ParentKey).Id
-                        )
+                        (x.PlexApiRatingKey, afterArtists.Single(artist => artist.PlexApiRatingKey == x.ParentKey).Id)
                     )
             );
         afterTracks
@@ -221,10 +218,7 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
                 tracks
                     .OrderBy(x => x.PlexApiRatingKey)
                     .Select(x =>
-                        (
-                            x.PlexApiRatingKey,
-                            afterAlbums.Single(album => album.PlexApiRatingKey == x.ParentKey).Id
-                        )
+                        (x.PlexApiRatingKey, afterAlbums.Single(album => album.PlexApiRatingKey == x.ParentKey).Id)
                     )
             );
         afterTracks.ShouldAllBe(x => x.PlexLibraryId == library.Id && x.PlexServerId == library.PlexServerId);
@@ -465,11 +459,7 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
             .ShouldBe(allAlbums.Select(x => (x.Id, oldCountry.Id)));
         var artistLinks = await dbContext
             .PlexMusicArtistCountries.OrderBy(x => x.PlexMusicArtistId)
-            .Select(x => new
-            {
-                x.PlexMusicArtistId,
-                x.CountryId,
-            })
+            .Select(x => new { x.PlexMusicArtistId, x.CountryId })
             .ToListAsync(CancellationToken);
         artistLinks
             .Select(x => (x.PlexMusicArtistId, x.CountryId))
@@ -528,11 +518,7 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
         (
             await dbContext
                 .PlexMusicArtistCountries.OrderBy(x => x.PlexMusicArtistId)
-                .Select(x => new
-                {
-                    x.PlexMusicArtistId,
-                    x.CountryId,
-                })
+                .Select(x => new { x.PlexMusicArtistId, x.CountryId })
                 .ToListAsync(CancellationToken)
         ).ShouldBe(artistLinks);
         (
@@ -836,7 +822,8 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
         var emptyAlbum = empty.Albums.Single();
         var emptyTrack = emptyAlbum.Tracks.Single();
         var replacementMediaData = emptyTrack.MediaDataList.Single();
-        var persistedTrackIdBeforeEmpty = db.PlexMusicTracks.AsNoTracking()
+        var persistedTrackIdBeforeEmpty = db
+            .PlexMusicTracks.AsNoTracking()
             .Single(x => x.PlexApiRatingKey == emptyTrack.PlexApiRatingKey)
             .Id;
         empty.UpdatedAt = empty.UpdatedAt.GetValueOrDefault().AddSeconds(1);
@@ -1275,7 +1262,12 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
             .ShouldBe(new { Id = storedAlbum.Id, PlexArtistId = storedAlbum.PlexArtistId });
         db.PlexMusicTracks.AsNoTracking()
             .Where(x => x.Id == storedTrack.Id)
-            .Select(x => new { x.Id, x.PlexAlbumId, x.Title })
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexAlbumId,
+                x.Title,
+            })
             .Single()
             .ShouldBe(
                 new

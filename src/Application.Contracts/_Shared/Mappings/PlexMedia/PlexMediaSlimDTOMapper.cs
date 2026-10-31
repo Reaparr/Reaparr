@@ -137,7 +137,6 @@ public static class PlexMediaSlimDTOMapper
 
     public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexPhotoMediaData source) =>
         new()
-
         {
             Id = source.Id,
             Title = source.Title,
@@ -201,7 +200,6 @@ public static class PlexMediaSlimDTOMapper
 
     public static PlexMediaSlimDTO ToSlimDTOMapper(this PlexPhotoAlbum source) =>
         new()
-
         {
             Id = source.Id,
             Title = source.Title,

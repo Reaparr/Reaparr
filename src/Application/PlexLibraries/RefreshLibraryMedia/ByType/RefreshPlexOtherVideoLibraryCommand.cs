@@ -95,5 +95,4 @@ public class RefreshPlexOtherVideoLibraryCommandHandler
             ? ResultExtensions.EntityNotFound(nameof(PlexLibrary), plexLibraryId)
             : Result.Ok(plexLibraryDb);
     }
-
 }

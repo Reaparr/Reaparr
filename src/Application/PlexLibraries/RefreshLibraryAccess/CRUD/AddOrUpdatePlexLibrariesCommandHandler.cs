@@ -67,10 +67,12 @@ public class AddOrUpdatePlexLibrariesCommandHandler
         {
             foreach (var incomingPlexLibrary in incomingPlexLibraries)
             {
-                if (!existingLibraries.TryGetValue(
-                    (incomingPlexLibrary.PlexServerId, incomingPlexLibrary.Uuid),
-                    out var plexLibraryDb
-                ))
+                if (
+                    !existingLibraries.TryGetValue(
+                        (incomingPlexLibrary.PlexServerId, incomingPlexLibrary.Uuid),
+                        out var plexLibraryDb
+                    )
+                )
                 {
                     _log.Here()
                         .Debug("Adding PlexLibrary {PlexLibraryName} to the database", incomingPlexLibrary.Title);
@@ -265,7 +267,10 @@ public class AddOrUpdatePlexLibrariesCommandHandler
     )
     {
         var incomingServerIds = incomingLibraries.Keys.ToArray();
-        var incomingUuids = incomingLibraries.SelectMany(x => x.Value, (_, library) => library.Uuid).Distinct().ToArray();
+        var incomingUuids = incomingLibraries
+            .SelectMany(x => x.Value, (_, library) => library.Uuid)
+            .Distinct()
+            .ToArray();
         return _dbContext
             .PlexLibraries.IgnoreIsEnabledFilter()
             .AsTracking()

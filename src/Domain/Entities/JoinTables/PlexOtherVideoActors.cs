@@ -11,11 +11,9 @@ public class PlexOtherVideoActors
         PlexOtherVideoId = plexOtherVideoId;
     }
 
-
     [Column(Order = 1)]
     public required int PlexActorId { get; set; }
 
     [Column(Order = 2)]
     public required int PlexOtherVideoId { get; set; }
-
 }

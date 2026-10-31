@@ -29,14 +29,18 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
         crossLibraryDuplicate.PlexServerId.ShouldBe(scenario.SourceServerId);
         crossLibraryDuplicate.RadarrIntegrationId.ShouldBe(scenario.RequestIntegration?.Id);
         crossLibraryDuplicate.PlexLibraryId.ShouldNotBe(scenario.SourceLibraryId);
-        beforeParents.Single(x => x.PlexApiRatingKey == scenario.SelectedRatingKeys[1]).RadarrIntegrationId.ShouldNotBe(
-            scenario.RequestIntegration?.Id
-        );
-        beforeParents.Single(x => x.PlexApiRatingKey == scenario.SelectedRatingKeys[1]).RadarrIntegrationId.ShouldNotBeNull();
-        beforeParents.Single(x => x.PlexApiRatingKey == scenario.SelectedRatingKeys[2]).RadarrIntegrationId.ShouldBeNull();
-        beforeParents.Single(x => x.PlexApiRatingKey == scenario.SelectedRatingKeys[3]).PlexServerId.ShouldNotBe(
-            scenario.SourceServerId
-        );
+        beforeParents
+            .Single(x => x.PlexApiRatingKey == scenario.SelectedRatingKeys[1])
+            .RadarrIntegrationId.ShouldNotBe(scenario.RequestIntegration?.Id);
+        beforeParents
+            .Single(x => x.PlexApiRatingKey == scenario.SelectedRatingKeys[1])
+            .RadarrIntegrationId.ShouldNotBeNull();
+        beforeParents
+            .Single(x => x.PlexApiRatingKey == scenario.SelectedRatingKeys[2])
+            .RadarrIntegrationId.ShouldBeNull();
+        beforeParents
+            .Single(x => x.PlexApiRatingKey == scenario.SelectedRatingKeys[3])
+            .PlexServerId.ShouldNotBe(scenario.SourceServerId);
 
         var command = CreateCommand(scenario);
 
@@ -81,34 +85,44 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
     public async Task ShouldKeepDistinctSelectedMoviesWithTheSameKey_WhenNeitherHasAPersistedDownload()
     {
         // Arrange
-        await SetupDatabase(56170, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieCount = 2;
-        });
+        await SetupDatabase(
+            56170,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 2;
+            }
+        );
         using var dbContext = IDbContext;
         var movies = await dbContext.PlexMovies.IncludeAll().OrderBy(x => x.Id).ToArrayAsync(CancellationToken);
         var sharedKey = movies[0].PlexApiRatingKey;
         await dbContext.PlexMovies.ExecuteUpdateAsync(
-            update => update.SetProperty(x => x.PlexApiRatingKey, sharedKey), CancellationToken);
+            update => update.SetProperty(x => x.PlexApiRatingKey, sharedKey),
+            CancellationToken
+        );
         await dbContext.PlexMovieData.ExecuteUpdateAsync(
-            update => update.SetProperty(x => x.PlexApiRatingKey, sharedKey), CancellationToken);
+            update => update.SetProperty(x => x.PlexApiRatingKey, sharedKey),
+            CancellationToken
+        );
         var selected = await dbContext.PlexMovies.OrderBy(x => x.Id).ToArrayAsync(CancellationToken);
         selected.Select(x => x.Id).Distinct().Count().ShouldBe(2);
         selected.ShouldAllBe(x => x.PlexApiRatingKey == sharedKey);
         (await ReadParentRows(dbContext)).ShouldBeEmpty();
         (await ReadFileRows(dbContext)).ShouldBeEmpty();
-        var command = new GenerateDownloadTaskMoviesCommand(new CreateDownloadTasksRequest(
-            [new DownloadMediaDTO
-            {
-                Type = PlexMediaType.Movie,
-                SelectionKind = null,
-                PlexServerId = movies[0].PlexServerId,
-                PlexLibraryId = movies[0].PlexLibraryId,
-                MediaIds = movies.Select(x => x.Id).ToList(),
-                Qualities = [],
-            }]));
+        var command = new GenerateDownloadTaskMoviesCommand(
+            new CreateDownloadTasksRequest([
+                new DownloadMediaDTO
+                {
+                    Type = PlexMediaType.Movie,
+                    SelectionKind = null,
+                    PlexServerId = movies[0].PlexServerId,
+                    PlexLibraryId = movies[0].PlexLibraryId,
+                    MediaIds = movies.Select(x => x.Id).ToList(),
+                    Qualities = [],
+                },
+            ])
+        );
 
         // Act
         var result = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(command);
@@ -122,13 +136,27 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
         var files = await ReadFileRows(dbContext);
         parents.Select(x => x.Id).Distinct().Count().ShouldBe(2);
         parents.Select(x => x.Title).Order().ShouldBe(movies.Select(x => x.Title).Order());
-        parents.Select(ToParentIdentity).ShouldBe(Enumerable.Repeat(
-            new ParentIdentity(sharedKey, movies[0].PlexServerId, movies[0].PlexLibraryId, null, null), 2));
-        files.Select(ToFileIdentity).OrderBy(x => x.ParentId)
+        parents
+            .Select(ToParentIdentity)
+            .ShouldBe(
+                Enumerable.Repeat(
+                    new ParentIdentity(sharedKey, movies[0].PlexServerId, movies[0].PlexLibraryId, null, null),
+                    2
+                )
+            );
+        files
+            .Select(ToFileIdentity)
+            .OrderBy(x => x.ParentId)
             .ShouldBe(parents.Select(ToParentFileIdentity).OrderBy(x => x.ParentId));
-        files.Select(x => (x.PlexApiMediaId, x.PlexApiPartId)).OrderBy(x => x.PlexApiPartId)
-            .ShouldBe(movies.SelectMany(x => x.MediaDataList)
-                .Select(x => (x.PlexApiMediaId, x.PlexApiPartId)).OrderBy(x => x.PlexApiPartId));
+        files
+            .Select(x => (x.PlexApiMediaId, x.PlexApiPartId))
+            .OrderBy(x => x.PlexApiPartId)
+            .ShouldBe(
+                movies
+                    .SelectMany(x => x.MediaDataList)
+                    .Select(x => (x.PlexApiMediaId, x.PlexApiPartId))
+                    .OrderBy(x => x.PlexApiPartId)
+            );
         parents.ShouldAllBe(x => x.DownloadStatus == DownloadStatus.Queued);
         files.ShouldAllBe(x => x.DownloadStatus == DownloadStatus.Queued);
     }
@@ -162,13 +190,20 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
             .ToListAsync(CancellationToken);
         var selectedRatingKeys = sourceMovies.Select(x => x.PlexApiRatingKey).ToArray();
 
-        var radarrIntegrations = await dbContext.RadarrIntegrations.OrderBy(x => x.DisplayName).ToListAsync(CancellationToken);
+        var radarrIntegrations = await dbContext
+            .RadarrIntegrations.OrderBy(x => x.DisplayName)
+            .ToListAsync(CancellationToken);
         var requestIntegration = radarrCaller
             ? new IntegrationIdentity(IntegrationType.Radarr, radarrIntegrations[0].Id)
             : null;
         var matchingRadarrId = requestIntegration?.Id;
 
-        var existingTasks = CreateExistingTasks(sourceMovies, movieLibraries, requestIntegration, radarrIntegrations[1].Id);
+        var existingTasks = CreateExistingTasks(
+            sourceMovies,
+            movieLibraries,
+            requestIntegration,
+            radarrIntegrations[1].Id
+        );
         dbContext.DownloadTaskMovie.AddRange(existingTasks);
         await dbContext.SaveChangesAsync(CancellationToken);
 
@@ -218,23 +253,20 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
             query = query.Where(x => ids.Contains(x.Id));
 
         var rows = await query.ToListAsync(CancellationToken);
-        return rows
-            .OrderBy(x => x.Id)
-            .Select(x =>
-                new ParentSnapshot(
-                    x.Id,
-                    x.PlexApiRatingKey,
-                    x.PlexServerId,
-                    x.PlexLibraryId,
-                    x.RadarrIntegrationId,
-                    x.SonarrIntegrationId,
-                    x.DownloadStatus,
-                    x.Title,
-                    x.FullTitle,
-                    x.Year,
-                    x.CreatedAt
-                )
-            )
+        return rows.OrderBy(x => x.Id)
+            .Select(x => new ParentSnapshot(
+                x.Id,
+                x.PlexApiRatingKey,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.RadarrIntegrationId,
+                x.SonarrIntegrationId,
+                x.DownloadStatus,
+                x.Title,
+                x.FullTitle,
+                x.Year,
+                x.CreatedAt
+            ))
             .ToArray();
     }
 
@@ -245,31 +277,28 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
             query = query.Where(x => parentIds.Contains(x.ParentId));
 
         var rows = await query.ToListAsync(CancellationToken);
-        return rows
-            .OrderBy(x => x.Id)
-            .Select(x =>
-                new FileSnapshot(
-                    x.Id,
-                    x.ParentId,
-                    x.PlexApiRatingKey,
-                    x.PlexApiMediaId,
-                    x.PlexApiPartId,
-                    x.PlexServerId,
-                    x.PlexLibraryId,
-                    x.RadarrIntegrationId,
-                    x.SonarrIntegrationId,
-                    x.DownloadStatus,
-                    x.HashId,
-                    x.Title,
-                    x.FullTitle,
-                    x.FileName,
-                    x.FileLocationUrl,
-                    x.VideoQuality,
-                    x.DataTotal,
-                    x.DestinationFolderPathId,
-                    x.DownloadClientType
-                )
-            )
+        return rows.OrderBy(x => x.Id)
+            .Select(x => new FileSnapshot(
+                x.Id,
+                x.ParentId,
+                x.PlexApiRatingKey,
+                x.PlexApiMediaId,
+                x.PlexApiPartId,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.RadarrIntegrationId,
+                x.SonarrIntegrationId,
+                x.DownloadStatus,
+                x.HashId,
+                x.Title,
+                x.FullTitle,
+                x.FileName,
+                x.FileLocationUrl,
+                x.VideoQuality,
+                x.DataTotal,
+                x.DestinationFolderPathId,
+                x.DownloadClientType
+            ))
             .ToArray();
     }
 
@@ -277,7 +306,14 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
         new(x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId, x.RadarrIntegrationId, x.SonarrIntegrationId);
 
     private static FileIdentity ToFileIdentity(FileSnapshot x) =>
-        new(x.ParentId, x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId, x.RadarrIntegrationId, x.SonarrIntegrationId);
+        new(
+            x.ParentId,
+            x.PlexApiRatingKey,
+            x.PlexServerId,
+            x.PlexLibraryId,
+            x.RadarrIntegrationId,
+            x.SonarrIntegrationId
+        );
 
     private static FileIdentity ToParentFileIdentity(ParentSnapshot x) =>
         new(x.Id, x.PlexApiRatingKey, x.PlexServerId, x.PlexLibraryId, x.RadarrIntegrationId, x.SonarrIntegrationId);
@@ -290,7 +326,9 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
     )
     {
         var sourceLibrary = libraries.Single(x => x.Id == sourceMovies[0].PlexLibraryId);
-        var duplicateLibrary = libraries.First(x => x.PlexServerId == sourceLibrary.PlexServerId && x.Id != sourceLibrary.Id);
+        var duplicateLibrary = libraries.First(x =>
+            x.PlexServerId == sourceLibrary.PlexServerId && x.Id != sourceLibrary.Id
+        );
         var otherServerLibrary = libraries.First(x => x.PlexServerId != sourceLibrary.PlexServerId);
         DownloadTaskMovie[] tasks =
         [

@@ -5,19 +5,20 @@ namespace Reaparr.Data.UnitTests;
 
 public class GetPhotoAlbumMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetPhotoAlbumMediaByTypeCommand>
 {
-
     [Test]
     public void ShouldRejectComparisonSorting_WhenPhotoAlbumsAreRequested()
     {
         // Arrange
-        var command = new GetPhotoAlbumMediaByTypeCommand(new MediaQueryFilter
-        {
-            MediaType = PlexMediaType.PhotoAlbum,
-            PlexLibraryId = 1,
-            FilterOfflineMedia = false,
-            FilterOwnedMedia = false,
-            Parameters = new FlexQueryParameters { Sort = "comparisonState:asc" },
-        });
+        var command = new GetPhotoAlbumMediaByTypeCommand(
+            new MediaQueryFilter
+            {
+                MediaType = PlexMediaType.PhotoAlbum,
+                PlexLibraryId = 1,
+                FilterOfflineMedia = false,
+                FilterOwnedMedia = false,
+                Parameters = new FlexQueryParameters { Sort = "comparisonState:asc" },
+            }
+        );
 
         // Act
         var result = new GetPhotoAlbumMediaByTypeCommandValidator().Validate(command);

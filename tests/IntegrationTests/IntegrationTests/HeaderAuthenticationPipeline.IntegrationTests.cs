@@ -62,32 +62,31 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
         GetAuthenticationCookies(response).Count.ShouldBe(0);
     }
 
-    private static async Task<BaseContainer> CreateRealAuthenticationContainer(
-        int seed,
-        List<string> trustedProxies
-    ) => await BaseContainer.Create(
-        LogFactory.Create<HeaderAuthenticationPipelineIntegrationTests>(),
-        new Seed(seed),
-        ConfigureHeaderAuthentication(trustedProxies),
-        useTestAuthentication: false
-    );
+    private static async Task<BaseContainer> CreateRealAuthenticationContainer(int seed, List<string> trustedProxies) =>
+        await BaseContainer.Create(
+            LogFactory.Create<HeaderAuthenticationPipelineIntegrationTests>(),
+            new Seed(seed),
+            ConfigureHeaderAuthentication(trustedProxies),
+            useTestAuthentication: false
+        );
 
-    private static Action<UnitTestDataConfig> ConfigureHeaderAuthentication(List<string> trustedProxies) => config =>
-    {
-        var authenticationSettings = AuthenticationModule.Create();
-        authenticationSettings.HeaderAuthentication = new HeaderAuthenticationSettings
+    private static Action<UnitTestDataConfig> ConfigureHeaderAuthentication(List<string> trustedProxies) =>
+        config =>
         {
-            Enabled = true,
-            MappingType = HeaderMappingType.Username,
-            TrustedProxies = trustedProxies,
-            EnableLogging = false,
-            MaxHeaderLength = 256,
-            RequireHttps = false,
-        };
+            var authenticationSettings = AuthenticationModule.Create();
+            authenticationSettings.HeaderAuthentication = new HeaderAuthenticationSettings
+            {
+                Enabled = true,
+                MappingType = HeaderMappingType.Username,
+                TrustedProxies = trustedProxies,
+                EnableLogging = false,
+                MaxHeaderLength = 256,
+                RequireHttps = false,
+            };
 
-        config.OverrideServices = builder =>
-            builder.RegisterInstance(authenticationSettings).As<IAuthenticationSettings>().SingleInstance();
-    };
+            config.OverrideServices = builder =>
+                builder.RegisterInstance(authenticationSettings).As<IAuthenticationSettings>().SingleInstance();
+        };
 
     private static HttpClient CreateUnauthenticatedClient(BaseContainer container)
     {
@@ -110,9 +109,9 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
     {
         var cookiePair = setCookie[..setCookie.IndexOf(';')];
         var cookieValue = cookiePair[(cookiePair.IndexOf('=') + 1)..];
-        var options = container.Resolve<IOptionsMonitor<CookieAuthenticationOptions>>().Get(
-            CookieAuthenticationDefaults.AuthenticationScheme
-        );
+        var options = container
+            .Resolve<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
 
         return options.TicketDataFormat!.Unprotect(cookieValue).ShouldNotBeNull();
     }

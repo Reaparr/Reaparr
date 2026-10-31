@@ -15,19 +15,22 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
     public async Task ShouldReturnDirectTotalsInOneAggregate_WhenPagingFolderAssets(int assetCount, int page)
     {
         // Arrange
-        await SetupDatabase(71022, config =>
-        {
-            config.PlexPhotoLibraryCount = 2;
-            config.PhotoAlbumCount = 1;
-            config.PhotoCount = 3;
-        });
+        await SetupDatabase(
+            71022,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 2;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 3;
+            }
+        );
         var dbContext = IDbContext;
-        var root = await dbContext.PlexPhotoFolders
-            .Where(x => x.ParentId == null)
+        var root = await dbContext
+            .PlexPhotoFolders.Where(x => x.ParentId == null)
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
-        var assets = await dbContext.PlexPhotoMediaData
-            .Where(x => x.PlexLibraryId == root.PlexLibraryId)
+        var assets = await dbContext
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == root.PlexLibraryId)
             .AsTracking()
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
@@ -35,9 +38,9 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         for (var index = 0; index < assets.Count; index++)
         {
             assets[index].Title = "Same title";
-            await dbContext.PlexPhotoMediaData.Where(x => x.Id == assets[index].Id).ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.Size, index * 100L), CancellationToken
-            );
+            await dbContext
+                .PlexPhotoMediaData.Where(x => x.Id == assets[index].Id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Size, index * 100L), CancellationToken);
             assets[index].PlexPhotoFolderId = index < assetCount ? root.Id : null;
         }
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -45,13 +48,17 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
         using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
-        using var listeners = DiagnosticListener.AllListeners
-            .Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
-            .Subscribe(listener => commandSubscriptions.Add(listener
-                .Select(entry => entry.Value!)
-                .OfType<CommandExecutedEventData>()
-                .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
-                .Subscribe(command => commands.Enqueue(command.Command.CommandText))));
+        using var listeners = DiagnosticListener
+            .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
+            .Subscribe(listener =>
+                commandSubscriptions.Add(
+                    listener
+                        .Select(entry => entry.Value!)
+                        .OfType<CommandExecutedEventData>()
+                        .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
+                        .Subscribe(command => commands.Enqueue(command.Command.CommandText))
+                )
+            );
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
@@ -68,16 +75,18 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         result.Value.Assets.PageSize.ShouldBe(2);
         result.Value.Assets.TotalCount.ShouldBe(assetCount);
         result.Value.Assets.TotalBytes.ShouldBe(Enumerable.Range(0, assetCount).Sum(index => index * 100L));
-        result.Value.Assets.Items.Select(x => x.Id).ShouldBe(
-            expectedAssets.Skip((page - 1) * 2).Take(2).Select(x => x.Id)
-        );
+        result
+            .Value.Assets.Items.Select(x => x.Id)
+            .ShouldBe(expectedAssets.Skip((page - 1) * 2).Take(2).Select(x => x.Id));
         result.Value.Assets.Items.ShouldAllBe(x => x.PlexLibraryId == root.PlexLibraryId);
         result.Value.Folders.Items.ShouldBeEmpty();
         result.Value.Breadcrumbs.Select(x => x.Id).ShouldBe([root.Id]);
         var aggregateCommands = commands
-            .Where(sql => !sql.Contains("WITH RECURSIVE")
+            .Where(sql =>
+                !sql.Contains("WITH RECURSIVE")
                 && sql.Contains("\"PlexPhotoMediaData\"")
-                && (sql.Contains("COUNT(") || sql.Contains("SUM(")))
+                && (sql.Contains("COUNT(") || sql.Contains("SUM("))
+            )
             .ToList();
         aggregateCommands.Count.ShouldBe(1);
         aggregateCommands[0].ShouldContain("COUNT(");
@@ -88,14 +97,20 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
     public async Task ShouldPageDirectFoldersAndAssetsIndependentlyWithCompleteBreadcrumbs()
     {
         // Arrange
-        await SetupDatabase(71004, config =>
-        {
-            config.PlexPhotoLibraryCount = 1;
-            config.PhotoAlbumCount = 1;
-            config.PhotoCount = 2;
-        });
+        await SetupDatabase(
+            71004,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 2;
+            }
+        );
         var dbContext = IDbContext;
-        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await dbContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var root = await dbContext.PlexPhotoFolders.SingleAsync(
             x => x.PlexLibraryId == library.Id && x.ParentId == null,
             CancellationToken
@@ -114,12 +129,12 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         };
         dbContext.PlexPhotoFolders.Add(child);
         await dbContext.SaveChangesAsync(CancellationToken);
-        var asset = await dbContext.PlexPhotoMediaData
-            .Where(x => x.PlexLibraryId == library.Id)
+        var asset = await dbContext
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
             .OrderBy(x => x.Id)
             .FirstAsync(CancellationToken);
-        await dbContext.PlexPhotoMediaData
-            .Where(x => x.Id == asset.Id)
+        await dbContext
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexPhotoFolderId, child.Id), CancellationToken);
 
         // Act
@@ -156,7 +171,7 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         childResult.Value.Assets.TotalBytes.ShouldBe(asset.Size);
         childResult.Value.Assets.Items.Select(x => x.Id).ShouldBe([asset.Id]);
     }
- 
+
     [Test]
     public async Task ShouldBoundFolderPagingAndResolveDeepAncestryAtScale()
     {
@@ -191,23 +206,13 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
             )
         );
         var invalidSort = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
-            new GetPhotoFolderChildrenQuery(
-                fixture.LibraryId,
-                fixture.Root.Id,
-                1,
-                100,
-                1,
-                100,
-                (SortType)999
-            )
+            new GetPhotoFolderChildrenQuery(fixture.LibraryId, fixture.Root.Id, 1, 100, 1, 100, (SortType)999)
         );
 
         // Assert
         deepResult.IsSuccess.ShouldBeTrue();
         deepResult.Errors.Count.ShouldBe(0);
-        deepResult.Value.Breadcrumbs.Select(x => x.Id).ShouldBe(
-            [fixture.Root.Id, .. fixture.Chain.Select(x => x.Id)]
-        );
+        deepResult.Value.Breadcrumbs.Select(x => x.Id).ShouldBe([fixture.Root.Id, .. fixture.Chain.Select(x => x.Id)]);
         deepResult.Value.Folder.RecursiveAssetCount.ShouldBe(1);
         deepResult.Value.Folder.RecursiveAssetBytes.ShouldBe(fixture.Asset.Size);
         deepResult.Value.Assets.TotalCount.ShouldBe(1);
@@ -223,7 +228,9 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         secondPage.Value.Folders.Items.Count.ShouldBe(21);
         descendingPage.IsSuccess.ShouldBeTrue();
         descendingPage.Errors.Count.ShouldBe(0);
-        descendingPage.Value.Folders.Items.Select(x => x.Id).ShouldBe(expectedFolderIds.OrderByDescending(x => x).Take(100));
+        descendingPage
+            .Value.Folders.Items.Select(x => x.Id)
+            .ShouldBe(expectedFolderIds.OrderByDescending(x => x).Take(100));
         invalidSort.IsFailed.ShouldBeTrue();
         invalidSort.Errors.Count.ShouldBe(2);
         invalidSort.Has400BadRequestError().ShouldBeTrue();
@@ -246,12 +253,15 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
 
     private async Task<ScaledFolderFixture> ArrangeScaledFolderFixtureAsync()
     {
-        await SetupDatabase(71011, config =>
-        {
-            config.PlexPhotoLibraryCount = 1;
-            config.PhotoAlbumCount = 1;
-            config.PhotoCount = 1;
-        });
+        await SetupDatabase(
+            71011,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -283,7 +293,8 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
             chain.Add(folder);
             parentId = folder.Id;
         }
-        var siblings = Enumerable.Range(1, 120)
+        var siblings = Enumerable
+            .Range(1, 120)
             .Select(index => new PlexPhotoFolder
             {
                 PlexServerId = root.PlexServerId,
@@ -300,8 +311,8 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         dbContext.PlexPhotoFolders.AddRange(siblings);
         await dbContext.SaveChangesAsync(CancellationToken);
         var asset = await dbContext.PlexPhotoMediaData.FirstAsync(CancellationToken);
-        await dbContext.PlexPhotoMediaData
-            .Where(x => x.Id == asset.Id)
+        await dbContext
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.PlexPhotoFolderId, chain[^1].Id), CancellationToken);
 
         return new ScaledFolderFixture(library.Id, root, chain, asset);

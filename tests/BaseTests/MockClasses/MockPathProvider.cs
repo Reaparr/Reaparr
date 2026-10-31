@@ -45,8 +45,7 @@ public class MockPathProvider : IPathProvider
     public string DefaultMusicDestinationFolder => Path.Combine(_sandboxFolder, IPathProvider.DefaultMusicFolderName);
 
     /// <inheritdoc/>
-    public string DefaultPhotosDestinationFolder =>
-        Path.Combine(_sandboxFolder, IPathProvider.DefaultPhotosFolderName);
+    public string DefaultPhotosDestinationFolder => Path.Combine(_sandboxFolder, IPathProvider.DefaultPhotosFolderName);
 
     /// <inheritdoc/>
     public string DefaultOtherDestinationFolder => Path.Combine(_sandboxFolder, IPathProvider.DefaultOtherFolderName);

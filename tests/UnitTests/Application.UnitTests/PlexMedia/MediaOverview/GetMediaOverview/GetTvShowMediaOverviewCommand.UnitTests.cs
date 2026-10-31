@@ -176,12 +176,14 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
         var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = tvShows[0].PlexLibraryId;
         await dbContext.MediaOverviewTvShowSnapshots.AddRangeAsync(
-            tvShows.Select((show, index) =>
-            {
-                var snapshot = CreateSnapshot(show.Id, index, libraryId);
-                snapshot.QualityRank = tvShows.Count - index - 1;
-                return snapshot;
-            }),
+            tvShows.Select(
+                (show, index) =>
+                {
+                    var snapshot = CreateSnapshot(show.Id, index, libraryId);
+                    snapshot.QualityRank = tvShows.Count - index - 1;
+                    return snapshot;
+                }
+            ),
             CancellationToken
         );
         await dbContext.SaveChangesAsync(CancellationToken);

@@ -10,7 +10,6 @@ public class PlexOtherVideoGenres
         PlexOtherVideoId = plexOtherVideoId;
     }
 
-
     [Column(Order = 1)]
     public int GenresId { get; set; }
 

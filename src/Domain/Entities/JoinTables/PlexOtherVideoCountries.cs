@@ -10,11 +10,9 @@ public class PlexOtherVideoCountries
         PlexOtherVideoId = plexOtherVideoId;
     }
 
-
     [Column(Order = 1)]
     public int CountryId { get; set; }
 
     [Column(Order = 2)]
     public int PlexOtherVideoId { get; set; }
-
 }

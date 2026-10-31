@@ -33,12 +33,17 @@ public class MockPlexApiJsonSerializerUnitTests : BaseUnitTest
 
         // Assert
         restored.ShouldNotBeNull();
-        (restored.Id, restored.Key, restored.StreamType, restored.Codec, restored.DisplayTitle)
-            .ShouldBe((123, "/library/streams/123", StreamType.Subtitle, "srt", "English (SRT)"));
+        (restored.Id, restored.Key, restored.StreamType, restored.Codec, restored.DisplayTitle).ShouldBe(
+            (123, "/library/streams/123", StreamType.Subtitle, "srt", "English (SRT)")
+        );
         var body = JObject.Parse(json);
         body.Value<bool>("canAutoSync").ShouldBe(canAutoSync);
-        body.Properties().Select(x => x.Name).OrderBy(x => x).ToArray().ShouldBe(
-            new[] { "id", "key", "streamType", "codec", "displayTitle", "canAutoSync" }.OrderBy(x => x).ToArray()
-        );
+        body.Properties()
+            .Select(x => x.Name)
+            .OrderBy(x => x)
+            .ToArray()
+            .ShouldBe(
+                new[] { "id", "key", "streamType", "codec", "displayTitle", "canAutoSync" }.OrderBy(x => x).ToArray()
+            );
     }
 }

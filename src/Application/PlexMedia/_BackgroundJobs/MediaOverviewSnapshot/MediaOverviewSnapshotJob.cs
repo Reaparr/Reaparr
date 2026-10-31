@@ -34,8 +34,7 @@ public sealed class MediaOverviewSnapshotJob : IJob
         if (scope is null)
         {
             context.SetResult(JobStatus.Completed);
-            _log.Here()
-                .Debug("Media overview snapshot rebuild skipped because no pending media types were requested");
+            _log.Here().Debug("Media overview snapshot rebuild skipped because no pending media types were requested");
             return;
         }
 

@@ -174,13 +174,15 @@ public static class DownloadTaskKeyMapper
         });
 
     public static IQueryable<DownloadTaskKey> ProjectToParentKey(this IQueryable<DownloadTaskPhotoFolder> tasks) =>
-        tasks.Where(x => x.ParentId.HasValue).Select(x => new DownloadTaskKey
-        {
-            Id = x.ParentId!.Value,
-            PlexServerId = x.PlexServerId,
-            PlexLibraryId = x.PlexLibraryId,
-            Type = DownloadTaskType.PhotoFolder,
-        });
+        tasks
+            .Where(x => x.ParentId.HasValue)
+            .Select(x => new DownloadTaskKey
+            {
+                Id = x.ParentId!.Value,
+                PlexServerId = x.PlexServerId,
+                PlexLibraryId = x.PlexLibraryId,
+                Type = DownloadTaskType.PhotoFolder,
+            });
 
     public static IQueryable<DownloadTaskKey> ProjectToParentKey(this IQueryable<DownloadTaskPhotoImageFile> tasks) =>
         tasks.Select(x => new DownloadTaskKey

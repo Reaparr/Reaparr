@@ -18,29 +18,28 @@ public class GetMovieDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMo
             .PlexMovies.Include(x => x.MediaDataList)
             .AsNoTracking()
             .ToListAsync(CancellationToken);
-        var query = new GetMovieDownloadPreviewCommand(
-            [
-                new DownloadMediaDTO
-                {
-                    Type = PlexMediaType.Movie,
-                    SelectionKind = null,
-                    PlexServerId = movies[0].PlexServerId,
-                    PlexLibraryId = movies[0].PlexLibraryId,
-                    MediaIds = movies.Select(x => x.Id).ToList(),
-                    Qualities = movies
-                        .SelectMany(x =>
-                            x.MediaDataList.Take(1).Select(data => new PlexMediaQualityDTO
+        var query = new GetMovieDownloadPreviewCommand([
+            new DownloadMediaDTO
+            {
+                Type = PlexMediaType.Movie,
+                SelectionKind = null,
+                PlexServerId = movies[0].PlexServerId,
+                PlexLibraryId = movies[0].PlexLibraryId,
+                MediaIds = movies.Select(x => x.Id).ToList(),
+                Qualities = movies
+                    .SelectMany(x =>
+                        x.MediaDataList.Take(1)
+                            .Select(data => new PlexMediaQualityDTO
                             {
                                 MediaId = x.Id,
                                 DataId = data.Id,
                                 MediaDataType = PlexMediaType.Movie,
                                 VideoQuality = VideoQuality.UHD_4K,
                             })
-                        )
-                        .ToList(),
-                },
-            ]
-        );
+                    )
+                    .ToList(),
+            },
+        ]);
 
         // Act
         var result = await TestHandlerExecuteAsync<IEnumerable<DownloadPreview>>(query);

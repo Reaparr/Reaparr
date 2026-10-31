@@ -14,25 +14,38 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         await client.SignIn();
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using var beforeContext = await factory.CreateAsync();
-        var photoLibrary = await beforeContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
-        var firstArtists = await beforeContext.PlexMusicArtists
-            .OrderBy(x => x.PlexApiRatingKey)
+        var photoLibrary = await beforeContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
+        var firstArtists = await beforeContext
+            .PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey)
             .Select(x => new { x.Id, x.PlexApiRatingKey })
             .ToListAsync(CancellationToken);
-        var firstVideos = await beforeContext.PlexOtherVideos
-            .OrderBy(x => x.PlexApiRatingKey)
+        var firstVideos = await beforeContext
+            .PlexOtherVideos.OrderBy(x => x.PlexApiRatingKey)
             .Select(x => new { x.Id, x.PlexApiRatingKey })
             .ToListAsync(CancellationToken);
-        var firstMusicAlbums = await beforeContext.PlexMusicAlbums
-            .OrderBy(x => x.PlexApiRatingKey)
-            .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexArtistId })
+        var firstMusicAlbums = await beforeContext
+            .PlexMusicAlbums.OrderBy(x => x.PlexApiRatingKey)
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexApiRatingKey,
+                x.PlexArtistId,
+            })
             .ToListAsync(CancellationToken);
-        var firstTracks = await beforeContext.PlexMusicTracks
-            .OrderBy(x => x.PlexApiRatingKey)
-            .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexAlbumId })
+        var firstTracks = await beforeContext
+            .PlexMusicTracks.OrderBy(x => x.PlexApiRatingKey)
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexApiRatingKey,
+                x.PlexAlbumId,
+            })
             .ToListAsync(CancellationToken);
-        var firstTrackData = await beforeContext.PlexMusicTrackData
-            .OrderBy(x => x.PlexApiPartId)
+        var firstTrackData = await beforeContext
+            .PlexMusicTrackData.OrderBy(x => x.PlexApiPartId)
             .Select(x => new
             {
                 x.Id,
@@ -47,8 +60,8 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                 x.Size,
             })
             .ToListAsync(CancellationToken);
-        var firstVideoData = await beforeContext.PlexOtherVideoData
-            .OrderBy(x => x.PlexApiPartId)
+        var firstVideoData = await beforeContext
+            .PlexOtherVideoData.OrderBy(x => x.PlexApiPartId)
             .Select(x => new
             {
                 x.Id,
@@ -91,7 +104,10 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
 
         // Assert
         using var firstContext = await factory.CreateAsync();
-        var refreshedLibrary = await firstContext.PlexLibraries.SingleAsync(x => x.Id == photoLibrary.Id, CancellationToken);
+        var refreshedLibrary = await firstContext.PlexLibraries.SingleAsync(
+            x => x.Id == photoLibrary.Id,
+            CancellationToken
+        );
         (
             refreshedLibrary.PhotoAlbumCount,
             refreshedLibrary.PhotoImageCount,
@@ -101,13 +117,18 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             refreshedLibrary.Outdated,
             refreshedLibrary.SyncedContentChangedAt
         ).ShouldBe((2, 3, 2, 2, true, false, refreshedLibrary.ContentChangedAt));
-        var firstAlbums = await firstContext.PlexPhotoAlbums
-            .Where(x => x.PlexLibraryId == photoLibrary.Id)
+        var firstAlbums = await firstContext
+            .PlexPhotoAlbums.Where(x => x.PlexLibraryId == photoLibrary.Id)
             .OrderBy(x => x.PlexApiRatingKey)
-            .Select(x => new { x.Id, x.PlexApiRatingKey, x.Title })
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexApiRatingKey,
+                x.Title,
+            })
             .ToListAsync(CancellationToken);
-        var firstFiles = await firstContext.PlexPhotoMediaData
-            .Where(x => x.PlexLibraryId == photoLibrary.Id)
+        var firstFiles = await firstContext
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == photoLibrary.Id)
             .OrderBy(x => x.PlexApiRatingKey)
             .ThenBy(x => x.PlexApiMediaId)
             .Select(x => new
@@ -124,14 +145,14 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                 x.Size,
             })
             .ToListAsync(CancellationToken);
-        var firstMemberships = await firstContext.PlexPhotoAlbumMemberships
-            .Where(x => x.PlexPhotoAlbum!.PlexLibraryId == photoLibrary.Id)
+        var firstMemberships = await firstContext
+            .PlexPhotoAlbumMemberships.Where(x => x.PlexPhotoAlbum!.PlexLibraryId == photoLibrary.Id)
             .OrderBy(x => x.PlexPhotoAlbumId)
             .ThenBy(x => x.PlexPhotoMediaDataId)
             .Select(x => new { x.PlexPhotoAlbumId, x.PlexPhotoMediaDataId })
             .ToListAsync(CancellationToken);
-        var firstFolders = await firstContext.PlexPhotoFolders
-            .Where(x => x.PlexLibraryId == photoLibrary.Id)
+        var firstFolders = await firstContext
+            .PlexPhotoFolders.Where(x => x.PlexLibraryId == photoLibrary.Id)
             .OrderBy(x => x.Id)
             .Select(x => new
             {
@@ -154,28 +175,51 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         firstFiles.Select(x => x.AssetKind).ShouldContain(PhotoAssetKind.Image);
         firstFiles.Select(x => x.AssetKind).ShouldContain(PhotoAssetKind.VideoClip);
         firstFolders.ShouldAllBe(x => x.ParentId == null || x.RelativePath.Length > 0);
-        firstFolders.Where(x => x.ParentId == null).ShouldAllBe(x => x.RootIdentityKey != null && x.SourceRootPath != null);
+        firstFolders
+            .Where(x => x.ParentId == null)
+            .ShouldAllBe(x => x.RootIdentityKey != null && x.SourceRootPath != null);
 
         var publishedBrowse = await ReadBrowseAssetsAsync(client, photoLibrary.Id);
         publishedBrowse.Items.Select(x => x.Id).Order().ShouldBe(firstFiles.Select(x => x.Id).Order());
         publishedBrowse.Items.ShouldAllBe(x => x.PlexLibraryId == photoLibrary.Id);
         (publishedBrowse.TotalCount, publishedBrowse.TotalBytes).ShouldBe((5, firstFiles.Sum(x => x.Size)));
-        (await firstContext.PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey).Select(x => new { x.Id, x.PlexApiRatingKey }).ToListAsync(CancellationToken))
-            .ShouldBe(firstArtists);
-        (await firstContext.PlexOtherVideos.OrderBy(x => x.PlexApiRatingKey).Select(x => new { x.Id, x.PlexApiRatingKey }).ToListAsync(CancellationToken))
-            .ShouldBe(firstVideos);
-        (await firstContext.PlexMusicAlbums
-                .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexArtistId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstMusicAlbums);
-        (await firstContext.PlexMusicTracks
-                .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexAlbumId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstTracks);
-        (await firstContext.PlexMusicTrackData
-                .OrderBy(x => x.PlexApiPartId)
+        (
+            await firstContext
+                .PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new { x.Id, x.PlexApiRatingKey })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstArtists);
+        (
+            await firstContext
+                .PlexOtherVideos.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new { x.Id, x.PlexApiRatingKey })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstVideos);
+        (
+            await firstContext
+                .PlexMusicAlbums.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexArtistId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstMusicAlbums);
+        (
+            await firstContext
+                .PlexMusicTracks.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexAlbumId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstTracks);
+        (
+            await firstContext
+                .PlexMusicTrackData.OrderBy(x => x.PlexApiPartId)
                 .Select(x => new
                 {
                     x.Id,
@@ -189,10 +233,11 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Duration,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstTrackData);
-        (await firstContext.PlexOtherVideoData
-                .OrderBy(x => x.PlexApiPartId)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstTrackData);
+        (
+            await firstContext
+                .PlexOtherVideoData.OrderBy(x => x.PlexApiPartId)
                 .Select(x => new
                 {
                     x.Id,
@@ -206,34 +251,35 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Duration,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstVideoData);
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstVideoData);
 
         var repeatedRefresh = await client.POSTAsync<
             RefreshLibraryMediaEndpoint,
             RefreshLibraryMediaEndpointRequest,
             ResultDTO<LibrarySyncJobQueueDTO>
-        >(
-            new RefreshLibraryMediaEndpointRequest
-            {
-                PlexLibraryId = photoLibrary.Id,
-                ForceLibrarySync = true,
-            }
-        );
+        >(new RefreshLibraryMediaEndpointRequest { PlexLibraryId = photoLibrary.Id, ForceLibrarySync = true });
         repeatedRefresh.Response.IsSuccessStatusCode.ShouldBeTrue();
         repeatedRefresh.Result.IsSuccess.ShouldBeTrue();
         repeatedRefresh.Result.Errors.Count.ShouldBe(0);
         await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
 
         using var repeatedContext = await factory.CreateAsync();
-        (await repeatedContext.PlexPhotoAlbums
-                .Where(x => x.PlexLibraryId == photoLibrary.Id)
+        (
+            await repeatedContext
+                .PlexPhotoAlbums.Where(x => x.PlexLibraryId == photoLibrary.Id)
                 .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.Title })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstAlbums);
-        (await repeatedContext.PlexPhotoMediaData
-                .Where(x => x.PlexLibraryId == photoLibrary.Id)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.Title,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstAlbums);
+        (
+            await repeatedContext
+                .PlexPhotoMediaData.Where(x => x.PlexLibraryId == photoLibrary.Id)
                 .OrderBy(x => x.PlexApiRatingKey)
                 .ThenBy(x => x.PlexApiMediaId)
                 .Select(x => new
@@ -249,17 +295,19 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Container,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstFiles);
-        (await repeatedContext.PlexPhotoAlbumMemberships
-                .Where(x => x.PlexPhotoAlbum!.PlexLibraryId == photoLibrary.Id)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstFiles);
+        (
+            await repeatedContext
+                .PlexPhotoAlbumMemberships.Where(x => x.PlexPhotoAlbum!.PlexLibraryId == photoLibrary.Id)
                 .OrderBy(x => x.PlexPhotoAlbumId)
                 .ThenBy(x => x.PlexPhotoMediaDataId)
                 .Select(x => new { x.PlexPhotoAlbumId, x.PlexPhotoMediaDataId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstMemberships);
-        (await repeatedContext.PlexPhotoFolders
-                .Where(x => x.PlexLibraryId == photoLibrary.Id)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstMemberships);
+        (
+            await repeatedContext
+                .PlexPhotoFolders.Where(x => x.PlexLibraryId == photoLibrary.Id)
                 .OrderBy(x => x.Id)
                 .Select(x => new
                 {
@@ -272,20 +320,33 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.PlexApiLocationId,
                     x.IsActive,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstFolders);
-        (await repeatedContext.PlexMusicAlbums
-                .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexArtistId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstMusicAlbums);
-        (await repeatedContext.PlexMusicTracks
-                .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexAlbumId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstTracks);
-        (await repeatedContext.PlexMusicTrackData
-                .OrderBy(x => x.PlexApiPartId)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstFolders);
+        (
+            await repeatedContext
+                .PlexMusicAlbums.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexArtistId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstMusicAlbums);
+        (
+            await repeatedContext
+                .PlexMusicTracks.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexAlbumId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstTracks);
+        (
+            await repeatedContext
+                .PlexMusicTrackData.OrderBy(x => x.PlexApiPartId)
                 .Select(x => new
                 {
                     x.Id,
@@ -299,10 +360,11 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Duration,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstTrackData);
-        (await repeatedContext.PlexOtherVideoData
-                .OrderBy(x => x.PlexApiPartId)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstTrackData);
+        (
+            await repeatedContext
+                .PlexOtherVideoData.OrderBy(x => x.PlexApiPartId)
                 .Select(x => new
                 {
                     x.Id,
@@ -316,8 +378,8 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Duration,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstVideoData);
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstVideoData);
 
         var disable = await client.PUTAsync<
             SetLibraryEnabledEndpoint,
@@ -335,31 +397,78 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         disabledBrowseResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
         using var disabledContext = await factory.CreateAsync();
-        var disabledLibrary = await disabledContext.PlexLibraries.IgnoreIsEnabledFilter().SingleAsync(x => x.Id == photoLibrary.Id, CancellationToken);
+        var disabledLibrary = await disabledContext
+            .PlexLibraries.IgnoreIsEnabledFilter()
+            .SingleAsync(x => x.Id == photoLibrary.Id, CancellationToken);
         disabledLibrary.IsEnabled.ShouldBeFalse();
         disabledLibrary.SyncedAt.ShouldBeNull();
-        (disabledLibrary.PhotoAlbumCount, disabledLibrary.PhotoImageCount, disabledLibrary.PhotoClipCount).ShouldBe((0, 0, 0));
-        (await disabledContext.PlexPhotoAlbums.CountAsync(x => x.PlexLibraryId == photoLibrary.Id, CancellationToken)).ShouldBe(0);
-        (await disabledContext.PlexPhotoMediaData.CountAsync(x => x.PlexLibraryId == photoLibrary.Id, CancellationToken)).ShouldBe(0);
-        (await disabledContext.PlexPhotoAlbumMemberships.CountAsync(x => x.PlexPhotoAlbum!.PlexLibraryId == photoLibrary.Id, CancellationToken)).ShouldBe(0);
-        (await disabledContext.PlexPhotoFolders.CountAsync(x => x.PlexLibraryId == photoLibrary.Id && x.ParentId != null, CancellationToken)).ShouldBe(0);
-        (await disabledContext.PlexPhotoFolders.CountAsync(x => x.PlexLibraryId == photoLibrary.Id && x.ParentId == null && x.IsActive == true, CancellationToken)).ShouldBe(0);
-        (await disabledContext.PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey).Select(x => new { x.Id, x.PlexApiRatingKey }).ToListAsync(CancellationToken))
-            .ShouldBe(firstArtists);
-        (await disabledContext.PlexOtherVideos.OrderBy(x => x.PlexApiRatingKey).Select(x => new { x.Id, x.PlexApiRatingKey }).ToListAsync(CancellationToken))
-            .ShouldBe(firstVideos);
-        (await disabledContext.PlexMusicAlbums
-                .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexArtistId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstMusicAlbums);
-        (await disabledContext.PlexMusicTracks
-                .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexAlbumId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstTracks);
-        (await disabledContext.PlexMusicTrackData
-                .OrderBy(x => x.PlexApiPartId)
+        (disabledLibrary.PhotoAlbumCount, disabledLibrary.PhotoImageCount, disabledLibrary.PhotoClipCount).ShouldBe(
+            (0, 0, 0)
+        );
+        (
+            await disabledContext.PlexPhotoAlbums.CountAsync(x => x.PlexLibraryId == photoLibrary.Id, CancellationToken)
+        ).ShouldBe(0);
+        (
+            await disabledContext.PlexPhotoMediaData.CountAsync(
+                x => x.PlexLibraryId == photoLibrary.Id,
+                CancellationToken
+            )
+        ).ShouldBe(0);
+        (
+            await disabledContext.PlexPhotoAlbumMemberships.CountAsync(
+                x => x.PlexPhotoAlbum!.PlexLibraryId == photoLibrary.Id,
+                CancellationToken
+            )
+        ).ShouldBe(0);
+        (
+            await disabledContext.PlexPhotoFolders.CountAsync(
+                x => x.PlexLibraryId == photoLibrary.Id && x.ParentId != null,
+                CancellationToken
+            )
+        ).ShouldBe(0);
+        (
+            await disabledContext.PlexPhotoFolders.CountAsync(
+                x => x.PlexLibraryId == photoLibrary.Id && x.ParentId == null && x.IsActive == true,
+                CancellationToken
+            )
+        ).ShouldBe(0);
+        (
+            await disabledContext
+                .PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new { x.Id, x.PlexApiRatingKey })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstArtists);
+        (
+            await disabledContext
+                .PlexOtherVideos.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new { x.Id, x.PlexApiRatingKey })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstVideos);
+        (
+            await disabledContext
+                .PlexMusicAlbums.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexArtistId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstMusicAlbums);
+        (
+            await disabledContext
+                .PlexMusicTracks.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexAlbumId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstTracks);
+        (
+            await disabledContext
+                .PlexMusicTrackData.OrderBy(x => x.PlexApiPartId)
                 .Select(x => new
                 {
                     x.Id,
@@ -373,10 +482,11 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Duration,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstTrackData);
-        (await disabledContext.PlexOtherVideoData
-                .OrderBy(x => x.PlexApiPartId)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstTrackData);
+        (
+            await disabledContext
+                .PlexOtherVideoData.OrderBy(x => x.PlexApiPartId)
                 .Select(x => new
                 {
                     x.Id,
@@ -390,8 +500,8 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Duration,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstVideoData);
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstVideoData);
 
         await container.BackgroundJobScheduler.Standby(CancellationToken);
         try
@@ -405,7 +515,12 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             enable.Result.IsSuccess.ShouldBeTrue();
             enable.Result.Errors.Count.ShouldBe(0);
             using var pendingContext = await factory.CreateAsync();
-            (await pendingContext.PlexPhotoFolders.CountAsync(x => x.PlexLibraryId == photoLibrary.Id && x.ParentId == null && x.IsActive == true, CancellationToken)).ShouldBe(0);
+            (
+                await pendingContext.PlexPhotoFolders.CountAsync(
+                    x => x.PlexLibraryId == photoLibrary.Id && x.ParentId == null && x.IsActive == true,
+                    CancellationToken
+                )
+            ).ShouldBe(0);
         }
         finally
         {
@@ -422,8 +537,14 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     && library.PhotoAlbumCount == 2
                     && library.PhotoImageCount == 3
                     && library.PhotoClipCount == 2
-                    && await current.PlexPhotoAlbums.CountAsync(x => x.PlexLibraryId == photoLibrary.Id, CancellationToken) == 2
-                    && await current.PlexPhotoMediaData.CountAsync(x => x.PlexLibraryId == photoLibrary.Id, CancellationToken) == 5
+                    && await current.PlexPhotoAlbums.CountAsync(
+                        x => x.PlexLibraryId == photoLibrary.Id,
+                        CancellationToken
+                    ) == 2
+                    && await current.PlexPhotoMediaData.CountAsync(
+                        x => x.PlexLibraryId == photoLibrary.Id,
+                        CancellationToken
+                    ) == 5
                     && await current.PlexPhotoAlbumMemberships.CountAsync(
                         x => x.PlexPhotoAlbum!.PlexLibraryId == photoLibrary.Id,
                         CancellationToken
@@ -434,30 +555,56 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         );
 
         using var enabledContext = await factory.CreateAsync();
-        (await enabledContext.PlexPhotoFolders.CountAsync(x => x.PlexLibraryId == photoLibrary.Id && x.ParentId == null && x.IsActive == true, CancellationToken)).ShouldBe(1);
-        (await enabledContext.PlexPhotoMediaData.CountAsync(x => x.PlexLibraryId == photoLibrary.Id, CancellationToken)).ShouldBe(5);
+        (
+            await enabledContext.PlexPhotoFolders.CountAsync(
+                x => x.PlexLibraryId == photoLibrary.Id && x.ParentId == null && x.IsActive == true,
+                CancellationToken
+            )
+        ).ShouldBe(1);
+        (
+            await enabledContext.PlexPhotoMediaData.CountAsync(
+                x => x.PlexLibraryId == photoLibrary.Id,
+                CancellationToken
+            )
+        ).ShouldBe(5);
 
         var enabledBrowse = await ReadBrowseAssetsAsync(client, photoLibrary.Id);
-        enabledBrowse.Items.Select(x => x.PlexApiRatingKey).Order()
+        enabledBrowse
+            .Items.Select(x => x.PlexApiRatingKey)
+            .Order()
             .ShouldBe(firstFiles.Select(x => x.PlexApiRatingKey).Order());
         (enabledBrowse.TotalCount, enabledBrowse.TotalBytes).ShouldBe((5, firstFiles.Sum(x => x.Size)));
-        (await enabledContext.PlexMusicArtists
-                .OrderBy(x => x.PlexApiRatingKey)
+        (
+            await enabledContext
+                .PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey)
                 .Select(x => new { x.Id, x.PlexApiRatingKey })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstArtists);
-        (await enabledContext.PlexMusicAlbums
-                .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexArtistId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstMusicAlbums);
-        (await enabledContext.PlexMusicTracks
-                .OrderBy(x => x.PlexApiRatingKey)
-                .Select(x => new { x.Id, x.PlexApiRatingKey, x.PlexAlbumId })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstTracks);
-        (await enabledContext.PlexMusicTrackData
-                .OrderBy(x => x.PlexApiPartId)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstArtists);
+        (
+            await enabledContext
+                .PlexMusicAlbums.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexArtistId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstMusicAlbums);
+        (
+            await enabledContext
+                .PlexMusicTracks.OrderBy(x => x.PlexApiRatingKey)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexAlbumId,
+                })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstTracks);
+        (
+            await enabledContext
+                .PlexMusicTrackData.OrderBy(x => x.PlexApiPartId)
                 .Select(x => new
                 {
                     x.Id,
@@ -471,15 +618,17 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Duration,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstTrackData);
-        (await enabledContext.PlexOtherVideos
-                .OrderBy(x => x.PlexApiRatingKey)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstTrackData);
+        (
+            await enabledContext
+                .PlexOtherVideos.OrderBy(x => x.PlexApiRatingKey)
                 .Select(x => new { x.Id, x.PlexApiRatingKey })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstVideos);
-        (await enabledContext.PlexOtherVideoData
-                .OrderBy(x => x.PlexApiPartId)
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstVideos);
+        (
+            await enabledContext
+                .PlexOtherVideoData.OrderBy(x => x.PlexApiPartId)
                 .Select(x => new
                 {
                     x.Id,
@@ -493,42 +642,45 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                     x.Duration,
                     x.Size,
                 })
-                .ToListAsync(CancellationToken))
-            .ShouldBe(firstVideoData);
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(firstVideoData);
     }
 
     private Task<BaseContainer> CreatePhotoRefreshContainer(Seed seed) =>
-        CreateContainer(seed, config =>
-        {
-            config.HttpClientOptions = (http, _) => http.SetupIdentityRequest(seed);
-            config.DatabaseOptions = database =>
+        CreateContainer(
+            seed,
+            config =>
             {
-                database.PlexAccountCount = 1;
-                database.PlexServerCount = 1;
-                database.PlexMusicLibraryCount = 1;
-                database.PlexPhotoLibraryCount = 1;
-                database.PlexOtherVideoLibraryCount = 1;
-                database.MusicArtistCount = 2;
-                database.MusicAlbumCount = 2;
-                database.MusicTrackCount = 2;
-                database.OtherVideoCount = 3;
-            };
-            config.BaseMockHttpClientOptions = plex =>
-            {
-                plex.GenerateFromDatabase = true;
-                plex.PlexServerAccessCount = 1;
-                plex.MusicLibraryCount = 1;
-                plex.PhotoLibraryCount = 1;
-                plex.OtherVideoLibraryCount = 1;
-                plex.ArtistsPerLibraryCount = 2;
-                plex.AlbumsPerArtistCount = 2;
-                plex.TracksPerAlbumCount = 2;
-                plex.PhotoAlbumsPerLibraryCount = 2;
-                plex.PhotosPerAlbumCount = 2;
-                plex.PhotoClipsPerAlbumCount = 1;
-                plex.PhotoAlbumsOverlap = true;
-            };
-        });
+                config.HttpClientOptions = (http, _) => http.SetupIdentityRequest(seed);
+                config.DatabaseOptions = database =>
+                {
+                    database.PlexAccountCount = 1;
+                    database.PlexServerCount = 1;
+                    database.PlexMusicLibraryCount = 1;
+                    database.PlexPhotoLibraryCount = 1;
+                    database.PlexOtherVideoLibraryCount = 1;
+                    database.MusicArtistCount = 2;
+                    database.MusicAlbumCount = 2;
+                    database.MusicTrackCount = 2;
+                    database.OtherVideoCount = 3;
+                };
+                config.BaseMockHttpClientOptions = plex =>
+                {
+                    plex.GenerateFromDatabase = true;
+                    plex.PlexServerAccessCount = 1;
+                    plex.MusicLibraryCount = 1;
+                    plex.PhotoLibraryCount = 1;
+                    plex.OtherVideoLibraryCount = 1;
+                    plex.ArtistsPerLibraryCount = 2;
+                    plex.AlbumsPerArtistCount = 2;
+                    plex.TracksPerAlbumCount = 2;
+                    plex.PhotoAlbumsPerLibraryCount = 2;
+                    plex.PhotosPerAlbumCount = 2;
+                    plex.PhotoClipsPerAlbumCount = 1;
+                    plex.PhotoAlbumsOverlap = true;
+                };
+            }
+        );
 
     private async Task<PhotoAssetPageDTO> ReadBrowseAssetsAsync(HttpClient client, int libraryId)
     {

@@ -33,7 +33,9 @@ public class DownloadTaskGenericMapperUnitTests : BaseUnitTest
         file.DirectoryMeta.SeasonFolder = "Season 01";
         file.DirectoryMeta.MusicArtistFolder = "Artist";
         file.DirectoryMeta.MusicAlbumFolder = "Album";
-        file.DirectoryMeta.PhotoFolder = type is DownloadTaskType.PhotoFolder or DownloadTaskType.PhotoImage ? "Photos" : string.Empty;
+        file.DirectoryMeta.PhotoFolder = type is DownloadTaskType.PhotoFolder or DownloadTaskType.PhotoImage
+            ? "Photos"
+            : string.Empty;
         file.DirectoryMeta.OtherVideoFolder = "Video";
 
         // Act
@@ -57,7 +59,8 @@ public class DownloadTaskGenericMapperUnitTests : BaseUnitTest
         result.PlexServerId.ShouldBe(task.PlexServerId);
         result.PlexLibraryId.ShouldBe(task.PlexLibraryId);
         result.IsDownloadable.ShouldBe(task.IsDownloadable);
-        var mappedFile = new[] { result }.Flatten(x => x.Children)
+        var mappedFile = new[] { result }
+            .Flatten(x => x.Children)
             .Single(x => x.Id == file.Id && x.DownloadTaskType == file.DownloadTaskType);
         mappedFile.ParentId.ShouldBe(file.ToParentKey()!.Id);
         mappedFile.DownloadTaskType.ShouldBe(file.DownloadTaskType);
@@ -101,7 +104,8 @@ public class DownloadTaskGenericMapperUnitTests : BaseUnitTest
         child.DownloadRootPath = root.DownloadRootPath;
         child.DestinationRootPath = root.DestinationRootPath;
         child.Files.Clear();
-        var childFile = FakeData.GetDownloadTaskPhotoImageFile(new Seed(74005))
+        var childFile = FakeData
+            .GetDownloadTaskPhotoImageFile(new Seed(74005))
             .RuleFor(x => x.Id, _ => Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"))
             .Generate();
         childFile.UpdateInitProperty(nameof(childFile.ParentId), child.Id);
@@ -118,19 +122,22 @@ public class DownloadTaskGenericMapperUnitTests : BaseUnitTest
         // Assert
         result.ParentId.ShouldBe(Guid.Empty);
         result.DownloadTaskType.ShouldBe(DownloadTaskType.PhotoFolder);
-        result.Children.Select(x => (x.Id, x.ParentId, x.DownloadTaskType, x.IsDownloadable)).OrderBy(x => x.Id).ShouldBe(
-            new (Guid Id, Guid ParentId, DownloadTaskType DownloadTaskType, bool IsDownloadable)[]
-            {
-                (child.Id, root.Id, DownloadTaskType.PhotoFolder, false),
-                (rootFile.Id, root.Id, DownloadTaskType.PhotoImage, true),
-            }.OrderBy(x => x.Id)
-        );
+        result
+            .Children.Select(x => (x.Id, x.ParentId, x.DownloadTaskType, x.IsDownloadable))
+            .OrderBy(x => x.Id)
+            .ShouldBe(
+                new (Guid Id, Guid ParentId, DownloadTaskType DownloadTaskType, bool IsDownloadable)[]
+                {
+                    (child.Id, root.Id, DownloadTaskType.PhotoFolder, false),
+                    (rootFile.Id, root.Id, DownloadTaskType.PhotoImage, true),
+                }.OrderBy(x => x.Id)
+            );
         var mappedChild = result.Children.Single(x => x.Id == child.Id);
         mappedChild.DownloadDirectory.ShouldBe(Path.Combine("/downloads", "Photos", "root/nested"));
         mappedChild.DestinationDirectory.ShouldBe(Path.Combine("/destination", "root/nested"));
-        mappedChild.Children.Select(x => (x.Id, x.ParentId, x.DownloadTaskType, x.IsDownloadable)).ShouldBe([
-            (childFile.Id, child.Id, DownloadTaskType.PhotoImage, true),
-        ]);
+        mappedChild
+            .Children.Select(x => (x.Id, x.ParentId, x.DownloadTaskType, x.IsDownloadable))
+            .ShouldBe([(childFile.Id, child.Id, DownloadTaskType.PhotoImage, true)]);
     }
 
     [Test]
@@ -252,41 +259,57 @@ public class DownloadTaskGenericMapperUnitTests : BaseUnitTest
             case DownloadTaskType.Season:
             case DownloadTaskType.Episode:
             case DownloadTaskType.EpisodeData:
-                var show = FakeData.GetDownloadTaskTvShow(seed, config =>
-                {
-                    config.TvShowSeasonDownloadTasksCount = 1;
-                    config.TvShowEpisodeDownloadTasksCount = 1;
-                }).Generate();
+                var show = FakeData
+                    .GetDownloadTaskTvShow(
+                        seed,
+                        config =>
+                        {
+                            config.TvShowSeasonDownloadTasksCount = 1;
+                            config.TvShowEpisodeDownloadTasksCount = 1;
+                        }
+                    )
+                    .Generate();
                 var season = show.Children.Single();
                 var episode = season.Children.Single();
                 var episodeFile = episode.Children.Single();
-                return (type switch
-                {
-                    DownloadTaskType.TvShow => show,
-                    DownloadTaskType.Season => season,
-                    DownloadTaskType.Episode => episode,
-                    _ => episodeFile,
-                }, episodeFile);
+                return (
+                    type switch
+                    {
+                        DownloadTaskType.TvShow => show,
+                        DownloadTaskType.Season => season,
+                        DownloadTaskType.Episode => episode,
+                        _ => episodeFile,
+                    },
+                    episodeFile
+                );
             case DownloadTaskType.MusicArtist:
             case DownloadTaskType.MusicAlbum:
             case DownloadTaskType.MusicTrack:
             case DownloadTaskType.MusicTrackData:
-                var artist = FakeData.GetDownloadTaskMusicArtist(seed, config =>
-                {
-                    config.MusicAlbumDownloadTasksCount = 1;
-                    config.MusicTrackDownloadTasksCount = 1;
-                    config.MusicTrackFileDownloadTasksCount = 1;
-                }).Generate();
+                var artist = FakeData
+                    .GetDownloadTaskMusicArtist(
+                        seed,
+                        config =>
+                        {
+                            config.MusicAlbumDownloadTasksCount = 1;
+                            config.MusicTrackDownloadTasksCount = 1;
+                            config.MusicTrackFileDownloadTasksCount = 1;
+                        }
+                    )
+                    .Generate();
                 var album = artist.Children.Single();
                 var track = album.Children.Single();
                 var trackFile = track.Children.Single();
-                return (type switch
-                {
-                    DownloadTaskType.MusicArtist => artist,
-                    DownloadTaskType.MusicAlbum => album,
-                    DownloadTaskType.MusicTrack => track,
-                    _ => trackFile,
-                }, trackFile);
+                return (
+                    type switch
+                    {
+                        DownloadTaskType.MusicArtist => artist,
+                        DownloadTaskType.MusicAlbum => album,
+                        DownloadTaskType.MusicTrack => track,
+                        _ => trackFile,
+                    },
+                    trackFile
+                );
             case DownloadTaskType.PhotoFolder:
             case DownloadTaskType.PhotoImage:
                 var photoFolder = FakeData

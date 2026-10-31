@@ -92,8 +92,8 @@ public class UpdateRadarrIntegrationEndpoint : Endpoint<UpdateRadarrIntegrationR
             return;
         }
 
-        var connectionIdentityChanged = integration.BaseUrl.Trim().TrimEnd('/') != url
-            || integration.RadarrApiKey.Trim() != apiKey;
+        var connectionIdentityChanged =
+            integration.BaseUrl.Trim().TrimEnd('/') != url || integration.RadarrApiKey.Trim() != apiKey;
 
         if (
             integration.ProvisioningState == IntegrationProvisioningState.Configured

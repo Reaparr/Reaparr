@@ -28,19 +28,22 @@ public class TorrentStatesIntegrationTests : BaseIntegrationTests
             (DownloadStatus.Unknown, "stalledDL"),
         ];
         var isMovie = type == IntegrationType.Radarr;
-        using var container = await CreateContainer(new Seed(8638), config =>
-        {
-            config.DatabaseOptions = database =>
+        using var container = await CreateContainer(
+            new Seed(8638),
+            config =>
             {
-                database.PlexServerCount = 1;
-                database.MovieDownloadTasksCount = isMovie ? states.Length + 1 : 0;
-                database.TvShowDownloadTasksCount = isMovie ? 0 : states.Length + 1;
-                database.TvShowSeasonDownloadTasksCount = isMovie ? 0 : 1;
-                database.TvShowEpisodeDownloadTasksCount = isMovie ? 0 : 1;
-                database.RadarrIntegrationCount = isMovie ? 2 : 0;
-                database.SonarrIntegrationCount = isMovie ? 0 : 2;
-            };
-        });
+                config.DatabaseOptions = database =>
+                {
+                    database.PlexServerCount = 1;
+                    database.MovieDownloadTasksCount = isMovie ? states.Length + 1 : 0;
+                    database.TvShowDownloadTasksCount = isMovie ? 0 : states.Length + 1;
+                    database.TvShowSeasonDownloadTasksCount = isMovie ? 0 : 1;
+                    database.TvShowEpisodeDownloadTasksCount = isMovie ? 0 : 1;
+                    database.RadarrIntegrationCount = isMovie ? 2 : 0;
+                    database.SonarrIntegrationCount = isMovie ? 0 : 2;
+                };
+            }
+        );
         var dbContext = container.DbContext;
         var ownerIds = isMovie
             ? await dbContext.RadarrIntegrations.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken)
@@ -48,16 +51,31 @@ public class TorrentStatesIntegrationTests : BaseIntegrationTests
         ownerIds.Count.ShouldBe(2);
         var integrationId = ownerIds[0];
         var apiKey = isMovie
-            ? await dbContext.RadarrIntegrations.Where(x => x.Id == integrationId).Select(x => x.QBittorrentApiKey).SingleAsync(CancellationToken)
-            : await dbContext.SonarrIntegrations.Where(x => x.Id == integrationId).Select(x => x.QBittorrentApiKey).SingleAsync(CancellationToken);
+            ? await dbContext
+                .RadarrIntegrations.Where(x => x.Id == integrationId)
+                .Select(x => x.QBittorrentApiKey)
+                .SingleAsync(CancellationToken)
+            : await dbContext
+                .SonarrIntegrations.Where(x => x.Id == integrationId)
+                .Select(x => x.QBittorrentApiKey)
+                .SingleAsync(CancellationToken);
         var category = isMovie
-            ? await dbContext.RadarrIntegrations.Where(x => x.Id == integrationId).Select(x => x.Category).SingleAsync(CancellationToken)
-            : await dbContext.SonarrIntegrations.Where(x => x.Id == integrationId).Select(x => x.Category).SingleAsync(CancellationToken);
+            ? await dbContext
+                .RadarrIntegrations.Where(x => x.Id == integrationId)
+                .Select(x => x.Category)
+                .SingleAsync(CancellationToken)
+            : await dbContext
+                .SonarrIntegrations.Where(x => x.Id == integrationId)
+                .Select(x => x.Category)
+                .SingleAsync(CancellationToken);
         var files = new List<DownloadTaskFileBase>();
         if (isMovie)
         {
-            var roots = await dbContext.DownloadTaskMovie.AsTracking().Include(x => x.Children)
-                .OrderBy(x => x.Id).ToListAsync(CancellationToken);
+            var roots = await dbContext
+                .DownloadTaskMovie.AsTracking()
+                .Include(x => x.Children)
+                .OrderBy(x => x.Id)
+                .ToListAsync(CancellationToken);
             foreach (var root in roots)
             {
                 var owner = files.Count == states.Length ? ownerIds[1] : integrationId;
@@ -69,8 +87,11 @@ public class TorrentStatesIntegrationTests : BaseIntegrationTests
         }
         else
         {
-            var roots = await dbContext.DownloadTaskTvShow.AsTracking().IncludeAll()
-                .OrderBy(x => x.Id).ToListAsync(CancellationToken);
+            var roots = await dbContext
+                .DownloadTaskTvShow.AsTracking()
+                .IncludeAll()
+                .OrderBy(x => x.Id)
+                .ToListAsync(CancellationToken);
             foreach (var root in roots)
             {
                 var owner = files.Count == states.Length ? ownerIds[1] : integrationId;
@@ -89,38 +110,81 @@ public class TorrentStatesIntegrationTests : BaseIntegrationTests
             files[index].DownloadStatus = index < states.Length ? states[index].Status : DownloadStatus.StorageError;
         }
         await dbContext.SaveChangesAsync(CancellationToken);
-        await dbContext.PlexServers.ExecuteUpdateAsync(update => update
-            .SetProperty(server => server.IsEnabled, true).SetProperty(server => server.OwnedOverride, false), CancellationToken);
-        var before = files.OrderBy(file => file.Id)
-            .Select(file => (file.Id, ParentId: file.ToParentKey()!.Id, file.HashId, file.DownloadStatus, file.SonarrIntegrationId, file.RadarrIntegrationId))
+        await dbContext.PlexServers.ExecuteUpdateAsync(
+            update =>
+                update.SetProperty(server => server.IsEnabled, true).SetProperty(server => server.OwnedOverride, false),
+            CancellationToken
+        );
+        var before = files
+            .OrderBy(file => file.Id)
+            .Select(file =>
+                (
+                    file.Id,
+                    ParentId: file.ToParentKey()!.Id,
+                    file.HashId,
+                    file.DownloadStatus,
+                    file.SonarrIntegrationId,
+                    file.RadarrIntegrationId
+                )
+            )
             .ToArray();
         using var client = container.GetApiClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         // Act
         using var response = await client.GetAsync(
-            $"/api/public/integrations/{integrationId}/download-client/api/v2/torrents/info?hashes=all", CancellationToken);
+            $"/api/public/integrations/{integrationId}/download-client/api/v2/torrents/info?hashes=all",
+            CancellationToken
+        );
 
         // Assert — inspect actual qBittorrent JSON names/values, not an internal mapper call.
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(CancellationToken));
-        var returned = document.RootElement.EnumerateArray().Select(item => (
-            Hash: item.GetProperty("hash").GetString(),
-            State: item.GetProperty("state").GetString(),
-            Category: item.GetProperty("category").GetString(),
-            RatioLimit: item.GetProperty("ratio_limit").GetSingle()
-        )).OrderBy(item => item.Hash).ToArray();
-        returned.ShouldBe(states.Select((state, index) => (
-            Hash: files[index].HashId,
-            State: (string?)state.WireState,
-            Category: (string?)category,
-            RatioLimit: state.Status == DownloadStatus.Completed ? 0f : -2f
-        )).OrderBy(item => item.Hash).ToArray());
+        var returned = document
+            .RootElement.EnumerateArray()
+            .Select(item =>
+                (
+                    Hash: item.GetProperty("hash").GetString(),
+                    State: item.GetProperty("state").GetString(),
+                    Category: item.GetProperty("category").GetString(),
+                    RatioLimit: item.GetProperty("ratio_limit").GetSingle()
+                )
+            )
+            .OrderBy(item => item.Hash)
+            .ToArray();
+        returned.ShouldBe(
+            states
+                .Select(
+                    (state, index) =>
+                        (
+                            Hash: files[index].HashId,
+                            State: (string?)state.WireState,
+                            Category: (string?)category,
+                            RatioLimit: state.Status == DownloadStatus.Completed ? 0f : -2f
+                        )
+                )
+                .OrderBy(item => item.Hash)
+                .ToArray()
+        );
         using var afterContext = container.DbContext;
         var afterFiles = isMovie
-            ? (await afterContext.DownloadTaskMovieFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)).Cast<DownloadTaskFileBase>()
-            : (await afterContext.DownloadTaskTvShowEpisodeFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)).Cast<DownloadTaskFileBase>();
-        afterFiles.Select(file => (file.Id, ParentId: file.ToParentKey()!.Id, file.HashId, file.DownloadStatus, file.SonarrIntegrationId, file.RadarrIntegrationId))
+            ? (
+                await afterContext.DownloadTaskMovieFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)
+            ).Cast<DownloadTaskFileBase>()
+            : (
+                await afterContext.DownloadTaskTvShowEpisodeFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)
+            ).Cast<DownloadTaskFileBase>();
+        afterFiles
+            .Select(file =>
+                (
+                    file.Id,
+                    ParentId: file.ToParentKey()!.Id,
+                    file.HashId,
+                    file.DownloadStatus,
+                    file.SonarrIntegrationId,
+                    file.RadarrIntegrationId
+                )
+            )
             .ShouldBe(before);
     }
 }

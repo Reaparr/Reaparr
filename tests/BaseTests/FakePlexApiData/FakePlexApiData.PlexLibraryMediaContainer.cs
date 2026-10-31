@@ -53,11 +53,14 @@ public partial class FakePlexApiData
             .RuleFor(x => x.Hidden, f => f.Random.Bool())
             .RuleFor(
                 x => x.Location,
-                f => [new LibrarySectionLocation
-                {
-                    Id = GetUniqueNumber(),
-                    Path = type == PlexMediaType.PhotoAlbum ? "/fixture/photos" : f.System.DirectoryPath(),
-                }]
+                f =>
+                    [
+                        new LibrarySectionLocation
+                        {
+                            Id = GetUniqueNumber(),
+                            Path = type == PlexMediaType.PhotoAlbum ? "/fixture/photos" : f.System.DirectoryPath(),
+                        },
+                    ]
             );
     }
 }

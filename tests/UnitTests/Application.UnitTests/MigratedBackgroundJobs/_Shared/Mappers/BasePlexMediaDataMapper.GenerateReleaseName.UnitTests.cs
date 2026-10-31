@@ -88,10 +88,7 @@ public class BasePlexMediaDataMapperGenerateReleaseNameUnitTests : BaseUnitTest
             Default = false,
             DOVIPresent = true,
         };
-        var part = FakeData.GetLibraryMediaItemPartDTO(seed).Generate() with
-        {
-            Stream = [audioStream, videoStream],
-        };
+        var part = FakeData.GetLibraryMediaItemPartDTO(seed).Generate() with { Stream = [audioStream, videoStream] };
         var media = metadata.Media.Single() with
         {
             VideoResolution = VideoQuality.FullHD,
@@ -164,16 +161,23 @@ public class BasePlexMediaDataMapperGenerateReleaseNameUnitTests : BaseUnitTest
             Title = "Known Episode",
             Year = 2024,
         };
-        var stream = FakeData.GetLibraryMediaItemStreamDTO(seed, hasVideo ? StreamType.Video : StreamType.Audio)
+        var stream = FakeData
+            .GetLibraryMediaItemStreamDTO(seed, hasVideo ? StreamType.Video : StreamType.Audio)
             .Generate();
         var part = FakeData.GetLibraryMediaItemPartDTO(seed).Generate() with { Stream = [stream] };
         var media = metadata.Media.Single() with { Parts = [part] };
         var expectedFilename = hasVideo
             ? BasePlexMediaDataMapper.GenerateReleaseName(
-                metadata.Title, metadata.Year, media.VideoResolution,
-                media.VideoCodec.MapVideoCodec(), media.AudioCodec.MapAudioCodec(media.AudioProfile),
-                stream, media.AudioChannels.MapToFormattedChannels(), part.Stream.FormatLanguage(),
-                episodeFile.Source, episodeFile.Source == ReleaseSource.BluRayRemux
+                metadata.Title,
+                metadata.Year,
+                media.VideoResolution,
+                media.VideoCodec.MapVideoCodec(),
+                media.AudioCodec.MapAudioCodec(media.AudioProfile),
+                stream,
+                media.AudioChannels.MapToFormattedChannels(),
+                part.Stream.FormatLanguage(),
+                episodeFile.Source,
+                episodeFile.Source == ReleaseSource.BluRayRemux
             )
             : "Previous.mkv";
 

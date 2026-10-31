@@ -5,7 +5,6 @@ namespace Reaparr.Data.UnitTests;
 
 public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMusicArtistMediaByTypeCommand>
 {
-
     [Test]
     [Arguments(false, "Actors")]
     [Arguments(true, "Actors")]
@@ -184,10 +183,7 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
         response.Items.Select(x => x.ComparisonId).ShouldBe([0, 0]);
         response
             .NavigationIndexes.Select(x => new { x.Label, x.Index })
-            .ShouldBe([
-                new { Label = "10–20 min", Index = 0 },
-                new { Label = "0–10 min", Index = 1 },
-            ]);
+            .ShouldBe([new { Label = "10–20 min", Index = 0 }, new { Label = "0–10 min", Index = 1 }]);
         response.Items.SelectMany(x => x.Qualities).ShouldBeEmpty();
         response.Qualities.ShouldBeEmpty();
         response.Roles.ShouldBe([actor.Id]);
@@ -206,22 +202,37 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
     )
     {
         // Arrange
-        await SetupDatabase(73104, config =>
-        {
-            config.PlexMusicLibraryCount = 1;
-            config.MusicArtistCount = 1;
-            config.MusicAlbumCount = 2;
-            config.MusicTrackCount = 3;
-        });
+        await SetupDatabase(
+            73104,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistCount = 1;
+                config.MusicAlbumCount = 2;
+                config.MusicTrackCount = 3;
+            }
+        );
         var dbContext = IDbContext;
         var artist = await dbContext.PlexMusicArtists.SingleAsync(CancellationToken);
         dbContext.PlexMusicArtistMediaQualities.AddRange(
-            new PlexMusicArtistMediaQuality { PlexLibraryId = artist.PlexLibraryId, PlexMusicArtistId = artist.Id, AudioQuality = AudioQuality.MP3_320KbpsPlus },
-            new PlexMusicArtistMediaQuality { PlexLibraryId = artist.PlexLibraryId, PlexMusicArtistId = artist.Id, AudioQuality = AudioQuality.Unknown }
+            new PlexMusicArtistMediaQuality
+            {
+                PlexLibraryId = artist.PlexLibraryId,
+                PlexMusicArtistId = artist.Id,
+                AudioQuality = AudioQuality.MP3_320KbpsPlus,
+            },
+            new PlexMusicArtistMediaQuality
+            {
+                PlexLibraryId = artist.PlexLibraryId,
+                PlexMusicArtistId = artist.Id,
+                AudioQuality = AudioQuality.Unknown,
+            }
         );
         await dbContext.SaveChangesAsync(CancellationToken);
-        var persisted = await dbContext.PlexMusicArtistMediaQualities.OrderBy(x => x.Id)
-            .Select(x => x.AudioQuality).ToListAsync(CancellationToken);
+        var persisted = await dbContext
+            .PlexMusicArtistMediaQualities.OrderBy(x => x.Id)
+            .Select(x => x.AudioQuality)
+            .ToListAsync(CancellationToken);
         persisted.ShouldBe([AudioQuality.MP3_320KbpsPlus, AudioQuality.Unknown]);
         var filter = new MediaQueryFilter
         {
@@ -230,15 +241,31 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
             FilterOfflineMedia = false,
             FilterOwnedMedia = false,
             ComparisonState = comparisonState,
-            Parameters = new FlexQueryParameters { Page = 1, PageSize = 2, Sort = sort },
+            Parameters = new FlexQueryParameters
+            {
+                Page = 1,
+                PageSize = 2,
+                Sort = sort,
+            },
         };
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<ApplyComparisonStateCommand>(c =>
-                c.MediaType == PlexMediaType.MusicArtist && c.PlexLibraryId == artist.PlexLibraryId
-                && c.Items.Count == 1 && c.Items[0].Id == artist.Id), CancellationToken))
-            .Callback<ICommand<Result>, CancellationToken>((command, _) =>
-                ((ApplyComparisonStateCommand)command).Items[0].SetComparisonState(PlexMediaComparisonState.Owned))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+            .Setup(x =>
+                x.Send(
+                    It.Is<ApplyComparisonStateCommand>(c =>
+                        c.MediaType == PlexMediaType.MusicArtist
+                        && c.PlexLibraryId == artist.PlexLibraryId
+                        && c.Items.Count == 1
+                        && c.Items[0].Id == artist.Id
+                    ),
+                    CancellationToken
+                )
+            )
+            .Callback<ICommand<Result>, CancellationToken>(
+                (command, _) =>
+                    ((ApplyComparisonStateCommand)command).Items[0].SetComparisonState(PlexMediaComparisonState.Owned)
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMusicArtistMediaByTypeCommand(filter));
@@ -248,12 +275,14 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
         result.Errors.Count.ShouldBe(0);
         result.Value.TotalCount.ShouldBe(1);
         var item = result.Value.Items.Single();
-        (item.Id, item.Type, item.ParentId, item.ChildCount, item.GrandChildCount)
-            .ShouldBe((artist.Id, PlexMediaType.MusicArtist, (int?)null, 2, 6));
-        item.Qualities.Select(x => (x.AudioQuality, x.VideoQuality, x.DataId, x.MediaId, x.MediaDataType)).ShouldBe([
-            (AudioQuality.MP3_320KbpsPlus, VideoQuality.None, -1, artist.Id, PlexMediaType.MusicArtist),
-            (AudioQuality.Unknown, VideoQuality.None, -1, artist.Id, PlexMediaType.MusicArtist),
-        ]);
+        (item.Id, item.Type, item.ParentId, item.ChildCount, item.GrandChildCount).ShouldBe(
+            (artist.Id, PlexMediaType.MusicArtist, (int?)null, 2, 6)
+        );
+        item.Qualities.Select(x => (x.AudioQuality, x.VideoQuality, x.DataId, x.MediaId, x.MediaDataType))
+            .ShouldBe([
+                (AudioQuality.MP3_320KbpsPlus, VideoQuality.None, -1, artist.Id, PlexMediaType.MusicArtist),
+                (AudioQuality.Unknown, VideoQuality.None, -1, artist.Id, PlexMediaType.MusicArtist),
+            ]);
         result.Value.Qualities.ShouldBeEmpty();
         Mock.Mock<ICommandExecutor>().Verify();
     }
@@ -275,8 +304,22 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
             ("same", 20, [AudioQuality.MP3_320KbpsPlus])
         );
         var orderedIds = descending
-            ? new[] { fixture.Artists[3].Id, fixture.Artists[0].Id, fixture.Artists[4].Id, fixture.Artists[1].Id, fixture.Artists[2].Id }
-            : new[] { fixture.Artists[2].Id, fixture.Artists[1].Id, fixture.Artists[0].Id, fixture.Artists[4].Id, fixture.Artists[3].Id };
+            ? new[]
+            {
+                fixture.Artists[3].Id,
+                fixture.Artists[0].Id,
+                fixture.Artists[4].Id,
+                fixture.Artists[1].Id,
+                fixture.Artists[2].Id,
+            }
+            : new[]
+            {
+                fixture.Artists[2].Id,
+                fixture.Artists[1].Id,
+                fixture.Artists[0].Id,
+                fixture.Artists[4].Id,
+                fixture.Artists[3].Id,
+            };
         var expectedNavigation = descending
             ? new[] { ("29", 0), ("7", 1), ("3", 3), ("0", 4) }
             : new[] { ("0", 0), ("3", 1), ("7", 2), ("29", 4) };
@@ -362,12 +405,9 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
             result.IsSuccess.ShouldBeTrue();
             result.Errors.Count.ShouldBe(0);
             result.Value.TotalCount.ShouldBe(4);
-            result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([
-                ("29", 0),
-                ("7", 1),
-                ("3", 2),
-                ("0", 3),
-            ]);
+            result
+                .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
+                .ShouldBe([("29", 0), ("7", 1), ("3", 2), ("0", 3)]);
         }
         page1.Value.Items.Select(x => x.Id).ShouldBe([fixture.Artists[3].Id, fixture.Artists[2].Id]);
         page2.Value.Items.Select(x => x.Id).ShouldBe([fixture.Artists[0].Id, fixture.Artists[1].Id]);
@@ -385,7 +425,12 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
                 PlexLibraryId = 1,
                 FilterOfflineMedia = false,
                 FilterOwnedMedia = false,
-                Parameters = new FlexQueryParameters { Page = 1, PageSize = 2, Sort = "videoQuality:desc" },
+                Parameters = new FlexQueryParameters
+                {
+                    Page = 1,
+                    PageSize = 2,
+                    Sort = "videoQuality:desc",
+                },
             }
         );
 
@@ -461,9 +506,7 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
-            new GetMusicArtistMediaByTypeCommand(filter)
-        );
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMusicArtistMediaByTypeCommand(filter));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -505,7 +548,7 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
                 Parameters = new FlexQueryParameters(),
             }
         );
- 
+
         // Act
         var result = new GetMusicArtistMediaByTypeCommandValidator().Validate(command);
 
@@ -519,28 +562,36 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
         params (string Title, int SortIndex, AudioQuality[] Qualities)[] values
     )
     {
-        await SetupDatabase(seed, config =>
-        {
-            config.PlexMusicLibraryCount = 1;
-            config.MusicArtistCount = values.Length;
-            config.MusicAlbumCount = 0;
-        });
+        await SetupDatabase(
+            seed,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistCount = values.Length;
+                config.MusicAlbumCount = 0;
+            }
+        );
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
         var artists = await dbContext.PlexMusicArtists.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
         for (var index = 0; index < artists.Count; index++)
         {
             artists[index].Title = values[index].Title;
-            dbContext.Entry(artists[index]).Property(nameof(BasePlexMedia.SortIndex)).CurrentValue = values[index].SortIndex;
-            dbContext.Entry(artists[index]).Property(nameof(BasePlexMedia.SearchTitle)).CurrentValue = values[index].Title;
+            dbContext.Entry(artists[index]).Property(nameof(BasePlexMedia.SortIndex)).CurrentValue = values[
+                index
+            ].SortIndex;
+            dbContext.Entry(artists[index]).Property(nameof(BasePlexMedia.SearchTitle)).CurrentValue = values[
+                index
+            ].Title;
             var artistId = artists[index].Id;
             dbContext.PlexMusicArtistMediaQualities.AddRange(
-                values[index].Qualities.Select(quality => new PlexMusicArtistMediaQuality
-                {
-                    PlexLibraryId = libraryId,
-                    PlexMusicArtistId = artistId,
-                    AudioQuality = quality,
-                })
+                values[index]
+                    .Qualities.Select(quality => new PlexMusicArtistMediaQuality
+                    {
+                        PlexLibraryId = libraryId,
+                        PlexMusicArtistId = artistId,
+                        AudioQuality = quality,
+                    })
             );
         }
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -570,5 +621,4 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
                 },
             }
         );
-
 }

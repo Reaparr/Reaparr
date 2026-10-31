@@ -102,17 +102,10 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
                 system.Path.Combine(nestedArtifactDirectory, "Reaparr.AppImage"),
                 new MockFileData("nested")
             );
-            system.AddFile(
-                system.Path.Combine(artifactDirectory, "Reaparr.zip"),
-                new MockFileData("not an AppImage")
-            );
+            system.AddFile(system.Path.Combine(artifactDirectory, "Reaparr.zip"), new MockFileData("not an AppImage"));
         });
 
-        var settings = new DesktopCommandSettings
-        {
-            RuntimeIdentifier = runtimeIdentifier,
-            LaunchMode = "packaged",
-        };
+        var settings = new DesktopCommandSettings { RuntimeIdentifier = runtimeIdentifier, LaunchMode = "packaged" };
 
         SetupDependencies(builder => builder.Register(_ => rootDirectory).As<string>().SingleInstance());
 
@@ -131,11 +124,7 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         // Arrange
         SetupFileSystem();
 
-        var settings = new DesktopCommandSettings
-        {
-            RuntimeIdentifier = "linux-x64",
-            LaunchMode = "packaged",
-        };
+        var settings = new DesktopCommandSettings { RuntimeIdentifier = "linux-x64", LaunchMode = "packaged" };
 
         SetupDependencies(builder => builder.Register(_ => "/repo").As<string>().SingleInstance());
 
@@ -166,11 +155,7 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         var artifactDirectory = fileSystem.Path.Combine(rootDirectory, ".artifacts", runtimeIdentifier);
         var appImage = fileSystem.Path.Combine(artifactDirectory, "Reaparr.AppImage");
 
-        var settings = new DesktopCommandSettings
-        {
-            RuntimeIdentifier = runtimeIdentifier,
-            LaunchMode = "packaged",
-        };
+        var settings = new DesktopCommandSettings { RuntimeIdentifier = runtimeIdentifier, LaunchMode = "packaged" };
 
         SetupDependencies(builder => builder.Register(_ => rootDirectory).As<string>().SingleInstance());
 
@@ -189,11 +174,7 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
 
         Mock.Mock<IDesktopCommandRunner>()
             .Setup(x =>
-                x.ExecuteCommandAsync(
-                    appImage,
-                    It.Is<IReadOnlyList<string>>(arguments => arguments.Count == 0),
-                    null
-                )
+                x.ExecuteCommandAsync(appImage, It.Is<IReadOnlyList<string>>(arguments => arguments.Count == 0), null)
             )
             .ReturnsAsync(0)
             .Verifiable(Times.Never());
@@ -228,11 +209,7 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         var publishDirectory = fileSystem.Path.Combine(artifactDirectory, "publish");
         var publishedExecutable = fileSystem.Path.Combine(publishDirectory, "Reaparr.AppHost");
 
-        var settings = new DesktopCommandSettings
-        {
-            RuntimeIdentifier = runtimeIdentifier,
-            LaunchMode = "published",
-        };
+        var settings = new DesktopCommandSettings { RuntimeIdentifier = runtimeIdentifier, LaunchMode = "published" };
 
         SetupDependencies(builder => builder.Register(_ => rootDirectory).As<string>().SingleInstance());
 

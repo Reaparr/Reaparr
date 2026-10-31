@@ -84,9 +84,12 @@ public class GenerateTokenEndpointFailureUnitTests
                     StatusCodes.Status502BadGateway
                 );
             case SignInFailure.Validation:
-                var validation = new FluentValidation.Results.ValidationResult(
-                    [new FluentValidation.Results.ValidationFailure(nameof(PlexSignInCommand.Username), "Username is required")]
-                );
+                var validation = new FluentValidation.Results.ValidationResult([
+                    new FluentValidation.Results.ValidationFailure(
+                        nameof(PlexSignInCommand.Username),
+                        "Username is required"
+                    ),
+                ]);
                 return (validation.ToResult<Result<PlexSignInCommandResult>>(), StatusCodes.Status400BadRequest);
             case SignInFailure.Cancelled:
                 var cancellationError = new ExceptionalError(
@@ -103,14 +106,13 @@ public class GenerateTokenEndpointFailureUnitTests
         }
     }
 
-    private async Task<EndpointUnitTestResult<GeneratePlexTokenEndpoint, ResultDTO<GeneratePlexTokenResponse>>>
-        ExecuteFailure(Result<PlexSignInCommandResult> failure)
+    private async Task<
+        EndpointUnitTestResult<GeneratePlexTokenEndpoint, ResultDTO<GeneratePlexTokenResponse>>
+    > ExecuteFailure(Result<PlexSignInCommandResult> failure)
     {
         await SetupDatabase(433223, config => config.PlexAccountCount = 1);
         var plexAccount = await IDbContext.PlexAccounts.SingleAsync(CancellationToken);
         Mock.SetupCommand(It.IsAny<PlexSignInCommand>).ReturnsAsync(failure);
-        return await TestEndpointHandleAsync(
-            new GeneratePlexTokenEndpointRequest { PlexAccountId = plexAccount.Id }
-        );
+        return await TestEndpointHandleAsync(new GeneratePlexTokenEndpointRequest { PlexAccountId = plexAccount.Id });
     }
 }

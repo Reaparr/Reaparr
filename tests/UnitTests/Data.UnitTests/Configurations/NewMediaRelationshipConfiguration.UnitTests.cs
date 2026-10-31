@@ -20,11 +20,13 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
         var entityType = model.FindEntityType(sourceType).ShouldNotBeNull();
 
         // Assert
-        entityType.GetKeys().ShouldContain(key =>
-            !key.IsPrimaryKey()
-            && key.Properties.Select(property => property.Name)
-                .SequenceEqual(new[] { nameof(BasePlexMedia.PlexLibraryId), nameof(BaseEntity.Id) })
-        );
+        entityType
+            .GetKeys()
+            .ShouldContain(key =>
+                !key.IsPrimaryKey()
+                && key.Properties.Select(property => property.Name)
+                    .SequenceEqual(new[] { nameof(BasePlexMedia.PlexLibraryId), nameof(BaseEntity.Id) })
+            );
     }
 
     [Test]
@@ -45,19 +47,30 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
         var entityType = model.FindEntityType(sourceType).ShouldNotBeNull();
 
         // Assert
-        entityType.GetIndexes().ShouldContain(index =>
-            index.IsUnique
-            && index.Properties.Select(property => property.Name)
-                .SequenceEqual(new[] { nameof(BasePlexMedia.PlexLibraryId), nameof(BasePlexMedia.PlexApiRatingKey) })
-        );
-        entityType.GetIndexes().ShouldContain(index =>
-            index.Properties.Select(property => property.Name)
-                .SequenceEqual(new[] { nameof(BasePlexMedia.PlexApiRatingKey), nameof(BasePlexMedia.PlexServerId) })
-        );
-        entityType.GetIndexes().ShouldNotContain(index =>
-            index.Properties.Select(property => property.Name)
-                .SequenceEqual(new[] { nameof(BasePlexMedia.PlexApiRatingKey) })
-        );
+        entityType
+            .GetIndexes()
+            .ShouldContain(index =>
+                index.IsUnique
+                && index
+                    .Properties.Select(property => property.Name)
+                    .SequenceEqual(
+                        new[] { nameof(BasePlexMedia.PlexLibraryId), nameof(BasePlexMedia.PlexApiRatingKey) }
+                    )
+            );
+        entityType
+            .GetIndexes()
+            .ShouldContain(index =>
+                index
+                    .Properties.Select(property => property.Name)
+                    .SequenceEqual(new[] { nameof(BasePlexMedia.PlexApiRatingKey), nameof(BasePlexMedia.PlexServerId) })
+            );
+        entityType
+            .GetIndexes()
+            .ShouldNotContain(index =>
+                index
+                    .Properties.Select(property => property.Name)
+                    .SequenceEqual(new[] { nameof(BasePlexMedia.PlexApiRatingKey) })
+            );
     }
 
     [Test]
@@ -74,13 +87,20 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
         var entityType = model.FindEntityType(mediaDataType).ShouldNotBeNull();
 
         // Assert
-        entityType.GetIndexes().ShouldContain(index =>
-            index.Properties.Select(property => property.Name)
-                .SequenceEqual(new[] { nameof(BasePlexMediaData.PlexLibraryId), ownerProperty })
-        );
-        entityType.GetIndexes().ShouldNotContain(index =>
-            index.Properties.Select(property => property.Name).SequenceEqual(new[] { nameof(BasePlexMediaData.PlexApiRatingKey) })
-        );
+        entityType
+            .GetIndexes()
+            .ShouldContain(index =>
+                index
+                    .Properties.Select(property => property.Name)
+                    .SequenceEqual(new[] { nameof(BasePlexMediaData.PlexLibraryId), ownerProperty })
+            );
+        entityType
+            .GetIndexes()
+            .ShouldNotContain(index =>
+                index
+                    .Properties.Select(property => property.Name)
+                    .SequenceEqual(new[] { nameof(BasePlexMediaData.PlexApiRatingKey) })
+            );
     }
 
     [Test]
@@ -124,14 +144,18 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
         var entityType = model.FindEntityType(dependentType).ShouldNotBeNull();
 
         // Assert
-        entityType.GetForeignKeys().ShouldContain(foreignKey =>
-            foreignKey.PrincipalEntityType.ClrType == principalType
-            && foreignKey.Properties.Select(property => property.Name)
-                .SequenceEqual(new[] { dependentLibraryProperty, dependentOwnerProperty })
-            && foreignKey.PrincipalKey.Properties.Select(property => property.Name)
-                .SequenceEqual(new[] { nameof(BasePlexMedia.PlexLibraryId), nameof(BaseEntity.Id) })
-            && foreignKey.DeleteBehavior == DeleteBehavior.Cascade
-        );
+        entityType
+            .GetForeignKeys()
+            .ShouldContain(foreignKey =>
+                foreignKey.PrincipalEntityType.ClrType == principalType
+                && foreignKey
+                    .Properties.Select(property => property.Name)
+                    .SequenceEqual(new[] { dependentLibraryProperty, dependentOwnerProperty })
+                && foreignKey
+                    .PrincipalKey.Properties.Select(property => property.Name)
+                    .SequenceEqual(new[] { nameof(BasePlexMedia.PlexLibraryId), nameof(BaseEntity.Id) })
+                && foreignKey.DeleteBehavior == DeleteBehavior.Cascade
+            );
     }
 
     [Test]
@@ -165,9 +189,15 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
             }
         );
         await using var context = (ReaparrDbContext)IDbContext;
-        var albums = await context.PlexMusicAlbums.OrderBy(x => x.PlexLibraryId).ThenBy(x => x.Id).ToListAsync(CancellationToken);
+        var albums = await context
+            .PlexMusicAlbums.OrderBy(x => x.PlexLibraryId)
+            .ThenBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         var sourceAlbum = albums[0];
-        var sourceTrack = await context.PlexMusicTracks.SingleAsync(x => x.PlexAlbumId == sourceAlbum.Id, CancellationToken);
+        var sourceTrack = await context.PlexMusicTracks.SingleAsync(
+            x => x.PlexAlbumId == sourceAlbum.Id,
+            CancellationToken
+        );
         var targetLibraryId = albums[1].PlexLibraryId;
         var invalidTrack = new PlexMusicTrack
         {
@@ -199,13 +229,15 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
 
         // Assert
         context.ChangeTracker.Clear();
-        var tracks = await context.PlexMusicTracks
-            .OrderBy(x => x.PlexLibraryId)
+        var tracks = await context
+            .PlexMusicTracks.OrderBy(x => x.PlexLibraryId)
             .ThenBy(x => x.Id)
             .Select(x => new { x.PlexLibraryId, x.PlexAlbumId })
             .ToListAsync(CancellationToken);
         tracks.Count.ShouldBe(2);
-        tracks.ShouldAllBe(x => albums.Any(album => album.PlexLibraryId == x.PlexLibraryId && album.Id == x.PlexAlbumId));
+        tracks.ShouldAllBe(x =>
+            albums.Any(album => album.PlexLibraryId == x.PlexLibraryId && album.Id == x.PlexAlbumId)
+        );
     }
 
     [Test]
@@ -268,7 +300,10 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
         var asset = await context.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var libraryId = asset.PlexLibraryId;
         var serverId = asset.PlexServerId;
-        var folder = await context.PlexPhotoFolders.SingleAsync(x => x.Id == asset.PlexPhotoFolderId, CancellationToken);
+        var folder = await context.PlexPhotoFolders.SingleAsync(
+            x => x.Id == asset.PlexPhotoFolderId,
+            CancellationToken
+        );
 
         // Act
         context.PlexPhotoFolders.Remove(folder);
@@ -294,7 +329,9 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
             foreignKey.Properties.Select(property => property.Name).SequenceEqual(expected.DependentProperties)
             && (
                 expected.PrincipalProperties == null
-                || foreignKey.PrincipalKey.Properties.Select(property => property.Name).SequenceEqual(expected.PrincipalProperties)
+                || foreignKey
+                    .PrincipalKey.Properties.Select(property => property.Name)
+                    .SequenceEqual(expected.PrincipalProperties)
             )
             && (expected.IsRequired == null || foreignKey.IsRequired == expected.IsRequired)
             && foreignKey.DeleteBehavior == expected.DeleteBehavior
@@ -368,7 +405,10 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
                 new ForeignKeyCase(
                     typeof(PlexMusicArtistComparison),
                     typeof(PlexMusicArtist),
-                    [nameof(PlexMusicArtistComparison.RemotePlexLibraryId), nameof(PlexMusicArtistComparison.RemotePlexMediaId)],
+                    [
+                        nameof(PlexMusicArtistComparison.RemotePlexLibraryId),
+                        nameof(PlexMusicArtistComparison.RemotePlexMediaId),
+                    ],
                     sourceKey,
                     DeleteBehavior.Cascade,
                     ExpectedPrincipalForeignKeyCount: 2
@@ -376,7 +416,10 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
                 new ForeignKeyCase(
                     typeof(PlexMusicArtistComparison),
                     typeof(PlexMusicArtist),
-                    [nameof(PlexMusicArtistComparison.OwnedPlexLibraryId), nameof(PlexMusicArtistComparison.OwnedPlexMediaId)],
+                    [
+                        nameof(PlexMusicArtistComparison.OwnedPlexLibraryId),
+                        nameof(PlexMusicArtistComparison.OwnedPlexMediaId),
+                    ],
                     sourceKey,
                     DeleteBehavior.Cascade,
                     ExpectedPrincipalForeignKeyCount: 2
@@ -384,7 +427,10 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
                 new ForeignKeyCase(
                     typeof(PlexMusicAlbumComparison),
                     typeof(PlexMusicAlbum),
-                    [nameof(PlexMusicAlbumComparison.RemotePlexLibraryId), nameof(PlexMusicAlbumComparison.RemotePlexMediaId)],
+                    [
+                        nameof(PlexMusicAlbumComparison.RemotePlexLibraryId),
+                        nameof(PlexMusicAlbumComparison.RemotePlexMediaId),
+                    ],
                     sourceKey,
                     DeleteBehavior.Cascade,
                     ExpectedPrincipalForeignKeyCount: 2
@@ -392,7 +438,10 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
                 new ForeignKeyCase(
                     typeof(PlexMusicAlbumComparison),
                     typeof(PlexMusicAlbum),
-                    [nameof(PlexMusicAlbumComparison.OwnedPlexLibraryId), nameof(PlexMusicAlbumComparison.OwnedPlexMediaId)],
+                    [
+                        nameof(PlexMusicAlbumComparison.OwnedPlexLibraryId),
+                        nameof(PlexMusicAlbumComparison.OwnedPlexMediaId),
+                    ],
                     sourceKey,
                     DeleteBehavior.Cascade,
                     ExpectedPrincipalForeignKeyCount: 2
@@ -400,7 +449,10 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
                 new ForeignKeyCase(
                     typeof(PlexMusicTrackComparison),
                     typeof(PlexMusicTrack),
-                    [nameof(PlexMusicTrackComparison.RemotePlexLibraryId), nameof(PlexMusicTrackComparison.RemotePlexMediaId)],
+                    [
+                        nameof(PlexMusicTrackComparison.RemotePlexLibraryId),
+                        nameof(PlexMusicTrackComparison.RemotePlexMediaId),
+                    ],
                     sourceKey,
                     DeleteBehavior.Cascade,
                     ExpectedPrincipalForeignKeyCount: 2
@@ -408,7 +460,10 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
                 new ForeignKeyCase(
                     typeof(PlexMusicTrackComparison),
                     typeof(PlexMusicTrack),
-                    [nameof(PlexMusicTrackComparison.OwnedPlexLibraryId), nameof(PlexMusicTrackComparison.OwnedPlexMediaId)],
+                    [
+                        nameof(PlexMusicTrackComparison.OwnedPlexLibraryId),
+                        nameof(PlexMusicTrackComparison.OwnedPlexMediaId),
+                    ],
                     sourceKey,
                     DeleteBehavior.Cascade,
                     ExpectedPrincipalForeignKeyCount: 2

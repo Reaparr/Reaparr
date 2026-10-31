@@ -21,21 +21,25 @@ public abstract class ComparisonSortingTestBase<TCommand> : BaseCommandUnitTest<
     )
     {
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<ApplyComparisonStateCommand>(command =>
-                    command.MediaType == mediaType
-                    && command.PlexLibraryId == libraryId
-                    && command.Items.Count == ids.Count
-                    && command.Items.Select(item => item.Id).ToHashSet().SetEquals(ids)
-                    && command.Items.All(item => item.PlexLibraryId == libraryId)
-                ),
-                CancellationToken
-            ))
-            .Callback<ICommand<Result>, CancellationToken>((command, _) =>
-            {
-                foreach (var item in ((ApplyComparisonStateCommand)command).Items)
-                    item.SetComparisonState(states[item.Id]);
-            })
+            .Setup(x =>
+                x.Send(
+                    It.Is<ApplyComparisonStateCommand>(command =>
+                        command.MediaType == mediaType
+                        && command.PlexLibraryId == libraryId
+                        && command.Items.Count == ids.Count
+                        && command.Items.Select(item => item.Id).ToHashSet().SetEquals(ids)
+                        && command.Items.All(item => item.PlexLibraryId == libraryId)
+                    ),
+                    CancellationToken
+                )
+            )
+            .Callback<ICommand<Result>, CancellationToken>(
+                (command, _) =>
+                {
+                    foreach (var item in ((ApplyComparisonStateCommand)command).Items)
+                        item.SetComparisonState(states[item.Id]);
+                }
+            )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(4));
     }
@@ -49,12 +53,18 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
     {
         var fixture = await ArrangeMovieFixtureAsync();
         var tiedIds = new[] { fixture.Ids[1], fixture.Ids[3] };
-        var tiedMovies = await IDbContext.PlexMovies
-            .Where(x => tiedIds.Contains(x.Id))
+        var tiedMovies = await IDbContext
+            .PlexMovies.Where(x => tiedIds.Contains(x.Id))
             .OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.SearchTitle, x.SortIndex })
+            .Select(x => new
+            {
+                x.Id,
+                x.SearchTitle,
+                x.SortIndex,
+            })
             .ToListAsync(CancellationToken);
-        tiedMovies.Select(x => (x.Id, x.SearchTitle, x.SortIndex))
+        tiedMovies
+            .Select(x => (x.Id, x.SearchTitle, x.SortIndex))
             .ShouldBe([(fixture.Ids[1], "alpha", 1), (fixture.Ids[3], "alpha", 1)]);
         ConfigureComparisonProjection(
             PlexMediaType.Movie,
@@ -88,7 +98,9 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
             result.Errors.Count.ShouldBe(0);
             result.Value.TotalCount.ShouldBe(4);
             result.Value.MediaCount.ShouldBe(4);
-            result.Value.Items.Select(x => x.SortIndex).ShouldBe(result.Value.Page == 1 ? new[] { 1, 2 } : new[] { 3, 4 });
+            result
+                .Value.Items.Select(x => x.SortIndex)
+                .ShouldBe(result.Value.Page == 1 ? new[] { 1, 2 } : new[] { 3, 4 });
             (result.Value.MediaSize, result.Value.TotalMediaSize).ShouldBe((1000L, 1000L));
         }
 
@@ -98,11 +110,13 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
         descendingPage2.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[1], fixture.Ids[3]]);
         ascendingPage1.Value.Items.Select(x => x.ComparisonId).ShouldBe([1, 1]);
         descendingPage1.Value.Items.Select(x => x.ComparisonId).ShouldBe([3, 3]);
-        ascendingPage1.Value.Items.Select(x => (x.Id, x.SearchTitle, x.SortIndex)).ShouldBe(
-            [(fixture.Ids[1], "alpha", 1), (fixture.Ids[3], "alpha", 2)]
-        );
+        ascendingPage1
+            .Value.Items.Select(x => (x.Id, x.SearchTitle, x.SortIndex))
+            .ShouldBe([(fixture.Ids[1], "alpha", 1), (fixture.Ids[3], "alpha", 2)]);
         ascendingPage1.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([("A", 0), ("B", 2), ("Z", 3)]);
-        descendingPage1.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([("B", 0), ("Z", 1), ("A", 2)]);
+        descendingPage1
+            .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
+            .ShouldBe([("B", 0), ("Z", 1), ("A", 2)]);
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -121,17 +135,26 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
         var movieIds = await dbContext.PlexMovies.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
-        var titleData = new[] { (Title: "Zulu", SortIndex: 4), (Title: "Alpha", SortIndex: 1), (Title: "Bravo", SortIndex: 2), (Title: "Alpha", SortIndex: 1) };
+        var titleData = new[]
+        {
+            (Title: "Zulu", SortIndex: 4),
+            (Title: "Alpha", SortIndex: 1),
+            (Title: "Bravo", SortIndex: 2),
+            (Title: "Alpha", SortIndex: 1),
+        };
         for (var index = 0; index < movieIds.Count; index++)
         {
             var data = titleData[index];
-            await dbContext.PlexMovies.Where(x => x.Id == movieIds[index]).ExecuteUpdateAsync(
-                x => x.SetProperty(y => y.Title, data.Title)
-                    .SetProperty(y => y.SearchTitle, data.Title.ToLowerInvariant())
-                    .SetProperty(y => y.SortIndex, data.SortIndex)
-                    .SetProperty(y => y.MediaSize, (index + 1) * 100L),
-                CancellationToken
-            );
+            await dbContext
+                .PlexMovies.Where(x => x.Id == movieIds[index])
+                .ExecuteUpdateAsync(
+                    x =>
+                        x.SetProperty(y => y.Title, data.Title)
+                            .SetProperty(y => y.SearchTitle, data.Title.ToLowerInvariant())
+                            .SetProperty(y => y.SortIndex, data.SortIndex)
+                            .SetProperty(y => y.MediaSize, (index + 1) * 100L),
+                    CancellationToken
+                );
         }
 
         return (libraryId, movieIds);
@@ -145,7 +168,12 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
                 PlexLibraryId = libraryId,
                 FilterOfflineMedia = false,
                 FilterOwnedMedia = false,
-                Parameters = new FlexQueryParameters { Page = page, PageSize = 2, Sort = sort },
+                Parameters = new FlexQueryParameters
+                {
+                    Page = page,
+                    PageSize = 2,
+                    Sort = sort,
+                },
             }
         );
 }
@@ -189,7 +217,9 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
             result.Errors.Count.ShouldBe(0);
             result.Value.TotalCount.ShouldBe(4);
             result.Value.MediaCount.ShouldBe(4);
-            result.Value.Items.Select(x => x.SortIndex).ShouldBe(result.Value.Page == 1 ? new[] { 1, 2 } : new[] { 3, 4 });
+            result
+                .Value.Items.Select(x => x.SortIndex)
+                .ShouldBe(result.Value.Page == 1 ? new[] { 1, 2 } : new[] { 3, 4 });
             (result.Value.MediaSize, result.Value.TotalMediaSize).ShouldBe((1000L, 1000L));
         }
 
@@ -197,12 +227,12 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
         ascendingPage2.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[0], fixture.Ids[2]]);
         descendingPage1.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[0], fixture.Ids[2]]);
         descendingPage2.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[1], fixture.Ids[3]]);
-        ascendingPage1.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe(
-            [("A", 0), ("C", 1), ("Z", 2), ("B", 3)]
-        );
-        descendingPage1.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe(
-            [("Z", 0), ("B", 1), ("A", 2), ("C", 3)]
-        );
+        ascendingPage1
+            .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
+            .ShouldBe([("A", 0), ("C", 1), ("Z", 2), ("B", 3)]);
+        descendingPage1
+            .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
+            .ShouldBe([("Z", 0), ("B", 1), ("A", 2), ("C", 3)]);
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -231,14 +261,17 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
         for (var index = 0; index < tvShowIds.Count; index++)
         {
             var data = titleData[index];
-            await dbContext.PlexTvShows.Where(x => x.Id == tvShowIds[index]).ExecuteUpdateAsync(
-                x => x.SetProperty(y => y.Title, data.Title)
-                    .SetProperty(y => y.SearchTitle, data.Title.ToLowerInvariant())
-                    .SetProperty(y => y.SortIndex, data.SortIndex)
-                    .SetProperty(y => y.Year, data.Year)
-                    .SetProperty(y => y.MediaSize, (index + 1) * 100L),
-                CancellationToken
-            );
+            await dbContext
+                .PlexTvShows.Where(x => x.Id == tvShowIds[index])
+                .ExecuteUpdateAsync(
+                    x =>
+                        x.SetProperty(y => y.Title, data.Title)
+                            .SetProperty(y => y.SearchTitle, data.Title.ToLowerInvariant())
+                            .SetProperty(y => y.SortIndex, data.SortIndex)
+                            .SetProperty(y => y.Year, data.Year)
+                            .SetProperty(y => y.MediaSize, (index + 1) * 100L),
+                    CancellationToken
+                );
         }
 
         return (libraryId, tvShowIds);
@@ -252,7 +285,12 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
                 PlexLibraryId = libraryId,
                 FilterOfflineMedia = false,
                 FilterOwnedMedia = false,
-                Parameters = new FlexQueryParameters { Page = page, PageSize = 2, Sort = sort },
+                Parameters = new FlexQueryParameters
+                {
+                    Page = page,
+                    PageSize = 2,
+                    Sort = sort,
+                },
             }
         );
 }
@@ -296,7 +334,9 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
             result.Errors.Count.ShouldBe(0);
             result.Value.TotalCount.ShouldBe(4);
             result.Value.MediaCount.ShouldBe(4);
-            result.Value.Items.Select(x => x.SortIndex).ShouldBe(result.Value.Page == 1 ? new[] { 1, 2 } : new[] { 3, 4 });
+            result
+                .Value.Items.Select(x => x.SortIndex)
+                .ShouldBe(result.Value.Page == 1 ? new[] { 1, 2 } : new[] { 3, 4 });
             (result.Value.MediaSize, result.Value.TotalMediaSize).ShouldBe((1000L, 1000L));
         }
 
@@ -306,12 +346,12 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
         descendingPage2.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[1], fixture.Ids[3]]);
         ascendingPage1.Value.Items.Select(x => x.ComparisonId).ShouldBe([1, 1]);
         descendingPage1.Value.Items.Select(x => x.ComparisonId).ShouldBe([3, 3]);
-        ascendingPage1.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe(
-            [("A", 0), ("C", 1), ("B", 2), ("Z", 3)]
-        );
-        descendingPage1.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe(
-            [("B", 0), ("Z", 1), ("A", 2), ("C", 3)]
-        );
+        ascendingPage1
+            .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
+            .ShouldBe([("A", 0), ("C", 1), ("B", 2), ("Z", 3)]);
+        descendingPage1
+            .Value.NavigationIndexes.Select(x => (x.Label, x.Index))
+            .ShouldBe([("B", 0), ("Z", 1), ("A", 2), ("C", 3)]);
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -324,12 +364,8 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
         const string sort = "audioQuality:desc,comparisonState:asc,Title:asc";
 
         // Act
-        var page1 = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
-            CreateCommand(fixture.LibraryId, 1, sort)
-        );
-        var page2 = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
-            CreateCommand(fixture.LibraryId, 2, sort)
-        );
+        var page1 = await TestHandlerExecuteAsync<PagedMediaQueryResult>(CreateCommand(fixture.LibraryId, 1, sort));
+        var page2 = await TestHandlerExecuteAsync<PagedMediaQueryResult>(CreateCommand(fixture.LibraryId, 2, sort));
 
         // Assert
         foreach (var result in new[] { page1, page2 })
@@ -343,14 +379,18 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
         }
         page1.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[1], fixture.Ids[0]]);
         page2.Value.Items.Select(x => x.Id).ShouldBe([fixture.Ids[3], fixture.Ids[2]]);
-        page1.Value.Items.Select(x => x.ComparisonId).ShouldBe([
-            PlexMediaComparisonState.Owned.ToComparisonId(),
-            PlexMediaComparisonState.Missing.ToComparisonId(),
-        ]);
-        page2.Value.Items.Select(x => x.ComparisonId).ShouldBe([
-            PlexMediaComparisonState.Owned.ToComparisonId(),
-            PlexMediaComparisonState.Missing.ToComparisonId(),
-        ]);
+        page1
+            .Value.Items.Select(x => x.ComparisonId)
+            .ShouldBe([
+                PlexMediaComparisonState.Owned.ToComparisonId(),
+                PlexMediaComparisonState.Missing.ToComparisonId(),
+            ]);
+        page2
+            .Value.Items.Select(x => x.ComparisonId)
+            .ShouldBe([
+                PlexMediaComparisonState.Owned.ToComparisonId(),
+                PlexMediaComparisonState.Missing.ToComparisonId(),
+            ]);
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
@@ -369,13 +409,20 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
         var artists = await dbContext.PlexMusicArtists.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
-        var titleData = new[] { (Title: "Zulu", SortIndex: 4), (Title: "Alpha", SortIndex: 1), (Title: "Bravo", SortIndex: 2), (Title: "Charlie", SortIndex: 3) };
+        var titleData = new[]
+        {
+            (Title: "Zulu", SortIndex: 4),
+            (Title: "Alpha", SortIndex: 1),
+            (Title: "Bravo", SortIndex: 2),
+            (Title: "Charlie", SortIndex: 3),
+        };
         for (var index = 0; index < artists.Count; index++)
         {
             var data = titleData[index];
             artists[index].Title = data.Title;
             artists[index].MediaSize = (index + 1) * 100L;
-            dbContext.Entry(artists[index]).Property(nameof(BasePlexMedia.SearchTitle)).CurrentValue = data.Title.ToLowerInvariant();
+            dbContext.Entry(artists[index]).Property(nameof(BasePlexMedia.SearchTitle)).CurrentValue =
+                data.Title.ToLowerInvariant();
             dbContext.Entry(artists[index]).Property(nameof(BasePlexMedia.SortIndex)).CurrentValue = data.SortIndex;
         }
 
@@ -448,7 +495,12 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
                 PlexLibraryId = libraryId,
                 FilterOfflineMedia = false,
                 FilterOwnedMedia = false,
-                Parameters = new FlexQueryParameters { Page = page, PageSize = 2, Sort = sort },
+                Parameters = new FlexQueryParameters
+                {
+                    Page = page,
+                    PageSize = 2,
+                    Sort = sort,
+                },
             }
         );
 }

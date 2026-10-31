@@ -19,9 +19,11 @@ internal static class ComparisonDetailsExtensions
             .Where(x => x.Type == mediaType && !x.Outdated)
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
-        var keys = libraryIds.Select(x => isOwned
-            ? PlexLibraryComparisonJob.GetJobKey(libraryId, x)
-            : PlexLibraryComparisonJob.GetJobKey(x, libraryId));
+        var keys = libraryIds.Select(x =>
+            isOwned
+                ? PlexLibraryComparisonJob.GetJobKey(libraryId, x)
+                : PlexLibraryComparisonJob.GetJobKey(x, libraryId)
+        );
         return await scheduler.HasActiveJobs(keys, cancellationToken)
             ? PlexMediaComparisonState.Pending
             : PlexMediaComparisonState.NotCompared;

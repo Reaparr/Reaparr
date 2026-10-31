@@ -97,23 +97,25 @@ public static class MediaNavigationIndexBuilder
         CancellationToken cancellationToken
     )
     {
-        var groups = sort.Direction == SortDirection.Desc
-            ? rows.GroupBy(bucket.Key)
-                .Select(group => new { Key = group.Key, FirstRank = group.Max(row => row.SortRank) })
-            : rows.GroupBy(bucket.Key)
-                .Select(group => new { Key = group.Key, FirstRank = group.Min(row => row.SortRank) });
+        var groups =
+            sort.Direction == SortDirection.Desc
+                ? rows.GroupBy(bucket.Key)
+                    .Select(group => new { Key = group.Key, FirstRank = group.Max(row => row.SortRank) })
+                : rows.GroupBy(bucket.Key)
+                    .Select(group => new { Key = group.Key, FirstRank = group.Min(row => row.SortRank) });
 
-        var positionedGroups = sort.Direction == SortDirection.Desc
-            ? groups.Select(group => new NavigationGroupResult<TKey>(
-                group.Key,
-                group.FirstRank,
-                rows.Count(row => row.SortRank > group.FirstRank)
-            ))
-            : groups.Select(group => new NavigationGroupResult<TKey>(
-                group.Key,
-                group.FirstRank,
-                rows.Count(row => row.SortRank < group.FirstRank)
-            ));
+        var positionedGroups =
+            sort.Direction == SortDirection.Desc
+                ? groups.Select(group => new NavigationGroupResult<TKey>(
+                    group.Key,
+                    group.FirstRank,
+                    rows.Count(row => row.SortRank > group.FirstRank)
+                ))
+                : groups.Select(group => new NavigationGroupResult<TKey>(
+                    group.Key,
+                    group.FirstRank,
+                    rows.Count(row => row.SortRank < group.FirstRank)
+                ));
 
         var materialized = await positionedGroups.ToListAsync(cancellationToken);
         return (
@@ -130,7 +132,8 @@ public static class MediaNavigationIndexBuilder
         {
             SortType.Title => GetTitleLabel(row.SearchTitle),
             SortType.Year => row.Year?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
-            SortType.VideoQuality or SortType.AudioQuality => row.QualityValue?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL,
+            SortType.VideoQuality or SortType.AudioQuality => row.QualityValue?.ToString(CultureInfo.InvariantCulture)
+                ?? UNKNOWN_LABEL,
             SortType.Duration => row.Duration.HasValue ? GetDurationLabel(row.Duration.Value) : UNKNOWN_LABEL,
             SortType.AddedAt => row.AddedAt.ToString("yyyy-MM", CultureInfo.InvariantCulture),
             SortType.UpdatedAt => row.UpdatedAt is null

@@ -43,7 +43,11 @@ public class GetMovieMediaComparisonDetailsCommandHandler
         PlexMediaComparisonState state;
         if (currentLibraryIds.Count == 0)
             state = await _dbContext.GetUncomparedComparisonStateAsync(
-                _scheduler, movie.PlexLibraryId, isOwned, PlexMediaType.Movie, ct
+                _scheduler,
+                movie.PlexLibraryId,
+                isOwned,
+                PlexMediaType.Movie,
+                ct
             );
         else
         {
@@ -70,7 +74,6 @@ public class GetMovieMediaComparisonDetailsCommandHandler
         CancellationToken ct
     )
     {
-
         var hits = await _dbContext
             .PlexMovieComparisons.Where(x =>
                 x.RemotePlexLibraryId == movie.PlexLibraryId
@@ -152,7 +155,6 @@ public class GetMovieMediaComparisonDetailsCommandHandler
         CancellationToken ct
     )
     {
-
         var upgradeHits = await _dbContext
             .PlexMovieComparisons.Where(x =>
                 currentRemoteLibraryIds.Contains(x.RemotePlexLibraryId)

@@ -1,8 +1,8 @@
+using System.IO.Abstractions;
+using System.IO.Abstractions.TestingHelpers;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
-using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
 using System.Text.Json.Nodes;
 using Autofac;
 using Reaparr.Environment;
@@ -27,7 +27,10 @@ public class ConfigManagerSaveConfigUnitTests : BaseUnitTest<ConfigManager>
         setupResult.IsSuccess.ShouldBeTrue();
         setupResult.Errors.Count.ShouldBe(0);
         fileSystem.File.Exists(paths.ConfigFileLocation).ShouldBeTrue();
-        var resetNotification = settings.SettingsUpdated.ObserveOn(TaskPoolScheduler.Default).Take(1).ToTask(timeout.Token);
+        var resetNotification = settings
+            .SettingsUpdated.ObserveOn(TaskPoolScheduler.Default)
+            .Take(1)
+            .ToTask(timeout.Token);
 
         // Act
         settings.Reset();
@@ -37,8 +40,14 @@ public class ConfigManagerSaveConfigUnitTests : BaseUnitTest<ConfigManager>
         settings.DisplaySettings.MovieViewMode = ViewMode.Table;
         await changedNotification;
         var reloaded = new UserSettings();
-        var reader = new ConfigManager(Mock.Container.Resolve<ILogger>(), paths, reloaded,
-            fileSystem.File, fileSystem.Path, fileSystem.Directory);
+        var reader = new ConfigManager(
+            Mock.Container.Resolve<ILogger>(),
+            paths,
+            reloaded,
+            fileSystem.File,
+            fileSystem.Path,
+            fileSystem.Directory
+        );
         var loadResult = reader.LoadConfig();
 
         // Assert

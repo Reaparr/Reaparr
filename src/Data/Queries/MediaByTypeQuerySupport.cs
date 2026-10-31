@@ -96,11 +96,10 @@ internal static class MediaByTypeQuerySupport
                         SearchTitle = item.SearchTitle,
                         Year = item.Year,
                         QualityValue =
-                            sortType == SortType.AudioQuality
-                                ? _intSelectors[SortType.AudioQuality](item)
-                                : includeQuality && item.Qualities.Count > 0
-                                    ? item.Qualities.Max(quality => quality.VideoQuality.ToId())
-                                    : null,
+                            sortType == SortType.AudioQuality ? _intSelectors[SortType.AudioQuality](item)
+                            : includeQuality && item.Qualities.Count > 0
+                                ? item.Qualities.Max(quality => quality.VideoQuality.ToId())
+                            : null,
                         Duration = item.Duration,
                         AddedAt = item.AddedAt,
                         UpdatedAt = item.UpdatedAt,

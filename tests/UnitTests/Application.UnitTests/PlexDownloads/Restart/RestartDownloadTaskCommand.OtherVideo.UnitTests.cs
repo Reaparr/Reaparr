@@ -24,16 +24,17 @@ public class RestartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest
             }
         );
         var dbContext = IDbContext;
-        var otherVideoFiles = await dbContext.DownloadTaskOtherVideoFiles
-            .Include(x => x.Parent)
+        var otherVideoFiles = await dbContext
+            .DownloadTaskOtherVideoFiles.Include(x => x.Parent)
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArrayAsync(CancellationToken);
         DownloadTaskFileBase target = otherVideoFiles[0];
         DownloadTaskFileBase retained = otherVideoFiles[1];
-        BasePlexMediaData source = await dbContext.PlexOtherVideoData
-            .Include(x => x.PlexOtherVideo)
+        BasePlexMediaData source = await dbContext
+            .PlexOtherVideoData.Include(x => x.PlexOtherVideo)
             .SingleAsync(CancellationToken);
-        DownloadTaskBase node = selection == DownloadTaskType.OtherVideo ? ((DownloadTaskOtherVideoFile)target).Parent! : target;
+        DownloadTaskBase node =
+            selection == DownloadTaskType.OtherVideo ? ((DownloadTaskOtherVideoFile)target).Parent! : target;
         dbContext
             .Entry(target)
             .CurrentValues.SetValues(

@@ -1,6 +1,7 @@
 namespace Reaparr.Application.UnitTests;
 
-public class RecoverInterruptedDownloadsCommandOtherVideoUnitTests : BaseUnitTest<RecoverInterruptedDownloadsCommandHandler>
+public class RecoverInterruptedDownloadsCommandOtherVideoUnitTests
+    : BaseUnitTest<RecoverInterruptedDownloadsCommandHandler>
 {
     [Test]
     public async Task ShouldRecoverInterruptedOtherVideoFilesWithoutResettingProgressOrIdleControls_WhenRecovering()
@@ -16,7 +17,9 @@ public class RecoverInterruptedDownloadsCommandOtherVideoUnitTests : BaseUnitTes
             }
         );
         var dbContext = IDbContext;
-        var files = (await dbContext.DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken))
+        var files = (
+            await dbContext.DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken)
+        )
             .Cast<DownloadTaskFileBase>()
             .ToList();
         DownloadStatus[] statuses =
@@ -86,7 +89,9 @@ public class RecoverInterruptedDownloadsCommandOtherVideoUnitTests : BaseUnitTes
         for (var index = 0; index < 3; index++)
         {
             var key = files[index].ToParentKey()!;
-            (await dbContext.GetDownloadTaskAsync(key, CancellationToken))!.DownloadStatus.ShouldBe(expectedStatuses[index]);
+            (await dbContext.GetDownloadTaskAsync(key, CancellationToken))!.DownloadStatus.ShouldBe(
+                expectedStatuses[index]
+            );
         }
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(

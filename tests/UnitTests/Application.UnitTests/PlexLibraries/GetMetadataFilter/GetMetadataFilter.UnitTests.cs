@@ -146,8 +146,8 @@ public class GetMetadataFilterUnitTests
         audioResponse.Errors.Count.ShouldBe(0);
         audioResponse.Value.ShouldNotBeNull().Genres.ShouldBe([audioGenre.Id]);
         videoGenre.Id.ShouldBe(audioGenre.Id);
-
     }
+
     [Test]
     [Arguments(PlexMediaType.Movie, 8250)]
     [Arguments(PlexMediaType.TvShow, 8251)]
@@ -178,11 +178,7 @@ public class GetMetadataFilterUnitTests
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new GetMetadataFilterRequest
-            {
-                PlexLibraryId = 0,
-                MediaType = mediaType,
-            }
+            new GetMetadataFilterRequest { PlexLibraryId = 0, MediaType = mediaType }
         );
 
         // Assert
@@ -225,11 +221,7 @@ public class GetMetadataFilterUnitTests
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new GetMetadataFilterRequest
-            {
-                PlexLibraryId = 0,
-                MediaType = PlexMediaType.MusicArtist,
-            }
+            new GetMetadataFilterRequest { PlexLibraryId = 0, MediaType = PlexMediaType.MusicArtist }
         );
 
         // Assert
@@ -271,8 +263,12 @@ public class GetMetadataFilterUnitTests
             [VideoQuality.FullHD, VideoQuality.FullHD, VideoQuality.FullHD]
         );
         var account = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
-        var accountServers = await dbContext.PlexAccountServers.Where(x => x.PlexAccountId == account.Id).ToListAsync(CancellationToken);
-        var accountLibraries = await dbContext.PlexAccountLibraries.Where(x => x.PlexAccountId == account.Id).ToListAsync(CancellationToken);
+        var accountServers = await dbContext
+            .PlexAccountServers.Where(x => x.PlexAccountId == account.Id)
+            .ToListAsync(CancellationToken);
+        var accountLibraries = await dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == account.Id)
+            .ToListAsync(CancellationToken);
         accountServers.Count.ShouldBe(3);
         accountLibraries.Count.ShouldBe(3);
         await fixture.ConfigureOwnedOfflineLibrariesAsync(account, libraries);
@@ -323,9 +319,7 @@ public class GetMetadataFilterUnitTests
             }
         );
         var dbContext = IDbContext;
-        var libraries = await dbContext
-            .PlexLibraries.OrderBy(x => x.PlexServerId)
-            .ToListAsync(CancellationToken);
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);
         var targetLibrary = libraries[0];
         await dbContext.PlexMovieData.ExecuteUpdateAsync(
@@ -337,8 +331,8 @@ public class GetMetadataFilterUnitTests
             CancellationToken
         );
         var accountId = await dbContext.PlexAccounts.Select(x => x.Id).SingleAsync(CancellationToken);
-        var targetAccountServer = await dbContext.PlexAccountServers
-            .Where(x => x.PlexAccountId == accountId && x.PlexServerId == targetLibrary.PlexServerId)
+        var targetAccountServer = await dbContext
+            .PlexAccountServers.Where(x => x.PlexAccountId == accountId && x.PlexServerId == targetLibrary.PlexServerId)
             .AsTracking()
             .SingleAsync(CancellationToken);
         targetAccountServer.IsServerOwned = true;

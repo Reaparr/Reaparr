@@ -6,27 +6,41 @@ public class AddOrUpdatePlexServerCommandUnitTests : BaseUnitTest<AddOrUpdatePle
     public async Task ShouldPreserveCustomOwnership_WhenPlexAdvertisesThenOmitsSameConnection()
     {
         // Arrange
-        await SetupDatabase(23725, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexServerConnectionPerServerCount = 2;
-        });
+        await SetupDatabase(
+            23725,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexServerConnectionPerServerCount = 2;
+            }
+        );
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.Include(x => x.PlexServerConnections).SingleAsync(CancellationToken);
         var connections = server.PlexServerConnections.OrderBy(x => x.Id).ToArray();
         var custom = connections[0];
         var managed = connections[1];
-        await dbContext.PlexServerConnections.Where(x => x.Id == custom.Id)
+        await dbContext
+            .PlexServerConnections.Where(x => x.Id == custom.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(c => c.IsCustom, true), CancellationToken);
         var advertisedCustom = new PlexServerConnection
         {
-            Protocol = custom.Protocol, Address = custom.Address, Port = custom.Port, Url = custom.Url,
-            Local = custom.Local, Relay = custom.Relay, IPv4 = custom.IPv4, IPv6 = custom.IPv6,
-            PlexServerId = server.Id, IsCustom = false, LatestConnectionStatus = null,
+            Protocol = custom.Protocol,
+            Address = custom.Address,
+            Port = custom.Port,
+            Url = custom.Url,
+            Local = custom.Local,
+            Relay = custom.Relay,
+            IPv4 = custom.IPv4,
+            IPv6 = custom.IPv6,
+            PlexServerId = server.Id,
+            IsCustom = false,
+            LatestConnectionStatus = null,
         };
         server.PlexServerConnections = [advertisedCustom, managed];
-        var before = await dbContext.PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.IsCustom }).ToListAsync(CancellationToken);
+        var before = await dbContext
+            .PlexServerConnections.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.IsCustom })
+            .ToListAsync(CancellationToken);
         before.ShouldBe([new { custom.Id, IsCustom = true }, new { managed.Id, IsCustom = false }]);
         var validator = new AddOrUpdatePlexServersCommandValidator();
         var advertisedRequest = new AddOrUpdatePlexServersCommand([server]);
@@ -35,8 +49,10 @@ public class AddOrUpdatePlexServerCommandUnitTests : BaseUnitTest<AddOrUpdatePle
         // Act
         var advertisedResult = await Sut.ExecuteAsync(advertisedRequest, CancellationToken);
         dbContext.ClearChangeTracker();
-        var afterMatch = await dbContext.PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.IsCustom }).ToListAsync(CancellationToken);
+        var afterMatch = await dbContext
+            .PlexServerConnections.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.IsCustom })
+            .ToListAsync(CancellationToken);
         server.PlexServerConnections = [managed];
         var omittedResult = await Sut.ExecuteAsync(new AddOrUpdatePlexServersCommand([server]), CancellationToken);
         dbContext.ClearChangeTracker();
@@ -51,10 +67,18 @@ public class AddOrUpdatePlexServerCommandUnitTests : BaseUnitTest<AddOrUpdatePle
         omittedResult.Errors.Count.ShouldBe(0);
         omittedResult.Value.Created.ShouldBeEmpty();
         omittedResult.Value.Updated.ShouldBe([server.Id]);
-        (await dbContext.PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.IsCustom }).ToListAsync(CancellationToken)).ShouldBe(before);
-        (await dbContext.PlexServerConnections.Where(x => x.Id == custom.Id)
-            .Select(x => x.Url).SingleAsync(CancellationToken)).ShouldBe(custom.Url);
+        (
+            await dbContext
+                .PlexServerConnections.OrderBy(x => x.Id)
+                .Select(x => new { x.Id, x.IsCustom })
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(before);
+        (
+            await dbContext
+                .PlexServerConnections.Where(x => x.Id == custom.Id)
+                .Select(x => x.Url)
+                .SingleAsync(CancellationToken)
+        ).ShouldBe(custom.Url);
     }
 
     [Test]

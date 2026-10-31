@@ -9,15 +9,15 @@ public sealed class PlexPhotoFolderConfiguration : IEntityTypeConfiguration<Plex
         builder.Property(x => x.SourceRootPath).UseCollation("BINARY");
         builder.Property(x => x.Title).UseCollation(OrderByNaturalExtensions.CollationName);
 
-        builder
-            .HasIndex(x => new { x.PlexLibraryId, x.RootIdentityKey })
-            .IsUnique()
-            .HasFilter("\"ParentId\" IS NULL");
-        builder
-            .HasIndex(x => new { x.ParentId, x.RelativePath })
-            .IsUnique()
-            .HasFilter("\"ParentId\" IS NOT NULL");
-        builder.HasIndex(x => new { x.PlexLibraryId, x.ParentId, x.Title, x.Id });
+        builder.HasIndex(x => new { x.PlexLibraryId, x.RootIdentityKey }).IsUnique().HasFilter("\"ParentId\" IS NULL");
+        builder.HasIndex(x => new { x.ParentId, x.RelativePath }).IsUnique().HasFilter("\"ParentId\" IS NOT NULL");
+        builder.HasIndex(x => new
+        {
+            x.PlexLibraryId,
+            x.ParentId,
+            x.Title,
+            x.Id,
+        });
         builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
 
         builder.ToTable(

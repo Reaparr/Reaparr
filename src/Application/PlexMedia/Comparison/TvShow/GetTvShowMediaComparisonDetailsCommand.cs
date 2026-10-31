@@ -42,7 +42,11 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
         if (currentLibraryIds.Count == 0)
         {
             state = await _dbContext.GetUncomparedComparisonStateAsync(
-                _scheduler, tvShow.PlexLibraryId, isOwned, PlexMediaType.TvShow, ct
+                _scheduler,
+                tvShow.PlexLibraryId,
+                isOwned,
+                PlexMediaType.TvShow,
+                ct
             );
             rows = [];
         }
@@ -68,7 +72,6 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
         CancellationToken ct
     )
     {
-
         var remoteSeasonIds = _dbContext
             .PlexTvShowSeason.Where(x => x.PlexLibraryId == tvShow.PlexLibraryId && x.TvShowId == tvShow.Id)
             .Select(x => x.Id);
@@ -99,10 +102,12 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
             ct
         );
 
-        var showHits = await _dbContext.PlexTvShowComparisons
-            .Where(x => x.RemotePlexLibraryId == tvShow.PlexLibraryId
+        var showHits = await _dbContext
+            .PlexTvShowComparisons.Where(x =>
+                x.RemotePlexLibraryId == tvShow.PlexLibraryId
                 && x.RemotePlexMediaId == tvShow.Id
-                && currentOwnedLibraryIds.Contains(x.OwnedPlexLibraryId))
+                && currentOwnedLibraryIds.Contains(x.OwnedPlexLibraryId)
+            )
             .ToListAsync(ct);
         return BuildRemoteTvRows(episodes, hits, ownedEpisodes, remoteServerIds, showHits);
     }
@@ -113,7 +118,6 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
         CancellationToken ct
     )
     {
-
         var showHits = await _dbContext
             .PlexTvShowComparisons.Where(x =>
                 currentRemoteLibraryIds.Contains(x.RemotePlexLibraryId)
@@ -245,7 +249,8 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
 
         var hasMissing = childRows.Any(x => x.ComparisonId == PlexMediaComparisonState.Missing.ToComparisonId());
         var hasMatches = showHits.Count > 0 || hits.Count > 0;
-        var hasHigherQuality = showHits.Any(x => x.HitState == PlexMediaComparisonHitState.HigherQuality)
+        var hasHigherQuality =
+            showHits.Any(x => x.HitState == PlexMediaComparisonHitState.HigherQuality)
             || childRows.Any(x => x.ComparisonId == PlexMediaComparisonState.HigherQuality.ToComparisonId());
         var state = (hasMissing, hasMatches, hasHigherQuality) switch
         {
@@ -309,10 +314,14 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
             var sourceRow = rows.FirstOrDefault(x => x.RemotePlexLibraryId > 0) ?? rows.First();
             var seasonRowId = ++_rowId;
             var seasonState = PlexMediaComparisonDetailsMapper.ToParentState(rows);
-            if (seasonState == PlexMediaComparisonState.Missing && episodes.Any(episode =>
-                !missingEpisodeIds.Contains(episode.Id)
-                && (episode.TvShowSeason?.SeasonNumber ?? -1) == seasonGroup.Key.SeasonNumber
-                && (seasonGroup.Key.SeasonNumber >= 0 || episode.TvShowSeasonId == seasonGroup.Key.UnknownSeasonId)))
+            if (
+                seasonState == PlexMediaComparisonState.Missing
+                && episodes.Any(episode =>
+                    !missingEpisodeIds.Contains(episode.Id)
+                    && (episode.TvShowSeason?.SeasonNumber ?? -1) == seasonGroup.Key.SeasonNumber
+                    && (seasonGroup.Key.SeasonNumber >= 0 || episode.TvShowSeasonId == seasonGroup.Key.UnknownSeasonId)
+                )
+            )
                 seasonState = PlexMediaComparisonState.Partial;
             result.Add(
                 new ComparisonDetailsRow

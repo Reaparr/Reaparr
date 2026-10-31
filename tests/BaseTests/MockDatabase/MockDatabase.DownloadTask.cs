@@ -103,9 +103,10 @@ public static partial class MockDatabase
             folder.DownloadRootPath = pathProvider.DefaultDownloadsDestinationFolder;
             // Seeded folders represent captured root contexts. Keep the first at the configured
             // default and namespace additional contexts beneath the configured Photos root.
-            folder.DestinationRootPath = folderIndex == 0
-                ? pathProvider.DefaultPhotosDestinationFolder
-                : Path.Combine(pathProvider.DefaultPhotosDestinationFolder, $"root-{folderIndex}");
+            folder.DestinationRootPath =
+                folderIndex == 0
+                    ? pathProvider.DefaultPhotosDestinationFolder
+                    : Path.Combine(pathProvider.DefaultPhotosDestinationFolder, $"root-{folderIndex}");
             var rootName = folder.Title.SanitizeFolderName();
             var relativePhotoFolder = string.IsNullOrEmpty(folder.RelativePath)
                 ? rootName
@@ -266,8 +267,8 @@ public static partial class MockDatabase
             .GetDownloadTaskPhotoFolder(seed, options)
             .Generate(config.PhotoFolderDownloadTasksCount);
 
-        var plexLibraries = context.PlexLibraries
-            .Where(x => x.Type == PlexMediaType.PhotoAlbum)
+        var plexLibraries = context
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
             .OrderBy(x => x.Id)
             .ToList();
         plexLibraries.ShouldNotBeEmpty(
@@ -346,5 +347,4 @@ public static partial class MockDatabase
 
         return context;
     }
-
 }

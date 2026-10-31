@@ -11,15 +11,10 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         var context = CreateJobContext();
         var coordinator = new MediaOverviewRebuildCoordinator();
         SetupDependencies(builder =>
-            builder
-                .RegisterInstance(coordinator)
-                .As<IMediaOverviewRebuildCoordinator>()
-                .SingleInstance()
+            builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
         coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
-        Mock.SetupCommand(() => new RebuildMediaOverviewCommand())
-            .ReturnsAsync(Result.Ok())
-            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new RebuildMediaOverviewCommand()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
 
         // Act
         await Sut.Execute(context.Object);
@@ -43,10 +38,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         var context = CreateJobContext();
         var coordinator = new MediaOverviewRebuildCoordinator();
         SetupDependencies(builder =>
-            builder
-                .RegisterInstance(coordinator)
-                .As<IMediaOverviewRebuildCoordinator>()
-                .SingleInstance()
+            builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
         coordinator.RequestRebuild(PlexMediaType.PhotoAlbum, DateTimeOffset.UtcNow).ShouldBeTrue();
         Mock.Mock<ICommandExecutor>()
@@ -78,10 +70,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         var context = CreateJobContext();
         var coordinator = new MediaOverviewRebuildCoordinator();
         SetupDependencies(builder =>
-            builder
-                .RegisterInstance(coordinator)
-                .As<IMediaOverviewRebuildCoordinator>()
-                .SingleInstance()
+            builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
         coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
         Mock.SetupCommand(() => new RebuildMediaOverviewCommand())

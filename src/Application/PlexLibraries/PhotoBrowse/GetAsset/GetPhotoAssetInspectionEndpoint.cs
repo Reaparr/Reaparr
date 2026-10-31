@@ -27,9 +27,8 @@ public sealed class GetPhotoAssetInspectionRequestValidator : Validator<GetPhoto
             .When(x => x.MembershipPageSize.HasValue);
         RuleFor(x => x)
             .Must(x =>
-                (long)((x.MembershipPage ?? 1) - 1)
-                    * (x.MembershipPageSize ?? MediaQueryFilter.MaximumPageSize)
-                    <= int.MaxValue
+                (long)((x.MembershipPage ?? 1) - 1) * (x.MembershipPageSize ?? MediaQueryFilter.MaximumPageSize)
+                <= int.MaxValue
             )
             .WithMessage("The requested membership page offset is too large.");
     }

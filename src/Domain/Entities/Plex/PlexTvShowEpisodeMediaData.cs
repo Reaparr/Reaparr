@@ -22,7 +22,8 @@ public class PlexTvShowEpisodeMediaData : BasePlexMediaData
     [Column(Order = 15)]
     public DateTime? GeneratedNameSyncedAt { get; set; }
 
-    public override string GetFileName => !string.IsNullOrEmpty(GeneratedFilename) ? GeneratedFilename : OriginalFilename;
+    public override string GetFileName =>
+        !string.IsNullOrEmpty(GeneratedFilename) ? GeneratedFilename : OriginalFilename;
 
     [NotMapped]
     public override PlexMediaType Type => PlexMediaType.Episode;

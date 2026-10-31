@@ -6,11 +6,7 @@ public class DownloadTaskPhotoImageFileUnitTests
     public void ShouldCountFoldersAndDirectFiles()
     {
         var root = CreateFolder(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
-        var child = CreateFolder(
-            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-            root.Id,
-            "Trips"
-        );
+        var child = CreateFolder(Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), root.Id, "Trips");
         root.Children.Add(child);
         root.Files.Add(CreateFile(root.Id, "root.jpg"));
         child.Files.Add(CreateFile(child.Id, "beach.jpg"));
@@ -23,44 +19,39 @@ public class DownloadTaskPhotoImageFileUnitTests
     public void ShouldUsePhotoFolderParentKeys()
     {
         var root = CreateFolder(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
-        var child = CreateFolder(
-            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-            root.Id,
-            "Trips"
-        );
+        var child = CreateFolder(Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), root.Id, "Trips");
         var file = CreateFile(child.Id, "beach.jpg");
         file.DownloadTaskType.IsDownloadable().ShouldBeTrue();
         child.DownloadTaskType.IsDownloadable().ShouldBeFalse();
 
         root.ToParentKey().ShouldBeNull();
-        child.ToParentKey().ShouldBe(
-            new DownloadTaskKey
-            {
-                Type = DownloadTaskType.PhotoFolder,
-                Id = root.Id,
-                PlexServerId = 1,
-                PlexLibraryId = 1,
-            }
-        );
-        file.ToParentKey().ShouldBe(
-            new DownloadTaskKey
-            {
-                Type = DownloadTaskType.PhotoFolder,
-                Id = child.Id,
-                PlexServerId = 1,
-                PlexLibraryId = 1,
-            }
-        );
+        child
+            .ToParentKey()
+            .ShouldBe(
+                new DownloadTaskKey
+                {
+                    Type = DownloadTaskType.PhotoFolder,
+                    Id = root.Id,
+                    PlexServerId = 1,
+                    PlexLibraryId = 1,
+                }
+            );
+        file.ToParentKey()
+            .ShouldBe(
+                new DownloadTaskKey
+                {
+                    Type = DownloadTaskType.PhotoFolder,
+                    Id = child.Id,
+                    PlexServerId = 1,
+                    PlexLibraryId = 1,
+                }
+            );
     }
 
     [Test]
     public void ShouldResolveCapturedPhotoFolderPaths()
     {
-        var file = CreateFile(
-            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-            "beach.jpg",
-            "root-7/Trips"
-        );
+        var file = CreateFile(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), "beach.jpg", "root-7/Trips");
 
         file.DownloadDirectory.ShouldBe(Path.Combine("/downloads", "Photos", "root-7", "Trips"));
         file.DestinationDirectory.ShouldBe(Path.Combine("/photos", "root-7", "Trips"));
@@ -70,11 +61,7 @@ public class DownloadTaskPhotoImageFileUnitTests
         file.DestinationFilePath.ShouldBe(Path.Combine(file.DestinationDirectory, "beach.jpg"));
     }
 
-    private static DownloadTaskPhotoFolder CreateFolder(
-        Guid id,
-        Guid? parentId = null,
-        string relativePath = ""
-    ) =>
+    private static DownloadTaskPhotoFolder CreateFolder(Guid id, Guid? parentId = null, string relativePath = "") =>
         new()
         {
             Id = id,
@@ -99,11 +86,7 @@ public class DownloadTaskPhotoImageFileUnitTests
             DestinationRootPath = "/photos",
         };
 
-    private static DownloadTaskPhotoImageFile CreateFile(
-        Guid parentId,
-        string fileName,
-        string relativeFolder = ""
-    ) =>
+    private static DownloadTaskPhotoImageFile CreateFile(Guid parentId, string fileName, string relativeFolder = "") =>
         new()
         {
             Id = Guid.NewGuid(),

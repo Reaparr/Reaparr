@@ -11,11 +11,9 @@ public class PlexMusicArtistActors
         PlexMusicArtistId = plexMusicArtistId;
     }
 
-
     [Column(Order = 1)]
     public required int PlexActorId { get; init; }
 
     [Column(Order = 2)]
     public required int PlexMusicArtistId { get; init; }
-
 }

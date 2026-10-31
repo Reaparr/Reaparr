@@ -124,18 +124,25 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         var sequence = new MockSequence();
         Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(4);
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<DeterminePlexDownloadClientCommand>(command => command.DownloadTaskKey == key),
-                CancellationToken.None))
-            .ReturnsAsync(Result.Ok(PlexDownloadClientType.Dash)).Verifiable(Times.Once());
+            .Setup(x =>
+                x.Send(
+                    It.Is<DeterminePlexDownloadClientCommand>(command => command.DownloadTaskKey == key),
+                    CancellationToken.None
+                )
+            )
+            .ReturnsAsync(Result.Ok(PlexDownloadClientType.Dash))
+            .Verifiable(Times.Once());
         var client = Mock.Mock<IPlexDownloadClient>();
-        client.Setup(x => x.Start(key, CancellationToken.None))
-            .ReturnsAsync(ResultExtensions.TaskIsCancelled(nameof(DownloadJob))).Verifiable(Times.Once());
-        client.InSequence(sequence).Setup(x => x.StopAsync())
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
-        Mock.Mock<IDownloadTaskUpdateDispatcher>().InSequence(sequence)
+        client
+            .Setup(x => x.Start(key, CancellationToken.None))
+            .ReturnsAsync(ResultExtensions.TaskIsCancelled(nameof(DownloadJob)))
+            .Verifiable(Times.Once());
+        client.InSequence(sequence).Setup(x => x.StopAsync()).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .InSequence(sequence)
             .Setup(x => x.OnStatusChangedAsync(key, DownloadStatus.Paused, CancellationToken.None))
-            .Returns(Task.CompletedTask).Verifiable(Times.Once());
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
         client.Setup(x => x.DisposeAsync()).Returns(ValueTask.CompletedTask).Verifiable(Times.Once());
         var clients = new Mock<IIndex<PlexDownloadClientType, IPlexDownloadClient>>();
         clients.Setup(x => x[PlexDownloadClientType.Dash]).Returns(client.Object).Verifiable(Times.Once());
@@ -150,12 +157,16 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         client.Verify();
         clients.Verify();
         Mock.Mock<IDownloadTaskUpdateDispatcher>().Verify();
-        Mock.Mock<IDownloadTaskUpdateDispatcher>().Verify(
-            x => x.OnStatusChangedAsync(key, DownloadStatus.Stopped, It.IsAny<CancellationToken>()),
-            Times.Never());
-        Mock.Mock<IEventPublisher>().Verify(
-            x => x.PublishAsync(It.IsAny<SendNotificationResult>(), It.IsAny<CancellationToken>()),
-            Times.Never());
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .Verify(
+                x => x.OnStatusChangedAsync(key, DownloadStatus.Stopped, It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<IEventPublisher>()
+            .Verify(
+                x => x.PublishAsync(It.IsAny<SendNotificationResult>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -594,7 +605,9 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var context = SetupJobContext(downloadTask.ToKey());
-        var clientResolutionStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var clientResolutionStarted = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         var resumeClientResolution = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         Mock.Mock<ICommandExecutor>()

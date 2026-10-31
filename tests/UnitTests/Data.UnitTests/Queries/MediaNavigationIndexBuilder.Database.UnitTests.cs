@@ -41,7 +41,11 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
         var rows = CreateNavigationRows(dbContext.MediaOverviewOtherVideoSnapshots, filteredVideoId);
 
         // Act
-        var result = await MediaNavigationIndexBuilder.BuildAsync(rows, new Sort(sortType, direction), CancellationToken);
+        var result = await MediaNavigationIndexBuilder.BuildAsync(
+            rows,
+            new Sort(sortType, direction),
+            CancellationToken
+        );
 
         // Assert
         result
@@ -66,9 +70,7 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
         );
 
         // Assert
-        result
-            .Select(x => (x.Label, x.Index))
-            .ShouldBe(new[] { ("0–1 GB", 0), ("1–2 GB", 1), ("2–3 GB", 2) });
+        result.Select(x => (x.Label, x.Index)).ShouldBe(new[] { ("0–1 GB", 0), ("1–2 GB", 1), ("2–3 GB", 2) });
     }
 
     private async Task<int> SetupSnapshotDatabaseAsync()
@@ -83,8 +85,8 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
         );
 
         using var dbContext = IDbContext;
-        var libraryId = await dbContext.PlexLibraries
-            .Where(x => x.Type == PlexMediaType.OtherVideos)
+        var libraryId = await dbContext
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.OtherVideos)
             .Select(x => x.Id)
             .SingleAsync(CancellationToken);
         var videos = await dbContext.PlexOtherVideos.OrderBy(x => x.Id).ToListAsync(CancellationToken);

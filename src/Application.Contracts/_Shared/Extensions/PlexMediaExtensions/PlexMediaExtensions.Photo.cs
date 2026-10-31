@@ -42,5 +42,4 @@ public static partial class PlexMediaExtensions
             SonarrIntegrationId = request.Integration?.Type == IntegrationType.Sonarr ? request.Integration.Id : null,
             RadarrIntegrationId = request.Integration?.Type == IntegrationType.Radarr ? request.Integration.Id : null,
         };
-
 }

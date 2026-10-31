@@ -51,9 +51,8 @@ public class DownloadQueue : IDownloadQueue
                         var plexServerId in _plexServersToCheckChannel.Reader.ReadAllAsync(cancellationToken)
                     )
                     {
-                        var queueResult = await Result.Try(
-                            async Task<Result> () =>
-                                (await CheckDownloadQueueServer(plexServerId, cancellationToken)).ToResult()
+                        var queueResult = await Result.Try(async Task<Result> () =>
+                            (await CheckDownloadQueueServer(plexServerId, cancellationToken)).ToResult()
                         );
                         if (queueResult.IsCancelled)
                         {
@@ -196,7 +195,10 @@ public class DownloadQueue : IDownloadQueue
                 nextDownloadTask.FullTitle
             );
 
-        var schedulingResult = await _downloadTaskScheduler.StartDownloadTaskJob(nextDownloadTask.ToKey(), cancellationToken);
+        var schedulingResult = await _downloadTaskScheduler.StartDownloadTaskJob(
+            nextDownloadTask.ToKey(),
+            cancellationToken
+        );
         if (schedulingResult.IsCancelled)
             return schedulingResult.ToResult<DownloadTaskGeneric>().LogWarning();
 

@@ -231,12 +231,14 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
         var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = movies[0].PlexLibraryId;
         await dbContext.MediaOverviewMovieSnapshots.AddRangeAsync(
-            movies.Select((movie, index) =>
-            {
-                var snapshot = CreateMovieSnapshot(movie.Id, index, libraryId);
-                snapshot.QualityRank = movies.Count - index - 1;
-                return snapshot;
-            }),
+            movies.Select(
+                (movie, index) =>
+                {
+                    var snapshot = CreateMovieSnapshot(movie.Id, index, libraryId);
+                    snapshot.QualityRank = movies.Count - index - 1;
+                    return snapshot;
+                }
+            ),
             CancellationToken
         );
         await dbContext.SaveChangesAsync(CancellationToken);
@@ -405,12 +407,15 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     public async Task ShouldPropagateTypedQueryFailure_WhenMovieSnapshotIsMissing()
     {
         // Arrange
-        await SetupDatabase(84008, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieCount = 1;
-        });
+        await SetupDatabase(
+            84008,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexMovies.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
         (await dbContext.MediaOverviewMovieSnapshots.CountAsync(CancellationToken)).ShouldBe(0);

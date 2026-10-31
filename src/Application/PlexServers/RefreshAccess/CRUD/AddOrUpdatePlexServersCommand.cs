@@ -165,7 +165,8 @@ public class AddOrUpdatePlexServersCommandHandler
                 // Plex may advertise a user-created address, but must not take ownership of it.
                 var isCustom = existingConnection.IsCustom;
                 _dbContext.Entry(existingConnection).CurrentValues.SetValues(newConnection);
-                _dbContext.Entry(existingConnection).Property(nameof(PlexServerConnection.IsCustom)).CurrentValue = isCustom;
+                _dbContext.Entry(existingConnection).Property(nameof(PlexServerConnection.IsCustom)).CurrentValue =
+                    isCustom;
             }
         }
 

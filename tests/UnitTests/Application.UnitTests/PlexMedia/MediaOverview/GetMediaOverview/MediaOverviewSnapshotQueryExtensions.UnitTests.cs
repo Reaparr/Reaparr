@@ -46,9 +46,10 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         var sort = new Sort(sortType, direction);
 
         // Act
-        var labels = mediaType == PlexMediaType.MusicArtist
-            ? IDbContext.MediaOverviewMusicArtistSnapshots.ApplyRankOrder(sort).Select(x => x.NavigationTitleLabel)
-            : IDbContext.MediaOverviewOtherVideoSnapshots.ApplyRankOrder(sort).Select(x => x.NavigationTitleLabel);
+        var labels =
+            mediaType == PlexMediaType.MusicArtist
+                ? IDbContext.MediaOverviewMusicArtistSnapshots.ApplyRankOrder(sort).Select(x => x.NavigationTitleLabel)
+                : IDbContext.MediaOverviewOtherVideoSnapshots.ApplyRankOrder(sort).Select(x => x.NavigationTitleLabel);
         var orderedLabels = await labels.ToListAsync(CancellationToken);
 
         // Assert
@@ -86,56 +87,129 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         // Act
         var projectedRows = await navigationRows
             .OrderBy(x => x.SearchTitle)
-            .Select(x => new { x.SearchTitle, x.Year, x.QualityValue, x.SortRank })
+            .Select(x => new
+            {
+                x.SearchTitle,
+                x.Year,
+                x.QualityValue,
+                x.SortRank,
+            })
             .ToListAsync(CancellationToken);
         var indexes = await MediaNavigationIndexBuilder.BuildAsync(navigationRows, sort, CancellationToken);
 
         // Assert
-        projectedRows.Select(x => (x.SearchTitle, x.Year, x.QualityValue)).ShouldBe(
-            [
+        projectedRows
+            .Select(x => (x.SearchTitle, x.Year, x.QualityValue))
+            .ShouldBe([
                 (SearchTitle: "A", Year: (int?)2000, QualityValue: (int?)480),
                 (SearchTitle: "B", Year: (int?)2001, QualityValue: (int?)720),
                 (SearchTitle: "C", Year: (int?)2002, QualityValue: (int?)2160),
-            ]
-        );
-        projectedRows.Select(x => x.SortRank).ShouldBe(
-            sortType switch
-            {
-                SortType.Year => new[] { 1, 2, 0 },
-                SortType.VideoQuality => new[] { 0, 2, 1 },
-                SortType.AddedAt => new[] { 2, 0, 1 },
-                SortType.UpdatedAt => new[] { 0, 2, 1 },
-                SortType.Duration => new[] { 1, 0, 2 },
-                SortType.MediaSize => new[] { 2, 1, 0 },
-                _ => new[] { 2, 0, 1 },
-            }
-        );
+            ]);
+        projectedRows
+            .Select(x => x.SortRank)
+            .ShouldBe(
+                sortType switch
+                {
+                    SortType.Year => new[] { 1, 2, 0 },
+                    SortType.VideoQuality => new[] { 0, 2, 1 },
+                    SortType.AddedAt => new[] { 2, 0, 1 },
+                    SortType.UpdatedAt => new[] { 0, 2, 1 },
+                    SortType.Duration => new[] { 1, 0, 2 },
+                    SortType.MediaSize => new[] { 2, 1, 0 },
+                    _ => new[] { 2, 0, 1 },
+                }
+            );
         indexes.Select(x => (x.Label, x.Index)).ShouldBe(expectedLabels.Select((label, index) => (label, index)));
     }
 
     [Test]
     [Arguments(PlexMediaType.PhotoAlbum, SortType.Title, SortDirection.Asc, new[] { "B", "C", "A" })]
     [Arguments(PlexMediaType.PhotoAlbum, SortType.Title, SortDirection.Desc, new[] { "A", "C", "B" })]
-    [Arguments(PlexMediaType.PhotoAlbum, SortType.AddedAt, SortDirection.Asc, new[] { "2026-02", "2026-03", "2026-01" })]
-    [Arguments(PlexMediaType.PhotoAlbum, SortType.AddedAt, SortDirection.Desc, new[] { "2026-01", "2026-03", "2026-02" })]
+    [Arguments(
+        PlexMediaType.PhotoAlbum,
+        SortType.AddedAt,
+        SortDirection.Asc,
+        new[] { "2026-02", "2026-03", "2026-01" }
+    )]
+    [Arguments(
+        PlexMediaType.PhotoAlbum,
+        SortType.AddedAt,
+        SortDirection.Desc,
+        new[] { "2026-01", "2026-03", "2026-02" }
+    )]
     [Arguments(PlexMediaType.PhotoAlbum, SortType.UpdatedAt, SortDirection.Asc, new[] { "#", "2026-03", "2026-02" })]
     [Arguments(PlexMediaType.PhotoAlbum, SortType.UpdatedAt, SortDirection.Desc, new[] { "2026-02", "2026-03", "#" })]
-    [Arguments(PlexMediaType.PhotoAlbum, SortType.Duration, SortDirection.Asc, new[] { "20–30 min", "10–20 min", "30–40 min" })]
-    [Arguments(PlexMediaType.PhotoAlbum, SortType.Duration, SortDirection.Desc, new[] { "30–40 min", "10–20 min", "20–30 min" })]
+    [Arguments(
+        PlexMediaType.PhotoAlbum,
+        SortType.Duration,
+        SortDirection.Asc,
+        new[] { "20–30 min", "10–20 min", "30–40 min" }
+    )]
+    [Arguments(
+        PlexMediaType.PhotoAlbum,
+        SortType.Duration,
+        SortDirection.Desc,
+        new[] { "30–40 min", "10–20 min", "20–30 min" }
+    )]
     [Arguments(PlexMediaType.PhotoAlbum, SortType.MediaSize, SortDirection.Asc, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
-    [Arguments(PlexMediaType.PhotoAlbum, SortType.MediaSize, SortDirection.Desc, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
-    [Arguments(PlexMediaType.PhotoAlbum, SortType.MediaSize, SortDirection.NoSort, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
+    [Arguments(
+        PlexMediaType.PhotoAlbum,
+        SortType.MediaSize,
+        SortDirection.Desc,
+        new[] { "1–2 GB", "2–3 GB", "3–4 GB" }
+    )]
+    [Arguments(
+        PlexMediaType.PhotoAlbum,
+        SortType.MediaSize,
+        SortDirection.NoSort,
+        new[] { "3–4 GB", "2–3 GB", "1–2 GB" }
+    )]
     [Arguments(PlexMediaType.MusicArtist, SortType.Title, SortDirection.Asc, new[] { "B", "C", "A" })]
     [Arguments(PlexMediaType.MusicArtist, SortType.Title, SortDirection.Desc, new[] { "A", "C", "B" })]
-    [Arguments(PlexMediaType.MusicArtist, SortType.AddedAt, SortDirection.Asc, new[] { "2026-02", "2026-03", "2026-01" })]
-    [Arguments(PlexMediaType.MusicArtist, SortType.AddedAt, SortDirection.Desc, new[] { "2026-01", "2026-03", "2026-02" })]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        SortType.AddedAt,
+        SortDirection.Asc,
+        new[] { "2026-02", "2026-03", "2026-01" }
+    )]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        SortType.AddedAt,
+        SortDirection.Desc,
+        new[] { "2026-01", "2026-03", "2026-02" }
+    )]
     [Arguments(PlexMediaType.MusicArtist, SortType.UpdatedAt, SortDirection.Asc, new[] { "#", "2026-03", "2026-02" })]
     [Arguments(PlexMediaType.MusicArtist, SortType.UpdatedAt, SortDirection.Desc, new[] { "2026-02", "2026-03", "#" })]
-    [Arguments(PlexMediaType.MusicArtist, SortType.Duration, SortDirection.Asc, new[] { "20–30 min", "10–20 min", "30–40 min" })]
-    [Arguments(PlexMediaType.MusicArtist, SortType.Duration, SortDirection.Desc, new[] { "30–40 min", "10–20 min", "20–30 min" })]
-    [Arguments(PlexMediaType.MusicArtist, SortType.MediaSize, SortDirection.Asc, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
-    [Arguments(PlexMediaType.MusicArtist, SortType.MediaSize, SortDirection.Desc, new[] { "1–2 GB", "2–3 GB", "3–4 GB" })]
-    [Arguments(PlexMediaType.MusicArtist, SortType.MediaSize, SortDirection.NoSort, new[] { "3–4 GB", "2–3 GB", "1–2 GB" })]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        SortType.Duration,
+        SortDirection.Asc,
+        new[] { "20–30 min", "10–20 min", "30–40 min" }
+    )]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        SortType.Duration,
+        SortDirection.Desc,
+        new[] { "30–40 min", "10–20 min", "20–30 min" }
+    )]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        SortType.MediaSize,
+        SortDirection.Asc,
+        new[] { "3–4 GB", "2–3 GB", "1–2 GB" }
+    )]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        SortType.MediaSize,
+        SortDirection.Desc,
+        new[] { "1–2 GB", "2–3 GB", "3–4 GB" }
+    )]
+    [Arguments(
+        PlexMediaType.MusicArtist,
+        SortType.MediaSize,
+        SortDirection.NoSort,
+        new[] { "3–4 GB", "2–3 GB", "1–2 GB" }
+    )]
     public async Task ShouldBuildCommonNavigationIndexesWithTranslatedRanksThroughSqlite(
         PlexMediaType mediaType,
         SortType sortType,
@@ -149,35 +223,44 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         else
             await ArrangePhotoSnapshotsAsync();
         var sort = new Sort(sortType, direction);
-        var navigationRows = mediaType == PlexMediaType.MusicArtist
-            ? IDbContext.MediaOverviewMusicArtistSnapshots.SelectNavigationRows(sort)
-            : IDbContext.MediaOverviewPhotoAlbumSnapshots.SelectNavigationRows(sort);
+        var navigationRows =
+            mediaType == PlexMediaType.MusicArtist
+                ? IDbContext.MediaOverviewMusicArtistSnapshots.SelectNavigationRows(sort)
+                : IDbContext.MediaOverviewPhotoAlbumSnapshots.SelectNavigationRows(sort);
 
         // Act
         var projectedRows = await navigationRows
             .OrderBy(x => x.SearchTitle)
-            .Select(x => new { x.SearchTitle, x.Year, x.QualityValue, x.SortRank })
+            .Select(x => new
+            {
+                x.SearchTitle,
+                x.Year,
+                x.QualityValue,
+                x.SortRank,
+            })
             .ToListAsync(CancellationToken);
         var indexes = await MediaNavigationIndexBuilder.BuildAsync(navigationRows, sort, CancellationToken);
 
         // Assert
-        projectedRows.Select(x => (x.SearchTitle, x.Year, x.QualityValue)).ShouldBe(
-            [
+        projectedRows
+            .Select(x => (x.SearchTitle, x.Year, x.QualityValue))
+            .ShouldBe([
                 (SearchTitle: "A", Year: (int?)null, QualityValue: (int?)null),
                 (SearchTitle: "B", Year: (int?)null, QualityValue: (int?)null),
                 (SearchTitle: "C", Year: (int?)null, QualityValue: (int?)null),
-            ]
-        );
-        projectedRows.Select(x => x.SortRank).ShouldBe(
-            sortType switch
-            {
-                SortType.AddedAt => new[] { 2, 0, 1 },
-                SortType.UpdatedAt => new[] { 0, 2, 1 },
-                SortType.Duration => new[] { 1, 0, 2 },
-                SortType.MediaSize => new[] { 2, 1, 0 },
-                _ => new[] { 2, 0, 1 },
-            }
-        );
+            ]);
+        projectedRows
+            .Select(x => x.SortRank)
+            .ShouldBe(
+                sortType switch
+                {
+                    SortType.AddedAt => new[] { 2, 0, 1 },
+                    SortType.UpdatedAt => new[] { 0, 2, 1 },
+                    SortType.Duration => new[] { 1, 0, 2 },
+                    SortType.MediaSize => new[] { 2, 1, 0 },
+                    _ => new[] { 2, 0, 1 },
+                }
+            );
         indexes.Select(x => (x.Label, x.Index)).ShouldBe(expectedLabels.Select((label, index) => (label, index)));
     }
 
@@ -192,8 +275,8 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var artists = await dbContext.PlexMusicArtists
-            .OrderBy(x => x.Id)
+        var artists = await dbContext
+            .PlexMusicArtists.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.PlexLibraryId })
             .ToListAsync(CancellationToken);
         artists.Count.ShouldBe(3);
@@ -204,22 +287,24 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         var sizeRanks = new[] { 2, 1, 0 };
         for (var index = 0; index < artists.Count; index++)
         {
-            dbContext.MediaOverviewMusicArtistSnapshots.Add(new MediaOverviewMusicArtistSnapshot
-            {
-                PlexArtistId = artists[index].Id,
-                PlexLibraryId = artists[index].PlexLibraryId,
-                SearchTitle = searchTitles[index],
-                NavigationTitleLabel = ((char)('A' + index)).ToString(),
-                Duration = (index + 1) * 600,
-                AddedAt = new DateTime(2026, index + 1, 1),
-                UpdatedAt = index == 0 ? null : new DateTime(2026, index + 1, 20),
-                MediaSize = (index + 1) * 1_000_000_000L,
-                TitleRank = titleRanks[index],
-                AddedAtRank = titleRanks[index],
-                UpdatedAtRank = updatedRanks[index],
-                DurationRank = durationRanks[index],
-                MediaSizeRank = sizeRanks[index],
-            });
+            dbContext.MediaOverviewMusicArtistSnapshots.Add(
+                new MediaOverviewMusicArtistSnapshot
+                {
+                    PlexArtistId = artists[index].Id,
+                    PlexLibraryId = artists[index].PlexLibraryId,
+                    SearchTitle = searchTitles[index],
+                    NavigationTitleLabel = ((char)('A' + index)).ToString(),
+                    Duration = (index + 1) * 600,
+                    AddedAt = new DateTime(2026, index + 1, 1),
+                    UpdatedAt = index == 0 ? null : new DateTime(2026, index + 1, 20),
+                    MediaSize = (index + 1) * 1_000_000_000L,
+                    TitleRank = titleRanks[index],
+                    AddedAtRank = titleRanks[index],
+                    UpdatedAtRank = updatedRanks[index],
+                    DurationRank = durationRanks[index],
+                    MediaSizeRank = sizeRanks[index],
+                }
+            );
         }
         await dbContext.SaveChangesAsync(CancellationToken);
     }

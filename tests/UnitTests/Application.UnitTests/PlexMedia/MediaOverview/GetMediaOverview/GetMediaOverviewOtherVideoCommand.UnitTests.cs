@@ -48,7 +48,6 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
         AssertFilteredOtherVideoPage(result, filter, fixture, sort);
     }
 
-
     private async Task<OtherVideoOverviewFixture> ArrangeFilteredOtherVideoPageAsync()
     {
         await SetupDatabase(
@@ -176,13 +175,7 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
         (item.Type, item.SortIndex, item.ChildCount, item.GrandChildCount).ShouldBe(
             (PlexMediaType.OtherVideos, 2, 0, 0)
         );
-        (
-            item.PlexLibraryId,
-            item.PlexServerId,
-            item.PlexApiRatingKey,
-            item.PlexApiMetaDataKey,
-            item.HasThumb
-        ).ShouldBe(
+        (item.PlexLibraryId, item.PlexServerId, item.PlexApiRatingKey, item.PlexApiMetaDataKey, item.HasThumb).ShouldBe(
             (
                 fixture.LibraryId,
                 fixture.SelectedVideo.PlexServerId,
@@ -193,7 +186,9 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
         );
         (item.SearchTitle, item.MediaSize).ShouldBe(("charlie", 300L));
         item.Qualities.Select(x => (x.DataId, x.MediaId, x.MediaDataType, Quality: x.VideoQuality))
-            .ShouldBe([(fixture.SelectedData.Id, fixture.SelectedVideo.Id, PlexMediaType.OtherVideos, VideoQuality.FullHD)]);
+            .ShouldBe([
+                (fixture.SelectedData.Id, fixture.SelectedVideo.Id, PlexMediaType.OtherVideos, VideoQuality.FullHD),
+            ]);
         result.Value.Qualities.ShouldBe([VideoQuality.FullHD.ToId()]);
         result.Value.Roles.ShouldBe([fixture.Actor.Id]);
         result.Value.Countries.ShouldBe([fixture.Country.Id]);
@@ -204,7 +199,10 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
                 sort.EndsWith("asc") ? [("720", 0), ("1080", 1), ("2160", 2)] : [("2160", 0), ("1080", 1), ("720", 2)]
             );
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<GetOtherVideoMediaByTypeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.Send(It.IsAny<GetOtherVideoMediaByTypeCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
@@ -227,12 +225,15 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
         var libraryId = 0;
         if (snapshotMissing)
         {
-            await SetupDatabase(84210, config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            });
+            await SetupDatabase(
+                84210,
+                config =>
+                {
+                    config.PlexServerCount = 1;
+                    config.PlexOtherVideoLibraryCount = 1;
+                    config.OtherVideoCount = 1;
+                }
+            );
             var dbContext = IDbContext;
             libraryId = await dbContext.PlexOtherVideos.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
             (await dbContext.MediaOverviewOtherVideoSnapshots.CountAsync(CancellationToken)).ShouldBe(0);
@@ -257,7 +258,9 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetMediaOverviewOtherVideoCommand(filter));
+        var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(
+            new GetMediaOverviewOtherVideoCommand(filter)
+        );
 
         // Assert
         result.IsFailed.ShouldBeTrue();

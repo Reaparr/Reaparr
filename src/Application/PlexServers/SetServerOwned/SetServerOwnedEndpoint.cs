@@ -22,11 +22,7 @@ public class SetServerOwnedEndpoint : Endpoint<SetServerOwnedRequest, ResultDTO<
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
 
-    public SetServerOwnedEndpoint(
-        ILogger log,
-        IReaparrDbContext dbContext,
-        ICommandExecutor commandExecutor
-    )
+    public SetServerOwnedEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
     {
         _log = log.ForContext<SetServerOwnedEndpoint>();
         _dbContext = dbContext;
@@ -85,7 +81,6 @@ public class SetServerOwnedEndpoint : Endpoint<SetServerOwnedRequest, ResultDTO<
             .Select(x => new { x.Id, x.IsEnabled })
             .ToListAsync(ct);
         var libraryIds = libraries.Select(x => x.Id).ToList();
-
 
         var invalidationResult = await _commandExecutor.Send(
             new InvalidateLibraryComparisonJobsCommand(libraryIds),

@@ -181,19 +181,23 @@ public class DbContextExtensionsPlexMediaUnitTests : BaseUnitTest
         var existingGenreId = existingGenre.Id;
 
         var before = await dbContext
-            .PlexGenresVideo.Select(x => new { x.Id, x.Key, x.Name, x.Type })
+            .PlexGenresVideo.Select(x => new
+            {
+                x.Id,
+                x.Key,
+                x.Name,
+                x.Type,
+            })
             .ToListAsync(CancellationToken);
-        before.ShouldBe(
-            [
-                new
-                {
-                    Id = existingGenreId,
-                    Key = "genre-drama",
-                    Name = "Existing Drama",
-                    Type = PlexGenreType.Drama,
-                },
-            ]
-        );
+        before.ShouldBe([
+            new
+            {
+                Id = existingGenreId,
+                Key = "genre-drama",
+                Name = "Existing Drama",
+                Type = PlexGenreType.Drama,
+            },
+        ]);
 
         var genres = new[]
         {
@@ -228,25 +232,29 @@ public class DbContextExtensionsPlexMediaUnitTests : BaseUnitTest
 
         var persisted = await dbContext
             .PlexGenresVideo.OrderBy(x => x.Key)
-            .Select(x => new { x.Id, x.Key, x.Name, x.Type })
+            .Select(x => new
+            {
+                x.Id,
+                x.Key,
+                x.Name,
+                x.Type,
+            })
             .ToListAsync(CancellationToken);
-        persisted.ShouldBe(
-            [
-                new
-                {
-                    Id = result["genre-action"],
-                    Key = "genre-action",
-                    Name = "Action",
-                    Type = PlexGenreType.Action,
-                },
-                new
-                {
-                    Id = existingGenreId,
-                    Key = "genre-drama",
-                    Name = "Existing Drama",
-                    Type = PlexGenreType.Drama,
-                },
-            ]
-        );
+        persisted.ShouldBe([
+            new
+            {
+                Id = result["genre-action"],
+                Key = "genre-action",
+                Name = "Action",
+                Type = PlexGenreType.Action,
+            },
+            new
+            {
+                Id = existingGenreId,
+                Key = "genre-drama",
+                Name = "Existing Drama",
+                Type = PlexGenreType.Drama,
+            },
+        ]);
     }
 }

@@ -65,7 +65,14 @@ public class BaseContainer : IDisposable
             .GetMemoryDbContext(log, mockPathProvider, mockAppRuntimeInfo, memoryDbName)
             .Setup(seed, mockPathProvider, mockAppRuntimeInfo, config.DatabaseOptions);
 
-        var container = new BaseContainer(log, seed, memoryDbName, testFileSystemRootPath, options, useTestAuthentication);
+        var container = new BaseContainer(
+            log,
+            seed,
+            memoryDbName,
+            testFileSystemRootPath,
+            options,
+            useTestAuthentication
+        );
 
         if (config.FileSystemOptions is not null)
         {

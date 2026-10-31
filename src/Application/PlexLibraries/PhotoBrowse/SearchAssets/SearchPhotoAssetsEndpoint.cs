@@ -26,13 +26,15 @@ public sealed class SearchPhotoAssetsRequestValidator : Validator<SearchPhotoAss
         RuleFor(x => x.Page).GreaterThan(0).When(x => x.Page.HasValue);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize).When(x => x.PageSize.HasValue);
         RuleFor(x => x.Sort)
-            .Must(sort => sort.IsSupportedSort(
-                SortType.Title,
-                SortType.AddedAt,
-                SortType.UpdatedAt,
-                SortType.Duration,
-                SortType.MediaSize
-            ))
+            .Must(sort =>
+                sort.IsSupportedSort(
+                    SortType.Title,
+                    SortType.AddedAt,
+                    SortType.UpdatedAt,
+                    SortType.Duration,
+                    SortType.MediaSize
+                )
+            )
             .WithMessage("Unsupported photo asset sort.");
         RuleFor(x => x)
             .Must(x => (long)((x.Page ?? 1) - 1) * (x.PageSize ?? MediaQueryFilter.MaximumPageSize) <= int.MaxValue)

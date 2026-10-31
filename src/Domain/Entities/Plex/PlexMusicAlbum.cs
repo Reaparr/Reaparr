@@ -34,14 +34,12 @@ public class PlexMusicAlbum : BasePlexMedia
 
     public required string? MusicBrainzReleaseId { get; set; }
 
-
     public required string? RecordLabel { get; set; }
 
     /// <summary>
     /// Gets the countries associated with this album from Plex metadata.
     /// </summary>
     public ICollection<PlexCountry> Countries { get; init; } = [];
-
 
     public ICollection<PlexMusicTrack> Tracks { get; set; } = [];
 

@@ -17,28 +17,26 @@ public class GetTvShowDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetT
             }
         );
         var episode = (await IDbContext.PlexTvShowEpisodes.ToListAsync(CancellationToken)).First();
-        var query = new GetTvShowDownloadPreviewCommand(
-            [
-                new DownloadMediaDTO
-                {
-                    Type = PlexMediaType.Episode,
-                    SelectionKind = null,
-                    PlexServerId = episode.PlexServerId,
-                    PlexLibraryId = episode.PlexLibraryId,
-                    MediaIds = [episode.Id],
-                    Qualities = [],
-                },
-                new DownloadMediaDTO
-                {
-                    Type = PlexMediaType.Episode,
-                    SelectionKind = null,
-                    PlexServerId = episode.PlexServerId,
-                    PlexLibraryId = episode.PlexLibraryId,
-                    MediaIds = [episode.Id],
-                    Qualities = [],
-                },
-            ]
-        );
+        var query = new GetTvShowDownloadPreviewCommand([
+            new DownloadMediaDTO
+            {
+                Type = PlexMediaType.Episode,
+                SelectionKind = null,
+                PlexServerId = episode.PlexServerId,
+                PlexLibraryId = episode.PlexLibraryId,
+                MediaIds = [episode.Id],
+                Qualities = [],
+            },
+            new DownloadMediaDTO
+            {
+                Type = PlexMediaType.Episode,
+                SelectionKind = null,
+                PlexServerId = episode.PlexServerId,
+                PlexLibraryId = episode.PlexLibraryId,
+                MediaIds = [episode.Id],
+                Qualities = [],
+            },
+        ]);
 
         // Act
         var result = await TestHandlerExecuteAsync<IEnumerable<DownloadPreview>>(query);

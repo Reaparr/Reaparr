@@ -258,11 +258,13 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.Items.Select(x => x.Title).ShouldBe(["SD Show (2021)", "SD Show (2000)", "HD Show", "4K Show"]);
-        result.Value.NavigationIndexes.Select(x => new { x.Label, x.Index }).ShouldBe([
-            new { Label = "480", Index = 0 },
-            new { Label = "1080", Index = 2 },
-            new { Label = "2160", Index = 3 },
-        ]);
+        result
+            .Value.NavigationIndexes.Select(x => new { x.Label, x.Index })
+            .ShouldBe([
+                new { Label = "480", Index = 0 },
+                new { Label = "1080", Index = 2 },
+                new { Label = "2160", Index = 3 },
+            ]);
     }
 
     [Test]
@@ -308,11 +310,13 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.Items.Select(x => x.Title).ShouldBe(["4K Show", "HD Show", "SD Show (2000)", "SD Show (2021)"]);
-        result.Value.NavigationIndexes.Select(x => new { x.Label, x.Index }).ShouldBe([
-            new { Label = "2160", Index = 0 },
-            new { Label = "1080", Index = 1 },
-            new { Label = "480", Index = 2 },
-        ]);
+        result
+            .Value.NavigationIndexes.Select(x => new { x.Label, x.Index })
+            .ShouldBe([
+                new { Label = "2160", Index = 0 },
+                new { Label = "1080", Index = 1 },
+                new { Label = "480", Index = 2 },
+            ]);
     }
 
     [Test]
@@ -325,22 +329,37 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
     )
     {
         // Arrange
-        await SetupDatabase(73105, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexTvShowLibraryCount = 1;
-            config.TvShowCount = 1;
-        });
+        await SetupDatabase(
+            73105,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
         await dbContext.PlexTvShowMediaQualities.ExecuteDeleteAsync(CancellationToken);
         dbContext.PlexTvShowMediaQualities.AddRange(
-            new PlexTvShowMediaQuality { PlexLibraryId = tvShow.PlexLibraryId, PlexTvShowId = tvShow.Id, VideoQuality = VideoQuality.UHD_4K },
-            new PlexTvShowMediaQuality { PlexLibraryId = tvShow.PlexLibraryId, PlexTvShowId = tvShow.Id, VideoQuality = VideoQuality.SD }
+            new PlexTvShowMediaQuality
+            {
+                PlexLibraryId = tvShow.PlexLibraryId,
+                PlexTvShowId = tvShow.Id,
+                VideoQuality = VideoQuality.UHD_4K,
+            },
+            new PlexTvShowMediaQuality
+            {
+                PlexLibraryId = tvShow.PlexLibraryId,
+                PlexTvShowId = tvShow.Id,
+                VideoQuality = VideoQuality.SD,
+            }
         );
         await dbContext.SaveChangesAsync(CancellationToken);
-        var persisted = await dbContext.PlexTvShowMediaQualities.OrderBy(x => x.Id)
-            .Select(x => x.VideoQuality).ToListAsync(CancellationToken);
+        var persisted = await dbContext
+            .PlexTvShowMediaQualities.OrderBy(x => x.Id)
+            .Select(x => x.VideoQuality)
+            .ToListAsync(CancellationToken);
         persisted.ShouldBe([VideoQuality.UHD_4K, VideoQuality.SD]);
         var filter = new MediaQueryFilter
         {
@@ -349,15 +368,31 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
             FilterOfflineMedia = false,
             FilterOwnedMedia = false,
             ComparisonState = comparisonState,
-            Parameters = new FlexQueryParameters { Page = 1, PageSize = 2, Sort = sort },
+            Parameters = new FlexQueryParameters
+            {
+                Page = 1,
+                PageSize = 2,
+                Sort = sort,
+            },
         };
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<ApplyComparisonStateCommand>(c =>
-                c.MediaType == PlexMediaType.TvShow && c.PlexLibraryId == tvShow.PlexLibraryId
-                && c.Items.Count == 1 && c.Items[0].Id == tvShow.Id), CancellationToken))
-            .Callback<ICommand<Result>, CancellationToken>((command, _) =>
-                ((ApplyComparisonStateCommand)command).Items[0].SetComparisonState(PlexMediaComparisonState.Owned))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+            .Setup(x =>
+                x.Send(
+                    It.Is<ApplyComparisonStateCommand>(c =>
+                        c.MediaType == PlexMediaType.TvShow
+                        && c.PlexLibraryId == tvShow.PlexLibraryId
+                        && c.Items.Count == 1
+                        && c.Items[0].Id == tvShow.Id
+                    ),
+                    CancellationToken
+                )
+            )
+            .Callback<ICommand<Result>, CancellationToken>(
+                (command, _) =>
+                    ((ApplyComparisonStateCommand)command).Items[0].SetComparisonState(PlexMediaComparisonState.Owned)
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync<PagedMediaQueryResult>(new GetTvShowMediaByTypeCommand(filter));
@@ -368,14 +403,14 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
         result.Value.TotalCount.ShouldBe(1);
         var item = result.Value.Items.Single();
         (item.Id, item.Type).ShouldBe((tvShow.Id, PlexMediaType.TvShow));
-        item.Qualities.Select(x => (x.VideoQuality, x.DataId, x.MediaId, x.MediaDataType)).ShouldBe([
-            (VideoQuality.SD, -1, -1, PlexMediaType.TvShow),
-            (VideoQuality.UHD_4K, -1, -1, PlexMediaType.TvShow),
-        ]);
+        item.Qualities.Select(x => (x.VideoQuality, x.DataId, x.MediaId, x.MediaDataType))
+            .ShouldBe([
+                (VideoQuality.SD, -1, -1, PlexMediaType.TvShow),
+                (VideoQuality.UHD_4K, -1, -1, PlexMediaType.TvShow),
+            ]);
         result.Value.Qualities.ShouldBe([VideoQuality.SD.ToId(), VideoQuality.UHD_4K.ToId()]);
         Mock.Mock<ICommandExecutor>().Verify();
     }
-
 
     private async Task SetTvShowQualitySortTestDataAsync(IReaparrDbContext dbContext, IReadOnlyList<int> tvShowIds)
     {

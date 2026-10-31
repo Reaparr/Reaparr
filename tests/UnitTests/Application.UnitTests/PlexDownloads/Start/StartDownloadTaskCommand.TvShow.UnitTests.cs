@@ -58,6 +58,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
         // Assert
         result.IsSuccess.ShouldBeTrue();
     }
+
     [Test]
     public async Task ShouldNotPauseTheActiveDownloads_WhenThatActiveDownloadTaskIsStarted()
     {
@@ -138,6 +139,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             );
         Mock.VerifyEventPublished(It.IsAny<CheckDownloadQueueEvent>, Times.Once());
     }
+
     [Test]
     public async Task ShouldStartPausedEpisode_WhenStartingPausedTvShowTask()
     {
@@ -200,6 +202,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
                 Times.Once()
             );
     }
+
     [Test]
     public async Task ShouldStartFirstPausedEpisodeAndQueueOtherPausedEpisodes_WhenStartingTvShowTask()
     {
@@ -280,6 +283,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
                 Times.AtLeastOnce()
             );
     }
+
     [Test]
     public async Task ShouldStartFirstStoppedEpisodeAndQueueOtherStoppedEpisodes_WhenStartingTvShowTask()
     {
@@ -353,6 +357,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
                 Times.AtLeastOnce()
             );
     }
+
     [Test]
     public async Task ShouldStartFirstStoppedEpisodeAndQueueOtherStoppedEpisodes_WhenStartingSeasonTask()
     {
@@ -426,6 +431,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
                 Times.AtLeastOnce()
             );
     }
+
     [Test]
     public async Task ShouldQueueOtherStoppedChildren_WhenStartingStoppedTvShowWithStoppedSeasons()
     {
@@ -502,6 +508,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
                 Times.AtLeastOnce()
             );
     }
+
     [Test]
     public async Task ShouldStartNextStoppedChild_WhenFirstChildIsCompletedOnStoppedTvShow()
     {
@@ -582,6 +589,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
                 Times.AtLeastOnce()
             );
     }
+
     [Test]
     public async Task ShouldPauseTheActiveDownloads_WhenAnotherDownloadTaskIsStarted()
     {
@@ -672,6 +680,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             );
         Mock.VerifyEventPublished(It.IsAny<CheckDownloadQueueEvent>, Times.Once());
     }
+
     [Test]
     public async Task ShouldStopNewJobAndPreserveTaskStates_WhenPausingActiveDownloadFails()
     {
@@ -713,8 +722,8 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
                 CancellationToken
             );
 
-        var before = await dbContext.DownloadTaskTvShowEpisodeFile
-            .OrderBy(x => x.Id)
+        var before = await dbContext
+            .DownloadTaskTvShowEpisodeFile.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.DownloadStatus })
             .ToListAsync(CancellationToken);
         var startedKey = orderedDownloadTasks[0].ToKey();
@@ -728,10 +737,13 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             .ReturnsAsync(false)
             .ReturnsAsync(true);
         Mock.Mock<IDownloadTaskScheduler>()
-            .Setup(x => x.StopDownloadTaskJob(
-                startedKey,
-                It.Is<CancellationToken>(token => token != CancellationToken && !token.IsCancellationRequested),
-                true))
+            .Setup(x =>
+                x.StopDownloadTaskJob(
+                    startedKey,
+                    It.Is<CancellationToken>(token => token != CancellationToken && !token.IsCancellationRequested),
+                    true
+                )
+            )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
@@ -749,8 +761,8 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         result.Errors.ShouldContain(x => x.Message.Contains("Pause command failed"));
-        var after = await dbContext.DownloadTaskTvShowEpisodeFile
-            .OrderBy(x => x.Id)
+        var after = await dbContext
+            .DownloadTaskTvShowEpisodeFile.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.DownloadStatus })
             .ToListAsync(CancellationToken);
         after.ShouldBe(before);
@@ -759,6 +771,7 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             .Verify(x => x.Send(It.IsAny<PauseDownloadTaskCommand>(), It.IsAny<CancellationToken>()), Times.Once());
         Mock.VerifyEventPublished(It.IsAny<CheckDownloadQueueEvent>, Times.Never());
     }
+
     [Test]
     public async Task ShouldNotQueueMovePausedSibling_WhenStartingPausedTvShow()
     {

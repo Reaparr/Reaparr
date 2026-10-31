@@ -12,21 +12,34 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         using var container = await BaseContainer.Create(
-            LogFactory.Create<CredentialUpdatesIntegrationTests>(), new Seed(17431), useTestAuthentication: false);
+            LogFactory.Create<CredentialUpdatesIntegrationTests>(),
+            new Seed(17431),
+            useTestAuthentication: false
+        );
         using var client = container.GetApiClient();
         client.DefaultRequestHeaders.Remove("Authorization");
-        var loginResponse = await LoginAsync(client,
-            DefaultUserAppCredentials.DefaultUsername, DefaultUserAppCredentials.DefaultPassword);
+        var loginResponse = await LoginAsync(
+            client,
+            DefaultUserAppCredentials.DefaultUsername,
+            DefaultUserAppCredentials.DefaultPassword
+        );
         loginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var cookie = loginResponse.Headers.GetValues("Set-Cookie")
+        var cookie = loginResponse
+            .Headers.GetValues("Set-Cookie")
             .Single(x => x.StartsWith(DefaultUserAppCredentials.DefaultCookieName + "=", StringComparison.Ordinal))
             .Split(';')[0];
         client.DefaultRequestHeaders.Add("Cookie", cookie);
         using var beforeContext = container.Resolve<AuthDbContext>();
-        var before = await beforeContext.Users.Select(x => new
-        {
-            x.Id, x.UserName, x.NormalizedUserName, x.PasswordHash, x.SecurityStamp,
-        }).SingleAsync();
+        var before = await beforeContext
+            .Users.Select(x => new
+            {
+                x.Id,
+                x.UserName,
+                x.NormalizedUserName,
+                x.PasswordHash,
+                x.SecurityStamp,
+            })
+            .SingleAsync();
         before.UserName.ShouldBe(DefaultUserAppCredentials.DefaultUsername);
         var request = new UpdateCredentialsEndpointRequest
         {
@@ -44,15 +57,24 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
         result.IsSuccess.ShouldBeFalse();
         result.Errors.Count.ShouldBe(3);
         using var afterContext = container.Resolve<AuthDbContext>();
-        var after = await afterContext.Users.Select(x => new
-        {
-            x.Id, x.UserName, x.NormalizedUserName, x.PasswordHash, x.SecurityStamp,
-        }).SingleAsync();
+        var after = await afterContext
+            .Users.Select(x => new
+            {
+                x.Id,
+                x.UserName,
+                x.NormalizedUserName,
+                x.PasswordHash,
+                x.SecurityStamp,
+            })
+            .SingleAsync();
         after.ShouldBe(before);
         using var oldLoginClient = container.GetApiClient();
         oldLoginClient.DefaultRequestHeaders.Remove("Authorization");
-        var oldLoginResponse = await LoginAsync(oldLoginClient,
-            DefaultUserAppCredentials.DefaultUsername, DefaultUserAppCredentials.DefaultPassword);
+        var oldLoginResponse = await LoginAsync(
+            oldLoginClient,
+            DefaultUserAppCredentials.DefaultUsername,
+            DefaultUserAppCredentials.DefaultPassword
+        );
         oldLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var oldLoginResult = await oldLoginResponse.Content.ReadFromJsonAsync<BaseResultDTO>();
         oldLoginResult.ShouldNotBeNull();
@@ -64,25 +86,40 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
     [Arguments(true, false)]
     [Arguments(false, true)]
     [Arguments(true, true)]
-    public async Task ShouldPersistRequestedCredentialsAndAuthenticate_WhenUpdateIsValid(bool changeUsername, bool changePassword)
+    public async Task ShouldPersistRequestedCredentialsAndAuthenticate_WhenUpdateIsValid(
+        bool changeUsername,
+        bool changePassword
+    )
     {
         // Arrange
         using var container = await BaseContainer.Create(
-            LogFactory.Create<CredentialUpdatesIntegrationTests>(), new Seed(17432), useTestAuthentication: false);
+            LogFactory.Create<CredentialUpdatesIntegrationTests>(),
+            new Seed(17432),
+            useTestAuthentication: false
+        );
         using var client = container.GetApiClient();
         client.DefaultRequestHeaders.Remove("Authorization");
-        var loginResponse = await LoginAsync(client,
-            DefaultUserAppCredentials.DefaultUsername, DefaultUserAppCredentials.DefaultPassword);
+        var loginResponse = await LoginAsync(
+            client,
+            DefaultUserAppCredentials.DefaultUsername,
+            DefaultUserAppCredentials.DefaultPassword
+        );
         loginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var cookie = loginResponse.Headers.GetValues("Set-Cookie")
+        var cookie = loginResponse
+            .Headers.GetValues("Set-Cookie")
             .Single(x => x.StartsWith(DefaultUserAppCredentials.DefaultCookieName + "=", StringComparison.Ordinal))
             .Split(';')[0];
         client.DefaultRequestHeaders.Add("Cookie", cookie);
         using var beforeContext = container.Resolve<AuthDbContext>();
-        var before = await beforeContext.Users.Select(x => new
-        {
-            x.Id, x.UserName, x.PasswordHash, x.SecurityStamp,
-        }).SingleAsync();
+        var before = await beforeContext
+            .Users.Select(x => new
+            {
+                x.Id,
+                x.UserName,
+                x.PasswordHash,
+                x.SecurityStamp,
+            })
+            .SingleAsync();
         before.UserName.ShouldBe(DefaultUserAppCredentials.DefaultUsername);
         var username = changeUsername ? "replacement-user" : DefaultUserAppCredentials.DefaultUsername;
         var password = changePassword ? "Replacement-password-43!" : DefaultUserAppCredentials.DefaultPassword;
@@ -127,8 +164,11 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
         updatedLoginResult.Errors.Count.ShouldBe(0);
         using var oldLoginClient = container.GetApiClient();
         oldLoginClient.DefaultRequestHeaders.Remove("Authorization");
-        var oldLoginResponse = await LoginAsync(oldLoginClient,
-            DefaultUserAppCredentials.DefaultUsername, DefaultUserAppCredentials.DefaultPassword);
+        var oldLoginResponse = await LoginAsync(
+            oldLoginClient,
+            DefaultUserAppCredentials.DefaultUsername,
+            DefaultUserAppCredentials.DefaultPassword
+        );
         oldLoginResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 

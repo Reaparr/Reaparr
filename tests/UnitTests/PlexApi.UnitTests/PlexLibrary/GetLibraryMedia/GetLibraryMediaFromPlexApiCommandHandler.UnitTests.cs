@@ -216,14 +216,7 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         {
             var source = sources.Single(x => x.RatingKey == 101);
             var album = library.PhotoAlbums.Single(x => x.PlexApiRatingKey == 101);
-            (
-                album.Title,
-                album.SearchTitle,
-                album.Summary,
-                album.HasThumb,
-                album.AddedAt,
-                album.UpdatedAt
-            ).ShouldBe(
+            (album.Title, album.SearchTitle, album.Summary, album.HasThumb, album.AddedAt, album.UpdatedAt).ShouldBe(
                 (
                     source.Title,
                     source.SearchTitle,

@@ -25,9 +25,7 @@ public static partial class DbSetExtensions
             )
         );
 
-    public static IQueryable<PlexTvShowEpisode> WhereHasPlexAccountAccess(
-        this IQueryable<PlexTvShowEpisode> query
-    ) =>
+    public static IQueryable<PlexTvShowEpisode> WhereHasPlexAccountAccess(this IQueryable<PlexTvShowEpisode> query) =>
         query.Where(x =>
             x.TvShow!.PlexLibrary!.PlexAccountLibraries.Any(libraryAccess =>
                 x.TvShow.PlexServer!.PlexAccountServers.Any(serverAccess =>

@@ -898,7 +898,8 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         using var speedLimits = new DownloadSpeedLimitProvider(new UserSettings());
         speedLimits.SetScheduledDownloadSpeedLimits(
-            new Dictionary<string, long> { [serverMachineIdentifier] = 1000L * 1024 });
+            new Dictionary<string, long> { [serverMachineIdentifier] = 1000L * 1024 }
+        );
 
         // IDownloadManagerSettings.DownloadSegments is read in the SUT constructor
         Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(1);
@@ -920,7 +921,8 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                     capturedConfig.ShouldNotBeNull();
                     capturedConfig.MaximumBytesPerSecond.ShouldBe(1000L * 1024);
                     speedLimits.SetScheduledDownloadSpeedLimits(
-                        new Dictionary<string, long> { [serverMachineIdentifier] = 2000L * 1024 });
+                        new Dictionary<string, long> { [serverMachineIdentifier] = 2000L * 1024 }
+                    );
                     capturedConfig.MaximumBytesPerSecond.ShouldBe(2000L * 1024);
 
                     await Task.Delay(50, cancellationToken); // allow observable subscriptions to run
@@ -1076,9 +1078,12 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                 }
             );
         if (shouldResume)
-            SetupVerifiedFile(fileMock, Mock.Mock<IFileInfoFactory>(),
-                snapshot.FileName + snapshot.DownloadingFileExtension, downloadTask.DataTotal / 2);
-
+            SetupVerifiedFile(
+                fileMock,
+                Mock.Mock<IFileInfoFactory>(),
+                snapshot.FileName + snapshot.DownloadingFileExtension,
+                downloadTask.DataTotal / 2
+            );
 
         SetupCommandExecutor();
 
@@ -2309,8 +2314,12 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var package = MakeDownloadPackage(downloadTask.DataTotal);
         package.SaveProgress = 60;
         package.Chunks = [new Chunk(0, downloadTask.DataTotal) { Position = downloadTask.DataTotal * 3 / 5 }];
-        SetupVerifiedFile(fileMock, fileInfoFactoryMock,
-            package.FileName + package.DownloadingFileExtension, downloadTask.DataTotal * 3 / 5);
+        SetupVerifiedFile(
+            fileMock,
+            fileInfoFactoryMock,
+            package.FileName + package.DownloadingFileExtension,
+            downloadTask.DataTotal * 3 / 5
+        );
         var resumedPackages = new List<DownloadPackage>();
         var attempt = 0;
 

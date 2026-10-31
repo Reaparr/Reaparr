@@ -20,11 +20,12 @@ public sealed class GetPhotoAlbumsQueryCommandValidator : AbstractValidator<GetP
         RuleFor(x => x.Direction).IsInEnum();
         RuleFor(x => x.Sort)
             .Must(sort =>
-                sort is SortType.Title
-                or SortType.AddedAt
-                or SortType.UpdatedAt
-                or SortType.Duration
-                or SortType.MediaSize
+                sort
+                    is SortType.Title
+                        or SortType.AddedAt
+                        or SortType.UpdatedAt
+                        or SortType.Duration
+                        or SortType.MediaSize
             )
             .WithMessage("Unsupported photo album sort.");
         RuleFor(x => x)

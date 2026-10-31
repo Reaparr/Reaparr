@@ -9,8 +9,5 @@ namespace Reaparr.Application.Contracts;
 /// <param name="Items">The overview page items. Modified in-place.</param>
 /// <param name="MediaType">Movie, TvShow or MusicArtist. Music may include artist, album and track items.</param>
 /// <param name="PlexLibraryId">The explicit Plex library being browsed. Null derives library scopes from <paramref name="Items"/>.</param>
-public record ApplyComparisonStateCommand(
-    List<PlexMediaSlimDTO> Items,
-    PlexMediaType MediaType,
-    int? PlexLibraryId
-) : ICommand<Result>;
+public record ApplyComparisonStateCommand(List<PlexMediaSlimDTO> Items, PlexMediaType MediaType, int? PlexLibraryId)
+    : ICommand<Result>;

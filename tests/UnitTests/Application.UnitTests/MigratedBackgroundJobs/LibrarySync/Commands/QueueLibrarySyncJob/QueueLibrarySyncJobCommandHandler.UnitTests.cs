@@ -1217,6 +1217,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
                 Times.Once()
             );
     }
+
     [Test]
     public async Task ShouldKeepDurableQueueAdmission_WhenCheckerFails()
     {
@@ -1232,9 +1233,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
 
         var library = IDbContext.PlexLibraries.Single();
         Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Fail("checker failed"))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
@@ -1290,9 +1289,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ThrowsAsync(new InvalidOperationException("notification failed"))
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x =>
-                x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 

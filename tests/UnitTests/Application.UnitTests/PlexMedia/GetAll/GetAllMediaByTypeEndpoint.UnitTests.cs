@@ -14,7 +14,12 @@ public class GetAllMediaByTypeEndpointUnitTests
     [Arguments(PlexMediaType.Movie, "sortTitle:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
     [Arguments(PlexMediaType.Movie, "99:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
     [Arguments(PlexMediaType.PhotoAlbum, "comparisonState:asc", null, nameof(GetAllMediaByTypeRequest.Sort))]
-    [Arguments(PlexMediaType.OtherVideos, "title:asc,comparisonState:desc", null, nameof(GetAllMediaByTypeRequest.Sort))]
+    [Arguments(
+        PlexMediaType.OtherVideos,
+        "title:asc,comparisonState:desc",
+        null,
+        nameof(GetAllMediaByTypeRequest.Sort)
+    )]
     public async Task ShouldRejectInvalidRootRequestsWithoutDispatch(
         PlexMediaType mediaType,
         string? sort,
@@ -23,15 +28,19 @@ public class GetAllMediaByTypeEndpointUnitTests
     )
     {
         // Arrange
-        var request = new GetAllMediaByTypeRequest { MediaType = mediaType, Sort = sort, QualityId = qualityId };
+        var request = new GetAllMediaByTypeRequest
+        {
+            MediaType = mediaType,
+            Sort = sort,
+            QualityId = qualityId,
+        };
 
         // Act
         var result = await TestEndpointHandleAsync(request);
 
         // Assert
         result.IsValid.ShouldBeFalse();
-        result.ValidationResult.ShouldNotBeNull().Errors.Select(x => x.PropertyName)
-            .ShouldBe([expectedProperty]);
+        result.ValidationResult.ShouldNotBeNull().Errors.Select(x => x.PropertyName).ShouldBe([expectedProperty]);
         result.Response.ShouldBeNull();
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<GetMediaOverviewCommand>(), It.IsAny<CancellationToken>()), Times.Never());
@@ -127,7 +136,6 @@ public class GetAllMediaByTypeEndpointUnitTests
         result.StatusCode.ShouldBe(200);
         Mock.Mock<ICommandExecutor>().Verify();
     }
-
 
     [Test]
     [Arguments(1, null, null, null, nameof(GetAllMediaByTypeRequest.CountryId))]

@@ -21,13 +21,13 @@ public class PlexMediaDataMapperStreamsUnitTests : BaseUnitTest
         var clip = part.ToPlexOtherVideoDataStreams();
 
         // Assert
-        movie.Select(x => (x.PlexApiStreamId, x.StreamType, x.SidecarFormat)).ShouldBe(
-            [
+        movie
+            .Select(x => (x.PlexApiStreamId, x.StreamType, x.SidecarFormat))
+            .ShouldBe([
                 (201, StreamType.Audio, null),
                 (202, StreamType.Subtitle, "srt"),
                 (203, StreamType.Lyrics, "lrc"),
-            ]
-        );
+            ]);
         episode.Select(x => x.PlexApiStreamId).ShouldBe([201, 202, 203]);
         track.Select(x => x.PlexApiStreamId).ShouldBe([201, 202, 203]);
         clip.Select(x => x.PlexApiStreamId).ShouldBe([201, 202, 203]);
@@ -57,9 +57,9 @@ public class PlexMediaDataMapperStreamsUnitTests : BaseUnitTest
         // Assert
         movie.MediaDataList.Count.ShouldBe(expectedPartCount);
         movie.MediaDataList.Select(x => x.PlexApiPartId).ShouldBe(expectedPartIds);
-        movie.MediaDataList.Select(x => x.Streams.Select(stream => stream.StreamType).ToList()).ShouldAllBe(
-            streams => streams.Contains(StreamType.Audio)
-        );
+        movie
+            .MediaDataList.Select(x => x.Streams.Select(stream => stream.StreamType).ToList())
+            .ShouldAllBe(streams => streams.Contains(StreamType.Audio));
     }
 
     [Test]
@@ -97,16 +97,9 @@ public class PlexMediaDataMapperStreamsUnitTests : BaseUnitTest
             .ToPlexMovieDataStreams();
 
         // Assert
-        streams.Select(x => (x.PlexApiStreamId, x.SidecarFormat)).ShouldBe(
-            [
-                (201, "srt"),
-                (202, "srt"),
-                (203, "lrc"),
-                (204, null),
-                (205, "vtt"),
-                (206, null),
-            ]
-        );
+        streams
+            .Select(x => (x.PlexApiStreamId, x.SidecarFormat))
+            .ShouldBe([(201, "srt"), (202, "srt"), (203, "lrc"), (204, null), (205, "vtt"), (206, null)]);
     }
 
     [Test]
@@ -126,21 +119,22 @@ public class PlexMediaDataMapperStreamsUnitTests : BaseUnitTest
 
         // Assert
         streams.Select(x => x.PlexApiStreamId).ShouldBe([201, 202, 203, 204, 205]);
-        streams.Select(x => x.StreamType).ShouldBe(
-            [StreamType.Video, StreamType.Unknown, StreamType.Audio, StreamType.Subtitle, StreamType.Lyrics]
-        );
+        streams
+            .Select(x => x.StreamType)
+            .ShouldBe([StreamType.Video, StreamType.Unknown, StreamType.Audio, StreamType.Subtitle, StreamType.Lyrics]);
     }
 
-    private static LibraryMediaItemPartDTO CreatePart(params LibraryMediaItemStreamDTO[] streams) => new()
-    {
-        Id = 101,
-        Key = "/library/parts/101/file.mkv",
-        Duration = 1,
-        File = "/media/file.mkv",
-        Size = 1,
-        Container = "mkv",
-        Stream = streams.ToList(),
-    };
+    private static LibraryMediaItemPartDTO CreatePart(params LibraryMediaItemStreamDTO[] streams) =>
+        new()
+        {
+            Id = 101,
+            Key = "/library/parts/101/file.mkv",
+            Duration = 1,
+            File = "/media/file.mkv",
+            Size = 1,
+            Container = "mkv",
+            Stream = streams.ToList(),
+        };
 
     private static LibraryMediaItemStreamDTO CreateStream(
         int id,
@@ -148,13 +142,14 @@ public class PlexMediaDataMapperStreamsUnitTests : BaseUnitTest
         StreamType streamType = StreamType.Subtitle,
         string? format = null,
         string codec = "srt"
-    ) => FakeData.GetLibraryMediaItemStreamDTO(new Seed(id), streamType).Generate() with
-    {
-        Id = id,
-        Key = key,
-        Format = format,
-        Codec = codec,
-        LanguageCode = "ENG",
-        LanguageTag = "ENG",
-    };
+    ) =>
+        FakeData.GetLibraryMediaItemStreamDTO(new Seed(id), streamType).Generate() with
+        {
+            Id = id,
+            Key = key,
+            Format = format,
+            Codec = codec,
+            LanguageCode = "ENG",
+            LanguageTag = "ENG",
+        };
 }

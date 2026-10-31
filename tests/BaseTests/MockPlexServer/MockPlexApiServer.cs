@@ -241,15 +241,25 @@ public class MockPlexApiServer : IMockPlexApiServer
         // Setup libraries responses
         foreach (var server in _servers)
         {
-            foreach (var library in _libraries[server.ClientIdentifier].Where(x => x.Type.ToPlexMediaType() == PlexMediaType.PhotoAlbum))
+            foreach (
+                var library in _libraries[server.ClientIdentifier]
+                    .Where(x => x.Type.ToPlexMediaType() == PlexMediaType.PhotoAlbum)
+            )
                 library.Location = [new LibrarySectionLocation { Id = 1, Path = "/fixture/photos" }];
             foreach (var connection in _connections[server.ClientIdentifier])
             {
                 var uriBuilder = new UriBuilder(connection.Uri) { Path = "/library/sections/all" };
                 handler
-                    .SetupRequest(HttpMethod.Get, request =>
-                        request.RequestUri!.GetLeftPart(UriPartial.Path) == uriBuilder.Uri.GetLeftPart(UriPartial.Path)
-                        || request.RequestUri.GetLeftPart(UriPartial.Path) == new Uri(new UriBuilder(connection.Uri).Uri, "/library/sections").GetLeftPart(UriPartial.Path))
+                    .SetupRequest(
+                        HttpMethod.Get,
+                        request =>
+                            request.RequestUri!.GetLeftPart(UriPartial.Path)
+                                == uriBuilder.Uri.GetLeftPart(UriPartial.Path)
+                            || request.RequestUri.GetLeftPart(UriPartial.Path)
+                                == new Uri(new UriBuilder(connection.Uri).Uri, "/library/sections").GetLeftPart(
+                                    UriPartial.Path
+                                )
+                    )
                     .ReturnsAsync(
                         (HttpRequestMessage req, CancellationToken _) =>
                         {
@@ -465,17 +475,24 @@ public class MockPlexApiServer : IMockPlexApiServer
                                     && int.TryParse(containerSizeValue, out var size)
                                 )
                                     containerSize = size;
-                                if (req.Headers.TryGetValues("X-Plex-Container-Start", out var starts)
-                                    && int.TryParse(starts.Single(), out var headerStart))
+                                if (
+                                    req.Headers.TryGetValues("X-Plex-Container-Start", out var starts)
+                                    && int.TryParse(starts.Single(), out var headerStart)
+                                )
                                     containerStart = headerStart;
-                                if (req.Headers.TryGetValues("X-Plex-Container-Size", out var sizes)
-                                    && int.TryParse(sizes.Single(), out var headerSize))
+                                if (
+                                    req.Headers.TryGetValues("X-Plex-Container-Size", out var sizes)
+                                    && int.TryParse(sizes.Single(), out var headerSize)
+                                )
                                     containerSize = headerSize;
 
                                 // Photos use Plex's numeric type 13 for images and 12 for clips.
                                 var libraryType = PlexMediaType.Unknown;
                                 queryDict.TryGetValue("type", out var type);
-                                if (library.Type.ToPlexMediaType() == PlexMediaType.PhotoAlbum && (type == "12" || type == "13"))
+                                if (
+                                    library.Type.ToPlexMediaType() == PlexMediaType.PhotoAlbum
+                                    && (type == "12" || type == "13")
+                                )
                                     libraryType = PlexMediaType.PhotoImage;
                                 else if (type is not null)
                                     libraryType = type.ToPlexMediaTypeFromTypeInt();
@@ -543,7 +560,8 @@ public class MockPlexApiServer : IMockPlexApiServer
                     handler
                         .SetupRequest(
                             HttpMethod.Get,
-                            uri => uri.RequestUri!.AbsolutePath.StartsWith("/library/metadata/")
+                            uri =>
+                                uri.RequestUri!.AbsolutePath.StartsWith("/library/metadata/")
                                 && !uri.RequestUri.AbsolutePath.EndsWith("/children", StringComparison.Ordinal)
                         )
                         .ReturnsAsync(
@@ -579,49 +597,75 @@ public class MockPlexApiServer : IMockPlexApiServer
 
                     if (library.Type.ToPlexMediaType() == PlexMediaType.PhotoAlbum)
                     {
-                        handler.SetupRequest(HttpMethod.Get, request =>
-                                request.RequestUri!.GetLeftPart(UriPartial.Authority)
-                                    == new UriBuilder(connection.Uri).Uri.GetLeftPart(UriPartial.Authority)
-                                && (
-                                    IsPhotoFolderRequest(request, library.Key)
-                                    || _photoAlbums[library.Uuid].Any(album =>
-                                        request.RequestUri.AbsolutePath == $"/library/metadata/{album.RatingKey}/children")
-                                ))
-                            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) =>
-                            {
-                                var requestUri = request.RequestUri!;
-                                var query = request.ParseQueryToDictionary();
-                                List<Metadata> metadata;
-                                if (requestUri.AbsolutePath.EndsWith("/children", StringComparison.Ordinal))
+                        handler
+                            .SetupRequest(
+                                HttpMethod.Get,
+                                request =>
+                                    request.RequestUri!.GetLeftPart(UriPartial.Authority)
+                                        == new UriBuilder(connection.Uri).Uri.GetLeftPart(UriPartial.Authority)
+                                    && (
+                                        IsPhotoFolderRequest(request, library.Key)
+                                        || _photoAlbums[library.Uuid]
+                                            .Any(album =>
+                                                request.RequestUri.AbsolutePath
+                                                == $"/library/metadata/{album.RatingKey}/children"
+                                            )
+                                    )
+                            )
+                            .ReturnsAsync(
+                                (HttpRequestMessage request, CancellationToken _) =>
                                 {
-                                    var albumKey = requestUri.AbsolutePath["/library/metadata/".Length..^"/children".Length];
-                                    metadata = _photoAlbumMembers[library.Uuid].GetValueOrDefault(albumKey) ?? [];
-                                }
-                                else
-                                {
-                                    var parent = query.TryGetValue("parent", out var parentKey)
-                                        ? parentKey
-                                        : "root";
-                                    metadata = _photoFolderMembers[library.Uuid].GetValueOrDefault(parent)
-                                        ?? _photoFolderMembers[library.Uuid].GetValueOrDefault("root")
-                                        ?? [];
-                                }
-                                var offset = request.Headers.TryGetValues("X-Plex-Container-Start", out var offsets)
-                                    ? int.Parse(offsets.Single(), System.Globalization.CultureInfo.InvariantCulture)
-                                    : query.TryGetValue("X-Plex-Container-Start", out var start)
-                                        ? int.Parse(start, System.Globalization.CultureInfo.InvariantCulture)
+                                    var requestUri = request.RequestUri!;
+                                    var query = request.ParseQueryToDictionary();
+                                    List<Metadata> metadata;
+                                    if (requestUri.AbsolutePath.EndsWith("/children", StringComparison.Ordinal))
+                                    {
+                                        var albumKey = requestUri.AbsolutePath[
+                                            "/library/metadata/".Length..^"/children".Length
+                                        ];
+                                        metadata = _photoAlbumMembers[library.Uuid].GetValueOrDefault(albumKey) ?? [];
+                                    }
+                                    else
+                                    {
+                                        var parent = query.TryGetValue("parent", out var parentKey)
+                                            ? parentKey
+                                            : "root";
+                                        metadata =
+                                            _photoFolderMembers[library.Uuid].GetValueOrDefault(parent)
+                                            ?? _photoFolderMembers[library.Uuid].GetValueOrDefault("root")
+                                            ?? [];
+                                    }
+                                    var offset =
+                                        request.Headers.TryGetValues("X-Plex-Container-Start", out var offsets)
+                                            ? int.Parse(
+                                                offsets.Single(),
+                                                System.Globalization.CultureInfo.InvariantCulture
+                                            )
+                                        : query.TryGetValue("X-Plex-Container-Start", out var start)
+                                            ? int.Parse(start, System.Globalization.CultureInfo.InvariantCulture)
                                         : 0;
-                                var size = request.Headers.TryGetValues("X-Plex-Container-Size", out var sizes)
-                                    ? int.Parse(sizes.Single(), System.Globalization.CultureInfo.InvariantCulture)
-                                    : query.TryGetValue("X-Plex-Container-Size", out var pageSize)
-                                        ? int.Parse(pageSize, System.Globalization.CultureInfo.InvariantCulture)
+                                    var size =
+                                        request.Headers.TryGetValues("X-Plex-Container-Size", out var sizes)
+                                            ? int.Parse(
+                                                sizes.Single(),
+                                                System.Globalization.CultureInfo.InvariantCulture
+                                            )
+                                        : query.TryGetValue("X-Plex-Container-Size", out var pageSize)
+                                            ? int.Parse(pageSize, System.Globalization.CultureInfo.InvariantCulture)
                                         : 50;
-                                var page = metadata.Skip(offset).Take(size).ToList();
-                                return new
-                                {
-                                    MediaContainer = new { offset, size = page.Count, totalSize = metadata.Count, Metadata = page },
-                                }.ToJsonHttpResponse(request, HttpStatusCode.OK);
-                            });
+                                    var page = metadata.Skip(offset).Take(size).ToList();
+                                    return new
+                                    {
+                                        MediaContainer = new
+                                        {
+                                            offset,
+                                            size = page.Count,
+                                            totalSize = metadata.Count,
+                                            Metadata = page,
+                                        },
+                                    }.ToJsonHttpResponse(request, HttpStatusCode.OK);
+                                }
+                            );
                     }
                 }
             }

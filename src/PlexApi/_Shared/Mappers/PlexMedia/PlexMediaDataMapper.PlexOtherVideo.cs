@@ -75,5 +75,4 @@ public static partial class PlexMediaDataMapper
 
         return video;
     }
-
 }

@@ -123,7 +123,9 @@ public class RestartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<Rest
         after.Percentage.ShouldBe(sourceMissing ? 50 : 0);
         after.HashId.ShouldBe("retained-hash");
         after.DownloadClientType.ShouldBe(PlexDownloadClientType.Direct);
-        ((DownloadTaskMusicTrackFile)after).AudioQuality.ShouldBe(sourceMissing ? AudioQuality.None : source.AudioQuality);
+        ((DownloadTaskMusicTrackFile)after).AudioQuality.ShouldBe(
+            sourceMissing ? AudioQuality.None : source.AudioQuality
+        );
         after.DirectoryMeta.DownloadRootPath.ShouldBe(before.DirectoryMeta.DownloadRootPath);
         after.DirectoryMeta.DestinationRootPath.ShouldBe(before.DirectoryMeta.DestinationRootPath);
         after.DirectoryMeta.KeepCompletedInDownloadFolder.ShouldBeTrue();

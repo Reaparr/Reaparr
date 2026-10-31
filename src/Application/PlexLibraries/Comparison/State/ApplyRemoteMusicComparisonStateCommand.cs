@@ -136,7 +136,10 @@ public class ApplyRemoteMusicComparisonStateCommandHandler
                     break;
 
                 case PlexMediaType.MusicAlbum:
-                    if (!albumHitIdSet.Contains(item.Id) || !albumTrackCountLookup.TryGetValue(item.Id, out var trackCount))
+                    if (
+                        !albumHitIdSet.Contains(item.Id)
+                        || !albumTrackCountLookup.TryGetValue(item.Id, out var trackCount)
+                    )
                     {
                         item.SetComparisonState(PlexMediaComparisonState.Missing);
                         break;
@@ -150,11 +153,9 @@ public class ApplyRemoteMusicComparisonStateCommandHandler
 
                 case PlexMediaType.MusicTrack:
                     item.SetComparisonState(
-                        !trackHitIdSet.Contains(item.Id)
-                            ? PlexMediaComparisonState.Missing
-                            : higherTrackIdSet.Contains(item.Id)
-                                ? PlexMediaComparisonState.HigherQuality
-                                : PlexMediaComparisonState.Owned
+                        !trackHitIdSet.Contains(item.Id) ? PlexMediaComparisonState.Missing
+                        : higherTrackIdSet.Contains(item.Id) ? PlexMediaComparisonState.HigherQuality
+                        : PlexMediaComparisonState.Owned
                     );
                     break;
 

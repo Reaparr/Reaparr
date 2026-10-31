@@ -70,15 +70,17 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
         var received = new ConcurrentQueue<(long Sequence, DownloadPatchDTO[] Patches)>();
         var patchReceived = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock.Mock<IDownloadHubService>()
-            .Setup(x => x.SendDownloadPatchAsync(
-                library.PlexServerId,
-                It.IsAny<long>(),
-                It.Is<IReadOnlyCollection<DownloadPatchDTO>>(p =>
-                    p.Count == expectedIds.Length && p.Select(n => n.Id).Order().SequenceEqual(expectedIds)
-                ),
-                null,
-                It.IsAny<CancellationToken>()
-            ))
+            .Setup(x =>
+                x.SendDownloadPatchAsync(
+                    library.PlexServerId,
+                    It.IsAny<long>(),
+                    It.Is<IReadOnlyCollection<DownloadPatchDTO>>(p =>
+                        p.Count == expectedIds.Length && p.Select(n => n.Id).Order().SequenceEqual(expectedIds)
+                    ),
+                    null,
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
                 (_, sequence, patches, _, _) =>
                 {
@@ -128,22 +130,25 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
         persisted.DataTotal.ShouldBe(1_000);
         persisted.FileDataTransferred.ShouldBe(status == DownloadStatus.MovePaused ? 250 : 0);
         persisted.DownloadSpeed.ShouldBe(progressOnly && status != DownloadStatus.Paused ? 100 : 0);
-        (await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.Id == sibling.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Queued);
-        (await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.Id == directRootFile.Id, CancellationToken))
-            .DownloadStatus.ShouldBe(DownloadStatus.Queued);
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken)).DownloadStatus.ShouldBe(
-            status
-        );
-        (await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken)).DownloadStatus.ShouldBe(
-            status
-        );
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.Id == sibling.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(x => x.Id == directRootFile.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == nested.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(status);
+        (
+            await dbContext.DownloadTaskPhotoFolders.SingleAsync(x => x.Id == root.Id, CancellationToken)
+        ).DownloadStatus.ShouldBe(status);
 
         var dispatched = received.ToArray();
         dispatched.ShouldNotBeEmpty();
-        dispatched.Select(x => x.Sequence).Order().ShouldBe(
-            Enumerable.Range(1, dispatched.Length).Select(x => (long)x)
-        );
+        dispatched
+            .Select(x => x.Sequence)
+            .Order()
+            .ShouldBe(Enumerable.Range(1, dispatched.Length).Select(x => (long)x));
         foreach (var (_, patches) in dispatched)
         {
             patches.Select(x => x.Id).Order().ShouldBe(expectedIds);
@@ -153,7 +158,11 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
             leaf.Status.ShouldBe(status);
             leaf.DataReceived.ShouldBe(expectedReceived);
             leaf.DataTotal.ShouldBe(1_000);
-            leaf.Percentage.ShouldBe(status == DownloadStatus.MovePaused ? 25 : progressOnly ? 50 : 0);
+            leaf.Percentage.ShouldBe(
+                status == DownloadStatus.MovePaused ? 25
+                : progressOnly ? 50
+                : 0
+            );
             var nestedPatch = patches.Single(x => x.Id == nested.Id);
             nestedPatch.ParentId.ShouldBe(root.Id);
             nestedPatch.DataTotal.ShouldBe(2_000);
@@ -175,9 +184,7 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
                 : 0m
             );
         }
-        var logs = await dbContext
-            .DownloadTaskPhotoImageFileLogs.OrderBy(x => x.Id)
-            .ToListAsync(CancellationToken);
+        var logs = await dbContext.DownloadTaskPhotoImageFileLogs.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var targetLogs = logs.Where(x => x.DownloadTaskFileId == target.Id).ToList();
         if (!progressOnly || status == DownloadStatus.Paused)
             targetLogs.ShouldContain(x => x.Status == status);
@@ -187,26 +194,28 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
         Mock.Mock<IDownloadHubService>().Verify();
         Mock.Mock<IDownloadHubService>()
             .Verify(
-                x => x.SendDownloadPatchAsync(
-                    library.PlexServerId,
-                    It.IsAny<long>(),
-                    It.Is<IReadOnlyCollection<DownloadPatchDTO>>(p =>
-                        p.Select(n => n.Id).Order().SequenceEqual(expectedIds)
+                x =>
+                    x.SendDownloadPatchAsync(
+                        library.PlexServerId,
+                        It.IsAny<long>(),
+                        It.Is<IReadOnlyCollection<DownloadPatchDTO>>(p =>
+                            p.Select(n => n.Id).Order().SequenceEqual(expectedIds)
+                        ),
+                        null,
+                        It.IsAny<CancellationToken>()
                     ),
-                    null,
-                    It.IsAny<CancellationToken>()
-                ),
                 Times.Exactly(dispatched.Length)
             );
         Mock.Mock<IDownloadHubService>()
             .Verify(
-                x => x.SendDownloadPatchAsync(
-                    It.Is<int>(id => id != library.PlexServerId),
-                    It.IsAny<long>(),
-                    It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
-                    It.IsAny<IReadOnlyCollection<Guid>?>(),
-                    It.IsAny<CancellationToken>()
-                ),
+                x =>
+                    x.SendDownloadPatchAsync(
+                        It.Is<int>(id => id != library.PlexServerId),
+                        It.IsAny<long>(),
+                        It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
+                        It.IsAny<IReadOnlyCollection<Guid>?>(),
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Never()
             );
     }
@@ -229,15 +238,17 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
             TaskCreationOptions.RunContinuationsAsynchronously
         );
         Mock.Mock<IDownloadHubService>()
-            .Setup(x => x.SendDownloadPatchAsync(
-                library.PlexServerId,
-                It.IsAny<long>(),
-                It.Is<IReadOnlyCollection<DownloadPatchDTO>>(p =>
-                    p.Count == 2 && p.Select(n => n.Id).Order().SequenceEqual(new[] { folder.Id, file.Id }.Order())
-                ),
-                null,
-                It.IsAny<CancellationToken>()
-            ))
+            .Setup(x =>
+                x.SendDownloadPatchAsync(
+                    library.PlexServerId,
+                    It.IsAny<long>(),
+                    It.Is<IReadOnlyCollection<DownloadPatchDTO>>(p =>
+                        p.Count == 2 && p.Select(n => n.Id).Order().SequenceEqual(new[] { folder.Id, file.Id }.Order())
+                    ),
+                    null,
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
                 (_, _, patches, _, _) => patchReceived.TrySetResult(patches)
             )
@@ -298,13 +309,15 @@ public class DownloadTaskUpdateDispatcherPhotoUnitTests : BaseUnitTest<DownloadT
         IReadOnlyCollection<Guid>? deletedIds = null;
         IReadOnlyCollection<DownloadPatchDTO>? upserts = null;
         Mock.Mock<IDownloadHubService>()
-            .Setup(x => x.SendDownloadPatchAsync(
-                key.PlexServerId,
-                It.IsAny<long>(),
-                It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
-                It.IsAny<IReadOnlyCollection<Guid>?>(),
-                CancellationToken
-            ))
+            .Setup(x =>
+                x.SendDownloadPatchAsync(
+                    key.PlexServerId,
+                    It.IsAny<long>(),
+                    It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
+                    It.IsAny<IReadOnlyCollection<Guid>?>(),
+                    CancellationToken
+                )
+            )
             .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
                 (_, _, patches, deleted, _) =>
                 {

@@ -111,21 +111,9 @@ public class LibrarySyncProgressStoreUnitTests : BaseUnitTest<LibrarySyncProgres
         sentProgress
             .Select(dto => dto.Items.Select(item => (item.MediaType, item.Total)).ToArray())
             .ShouldBe([
-                [
-                    (PlexMediaType.TvShow, 208),
-                    (PlexMediaType.Season, 1088),
-                    (PlexMediaType.Episode, 17185),
-                ],
-                [
-                    (PlexMediaType.TvShow, 208),
-                    (PlexMediaType.Season, 1088),
-                    (PlexMediaType.Episode, 17185),
-                ],
-                [
-                    (PlexMediaType.TvShow, 208),
-                    (PlexMediaType.Season, 1088),
-                    (PlexMediaType.Episode, 17185),
-                ],
+                [(PlexMediaType.TvShow, 208), (PlexMediaType.Season, 1088), (PlexMediaType.Episode, 17185)],
+                [(PlexMediaType.TvShow, 208), (PlexMediaType.Season, 1088), (PlexMediaType.Episode, 17185)],
+                [(PlexMediaType.TvShow, 208), (PlexMediaType.Season, 1088), (PlexMediaType.Episode, 17185)],
             ]);
         Mock.Mock<IProgressHubService>().Verify();
     }

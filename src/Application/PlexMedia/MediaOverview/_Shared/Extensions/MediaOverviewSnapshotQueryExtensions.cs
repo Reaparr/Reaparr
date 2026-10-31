@@ -2,10 +2,7 @@ namespace Reaparr.Application;
 
 internal static class MediaOverviewSnapshotQueryExtensions
 {
-    public static IQueryable<TSnapshot> ApplyRankOrder<TSnapshot>(
-        this IQueryable<TSnapshot> snapshots,
-        Sort sort
-    )
+    public static IQueryable<TSnapshot> ApplyRankOrder<TSnapshot>(this IQueryable<TSnapshot> snapshots, Sort sort)
         where TSnapshot : BaseMediaOverviewSnapshot
     {
         var rankPropertyName = ResolveRankProperty(sort.Field);

@@ -15,51 +15,62 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
     public async Task ShouldReturnUniqueTotalsInOneAggregate_WhenPagingAlbumMembers(int assetCount, int page)
     {
         // Arrange
-        await SetupDatabase(71021, config =>
-        {
-            config.PlexPhotoLibraryCount = 2;
-            config.PhotoAlbumCount = 2;
-            config.PhotoCount = 3;
-        });
+        await SetupDatabase(
+            71021,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 2;
+                config.PhotoAlbumCount = 2;
+                config.PhotoCount = 3;
+            }
+        );
         var dbContext = IDbContext;
         var album = await dbContext.PlexPhotoAlbums.OrderBy(x => x.Id).FirstAsync(CancellationToken);
-        var assets = await dbContext.PlexPhotoMediaData
-            .Where(x => x.AlbumMemberships.Any(membership => membership.PlexPhotoAlbumId == album.Id))
+        var assets = await dbContext
+            .PlexPhotoMediaData.Where(x =>
+                x.AlbumMemberships.Any(membership => membership.PlexPhotoAlbumId == album.Id)
+            )
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
         assets.Count.ShouldBe(3);
         for (var index = 0; index < assets.Count; index++)
         {
-            await dbContext.PlexPhotoMediaData.Where(x => x.Id == assets[index].Id).ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.Size, index * 100L).SetProperty(x => x.Title, "Same title"),
-                CancellationToken
-            );
+            await dbContext
+                .PlexPhotoMediaData.Where(x => x.Id == assets[index].Id)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(x => x.Size, index * 100L).SetProperty(x => x.Title, "Same title"),
+                    CancellationToken
+                );
         }
         var expectedAssets = assets.Take(assetCount).ToList();
         var excludedIds = assets.Skip(assetCount).Select(x => x.Id).ToList();
-        await dbContext.PlexPhotoAlbumMemberships
-            .Where(x => x.PlexPhotoAlbumId == album.Id && excludedIds.Contains(x.PlexPhotoMediaDataId))
+        await dbContext
+            .PlexPhotoAlbumMemberships.Where(x =>
+                x.PlexPhotoAlbumId == album.Id && excludedIds.Contains(x.PlexPhotoMediaDataId)
+            )
             .ExecuteDeleteAsync(CancellationToken);
-        var otherAlbumId = await dbContext.PlexPhotoAlbums
-            .Where(x => x.PlexLibraryId == album.PlexLibraryId && x.Id != album.Id)
+        var otherAlbumId = await dbContext
+            .PlexPhotoAlbums.Where(x => x.PlexLibraryId == album.PlexLibraryId && x.Id != album.Id)
             .Select(x => x.Id)
             .FirstAsync(CancellationToken);
-        dbContext.PlexPhotoAlbumMemberships.Add(new PlexPhotoAlbumMembership
-        {
-            PlexPhotoAlbumId = otherAlbumId,
-            PlexPhotoMediaDataId = assets[0].Id,
-        });
+        dbContext.PlexPhotoAlbumMemberships.Add(
+            new PlexPhotoAlbumMembership { PlexPhotoAlbumId = otherAlbumId, PlexPhotoMediaDataId = assets[0].Id }
+        );
         await dbContext.SaveChangesAsync(CancellationToken);
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
         using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
-        using var listeners = DiagnosticListener.AllListeners
-            .Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
-            .Subscribe(listener => commandSubscriptions.Add(listener
-                .Select(entry => entry.Value!)
-                .OfType<CommandExecutedEventData>()
-                .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
-                .Subscribe(command => commands.Enqueue(command.Command.CommandText))));
+        using var listeners = DiagnosticListener
+            .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
+            .Subscribe(listener =>
+                commandSubscriptions.Add(
+                    listener
+                        .Select(entry => entry.Value!)
+                        .OfType<CommandExecutedEventData>()
+                        .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
+                        .Subscribe(command => commands.Enqueue(command.Command.CommandText))
+                )
+            );
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
@@ -73,13 +84,10 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
         result.Value.PageSize.ShouldBe(2);
         result.Value.TotalCount.ShouldBe(assetCount);
         result.Value.TotalBytes.ShouldBe(Enumerable.Range(0, assetCount).Sum(index => index * 100L));
-        result.Value.Items.Select(x => x.Id).ShouldBe(
-            expectedAssets.Skip((page - 1) * 2).Take(2).Select(x => x.Id)
-        );
+        result.Value.Items.Select(x => x.Id).ShouldBe(expectedAssets.Skip((page - 1) * 2).Take(2).Select(x => x.Id));
         result.Value.Items.ShouldAllBe(x => x.PlexLibraryId == album.PlexLibraryId);
         var aggregateCommands = commands
-            .Where(sql => sql.Contains("\"PlexPhotoMediaData\"")
-                && (sql.Contains("COUNT(") || sql.Contains("SUM(")))
+            .Where(sql => sql.Contains("\"PlexPhotoMediaData\"") && (sql.Contains("COUNT(") || sql.Contains("SUM(")))
             .ToList();
         aggregateCommands.Count.ShouldBe(1);
         aggregateCommands[0].ShouldContain("COUNT(");
@@ -116,8 +124,8 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
             .OrderBy(x => x)
             .ToListAsync(CancellationToken);
         expectedIds.Count.ShouldBeGreaterThan(0);
-        await dbContext.PlexPhotoMediaData
-            .Where(x => expectedIds.Contains(x.Id))
+        await dbContext
+            .PlexPhotoMediaData.Where(x => expectedIds.Contains(x.Id))
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.Title, "Album member"), CancellationToken);
         var inactiveAssetId = expectedIds[0];
         var inactiveRoot = new PlexPhotoFolder

@@ -28,13 +28,19 @@ public class RecoverInterruptedDownloadsCommandMovieUnitTests : BaseUnitTest<Rec
         {
             var fileId = files[index].Id;
             var status = statuses[index];
-            await IDbContext.DownloadTaskMovieFile
-                .Where(x => x.Id == fileId)
+            await IDbContext
+                .DownloadTaskMovieFile.Where(x => x.Id == fileId)
                 .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, status), CancellationToken);
         }
 
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Setup(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), It.IsAny<DownloadStatus>(), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.OnStatusChangedAsync(
+                    It.IsAny<DownloadTaskKey>(),
+                    It.IsAny<DownloadStatus>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .Returns(Task.CompletedTask);
 
         // Act
@@ -44,17 +50,40 @@ public class RecoverInterruptedDownloadsCommandMovieUnitTests : BaseUnitTest<Rec
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Verify(x => x.OnStatusChangedAsync(files[0].ToKey(), DownloadStatus.AutoPaused, CancellationToken), Times.Once());
+            .Verify(
+                x => x.OnStatusChangedAsync(files[0].ToKey(), DownloadStatus.AutoPaused, CancellationToken),
+                Times.Once()
+            );
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Verify(x => x.OnStatusChangedAsync(files[1].ToKey(), DownloadStatus.AutoMovePaused, CancellationToken), Times.Once());
+            .Verify(
+                x => x.OnStatusChangedAsync(files[1].ToKey(), DownloadStatus.AutoMovePaused, CancellationToken),
+                Times.Once()
+            );
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Verify(x => x.OnStatusChangedAsync(files[2].ToKey(), DownloadStatus.Completed, CancellationToken), Times.Once());
+            .Verify(
+                x => x.OnStatusChangedAsync(files[2].ToKey(), DownloadStatus.Completed, CancellationToken),
+                Times.Once()
+            );
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Verify(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), It.IsAny<DownloadStatus>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+            .Verify(
+                x =>
+                    x.OnStatusChangedAsync(
+                        It.IsAny<DownloadTaskKey>(),
+                        It.IsAny<DownloadStatus>(),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Exactly(3)
+            );
         Mock.Mock<IDownloadTaskScheduler>()
-            .Verify(x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         Mock.Mock<IMoveDownloadFileScheduler>()
-            .Verify(x => x.StartMoveDownloadFileJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.StartMoveDownloadFileJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -72,12 +101,15 @@ public class RecoverInterruptedDownloadsCommandMovieUnitTests : BaseUnitTest<Rec
             }
         );
         var files = await IDbContext.DownloadTaskMovieFile.OrderBy(x => x.Id).ToListAsync(CancellationToken);
-        await IDbContext.DownloadTaskMovieFile
-            .Where(x => x.Id == files[0].Id)
+        await IDbContext
+            .DownloadTaskMovieFile.Where(x => x.Id == files[0].Id)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, DownloadStatus.Paused), CancellationToken);
-        await IDbContext.DownloadTaskMovieFile
-            .Where(x => x.Id == files[1].Id)
-            .ExecuteUpdateAsync(p => p.SetProperty(x => x.DownloadStatus, DownloadStatus.MovePaused), CancellationToken);
+        await IDbContext
+            .DownloadTaskMovieFile.Where(x => x.Id == files[1].Id)
+            .ExecuteUpdateAsync(
+                p => p.SetProperty(x => x.DownloadStatus, DownloadStatus.MovePaused),
+                CancellationToken
+            );
 
         // Act
         var result = await Sut.ExecuteAsync(new RecoverInterruptedDownloadsCommand(), CancellationToken);
@@ -86,6 +118,14 @@ public class RecoverInterruptedDownloadsCommandMovieUnitTests : BaseUnitTest<Rec
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Verify(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), It.IsAny<DownloadStatus>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x =>
+                    x.OnStatusChangedAsync(
+                        It.IsAny<DownloadTaskKey>(),
+                        It.IsAny<DownloadStatus>(),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Never()
+            );
     }
 }

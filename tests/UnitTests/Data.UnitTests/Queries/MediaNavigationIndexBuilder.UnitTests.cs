@@ -125,14 +125,15 @@ public class MediaNavigationIndexBuilderUnitTests
         DateTime? addedAt = null,
         DateTime? updatedAt = null,
         long mediaSize = 0
-    ) => new()
-    {
-        SearchTitle = title,
-        Year = year,
-        QualityValue = qualityValue,
-        Duration = duration,
-        AddedAt = addedAt ?? new DateTime(2026, 1, 1),
-        UpdatedAt = updatedAt,
-        MediaSize = mediaSize,
-    };
+    ) =>
+        new()
+        {
+            SearchTitle = title,
+            Year = year,
+            QualityValue = qualityValue,
+            Duration = duration,
+            AddedAt = addedAt ?? new DateTime(2026, 1, 1),
+            UpdatedAt = updatedAt,
+            MediaSize = mediaSize,
+        };
 }

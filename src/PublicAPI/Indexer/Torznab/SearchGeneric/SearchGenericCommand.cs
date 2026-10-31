@@ -20,7 +20,6 @@ public class SearchGenericCommandValidator : AbstractValidator<SearchGenericComm
     }
 }
 
-
 public class SearchGenericCommandHandler : ICommandHandler<SearchGenericCommand, Result<TorznabMediaSearchResponseDTO>>
 {
     private readonly IReaparrDbContext _dbContext;

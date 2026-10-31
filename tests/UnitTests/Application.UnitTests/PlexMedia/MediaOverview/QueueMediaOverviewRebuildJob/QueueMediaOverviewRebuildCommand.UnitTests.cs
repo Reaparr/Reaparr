@@ -40,10 +40,7 @@ public class QueueMediaOverviewRebuildCommandUnitTests : BaseCommandUnitTest<Que
         // Arrange
         var coordinator = new MediaOverviewRebuildCoordinator();
         SetupDependencies(builder =>
-            builder
-                .RegisterInstance(coordinator)
-                .As<IMediaOverviewRebuildCoordinator>()
-                .SingleInstance()
+            builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
         Mock.Mock<IScheduler>()
             .Setup(x =>
@@ -56,9 +53,7 @@ public class QueueMediaOverviewRebuildCommandUnitTests : BaseCommandUnitTest<Que
             .Verifiable(Times.Once());
 
         // Act
-        var firstResult = await TestHandlerExecuteAsync(
-            new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum)
-        );
+        var firstResult = await TestHandlerExecuteAsync(new QueueMediaOverviewRebuildCommand(PlexMediaType.PhotoAlbum));
         var secondResult = await TestHandlerExecuteAsync(
             new QueueMediaOverviewRebuildCommand(PlexMediaType.OtherVideos)
         );
@@ -72,7 +67,9 @@ public class QueueMediaOverviewRebuildCommandUnitTests : BaseCommandUnitTest<Que
         var scope = coordinator.BeginRebuild(DateTimeOffset.UtcNow);
         scope.ShouldNotBeNull();
         scope.RebuildAll.ShouldBeFalse();
-        scope.MediaTypes.OrderBy(x => x).ShouldBe(new[] { PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos }.OrderBy(x => x));
+        scope
+            .MediaTypes.OrderBy(x => x)
+            .ShouldBe(new[] { PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos }.OrderBy(x => x));
     }
 
     [Test]

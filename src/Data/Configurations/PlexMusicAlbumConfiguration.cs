@@ -13,7 +13,13 @@ public class PlexMusicAlbumConfiguration : IEntityTypeConfiguration<PlexMusicAlb
         builder.Property(x => x.PlexApiIdentityId).UseCollation("BINARY");
         builder.HasIndex(x => new { x.PlexLibraryId, PlexIdentityId = x.PlexApiIdentityId });
         builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
-        builder.HasIndex(x => new { x.PlexLibraryId, x.PlexArtistId, x.SortIndex, x.Id });
+        builder.HasIndex(x => new
+        {
+            x.PlexLibraryId,
+            x.PlexArtistId,
+            x.SortIndex,
+            x.Id,
+        });
         builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
 
         builder

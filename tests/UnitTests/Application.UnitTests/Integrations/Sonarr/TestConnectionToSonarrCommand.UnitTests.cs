@@ -152,7 +152,6 @@ public class TestConnectionToSonarrCommandUnitTests : BaseCommandUnitTest<TestCo
         Mock.Mock<ISonarrHttpClientFactory>().Verify();
     }
 
-
     [Test]
     public async Task ShouldRejectInvalidUrl_WhenDraftConnectionHasNoIntegrationId()
     {
@@ -192,6 +191,7 @@ public class TestConnectionToSonarrCommandUnitTests : BaseCommandUnitTest<TestCo
         result.Errors.ShouldContain(x => x.Message == "Provide either an integration ID or a URL and API key.");
         Mock.Mock<ISonarrHttpClientFactory>().Verify();
     }
+
     private sealed class StatusCodeHandler(HttpStatusCode statusCode, string reasonPhrase) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

@@ -273,17 +273,24 @@ public class RestartDownloadTaskCommandHandler : ICommandHandler<RestartDownload
         if (downloadTask is null)
             return ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogError();
 
-        var episode = await _dbContext.PlexTvShowEpisodes
-            .Include(x => x.MediaDataList)
+        var episode = await _dbContext
+            .PlexTvShowEpisodes.Include(x => x.MediaDataList)
             .Include(x => x.TvShow)
             .Include(x => x.TvShowSeason)
-            .FirstOrDefaultAsync(x => x.PlexServerId == downloadTask.PlexServerId
-                && x.PlexLibraryId == downloadTask.PlexLibraryId
-                && x.PlexApiRatingKey == downloadTask.PlexApiRatingKey, CancellationToken.None);
+            .FirstOrDefaultAsync(
+                x =>
+                    x.PlexServerId == downloadTask.PlexServerId
+                    && x.PlexLibraryId == downloadTask.PlexLibraryId
+                    && x.PlexApiRatingKey == downloadTask.PlexApiRatingKey,
+                CancellationToken.None
+            );
         var x = episode?.MediaDataList.FirstOrDefault(x =>
-            x.PlexApiMediaId == downloadTask.PlexApiMediaId && x.PlexApiPartId == downloadTask.PlexApiPartId);
+            x.PlexApiMediaId == downloadTask.PlexApiMediaId && x.PlexApiPartId == downloadTask.PlexApiPartId
+        );
         var fileName = x?.GetEpisodeDownloadFileName(episode!.MediaDataList);
-        var newDownloadTask = x is null ? null : new DownloadTaskTvShowEpisodeFile
+        var newDownloadTask = x is null
+            ? null
+            : new DownloadTaskTvShowEpisodeFile
             {
                 Id = downloadTask.Id,
                 Parent = downloadTask.Parent,
@@ -460,8 +467,7 @@ public class RestartDownloadTaskCommandHandler : ICommandHandler<RestartDownload
             .Select(x => new
             {
                 FileName = x.OriginalFilename.GetFileName(),
-                FullTitle =
-                    $"{x.PlexTrack!.PlexAlbum!.PlexArtist!.Title}/{x.PlexTrack.PlexAlbum.Title}/{x.PlexTrack.Title}",
+                FullTitle = $"{x.PlexTrack!.PlexAlbum!.PlexArtist!.Title}/{x.PlexTrack.PlexAlbum.Title}/{x.PlexTrack.Title}",
                 x.Key,
                 x.Size,
                 Quality = x.VideoQuality,

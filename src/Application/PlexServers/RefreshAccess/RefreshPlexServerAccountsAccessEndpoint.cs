@@ -50,14 +50,18 @@ public class RefreshPlexServerAccountsAccessEndpoint
         if (!server.IsEnabled)
         {
             await Send.FluentResult(
-                ResultExtensions.ServerIsDisabled(server.Name, server.Id, nameof(RefreshPlexServerAccountsAccessEndpoint)),
+                ResultExtensions.ServerIsDisabled(
+                    server.Name,
+                    server.Id,
+                    nameof(RefreshPlexServerAccountsAccessEndpoint)
+                ),
                 ct
             );
             return;
         }
 
-        var accountIds = await _dbContext.PlexAccountServers
-            .Where(x => x.PlexServerId == req.PlexServerId && x.PlexAccount!.IsEnabled)
+        var accountIds = await _dbContext
+            .PlexAccountServers.Where(x => x.PlexServerId == req.PlexServerId && x.PlexAccount!.IsEnabled)
             .Select(x => x.PlexAccountId)
             .Distinct()
             .ToListAsync(ct);
@@ -66,10 +70,7 @@ public class RefreshPlexServerAccountsAccessEndpoint
         var errors = new List<IError>();
         foreach (var accountId in accountIds)
         {
-            var result = await _commandExecutor.Send(
-                new RefreshPlexAccountAccessCommand(accountId),
-                ct
-            );
+            var result = await _commandExecutor.Send(new RefreshPlexAccountAccessCommand(accountId), ct);
 
             if (result.IsCancelled)
             {

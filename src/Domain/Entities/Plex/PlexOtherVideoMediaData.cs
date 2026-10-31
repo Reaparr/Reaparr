@@ -10,6 +10,5 @@ public class PlexOtherVideoMediaData : BasePlexMediaData
 
     public required int PartIndex { get; set; }
 
-
     public override PlexMediaType Type => PlexMediaType.OtherVideos;
 }

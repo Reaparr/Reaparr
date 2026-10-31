@@ -79,50 +79,57 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         var fileSystem = container.Resolve<IFileSystem>();
         var paths = container.PathProvider;
         using var arrangeContext = await factory.CreateAsync();
-        var movies = await arrangeContext.PlexMovies
-            .Include(x => x.MediaDataList)
+        var movies = await arrangeContext
+            .PlexMovies.Include(x => x.MediaDataList)
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
         var show = await arrangeContext.PlexTvShows.SingleAsync(CancellationToken);
         var season = await arrangeContext.PlexTvShowSeason.SingleAsync(CancellationToken);
-        var episode = await arrangeContext.PlexTvShowEpisodes
-            .Include(x => x.MediaDataList)
+        var episode = await arrangeContext
+            .PlexTvShowEpisodes.Include(x => x.MediaDataList)
             .SingleAsync(CancellationToken);
         var artist = await arrangeContext.PlexMusicArtists.SingleAsync(CancellationToken);
         var album = await arrangeContext.PlexMusicAlbums.SingleAsync(CancellationToken);
-        var track = await arrangeContext.PlexMusicTracks
-            .Include(x => x.MediaDataList)
-            .SingleAsync(CancellationToken);
-        var photoLibrary = await arrangeContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var track = await arrangeContext.PlexMusicTracks.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
+        var photoLibrary = await arrangeContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var photoAlbum = await arrangeContext.PlexPhotoAlbums.SingleAsync(CancellationToken);
-        var photos = await arrangeContext.PlexPhotoMediaData
-            .Where(x => x.PlexLibraryId == photoLibrary.Id)
+        var photos = await arrangeContext
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == photoLibrary.Id)
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
-        var video = await arrangeContext.PlexOtherVideos
-            .Include(x => x.MediaDataList)
-            .SingleAsync(CancellationToken);
+        var video = await arrangeContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
         movies.Count.ShouldBe(3);
         photos.Count.ShouldBe(2);
-        (await arrangeContext.PlexPhotoAlbumMemberships.CountAsync(x => x.PlexPhotoAlbumId == photoAlbum.Id, CancellationToken))
-            .ShouldBe(2);
+        (
+            await arrangeContext.PlexPhotoAlbumMemberships.CountAsync(
+                x => x.PlexPhotoAlbumId == photoAlbum.Id,
+                CancellationToken
+            )
+        ).ShouldBe(2);
         var movieOriginals = movies.Select(x => x.MediaDataList.OrderBy(data => data.Id).First()).ToList();
         var episodeOriginal = episode.MediaDataList.PickMediaQuality();
         episodeOriginal.ShouldNotBeNull();
         var trackOriginal = track.MediaDataList.Single();
         var videoOriginal = video.MediaDataList.Single();
-        var photoServer = await arrangeContext.PlexServers.SingleAsync(x => x.Id == photoLibrary.PlexServerId, CancellationToken);
+        var photoServer = await arrangeContext.PlexServers.SingleAsync(
+            x => x.Id == photoLibrary.PlexServerId,
+            CancellationToken
+        );
         var photoRootName = $"{photoServer.Name} - {photoLibrary.Title}".SanitizeFolderName();
-        var expectedFiles = new List<(
-            DownloadTaskType Type,
-            int RatingKey,
-            int MediaId,
-            int PartId,
-            int LibraryId,
-            string FileName,
-            string Key,
-            string Destination
-        )>();
+        var expectedFiles =
+            new List<(
+                DownloadTaskType Type,
+                int RatingKey,
+                int MediaId,
+                int PartId,
+                int LibraryId,
+                string FileName,
+                string Key,
+                string Destination
+            )>();
         foreach (var movie in movies)
         {
             var original = movieOriginals.Single(x => x.PlexMovieId == movie.Id);
@@ -135,7 +142,11 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
                     movie.PlexLibraryId,
                     original.GetFileName,
                     original.Key,
-                    Path.Combine(paths.DefaultMovieDestinationFolder, movie.Title.SanitizeFolderName(), original.GetFileName)
+                    Path.Combine(
+                        paths.DefaultMovieDestinationFolder,
+                        movie.Title.SanitizeFolderName(),
+                        original.GetFileName
+                    )
                 )
             );
         }
@@ -184,7 +195,11 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
                     photo.PlexLibraryId,
                     photo.OriginalFilename.GetFileName(),
                     photo.Key,
-                    Path.Combine(paths.DefaultPhotosDestinationFolder, photoRootName, photo.OriginalFilename.GetFileName())
+                    Path.Combine(
+                        paths.DefaultPhotosDestinationFolder,
+                        photoRootName,
+                        photo.OriginalFilename.GetFileName()
+                    )
                 )
             );
         }
@@ -220,8 +235,8 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
                     };
                 }
             );
-        var control = await arrangeContext.DownloadTaskOtherVideoFiles
-            .AsTracking()
+        var control = await arrangeContext
+            .DownloadTaskOtherVideoFiles.AsTracking()
             .Include(x => x.Parent)
             .SingleAsync(CancellationToken);
         control.DownloadStatus = DownloadStatus.Paused;
@@ -348,8 +363,8 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         nodes.Count(x => x.DownloadTaskType == DownloadTaskType.MusicAlbum).ShouldBe(1);
         nodes.Count(x => x.DownloadTaskType == DownloadTaskType.MusicTrack).ShouldBe(1);
         nodes.Count(x => x.DownloadTaskType == DownloadTaskType.OtherVideo).ShouldBe(1);
-        var photoFolders = await finalContext.DownloadTaskPhotoFolders
-            .Include(x => x.Files)
+        var photoFolders = await finalContext
+            .DownloadTaskPhotoFolders.Include(x => x.Files)
             .Where(x => x.PlexLibraryId == photoLibrary.Id)
             .ToListAsync(CancellationToken);
         photoFolders.Count.ShouldBe(1);
@@ -398,7 +413,11 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         }
         var photoFiles = files.OfType<DownloadTaskPhotoImageFile>().ToList();
         photoFiles.Count.ShouldBe(2);
-        (await finalContext.DownloadTaskPhotoImageFileLogs.Select(x => x.DownloadTaskFileId).ToListAsync(CancellationToken))
+        (
+            await finalContext
+                .DownloadTaskPhotoImageFileLogs.Select(x => x.DownloadTaskFileId)
+                .ToListAsync(CancellationToken)
+        )
             .Distinct()
             .Order()
             .ShouldBe(photoFiles.Select(x => x.Id).Order());
@@ -410,7 +429,10 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         fileSystem.File.ReadAllBytes(controlSourcePath).ShouldBe(controlBytes);
         fileSystem.File.Exists(controlDestinationPath).ShouldBeFalse();
         downloadRequests.Count.ShouldBe(files.Count);
-        downloadRequests.Select(x => new Uri(x.Url).AbsolutePath).Order().ShouldBe(files.Select(x => x.FileLocationUrl).Order());
+        downloadRequests
+            .Select(x => new Uri(x.Url).AbsolutePath)
+            .Order()
+            .ShouldBe(files.Select(x => x.FileLocationUrl).Order());
     }
 
     [Test]
@@ -466,7 +488,10 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         var factory = container.Resolve<IReaparrDbContextFactory>();
         var fileSystem = container.Resolve<IFileSystem>();
         using var context = await factory.CreateAsync();
-        var library = await context.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await context.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var album = await context.PlexPhotoAlbums.SingleAsync(x => x.PlexLibraryId == library.Id, CancellationToken);
         var assets = await context
             .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
@@ -478,10 +503,7 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
             .SetupRequest(request => request.RequestUri!.AbsolutePath.StartsWith("/library/parts/"))
             .ReturnsAsync(
                 (HttpRequestMessage request, CancellationToken _) =>
-                    new HttpResponseMessage(HttpStatusCode.OK)
-                    {
-                        Content = new ByteArrayContent(expectedContent),
-                    }
+                    new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(expectedContent) }
             );
         var selection = CreatePhotoSelection(
             PlexMediaType.PhotoImage,
@@ -501,12 +523,7 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
             GetDownloadPreviewEndpoint,
             DownloadPreviewRequest,
             ResultDTO<DownloadPreviewContainerDTO>
-        >(
-            new DownloadPreviewRequest
-            {
-                DownloadMedias = [albumSelection, selection],
-            }
-        );
+        >(new DownloadPreviewRequest { DownloadMedias = [albumSelection, selection] });
         var create = await client.POSTAsync<
             CreateDownloadTasksEndpoint,
             CreateDownloadTasksEndpointRequest,
@@ -528,14 +545,18 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         create.Result.Errors.Count.ShouldBe(0);
         create.Result.Value.ShouldBe(PhotoReport(folders: 1, images: assets.Count));
 
-        await WaitForDatabaseConditionAsync(async () =>
-        {
-            using var pollContext = await factory.CreateAsync();
-            return await pollContext.DownloadTaskPhotoImageFiles.CountAsync(
-                x => x.PlexLibraryId == library.Id && x.DownloadStatus == DownloadStatus.Completed,
-                CancellationToken
-            ) == assets.Count;
-        }, maxRetries: 120, delayMs: 250);
+        await WaitForDatabaseConditionAsync(
+            async () =>
+            {
+                using var pollContext = await factory.CreateAsync();
+                return await pollContext.DownloadTaskPhotoImageFiles.CountAsync(
+                        x => x.PlexLibraryId == library.Id && x.DownloadStatus == DownloadStatus.Completed,
+                        CancellationToken
+                    ) == assets.Count;
+            },
+            maxRetries: 120,
+            delayMs: 250
+        );
 
         using var finalContext = await factory.CreateAsync();
         var folders = await finalContext
@@ -554,14 +575,20 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         files.Select(x => x.ParentId).ShouldAllBe(x => x == folders[0].Id);
         files.Select(x => x.PlexApiPartId).Order().ShouldBe(assets.Select(x => x.PlexApiPartId).Order());
         files.ShouldAllBe(x => x.DownloadStatus == DownloadStatus.Completed);
-        files.ShouldAllBe(x => x.DirectoryMeta.DestinationRootPath == container.PathProvider.DefaultPhotosDestinationFolder);
+        files.ShouldAllBe(x =>
+            x.DirectoryMeta.DestinationRootPath == container.PathProvider.DefaultPhotosDestinationFolder
+        );
         files.ShouldAllBe(x => x.DestinationFilePath.StartsWith(container.PathProvider.DefaultPhotosDestinationFolder));
         files.ShouldAllBe(x => !x.DestinationFilePath.Contains("/Photos/Photos", StringComparison.Ordinal));
         files.ShouldAllBe(x => fileSystem.File.Exists(x.DestinationFilePath));
         files.ShouldAllBe(x => fileSystem.File.ReadAllBytes(x.DestinationFilePath).SequenceEqual(expectedContent));
         files.ShouldAllBe(x => !fileSystem.File.Exists(x.DownloadFilePath));
         files.ShouldAllBe(x => !fileSystem.File.Exists(x.DownloadFilePath.RemoveReapTempSuffix()));
-        (await finalContext.DownloadTaskPhotoImageFileLogs.Select(x => x.DownloadTaskFileId).ToListAsync(CancellationToken))
+        (
+            await finalContext
+                .DownloadTaskPhotoImageFileLogs.Select(x => x.DownloadTaskFileId)
+                .ToListAsync(CancellationToken)
+        )
             .Distinct()
             .Order()
             .ShouldBe(files.Select(x => x.Id).Order());
@@ -608,18 +635,26 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using (var arrangeContext = await factory.CreateAsync())
         {
-            var files = await arrangeContext.PlexPhotoMediaData.AsTracking()
-                .Where(x => x.PlexLibraryId == arrangeContext.PlexLibraries.Single(x => x.Type == PlexMediaType.PhotoAlbum).Id)
+            var files = await arrangeContext
+                .PlexPhotoMediaData.AsTracking()
+                .Where(x =>
+                    x.PlexLibraryId == arrangeContext.PlexLibraries.Single(x => x.Type == PlexMediaType.PhotoAlbum).Id
+                )
                 .OrderBy(x => x.Id)
                 .ToListAsync(CancellationToken);
             files.Count.ShouldBe(2);
-            arrangeContext.Entry(files[1]).Property(nameof(PlexPhotoMediaData.OriginalFilename)).CurrentValue = files[0].OriginalFilename;
+            arrangeContext.Entry(files[1]).Property(nameof(PlexPhotoMediaData.OriginalFilename)).CurrentValue = files[
+                0
+            ].OriginalFilename;
             await arrangeContext.SaveChangesAsync(CancellationToken);
         }
         using var context = await factory.CreateAsync();
-        var library = await context.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
-        var filesToSelect = await context.PlexPhotoMediaData
-            .Where(x => x.PlexLibraryId == library.Id)
+        var library = await context.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
+        var filesToSelect = await context
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
             .OrderBy(x => x.Id)
             .ToListAsync(CancellationToken);
         var selection = new DownloadMediaDTO
@@ -676,7 +711,10 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         fileSystem.Directory.CreateDirectory(alternateDestination);
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using var context = await factory.CreateAsync();
-        var library = await context.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await context.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var originalLibraryTitle = library.Title;
         var file = await context.PlexPhotoMediaData.SingleAsync(x => x.PlexLibraryId == library.Id, CancellationToken);
         var selection = CreatePhotoSelection(
@@ -695,12 +733,17 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         >(
             new CreateDownloadTasksEndpointRequest
             {
-                Request = new CreateDownloadTasksRequest([selection], customDestinationFolderPath: container.PathProvider.DefaultPhotosDestinationFolder),
+                Request = new CreateDownloadTasksRequest(
+                    [selection],
+                    customDestinationFolderPath: container.PathProvider.DefaultPhotosDestinationFolder
+                ),
             }
         );
         using (var changedContext = await factory.CreateAsync())
         {
-            var changedLibrary = await changedContext.PlexLibraries.AsTracking().SingleAsync(x => x.Id == library.Id, CancellationToken);
+            var changedLibrary = await changedContext
+                .PlexLibraries.AsTracking()
+                .SingleAsync(x => x.Id == library.Id, CancellationToken);
             changedLibrary.Title = "Renamed Photos";
             await changedContext.SaveChangesAsync(CancellationToken);
         }
@@ -711,7 +754,10 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         >(
             new CreateDownloadTasksEndpointRequest
             {
-                Request = new CreateDownloadTasksRequest([selection], customDestinationFolderPath: container.PathProvider.DefaultPhotosDestinationFolder),
+                Request = new CreateDownloadTasksRequest(
+                    [selection],
+                    customDestinationFolderPath: container.PathProvider.DefaultPhotosDestinationFolder
+                ),
             }
         );
         var alternate = await client.POSTAsync<
@@ -721,7 +767,10 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         >(
             new CreateDownloadTasksEndpointRequest
             {
-                Request = new CreateDownloadTasksRequest([selection], customDestinationFolderPath: alternateDestination),
+                Request = new CreateDownloadTasksRequest(
+                    [selection],
+                    customDestinationFolderPath: alternateDestination
+                ),
             }
         );
 
@@ -740,22 +789,25 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         alternate.Result.Value.ShouldBe(PhotoReport(folders: 1, images: 1));
 
         using var finalContext = await factory.CreateAsync();
-        var folders = await finalContext.DownloadTaskPhotoFolders
-            .Include(x => x.Files)
+        var folders = await finalContext
+            .DownloadTaskPhotoFolders.Include(x => x.Files)
             .Where(x => x.PlexLibraryId == library.Id)
             .OrderBy(x => x.DestinationRootPath)
             .ToListAsync(CancellationToken);
         folders.Count.ShouldBe(2);
         folders.Select(x => x.ParentId).ShouldAllBe(x => x == null);
         folders.Select(x => x.Files.Count).ShouldBe([1, 1]);
-        var defaultFolder = folders.Single(x => x.DestinationRootPath == container.PathProvider.DefaultPhotosDestinationFolder);
+        var defaultFolder = folders.Single(x =>
+            x.DestinationRootPath == container.PathProvider.DefaultPhotosDestinationFolder
+        );
         var alternateFolder = folders.Single(x => x.DestinationRootPath == alternateDestination);
         defaultFolder.Title.ShouldContain(originalLibraryTitle);
         alternateFolder.Title.ShouldContain("Renamed Photos");
         defaultFolder.Title.ShouldNotBe(alternateFolder.Title);
-        folders.Select(x => x.DestinationRootPath).Order().ShouldBe(
-            new[] { alternateDestination, container.PathProvider.DefaultPhotosDestinationFolder }.Order()
-        );
+        folders
+            .Select(x => x.DestinationRootPath)
+            .Order()
+            .ShouldBe(new[] { alternateDestination, container.PathProvider.DefaultPhotosDestinationFolder }.Order());
         folders.ShouldAllBe(folder =>
             folder.Files.All(file => file.DirectoryMeta.PhotoFolder.StartsWith(folder.Title, StringComparison.Ordinal))
         );
@@ -790,5 +842,4 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
             MusicTracks = 0,
             OtherVideos = 0,
         };
-
 }

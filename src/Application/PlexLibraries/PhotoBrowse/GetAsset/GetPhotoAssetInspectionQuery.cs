@@ -7,8 +7,7 @@ public sealed record GetPhotoAssetInspectionQuery(
     int MembershipPageSize = MediaQueryFilter.MaximumPageSize
 ) : ICommand<Result<PhotoAssetInspectionDTO>>;
 
-public sealed class GetPhotoAssetInspectionQueryValidator
-    : AbstractValidator<GetPhotoAssetInspectionQuery>
+public sealed class GetPhotoAssetInspectionQueryValidator : AbstractValidator<GetPhotoAssetInspectionQuery>
 {
     public GetPhotoAssetInspectionQueryValidator()
     {
@@ -42,8 +41,8 @@ public sealed class GetPhotoAssetInspectionQueryHandler
         if (scopeResult.IsCancelledOrFailed)
             return scopeResult.ToResult<PhotoAssetInspectionDTO>();
 
-        var asset = await context.PlexPhotoMediaData
-            .Where(x => x.Id == query.AssetId && x.PlexLibraryId == query.PlexLibraryId)
+        var asset = await context
+            .PlexPhotoMediaData.Where(x => x.Id == query.AssetId && x.PlexLibraryId == query.PlexLibraryId)
             .Select(x => new
             {
                 Asset = x,
@@ -112,8 +111,8 @@ public sealed class GetPhotoAssetInspectionQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var albums = await context.PlexPhotoAlbums
-            .Where(x => albumIds.Contains(x.Id))
+        var albums = await context
+            .PlexPhotoAlbums.Where(x => albumIds.Contains(x.Id))
             .Select(x => new
             {
                 Album = x,

@@ -31,8 +31,8 @@ public class PauseDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<PauseD
             }
         );
         var dbContext = IDbContext;
-        var target = await dbContext.DownloadTaskMusicTrackFiles
-            .Include(x => x.Parent)
+        var target = await dbContext
+            .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
                 .ThenInclude(x => x!.Parent)
                     .ThenInclude(x => x!.Parent)
             .SingleAsync(CancellationToken);
@@ -95,7 +95,10 @@ public class PauseDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<PauseD
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<DeleteDownloadTaskFilesCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.Send(It.IsAny<DeleteDownloadTaskFilesCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -142,6 +145,14 @@ public class PauseDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<PauseD
         after.DataReceived.ShouldBe(128);
         after.FileDataTransferred.ShouldBe(64);
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
-            .Verify(x => x.OnStatusChangedAsync(It.IsAny<DownloadTaskKey>(), It.IsAny<DownloadStatus>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x =>
+                    x.OnStatusChangedAsync(
+                        It.IsAny<DownloadTaskKey>(),
+                        It.IsAny<DownloadStatus>(),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Never()
+            );
     }
 }

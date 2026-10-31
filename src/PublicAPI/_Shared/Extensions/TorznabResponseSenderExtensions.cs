@@ -7,9 +7,5 @@ public static class TorznabResponseSenderExtensions
         int code,
         string description,
         CancellationToken ct = default
-    ) =>
-        sender.XmlAsync(
-            new TorznabErrorResponseDTO { Code = code, Description = description },
-            cancellationToken: ct
-        );
+    ) => sender.XmlAsync(new TorznabErrorResponseDTO { Code = code, Description = description }, cancellationToken: ct);
 }

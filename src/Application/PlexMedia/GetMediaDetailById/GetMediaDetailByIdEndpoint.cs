@@ -188,9 +188,9 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
 
     private async Task<Result<PlexPhotoAlbum>> GetPlexPhotoAlbum(int plexPhotoAlbumId, CancellationToken ct)
     {
-        var plexPhotoAlbum = await _dbContext.PlexPhotoAlbums
-            .Include(x => x.Memberships)
-            .ThenInclude(x => x.PlexPhotoMediaData)
+        var plexPhotoAlbum = await _dbContext
+            .PlexPhotoAlbums.Include(x => x.Memberships)
+                .ThenInclude(x => x.PlexPhotoMediaData)
             .FirstOrDefaultAsync(x => x.Id == plexPhotoAlbumId, ct);
 
         if (plexPhotoAlbum is null)

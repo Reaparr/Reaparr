@@ -40,8 +40,9 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
 
     private const int ResponseCacheDurationSeconds = 259200;
     private static readonly TimeSpan _connectionCacheDuration = TimeSpan.FromMinutes(5);
-    private static readonly string _responseCacheControl =
-        FormattableString.Invariant($"private,max-age={ResponseCacheDurationSeconds}");
+    private static readonly string _responseCacheControl = FormattableString.Invariant(
+        $"private,max-age={ResponseCacheDurationSeconds}"
+    );
 
     public GetPhotoAssetImageEndpoint(
         ILogger log,
@@ -98,11 +99,9 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             return;
         }
 
-        var asset = await _dbContext.PlexPhotoMediaData
-            .Where(x =>
-                x.Id == req.AssetId
-                && x.PlexLibraryId == req.PlexLibraryId
-                && x.AssetKind == PhotoAssetKind.Image
+        var asset = await _dbContext
+            .PlexPhotoMediaData.Where(x =>
+                x.Id == req.AssetId && x.PlexLibraryId == req.PlexLibraryId && x.AssetKind == PhotoAssetKind.Image
             )
             .FirstOrDefaultAsync(ct);
         if (asset is null)
@@ -127,10 +126,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
 
         if (string.IsNullOrWhiteSpace(asset.Key))
         {
-            await Send.FluentResult(
-                ResultExtensions.EntityNotFound(nameof(PlexPhotoMediaData), req.AssetId),
-                ct
-            );
+            await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexPhotoMediaData), req.AssetId), ct);
             return;
         }
 
@@ -142,9 +138,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         if (tokenResult.IsCancelledOrFailed)
         {
             await Send.FluentResult(
-                Result
-                    .Fail("Photo server authentication is unavailable.")
-                    .AddPlex401UnauthorizedError(),
+                Result.Fail("Photo server authentication is unavailable.").AddPlex401UnauthorizedError(),
                 ct
             );
             return;
@@ -164,9 +158,13 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         );
 
         // Validate current library access and asset metadata before accepting a cached image.
-        if (HttpContext.Request.GetTypedHeaders().IfNoneMatch.Any(
-                value => value.Equals(EntityTagHeaderValue.Any) || value.Compare(etag, useStrongComparison: false)
-            ))
+        if (
+            HttpContext
+                .Request.GetTypedHeaders()
+                .IfNoneMatch.Any(value =>
+                    value.Equals(EntityTagHeaderValue.Any) || value.Compare(etag, useStrongComparison: false)
+                )
+        )
         {
             HttpContext.Response.Headers.ETag = etag.ToString();
             HttpContext.Response.Headers.CacheControl = _responseCacheControl;
@@ -178,16 +176,17 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         var token = tokenResult.Value;
         var connection = connectionResult.Value;
         var client = _httpClientFactory.CreateClient(HttpClientModule.PlexThumbnailClientName);
-        var upstreamUrl = req.Representation == PhotoImageRepresentation.Original
-            ? BuildOriginalUrl(connection, asset.Key, token)
-            : BuildTranscodeUrl(
-                connection.Url,
-                asset.Key,
-                token,
-                asset.Width!.Value,
-                asset.Height!.Value,
-                GetConversionFormat(asset.Container)
-            );
+        var upstreamUrl =
+            req.Representation == PhotoImageRepresentation.Original
+                ? BuildOriginalUrl(connection, asset.Key, token)
+                : BuildTranscodeUrl(
+                    connection.Url,
+                    asset.Key,
+                    token,
+                    asset.Width!.Value,
+                    asset.Height!.Value,
+                    GetConversionFormat(asset.Container)
+                );
 
         try
         {
@@ -236,7 +235,9 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
     private async Task<Result<PlexServerConnection>> GetCachedConnectionAsync(int plexServerId, CancellationToken ct)
     {
         var cacheKey = $"plex_connection_{plexServerId}";
-        if (_cache.TryGetValue<Result<PlexServerConnection>>(cacheKey, out var cachedResult) && cachedResult is not null)
+        if (
+            _cache.TryGetValue<Result<PlexServerConnection>>(cacheKey, out var cachedResult) && cachedResult is not null
+        )
             return cachedResult;
 
         var connectionResult = await _dbContext.ChoosePlexServerConnection(plexServerId, ct);
@@ -272,28 +273,27 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             ["X-Plex-Token"] = token,
         };
 
-        return QueryHelpers.AddQueryString(
-            $"{connectionUrl.TrimEnd('/')}/photo/:/transcode",
-            query
-        );
+        return QueryHelpers.AddQueryString($"{connectionUrl.TrimEnd('/')}/photo/:/transcode", query);
     }
 
     internal static string GetConversionFormat(string? container)
     {
         var normalizedContainer = container?.Trim().TrimStart('.').ToLowerInvariant();
-        return normalizedContainer is "png"
-            or "apng"
-            or "webp"
-            or "gif"
-            or "bmp"
-            or "tif"
-            or "tiff"
-            or "avif"
-            or "heic"
-            or "heif"
-            or "svg"
-            or "svgz"
-            or "jxl"
+        return
+            normalizedContainer
+                is "png"
+                    or "apng"
+                    or "webp"
+                    or "gif"
+                    or "bmp"
+                    or "tif"
+                    or "tiff"
+                    or "avif"
+                    or "heic"
+                    or "heif"
+                    or "svg"
+                    or "svgz"
+                    or "jxl"
             ? "png"
             : "jpg";
     }

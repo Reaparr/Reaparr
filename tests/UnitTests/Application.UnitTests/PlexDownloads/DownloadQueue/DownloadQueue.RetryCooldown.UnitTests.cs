@@ -145,13 +145,13 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
         secondResult.Value.Id.ShouldBe(expectedTask.Id);
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
-                x => x.StartDownloadTaskJob(
-                    It.Is<DownloadTaskKey>(key =>
-                        key.Id == expectedTask.Id
-                        && key.PlexServerId == expectedTask.PlexServerId
+                x =>
+                    x.StartDownloadTaskJob(
+                        It.Is<DownloadTaskKey>(key =>
+                            key.Id == expectedTask.Id && key.PlexServerId == expectedTask.PlexServerId
+                        ),
+                        It.IsAny<CancellationToken>()
                     ),
-                    It.IsAny<CancellationToken>()
-                ),
                 Times.Exactly(2)
             );
     }
@@ -197,13 +197,13 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
         secondResult.Value.Id.ShouldBe(expectedTask.Id);
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
-                x => x.StartDownloadTaskJob(
-                    It.Is<DownloadTaskKey>(key =>
-                        key.Id == expectedTask.Id
-                        && key.PlexServerId == expectedTask.PlexServerId
+                x =>
+                    x.StartDownloadTaskJob(
+                        It.Is<DownloadTaskKey>(key =>
+                            key.Id == expectedTask.Id && key.PlexServerId == expectedTask.PlexServerId
+                        ),
+                        It.IsAny<CancellationToken>()
                     ),
-                    It.IsAny<CancellationToken>()
-                ),
                 Times.Exactly(2)
             );
     }

@@ -21,7 +21,9 @@ public static class IntegrationIdentityExtensions
     )
     {
         if (integrationIds.SonarrIntegrationId is not null && integrationIds.RadarrIntegrationId is not null)
-            throw new InvalidOperationException("A download task cannot belong to both Sonarr and Radarr integrations.");
+            throw new InvalidOperationException(
+                "A download task cannot belong to both Sonarr and Radarr integrations."
+            );
 
         if (integrationIds.SonarrIntegrationId is not null)
             return integrationIds.SonarrIntegrationId.Value.ToSonarrIdentity();

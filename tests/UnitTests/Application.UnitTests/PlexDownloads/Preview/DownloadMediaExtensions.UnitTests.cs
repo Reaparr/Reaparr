@@ -33,9 +33,7 @@ public class DownloadMediaExtensionsUnitTests
         ];
 
         // Act
-        var merged = groupByLibrary
-            ? selections.MergeAndGroupList()
-            : selections.Merge(PlexMediaType.PhotoImage);
+        var merged = groupByLibrary ? selections.MergeAndGroupList() : selections.Merge(PlexMediaType.PhotoImage);
 
         // Assert
         merged.Count.ShouldBe(2);
@@ -45,8 +43,8 @@ public class DownloadMediaExtensionsUnitTests
         asset.MediaIds.ShouldBe([11]);
         folder.KeepCompletedInDownloadFolder.ShouldBeTrue();
         asset.KeepCompletedInDownloadFolder.ShouldBeFalse();
-        merged.Select(x => (x.PlexServerId, x.PlexLibraryId, x.Type)).ShouldBe(
-            [(1, 2, PlexMediaType.PhotoImage), (1, 2, PlexMediaType.PhotoImage)]
-        );
+        merged
+            .Select(x => (x.PlexServerId, x.PlexLibraryId, x.Type))
+            .ShouldBe([(1, 2, PlexMediaType.PhotoImage), (1, 2, PlexMediaType.PhotoImage)]);
     }
 }

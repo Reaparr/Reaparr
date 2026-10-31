@@ -403,5 +403,4 @@ public class ApplyRemoteTvShowComparisonStateCommandUnitTests
         result.IsSuccess.ShouldBeTrue();
         items[0].ComparisonId.ShouldBe(PlexMediaComparisonState.Pending.ToComparisonId());
     }
-
 }

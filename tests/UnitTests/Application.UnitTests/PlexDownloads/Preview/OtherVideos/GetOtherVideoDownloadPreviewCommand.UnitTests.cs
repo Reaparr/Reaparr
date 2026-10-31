@@ -18,29 +18,28 @@ public class GetOtherVideoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<
             .PlexOtherVideos.Include(x => x.MediaDataList)
             .AsNoTracking()
             .ToListAsync(CancellationToken);
-        var query = new GetOtherVideoDownloadPreviewCommand(
-            [
-                new DownloadMediaDTO
-                {
-                    Type = PlexMediaType.OtherVideos,
-                    SelectionKind = null,
-                    PlexServerId = videos[0].PlexServerId,
-                    PlexLibraryId = videos[0].PlexLibraryId,
-                    MediaIds = videos.Select(x => x.Id).ToList(),
-                    Qualities = videos
-                        .SelectMany(x =>
-                            x.MediaDataList.Take(1).Select(data => new PlexMediaQualityDTO
+        var query = new GetOtherVideoDownloadPreviewCommand([
+            new DownloadMediaDTO
+            {
+                Type = PlexMediaType.OtherVideos,
+                SelectionKind = null,
+                PlexServerId = videos[0].PlexServerId,
+                PlexLibraryId = videos[0].PlexLibraryId,
+                MediaIds = videos.Select(x => x.Id).ToList(),
+                Qualities = videos
+                    .SelectMany(x =>
+                        x.MediaDataList.Take(1)
+                            .Select(data => new PlexMediaQualityDTO
                             {
                                 MediaId = x.Id,
                                 DataId = data.Id,
                                 MediaDataType = PlexMediaType.OtherVideos,
                                 VideoQuality = VideoQuality.HD,
                             })
-                        )
-                        .ToList(),
-                },
-            ]
-        );
+                    )
+                    .ToList(),
+            },
+        ]);
 
         // Act
         var result = await TestHandlerExecuteAsync<IEnumerable<DownloadPreview>>(query);

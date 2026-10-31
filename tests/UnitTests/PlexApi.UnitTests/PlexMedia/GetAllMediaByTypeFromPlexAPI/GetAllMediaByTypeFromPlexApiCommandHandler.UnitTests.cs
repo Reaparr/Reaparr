@@ -236,9 +236,11 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
                 {
                     var query = request.ParseQueryToDictionary();
                     requests.Add(query);
-                    apiVersions.Add(request.Headers.TryGetValues("X-Plex-Pms-Api-Version", out var versions)
-                        ? versions.Single()
-                        : null);
+                    apiVersions.Add(
+                        request.Headers.TryGetValues("X-Plex-Pms-Api-Version", out var versions)
+                            ? versions.Single()
+                            : null
+                    );
                     var start = int.Parse(query["X-Plex-Container-Start"]);
                     var size = int.Parse(query["X-Plex-Container-Size"]);
                     var available = query.ContainsKey("unwatched") ? [] : items;
@@ -304,11 +306,16 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
         };
         requests.Select(q => q["type"]).ShouldBe(Enumerable.Repeat(expectedWireType.ToString(), 3));
         requests.Select(q => q["sort"]).ShouldBe(Enumerable.Repeat("titleSort:asc", 3));
-        var expectedElements = mediaType is PlexMediaType.Movie or PlexMediaType.Episode or PlexMediaType.MusicTrack or PlexMediaType.OtherVideos
+        var expectedElements = mediaType
+            is PlexMediaType.Movie
+                or PlexMediaType.Episode
+                or PlexMediaType.MusicTrack
+                or PlexMediaType.OtherVideos
             ? "Stream"
             : null;
         var expectedVersion = expectedElements is null ? null : "1.0";
-        requests.Select(q => q.TryGetValue("includeOptionalElements", out var elements) ? elements : null)
+        requests
+            .Select(q => q.TryGetValue("includeOptionalElements", out var elements) ? elements : null)
             .ShouldBe([null, expectedElements, expectedElements]);
         apiVersions.ShouldBe([null, expectedVersion, expectedVersion]);
         requests.Any(q => q.ContainsKey("includeElements")).ShouldBeFalse();

@@ -362,6 +362,7 @@ namespace Reaparr.PlexApi.UnitTests
             // Assert
             result.Media.Single().VideoResolution.ShouldBe(VideoQuality.Unknown);
         }
+
         [Test]
         public void ShouldPreserveEnrichedAudioAndSubtitleStreams_WhenTrackResponseContainsOptionalStreams()
         {
@@ -435,6 +436,7 @@ namespace Reaparr.PlexApi.UnitTests
                 audio.Default
             ).ShouldBe(("flac", 737, 16, 44100, 2, "stereo", true, true));
         }
+
         [Test]
         public void ShouldMapNumericFourToLyrics_WhilePreservingRawLocatorAndFormat()
         {
@@ -514,38 +516,42 @@ namespace Reaparr.PlexApi.UnitTests
             var photoResult = photoClip.ToMediaItemDTO();
 
             // Assert
-            var containerStream = containerResult.Media.ShouldHaveSingleItem().Parts.ShouldHaveSingleItem().Stream
-                .ShouldHaveSingleItem();
-            var photoStream = photoResult.Media.ShouldHaveSingleItem().Parts.ShouldHaveSingleItem().Stream
-                .ShouldHaveSingleItem();
+            var containerStream = containerResult
+                .Media.ShouldHaveSingleItem()
+                .Parts.ShouldHaveSingleItem()
+                .Stream.ShouldHaveSingleItem();
+            var photoStream = photoResult
+                .Media.ShouldHaveSingleItem()
+                .Parts.ShouldHaveSingleItem()
+                .Stream.ShouldHaveSingleItem();
             containerStream.StreamType.ShouldBe(Domain.StreamType.Subtitle);
             photoStream.StreamType.ShouldBe(Domain.StreamType.Subtitle);
             containerResult.Media.ShouldHaveSingleItem().Id.ShouldBe(9003);
             photoResult.Media.ShouldHaveSingleItem().Id.ShouldBe(9004);
         }
 
-        private static Media CreateMediaWithStream(int mediaId, int partId) => new()
-        {
-            Id = mediaId,
-            Part =
-            [
-                new Part
-                {
-                    Id = partId,
-                    Key = $"/library/parts/{partId}",
-                    Stream =
-                    [
-                        new Stream
-                        {
-                            Id = 1,
-                            Key = "/library/streams/1",
-                            StreamType = LukeHagar.PlexAPI.SDK.Models.Components.StreamType.Subtitle,
-                            Codec = "srt",
-                        },
-                    ],
-                },
-            ],
-        };
-
+        private static Media CreateMediaWithStream(int mediaId, int partId) =>
+            new()
+            {
+                Id = mediaId,
+                Part =
+                [
+                    new Part
+                    {
+                        Id = partId,
+                        Key = $"/library/parts/{partId}",
+                        Stream =
+                        [
+                            new Stream
+                            {
+                                Id = 1,
+                                Key = "/library/streams/1",
+                                StreamType = LukeHagar.PlexAPI.SDK.Models.Components.StreamType.Subtitle,
+                                Codec = "srt",
+                            },
+                        ],
+                    },
+                ],
+            };
     }
 }

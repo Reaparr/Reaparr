@@ -69,8 +69,7 @@ public class ApplyOwnedMovieComparisonStateCommandHandler
         if (currentRemoteLibraryIds.Count == 0)
         {
             var hasActiveJobs = await _scheduler.HasActiveJobs(
-                remoteLibraryIds
-                    .Select(x => PlexLibraryComparisonJob.GetJobKey(command.OwnedLibraryId, x)),
+                remoteLibraryIds.Select(x => PlexLibraryComparisonJob.GetJobKey(command.OwnedLibraryId, x)),
                 ct
             );
             if (hasActiveJobs)

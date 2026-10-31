@@ -10,7 +10,6 @@ public class PlexMusicArtistGenres
         PlexMusicArtistId = plexMusicArtistId;
     }
 
-
     [Column(Order = 1)]
     public int GenresId { get; set; }
 

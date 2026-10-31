@@ -82,7 +82,10 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldRejectScalarValidTorrent_WhenDataAndPartIdsDiffer()
     {
         // Arrange
-        var invalidMetadata = CreateValidTorrentMetadata() with { DataId = 2 };
+        var invalidMetadata = CreateValidTorrentMetadata() with
+        {
+            DataId = 2,
+        };
         var (torrentFile, torrentFileMock) = CreateMockTorrentFile(invalidMetadata, "mismatched.torrent");
         var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
 
@@ -142,12 +145,15 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldReturnRecognizedFailureAndPreserveHashes_WhenCreateDownloadTasksCommandFails()
     {
         // Arrange
-        await SetupDatabase(1235, config =>
-        {
-            config.MovieCount = 1;
-            config.RadarrIntegrationCount = 1;
-            config.MovieDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            1235,
+            config =>
+            {
+                config.MovieCount = 1;
+                config.RadarrIntegrationCount = 1;
+                config.MovieDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
@@ -161,13 +167,18 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
 
         var failureResult = Result.Fail("Command execution failed");
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<CreateDownloadTasksCommand>(command =>
-                command.Request.Integration == integration.Id.ToRadarrIdentity()
-                && command.Request.DownloadMedias.Count == 1
-                && command.Request.DownloadMedias[0].MediaIds.SequenceEqual(new[] { validMetadata.MediaId })
-                && command.Request.DownloadMedias[0].PlexLibraryId == validMetadata.LibraryId
-                && command.Request.DownloadMedias[0].PlexServerId == validMetadata.ServerId),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<CreateDownloadTasksCommand>(command =>
+                        command.Request.Integration == integration.Id.ToRadarrIdentity()
+                        && command.Request.DownloadMedias.Count == 1
+                        && command.Request.DownloadMedias[0].MediaIds.SequenceEqual(new[] { validMetadata.MediaId })
+                        && command.Request.DownloadMedias[0].PlexLibraryId == validMetadata.LibraryId
+                        && command.Request.DownloadMedias[0].PlexServerId == validMetadata.ServerId
+                    ),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(failureResult)
             .Verifiable(Times.Once());
 
@@ -263,7 +274,13 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         var episodeData = await dbContext.PlexTvShowEpisodeData.SingleAsync(CancellationToken);
         var before = await dbContext
             .DownloadTaskMovieFile.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.ParentId, x.HashId, x.RadarrIntegrationId })
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.HashId,
+                x.RadarrIntegrationId,
+            })
             .ToArrayAsync(CancellationToken);
         var forgedMetadata = CreateSourceMetadata(episodeData, movieData.PlexMovieId) with
         {
@@ -286,7 +303,13 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         (
             await dbContext
                 .DownloadTaskMovieFile.OrderBy(x => x.Id)
-                .Select(x => new { x.Id, x.ParentId, x.HashId, x.RadarrIntegrationId })
+                .Select(x => new
+                {
+                    x.Id,
+                    x.ParentId,
+                    x.HashId,
+                    x.RadarrIntegrationId,
+                })
                 .ToArrayAsync(CancellationToken)
         ).ShouldBe(before);
         Mock.Mock<ICommandExecutor>()
@@ -380,7 +403,6 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     [Test]
     public async Task ShouldSetHashIdOnMovieDownloadTask_WhenTorrentIsMovieType()
     {
-
         // Setup database with movie download tasks that match the metadata
         await SetupDatabase(
             1234,
@@ -450,7 +472,6 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     [Test]
     public async Task ShouldSetHashIdOnEpisodeDownloadTask_WhenTorrentIsEpisodeType()
     {
-
         // Setup database with TV show download tasks that match the metadata
         await SetupDatabase(
             5678,
@@ -473,8 +494,14 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         var episode = await episodeContext.DownloadTaskTvShowEpisode.AsTracking().FirstAsync(CancellationToken);
         episode.SonarrIntegrationId = integration.Id;
         episodeFile.SonarrIntegrationId = integration.Id;
-        episodeFile.UpdateInitProperty(nameof(DownloadTaskTvShowEpisodeFile.PlexApiRatingKey), episodeData.PlexApiRatingKey);
-        episodeFile.UpdateInitProperty(nameof(DownloadTaskTvShowEpisodeFile.PlexApiMediaId), episodeData.PlexApiMediaId);
+        episodeFile.UpdateInitProperty(
+            nameof(DownloadTaskTvShowEpisodeFile.PlexApiRatingKey),
+            episodeData.PlexApiRatingKey
+        );
+        episodeFile.UpdateInitProperty(
+            nameof(DownloadTaskTvShowEpisodeFile.PlexApiMediaId),
+            episodeData.PlexApiMediaId
+        );
         episodeFile.UpdateInitProperty(nameof(DownloadTaskTvShowEpisodeFile.PlexApiPartId), episodeData.PlexApiPartId);
         await episodeContext.SaveChangesAsync(CancellationToken);
 

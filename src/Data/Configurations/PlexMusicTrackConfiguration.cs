@@ -9,7 +9,14 @@ public class PlexMusicTrackConfiguration : IEntityTypeConfiguration<PlexMusicTra
         builder.HasIndex(x => new { x.PlexApiRatingKey, x.PlexServerId });
         builder.Property(x => x.SearchTitle).UseCollation("NOCASE");
         builder.HasIndex(x => new { x.PlexLibraryId, x.SortIndex });
-        builder.HasIndex(x => new { x.PlexLibraryId, x.PlexAlbumId, x.DiscNumber, x.TrackNumber, x.Id });
+        builder.HasIndex(x => new
+        {
+            x.PlexLibraryId,
+            x.PlexAlbumId,
+            x.DiscNumber,
+            x.TrackNumber,
+            x.Id,
+        });
         builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
         builder.HasIndex(x => new { x.PlexLibraryId, x.SearchTitle });
         builder.Property(x => x.MusicBrainzReleaseTrackId).UseCollation("BINARY");

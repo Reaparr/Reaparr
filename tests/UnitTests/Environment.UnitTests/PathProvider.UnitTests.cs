@@ -262,9 +262,7 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         // Assert
         configDirectory.ShouldBe(expectedConfigDirectory);
         dataDirectory.ShouldBe(expectedDataDirectory);
-        downloadsDirectory.ShouldBe(
-            Path.Combine(expectedDataDirectory, IPathProvider.DefaultDownloadsFolderName)
-        );
+        downloadsDirectory.ShouldBe(Path.Combine(expectedDataDirectory, IPathProvider.DefaultDownloadsFolderName));
         movieDirectory.ShouldBe(Path.Combine(expectedDataDirectory, IPathProvider.DefaultMovieFolderName));
     }
 
@@ -336,7 +334,15 @@ public class PathProviderUnitTests : BaseUnitTest<PathProvider>
         ];
 
         // Assert
-        destinations.ShouldBe([destination, destination, destination, destination, destination, destination, destination]);
+        destinations.ShouldBe([
+            destination,
+            destination,
+            destination,
+            destination,
+            destination,
+            destination,
+            destination,
+        ]);
     }
 
     [Test]

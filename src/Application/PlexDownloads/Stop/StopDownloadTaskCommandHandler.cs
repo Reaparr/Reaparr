@@ -61,7 +61,6 @@ public class StopDownloadTaskCommandHandler : ICommandHandler<StopDownloadTaskCo
             return result;
         }
 
-
         foreach (var downloadTaskKey in downloadTasks)
         {
             if (!filesById.TryGetValue(downloadTaskKey.Id, out var downloadTask))

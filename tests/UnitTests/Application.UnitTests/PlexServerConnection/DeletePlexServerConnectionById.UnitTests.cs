@@ -21,8 +21,19 @@ public class DeletePlexServerConnectionByIdUnitTests
         var dbContext = IDbContext;
         var connectionsBefore = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var serversBefore = await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -36,8 +47,19 @@ public class DeletePlexServerConnectionByIdUnitTests
         );
         var connectionsAfter = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var serversAfter = await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -48,9 +70,9 @@ public class DeletePlexServerConnectionByIdUnitTests
         // Assert
         endpointResult.IsValid.ShouldBeFalse();
         endpointResult.ValidationErrors.Count.ShouldBe(1);
-        endpointResult.ValidationErrors.Single().PropertyName.ShouldBe(
-            nameof(DeletePlexServerConnectionByIdRequest.PlexServerConnectionId)
-        );
+        endpointResult
+            .ValidationErrors.Single()
+            .PropertyName.ShouldBe(nameof(DeletePlexServerConnectionByIdRequest.PlexServerConnectionId));
         endpointResult.Response.ShouldBeNull();
         connectionsAfter.ShouldBe(connectionsBefore);
         serversAfter.ShouldBe(serversBefore);
@@ -72,8 +94,19 @@ public class DeletePlexServerConnectionByIdUnitTests
         var dbContext = IDbContext;
         var connectionsBefore = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var serversBefore = await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -87,12 +120,24 @@ public class DeletePlexServerConnectionByIdUnitTests
         var endpointResult = await TestEndpointHandleAsync(
             new DeletePlexServerConnectionByIdRequest(missingConnectionId)
         );
-        var response = endpointResult.Response.ShouldBeOfType<JsonElement>()
+        var response = endpointResult
+            .Response.ShouldBeOfType<JsonElement>()
             .Deserialize<BaseResultDTO>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var connectionsAfter = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var serversAfter = await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -124,15 +169,28 @@ public class DeletePlexServerConnectionByIdUnitTests
         );
 
         var dbContext = IDbContext;
-        var generatedConnections = await dbContext.PlexServerConnections.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var generatedConnections = await dbContext
+            .PlexServerConnections.OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         var targetConnection = generatedConnections[0];
         var controlConnection = generatedConnections[1];
         targetConnection.IsCustom.ShouldBeFalse();
         controlConnection.IsCustom.ShouldBeFalse();
         var connectionsBefore = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var serversBefore = await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -144,12 +202,24 @@ public class DeletePlexServerConnectionByIdUnitTests
         var endpointResult = await TestEndpointHandleAsync(
             new DeletePlexServerConnectionByIdRequest(targetConnection.Id)
         );
-        var response = endpointResult.Response.ShouldBeOfType<JsonElement>()
+        var response = endpointResult
+            .Response.ShouldBeOfType<JsonElement>()
             .Deserialize<BaseResultDTO>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var connectionsAfter = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var serversAfter = await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -168,6 +238,16 @@ public class DeletePlexServerConnectionByIdUnitTests
     }
 
     private sealed record ConnectionSnapshot(
-        int Id, int PlexServerId, string Protocol, string Address, int Port, string Url,
-        bool Local, bool Relay, bool IPv4, bool IPv6, bool IsCustom);
+        int Id,
+        int PlexServerId,
+        string Protocol,
+        string Address,
+        int Port,
+        string Url,
+        bool Local,
+        bool Relay,
+        bool IPv4,
+        bool IPv6,
+        bool IsCustom
+    );
 }

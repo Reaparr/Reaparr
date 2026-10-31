@@ -32,7 +32,11 @@ public class CreateCategoryEndpoint : Endpoint<CreateCategoryRequest>
     public override async Task HandleAsync(CreateCategoryRequest req, CancellationToken ct)
     {
         _log.Here().DebugApiCall(HttpContext, req);
-        var integration = await HttpContext.GetIntegrationSettings(_dbContext, HttpContext.GetIntegrationIdentity(), ct);
+        var integration = await HttpContext.GetIntegrationSettings(
+            _dbContext,
+            HttpContext.GetIntegrationIdentity(),
+            ct
+        );
         if (!string.Equals(req.Category, integration.Category, StringComparison.Ordinal))
         {
             await Send.ErrorsAsync(403, cancellation: ct);

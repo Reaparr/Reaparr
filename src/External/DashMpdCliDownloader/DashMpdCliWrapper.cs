@@ -306,7 +306,7 @@ public class DashMpdCliWrapper : IDashMpdCliWrapper
         if (runTask is null)
             return Result.Ok();
 
-        return await Result.Try(async Task<Result>() => await runTask);
+        return await Result.Try(async Task<Result> () => await runTask);
     }
 
     /// <summary>

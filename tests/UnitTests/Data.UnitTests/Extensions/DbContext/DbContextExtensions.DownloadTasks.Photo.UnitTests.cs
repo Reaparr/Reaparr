@@ -8,8 +8,18 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         // Arrange
         var seed = await SetupDatabase(62401, config => config.PlexPhotoLibraryCount = 1);
         var dbContext = IDbContext;
-        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
-        var folders = await AddPhotoFolders(dbContext, library, seed, rootCount: 1, filesPerFolder: 1, includeNested: true);
+        var library = await dbContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
+        var folders = await AddPhotoFolders(
+            dbContext,
+            library,
+            seed,
+            rootCount: 1,
+            filesPerFolder: 1,
+            includeNested: true
+        );
         var root = folders.Single(x => x.ParentId is null);
         var child = folders.Single(x => x.ParentId == root.Id);
         var rootFile = root.Files.Single();
@@ -35,7 +45,9 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         {
             (await dbContext.GetDownloadTaskKeyAsync(key.Id, CancellationToken)).ShouldBe(key);
             (await dbContext.GetDownloadTaskTypeAsync(key.Id, CancellationToken)).ShouldBe(key.Type);
-            (await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: CancellationToken)).ShouldBe(root.ToKey());
+            (await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: CancellationToken)).ShouldBe(
+                root.ToKey()
+            );
 
             var inferred = await dbContext.GetDownloadTaskAsync(key.Id, cancellationToken: CancellationToken);
             inferred.ShouldNotBeNull();
@@ -69,21 +81,27 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         detail.MediaType.ShouldBe(PlexMediaType.PhotoAlbum);
         detail.DownloadTaskType.ShouldBe(DownloadTaskType.PhotoFolder);
         detail.IsDownloadable.ShouldBeFalse();
-        detail.Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable)).OrderBy(x => x.Id).ShouldBe(
-            new (Guid Id, Guid ParentId, bool IsDownloadable)[]
-            {
-                (child.Id, root.Id, false),
-                (rootFile.Id, root.Id, true),
-            }.OrderBy(x => x.Id)
-        );
-        detail.Children.Single(x => x.Id == child.Id).Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable)).ShouldBe([
-            (childFile.Id, child.Id, true),
-        ]);
+        detail
+            .Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable))
+            .OrderBy(x => x.Id)
+            .ShouldBe(
+                new (Guid Id, Guid ParentId, bool IsDownloadable)[]
+                {
+                    (child.Id, root.Id, false),
+                    (rootFile.Id, root.Id, true),
+                }.OrderBy(x => x.Id)
+            );
+        detail
+            .Children.Single(x => x.Id == child.Id)
+            .Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable))
+            .ShouldBe([(childFile.Id, child.Id, true)]);
         detail.Children.Single(x => x.Id == rootFile.Id).Children.ShouldBeEmpty();
-        (await dbContext.GetAffectedRootDownloadTaskIdsAsync(
-            [root.Id, child.Id, rootFile.Id, childFile.Id],
-            CancellationToken
-        )).ShouldBe([root.Id]);
+        (
+            await dbContext.GetAffectedRootDownloadTaskIdsAsync(
+                [root.Id, child.Id, rootFile.Id, childFile.Id],
+                CancellationToken
+            )
+        ).ShouldBe([root.Id]);
     }
 
     [Test]
@@ -99,8 +117,8 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var libraries = await dbContext.PlexLibraries
-            .Where(x => x.Type == PlexMediaType.PhotoAlbum)
+        var libraries = await dbContext
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
             .OrderBy(x => x.PlexServerId)
             .ToListAsync(CancellationToken);
         var targetFolders = await AddPhotoFolders(
@@ -148,14 +166,14 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         await dbContext.SaveChangesAsync(CancellationToken);
 
         // Act
-        var disabledCount = await dbContext.PlexLibraries
-            .Where(x => x.Id == libraries[0].Id)
+        var disabledCount = await dbContext
+            .PlexLibraries.Where(x => x.Id == libraries[0].Id)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.IsEnabled, false), CancellationToken);
         disabledCount.ShouldBe(1);
         var disabledDbContext = IDbContext;
         (
-            await disabledDbContext.PlexLibraries
-                .IgnoreQueryFilters()
+            await disabledDbContext
+                .PlexLibraries.IgnoreQueryFilters()
                 .Where(x => x.Id == libraries[0].Id)
                 .Select(x => x.IsEnabled)
                 .SingleAsync(CancellationToken)
@@ -199,15 +217,16 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
             CancellationToken
         );
         var targetStatus = await disabledDbContext.GetDownloadStatusAsync(targetChildFileKey);
-        var targetRootStatusBefore = await disabledDbContext.GetDownloadTaskStatusAsync(targetRootKey, CancellationToken);
-        var changedKeys = await disabledDbContext.DetermineDownloadStatus(targetChildFileKey, CancellationToken);
-        var targetRootStatusAfter = await disabledDbContext.GetDownloadTaskStatusAsync(targetRootKey, CancellationToken);
-        var rootLogs = await disabledDbContext.GetDownloadTaskLogsAsync(
+        var targetRootStatusBefore = await disabledDbContext.GetDownloadTaskStatusAsync(
             targetRootKey,
-            null,
-            null,
             CancellationToken
         );
+        var changedKeys = await disabledDbContext.DetermineDownloadStatus(targetChildFileKey, CancellationToken);
+        var targetRootStatusAfter = await disabledDbContext.GetDownloadTaskStatusAsync(
+            targetRootKey,
+            CancellationToken
+        );
+        var rootLogs = await disabledDbContext.GetDownloadTaskLogsAsync(targetRootKey, null, null, CancellationToken);
         var fileLogs = await disabledDbContext.GetDownloadTaskLogsAsync(
             targetChildFileKey,
             null,
@@ -220,24 +239,32 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         );
 
         // Assert
-        targetKeys.OrderBy(x => x.Id).ShouldBe(
-            new[] { targetRootKey, targetChildKey, targetRootFileKey, targetChildFileKey }.OrderBy(x => x.Id)
-        );
+        targetKeys
+            .OrderBy(x => x.Id)
+            .ShouldBe(
+                new[] { targetRootKey, targetChildKey, targetRootFileKey, targetChildFileKey }.OrderBy(x => x.Id)
+            );
         (await disabledDbContext.GetDownloadTaskKeyAsync(targetRoot.Id, CancellationToken)).ShouldBe(targetRootKey);
-        (await disabledDbContext.GetDownloadTaskKeyAsync(targetChildFile.Id, CancellationToken)).ShouldBe(targetChildFileKey);
+        (await disabledDbContext.GetDownloadTaskKeyAsync(targetChildFile.Id, CancellationToken)).ShouldBe(
+            targetChildFileKey
+        );
         targetDetails.ShouldNotBeNull();
         targetDetails.Id.ShouldBe(targetRoot.Id);
         targetDetails.ParentId.ShouldBe(Guid.Empty);
-        targetDetails.Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable)).OrderBy(x => x.Id).ShouldBe(
-            new (Guid Id, Guid ParentId, bool IsDownloadable)[]
-            {
-                (targetChild.Id, targetRoot.Id, false),
-                (targetRootFile.Id, targetRoot.Id, true),
-            }.OrderBy(x => x.Id)
-        );
-        targetDetails.Children.Single(x => x.Id == targetChild.Id).Children.Select(x => (x.Id, x.ParentId)).ShouldBe([
-            (targetChildFile.Id, targetChild.Id),
-        ]);
+        targetDetails
+            .Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable))
+            .OrderBy(x => x.Id)
+            .ShouldBe(
+                new (Guid Id, Guid ParentId, bool IsDownloadable)[]
+                {
+                    (targetChild.Id, targetRoot.Id, false),
+                    (targetRootFile.Id, targetRoot.Id, true),
+                }.OrderBy(x => x.Id)
+            );
+        targetDetails
+            .Children.Single(x => x.Id == targetChild.Id)
+            .Children.Select(x => (x.Id, x.ParentId))
+            .ShouldBe([(targetChildFile.Id, targetChild.Id)]);
         targetFileDetails.ShouldNotBeNull();
         targetFileDetails.Id.ShouldBe(targetChildFile.Id);
         targetFileDetails.ParentId.ShouldBe(targetChild.Id);
@@ -245,23 +272,43 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         targetFileDetails.DestinationDirectory.ShouldBe(targetChildFile.DestinationDirectory);
         targetFileDetails.FileName.ShouldBe(targetChildFile.FileName);
         targetTransfer.ShouldNotBeNull();
-        (targetTransfer.Id, targetTransfer.ToParentKey()!.Id, targetTransfer.DownloadDirectory, targetTransfer.DestinationDirectory)
-            .ShouldBe((targetChildFile.Id, targetChild.Id, targetChildFile.DownloadDirectory, targetChildFile.DestinationDirectory));
+        (
+            targetTransfer.Id,
+            targetTransfer.ToParentKey()!.Id,
+            targetTransfer.DownloadDirectory,
+            targetTransfer.DestinationDirectory
+        ).ShouldBe(
+            (
+                targetChildFile.Id,
+                targetChild.Id,
+                targetChildFile.DownloadDirectory,
+                targetChildFile.DestinationDirectory
+            )
+        );
         targetTransfers.Select(x => x.Id).Order().ShouldBe(new[] { targetRootFile.Id, targetChildFile.Id }.Order());
-        interruptedTransfers.Select(x => x.Id).Order().ShouldBe(new[] { targetRootFile.Id, targetChildFile.Id }.Order());
+        interruptedTransfers
+            .Select(x => x.Id)
+            .Order()
+            .ShouldBe(new[] { targetRootFile.Id, targetChildFile.Id }.Order());
         trackedRoots.Select(x => x.Id).ShouldBe([targetRoot.Id]);
         targetRoots.Select(x => x.Id).ShouldBe([targetRoot.Id]);
-        targetRoots.Single().Children.Select(x => x.Id).Order().ShouldBe(
-            targetDetails.Children.Select(x => x.Id).Order()
-        );
+        targetRoots
+            .Single()
+            .Children.Select(x => x.Id)
+            .Order()
+            .ShouldBe(targetDetails.Children.Select(x => x.Id).Order());
         targetProgress.Select(x => x.Id).ShouldBe([targetRoot.Id]);
-        targetProgress.Single().Children.Select(x => (x.Id, x.ParentId)).OrderBy(x => x.Id).ShouldBe(
-            new (Guid Id, Guid ParentId)[]
-            {
-                (targetChild.Id, targetRoot.Id),
-                (targetRootFile.Id, targetRoot.Id),
-            }.OrderBy(x => x.Id)
-        );
+        targetProgress
+            .Single()
+            .Children.Select(x => (x.Id, x.ParentId))
+            .OrderBy(x => x.Id)
+            .ShouldBe(
+                new (Guid Id, Guid ParentId)[]
+                {
+                    (targetChild.Id, targetRoot.Id),
+                    (targetRootFile.Id, targetRoot.Id),
+                }.OrderBy(x => x.Id)
+            );
         targetProgress.Single().DataTotal.ShouldBe(2000);
         targetProgress.Single().DataReceived.ShouldBe(500);
         targetProgress.Single().Percentage.ShouldBe(25);
@@ -284,7 +331,6 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
             .ShouldBe(["enabled-control"]);
     }
 
-
     [Test]
     public async Task ShouldReturnOnlyPhotoFolderRootsWithNestedProgress_WhenFilteringByServer()
     {
@@ -298,8 +344,8 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var libraries = await dbContext.PlexLibraries
-            .Where(x => x.Type == PlexMediaType.PhotoAlbum)
+        var libraries = await dbContext
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
             .OrderBy(x => x.PlexServerId)
             .ToListAsync(CancellationToken);
         var targetFolders = await AddPhotoFolders(
@@ -347,17 +393,19 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         root.DataReceived.ShouldBe(2250);
         root.Percentage.ShouldBe(62.5m);
         root.DownloadStatus.ShouldBe(DownloadStatus.Downloading);
-        root.Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable)).OrderBy(x => x.Id).ShouldBe(
-            new (Guid Id, Guid ParentId, bool IsDownloadable)[]
-            {
-                (targetChild.Id, targetRoot.Id, false),
-                (rootFile.Id, targetRoot.Id, true),
-            }.OrderBy(x => x.Id)
-        );
+        root.Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable))
+            .OrderBy(x => x.Id)
+            .ShouldBe(
+                new (Guid Id, Guid ParentId, bool IsDownloadable)[]
+                {
+                    (targetChild.Id, targetRoot.Id, false),
+                    (rootFile.Id, targetRoot.Id, true),
+                }.OrderBy(x => x.Id)
+            );
         var child = root.Children.Single(x => x.Id == targetChild.Id);
-        child.Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable)).ShouldBe([
-            (childFile.Id, targetChild.Id, true),
-        ]);
+        child
+            .Children.Select(x => (x.Id, x.ParentId, x.IsDownloadable))
+            .ShouldBe([(childFile.Id, targetChild.Id, true)]);
         child.DataTotal.ShouldBe(2000);
         child.DataReceived.ShouldBe(2000);
         child.Percentage.ShouldBe(100);
@@ -388,8 +436,18 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         // Arrange
         var seed = await SetupDatabase(62403, config => config.PlexPhotoLibraryCount = 1);
         var dbContext = IDbContext;
-        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
-        var folders = await AddPhotoFolders(dbContext, library, seed, rootCount: 2, filesPerFolder: 1, includeNested: true);
+        var library = await dbContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
+        var folders = await AddPhotoFolders(
+            dbContext,
+            library,
+            seed,
+            rootCount: 2,
+            filesPerFolder: 1,
+            includeNested: true
+        );
         var roots = folders.Where(x => x.ParentId is null).OrderBy(x => x.Id).ToArray();
         var targetRoot = roots[0];
         var targetChild = folders.Single(x => x.ParentId == targetRoot.Id);
@@ -404,22 +462,26 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         // Assert
         changed.ShouldBe([targetChild.ToKey(), targetRoot.ToKey()]);
         (await dbContext.GetDownloadStatusAsync(targetFile.ToKey())).ShouldBe(DownloadStatus.Error);
-        (await dbContext.GetDownloadTaskStatusAsync(targetChild.ToKey(), CancellationToken)).ShouldBe(DownloadStatus.Error);
-        (await dbContext.GetDownloadTaskStatusAsync(targetRoot.ToKey(), CancellationToken)).ShouldBe(DownloadStatus.Error);
+        (await dbContext.GetDownloadTaskStatusAsync(targetChild.ToKey(), CancellationToken)).ShouldBe(
+            DownloadStatus.Error
+        );
+        (await dbContext.GetDownloadTaskStatusAsync(targetRoot.ToKey(), CancellationToken)).ShouldBe(
+            DownloadStatus.Error
+        );
         (await dbContext.GetDownloadStatusAsync(controlRoot.ToKey())).ShouldBe(DownloadStatus.Queued);
         (await dbContext.GetDownloadStatusAsync(controlFile.ToKey())).ShouldBe(DownloadStatus.Queued);
-        (await dbContext.GetRootDownloadTaskKeyAsync(targetFile.ToKey(), cancellationToken: CancellationToken)).ShouldBe(
-            targetRoot.ToKey()
-        );
+        (
+            await dbContext.GetRootDownloadTaskKeyAsync(targetFile.ToKey(), cancellationToken: CancellationToken)
+        ).ShouldBe(targetRoot.ToKey());
         (
             await dbContext.GetDownloadTaskKeysByStatusAsync(
                 [targetRoot.ToKey(), targetChild.ToKey(), controlRoot.ToKey(), targetFile.ToKey(), controlFile.ToKey()],
                 [DownloadStatus.Error],
                 CancellationToken
             )
-        ).OrderBy(x => x.Id).ShouldBe(
-            new[] { targetRoot.ToKey(), targetChild.ToKey(), targetFile.ToKey() }.OrderBy(x => x.Id)
-        );
+        )
+            .OrderBy(x => x.Id)
+            .ShouldBe(new[] { targetRoot.ToKey(), targetChild.ToKey(), targetFile.ToKey() }.OrderBy(x => x.Id));
     }
 
     [Test]
@@ -428,8 +490,18 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         // Arrange
         var seed = await SetupDatabase(62431, config => config.PlexPhotoLibraryCount = 1);
         var dbContext = IDbContext;
-        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
-        var folders = await AddPhotoFolders(dbContext, library, seed, rootCount: 2, filesPerFolder: 1, includeNested: true);
+        var library = await dbContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
+        var folders = await AddPhotoFolders(
+            dbContext,
+            library,
+            seed,
+            rootCount: 2,
+            filesPerFolder: 1,
+            includeNested: true
+        );
         var roots = folders.Where(x => x.ParentId is null).OrderBy(x => x.Id).ToArray();
         var targetRoot = roots[0];
         var targetChild = folders.Single(x => x.ParentId == targetRoot.Id);
@@ -454,7 +526,7 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
             [DownloadStatus.Completed],
             CancellationToken
         );
- 
+
         // Assert
         completedKeys.OrderBy(x => x.Id).ShouldBe(targetNodes.Select(x => x.ToKey()).OrderBy(x => x.Id));
         (await dbContext.GetDownloadStatusAsync(controlRoot.ToKey())).ShouldBe(DownloadStatus.Queued);
@@ -467,7 +539,10 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         // Arrange
         var seed = await SetupDatabase(62404, config => config.PlexPhotoLibraryCount = 1);
         var dbContext = IDbContext;
-        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
+        var library = await dbContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
         var folders = await AddPhotoFolders(
             dbContext,
             library,
@@ -537,8 +612,8 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
             }
         );
         var dbContext = IDbContext;
-        var libraries = await dbContext.PlexLibraries
-            .Where(x => x.Type == PlexMediaType.PhotoAlbum)
+        var libraries = await dbContext
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
             .OrderBy(x => x.PlexServerId)
             .ToListAsync(CancellationToken);
         var targetFolders = await AddPhotoFolders(
@@ -569,31 +644,39 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         var controlRootId = controlFolders.Single(x => x.ParentId is null).Id;
         var otherServerRootId = otherServerFolders.Single(x => x.ParentId is null).Id;
         var targetFileIds = targetFolders.SelectMany(x => x.Files).Select(x => x.Id).ToArray();
-        await dbContext.DownloadTaskPhotoImageFiles.Where(x => targetFileIds.Contains(x.Id)).ExecuteDeleteAsync(CancellationToken);
+        await dbContext
+            .DownloadTaskPhotoImageFiles.Where(x => targetFileIds.Contains(x.Id))
+            .ExecuteDeleteAsync(CancellationToken);
 
         // Act
         (await dbContext.DeleteOrphanedParentTasksByRootIdsAsync([targetRoot.Id], CancellationToken)).ShouldBe(2);
 
         // Assert
-        (await dbContext.DownloadTaskPhotoFolders.Select(x => x.Id).ToListAsync(CancellationToken)).Order().ShouldBe(
-            new[]
-            {
-                controlFolders.Single(x => x.ParentId is null).Id,
-                otherServerFolders.Single(x => x.ParentId is null).Id,
-            }.Order()
-        );
-        (await dbContext.DeleteOrphanedParentTasksByServerIdAsync(libraries[0].PlexServerId, CancellationToken)).ShouldBe(0);
+        (await dbContext.DownloadTaskPhotoFolders.Select(x => x.Id).ToListAsync(CancellationToken))
+            .Order()
+            .ShouldBe(
+                new[]
+                {
+                    controlFolders.Single(x => x.ParentId is null).Id,
+                    otherServerFolders.Single(x => x.ParentId is null).Id,
+                }.Order()
+            );
+        (
+            await dbContext.DeleteOrphanedParentTasksByServerIdAsync(libraries[0].PlexServerId, CancellationToken)
+        ).ShouldBe(0);
 
-        await dbContext.DownloadTaskPhotoImageFiles
-            .Where(x => x.ParentId == controlRootId)
+        await dbContext
+            .DownloadTaskPhotoImageFiles.Where(x => x.ParentId == controlRootId)
             .ExecuteDeleteAsync(CancellationToken);
-        (await dbContext.DeleteOrphanedParentTasksByServerIdAsync(libraries[0].PlexServerId, CancellationToken)).ShouldBe(1);
+        (
+            await dbContext.DeleteOrphanedParentTasksByServerIdAsync(libraries[0].PlexServerId, CancellationToken)
+        ).ShouldBe(1);
         (await dbContext.DownloadTaskPhotoFolders.Select(x => x.Id).ToListAsync(CancellationToken)).ShouldBe([
             otherServerFolders.Single(x => x.ParentId is null).Id,
         ]);
 
-        await dbContext.DownloadTaskPhotoImageFiles
-            .Where(x => x.ParentId == otherServerRootId)
+        await dbContext
+            .DownloadTaskPhotoImageFiles.Where(x => x.ParentId == otherServerRootId)
             .ExecuteDeleteAsync(CancellationToken);
         (await dbContext.DeleteOrphanedParentTasksAsync(CancellationToken)).ShouldBe(1);
         (await dbContext.DownloadTaskPhotoFolders.Select(x => x.Id).ToListAsync(CancellationToken)).ShouldBeEmpty();
@@ -605,8 +688,18 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         // Arrange
         var seed = await SetupDatabase(62406, config => config.PlexPhotoLibraryCount = 1);
         var dbContext = IDbContext;
-        var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum, CancellationToken);
-        var folders = await AddPhotoFolders(dbContext, library, seed, rootCount: 2, filesPerFolder: 1, includeNested: true);
+        var library = await dbContext.PlexLibraries.SingleAsync(
+            x => x.Type == PlexMediaType.PhotoAlbum,
+            CancellationToken
+        );
+        var folders = await AddPhotoFolders(
+            dbContext,
+            library,
+            seed,
+            rootCount: 2,
+            filesPerFolder: 1,
+            includeNested: true
+        );
         var roots = folders.Where(x => x.ParentId is null).OrderBy(x => x.Id).ToArray();
         var targetRoot = roots[0];
         var retainedRoot = roots[1];
@@ -620,20 +713,37 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
             );
 
         // Act
-        await dbContext.DownloadTaskPhotoFolders.Where(x => x.Id == targetRoot.Id).ExecuteDeleteAsync(CancellationToken);
+        await dbContext
+            .DownloadTaskPhotoFolders.Where(x => x.Id == targetRoot.Id)
+            .ExecuteDeleteAsync(CancellationToken);
 
         // Assert
-        var retainedFolders = folders.Where(x => x.Id == retainedRoot.Id || x.ParentId == retainedRoot.Id).Select(x => x.Id).Order();
-        (await dbContext.DownloadTaskPhotoFolders.Select(x => x.Id).ToListAsync(CancellationToken)).Order().ShouldBe(retainedFolders);
-        var retainedFileIds = retainedRoot.Files.Concat(retainedRoot.Children.SelectMany(x => x.Files)).Select(x => x.Id).Order();
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).ToListAsync(CancellationToken)).Order().ShouldBe(retainedFileIds);
-        (await dbContext.DownloadTaskPhotoImageFileLogs
-            .Select(x => new { x.DownloadTaskFileId, x.Message })
-            .ToListAsync(CancellationToken)).OrderBy(x => x.DownloadTaskFileId).ShouldBe(
-            retainedRoot.Files.Concat(retainedRoot.Children.SelectMany(x => x.Files))
-                .Select(x => new { DownloadTaskFileId = x.Id, Message = $"file-{x.Id}" })
-                .OrderBy(x => x.DownloadTaskFileId)
-        );
+        var retainedFolders = folders
+            .Where(x => x.Id == retainedRoot.Id || x.ParentId == retainedRoot.Id)
+            .Select(x => x.Id)
+            .Order();
+        (await dbContext.DownloadTaskPhotoFolders.Select(x => x.Id).ToListAsync(CancellationToken))
+            .Order()
+            .ShouldBe(retainedFolders);
+        var retainedFileIds = retainedRoot
+            .Files.Concat(retainedRoot.Children.SelectMany(x => x.Files))
+            .Select(x => x.Id)
+            .Order();
+        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).ToListAsync(CancellationToken))
+            .Order()
+            .ShouldBe(retainedFileIds);
+        (
+            await dbContext
+                .DownloadTaskPhotoImageFileLogs.Select(x => new { x.DownloadTaskFileId, x.Message })
+                .ToListAsync(CancellationToken)
+        )
+            .OrderBy(x => x.DownloadTaskFileId)
+            .ShouldBe(
+                retainedRoot
+                    .Files.Concat(retainedRoot.Children.SelectMany(x => x.Files))
+                    .Select(x => new { DownloadTaskFileId = x.Id, Message = $"file-{x.Id}" })
+                    .OrderBy(x => x.DownloadTaskFileId)
+            );
     }
 
     private static async Task<List<DownloadTaskPhotoFolder>> AddPhotoFolders(
@@ -668,7 +778,10 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
                 continue;
 
             var child = FakeData
-                .GetDownloadTaskPhotoFolder(new Seed(seed.Next()), config => config.PhotoImageDownloadTasksCount = filesPerFolder)
+                .GetDownloadTaskPhotoFolder(
+                    new Seed(seed.Next()),
+                    config => config.PhotoImageDownloadTasksCount = filesPerFolder
+                )
                 .Generate();
             child.Parent = root;
             child.ParentId = root.Id;

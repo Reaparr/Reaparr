@@ -232,6 +232,7 @@ public partial class FakePlexApiData
         .Ignore(x => x.UserID)
         .Ignore(x => x.VisualImpaired)
         .Ignore(x => x.AdditionalProperties);
+
     public static Stream GetMediaMetaDataLyricsStream(Seed seed) =>
         _getMediaMetaDataStreamFaker
             .Clone()

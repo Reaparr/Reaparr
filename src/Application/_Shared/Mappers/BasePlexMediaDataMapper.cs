@@ -87,7 +87,6 @@ public static class BasePlexMediaDataMapper
             source: mediaDataDb.Source,
             isRemux: mediaDataDb.Source == ReleaseSource.BluRayRemux
         );
-
     }
 
     /// <summary>

@@ -19,7 +19,6 @@ internal static class MediaOverviewExtensions
             : null;
     }
 
-
     public static QueryOptions BuildSortOptions(
         Sort sort,
         string titleField,

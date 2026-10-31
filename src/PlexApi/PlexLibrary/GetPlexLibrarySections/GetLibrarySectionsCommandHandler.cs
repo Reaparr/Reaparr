@@ -85,8 +85,16 @@ public class GetLibrarySectionsCommandHandler : ICommandHandler<GetLibrarySectio
             var rootsByIdentity = new Dictionary<string, PlexPhotoFolder>(StringComparer.Ordinal);
             foreach (var location in directory.Location ?? [])
             {
-                if (!location.Path.TryCreatePhotoRootIdentity(out var pathIdentity, out var canonicalPath, out var pathError))
-                    return Result.Fail<List<PlexLibrary>>($"Plex photo library '{library.Key}' returned an invalid source root: {pathError}");
+                if (
+                    !location.Path.TryCreatePhotoRootIdentity(
+                        out var pathIdentity,
+                        out var canonicalPath,
+                        out var pathError
+                    )
+                )
+                    return Result.Fail<List<PlexLibrary>>(
+                        $"Plex photo library '{library.Key}' returned an invalid source root: {pathError}"
+                    );
 
                 var identity = location.Id is > 0
                     ? $"id:{location.Id.Value.ToString(CultureInfo.InvariantCulture)}"
@@ -95,7 +103,9 @@ public class GetLibrarySectionsCommandHandler : ICommandHandler<GetLibrarySectio
                 if (rootsByIdentity.TryGetValue(identity, out var existing))
                 {
                     if (!string.Equals(existing.SourceRootPath, canonicalPath, StringComparison.Ordinal))
-                        return Result.Fail<List<PlexLibrary>>($"Plex photo library '{library.Key}' returned conflicting source roots for '{identity}'");
+                        return Result.Fail<List<PlexLibrary>>(
+                            $"Plex photo library '{library.Key}' returned conflicting source roots for '{identity}'"
+                        );
                     continue;
                 }
 
@@ -129,4 +139,3 @@ public class GetLibrarySectionsCommandHandler : ICommandHandler<GetLibrarySectio
         return trimmed.Length == 0 ? path : trimmed.GetSourcePathLeafName();
     }
 }
-

@@ -33,10 +33,11 @@ public class RefreshPlexTvShowLibraryParentIdentityUnitTests : BaseCommandUnitTe
         for (var index = 0; index < 2; index++)
         {
             seasons[index].PlexApiRatingKey = 1001 + index;
-            seasons[index].UpdateInitProperty(
-                nameof(PlexTvShowSeason.Guid),
-                useRatingKeys ? "plex://season/shared" : $"plex://season/{index}"
-            );
+            seasons[index]
+                .UpdateInitProperty(
+                    nameof(PlexTvShowSeason.Guid),
+                    useRatingKeys ? "plex://season/shared" : $"plex://season/{index}"
+                );
             seasons[index].ParentKey = useRatingKeys ? shows[index].PlexApiRatingKey : -1;
             seasons[index].ParentGuid = provideParentGuids ? shows[index].Guid : null;
             seasons[index].Episodes.Clear();
@@ -58,27 +59,43 @@ public class RefreshPlexTvShowLibraryParentIdentityUnitTests : BaseCommandUnitTe
             .ReturnsAsync(Result.Ok(episodes))
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<SyncPlexTvShowsCommand>(c => c.LibraryMetadata == metadata && !c.ForceMediaRefresh),
-                CancellationToken))
-            .Callback<ICommand<Result<BulkInsertTvShowsRapport>>, CancellationToken>((command, _) =>
-                captured = (SyncPlexTvShowsCommand)command)
+            .Setup(x =>
+                x.Send(
+                    It.Is<SyncPlexTvShowsCommand>(c => c.LibraryMetadata == metadata && !c.ForceMediaRefresh),
+                    CancellationToken
+                )
+            )
+            .Callback<ICommand<Result<BulkInsertTvShowsRapport>>, CancellationToken>(
+                (command, _) => captured = (SyncPlexTvShowsCommand)command
+            )
             .ReturnsAsync(Result.Ok(new BulkInsertTvShowsRapport()))
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<ScheduleOptimizeDatabaseJobCommand>(c => c.ChangedItemCount == 0), CancellationToken))
+            .Setup(x =>
+                x.Send(It.Is<ScheduleOptimizeDatabaseJobCommand>(c => c.ChangedItemCount == 0), CancellationToken)
+            )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.TvShow))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x => x.UpdateItemAsync(
-                library.Id,
-                It.Is<LibraryProgressItem>(item =>
-                    (item.MediaType == PlexMediaType.TvShow || item.MediaType == PlexMediaType.Season || item.MediaType == PlexMediaType.Episode)
-                    && item.Received == 2 && item.Total == 2 && item.TimeRemaining == TimeSpan.Zero),
-                CancellationToken))
+            .Setup(x =>
+                x.UpdateItemAsync(
+                    library.Id,
+                    It.Is<LibraryProgressItem>(item =>
+                        (
+                            item.MediaType == PlexMediaType.TvShow
+                            || item.MediaType == PlexMediaType.Season
+                            || item.MediaType == PlexMediaType.Episode
+                        )
+                        && item.Received == 2
+                        && item.Total == 2
+                        && item.TimeRemaining == TimeSpan.Zero
+                    ),
+                    CancellationToken
+                )
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Exactly(3));
 
@@ -90,19 +107,34 @@ public class RefreshPlexTvShowLibraryParentIdentityUnitTests : BaseCommandUnitTe
         result.Errors.Count.ShouldBe(0);
         result.Value.Id.ShouldBe(library.Id);
         captured.ShouldNotBeNull();
-        captured.LibraryMetadata.PlexLibrary.TvShows.OrderBy(x => x.PlexApiRatingKey)
-            .SelectMany(show => show.Seasons.SelectMany(season => season.Episodes.Select(episode =>
-                (ShowKey: show.PlexApiRatingKey, SeasonKey: season.PlexApiRatingKey, EpisodeKey: episode.PlexApiRatingKey,
-                    episode.ParentKey, episode.PlexLibraryId, episode.PlexServerId))))
+        captured
+            .LibraryMetadata.PlexLibrary.TvShows.OrderBy(x => x.PlexApiRatingKey)
+            .SelectMany(show =>
+                show.Seasons.SelectMany(season =>
+                    season.Episodes.Select(episode =>
+                        (
+                            ShowKey: show.PlexApiRatingKey,
+                            SeasonKey: season.PlexApiRatingKey,
+                            EpisodeKey: episode.PlexApiRatingKey,
+                            episode.ParentKey,
+                            episode.PlexLibraryId,
+                            episode.PlexServerId
+                        )
+                    )
+                )
+            )
             .ShouldBe([
                 (shows[0].PlexApiRatingKey, 1001, 2001, useRatingKeys ? 1001 : -1, library.Id, library.PlexServerId),
                 (shows[1].PlexApiRatingKey, 1002, 2002, useRatingKeys ? 1002 : -1, library.Id, library.PlexServerId),
             ]);
-        shows.Select(show => (show.ChildCount, show.GrandChildCount, show.MediaSize, show.Duration))
+        shows
+            .Select(show => (show.ChildCount, show.GrandChildCount, show.MediaSize, show.Duration))
             .ShouldBe([(1, 1, 100L, episodes[0].Duration), (1, 1, 101L, episodes[1].Duration)]);
-        Mock.Mock<ILibrarySyncProgressStore>().Verify(
-            x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-            Times.Never());
+        Mock.Mock<ILibrarySyncProgressStore>()
+            .Verify(
+                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
     }

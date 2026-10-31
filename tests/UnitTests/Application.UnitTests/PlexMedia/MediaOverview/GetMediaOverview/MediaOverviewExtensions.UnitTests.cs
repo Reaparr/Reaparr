@@ -72,19 +72,12 @@ public class MediaOverviewExtensionsUnitTests
         result.ShouldBe(new Sort(expectedField, expectedDirection));
     }
 
-
     [Test]
     public void ShouldReturnNull_WhenRecognizedSortTypeHasNoOverviewRank()
     {
         // Arrange
         var options = new QueryOptions();
-        options.Sort.Add(
-            new SortNode
-            {
-                Field = nameof(BasePlexMedia.ComparisonState),
-                Descending = true,
-            }
-        );
+        options.Sort.Add(new SortNode { Field = nameof(BasePlexMedia.ComparisonState), Descending = true });
 
         // Act
         var result = options.ResolveSort();

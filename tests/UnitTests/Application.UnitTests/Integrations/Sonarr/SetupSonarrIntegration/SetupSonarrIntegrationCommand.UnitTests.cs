@@ -52,10 +52,10 @@ public class SetupSonarrIntegrationCommandUnitTests : BaseCommandUnitTest<SetupS
         updated.ExternalDownloadClientId.ShouldBe(51);
         updated.ExternalIndexerId.ShouldBe(52);
         updated.ProvisioningState.ShouldBe(IntegrationProvisioningState.Configured);
-		updated.LastConnectionTestStatus.ShouldBe(TestConnectionStatus.Success);
-		updated.LastConnectionTestHttpStatusCode.ShouldBe(StatusCodes.Status200OK);
-		updated.LastConnectionTestErrorMessage.ShouldBeNull();
-		updated.LastConnectionTestedAt.ShouldNotBeNull();
+        updated.LastConnectionTestStatus.ShouldBe(TestConnectionStatus.Success);
+        updated.LastConnectionTestHttpStatusCode.ShouldBe(StatusCodes.Status200OK);
+        updated.LastConnectionTestErrorMessage.ShouldBeNull();
+        updated.LastConnectionTestedAt.ShouldNotBeNull();
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IProgressHubService>().Verify();
     }
@@ -66,10 +66,10 @@ public class SetupSonarrIntegrationCommandUnitTests : BaseCommandUnitTest<SetupS
         // Arrange
         await SetupDatabase(62644, config => config.SonarrIntegrationCount = 1);
         var integration = await IDbContext.SonarrIntegrations.SingleAsync(CancellationToken);
-		await IDbContext.SonarrIntegrations.ExecuteUpdateAsync(
-			x => x.SetProperty(p => p.ProvisioningState, IntegrationProvisioningState.Unconfigured),
-			CancellationToken
-		);
+        await IDbContext.SonarrIntegrations.ExecuteUpdateAsync(
+            x => x.SetProperty(p => p.ProvisioningState, IntegrationProvisioningState.Unconfigured),
+            CancellationToken
+        );
         var command = new SetupSonarrIntegrationCommand(integration.Id);
         var cancelled = ResultExtensions
             .TaskIsCancelled(nameof(SetupSonarrDownloadClientCommand))
@@ -91,14 +91,13 @@ public class SetupSonarrIntegrationCommandUnitTests : BaseCommandUnitTest<SetupS
         // Assert
         result.IsCancelled.ShouldBeTrue();
         updated.ProvisioningState.ShouldBe(IntegrationProvisioningState.Unconfigured);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<SetupSonarrIndexerCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never()
-        );
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<ValidateSonarrIntegrationCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<SetupSonarrIndexerCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<ValidateSonarrIntegrationCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IProgressHubService>().Verify();
     }
@@ -145,10 +144,11 @@ public class SetupSonarrIntegrationCommandUnitTests : BaseCommandUnitTest<SetupS
         updated.ExternalDownloadClientId.ShouldBe(61);
         updated.ExternalIndexerId.ShouldBeNull();
         updated.ProvisioningState.ShouldBe(IntegrationProvisioningState.Unconfigured);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<ValidateSonarrIntegrationCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<ValidateSonarrIntegrationCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IProgressHubService>().Verify();
     }

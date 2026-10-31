@@ -46,7 +46,9 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         fs.Directory.Exists(file.DirectoryMeta.GetDownloadCategoryDirectory(file.DownloadTaskType)).ShouldBeTrue();
         if (containsFile)
             fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(file.Id);
+        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            file.Id
+        );
     }
 
     [Test]
@@ -56,11 +58,14 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectMovieSiblingStatusWhenCleaningPhoto(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(64002, config =>
-        {
-            config.MovieDownloadTasksCount = 1;
-            config.PlexPhotoLibraryCount = 1;
-        });
+        await SetupDatabase(
+            64002,
+            config =>
+            {
+                config.MovieDownloadTasksCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
@@ -104,8 +109,9 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(photoFiles.Select(x => x.Id).Order());
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(photoFiles.Select(x => x.Id).Order());
         (await dbContext.DownloadTaskMovieFile.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
     }
 
@@ -116,13 +122,16 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectEpisodeSiblingStatusWhenCleaningPhoto(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(64004, config =>
-        {
-            config.TvShowDownloadTasksCount = 1;
-            config.TvShowSeasonDownloadTasksCount = 1;
-            config.TvShowEpisodeDownloadTasksCount = 1;
-            config.PlexPhotoLibraryCount = 1;
-        });
+        await SetupDatabase(
+            64004,
+            config =>
+            {
+                config.TvShowDownloadTasksCount = 1;
+                config.TvShowSeasonDownloadTasksCount = 1;
+                config.TvShowEpisodeDownloadTasksCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
@@ -167,9 +176,12 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(photoFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(photoFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskTvShowEpisodeFile.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
@@ -207,7 +219,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         control.DirectoryMeta.DownloadRootPath = root;
         control.DirectoryMeta.PhotoFolder = "Photos/control";
         control.DownloadStatus = DownloadStatus.Downloading;
-        
+
         await dbContext.SaveChangesAsync(CancellationToken);
         target.DownloadDirectory.ShouldBe(sibling.DownloadDirectory);
         target.DownloadDirectory.ShouldNotBe(control.DownloadDirectory);
@@ -223,8 +235,9 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(new[] { target.Id, sibling.Id, control.Id }.Order());
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(new[] { target.Id, sibling.Id, control.Id }.Order());
     }
 
     [Test]
@@ -234,15 +247,18 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectMusicSiblingStatusWhenCleaningPhoto(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(64007, config =>
-        {
-            config.PlexPhotoLibraryCount = 1;
-            config.PlexMusicLibraryCount = 1;
-            config.MusicArtistDownloadTasksCount = 1;
-            config.MusicAlbumDownloadTasksCount = 1;
-            config.MusicTrackDownloadTasksCount = 1;
-            config.MusicTrackFileDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            64007,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 1;
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistDownloadTasksCount = 1;
+                config.MusicAlbumDownloadTasksCount = 1;
+                config.MusicTrackDownloadTasksCount = 1;
+                config.MusicTrackFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
@@ -287,9 +303,12 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(photoFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(photoFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
@@ -299,13 +318,16 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectOtherVideoSiblingStatusWhenCleaningPhoto(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(64009, config =>
-        {
-            config.PlexPhotoLibraryCount = 1;
-            config.PlexOtherVideoLibraryCount = 1;
-            config.OtherVideoDownloadTasksCount = 1;
-            config.OtherVideoFileDownloadTasksCount = 1;
-        });
+        await SetupDatabase(
+            64009,
+            config =>
+            {
+                config.PlexPhotoLibraryCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoDownloadTasksCount = 1;
+                config.OtherVideoFileDownloadTasksCount = 1;
+            }
+        );
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
@@ -349,9 +371,12 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         var active = siblingStatus is not (DownloadStatus.Completed or DownloadStatus.Deleted);
         fs.Directory.Exists(target.DownloadDirectory).ShouldBe(active);
         fs.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBe(active);
-        (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(photoFiles.Select(x => x.Id).Order());
-        (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(sibling.Id);
+        (
+            await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)
+        ).ShouldBe(photoFiles.Select(x => x.Id).Order());
+        (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
+            sibling.Id
+        );
     }
 
     [Test]
@@ -627,12 +652,8 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         });
 
         // Act
-        var lowerResult = await TestHandlerExecuteAsync(
-            new CleanUpDownloadTaskFoldersCommand(targetLower.ToKey())
-        );
-        var upperResult = await TestHandlerExecuteAsync(
-            new CleanUpDownloadTaskFoldersCommand(targetUpper.ToKey())
-        );
+        var lowerResult = await TestHandlerExecuteAsync(new CleanUpDownloadTaskFoldersCommand(targetLower.ToKey()));
+        var upperResult = await TestHandlerExecuteAsync(new CleanUpDownloadTaskFoldersCommand(targetUpper.ToKey()));
 
         // Assert
         lowerResult.IsSuccess.ShouldBeTrue();
@@ -665,7 +686,9 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
             node.PlexLibraryId = library.Id;
         }
         dbContext.DownloadTaskPhotoFolders.Add(album);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         target.DirectoryMeta.PhotoFolder = "shared/file";
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -715,7 +738,9 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
             node.PlexLibraryId = library.Id;
         }
         dbContext.DownloadTaskPhotoFolders.Add(album);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         target.DirectoryMeta.PhotoFolder = "shared/file";
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -770,7 +795,9 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
             node.PlexLibraryId = library.Id;
         }
         dbContext.DownloadTaskPhotoFolders.Add(album);
-        target.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
+        target.DirectoryMeta.DownloadRootPath = Mock
+            .Container.Resolve<IPathProvider>()
+            .DefaultDownloadsDestinationFolder;
         target.DirectoryMeta.PhotoFolder = "shared/file";
         await dbContext.SaveChangesAsync(CancellationToken);
         var parent = Path.GetDirectoryName(target.DownloadDirectory)!;
@@ -789,10 +816,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
             .Verifiable(Times.Once());
         Mock.Mock<IDirectory>().Setup(x => x.Delete(target.DownloadDirectory)).Verifiable(Times.Once());
         Mock.Mock<IDirectory>().Setup(x => x.Exists(parent)).Returns(true).Verifiable(Times.Once());
-        Mock.Mock<IDirectory>()
-            .Setup(x => x.GetFileSystemEntries(parent))
-            .Returns([])
-            .Verifiable(Times.Once());
+        Mock.Mock<IDirectory>().Setup(x => x.GetFileSystemEntries(parent)).Returns([]).Verifiable(Times.Once());
         Mock.Mock<IDirectory>()
             .Setup(x => x.Delete(parent))
             .Throws(new UnauthorizedAccessException("second delete denied"))
@@ -810,6 +834,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         Mock.Mock<IDirectory>().Verify(x => x.Delete(target.DownloadDirectory), Times.Once());
         Mock.Mock<IDirectory>().Verify(x => x.Delete(parent), Times.Once());
     }
+
     [Test]
     public async Task ShouldCleanStandalonePhotoImageFolderWithoutAlbum()
     {

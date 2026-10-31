@@ -39,12 +39,24 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
             .ReturnsAsync([])
             .Verifiable(Times.Exactly(4));
 
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-            It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == keyA.Id && c.AutoPause), CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Exactly(2));
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-            It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == keyB.Id && c.AutoPause), CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Exactly(2));
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == keyA.Id && c.AutoPause),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == keyB.Id && c.AutoPause),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
 
         // Act
         var result = await Sut.ExecuteAsync(new AutoPauseActiveDownloadsCommand(), CancellationToken);
@@ -106,9 +118,15 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
             .ReturnsAsync([moveKey])
             .Verifiable(Times.Exactly(2));
 
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-            It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == moveKey.Id && c.AutoPause), CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Exactly(2));
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == moveKey.Id && c.AutoPause),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
 
         // Act
         var result = await Sut.ExecuteAsync(new AutoPauseActiveDownloadsCommand(), CancellationToken);
@@ -160,12 +178,24 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
             .ReturnsAsync([])
             .Verifiable(Times.Exactly(2));
 
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-            It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == firstPassKey.Id && c.AutoPause), CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-            It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == secondPassKey.Id && c.AutoPause), CancellationToken))
-            .ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == firstPassKey.Id && c.AutoPause),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == secondPassKey.Id && c.AutoPause),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(new AutoPauseActiveDownloadsCommand(), CancellationToken);
@@ -174,7 +204,8 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<IDownloadTaskScheduler>().Verify(x => x.GetCurrentlyDownloadingKeysByServer(serverId), Times.Exactly(2));
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Verify(x => x.GetCurrentlyDownloadingKeysByServer(serverId), Times.Exactly(2));
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<ICommandExecutor>()
             .Verify(
@@ -225,9 +256,15 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
             .Verifiable(Times.Exactly(2));
 
         var error = new Error("pause failed");
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-            It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == fileTask.Id && c.AutoPause), CancellationToken))
-            .ReturnsAsync(Result.Fail(error)).Verifiable(Times.Exactly(2));
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == fileTask.Id && c.AutoPause),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Fail(error))
+            .Verifiable(Times.Exactly(2));
 
         // Act
         var result = await Sut.ExecuteAsync(new AutoPauseActiveDownloadsCommand(), CancellationToken);
@@ -265,15 +302,26 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
         var keys = new[] { music.ToKey(), video.ToKey() };
         var serverId = music.PlexServerId;
         (await dbContext.GetDownloadTaskKeysAsync(keys.Select(x => x.Id).ToList(), CancellationToken))
-            .OrderBy(x => x.Id).ShouldBe(keys.OrderBy(x => x.Id));
-        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.GetCurrentlyDownloadingKeysByServer(serverId))
-            .ReturnsAsync([music.ToKey(), music.ToKey()]).Verifiable(Times.Exactly(2));
-        Mock.Mock<IMoveDownloadFileScheduler>().Setup(x => x.GetCurrentlyMovingKeysByServer(serverId))
-            .ReturnsAsync([music.ToKey(), video.ToKey()]).Verifiable(Times.Exactly(2));
+            .OrderBy(x => x.Id)
+            .ShouldBe(keys.OrderBy(x => x.Id));
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.GetCurrentlyDownloadingKeysByServer(serverId))
+            .ReturnsAsync([music.ToKey(), music.ToKey()])
+            .Verifiable(Times.Exactly(2));
+        Mock.Mock<IMoveDownloadFileScheduler>()
+            .Setup(x => x.GetCurrentlyMovingKeysByServer(serverId))
+            .ReturnsAsync([music.ToKey(), video.ToKey()])
+            .Verifiable(Times.Exactly(2));
         foreach (var key in keys)
-            Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-                It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == key.Id && c.AutoPause), CancellationToken))
-                .ReturnsAsync(Result.Ok()).Verifiable(Times.Exactly(2));
+            Mock.Mock<ICommandExecutor>()
+                .Setup(x =>
+                    x.Send(
+                        It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == key.Id && c.AutoPause),
+                        CancellationToken
+                    )
+                )
+                .ReturnsAsync(Result.Ok())
+                .Verifiable(Times.Exactly(2));
 
         // Act
         var result = await Sut.ExecuteAsync(new AutoPauseActiveDownloadsCommand(), CancellationToken);
@@ -281,14 +329,26 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        (await dbContext.GetDownloadTaskFileAsync(music.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(DownloadStatus.Queued);
-        (await dbContext.GetDownloadTaskFileAsync(video.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        (await dbContext.GetDownloadTaskFileAsync(music.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(
+            DownloadStatus.Queued
+        );
+        (await dbContext.GetDownloadTaskFileAsync(video.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(
+            DownloadStatus.Queued
+        );
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(
-            It.Is<PauseDownloadTaskCommand>(c => !keys.Any(k => k.Id == c.DownloadTaskGuid) || !c.AutoPause),
-            It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x =>
+                    x.Send(
+                        It.Is<PauseDownloadTaskCommand>(c =>
+                            !keys.Any(k => k.Id == c.DownloadTaskGuid) || !c.AutoPause
+                        ),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -310,13 +370,23 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
         var file = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         var cancelled = Result.Try((Action)(() => throw new OperationCanceledException(CancellationToken)));
         cancelled.IsCancelled.ShouldBeTrue();
-        Mock.Mock<IDownloadTaskScheduler>().Setup(x => x.GetCurrentlyDownloadingKeysByServer(file.PlexServerId))
-            .ReturnsAsync([file.ToKey()]).Verifiable(Times.Once());
-        Mock.Mock<IMoveDownloadFileScheduler>().Setup(x => x.GetCurrentlyMovingKeysByServer(file.PlexServerId))
-            .ReturnsAsync([]).Verifiable(Times.Once());
-        Mock.Mock<ICommandExecutor>().Setup(x => x.Send(
-            It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == file.Id && c.AutoPause), CancellationToken))
-            .ReturnsAsync(cancelled).Verifiable(Times.Once());
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.GetCurrentlyDownloadingKeysByServer(file.PlexServerId))
+            .ReturnsAsync([file.ToKey()])
+            .Verifiable(Times.Once());
+        Mock.Mock<IMoveDownloadFileScheduler>()
+            .Setup(x => x.GetCurrentlyMovingKeysByServer(file.PlexServerId))
+            .ReturnsAsync([])
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<PauseDownloadTaskCommand>(c => c.DownloadTaskGuid == file.Id && c.AutoPause),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(cancelled)
+            .Verifiable(Times.Once());
 
         // Act
         var result = await Sut.ExecuteAsync(new AutoPauseActiveDownloadsCommand(), CancellationToken);
@@ -325,7 +395,9 @@ public class AutoPauseActiveDownloadsCommandUnitTests : BaseUnitTest<AutoPauseAc
         result.ShouldBeSameAs(cancelled);
         result.IsCancelled.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
-        (await dbContext.GetDownloadTaskFileAsync(file.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(DownloadStatus.Queued);
+        (await dbContext.GetDownloadTaskFileAsync(file.ToKey(), CancellationToken))!.DownloadStatus.ShouldBe(
+            DownloadStatus.Queued
+        );
         Mock.Mock<IDownloadTaskScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();

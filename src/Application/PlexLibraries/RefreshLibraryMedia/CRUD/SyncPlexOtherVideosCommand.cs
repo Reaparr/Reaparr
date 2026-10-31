@@ -279,8 +279,6 @@ public class SyncPlexOtherVideosCommandHandler
         });
     }
 
-
-
     private sealed record CurrentVideo(int Id, int PlexApiRatingKey, DateTime? UpdatedAt, long MediaSize);
 }
 

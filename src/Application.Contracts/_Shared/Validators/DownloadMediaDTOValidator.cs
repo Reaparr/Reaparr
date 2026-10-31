@@ -34,13 +34,15 @@ public class DownloadMediaDTOValidator : AbstractValidator<DownloadMediaDTO>
                 }
             });
         RuleFor(x => x.SelectionKind)
-            .Must((dto, selectionKind) =>
-                dto.Type switch
-                {
-                    PlexMediaType.PhotoAlbum => selectionKind == PhotoItemKind.Album,
-                    PlexMediaType.PhotoImage => selectionKind is PhotoItemKind.Asset or PhotoItemKind.Folder,
-                    _ => selectionKind is null,
-                })
+            .Must(
+                (dto, selectionKind) =>
+                    dto.Type switch
+                    {
+                        PlexMediaType.PhotoAlbum => selectionKind == PhotoItemKind.Album,
+                        PlexMediaType.PhotoImage => selectionKind is PhotoItemKind.Asset or PhotoItemKind.Folder,
+                        _ => selectionKind is null,
+                    }
+            )
             .WithMessage(
                 "Photo album selections must use Album, photo image selections must use Asset or Folder, and non-photo selections must omit SelectionKind."
             );

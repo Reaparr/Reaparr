@@ -107,7 +107,6 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
             );
     }
 
-
     [Test]
     public async Task ShouldStartDownloadTask_WhenAnotherServerHasActiveDownloadJob()
     {
@@ -123,9 +122,14 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
             }
         );
         var dbContext = IDbContext;
-        var otherLibrary = await dbContext.PlexLibraries.OrderByDescending(x => x.PlexServerId).FirstAsync(CancellationToken);
-        var movedTask = await dbContext.DownloadTaskMovie.AsTracking().Include(x => x.Children)
-            .OrderByDescending(x => x.Id).FirstAsync(CancellationToken);
+        var otherLibrary = await dbContext
+            .PlexLibraries.OrderByDescending(x => x.PlexServerId)
+            .FirstAsync(CancellationToken);
+        var movedTask = await dbContext
+            .DownloadTaskMovie.AsTracking()
+            .Include(x => x.Children)
+            .OrderByDescending(x => x.Id)
+            .FirstAsync(CancellationToken);
         new List<DownloadTaskMovie> { movedTask }.SetRelationshipIds(otherLibrary.PlexServerId, otherLibrary.Id);
         await dbContext.SaveChangesAsync(CancellationToken);
 
@@ -142,8 +146,10 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
 
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.GetCurrentlyDownloadingKeysByServer(It.IsAny<int>()))
-            .Returns((int serverId) =>
-                Task.FromResult<List<DownloadTaskKey>>(serverId == activeServerId ? [activeTask.ToKey()] : []));
+            .Returns(
+                (int serverId) =>
+                    Task.FromResult<List<DownloadTaskKey>>(serverId == activeServerId ? [activeTask.ToKey()] : [])
+            );
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()))
             .ReturnOk();
@@ -158,13 +164,15 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
         result.Value.PlexServerId.ShouldBe(targetServerId);
         Mock.Mock<IDownloadTaskScheduler>()
             .Verify(
-                x => x.StartDownloadTaskJob(
-                    It.Is<DownloadTaskKey>(key => key.PlexServerId == targetServerId),
-                    It.IsAny<CancellationToken>()
-                ),
+                x =>
+                    x.StartDownloadTaskJob(
+                        It.Is<DownloadTaskKey>(key => key.PlexServerId == targetServerId),
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Once()
             );
     }
+
     [Test]
     public async Task ShouldNotStartDownloads_WhenServerIsPausedByUser()
     {

@@ -740,12 +740,14 @@ public static partial class MockDatabase
             {
                 album.PlexServerId = library.PlexServerId;
                 album.PlexLibraryId = library.Id;
-                var albumImages = config.PhotoCount > 0
-                    ? FakeData.GetPlexPhotoMediaData(seed, options).Generate(config.PhotoCount)
-                    : [];
-                var albumClips = config.PhotoClipCount > 0
-                    ? FakeData.GetPlexPhotoMediaData(seed, options, isClip: true).Generate(config.PhotoClipCount)
-                    : [];
+                var albumImages =
+                    config.PhotoCount > 0
+                        ? FakeData.GetPlexPhotoMediaData(seed, options).Generate(config.PhotoCount)
+                        : [];
+                var albumClips =
+                    config.PhotoClipCount > 0
+                        ? FakeData.GetPlexPhotoMediaData(seed, options, isClip: true).Generate(config.PhotoClipCount)
+                        : [];
                 var albumAssets = albumImages.Concat(albumClips).ToList();
                 foreach (var file in albumAssets)
                 {
@@ -760,12 +762,14 @@ public static partial class MockDatabase
 
             if (albums.Count == 0)
             {
-                var images = config.PhotoCount > 0
-                    ? FakeData.GetPlexPhotoMediaData(seed, options).Generate(config.PhotoCount)
-                    : [];
-                var clips = config.PhotoClipCount > 0
-                    ? FakeData.GetPlexPhotoMediaData(seed, options, isClip: true).Generate(config.PhotoClipCount)
-                    : [];
+                var images =
+                    config.PhotoCount > 0
+                        ? FakeData.GetPlexPhotoMediaData(seed, options).Generate(config.PhotoCount)
+                        : [];
+                var clips =
+                    config.PhotoClipCount > 0
+                        ? FakeData.GetPlexPhotoMediaData(seed, options, isClip: true).Generate(config.PhotoClipCount)
+                        : [];
                 foreach (var file in images.Concat(clips))
                 {
                     file.PlexServerId = library.PlexServerId;
@@ -780,14 +784,12 @@ public static partial class MockDatabase
             await context.SaveChangesAsync();
 
             context.PlexPhotoAlbumMemberships.AddRange(
-                albumFiles.SelectMany(
-                    pair => pair.Value.Select(
-                        file => new PlexPhotoAlbumMembership
-                        {
-                            PlexPhotoAlbumId = pair.Key.Id,
-                            PlexPhotoMediaDataId = file.Id,
-                        }
-                    )
+                albumFiles.SelectMany(pair =>
+                    pair.Value.Select(file => new PlexPhotoAlbumMembership
+                    {
+                        PlexPhotoAlbumId = pair.Key.Id,
+                        PlexPhotoMediaDataId = file.Id,
+                    })
                 )
             );
             await context.SaveChangesAsync();

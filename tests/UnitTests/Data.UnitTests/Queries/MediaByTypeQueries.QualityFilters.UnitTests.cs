@@ -8,25 +8,29 @@ public class GetMovieMediaByTypeCommandQualityFiltersUnitTests : BaseCommandUnit
     [Test]
     public async Task ShouldSelectOnlyMatchingVideoQuality_WhenFilteringTheRootQualityCollection()
     {
-        await SetupDatabase(70351, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieCount = 2;
-        });
+        await SetupDatabase(
+            70351,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieCount = 2;
+            }
+        );
         var dbContext = IDbContext;
-        var roots = await dbContext.PlexMovies
-            .OrderBy(x => x.Id)
+        var roots = await dbContext
+            .PlexMovies.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.PlexLibraryId })
             .ToListAsync(CancellationToken);
         roots.Count.ShouldBe(2);
         var selectedId = roots[0].Id;
         var libraryId = roots[0].PlexLibraryId;
         await dbContext.PlexMovieData.ExecuteUpdateAsync(
-            update => update.SetProperty(
-                x => x.VideoQuality,
-                x => x.PlexMovieId == selectedId ? VideoQuality.FullHD : VideoQuality.HD
-            ),
+            update =>
+                update.SetProperty(
+                    x => x.VideoQuality,
+                    x => x.PlexMovieId == selectedId ? VideoQuality.FullHD : VideoQuality.HD
+                ),
             CancellationToken
         );
         var command = new GetMovieMediaByTypeCommand(
@@ -75,15 +79,18 @@ public class GetTvShowMediaByTypeCommandQualityFiltersUnitTests : BaseCommandUni
     [Test]
     public async Task ShouldSelectOnlyMatchingVideoQuality_WhenFilteringTheRootQualityCollection()
     {
-        await SetupDatabase(70351, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexTvShowLibraryCount = 1;
-            config.TvShowCount = 2;
-        });
+        await SetupDatabase(
+            70351,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexTvShowLibraryCount = 1;
+                config.TvShowCount = 2;
+            }
+        );
         var dbContext = IDbContext;
-        var roots = await dbContext.PlexTvShows
-            .OrderBy(x => x.Id)
+        var roots = await dbContext
+            .PlexTvShows.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.PlexLibraryId })
             .ToListAsync(CancellationToken);
         roots.Count.ShouldBe(2);
@@ -146,30 +153,35 @@ public class GetTvShowMediaByTypeCommandQualityFiltersUnitTests : BaseCommandUni
     }
 }
 
-public class GetOtherVideoMediaByTypeCommandQualityFiltersUnitTests : BaseCommandUnitTest<GetOtherVideoMediaByTypeCommand>
+public class GetOtherVideoMediaByTypeCommandQualityFiltersUnitTests
+    : BaseCommandUnitTest<GetOtherVideoMediaByTypeCommand>
 {
     [Test]
     public async Task ShouldSelectOnlyMatchingVideoQuality_WhenFilteringTheRootQualityCollection()
     {
-        await SetupDatabase(70351, config =>
-        {
-            config.PlexServerCount = 1;
-            config.PlexOtherVideoLibraryCount = 1;
-            config.OtherVideoCount = 2;
-        });
+        await SetupDatabase(
+            70351,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoCount = 2;
+            }
+        );
         var dbContext = IDbContext;
-        var roots = await dbContext.PlexOtherVideos
-            .OrderBy(x => x.Id)
+        var roots = await dbContext
+            .PlexOtherVideos.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.PlexLibraryId })
             .ToListAsync(CancellationToken);
         roots.Count.ShouldBe(2);
         var selectedId = roots[0].Id;
         var libraryId = roots[0].PlexLibraryId;
         await dbContext.PlexOtherVideoData.ExecuteUpdateAsync(
-            update => update.SetProperty(
-                x => x.VideoQuality,
-                x => x.PlexOtherVideoId == selectedId ? VideoQuality.FullHD : VideoQuality.HD
-            ),
+            update =>
+                update.SetProperty(
+                    x => x.VideoQuality,
+                    x => x.PlexOtherVideoId == selectedId ? VideoQuality.FullHD : VideoQuality.HD
+                ),
             CancellationToken
         );
         var command = new GetOtherVideoMediaByTypeCommand(
@@ -195,9 +207,7 @@ public class GetOtherVideoMediaByTypeCommandQualityFiltersUnitTests : BaseComman
         result.Value.TotalCount.ShouldBe(1);
         result.Value.Items.Select(x => x.Id).ShouldBe([selectedId]);
         result.Value.Qualities.ShouldBe([7]);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
-            Times.Never()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 }

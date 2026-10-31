@@ -1135,9 +1135,7 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
         emailClaim!.Value.ShouldBe(TEST_EMAIL);
         context.User.IsInRole("User").ShouldBeTrue();
         context.User.IsInRole("Admin").ShouldBeTrue();
-        signedInClaims.Select(x => (x.Type, x.Value)).ShouldBe(
-            context.User.Claims.Select(x => (x.Type, x.Value))
-        );
+        signedInClaims.Select(x => (x.Type, x.Value)).ShouldBe(context.User.Claims.Select(x => (x.Type, x.Value)));
         signedInRoles.ShouldBe(["User", "Admin"]);
         Mock.Mock<IIdentitySignInService>().Verify();
     }

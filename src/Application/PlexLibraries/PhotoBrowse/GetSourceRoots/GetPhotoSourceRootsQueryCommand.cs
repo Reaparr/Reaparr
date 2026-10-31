@@ -18,9 +18,7 @@ public sealed class GetPhotoSourceRootsQueryCommandValidator : AbstractValidator
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MediaQueryFilter.MaximumPageSize);
         RuleFor(x => x.Direction).IsInEnum();
-        RuleFor(x => x.Sort)
-            .Equal(SortType.Title)
-            .WithMessage("Photo folders support title sorting only.");
+        RuleFor(x => x.Sort).Equal(SortType.Title).WithMessage("Photo folders support title sorting only.");
         RuleFor(x => x)
             .Must(x => (long)(x.Page - 1) * x.PageSize <= int.MaxValue)
             .WithMessage("The requested page offset is too large.");
@@ -47,9 +45,7 @@ public sealed class GetPhotoSourceRootsQueryCommandHandler
         if (scopeResult.IsCancelledOrFailed)
             return scopeResult.ToResult<PhotoFolderPageDTO>();
         var roots = context.PlexPhotoFolders.Where(x =>
-            x.PlexLibraryId == queryCommand.PlexLibraryId
-            && x.ParentId == null
-            && x.IsActive == true
+            x.PlexLibraryId == queryCommand.PlexLibraryId && x.ParentId == null && x.IsActive == true
         );
         var totalCount = await roots.CountAsync(cancellationToken);
 

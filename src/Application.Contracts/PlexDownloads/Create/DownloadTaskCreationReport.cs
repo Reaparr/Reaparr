@@ -16,8 +16,17 @@ public sealed record DownloadTaskCreationReport
     public int MusicTracks { get; init; }
     public int OtherVideos { get; init; }
 
-    public int Total => Movies + TvShows + Seasons + Episodes + PhotoFolders + PhotoImages
-        + MusicArtists + MusicAlbums + MusicTracks + OtherVideos;
+    public int Total =>
+        Movies
+        + TvShows
+        + Seasons
+        + Episodes
+        + PhotoFolders
+        + PhotoImages
+        + MusicArtists
+        + MusicAlbums
+        + MusicTracks
+        + OtherVideos;
 
     public static DownloadTaskCreationReport operator +(
         DownloadTaskCreationReport left,
@@ -37,4 +46,3 @@ public sealed record DownloadTaskCreationReport
             OtherVideos = left.OtherVideos + right.OtherVideos,
         };
 }
-

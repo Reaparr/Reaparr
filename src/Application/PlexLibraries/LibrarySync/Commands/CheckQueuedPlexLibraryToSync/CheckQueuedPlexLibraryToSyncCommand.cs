@@ -130,19 +130,19 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
             return;
         }
 
-        var claimed = await _dbContext.LibrarySyncJobQueues
-            .Where(x =>
+        var claimed = await _dbContext
+            .LibrarySyncJobQueues.Where(x =>
                 x.PlexServerId == serverId
                 && x.PlexLibraryId == libraryId
                 && x.Status == LibrarySyncJobStatus.Queued
                 && !_dbContext.LibrarySyncJobQueues.Any(other =>
-                    other.PlexServerId == x.PlexServerId
-                    && other.Status == LibrarySyncJobStatus.Processing
+                    other.PlexServerId == x.PlexServerId && other.Status == LibrarySyncJobStatus.Processing
                 )
             )
             .ExecuteUpdateAsync(
-                s => s.SetProperty(x => x.Status, LibrarySyncJobStatus.Processing)
-                    .SetProperty(x => x.StartedAt, DateTime.UtcNow),
+                s =>
+                    s.SetProperty(x => x.Status, LibrarySyncJobStatus.Processing)
+                        .SetProperty(x => x.StartedAt, DateTime.UtcNow),
                 cancellationToken
             );
         if (claimed != 1)
@@ -159,15 +159,16 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
         // ExecuteJob also succeeds without scheduling when the job key already exists.
         if (scheduleResult.IsCancelledOrFailed || scheduleResult.Value == DateTimeOffset.MinValue)
         {
-            await _dbContext.LibrarySyncJobQueues
-                .Where(x =>
+            await _dbContext
+                .LibrarySyncJobQueues.Where(x =>
                     x.PlexServerId == serverId
                     && x.PlexLibraryId == libraryId
                     && x.Status == LibrarySyncJobStatus.Processing
                 )
                 .ExecuteUpdateAsync(
-                    s => s.SetProperty(x => x.Status, LibrarySyncJobStatus.Queued)
-                        .SetProperty(x => x.StartedAt, (DateTime?)null),
+                    s =>
+                        s.SetProperty(x => x.Status, LibrarySyncJobStatus.Queued)
+                            .SetProperty(x => x.StartedAt, (DateTime?)null),
                     CancellationToken.None
                 );
             scheduleResult.LogIfFailed();

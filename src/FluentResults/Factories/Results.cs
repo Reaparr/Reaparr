@@ -98,7 +98,10 @@ namespace Reaparr.FluentResults
 
                 var valueText = value switch
                 {
-                    IFormattable formattable => formattable.ToString(propertyToken.Format, CultureInfo.InvariantCulture),
+                    IFormattable formattable => formattable.ToString(
+                        propertyToken.Format,
+                        CultureInfo.InvariantCulture
+                    ),
                     null => string.Empty,
                     _ => value.ToString() ?? string.Empty,
                 };

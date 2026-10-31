@@ -17,11 +17,7 @@ public class PlexMediaDataMapperBaseUnitTests : BaseUnitTest
         // Arrange
         var source = FakeData.GetLibraryMediaItemDTO(new Seed(625802), mediaType: PlexMediaType.Movie).Generate();
         var media = source.Media.ShouldHaveSingleItem();
-        source.Media[0] = media with
-        {
-            Container = container,
-            OptimizedForStreaming = optimizedForStreaming,
-        };
+        source.Media[0] = media with { Container = container, OptimizedForStreaming = optimizedForStreaming };
 
         // Act
         var movie = source.ToPlexMovie();
@@ -45,12 +41,7 @@ public class PlexMediaDataMapperBaseUnitTests : BaseUnitTest
         // Arrange
         var source = FakeData.GetLibraryMediaItemDTO(new Seed(625803), mediaType: PlexMediaType.Movie).Generate();
         var media = source.Media.ShouldHaveSingleItem();
-        source.Media[0] = media with
-        {
-            Container = container,
-            AudioCodec = audioCodec,
-            AudioProfile = audioProfile,
-        };
+        source.Media[0] = media with { Container = container, AudioCodec = audioCodec, AudioProfile = audioProfile };
 
         // Act
         var movie = source.ToPlexMovie();
@@ -58,5 +49,4 @@ public class PlexMediaDataMapperBaseUnitTests : BaseUnitTest
         // Assert
         movie.MediaDataList.ShouldHaveSingleItem().Source.ShouldBe(expectedSource);
     }
-
 }

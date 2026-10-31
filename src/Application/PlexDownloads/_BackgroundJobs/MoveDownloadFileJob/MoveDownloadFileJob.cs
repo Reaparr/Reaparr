@@ -119,8 +119,14 @@ public class MoveDownloadFileJob : IJob
                         downloadTaskKey.Id
                     );
                 var status = await _dbContext.GetDownloadStatusAsync(downloadTaskKey);
-                if (status is null or DownloadStatus.MovePaused or DownloadStatus.AutoMovePaused
-                    or DownloadStatus.Stopped or DownloadStatus.Completed)
+                if (
+                    status
+                    is null
+                        or DownloadStatus.MovePaused
+                        or DownloadStatus.AutoMovePaused
+                        or DownloadStatus.Stopped
+                        or DownloadStatus.Completed
+                )
                     await QueueNextAsync();
                 return moveResult;
             }
@@ -142,7 +148,8 @@ public class MoveDownloadFileJob : IJob
                     if (await context.Scheduler.CheckExists(triggerKey, ct))
                         return;
 
-                    var retryTrigger = TriggerBuilder.Create()
+                    var retryTrigger = TriggerBuilder
+                        .Create()
                         .WithIdentity(triggerKey)
                         .ForJob(jobKey)
                         .UsingJobData(RetryCountKey, nextRetryCount)

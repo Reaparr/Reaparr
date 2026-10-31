@@ -18,7 +18,8 @@ public class RefreshPlexPhotoLibraryCommandValidator : AbstractValidator<Refresh
     }
 }
 
-public class RefreshPlexPhotoLibraryCommandHandler : ICommandHandler<RefreshPlexPhotoLibraryCommand, Result<PlexLibrary>>
+public class RefreshPlexPhotoLibraryCommandHandler
+    : ICommandHandler<RefreshPlexPhotoLibraryCommand, Result<PlexLibrary>>
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
@@ -98,7 +99,12 @@ public class RefreshPlexPhotoLibraryCommandHandler : ICommandHandler<RefreshPlex
         );
         rebuildResult.LogIfFailed();
 
-        _log.Here().Information("Successfully refreshed library {PlexLibraryName} with id: {PlexLibraryId}", library.Title, library.Id);
+        _log.Here()
+            .Information(
+                "Successfully refreshed library {PlexLibraryName} with id: {PlexLibraryId}",
+                library.Title,
+                library.Id
+            );
 
         var plexLibraryDb = await _dbContext.PlexLibraries.FirstOrDefaultAsync(
             x => x.Id == library.Id,

@@ -31,8 +31,19 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         var connectionId = await dbContext.PlexServerConnections.Select(x => x.Id).FirstAsync(CancellationToken);
         var connectionsBefore = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var request = CreateInvalidRequest(invalidProperty, connectionId, serverId);
 
@@ -40,8 +51,19 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         var endpointResult = await TestEndpointHandleAsync(request);
         var connectionsAfter = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -69,8 +91,19 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         var serverIds = await dbContext.PlexServers.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
         var connectionsBefore = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var missingConnectionId = connectionsBefore.Max(x => x.Id) + 1000;
         connectionsBefore.ShouldNotContain(x => x.Id == missingConnectionId);
@@ -89,8 +122,19 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         var result = endpointResult.Response!;
         var connectionsAfter = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -116,15 +160,28 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         );
 
         var dbContext = IDbContext;
-        var generatedConnections = await dbContext.PlexServerConnections.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var generatedConnections = await dbContext
+            .PlexServerConnections.OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         var targetConnection = generatedConnections[0];
         var controlConnection = generatedConnections[1];
         targetConnection.IsCustom.ShouldBeFalse();
         controlConnection.IsCustom.ShouldBeFalse();
         var connectionsBefore = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var request = new UpdatePlexServerConnectionEndpointRequest
         {
@@ -141,8 +198,19 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         var result = endpointResult.Response!;
         var connectionsAfter = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
 
         // Assert
@@ -188,8 +256,19 @@ public class UpdatePlexServerConnectionEndpointUnitTests
 
         var connectionsBefore = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var serversBefore = await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -211,8 +290,19 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         var result = endpointResult.Response!;
         var connectionsAfter = await dbContext
             .PlexServerConnections.OrderBy(x => x.Id)
-            .Select(x => new ConnectionSnapshot(x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url,
-                x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x => new ConnectionSnapshot(
+                x.Id,
+                x.PlexServerId,
+                x.Protocol,
+                x.Address,
+                x.Port,
+                x.Url,
+                x.Local,
+                x.Relay,
+                x.IPv4,
+                x.IPv6,
+                x.IsCustom
+            ))
             .ToListAsync(CancellationToken);
         var serversAfter = await dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -231,7 +321,10 @@ public class UpdatePlexServerConnectionEndpointUnitTests
     }
 
     private static UpdatePlexServerConnectionEndpointRequest CreateInvalidRequest(
-        string invalidProperty, int connectionId, int serverId)
+        string invalidProperty,
+        int connectionId,
+        int serverId
+    )
     {
         var request = new UpdatePlexServerConnectionEndpointRequest
         {
@@ -255,6 +348,16 @@ public class UpdatePlexServerConnectionEndpointUnitTests
     }
 
     private sealed record ConnectionSnapshot(
-        int Id, int PlexServerId, string Protocol, string Address, int Port, string Url,
-        bool Local, bool Relay, bool IPv4, bool IPv6, bool IsCustom);
+        int Id,
+        int PlexServerId,
+        string Protocol,
+        string Address,
+        int Port,
+        string Url,
+        bool Local,
+        bool Relay,
+        bool IPv4,
+        bool IPv6,
+        bool IsCustom
+    );
 }

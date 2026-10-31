@@ -178,9 +178,8 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
 
         if (req.QualityId is > 0)
         {
-            var collection = req.MediaType == PlexMediaType.TvShow
-                ? nameof(PlexTvShow.Qualities)
-                : nameof(PlexMovie.MediaDataList);
+            var collection =
+                req.MediaType == PlexMediaType.TvShow ? nameof(PlexTvShow.Qualities) : nameof(PlexMovie.MediaDataList);
             filters.Add(
                 $"{collection}:any:{nameof(BasePlexMediaQuality.VideoQuality)}:eq:{req.QualityId.Value.ToVideoQuality()}"
             );

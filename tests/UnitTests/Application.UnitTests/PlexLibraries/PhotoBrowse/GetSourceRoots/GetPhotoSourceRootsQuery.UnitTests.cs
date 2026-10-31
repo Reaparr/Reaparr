@@ -140,8 +140,7 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
         dbContext.PlexPhotoFolders.AddRange(roots);
         await dbContext.SaveChangesAsync(CancellationToken);
         var expectedRootIds = await dbContext
-            .PlexPhotoFolders
-            .Where(x => x.PlexLibraryId == library.Id && x.ParentId == null && x.IsActive == true)
+            .PlexPhotoFolders.Where(x => x.PlexLibraryId == library.Id && x.ParentId == null && x.IsActive == true)
             .OrderBy(x => x.Id)
             .Select(x => x.Id)
             .ToListAsync(CancellationToken);

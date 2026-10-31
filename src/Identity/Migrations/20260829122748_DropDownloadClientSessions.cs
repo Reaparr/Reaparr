@@ -11,8 +11,7 @@ namespace Reaparr.Identity.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "DownloadClientSessions");
+            migrationBuilder.DropTable(name: "DownloadClientSessions");
         }
 
         /// <inheritdoc />
@@ -24,12 +23,13 @@ namespace Reaparr.Identity.Migrations
                 {
                     Sid = table.Column<string>(type: "TEXT", nullable: false),
                     ExpiresAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    Username = table.Column<string>(type: "TEXT", nullable: false)
+                    Username = table.Column<string>(type: "TEXT", nullable: false),
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_DownloadClientSessions", x => x.Sid);
-                });
+                }
+            );
         }
     }
 }

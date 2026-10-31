@@ -1,9 +1,8 @@
 using Reaparr.Environment;
 
 namespace Reaparr.PublicAPI;
- 
-public record SearchMovieCommand(TorznabRequest Request) : ICommand<Result<TorznabMediaSearchResponseDTO>>;
 
+public record SearchMovieCommand(TorznabRequest Request) : ICommand<Result<TorznabMediaSearchResponseDTO>>;
 
 public class SearchMovieCommandValidator : AbstractValidator<SearchMovieCommand>
 {

@@ -226,5 +226,4 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
     }
-
 }

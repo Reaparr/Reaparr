@@ -81,7 +81,8 @@ public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointReq
 
             var timeZoneChanged = _userSettings.DateTimeSettings.TimeZone != settings.DateTimeSettings.TimeZone;
             var downloadScheduleChanged =
-                _userSettings.DownloadManagerSettings.DownloadSchedule != settings.DownloadManagerSettings.DownloadSchedule;
+                _userSettings.DownloadManagerSettings.DownloadSchedule
+                != settings.DownloadManagerSettings.DownloadSchedule;
 
             _userSettings.UpdateSettings(settings);
 

@@ -202,5 +202,4 @@ public class ApplyOwnedMovieComparisonStateCommandUnitTests : BaseCommandUnitTes
         result.IsSuccess.ShouldBeTrue();
         items[0].ComparisonId.ShouldBe(PlexMediaComparisonState.NotCompared.ToComparisonId());
     }
-
 }
