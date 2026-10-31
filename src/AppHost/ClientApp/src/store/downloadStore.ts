@@ -66,8 +66,8 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 				const snapshot: PendingDownloadSnapshot = { patches: pendingSnapshot?.patches ?? [] };
 				pendingSnapshot = snapshot;
 				return downloadApi.getAllDownloadTasksEndpoint().pipe(
-					tap((downloads) => finishSnapshot(snapshot, downloads.isSuccess ? downloads.value ?? [] : null, downloads.isSuccess)),
-					finalize(() => finishSnapshot(snapshot, null, false)),
+					tap((downloads) => finishSnapshot(snapshot, downloads.isSuccess ? downloads.value ?? [] : null)),
+					finalize(() => finishSnapshot(snapshot, null)),
 				);
 			});
 		},
@@ -244,7 +244,7 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 		return result.isSuccess ? actions.fetchDownloadList() : of(result);
 	}
 
-	function finishSnapshot(snapshot: PendingDownloadSnapshot, downloads: ServerDownloadProgressDTO[] | null, refreshUnknown: boolean): void {
+	function finishSnapshot(snapshot: PendingDownloadSnapshot, downloads: ServerDownloadProgressDTO[] | null): void {
 		if (pendingSnapshot !== snapshot) return;
 		pendingSnapshot = null;
 		if (downloads !== null) state.serverDownloads = downloads;
@@ -253,7 +253,7 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 			if (!applyDownloadPatch(patch)) missingNodes = true;
 		}
 		// Preserve the existing unknown-node refresh, but never retry a failed/cancelled snapshot.
-		if (missingNodes && refreshUnknown) actions.fetchDownloadList().subscribe();
+		if (missingNodes && downloads !== null) actions.fetchDownloadList().subscribe();
 	}
 
 	function applyDownloadPatch(patch: DownloadPatchMessagePackDTO): boolean {

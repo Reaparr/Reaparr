@@ -8,7 +8,6 @@ import {
 	type DownloadTaskCreationReportDTO, type FolderPathDTO, type PlexMediaDTO, type PlexMediaStatisticsDTO, type SettingsModelDTO,
 	type ServerDownloadProgressDTO,
 } from '@dto';
-import { toDownloadSelectionKind } from '@composables/conversion';
 
 const visibleCy = (selector: string) => cy.getCy(selector).filter(':visible').first();
 const queueCy = (selector: string) => cy.get('.download-table-desktop, .download-cards')
@@ -202,7 +201,7 @@ function openConfirmation(phone = false, waitForVisible = true) {
 }
 
 function assertCommand(state: WorkflowState, type: PlexMediaType, id: number, qualities: DownloadMediaDTO['qualities'] = []) {
-	return { mediaIds: [id], type, plexLibraryId: state.libraryId, plexServerId: state.serverId, qualities, selectionKind: toDownloadSelectionKind(type), keepCompletedInDownloadFolder: false };
+	return { mediaIds: [id], type, plexLibraryId: state.libraryId, plexServerId: state.serverId, qualities, selectionKind: null, keepCompletedInDownloadFolder: false };
 }
 
 function selectMediaTableRow(containerCy: string, title: string) {
