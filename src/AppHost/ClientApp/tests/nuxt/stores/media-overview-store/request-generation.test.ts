@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+import { of, Subject } from 'rxjs';
 import { get, set } from '@vueuse/core';
 import { useRouteQuery } from '@vueuse/router';
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
