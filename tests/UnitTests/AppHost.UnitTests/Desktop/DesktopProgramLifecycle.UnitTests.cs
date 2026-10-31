@@ -251,6 +251,41 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
     }
 
     [Test]
+    public async Task ShouldStopHostAndPropagateFailure_WhenRuntimeInfoThrowsAfterStartup()
+    {
+        // Arrange
+        var hostProbe = new HostProbe();
+        var desktopMode = new Mock<IDesktopMode>(MockBehavior.Strict);
+        var coordinator = new Mock<IDesktopSingleInstanceCoordinator>(MockBehavior.Strict);
+        var runtimeInfo = new Mock<IAppRuntimeInfo>(MockBehavior.Strict);
+        var failure = new InvalidOperationException("runtime-info-unavailable");
+        await using var app = CreateApp(hostProbe, desktopMode.Object, coordinator.Object, runtimeInfo.Object);
+
+        coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true).Verifiable(Times.Once());
+        runtimeInfo.SetupGet(x => x.IsDesktopEmbeddedDisabled).Throws(failure).Verifiable(Times.Once());
+
+        // Act
+        var exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => Program.RunDesktopLifecycleAsync(app, CancellationToken)
+        );
+
+        // Assert
+        exception.ShouldBeSameAs(failure);
+        hostProbe.StartCalls.ShouldBe(1);
+        hostProbe.StopCalls.ShouldBe(1);
+        app.Lifetime.ApplicationStopped.IsCancellationRequested.ShouldBeTrue();
+        coordinator.Verify();
+        runtimeInfo.Verify();
+        coordinator.Verify(
+            x => x.StartListener(It.IsAny<Func<CancellationToken, Task<Result>>>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+        desktopMode.Verify(x => x.StartAsync(It.IsAny<CancellationToken>()), Times.Never);
+        desktopMode.Verify(x => x.ShowMainWindowAsync(It.IsAny<CancellationToken>()), Times.Never);
+        desktopMode.Verify(x => x.WaitForExitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task ShouldStopHostBeforeDesktopWaitCompletes_WhenApplicationShutdownIsRequested()
     {
         // Arrange

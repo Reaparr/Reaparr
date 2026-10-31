@@ -123,13 +123,13 @@ public class Program
         }
 
         await app.StartAsync(cancellationToken);
-        Task? hostShutdownTask = null;
+        // Observe host shutdown before entering the blocking native window loop.
+        var hostShutdownTask = app.WaitForShutdownAsync(cancellationToken);
         try
         {
             var appRuntimeInfo = services.GetRequiredService<IAppRuntimeInfo>();
             if (appRuntimeInfo.IsDesktopEmbeddedDisabled)
             {
-                hostShutdownTask = app.WaitForShutdownAsync(cancellationToken);
                 var browserResult = StartBrowserOnlyMode(
                     ResolveBrowserUri(app.Urls, appRuntimeInfo),
                     singleInstanceCoordinator,
@@ -145,8 +145,6 @@ public class Program
 
             _log.Here().Debug("Starting the Reaparr desktop single-instance listener");
             var desktopMode = services.GetRequiredService<IDesktopMode>();
-            // Observe host shutdown before entering the blocking native window loop.
-            hostShutdownTask = app.WaitForShutdownAsync(cancellationToken);
             var listenerResult = singleInstanceCoordinator.StartListener(
                 ct =>
                 {
@@ -167,15 +165,8 @@ public class Program
         }
         finally
         {
-            if (hostShutdownTask is null)
-            {
-                await app.StopAsync(cancellationToken);
-            }
-            else
-            {
-                app.Lifetime.StopApplication();
-                await hostShutdownTask;
-            }
+            app.Lifetime.StopApplication();
+            await hostShutdownTask;
         }
     }
 

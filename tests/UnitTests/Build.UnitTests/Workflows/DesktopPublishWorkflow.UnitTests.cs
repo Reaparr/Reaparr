@@ -206,12 +206,23 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     }
 
     [Test]
-    public async Task ShouldLeaveRealSdkFixtureUntouched_WhenDryRunIsEnabled()
+    public async Task ShouldLeaveFilesUntouched_WhenDryRunIsEnabled()
     {
         // Arrange
-        using var container = CreateSdkFixture();
-        var paths = container.Resolve<BuildPaths>();
-        var fileSystem = container.Resolve<IFileSystem>();
+        SetupFileSystem(system =>
+        {
+            system.AddFile("/repo/src/AppHost/AppHost.csproj", new MockFileData("project-sentinel"));
+            system.AddFile("/repo/src/AppHost/ClientApp/.output/public/index.html", new MockFileData("frontend-fixture"));
+            system.AddFile("/repo/retained.txt", new MockFileData("retained"));
+        });
+        var runner = new Mock<IDesktopCommandRunner>(MockBehavior.Strict);
+        SetupDependencies(builder =>
+        {
+            builder.Register(_ => "/repo").As<string>().SingleInstance();
+            builder.RegisterInstance(runner.Object).As<IDesktopCommandRunner>();
+        });
+        var fileSystem = Mock.Container.Resolve<IFileSystem>();
+        var paths = Mock.Container.Resolve<BuildPaths>();
         var settings = new DesktopCommandSettings
         {
             RuntimeIdentifier = "linux-x64",
@@ -230,10 +241,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             .ToArray();
 
         // Act
-        var result = await container.Resolve<ICommandExecutor>().Send(
-            new DesktopPublishBuildCommand(settings),
-            CancellationToken
-        );
+        var result = await Sut.ExecuteAsync(new DesktopPublishBuildCommand(settings), CancellationToken);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -248,6 +256,11 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         fileSystem.Directory.Exists(
             fileSystem.Path.Combine(fileSystem.Path.GetDirectoryName(paths.AppHostProject)!, "obj")
         ).ShouldBeFalse();
+        runner.Verify(x => x.RequireCommandAsync(It.IsAny<string>()), Times.Never);
+        runner.Verify(
+            x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()),
+            Times.Never
+        );
     }
 
     private static IContainer CreateSdkFixture()
