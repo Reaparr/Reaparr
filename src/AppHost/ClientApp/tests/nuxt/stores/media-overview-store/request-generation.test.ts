@@ -101,11 +101,16 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		const library = createLibrary(4);
 		libraryStore.updateLibrary(library);
 		const libraryResponse = new Subject<ResultDTO<PlexLibraryDTO>>();
-		const metadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		const searchMetadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		const initializationMetadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
 		const filterMetadataResponse = new Subject<ResultDTO<PlexMediaFilterMetadataDTO>>();
 		const searchResponse = new Subject<ResultDTO<PlexMediaStatisticsDTO>>();
 		const secondPage = createPage('S', 'query-second', 1);
-		const metadataRequest = vi.spyOn(plexLibraryApi, 'getLibraryMediaMetadata').mockReturnValue(metadataResponse.asObservable());
+		let metadataCall = 0;
+		const metadataRequest = vi.spyOn(plexLibraryApi, 'getLibraryMediaMetadata').mockImplementation(() =>
+			metadataCall++ === 0
+				? searchMetadataResponse.asObservable()
+				: initializationMetadataResponse.asObservable());
 		const filterMetadataRequest = vi.spyOn(plexLibraryApi, 'getMetadataFilter').mockReturnValue(filterMetadataResponse.asObservable());
 		vi.spyOn(plexLibraryApi, 'getPlexLibraryByIdEndpoint').mockReturnValue(libraryResponse.asObservable());
 		const mediaRequest = vi.spyOn(plexMediaApi, 'getAllMediaByTypeEndpoint').mockReturnValue(searchResponse.asObservable());
@@ -113,17 +118,21 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		// Act
 		const initialization = subscribeSpyTo(store.initializeLibrary(library.id));
 		const search = subscribeSpyTo(store.setFilterQuery('second'));
-		expect(metadataRequest).not.toHaveBeenCalled();
+		expect(metadataRequest).toHaveBeenCalledTimes(1);
 		expect(filterMetadataRequest).not.toHaveBeenCalled();
+		expect(mediaRequest).not.toHaveBeenCalled();
+		searchMetadataResponse.next(generateResultDTO(createMetadata(24, PlexMediaType.Movie)));
+		searchMetadataResponse.complete();
+		expect(mediaRequest).toHaveBeenCalledTimes(1);
 		searchResponse.next(generateResultDTO(secondPage));
 		searchResponse.complete();
 		await search.onComplete();
 		libraryResponse.next(generateResultDTO(library));
 		libraryResponse.complete();
-		expect(metadataRequest).toHaveBeenCalledTimes(1);
+		expect(metadataRequest).toHaveBeenCalledTimes(2);
 		expect(filterMetadataRequest).toHaveBeenCalledTimes(1);
-		metadataResponse.next(generateResultDTO(createMetadata(42, PlexMediaType.Movie)));
-		metadataResponse.complete();
+		initializationMetadataResponse.next(generateResultDTO(createMetadata(42, PlexMediaType.Movie)));
+		initializationMetadataResponse.complete();
 		filterMetadataResponse.next(generateResultDTO(createFilterMetadata(40)));
 		filterMetadataResponse.complete();
 		await initialization.onComplete();
@@ -145,11 +154,16 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		const libraryStore = useLibraryStore();
 		const library = createLibrary(7);
 		libraryStore.updateLibrary(library);
-		const metadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		const initialMetadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
+		const queryMetadataResponse = new Subject<ResultDTO<PlexMediaMetadataDTO>>();
 		const filterMetadataResponse = new Subject<ResultDTO<PlexMediaFilterMetadataDTO>>();
 		const initialMediaResponse = new Subject<ResultDTO<PlexMediaStatisticsDTO>>();
 		const queryMediaResponse = new Subject<ResultDTO<PlexMediaStatisticsDTO>>();
-		const metadataRequest = vi.spyOn(plexLibraryApi, 'getLibraryMediaMetadata').mockReturnValue(metadataResponse.asObservable());
+		let metadataCall = 0;
+		const metadataRequest = vi.spyOn(plexLibraryApi, 'getLibraryMediaMetadata').mockImplementation(() =>
+			metadataCall++ === 0
+				? initialMetadataResponse.asObservable()
+				: queryMetadataResponse.asObservable());
 		const filterMetadataRequest = vi.spyOn(plexLibraryApi, 'getMetadataFilter').mockReturnValue(filterMetadataResponse.asObservable());
 		vi.spyOn(plexLibraryApi, 'getPlexLibraryByIdEndpoint').mockReturnValue(of(generateResultDTO(library)));
 		const queryPage = createPage('Q', 'query-new', 1);
@@ -161,17 +175,21 @@ describe('MediaOverviewStore - Request generation ownership', () => {
 		const query = subscribeSpyTo(store.setFilterQuery('new-query'));
 
 		// Assert
-		expect(metadataRequest).toHaveBeenCalledTimes(1);
+		expect(metadataRequest).toHaveBeenCalledTimes(2);
 		expect(filterMetadataRequest).toHaveBeenCalledTimes(1);
-		expect(mediaRequest).toHaveBeenCalledTimes(2);
+		expect(mediaRequest).not.toHaveBeenCalled();
 		expect(initialMediaResponse.observers).toHaveLength(0);
 
 		// Act
+		initialMetadataResponse.next(generateResultDTO(createMetadata(11, PlexMediaType.Movie)));
+		initialMetadataResponse.complete();
+		expect(mediaRequest).not.toHaveBeenCalled();
+		queryMetadataResponse.next(generateResultDTO(createMetadata(42, PlexMediaType.Movie)));
+		queryMetadataResponse.complete();
+		expect(mediaRequest).toHaveBeenCalledTimes(1);
 		queryMediaResponse.next(generateResultDTO(queryPage));
 		queryMediaResponse.complete();
 		await query.onComplete();
-		metadataResponse.next(generateResultDTO(createMetadata(42, PlexMediaType.Movie)));
-		metadataResponse.complete();
 		filterMetadataResponse.next(generateResultDTO(createFilterMetadata(40)));
 		filterMetadataResponse.complete();
 		await initialization.onComplete();
