@@ -79,9 +79,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .ReturnsAsync(Result.Ok(new LibraryMetadata(library)))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken)
-            )
+            .Setup(x => x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
@@ -173,9 +171,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .ReturnsAsync(Result.Ok(new LibraryMetadata(library)))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken)
-            )
+            .Setup(x => x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -202,10 +198,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 Times.Never()
             );
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
     }
@@ -287,9 +280,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             .ReturnsAsync(failure)
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Setup(x =>
-                x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1), CancellationToken)
-            )
+            .Setup(x => x.UpdateErrorAsync(library.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
             .Returns(Task.CompletedTask)
             .Verifiable(cancelled ? Times.Never() : Times.Once());
 
@@ -319,16 +310,10 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 Times.Never()
             );
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateItemAsync(It.IsAny<int>(), It.IsAny<LibraryProgressItem>()), Times.Never());
         if (cancelled)
             Mock.Mock<ILibrarySyncProgressStore>()
-                .Verify(
-                    x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                    Times.Never()
-                );
+                .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
         Mock.Mock<ICommandExecutor>().Verify();
     }
@@ -385,7 +370,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                 )
             )
             .ReturnsAsync(Result.Ok())
-            .Verifiable(Times.Once());
+            .Verifiable(Times.Never());
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -462,8 +447,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         && p.Received == 1
                         && p.Total == 1
                         && p.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -477,8 +461,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         && p.Received == 2
                         && p.Total == 2
                         && p.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -492,8 +475,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         && p.Received == 1
                         && p.Total == 1
                         && p.TimeRemaining == TimeSpan.Zero
-                    ),
-                    CancellationToken
+                    )
                 )
             )
             .Returns(Task.CompletedTask)
@@ -521,10 +503,7 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         (albums[0].ChildCount, albums[0].Duration, albums[0].MediaSize).ShouldBe((1, track.Duration, track.MediaSize));
         (artist.ChildCount, artist.Duration, artist.MediaSize).ShouldBe((2, track.Duration, track.MediaSize));
         Mock.Mock<ILibrarySyncProgressStore>()
-            .Verify(
-                x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ILibrarySyncProgressStore>().Verify();
     }

@@ -52,13 +52,10 @@ public class RefreshPlexMusicLibraryCommandHandler
             )
         );
 
-        if (albumsResult.IsCancelled)
-            return albumsResult.ToResult().LogWarning();
-
-        if (albumsResult.IsFailed)
+        if (albumsResult.IsCancelledOrFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, albumsResult.ToResult(), cancellationToken);
-            return albumsResult.ToResult().LogError();
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, albumsResult.ToResult());
+            return albumsResult.ToResult().LogIfFailed();
         }
 
         var albumMetadataResult = await Result.Try(() =>
@@ -70,17 +67,10 @@ public class RefreshPlexMusicLibraryCommandHandler
             )
         );
 
-        if (albumMetadataResult.IsCancelled)
-            return albumMetadataResult.ToResult().LogWarning();
-
-        if (albumMetadataResult.IsFailed)
+        if (albumMetadataResult.IsCancelledOrFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(
-                plexLibraryId,
-                albumMetadataResult.ToResult(),
-                cancellationToken
-            );
-            return albumMetadataResult.ToResult().LogError();
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, albumMetadataResult.ToResult());
+            return albumMetadataResult.ToResult().LogIfFailed();
         }
 
         foreach (var (key, country) in albumMetadataResult.Value.PlexCountries)
@@ -93,13 +83,10 @@ public class RefreshPlexMusicLibraryCommandHandler
             )
         );
 
-        if (tracksResult.IsCancelled)
-            return tracksResult.ToResult().LogWarning();
-
-        if (tracksResult.IsFailed)
+        if (tracksResult.IsCancelledOrFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, tracksResult.ToResult(), cancellationToken);
-            return tracksResult.ToResult().LogError();
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, tracksResult.ToResult());
+            return tracksResult.ToResult().LogIfFailed();
         }
 
         var albums = albumsResult.Value.Library.Albums;
@@ -107,7 +94,7 @@ public class RefreshPlexMusicLibraryCommandHandler
         var treeResult = BuildMusicTree(plexLibrary, albums, tracks);
         if (treeResult.IsFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, treeResult, cancellationToken);
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, treeResult);
             return treeResult.LogError();
         }
 
@@ -118,17 +105,22 @@ public class RefreshPlexMusicLibraryCommandHandler
             )
         );
 
-        if (syncResult.IsCancelled)
-            return syncResult.ToResult().LogWarning();
-
-        if (syncResult.IsFailed)
+        if (syncResult.IsCancelledOrFailed)
         {
-            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, syncResult.ToResult(), cancellationToken);
-            return syncResult.ToResult().LogError();
+            await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, syncResult.ToResult());
+            return syncResult.ToResult().LogIfFailed();
         }
+
+        if (!command.ForceMediaRefresh && syncResult.Value.ChangedItemCount == 0)
+            return Result.Ok();
+
         var comparisonResult = await Result.Try(() =>
-            _commandExecutor.Send(new InvalidateLibraryComparisonJobsCommand([plexLibraryId]), cancellationToken)
+            _commandExecutor.Send(
+                new InvalidateLibraryComparisonJobsCommand([command.LibraryMetadata.PlexLibraryId]),
+                cancellationToken
+            )
         );
+
         if (comparisonResult.IsCancelled || comparisonResult.IsFailed)
         {
             using var finalizationCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -148,7 +140,7 @@ public class RefreshPlexMusicLibraryCommandHandler
             );
             rebuildAfterFailure.LogIfFailed();
             var progressAfterFailure = await Result.Try(async Task () =>
-                await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, comparisonResult, finalizationToken)
+                await _librarySyncProgressStore.UpdateErrorAsync(plexLibraryId, comparisonResult)
             );
             progressAfterFailure.LogIfFailed();
             return comparisonResult.LogIfFailed();
@@ -167,8 +159,7 @@ public class RefreshPlexMusicLibraryCommandHandler
                 Received = plexLibrary.Music.Count,
                 Total = plexLibrary.Music.Count,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
         await _librarySyncProgressStore.UpdateItemAsync(
             plexLibraryId,
@@ -178,8 +169,7 @@ public class RefreshPlexMusicLibraryCommandHandler
                 Received = plexLibrary.Albums.Count,
                 Total = plexLibrary.Albums.Count,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
         await _librarySyncProgressStore.UpdateItemAsync(
             plexLibraryId,
@@ -189,8 +179,7 @@ public class RefreshPlexMusicLibraryCommandHandler
                 Received = plexLibrary.Tracks.Count,
                 Total = plexLibrary.Tracks.Count,
                 TimeRemaining = TimeSpan.Zero,
-            },
-            cancellationToken
+            }
         );
         var rebuildResult = await _commandExecutor.Send(
             new QueueMediaOverviewRebuildCommand(PlexMediaType.MusicArtist),
@@ -220,12 +209,20 @@ public class RefreshPlexMusicLibraryCommandHandler
         var artistKeys = library.Music.Select(x => x.PlexApiRatingKey).ToHashSet();
         var missingAlbum = albums.FirstOrDefault(x => !artistKeys.Contains(x.ParentKey));
         if (missingAlbum is not null)
-            return Result.Fail($"Album {missingAlbum.PlexApiRatingKey} has an unknown artist {missingAlbum.ParentKey}");
+            return Result.Fail(
+                "Album {PlexApiRatingKey} has an unknown artist {ParentKey}",
+                missingAlbum.PlexApiRatingKey,
+                missingAlbum.ParentKey
+            );
 
         var albumKeys = albums.Select(x => x.PlexApiRatingKey).ToHashSet();
         var missingTrack = tracks.FirstOrDefault(x => !albumKeys.Contains(x.ParentKey));
         if (missingTrack is not null)
-            return Result.Fail($"Track {missingTrack.PlexApiRatingKey} has an unknown album {missingTrack.ParentKey}");
+            return Result.Fail(
+                "Track {PlexApiRatingKey} has an unknown album {ParentKey}",
+                missingTrack.PlexApiRatingKey,
+                missingTrack.ParentKey
+            );
 
         var albumsByArtist = albums.GroupBy(x => x.ParentKey).ToDictionary(x => x.Key, x => x.ToList());
         var tracksByAlbum = tracks.GroupBy(x => x.ParentKey).ToDictionary(x => x.Key, x => x.ToList());

@@ -58,7 +58,11 @@ public class ScheduleAffectedLibraryComparisonJobsCommandHandler
             return Result.Fail("Library {PlexLibraryId} was not found or was disabled", command.PlexLibraryId);
 
         if (!sourceLibrary.Type.SupportsComparison())
-            return Result.Ok();
+            return Result.Fail(
+                "Library {PlexLibraryId} is of type {PlexLibraryType} which does not support comparison",
+                sourceLibrary.Id,
+                sourceLibrary.Type
+            );
 
         var targetLibraries = await _dbContext
             .PlexLibraries.Where(x => x.Id != sourceLibrary.Id && x.Type == sourceLibrary.Type)
@@ -76,7 +80,17 @@ public class ScheduleAffectedLibraryComparisonJobsCommandHandler
                     .Select(x => (OwnedLibraryId: x.Id, RemoteLibraryId: sourceLibrary.Id))
         ).ToList();
 
-        if (!pairs.Any())
+        if (sourceLibrary.Type == PlexMediaType.MusicArtist && pairs.Count != 0)
+        {
+            var currentMusicComparisonKeys = await _dbContext
+                .QueryCurrentMusicComparisonScopes()
+                .Where(x => x.OwnedPlexLibraryId == sourceLibrary.Id || x.RemotePlexLibraryId == sourceLibrary.Id)
+                .Select(x => new ValueTuple<int, int>(x.OwnedPlexLibraryId, x.RemotePlexLibraryId))
+                .ToHashSetAsync(cancellationToken);
+            pairs.RemoveAll(currentMusicComparisonKeys.Contains);
+        }
+
+        if (pairs.Count == 0)
             return Result.Ok();
 
         // Resolve active comparison keys once before dispatching child commands, so repeated updates do not spam
