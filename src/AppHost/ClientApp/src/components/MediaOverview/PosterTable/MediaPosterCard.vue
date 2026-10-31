@@ -124,10 +124,12 @@
 				anchor="bottom middle"
 				self="bottom middle"
 				data-cy="media-poster-menu">
-				<slot
-					name="actions"
-					:compact="true"
-					:activate="activateCard" />
+				<q-list class="q-pa-sm">
+					<slot
+						name="actions"
+						:compact="true"
+						:activate="activateCard" />
+				</q-list>
 			</q-menu>
 		</slot>
 	</q-card>
