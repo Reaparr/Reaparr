@@ -21,9 +21,9 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
         // Act
         var result = await TestHandlerExecuteAsync<PlexLibrary>(new RefreshPlexMusicLibraryCommand(response));
 
-        // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
+        (result.Value.Id, result.Value.Type).ShouldBe((fixture.Target.Id, PlexMediaType.MusicArtist));
         var after = await CaptureMusicComparisonSnapshotAsync(dbContext);
         after.Artists.ShouldBe(before.Artists);
         after.Albums.ShouldBe(before.Albums);
