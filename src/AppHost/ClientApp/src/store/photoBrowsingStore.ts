@@ -32,7 +32,7 @@ import {
 import { cloneDeep, pick, uniqBy } from 'lodash-es';
 import {
 	PlexMediaType,
-	SortType,
+	type SortType,
 	LibrarySyncJobStatus,
 	type LibrarySyncJobQueueDTO,
 	RefreshDataType,
@@ -879,8 +879,7 @@ export const usePhotoBrowsingStore = defineStore(StoreNames.PhotoBrowsingStore, 
 		if (sortMetadataRequest$ && sortMetadataRequestKey === key) return sortMetadataRequest$;
 
 		sortMetadataRequestKey = key;
-		let request$: Observable<boolean>;
-		request$ = plexLibraryApi.getLibraryMediaMetadata(context.libraryId, {
+		const request$ = plexLibraryApi.getLibraryMediaMetadata(context.libraryId, {
 			mediaType: PlexMediaType.PhotoAlbum,
 			photoView: photoSortView(context),
 		}, photoBrowseRequestParams).pipe(

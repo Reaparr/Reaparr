@@ -31,7 +31,6 @@ import {
 } from '@composables';
 import { useSubscription } from '@vueuse/rxjs';
 
-
 interface IMediaOverviewStoreState {
 	libraryId: number;
 	pageSize: number;

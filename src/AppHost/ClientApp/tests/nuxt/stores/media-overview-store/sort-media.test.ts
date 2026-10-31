@@ -227,5 +227,4 @@ describe('MediaOverviewStore.sortMedia()', () => {
 		// Assert
 		expect(parsed).toBeNull();
 	});
-
 });

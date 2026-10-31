@@ -4,7 +4,7 @@ import { get, set } from '@vueuse/core';
 import { useRouteQuery } from '@vueuse/router';
 import { flushPromises } from '@vue/test-utils';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
-import { generatePlexLibrary, generatePlexMediaStatisticsDTO, generateResultDTO, generateSupportedSorts, Seed } from '@mock';
+import { generatePlexLibrary, generateResultDTO, generateSupportedSorts, Seed } from '@mock';
 import { useMediaOverviewStore, useSettingsStore } from '@store';
 import { PlexMediaComparisonState, PlexMediaType } from '@dto';
 

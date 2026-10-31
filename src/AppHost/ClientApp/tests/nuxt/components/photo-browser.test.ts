@@ -96,6 +96,7 @@ describe('PhotoBrowser - unified route context', () => {
 		{ wireSort: `${SortType.Title}:asc`, expectedSort: createDefaultMediaOverviewSort() },
 		{ wireSort: `${SortType.Title}:desc`, expectedSort: titleDescending },
 		{ wireSort: 'title:asc', expectedSort: createDefaultMediaOverviewSort() },
+		{ wireSort: 'sortIndex:asc', expectedSort: createDefaultMediaOverviewSort() },
 	])('Should parse generated and legacy photo sort routes into the typed photo context ($wireSort)', async ({ wireSort, expectedSort }) => {
 		// Arrange
 		navigation.route.fullPath = `/photos?view=assets&sort=${wireSort}`;
@@ -134,7 +135,7 @@ describe('PhotoBrowser - unified route context', () => {
 		expect(usePhotoBrowsingStore().sort).toEqual({ field: SortType.MediaSize, sort: SortDirection.Asc });
 	});
 
-	test.each(['', `${SortType.Title}:ASC`, ` ${SortType.Title}:asc`, `${SortType.Title}:asc `, `${SortType.Title}:no-sort`, 'sortIndex:asc'])('Should reject malformed photo sort route value %s', async (sort) => {
+	test.each(['', `${SortType.Title}:ASC`, ` ${SortType.Title}:asc`, `${SortType.Title}:asc `, `${SortType.Title}:no-sort`])('Should reject malformed photo sort route value %s', async (sort) => {
 		// Arrange
 		navigation.route.fullPath = `/photos?sort=${encodeURIComponent(sort)}`;
 		navigation.route.query = { sort };

@@ -22,7 +22,7 @@ describe('PhotoBrowsingStore - photo session lifecycle', () => {
 		mockPhotoMetadata();
 	});
 
-const route: IPhotoBrowseActivation = { mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort() };
+	const route: IPhotoBrowseActivation = { mode: 'library', libraryId: 7, view: 'albums', folderId: null, searchQuery: '', sort: createDefaultMediaOverviewSort() };
 
 	test('preserves selection while navigating within Photos and clears it only when leaving Photos', () => {
 		const store = usePhotoBrowsingStore();

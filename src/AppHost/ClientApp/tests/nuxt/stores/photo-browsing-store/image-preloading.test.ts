@@ -120,7 +120,6 @@ describe('PhotoBrowsingStore - background image preloading', () => {
 		expect(pending.observed).toBe(false);
 	});
 
-
 	test('Should replace in-flight background previews when the viewport changes', async () => {
 		// Arrange
 		const oldSize = new Subject<void>();

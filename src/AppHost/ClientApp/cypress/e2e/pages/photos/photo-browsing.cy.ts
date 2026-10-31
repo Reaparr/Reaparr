@@ -266,7 +266,6 @@ describe('Photos browsing', () => {
 		cy.location('search').should((search) => expect(new URLSearchParams(search).get('sort')).to.equal(`${SortType.MediaSize}:asc`));
 	});
 
-
 	it('switches shared photo display modes while retaining multiple scoped assets and selection', () => {
 		setupPage();
 		const secondAsset: PhotoAssetBrowseDTO = {

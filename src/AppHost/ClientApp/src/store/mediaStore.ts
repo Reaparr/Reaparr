@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { reactive, computed, toRefs } from 'vue';
-import { defer, from, Observable, of, Subject } from 'rxjs';
+import { defer, from, type Observable, of, Subject } from 'rxjs';
 import { map, take, catchError, finalize, shareReplay, takeUntil, tap } from 'rxjs/operators';
 import type { PlexMediaComparisonDetailsDTO, PlexMediaType, PlexMediaDTO, BaseResultDTO, PhotoAssetBrowseDTO } from '@dto';
 import { PhotoAssetKind, PhotoImageRepresentation } from '@dto';
