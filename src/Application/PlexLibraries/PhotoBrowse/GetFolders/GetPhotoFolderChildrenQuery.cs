@@ -58,12 +58,12 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         if (folderContext is null)
             return ResultExtensions.EntityNotFound(nameof(PlexPhotoFolder), query.FolderId);
 
+        var childPage = await LoadChildFolderPageAsync(context, folderContext.Folder, query, cancellationToken);
         var folderTotals = await context.GetPlexPhotoFolderRecursiveTotalsAsync(
             (ServerId: folderContext.Folder.PlexServerId, LibraryId: query.PlexLibraryId),
-            [folderContext.Folder.Id],
+            [folderContext.Folder.Id, .. childPage.FolderIds],
             cancellationToken
         );
-        var childPage = await LoadChildFolderPageAsync(context, folderContext.Folder, query, cancellationToken);
         var assetPage = await LoadDirectAssetPageAsync(context, folderContext.Folder, query, cancellationToken);
         var assetItems = await LoadAssetItemsAsync(context, assetPage.AssetIds, folderContext.Root, cancellationToken);
 
@@ -72,11 +72,11 @@ public sealed class GetPhotoFolderChildrenQueryHandler
             folderTotals.GetValueOrDefault(folderContext.Folder.Id) ?? new PhotoFolderTotals(0, 0L)
         );
         var folderItems = childPage
-            .Rows.Where(row => childPage.Entities.ContainsKey(row.Id))
-            .Select(row =>
+            .FolderIds.Where(childPage.Entities.ContainsKey)
+            .Select(id =>
                 PhotoBrowseQuerySupport.ToFolderDTO(
-                    childPage.Entities[row.Id],
-                    childPage.Totals.GetValueOrDefault(row.Id) ?? new PhotoFolderTotals(0, 0L)
+                    childPage.Entities[id],
+                    folderTotals.GetValueOrDefault(id) ?? new PhotoFolderTotals(0, 0L)
                 )
             )
             .ToList();
@@ -148,32 +148,16 @@ public sealed class GetPhotoFolderChildrenQueryHandler
             nameof(PlexPhotoFolder.Id)
         );
         var orderedFolders = childFolders.ApplySort(folderOptions);
-        var rows = await orderedFolders
+        var folderIds = await orderedFolders
             .Skip(PhotoBrowseQuerySupport.GetSkip(query.FolderPage, query.FolderPageSize))
             .Take(query.FolderPageSize)
-            .Select(x => new { x.Id, x.PlexServerId })
+            .Select(x => x.Id)
             .ToListAsync(cancellationToken);
         var entities = await context
-            .PlexPhotoFolders.Where(x => rows.Select(row => row.Id).Contains(x.Id))
+            .PlexPhotoFolders.Where(x => folderIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
-        var totals = new Dictionary<int, PhotoFolderTotals>();
-        foreach (var group in rows.GroupBy(x => x.PlexServerId))
-        {
-            var values = await context.GetPlexPhotoFolderRecursiveTotalsAsync(
-                (ServerId: group.Key, LibraryId: query.PlexLibraryId),
-                group.Select(x => x.Id).ToArray(),
-                cancellationToken
-            );
-            foreach (var value in values)
-                totals[value.Key] = value.Value;
-        }
 
-        return new ChildFolderPage(
-            folderCount,
-            rows.Select(row => new FolderPageRow(row.Id, row.PlexServerId)).ToList(),
-            entities,
-            totals
-        );
+        return new ChildFolderPage(folderCount, folderIds, entities);
     }
 
     private static async Task<DirectAssetPage> LoadDirectAssetPageAsync(
@@ -243,13 +227,10 @@ public sealed class GetPhotoFolderChildrenQueryHandler
         IReadOnlyList<PlexPhotoFolder> Breadcrumbs
     );
 
-    private sealed record FolderPageRow(int Id, int PlexServerId);
-
     private sealed record ChildFolderPage(
         int TotalCount,
-        IReadOnlyList<FolderPageRow> Rows,
-        IReadOnlyDictionary<int, PlexPhotoFolder> Entities,
-        IReadOnlyDictionary<int, PhotoFolderTotals> Totals
+        IReadOnlyList<int> FolderIds,
+        IReadOnlyDictionary<int, PlexPhotoFolder> Entities
     );
 
     private sealed record DirectAssetPage(int TotalCount, long TotalBytes, IReadOnlyList<int> AssetIds);

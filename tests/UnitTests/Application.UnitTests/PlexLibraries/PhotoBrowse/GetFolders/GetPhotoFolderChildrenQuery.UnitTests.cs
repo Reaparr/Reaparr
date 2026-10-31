@@ -251,6 +251,131 @@ public class GetPhotoFolderChildrenQueryUnitTests : BaseCommandUnitTest<GetPhoto
         result.Has400BadRequestError().ShouldBeTrue();
     }
 
+    [Test]
+    [Arguments(1)]
+    [Arguments(2)]
+    [Arguments(3)]
+    [Arguments(4)]
+    [Arguments(5)]
+    public async Task ShouldBatchCurrentAndVisibleChildTotals_WhenFolderPageExcludesOtherDescendants(int page)
+    {
+        // Arrange
+        var fixture = await ArrangeBatchedTotalsFixtureAsync();
+        var dbContext = IDbContext;
+        var expectedChildren = new[]
+        {
+            (fixture.ChildIds[0], 1, 200L),
+            (fixture.ChildIds[1], 1, 300L),
+            (fixture.ChildIds[2], 1, 0L),
+            (fixture.ChildIds[3], 0, 0L),
+        };
+        var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
+        var commands = new ConcurrentQueue<string>();
+        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        using var listeners = DiagnosticListener.AllListeners
+            .Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
+            .Subscribe(listener => commandSubscriptions.Add(listener
+                .Select(entry => entry.Value!).OfType<CommandExecutedEventData>()
+                .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
+                .Subscribe(command => commands.Enqueue(command.Command.CommandText))));
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
+            new GetPhotoFolderChildrenQuery(fixture.Root.PlexLibraryId, fixture.Root.Id,
+                FolderPage: page, FolderPageSize: 1, AssetPageSize: 1));
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var response = result.Value;
+        (response.Folder.Id, response.Folder.RecursiveAssetCount, response.Folder.RecursiveAssetBytes)
+            .ShouldBe((fixture.Root.Id, 4, 600L));
+        response.Breadcrumbs.Select(x => x.Id).ShouldBe([fixture.Root.Id]);
+        (response.Folders.Page, response.Folders.PageSize, response.Folders.TotalCount).ShouldBe((page, 1, 4));
+        response.Folders.Items.Select(x => (x.Id, x.RecursiveAssetCount, x.RecursiveAssetBytes))
+            .ShouldBe(expectedChildren.Skip(page - 1).Take(1));
+        response.Folders.Items.ShouldAllBe(x =>
+            x.PlexLibraryId == fixture.Root.PlexLibraryId && x.PlexServerId == fixture.Root.PlexServerId);
+        (response.Assets.TotalCount, response.Assets.TotalBytes).ShouldBe((1, 100L));
+        response.Assets.Items.Select(x => x.Id).ShouldBe([fixture.DirectAssetId]);
+        commands.Count(sql => sql.Contains("WITH RECURSIVE descendants AS")).ShouldBe(1);
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task ShouldRejectForeignFolderScope_WhenRequestedLibraryBelongsToSameOrAnotherServer(bool sameServer)
+    {
+        // Arrange
+        var fixture = await ArrangeBatchedTotalsFixtureAsync();
+        var foreignLibraryId = sameServer ? fixture.OtherLibraryId : fixture.OtherServerLibraryId;
+
+        // Act
+        var result = await TestHandlerExecuteAsync<PhotoFolderChildrenDTO>(
+            new GetPhotoFolderChildrenQuery(foreignLibraryId, fixture.Root.Id));
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Has404NotFoundError().ShouldBeTrue();
+    }
+
+    private async Task<BatchedTotalsFixture> ArrangeBatchedTotalsFixtureAsync()
+    {
+        await SetupDatabase(71025, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
+        var dbContext = IDbContext;
+        var libraries = await dbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
+            .OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        libraries.Count.ShouldBe(4);
+        var root = await dbContext.PlexPhotoFolders.SingleAsync(
+            x => x.PlexLibraryId == libraries[0].Id && x.ParentId == null, CancellationToken);
+        var children = new[] { "A", "B", "C", "D" }.Select(title => CreateChildFolder(root, title, title)).ToList();
+        dbContext.PlexPhotoFolders.AddRange(children);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var deep = CreateChildFolder(children[0], "A/Deep", "Deep");
+        dbContext.PlexPhotoFolders.Add(deep);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var leaf = CreateChildFolder(deep, "A/Deep/Leaf", "Leaf");
+        dbContext.PlexPhotoFolders.Add(leaf);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var assets = await dbContext.PlexPhotoMediaData.Where(x => x.PlexLibraryId == root.PlexLibraryId)
+            .OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        assets.Count.ShouldBe(4);
+        var folderIds = new[] { root.Id, leaf.Id, children[1].Id, children[2].Id };
+        var sizes = new[] { 100L, 200L, 300L, 0L };
+        for (var index = 0; index < assets.Count; index++)
+            await dbContext.PlexPhotoMediaData.Where(x => x.Id == assets[index].Id)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(x => x.PlexPhotoFolderId, folderIds[index])
+                    .SetProperty(x => x.Size, sizes[index]), CancellationToken);
+        return new BatchedTotalsFixture(root, children.Select(x => x.Id).ToArray(), assets[0].Id,
+            libraries.Single(x => x.PlexServerId == root.PlexServerId && x.Id != root.PlexLibraryId).Id,
+            libraries.First(x => x.PlexServerId != root.PlexServerId).Id);
+    }
+
+    private static PlexPhotoFolder CreateChildFolder(PlexPhotoFolder parent, string path, string title) => new()
+    {
+        PlexServerId = parent.PlexServerId,
+        PlexLibraryId = parent.PlexLibraryId,
+        ParentId = parent.Id,
+        RelativePath = path,
+        Title = title,
+    };
+
+    private sealed record BatchedTotalsFixture(
+        PlexPhotoFolder Root,
+        int[] ChildIds,
+        int DirectAssetId,
+        int OtherLibraryId,
+        int OtherServerLibraryId
+    );
+
     private async Task<ScaledFolderFixture> ArrangeScaledFolderFixtureAsync()
     {
         await SetupDatabase(
