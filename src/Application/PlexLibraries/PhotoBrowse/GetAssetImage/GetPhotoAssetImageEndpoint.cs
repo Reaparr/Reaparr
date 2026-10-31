@@ -124,20 +124,6 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             return;
         }
 
-        if (
-            req.Representation == PhotoImageRepresentation.Converted
-            && (asset.Width is null or <= 0 || asset.Height is null or <= 0)
-        )
-        {
-            await Send.FluentResult(
-                ResultExtensions.Create400BadRequestResult(
-                    "Converted photo delivery requires the asset's native dimensions."
-                ),
-                ct
-            );
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(asset.Key))
         {
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexPhotoMediaData), req.AssetId), ct);

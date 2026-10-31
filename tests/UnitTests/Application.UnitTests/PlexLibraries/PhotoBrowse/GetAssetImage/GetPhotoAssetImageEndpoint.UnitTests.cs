@@ -145,7 +145,7 @@ public class GetPhotoAssetImageEndpointUnitTests
     }
 
     [Test]
-    public async Task ShouldKeepNativeOriginalAvailableButRejectConversion_WhenSourceDimensionsAreAbsent()
+    public async Task ShouldConvertWithRequestedDimensions_WhenSourceDimensionsAreAbsent()
     {
         // Arrange
         await SetupDatabase(
@@ -161,18 +161,29 @@ public class GetPhotoAssetImageEndpointUnitTests
         );
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        const string sourcePath = "/private/plex/photos/secret/unknown-dimensions.jpg";
+        var partKey = $"/library/parts/{asset.PlexApiPartId}/unknown-dimensions.jpg";
         await dbContext
             .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
             .ExecuteUpdateAsync(
-                x => x.SetProperty(y => y.Width, (int?)null).SetProperty(y => y.Height, (int?)null),
+                x =>
+                    x.SetProperty(y => y.SourcePath, sourcePath)
+                        .SetProperty(y => y.Key, partKey)
+                        .SetProperty(y => y.Container, "jpg")
+                        .SetProperty(y => y.Width, (int?)null)
+                        .SetProperty(y => y.Height, (int?)null),
                 CancellationToken
             );
         dbContext.ClearChangeTracker();
-        var conversionHandler = new StubHttpMessageHandler();
-        var conversionFactory = CreateClientFactory(conversionHandler, expectedCalls: 0);
+        var payload = new byte[] { 5, 6 };
+        var handler = new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) }
+        );
+        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        var clientFactory = CreateClientFactory(handler);
 
         // Act
-        var converted = await TestEndpointHandleAsync(
+        var result = await TestEndpointHandleAsync(
             new GetPhotoAssetImageRequest
             {
                 PlexLibraryId = asset.PlexLibraryId,
@@ -181,35 +192,25 @@ public class GetPhotoAssetImageEndpointUnitTests
                 Width = 320,
                 Height = 240,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(conversionFactory.Object)
-        );
-        var originalHandler = new StubHttpMessageHandler(
-            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([5, 6]) }
-        );
-        originalHandler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
-        var originalFactory = CreateClientFactory(originalHandler);
-        var original = await TestEndpointHandleAsync(
-            new GetPhotoAssetImageRequest
-            {
-                PlexLibraryId = asset.PlexLibraryId,
-                AssetId = asset.Id,
-                Representation = PhotoImageRepresentation.Original,
-            },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(originalFactory.Object)
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
         );
 
         // Assert
-        converted.IsValid.ShouldBeTrue();
-        converted.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
-        conversionHandler.RequestUris.ShouldBeEmpty();
-        original.IsValid.ShouldBeTrue();
-        original.StatusCode.ShouldBe(StatusCodes.Status200OK);
-        original.ContentType.ShouldBe("image/jpeg");
-        ((MemoryStream)original.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe([5, 6]);
-        originalHandler.RequestUris.Count.ShouldBe(1);
-        originalHandler.RequestUris[0].AbsolutePath.ShouldBe(asset.Key);
-        conversionFactory.Verify();
-        originalFactory.Verify();
+        result.IsValid.ShouldBeTrue();
+        result.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        result.ContentType.ShouldBe("image/jpeg");
+        ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe(payload);
+        handler.RequestUris.Count.ShouldBe(1);
+        var uri = handler.RequestUris[0];
+        uri.AbsolutePath.ShouldBe("/photo/:/transcode");
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        query["format"].ToString().ShouldBe("jpg");
+        query["width"].ToString().ShouldBe("320");
+        query["height"].ToString().ShouldBe("240");
+        query["url"].ToString().ShouldContain(partKey);
+        query["url"].ToString().ShouldContain("X-Plex-Token=");
+        uri.ToString().ShouldNotContain(sourcePath);
+        clientFactory.Verify();
     }
 
     [Test]
