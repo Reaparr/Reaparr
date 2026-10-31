@@ -165,6 +165,28 @@ describe('MediaOverviewStore.sortMedia()', () => {
 		expect(ascending).toEqual(expectedAscending);
 		expect(descending).toEqual(expectedDescending);
 	});
+	test('normalizes legacy descending title route tokens before capability validation', () => {
+		// Arrange
+		const supportedFields = [SortType.Title, SortType.Year] as const;
+
+		// Act
+		const parsed = parseFlexSortDsl('sortIndex:desc', supportedFields);
+
+		// Assert
+		expect(parsed).toEqual({ field: SortType.Title, sort: SortDirection.Desc });
+		expect(parsed && serializeFlexSortDsl(parsed)).toBe('title:desc');
+	});
+
+	test('rejects legacy title route tokens when Title is unsupported', () => {
+		// Arrange
+		const supportedFields = [SortType.Year] as const;
+
+		// Act
+		const parsed = parseFlexSortDsl('sortIndex:desc', supportedFields);
+
+		// Assert
+		expect(parsed).toBeNull();
+	});
 	test('serializes NoSort as ascending for the typed MediaSize sort', () => {
 		// Arrange
 		const sort = { field: SortType.MediaSize, sort: SortDirection.NoSort };

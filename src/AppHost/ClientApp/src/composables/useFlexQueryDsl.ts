@@ -20,8 +20,9 @@ export const parseFlexSortDsl = (
 	if (parts.length !== 2) return null;
 
 	const [fieldValue, directionValue] = parts;
-	const field = supportedFields.find((candidate) => candidate === fieldValue);
-	if (!field) return null;
+	const normalizedFieldValue = fieldValue === 'sortIndex' ? SortType.Title : fieldValue;
+	const field = supportedFields.find((candidate) => candidate === normalizedFieldValue);
+	if (field === undefined) return null;
 	if (directionValue === SortDirection.Asc || directionValue === SortDirection.Desc) {
 		return { field, sort: directionValue };
 	}
