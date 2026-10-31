@@ -167,6 +167,7 @@ interface PhotoBrowseReadContext extends IPhotoBrowseRoute {
 	key: string;
 }
 
+type Surface = 'albums' | 'assets' | 'folders' | 'folderAssets' | 'albumMembers' | 'search';
 type PageItem = PhotoAlbumBrowseDTO | PhotoAssetBrowseDTO | PhotoFolderBrowseDTO;
 interface PhotoPageIdentity {
 	id: number;
