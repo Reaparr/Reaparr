@@ -1,5 +1,43 @@
 Reaparr Changelog
 
+# [0.41.0-dev.9](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.8...v0.41.0-dev.9) (2026-10-31)
+
+
+### Bug Fixes
+
+* **WebAPI:** Convert photo previews without native dimensions ([9664ec3](https://github.com/Reaparr/Reaparr/commit/9664ec322cdfbc1b3b7da158a6fe723486be6f90))
+* **Web-UI:** Ignore superseded initialization status emissions ([558ce1c](https://github.com/Reaparr/Reaparr/commit/558ce1c65b2f34d6561627e7601093272937e9f8))
+* **WebAPI:** Include stale libraries in active comparison checks ([fd4fe57](https://github.com/Reaparr/Reaparr/commit/fd4fe570b4f6ccc9535f018c38026efbbf159128))
+* **WebAPI:** Invalidate comparison scopes for forced library syncs ([8cb8466](https://github.com/Reaparr/Reaparr/commit/8cb84662c7e56f8981dbc33e1eaf49ae17e6e015))
+* **Web-UI:** Keep mobile poster menus measurable in Firefox ([6ce4118](https://github.com/Reaparr/Reaparr/commit/6ce4118c42aa3551a40bfe23c94c8339478726d0))
+* **WebAPI:** Keep ownership updates valid for non-comparable libraries ([4233a8c](https://github.com/Reaparr/Reaparr/commit/4233a8ce8ee419b2c2b5c7d1942f91a952dd2314))
+* **Web-UI:** Localize the comparison-state sort option ([fe02ec6](https://github.com/Reaparr/Reaparr/commit/fe02ec698a33a2d4c005f59bba9a0f8765ff31a6))
+* **WebAPI:** Make download previews independent of existing tasks ([1ca655a](https://github.com/Reaparr/Reaparr/commit/1ca655a6983b98c7504a0a6328ecdd220ec005ef))
+* **Web-UI:** Preserve legacy descending title routes ([313026d](https://github.com/Reaparr/Reaparr/commit/313026de04ba44aa94d62e78c1a5c9767876e4a7))
+* **WebAPI:** Preserve music refresh cancellation without false errors ([9dd9b35](https://github.com/Reaparr/Reaparr/commit/9dd9b35990cebd71b8f10f9cd64497868220364a))
+* **Web-UI:** Preserve pending photo navigation during resize ([b10d0f2](https://github.com/Reaparr/Reaparr/commit/b10d0f2b54fd7554ff1016c2d49a632b5aa24b74))
+* **WebAPI:** Preserve resolution labels in comparison navigation ([19bb118](https://github.com/Reaparr/Reaparr/commit/19bb118155a310e71f7bbab13eb35d38870a55f6))
+* **WebAPI:** Recover music comparisons after interrupted invalidation ([e50ae6c](https://github.com/Reaparr/Reaparr/commit/e50ae6c67220c2badf90e7af60c7b4c3e263e5ad))
+* **Web-UI:** Repair CI lint and component test contracts ([841d854](https://github.com/Reaparr/Reaparr/commit/841d854adb64eb3224fe40c93cc74bcd73b50d37))
+* **Web-UI:** Report photo select-all metadata failures ([a44f148](https://github.com/Reaparr/Reaparr/commit/a44f148ae0b2f3a47da7246acbbfcfcef52d3ab1))
+* **Web-UI:** Restore photo surface typing after reconciliation ([40fe013](https://github.com/Reaparr/Reaparr/commit/40fe013afec66ba84c5505edb211e2bbe93f25a4))
+* **WebAPI:** Restore scheduled media snapshot rebuilds ([ffc1d90](https://github.com/Reaparr/Reaparr/commit/ffc1d9040f6ee5262fc85f4a4ee2c33b0ecc74f9))
+* **WebAPI:** Retain failed media families in follow-up rebuilds ([23a9da0](https://github.com/Reaparr/Reaparr/commit/23a9da04a3b0d35d5748a039f213e863b261c73a))
+* **Web-UI:** Retain selected identities across forced photo refreshes ([2dc33d7](https://github.com/Reaparr/Reaparr/commit/2dc33d70149cc4ddcae70984dfe98e13f26d4f82))
+* **WebAPI:** Return library after unchanged music refresh ([457549c](https://github.com/Reaparr/Reaparr/commit/457549c98afd12c47a34223fa5a5e01e0cf082f9))
+* **Web-UI:** Share sort metadata before combined media refresh ([1c84a2f](https://github.com/Reaparr/Reaparr/commit/1c84a2fe598fae631a0149a29205b3ae864a90a2))
+* **Web-UI:** Show Plex last-seen date and time ([5983f44](https://github.com/Reaparr/Reaparr/commit/5983f44057ffa89a9b5fce8912119fb7ae162515))
+* **Web-UI:** Size photo previews for the current viewport ([db2d931](https://github.com/Reaparr/Reaparr/commit/db2d931acbd70703bb4cf3b2be1ec1174cba0c3f))
+* **WebAPI:** Validate downloads against transfer size ([03fdf40](https://github.com/Reaparr/Reaparr/commit/03fdf404a2cb737139de251d9524a20aac18584a))
+
+
+### Performance Improvements
+
+* **WebAPI:** Batch photo folder total requests ([6a2d8b5](https://github.com/Reaparr/Reaparr/commit/6a2d8b5126d90c54f8b56ebf83a9d2310c3cc3c1))
+* **WebAPI:** Remove unused media detail connection lookups ([ad78645](https://github.com/Reaparr/Reaparr/commit/ad78645eb7075fed5b38070d4fba0c9c3fd89b89))
+* **WebAPI:** Reuse persisted photo totals and consolidate aggregates ([8f18713](https://github.com/Reaparr/Reaparr/commit/8f18713a64ef0b42332c9b0d4189b8631569f8c3))
+* **WebAPI:** Reuse unchanged music comparison scopes ([e249a8c](https://github.com/Reaparr/Reaparr/commit/e249a8c0347b106c06c304ec198108883248d3b5))
+
 # [0.41.0-dev.8](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.7...v0.41.0-dev.8) (2026-10-21)
 
 
