@@ -11,7 +11,7 @@ using Reaparr.Data;
 namespace Reaparr.Data.Migrations
 {
     [DbContext(typeof(ReaparrDbContext))]
-    [Migration("20261021234328_AddMusicPhotosAndOtherVideos")]
+    [Migration("20261031153443_AddMusicPhotosAndOtherVideos")]
     partial class AddMusicPhotosAndOtherVideos
     {
         /// <inheritdoc />
@@ -1349,7 +1349,7 @@ namespace Reaparr.Data.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("PlexGenres", (string)null);
+                    b.ToTable("PlexGenresVideo");
                 });
 
             modelBuilder.Entity("Reaparr.Domain.PlexLibrary", b =>
@@ -1615,7 +1615,7 @@ namespace Reaparr.Data.Migrations
 
                     b.HasIndex("PlexLibraryId");
 
-                    b.ToTable("PlexLibraryGenres", (string)null);
+                    b.ToTable("PlexLibraryGenresVideo");
                 });
 
             modelBuilder.Entity("Reaparr.Domain.PlexMovie", b =>

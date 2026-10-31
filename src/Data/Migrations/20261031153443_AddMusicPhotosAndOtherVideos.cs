@@ -11,6 +11,74 @@ namespace Reaparr.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlexMovieGenres_PlexGenres_GenresId",
+                table: "PlexMovieGenres");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlexTvShowGenres_PlexGenres_GenresId",
+                table: "PlexTvShowGenres");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlexLibraryGenres_PlexGenres_PlexGenreId",
+                table: "PlexLibraryGenres");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlexLibraryGenres_PlexLibraries_PlexLibraryId",
+                table: "PlexLibraryGenres");
+
+            migrationBuilder.DropPrimaryKey(
+                name: "PK_PlexLibraryGenres",
+                table: "PlexLibraryGenres");
+
+            migrationBuilder.DropPrimaryKey(
+                name: "PK_PlexGenres",
+                table: "PlexGenres");
+
+            migrationBuilder.RenameTable(
+                name: "PlexGenres",
+                newName: "PlexGenresVideo");
+
+            migrationBuilder.RenameTable(
+                name: "PlexLibraryGenres",
+                newName: "PlexLibraryGenresVideo");
+
+            migrationBuilder.RenameIndex(
+                name: "IX_PlexGenres_Key",
+                table: "PlexGenresVideo",
+                newName: "IX_PlexGenresVideo_Key");
+
+            migrationBuilder.RenameIndex(
+                name: "IX_PlexLibraryGenres_PlexLibraryId",
+                table: "PlexLibraryGenresVideo",
+                newName: "IX_PlexLibraryGenresVideo_PlexLibraryId");
+
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_PlexGenresVideo",
+                table: "PlexGenresVideo",
+                column: "Id");
+
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_PlexLibraryGenresVideo",
+                table: "PlexLibraryGenresVideo",
+                columns: new[] { "PlexGenreId", "PlexLibraryId" });
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlexLibraryGenresVideo_PlexGenresVideo_PlexGenreId",
+                table: "PlexLibraryGenresVideo",
+                column: "PlexGenreId",
+                principalTable: "PlexGenresVideo",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlexLibraryGenresVideo_PlexLibraries_PlexLibraryId",
+                table: "PlexLibraryGenresVideo",
+                column: "PlexLibraryId",
+                principalTable: "PlexLibraries",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
             migrationBuilder.DropIndex(
                 name: "IX_PlexTvShowSeason_TvShowId",
                 table: "PlexTvShowSeason");
@@ -1109,9 +1177,9 @@ namespace Reaparr.Data.Migrations
                 {
                     table.PrimaryKey("PK_PlexOtherVideoGenres", x => new { x.GenresId, x.PlexOtherVideoId });
                     table.ForeignKey(
-                        name: "FK_PlexOtherVideoGenres_PlexGenres_GenresId",
+                        name: "FK_PlexOtherVideoGenres_PlexGenresVideo_GenresId",
                         column: x => x.GenresId,
-                        principalTable: "PlexGenres",
+                        principalTable: "PlexGenresVideo",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -2725,11 +2793,44 @@ namespace Reaparr.Data.Migrations
                 table: "StreamLanguages",
                 columns: new[] { "LanguageCode", "LanguageTag" },
                 unique: true);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlexMovieGenres_PlexGenresVideo_GenresId",
+                table: "PlexMovieGenres",
+                column: "GenresId",
+                principalTable: "PlexGenresVideo",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlexTvShowGenres_PlexGenresVideo_GenresId",
+                table: "PlexTvShowGenres",
+                column: "GenresId",
+                principalTable: "PlexGenresVideo",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.Sql(
+                $"""
+                UPDATE "FolderPaths" SET "{nameof(FolderPath.MediaType)}" = 'MusicArtist' WHERE "{nameof(FolderPath.MediaType)}" = 'Music';
+                UPDATE "FolderPaths" SET "{nameof(FolderPath.MediaType)}" = 'PhotoAlbum' WHERE "{nameof(FolderPath.MediaType)}" = 'Photos';
+                UPDATE "PlexLibraries" SET "{nameof(PlexLibrary.Type)}" = 'MusicArtist' WHERE "{nameof(PlexLibrary.Type)}" = 'Music';
+                UPDATE "PlexLibraries" SET "{nameof(PlexLibrary.Type)}" = 'PhotoAlbum' WHERE "{nameof(PlexLibrary.Type)}" = 'Photos';
+                """
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlexMovieGenres_PlexGenresVideo_GenresId",
+                table: "PlexMovieGenres");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlexTvShowGenres_PlexGenresVideo_GenresId",
+                table: "PlexTvShowGenres");
+
             migrationBuilder.DropTable(
                 name: "DownloadTaskOtherVideoFileLogs");
 
@@ -3005,6 +3106,66 @@ namespace Reaparr.Data.Migrations
                 oldType: "INTEGER",
                 oldComputedColumnSql: "CASE WHEN Type = 'Movie' THEN MovieCount WHEN Type = 'TvShow' THEN TvShowCount WHEN Type = 'MusicArtist' THEN MusicArtistCount WHEN Type = 'PhotoAlbum' THEN PhotoAlbumCount WHEN Type = 'OtherVideos' THEN OtherVideoCount ELSE -1 END");
 
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlexLibraryGenresVideo_PlexGenresVideo_PlexGenreId",
+                table: "PlexLibraryGenresVideo");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_PlexLibraryGenresVideo_PlexLibraries_PlexLibraryId",
+                table: "PlexLibraryGenresVideo");
+
+            migrationBuilder.DropPrimaryKey(
+                name: "PK_PlexLibraryGenresVideo",
+                table: "PlexLibraryGenresVideo");
+
+            migrationBuilder.DropPrimaryKey(
+                name: "PK_PlexGenresVideo",
+                table: "PlexGenresVideo");
+
+            migrationBuilder.RenameTable(
+                name: "PlexLibraryGenresVideo",
+                newName: "PlexLibraryGenres");
+
+            migrationBuilder.RenameTable(
+                name: "PlexGenresVideo",
+                newName: "PlexGenres");
+
+            migrationBuilder.RenameIndex(
+                name: "IX_PlexGenresVideo_Key",
+                table: "PlexGenres",
+                newName: "IX_PlexGenres_Key");
+
+            migrationBuilder.RenameIndex(
+                name: "IX_PlexLibraryGenresVideo_PlexLibraryId",
+                table: "PlexLibraryGenres",
+                newName: "IX_PlexLibraryGenres_PlexLibraryId");
+
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_PlexGenres",
+                table: "PlexGenres",
+                column: "Id");
+
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_PlexLibraryGenres",
+                table: "PlexLibraryGenres",
+                columns: new[] { "PlexGenreId", "PlexLibraryId" });
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlexLibraryGenres_PlexGenres_PlexGenreId",
+                table: "PlexLibraryGenres",
+                column: "PlexGenreId",
+                principalTable: "PlexGenres",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlexLibraryGenres_PlexLibraries_PlexLibraryId",
+                table: "PlexLibraryGenres",
+                column: "PlexLibraryId",
+                principalTable: "PlexLibraries",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
             migrationBuilder.CreateIndex(
                 name: "IX_PlexTvShowSeason_TvShowId",
                 table: "PlexTvShowSeason",
@@ -3029,6 +3190,35 @@ namespace Reaparr.Data.Migrations
                 name: "IX_PlexMovieData_Quality",
                 table: "PlexMovieData",
                 column: "Quality");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlexMovieGenres_PlexGenres_GenresId",
+                table: "PlexMovieGenres",
+                column: "GenresId",
+                principalTable: "PlexGenres",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_PlexTvShowGenres_PlexGenres_GenresId",
+                table: "PlexTvShowGenres",
+                column: "GenresId",
+                principalTable: "PlexGenres",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            // The preceding schema stored resolution in both Quality and VideoResolution.
+            // Restore that duplicated value instead of leaving the recreated Quality at zero.
+            migrationBuilder.Sql(
+                $"""
+                UPDATE "FolderPaths" SET "{nameof(FolderPath.MediaType)}" = 'Music' WHERE "{nameof(FolderPath.MediaType)}" = 'MusicArtist';
+                UPDATE "FolderPaths" SET "{nameof(FolderPath.MediaType)}" = 'Photos' WHERE "{nameof(FolderPath.MediaType)}" = 'PhotoAlbum';
+                UPDATE "PlexLibraries" SET "{nameof(PlexLibrary.Type)}" = 'Music' WHERE "{nameof(PlexLibrary.Type)}" = 'MusicArtist';
+                UPDATE "PlexLibraries" SET "{nameof(PlexLibrary.Type)}" = 'Photos' WHERE "{nameof(PlexLibrary.Type)}" = 'PhotoAlbum';
+                UPDATE "PlexMovieData" SET "Quality" = "VideoResolution";
+                UPDATE "PlexTvShowEpisodeData" SET "Quality" = "VideoResolution";
+                """
+            );
         }
     }
 }
