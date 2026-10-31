@@ -50,15 +50,10 @@ public class GetPhotoDownloadPreviewCommandHandler
         if (selectionResult.Value.Count == 0)
             return Result.Ok(Enumerable.Empty<DownloadPreview>());
 
-        var roots = await _dbContext
-            .DownloadTaskPhotoFolders.Where(x => x.ParentId == null)
-            .ToListAsync(cancellationToken);
-        var files = await _dbContext.DownloadTaskPhotoImageFiles.ToListAsync(cancellationToken);
-        var eligibleSelections = selector.FilterQueueEligibleFiles(selectionResult.Value, roots, files);
-        return Result.Ok(CreatePreviews(eligibleSelections));
+        return Result.Ok(CreatePreviews(selectionResult.Value));
     }
 
-    private static IEnumerable<DownloadPreview> CreatePreviews(IEnumerable<PhotoDownloadCandidate> candidates)
+    private static IEnumerable<DownloadPreview> CreatePreviews(IEnumerable<PhotoDownloadSelection> candidates)
     {
         var roots = new Dictionary<(int ServerId, int LibraryId), DownloadPreview>();
         var folders = new Dictionary<(int ServerId, int LibraryId, string Path), DownloadPreview>();

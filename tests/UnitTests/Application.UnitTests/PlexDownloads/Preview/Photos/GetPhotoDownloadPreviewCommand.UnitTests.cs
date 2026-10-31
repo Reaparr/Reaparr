@@ -49,6 +49,75 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
     }
 
     [Test]
+    [Arguments(DownloadStatus.Queued, PhotoItemKind.Asset)]
+    [Arguments(DownloadStatus.Completed, PhotoItemKind.Asset)]
+    [Arguments(DownloadStatus.Queued, PhotoItemKind.Album)]
+    [Arguments(DownloadStatus.Completed, PhotoItemKind.Album)]
+    [Arguments(DownloadStatus.Queued, PhotoItemKind.Folder)]
+    [Arguments(DownloadStatus.Completed, PhotoItemKind.Folder)]
+    public async Task ShouldPreviewSelectedPhotos_WhenDownloadTaskAlreadyExists(
+        DownloadStatus status,
+        PhotoItemKind selectionKind
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            62413,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var media = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        var selectedId = selectionKind switch
+        {
+            PhotoItemKind.Album => await dbContext.PlexPhotoAlbums.Select(x => x.Id).SingleAsync(CancellationToken),
+            PhotoItemKind.Folder => media.PlexPhotoFolderId!.Value,
+            _ => media.Id,
+        };
+        var selection = CreatePhotoSelection(
+            selectionKind,
+            (media.PlexServerId, media.PlexLibraryId),
+            [selectedId]
+        );
+        var creator = Mock.Create<GenerateDownloadTaskPhotoImagesCommandHandler>();
+        var command = new GenerateDownloadTaskPhotoImagesCommand([selection]);
+        var created = await creator.ExecuteAsync(command, CancellationToken);
+        created.IsSuccess.ShouldBeTrue();
+        created.Errors.Count.ShouldBe(0);
+        created.Value.ShouldBe(new DownloadTaskCreationReport { PhotoFolders = 1, PhotoImages = 1 });
+        var queued = await dbContext.DownloadTaskPhotoImageFiles.AsTracking().SingleAsync(CancellationToken);
+        queued.PlexApiRatingKey.ShouldBe(media.PlexApiRatingKey);
+        queued.DownloadStatus = status;
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        // Act
+        var result = await TestHandlerExecuteAsync<IEnumerable<DownloadPreview>>(
+            new(new DownloadPreviewRequest { DownloadMedias = [selection] })
+        );
+        var duplicate = await creator.ExecuteAsync(command, CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var root = result.Value.Single();
+        root.ChildCount.ShouldBe(1);
+        root.Size.ShouldBe(media.Size);
+        root.Children.Select(x => (x.Id, x.Title, x.MediaType, x.Size))
+            .ShouldBe([(media.Id, media.OriginalFilename, PlexMediaType.PhotoImage, media.Size)]);
+        duplicate.IsSuccess.ShouldBeTrue();
+        duplicate.Errors.Count.ShouldBe(0);
+        duplicate.Value.ShouldBe(new DownloadTaskCreationReport());
+        var retained = await dbContext.DownloadTaskPhotoImageFiles.SingleAsync(CancellationToken);
+        retained.Id.ShouldBe(queued.Id);
+        retained.DownloadStatus.ShouldBe(status);
+    }
+
+    [Test]
     public async Task ShouldPreviewUnmappedUnalbumedAssetAtLibraryRoot_WhenNoCatalogRootIsActive()
     {
         // Arrange
@@ -540,7 +609,7 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
     [Arguments(true, "CON.jpg")]
     [Arguments(false, "back\\slash.jpg")]
     [Arguments(true, "back\\slash.jpg")]
-    public async Task ShouldReuseCapturedRootAndExcludeQueuedOrConflictingFiles_WithoutChangingTheQueue(
+    public async Task ShouldRepresentEntirePhotoQuery_RegardlessOfExistingTasksOrDestinationConflicts(
         bool queueCollisionOwner,
         string invalidFileName
     )
@@ -633,13 +702,15 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         var root = result.Value.Single();
-        root.Title.ShouldBe("Home Plex - Photos");
-        root.Size.ShouldBe(media[2].Size);
-        root.ChildCount.ShouldBe(1);
-        root.Children.Select(x => (x.Id, x.Title, x.Size, x.MediaType))
-            .ShouldBe([
-                (media[2].Id, media[2].OriginalFilename.GetFileName(), media[2].Size, PlexMediaType.PhotoImage),
-            ]);
+        root.Title.ShouldBe("Home Plex - Renamed library");
+        root.Size.ShouldBe(media.Sum(x => x.Size) + collision.Size + invalid.Size);
+        root.ChildCount.ShouldBe(5);
+        root.Children.OrderBy(x => x.Id).Select(x => (x.Id, x.Title, x.Size, x.MediaType))
+            .ShouldBe(
+                media.Concat([collision, invalid])
+                    .OrderBy(x => x.Id)
+                    .Select(x => (x.Id, x.OriginalFilename, x.Size, PlexMediaType.PhotoImage))
+            );
         var afterFiles = await dbContext.DownloadTaskPhotoImageFiles.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         afterFiles
             .Select(x => (x.Id, x.PlexApiRatingKey, x.DirectoryMeta.PhotoFolder, x.DataTotal, x.DownloadStatus))
