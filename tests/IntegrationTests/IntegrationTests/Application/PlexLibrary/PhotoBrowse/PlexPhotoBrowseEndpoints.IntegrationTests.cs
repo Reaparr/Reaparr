@@ -124,6 +124,7 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
             .ToListAsync(CancellationToken);
         assetIds.Count.ShouldBe(4);
         await ArrangeAssetSortValuesAsync(context, assetIds);
+        await context.SetPhotoMediaMetrics(libraryId, 1, 0, assetIds.Count, 1000L, CancellationToken);
         using var client = container.GetApiClient();
         await client.SignIn();
 
