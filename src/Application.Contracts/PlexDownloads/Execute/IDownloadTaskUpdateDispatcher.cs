@@ -3,6 +3,14 @@ namespace Reaparr.Application.Contracts;
 public interface IDownloadTaskUpdateDispatcher
 {
     /// <summary>
+    /// Materializes a detached download tree and the latest patch sequence watermark for every server.
+    /// Snapshot materialization and patch publication share one ordering gate so the returned watermark
+    /// covers every patch that could otherwise race with this read.
+    /// Servers with no emitted patch have no dictionary entry and therefore imply watermark zero.
+    /// </summary>
+    Task<DownloadSnapshotDTO> GetSnapshotAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Handles a download status change by persisting status updates and scheduling immediate/periodic patch updates.
     /// </summary>
     Task OnStatusChangedAsync(

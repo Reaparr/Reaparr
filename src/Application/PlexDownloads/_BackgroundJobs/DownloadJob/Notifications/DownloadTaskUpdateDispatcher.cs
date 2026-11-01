@@ -19,6 +19,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
     private readonly Channel<ImmediatePatchRequest> _statusChannel;
     private readonly ConcurrentDictionary<Guid, BufferedProgressUpdate> _progressByNodeId;
     private readonly ConcurrentDictionary<int, long> _sequenceByServer;
+    private readonly SemaphoreSlim _publicationGate;
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _progressGates;
     private readonly ConcurrentDictionary<Guid, byte> _finalizedProgressNodes;
     private readonly ConcurrentDictionary<Guid, ProgressScopeKey> _scopeByNodeId;
@@ -53,6 +54,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         _progressGates = new ConcurrentDictionary<Guid, SemaphoreSlim>();
         _finalizedProgressNodes = new ConcurrentDictionary<Guid, byte>();
         _sequenceByServer = new ConcurrentDictionary<int, long>();
+        _publicationGate = new SemaphoreSlim(1, 1);
         _scopeByNodeId = new ConcurrentDictionary<Guid, ProgressScopeKey>();
         _statusByNodeId = new ConcurrentDictionary<Guid, DownloadStatus>();
         _lastProgressLogByNodeId = new ConcurrentDictionary<Guid, DownloadTaskProgress>();
@@ -60,6 +62,32 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         _firstProgressChannel = Channel.CreateUnbounded<BufferedProgressUpdate>(
             new UnboundedChannelOptions { SingleReader = true, SingleWriter = false }
         );
+    }
+
+    /// <inheritdoc />
+    public async Task<DownloadSnapshotDTO> GetSnapshotAsync(CancellationToken cancellationToken = default)
+    {
+        await _publicationGate.WaitAsync(cancellationToken);
+        try
+        {
+            // Keep database materialization, DTO mapping, and sequence capture in the same
+            // publication gate as patch reads/sends. This makes the returned watermark cover
+            // every emitted patch that could otherwise race with the snapshot.
+            using var dbContext = await _dbContextFactory.CreateAsync();
+            var downloadTasks = await dbContext.GetAllDownloadTasksByServerAsync(
+                cancellationToken: cancellationToken
+            );
+
+            return new DownloadSnapshotDTO
+            {
+                Downloads = downloadTasks.ToServerDownloadProgressDTOList(),
+                PatchSequenceByServer = _sequenceByServer.ToDictionary(x => x.Key, x => x.Value),
+            };
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
     }
 
     /// <inheritdoc />
@@ -83,14 +111,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
 
             if (newStatus is DownloadStatus.Deleted)
             {
-                var sequence = _sequenceByServer.AddOrUpdate(key.PlexServerId, 1, (_, current) => current + 1);
-                await _downloadHubService.SendDownloadPatchAsync(
-                    key.PlexServerId,
-                    sequence,
-                    upserts: [],
-                    deletedIds: [key.Id],
-                    cancellationToken
-                );
+                await PublishDeletionPatchAsync(key, cancellationToken);
                 return;
             }
 
@@ -526,6 +547,28 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         }
     }
 
+    private async Task PublishDeletionPatchAsync(DownloadTaskKey key, CancellationToken cancellationToken)
+    {
+        // Deletion has no database row to read, so allocate and publish its sequence
+        // under the same gate as snapshot and root patch publication.
+        await _publicationGate.WaitAsync(cancellationToken);
+        try
+        {
+            var sequence = _sequenceByServer.AddOrUpdate(key.PlexServerId, 1, (_, current) => current + 1);
+            await _downloadHubService.SendDownloadPatchAsync(
+                key.PlexServerId,
+                sequence,
+                upserts: [],
+                deletedIds: [key.Id],
+                cancellationToken
+            );
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
+    }
+
     /// <summary>
     /// Builds and sends a status patch containing changed nodes and impacted ancestors.
     /// </summary>
@@ -553,45 +596,57 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         CancellationToken cancellationToken
     )
     {
-        var result = await Result.Try(async Task () =>
+        await _publicationGate.WaitAsync(cancellationToken);
+        try
         {
-            var rootTasks = await GetDownloadProgressRootTasksAsync(dbContext, [scope.RootKey], cancellationToken);
-            var rootTask = rootTasks.FirstOrDefault();
-            if (rootTask is null)
-                return;
+            // The per-node gate, when present, is acquired by the caller before this
+            // publication gate. This method only reads/maps the current root and awaits
+            // its hub send; status/progress database writes remain outside this global
+            // publication gate so unrelated mutations do not serialize behind clients.
+            var result = await Result.Try(async Task () =>
+            {
+                var rootTasks = await GetDownloadProgressRootTasksAsync(dbContext, [scope.RootKey], cancellationToken);
+                var rootTask = rootTasks.FirstOrDefault();
+                if (rootTask is null)
+                    return;
 
-            var allNodes = Flatten([rootTask]).ToDictionary(x => x.Id);
-            var patchNodeIds = ResolvePatchNodeIds(changedNodeIds, allNodes);
+                var allNodes = Flatten([rootTask]).ToDictionary(x => x.Id);
+                var patchNodeIds = ResolvePatchNodeIds(changedNodeIds, allNodes);
 
-            var upserts = patchNodeIds
-                .Select(id => allNodes[id])
-                .Select(node => new DownloadPatchDTO
-                {
-                    Id = node.Id,
-                    ParentId = node.ParentId,
-                    Status = node.DownloadStatus,
-                    Percentage = node.Percentage,
-                    DataReceived = node.DataReceived,
-                    DataTotal = node.DataTotal,
-                    DownloadSpeed = node.Speed,
-                    TimeRemaining = node.TimeRemaining,
-                })
-                .ToList();
+                var upserts = patchNodeIds
+                    .Select(id => allNodes[id])
+                    .Select(node => new DownloadPatchDTO
+                    {
+                        Id = node.Id,
+                        ParentId = node.ParentId,
+                        Status = node.DownloadStatus,
+                        Percentage = node.Percentage,
+                        DataReceived = node.DataReceived,
+                        DataTotal = node.DataTotal,
+                        DownloadSpeed = node.Speed,
+                        TimeRemaining = node.TimeRemaining,
+                    })
+                    .ToList();
 
-            if (upserts.Count == 0)
-                return;
+                if (upserts.Count == 0)
+                    return;
 
-            var sequence = _sequenceByServer.AddOrUpdate(scope.PlexServerId, 1, (_, current) => current + 1);
-            await _downloadHubService.SendDownloadPatchAsync(
-                scope.PlexServerId,
-                sequence,
-                upserts,
-                deletedIds: null,
-                cancellationToken
-            );
-        });
+                var sequence = _sequenceByServer.AddOrUpdate(scope.PlexServerId, 1, (_, current) => current + 1);
+                await _downloadHubService.SendDownloadPatchAsync(
+                    scope.PlexServerId,
+                    sequence,
+                    upserts,
+                    deletedIds: null,
+                    cancellationToken
+                );
+            });
 
-        return result;
+            return result;
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
     }
 
     /// <summary>
