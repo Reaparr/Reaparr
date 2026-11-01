@@ -1,5 +1,55 @@
 Reaparr Changelog
 
+# [0.41.0-dev.10](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.9...v0.41.0-dev.10) (2026-11-01)
+
+
+### Bug Fixes
+
+* **Web-UI:** Accept only current directory lookup results ([4dd78af](https://github.com/Reaparr/Reaparr/commit/4dd78affcad5561f16aad53c4ac4e60bf50b788b))
+* **Web-UI:** Align download requests with current API contracts ([75c825c](https://github.com/Reaparr/Reaparr/commit/75c825c33a5e4d1e23c053fbb17ab9f4e63958d7))
+* **Web-UI:** Apply the first server connection check status ([0f79b15](https://github.com/Reaparr/Reaparr/commit/0f79b15509b6a0718d4ae3d1e602ce61c4d33b01))
+* **Web-UI:** Cancel pending photo selection when clearing ([59a94dc](https://github.com/Reaparr/Reaparr/commit/59a94dc1068d519c3028fdad6609081099cf2d47))
+* **Web-UI:** Cancel stale session layout callbacks ([21472ce](https://github.com/Reaparr/Reaparr/commit/21472ce5836c1e4181a22185346300309623aafc))
+* **WebAPI:** Clean default desktop artifacts while preserving publish output ([079e531](https://github.com/Reaparr/Reaparr/commit/079e53170f1d18d900f359c15cd09ad5cb443d36))
+* **Web-UI:** Clear expired sessions and cancel stale requests ([6cd67e6](https://github.com/Reaparr/Reaparr/commit/6cd67e6e8e7f2cbe185cbb56bb0e38ad52744186))
+* **Web-UI:** Display the authoritative update target version ([8122469](https://github.com/Reaparr/Reaparr/commit/812246904f1e5884fada69b2ca07c4cfa61eda4f))
+* **WebAPI:** Handle relaunch signals in browser-only desktop mode ([70a7b7d](https://github.com/Reaparr/Reaparr/commit/70a7b7dab20587a03ed6e70d08133d79834ef7ff))
+* **Web-UI:** Keep aggregate artist quality labels informational ([c5501d9](https://github.com/Reaparr/Reaparr/commit/c5501d9b7ddf44c26640dcc5fdea4cddd6d16c44))
+* **Web-UI:** Lock credential fields during load and save ([4566b5d](https://github.com/Reaparr/Reaparr/commit/4566b5d224a8fc2e517913fcb24853dd26d3c3ab))
+* **WebAPI:** Open the development UI in browser-only desktop mode ([423b482](https://github.com/Reaparr/Reaparr/commit/423b482109f4ab3f080402202e43e791d0d7a27d))
+* **WebAPI:** Order download snapshots with patch publication ([67934d2](https://github.com/Reaparr/Reaparr/commit/67934d26d80d120d8a45533793527b5af1a80981))
+* **WebAPI:** Preserve assigned and default folder roles ([9c133e7](https://github.com/Reaparr/Reaparr/commit/9c133e7477e2858798a016ab7fdda6df348bc57d))
+* **WebAPI:** Preserve desktop restore control during publish ([6703e6f](https://github.com/Reaparr/Reaparr/commit/6703e6fc959e281df9e4b8c0fa5f7714f8cd52bd))
+* **Web-UI:** Preserve failed download action results ([867fe25](https://github.com/Reaparr/Reaparr/commit/867fe25d4305b27e7cd16bbd5384ef96e2b82a8f))
+* **Web-UI:** Preserve photo inspector membership pages ([c509a0b](https://github.com/Reaparr/Reaparr/commit/c509a0bd28ee2b8138842d214836ccb5f50b3be0))
+* **Web-UI:** Preserve the session when logout fails ([8f9228b](https://github.com/Reaparr/Reaparr/commit/8f9228b4ec35a2952203899f14e1e29df35e4e81))
+* **Web-UI:** Prevent overlapping login attempts ([879eff2](https://github.com/Reaparr/Reaparr/commit/879eff2e636cd87bde17c14a6571bac6cbddce0d))
+* **WebAPI:** Read complete desktop relaunch signals ([c513674](https://github.com/Reaparr/Reaparr/commit/c5136745924a160d4731f815f63f5e479fc5116f))
+* **WebAPI:** Recalculate scheduled shares after cap changes ([ae2d9c2](https://github.com/Reaparr/Reaparr/commit/ae2d9c29aadf5b8ae32a418712b004ffc366fc03))
+* **Web-UI:** Reconcile downloads after reconnecting ([a1fd301](https://github.com/Reaparr/Reaparr/commit/a1fd3010e0b593811c9cbaffc80cc514a4f50df3))
+* **WebAPI:** Recover interrupted download restarts safely ([3c1b8e3](https://github.com/Reaparr/Reaparr/commit/3c1b8e30a2d068c7a4bcec02e747a83274f3319f))
+* **Web-UI:** Recover music Back navigation from invalid library IDs ([fe362d7](https://github.com/Reaparr/Reaparr/commit/fe362d70eec6bf56f6d0f506e2febe9336b68dbf))
+* **WebAPI:** Refresh download clients after bulk clearing ([b4f184b](https://github.com/Reaparr/Reaparr/commit/b4f184b22a2d622b83200a0be64f50c6ebdfb7ca))
+* **WebAPI:** Reject ambiguous packaged AppImage launches ([228c1fd](https://github.com/Reaparr/Reaparr/commit/228c1fdf6f081b3b262d5cd80bf0c46851cef4d7))
+* **Web-UI:** Render membership-scoped photo album assets ([34ee43e](https://github.com/Reaparr/Reaparr/commit/34ee43e72a751ac1c648576f46a914d7b2a825c5))
+* **Web-UI:** Respect download snapshot sequence watermarks ([ac60156](https://github.com/Reaparr/Reaparr/commit/ac601565264030cdae3a070e52b915a35aeaa9f9))
+* **Web-UI:** Respect mixed music download confirmations ([a579961](https://github.com/Reaparr/Reaparr/commit/a579961c327c9b1505572a06fb8336944276a193))
+* **WebAPI:** Run host cleanup before desktop update exit ([22674ad](https://github.com/Reaparr/Reaparr/commit/22674ad31c26375722b2e699cee96142089022fd))
+
+
+### Features
+
+* **Web-UI:** Show progress during directory navigation ([b755ffe](https://github.com/Reaparr/Reaparr/commit/b755ffeb5b914199653c353e3eacb4c6649112f0))
+
+
+### Performance Improvements
+
+* **Application:** Advance library sync queue once on completion ([96f62bc](https://github.com/Reaparr/Reaparr/commit/96f62bca53efb7c2455a0986d3d27a3b1c43f18e))
+* **WebAPI:** Filter requested torrent hashes before loading tasks ([bb1bd52](https://github.com/Reaparr/Reaparr/commit/bb1bd52a6e334fc591b3811910671c7b800b35d3))
+* **WebAPI:** Reuse captured executing download payloads ([343b020](https://github.com/Reaparr/Reaparr/commit/343b020652f1fe680289c3c6f1a584f6d6be8bbd))
+* **WebAPI:** Reuse preloaded server connections for selection ([e07c9e6](https://github.com/Reaparr/Reaparr/commit/e07c9e60f2b55f42911754cb5b4620b48f2d7a1d))
+* **WebAPI:** Skip unrelated mount probes for directory lookups ([eb86f57](https://github.com/Reaparr/Reaparr/commit/eb86f5707d161f2cbcde6d8f68d9e95abfbabeae))
+
 # [0.41.0-dev.9](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.8...v0.41.0-dev.9) (2026-10-31)
 
 
