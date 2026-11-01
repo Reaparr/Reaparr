@@ -13,6 +13,7 @@ import {
 	type DownloadPreviewRequest,
 	type DownloadPatchMessagePackDTO,
 	type DownloadProgressDTO,
+	type DownloadSnapshotDTO,
 	DownloadStatus,
 	type PlexServerDTO,
 	type ServerDownloadProgressDTO,
@@ -66,7 +67,7 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 				const snapshot: PendingDownloadSnapshot = { patches: pendingSnapshot?.patches ?? [] };
 				pendingSnapshot = snapshot;
 				return downloadApi.getAllDownloadTasksEndpoint().pipe(
-					tap((downloads) => finishSnapshot(snapshot, downloads.isSuccess ? downloads.value ?? [] : null)),
+					tap((result) => finishSnapshot(snapshot, result.isSuccess ? result.value ?? null : null)),
 					finalize(() => finishSnapshot(snapshot, null)),
 				);
 			});
@@ -244,14 +245,27 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 		return result.isSuccess ? actions.fetchDownloadList() : of(result);
 	}
 
-	function finishSnapshot(snapshot: PendingDownloadSnapshot, downloads: ServerDownloadProgressDTO[] | null): void {
-		if (pendingSnapshot !== snapshot) return;
-		pendingSnapshot = null;
-		if (downloads !== null) state.serverDownloads = downloads;
+	function replaySnapshotPatches(patches: DownloadPatchMessagePackDTO[], watermarks: DownloadSnapshotDTO['patchSequenceByServer'] | undefined): boolean {
 		let missingNodes = false;
-		for (const patch of snapshot.patches) {
+		// Ingress sequencing already includes these packets; replay compares with the response watermark.
+		for (const patch of patches) {
+			if (patch.sequence <= (watermarks?.[patch.serverId] ?? 0)) continue;
 			if (!applyDownloadPatch(patch)) missingNodes = true;
 		}
+		return missingNodes;
+	}
+
+	function finishSnapshot(snapshot: PendingDownloadSnapshot, downloads: DownloadSnapshotDTO | null): void {
+		if (pendingSnapshot !== snapshot) return;
+		pendingSnapshot = null;
+		if (downloads !== null) {
+			state.serverDownloads = downloads.downloads;
+			for (const [serverId, sequence] of Object.entries(downloads.patchSequenceByServer)) {
+				const id = Number(serverId);
+				state.latestPatchSequenceByServer[id] = Math.max(state.latestPatchSequenceByServer[id] ?? 0, sequence);
+			}
+		}
+		const missingNodes = replaySnapshotPatches(snapshot.patches, downloads?.patchSequenceByServer);
 		// Preserve the existing unknown-node refresh, but never retry a failed/cancelled snapshot.
 		if (missingNodes && downloads !== null) actions.fetchDownloadList().subscribe();
 	}

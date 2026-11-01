@@ -36,7 +36,7 @@ mock.onGet(backgroundJobsMatcher).reply(200, ok([]));
 
 // Default empty collections for common setup fetches
 mock.onGet(plexAccountMatcher).reply(200, ok([]));
-mock.onGet(downloadMatcher).reply(200, ok([]));
+mock.onGet(downloadMatcher).reply(200, ok({ downloads: [], patchSequenceByServer: {} }));
 mock.onGet(folderPathMatcher).reply(200, ok([]));
 mock.onGet(integrationMatcher).reply(200, ok([]));
 mock.onGet(plexLibraryMatcher).reply(200, ok([]));

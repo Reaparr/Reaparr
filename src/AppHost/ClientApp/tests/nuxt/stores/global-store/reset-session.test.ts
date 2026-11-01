@@ -70,11 +70,11 @@ describe('GlobalStore.resetSession()', () => {
 			releaseOldResponse = resolve;
 		});
 		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint())
-			.replyOnce(200, generateResultDTO(oldQueue))
+			.replyOnce(200, generateResultDTO({ downloads: oldQueue, patchSequenceByServer: {} }))
 			.onGet(DownloadPaths.getAllDownloadTasksEndpoint())
 			.replyOnce(() => oldResponse)
 			.onGet(DownloadPaths.getAllDownloadTasksEndpoint())
-			.reply(200, generateResultDTO(currentQueue));
+			.reply(200, generateResultDTO({ downloads: currentQueue, patchSequenceByServer: {} }));
 		await subscribeSpyTo(downloadStore.setup()).onComplete();
 		expect(downloadStore.serverDownloads).toEqual(oldQueue);
 		authenticationStore.isLoggedIn = true;
@@ -107,18 +107,18 @@ describe('GlobalStore.resetSession()', () => {
 
 			const currentFetch = subscribeSpyTo(downloadStore.fetchDownloadList());
 			await currentFetch.onComplete();
-			expect(currentFetch.getFirstValue()?.value).toEqual(currentQueue);
+			expect(currentFetch.getFirstValue()?.value).toEqual({ downloads: currentQueue, patchSequenceByServer: {} });
 			expect(downloadStore.serverDownloads).toEqual(currentQueue);
 			expect(downloadStore.serverDownloads.map((server) => server.id)).toEqual([202]);
 			expect(downloadStore.serverDownloads[0]?.downloads[0]?.id).toBe('new-session-download');
 
-			releaseOldResponse([200, generateResultDTO(oldQueue)]);
+			releaseOldResponse([200, generateResultDTO({ downloads: oldQueue, patchSequenceByServer: {} })]);
 			await oldFetch.onComplete();
 			expect(downloadStore.serverDownloads).toEqual(currentQueue);
 			expect(countDownloadRequests(mock)).toBe(3);
 		} finally {
 			finishSignalrStop();
-			releaseOldResponse([200, generateResultDTO(oldQueue)]);
+			releaseOldResponse([200, generateResultDTO({ downloads: oldQueue, patchSequenceByServer: {} })]);
 			await Promise.all([reset, overlappingReset, oldFetch.onComplete()]);
 		}
 	});
@@ -186,7 +186,7 @@ describe('GlobalStore.resetSession()', () => {
 		const downloadStore = useDownloadStore();
 		const recoveredQueue = [createServerDownload(303, 'teardown-recovered-download')];
 		vi.spyOn(signalrStore, 'resetSession').mockRejectedValue(new Error('Hub stop failed'));
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO(recoveredQueue));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: recoveredQueue, patchSequenceByServer: {} }));
 
 		// Act
 		await globalStore.resetSession();
@@ -194,7 +194,7 @@ describe('GlobalStore.resetSession()', () => {
 		await recoveredFetch.onComplete();
 
 		// Assert
-		expect(recoveredFetch.getFirstValue()?.value).toEqual(recoveredQueue);
+		expect(recoveredFetch.getFirstValue()?.value).toEqual({ downloads: recoveredQueue, patchSequenceByServer: {} });
 		expect(downloadStore.serverDownloads).toEqual(recoveredQueue);
 		expect(downloadStore.serverDownloads[0]?.downloads[0]?.id).toBe('teardown-recovered-download');
 	});

@@ -52,7 +52,7 @@ describe('SignalrStore message routing', () => {
 			errors: [],
 			successes: [],
 			statusCode: 200,
-			value: [],
+			value: { downloads: [], patchSequenceByServer: {} },
 		});
 		setActivePinia(createPinia());
 		hubConnections.clear();

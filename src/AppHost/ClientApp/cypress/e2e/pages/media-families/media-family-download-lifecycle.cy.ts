@@ -142,7 +142,7 @@ function setupFamily(family: Family) {
 			request.reply(reply(stats));
 		}).as('familyBrowse');
 		cy.intercept('GET', PlexMediaPaths.getMediaDetailByIdEndpoint(root.id, { type: root.type }), reply(root)).as('familyDetail');
-		cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => request.reply(reply([state.queue]))).as('queue');
+		cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => request.reply(reply({ downloads: [state.queue], patchSequenceByServer: {} }))).as('queue');
 		cy.intercept('POST', '**/api/Download/preview', (request) => {
 			if (request.body.downloadMedias[0]?.type === PlexMediaType.PhotoImage) {
 				request.alias = 'imagePreview';

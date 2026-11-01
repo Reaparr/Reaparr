@@ -21,7 +21,7 @@ describe('DownloadStore.previewDownload() request contract', () => {
 	] as const)('Should send a preview envelope and preserve the %s selection identity', async (type, selectionKind) => {
 		// Arrange
 		const store = useDownloadStore();
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO([]));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: [], patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.setup()).onComplete();
 		const selection: DownloadMediaDTO = {
 			mediaIds: [71], type, selectionKind,

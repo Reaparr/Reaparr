@@ -31,12 +31,12 @@ describe('DownloadStore.executeDownloadCommand()', () => {
 		// Arrange
 		const store = useDownloadStore();
 		const retained = queue();
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO(retained));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: retained, patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.setup()).onComplete();
 		const failure = generateFailedResultDTO({ statusCode: 503, errors: [{ message: 'Mutation unavailable', reasons: [], metadata: {} }] });
 		mock.onDelete(url).reply(503, failure);
 		// A successful refresh must never replace the failed mutation result.
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO([]));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: [], patchSequenceByServer: {} }));
 		mock.resetHistory();
 
 		// Act
@@ -52,10 +52,10 @@ describe('DownloadStore.executeDownloadCommand()', () => {
 	test.each(commands)('Should refresh the visible queue after $name succeeds', async ({ action, ids, url }) => {
 		// Arrange
 		const store = useDownloadStore();
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO(queue()));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.setup()).onComplete();
 		mock.onDelete(url).reply(200, generateResultDTO({ count: 1 }));
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO([]));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: [], patchSequenceByServer: {} }));
 		mock.resetHistory();
 
 		// Act

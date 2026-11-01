@@ -47,10 +47,13 @@ describe('DownloadStore.getActiveDownloadList()', () => {
 			hierarchy([PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack], node('completed', PlexMediaType.MusicTrack, [], DownloadStatus.Completed)),
 			hierarchy([PlexMediaType.PhotoAlbum, PlexMediaType.PhotoImage], node('error', PlexMediaType.PhotoImage, [], DownloadStatus.Error)),
 		];
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO([
-			{ id: 1, downloadableTasksCount: 8, downloads },
-			{ id: 2, downloadableTasksCount: 1, downloads: [node('second-server-file', PlexMediaType.OtherVideos)] },
-		]));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({
+			downloads: [
+				{ id: 1, downloadableTasksCount: 8, downloads },
+				{ id: 2, downloadableTasksCount: 1, downloads: [node('second-server-file', PlexMediaType.OtherVideos)] },
+			],
+			patchSequenceByServer: {},
+		}));
 		const store = useDownloadStore();
 
 		// Act

@@ -19,12 +19,12 @@ import type {
   CreateDownloadTasksRequest,
   DownloadPreviewContainerDTO,
   DownloadPreviewRequest,
+  DownloadSnapshotDTO,
   DownloadTaskCreationReportDTO,
   DownloadTaskDTO,
   DownloadTaskLogDTO,
   DownloadTaskType,
   ListOfGuid,
-  ServerDownloadProgressDTO,
 } from "./data-contracts";
 
 import { apiCheckPipe, axiosObservable } from "@api/base";
@@ -39,13 +39,13 @@ export class Download {
    * @secure
    */
   getAllDownloadTasksEndpoint = (params: RequestParams = {}) =>
-    axiosObservable<ServerDownloadProgressDTO[]>({
+    axiosObservable<DownloadSnapshotDTO>({
       url: `/api/Download`,
       method: "GET",
       secure: true,
       responseType: "json",
       ...params,
-    }).pipe(apiCheckPipe<ServerDownloadProgressDTO[]>);
+    }).pipe(apiCheckPipe<DownloadSnapshotDTO>);
 
   /**
    * No description

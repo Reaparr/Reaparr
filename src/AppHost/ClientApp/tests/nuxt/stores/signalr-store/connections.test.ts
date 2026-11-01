@@ -44,7 +44,7 @@ describe('SignalrStore connections', () => {
 			errors: [],
 			successes: [],
 			statusCode: 200,
-			value: [],
+			value: { downloads: [], patchSequenceByServer: {} },
 		});
 		setActivePinia(createPinia());
 		hubConnections.clear();
@@ -112,11 +112,11 @@ describe('SignalrStore connections', () => {
 		const signalrStore = useSignalrStore();
 		const downloadStore = useDownloadStore();
 		const initial = downloadQueue(DownloadStatus.Downloading);
-		mock.onGet('/api/Download').reply(200, generateResultDTO(initial));
+		mock.onGet('/api/Download').reply(200, generateResultDTO({ downloads: initial, patchSequenceByServer: {} }));
 		await subscribeSpyTo(signalrStore.setup()).onComplete();
 		await subscribeSpyTo(downloadStore.setup()).onComplete();
 		const oldDownloadHub = hubConnections.get('download')!;
-		mock.onGet('/api/Download').reply(200, generateResultDTO(downloadQueue(DownloadStatus.Paused)));
+		mock.onGet('/api/Download').reply(200, generateResultDTO({ downloads: downloadQueue(DownloadStatus.Paused), patchSequenceByServer: {} }));
 		mock.resetHistory();
 
 		// Act
@@ -141,7 +141,7 @@ describe('SignalrStore connections', () => {
 		// Arrange
 		const signalrStore = useSignalrStore();
 		const downloadStore = useDownloadStore();
-		mock.onGet('/api/Download').reply(200, generateResultDTO(downloadQueue(DownloadStatus.Queued)));
+		mock.onGet('/api/Download').reply(200, generateResultDTO({ downloads: downloadQueue(DownloadStatus.Queued), patchSequenceByServer: {} }));
 		await subscribeSpyTo(signalrStore.setup()).onComplete();
 		await subscribeSpyTo(downloadStore.setup()).onComplete();
 		const oldHub = hubConnections.get('download')!;
@@ -157,10 +157,10 @@ describe('SignalrStore connections', () => {
 		downloadStore.$reset();
 		for (const name of hubConnections.keys()) hubConnections.set(name, createHub());
 		await subscribeSpyTo(signalrStore.setup()).onComplete();
-		mock.onGet('/api/Download').reply(200, generateResultDTO(downloadQueue(DownloadStatus.Paused)));
+		mock.onGet('/api/Download').reply(200, generateResultDTO({ downloads: downloadQueue(DownloadStatus.Paused), patchSequenceByServer: {} }));
 		await subscribeSpyTo(downloadStore.fetchDownloadList()).onComplete();
 		oldPatchHandler([7, 999, [], ['current']]);
-		held.resolve([200, generateResultDTO([])]);
+		held.resolve([200, generateResultDTO({ downloads: [], patchSequenceByServer: {} })]);
 		await flushPromises();
 
 		// Assert

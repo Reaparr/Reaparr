@@ -21,7 +21,7 @@ describe('DownloadStore.setup()', () => {
 	test('Should return success and complete when setup is run', async () => {
 		// Arrange
 		const downloadStore = useDownloadStore();
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO([]));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: [], patchSequenceByServer: {} }));
 		mock.onGet(DownloadPaths.getDownloadTaskByGuidEndpoint('*')).reply(200, generateResultDTO([]));
 		const setupResult: ISetupResult = {
 			isSuccess: true,

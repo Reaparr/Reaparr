@@ -30,7 +30,7 @@ describe('DownloadStore reconnect snapshots', () => {
 	test('Should restore missed deletions and keep new-process patches received during reconnect', async () => {
 		// Arrange
 		const store = useDownloadStore();
-		mock.onGet(url).reply(200, generateResultDTO(queue()));
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.setup()).onComplete();
 		store.updateDownloadPatch(patch(100, DownloadStatus.Downloading));
 		const held = Promise.withResolvers<[number, unknown]>();
@@ -39,7 +39,7 @@ describe('DownloadStore reconnect snapshots', () => {
 		// Act
 		const reconnect = subscribeSpyTo(store.reconcileAfterReconnect());
 		store.updateDownloadPatch(patch(1, DownloadStatus.Completed));
-		held.resolve([200, generateResultDTO(queue(DownloadStatus.Paused, ['current']))]);
+		held.resolve([200, generateResultDTO({ downloads: queue(DownloadStatus.Paused, ['current']), patchSequenceByServer: {} })]);
 		await reconnect.onComplete();
 
 		// Assert
@@ -51,10 +51,107 @@ describe('DownloadStore reconnect snapshots', () => {
 		expect(store.serverDownloads[0]!.downloads[0]!.status).toBe(DownloadStatus.Stopped);
 	});
 
+	test('Should install a newer snapshot over an older buffered patch and reject delayed covered packets', async () => {
+		// Arrange
+		const store = useDownloadStore();
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
+		await subscribeSpyTo(store.setup()).onComplete();
+		const held = Promise.withResolvers<[number, unknown]>();
+		mock.onGet(url).reply(() => held.promise);
+		const snapshot = queue(DownloadStatus.Completed, ['current']);
+		snapshot[0]!.downloads[0]!.percentage = 100;
+		const fetch = subscribeSpyTo(store.fetchDownloadList());
+		store.updateDownloadPatch(patch(10, DownloadStatus.Downloading));
+
+		// Act
+		held.resolve([200, generateResultDTO({ downloads: snapshot, patchSequenceByServer: { 7: 10 } })]);
+		await fetch.onComplete();
+
+		// Assert
+		expect(store.serverDownloads[0]!.downloads[0]!.status).toBe(DownloadStatus.Completed);
+		expect(store.serverDownloads[0]!.downloads[0]!.percentage).toBe(100);
+		store.updateDownloadPatch(patch(10, DownloadStatus.Paused));
+		store.updateDownloadPatch(patch(9, DownloadStatus.Error));
+		expect(store.serverDownloads[0]!.downloads[0]!.status).toBe(DownloadStatus.Completed);
+		expect(store.serverDownloads[0]!.downloads[0]!.percentage).toBe(100);
+		store.updateDownloadPatch(patch(11, DownloadStatus.Downloading));
+		expect(store.serverDownloads[0]!.downloads[0]!.status).toBe(DownloadStatus.Downloading);
+	});
+
+	test('Should replay a newer buffered patch over an older snapshot using the snapshot watermark', async () => {
+		// Arrange
+		const store = useDownloadStore();
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
+		await subscribeSpyTo(store.setup()).onComplete();
+		const held = Promise.withResolvers<[number, unknown]>();
+		mock.onGet(url).reply(() => held.promise);
+		const snapshot = queue(DownloadStatus.Paused, ['current']);
+		snapshot[0]!.downloads[0]!.percentage = 10;
+		const fetch = subscribeSpyTo(store.fetchDownloadList());
+		store.updateDownloadPatch(patch(10, DownloadStatus.Completed));
+
+		// Act
+		held.resolve([200, generateResultDTO({ downloads: snapshot, patchSequenceByServer: { 7: 9 } })]);
+		await fetch.onComplete();
+
+		// Assert
+		expect(store.serverDownloads[0]!.downloads[0]!.status).toBe(DownloadStatus.Completed);
+		expect(store.serverDownloads[0]!.downloads[0]!.percentage).toBe(75);
+		store.updateDownloadPatch(patch(10, DownloadStatus.Paused));
+		expect(store.serverDownloads[0]!.downloads[0]!.status).toBe(DownloadStatus.Completed);
+	});
+
+	test('Should apply sequence floors independently for each server', async () => {
+		// Arrange
+		const store = useDownloadStore();
+		const firstServer = queue()[0]!;
+		const secondServer = queue()[0]!;
+		secondServer.id = 8;
+		secondServer.downloads[0]!.id = 'server-8';
+		mock.onGet(url).reply(200, generateResultDTO({
+			downloads: [firstServer, secondServer],
+			patchSequenceByServer: { 7: 10, 8: 0 },
+		}));
+		await subscribeSpyTo(store.setup()).onComplete();
+		const server8Patch = patch(1, DownloadStatus.Completed);
+		server8Patch.serverId = 8;
+		server8Patch.upserts[0]!.id = 'server-8';
+
+		// Act
+		store.updateDownloadPatch(patch(10, DownloadStatus.Error));
+		store.updateDownloadPatch(server8Patch);
+
+		// Assert
+		expect(store.serverDownloads.find((server) => server.id === 7)!.downloads[0]!.status).toBe(DownloadStatus.Queued);
+		expect(store.serverDownloads.find((server) => server.id === 8)!.downloads[0]!.status).toBe(DownloadStatus.Completed);
+	});
+
+	test('Should not refetch when a covered buffered patch targets a node removed by the snapshot', async () => {
+		// Arrange
+		const store = useDownloadStore();
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
+		await subscribeSpyTo(store.setup()).onComplete();
+		const held = Promise.withResolvers<[number, unknown]>();
+		mock.onGet(url).reply(() => held.promise);
+		const fetch = subscribeSpyTo(store.fetchDownloadList());
+		const removedPatch = patch(10, DownloadStatus.Completed);
+		removedPatch.upserts[0]!.id = 'removed';
+		store.updateDownloadPatch(removedPatch);
+		const snapshot = queue(DownloadStatus.Queued, ['current']);
+
+		// Act
+		held.resolve([200, generateResultDTO({ downloads: snapshot, patchSequenceByServer: { 7: 10 } })]);
+		await fetch.onComplete();
+
+		// Assert
+		expect(store.serverDownloads[0]!.downloads.map(({ id }) => id)).toEqual(['current']);
+		expect(mock.history.get).toHaveLength(2);
+	});
+
 	test('Should ignore older snapshot responses and finalizers while retaining patches for the latest request', async () => {
 		// Arrange
 		const store = useDownloadStore();
-		mock.onGet(url).reply(200, generateResultDTO(queue()));
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.setup()).onComplete();
 		const old = Promise.withResolvers<[number, unknown]>();
 		const current = Promise.withResolvers<[number, unknown]>();
@@ -64,10 +161,10 @@ describe('DownloadStore reconnect snapshots', () => {
 		const first = subscribeSpyTo(store.fetchDownloadList());
 		const second = subscribeSpyTo(store.fetchDownloadList());
 		store.updateDownloadPatch(patch(1, DownloadStatus.Completed));
-		old.resolve([200, generateResultDTO(queue(DownloadStatus.Paused))]);
+		old.resolve([200, generateResultDTO({ downloads: queue(DownloadStatus.Paused), patchSequenceByServer: {} })]);
 		await first.onComplete();
 		store.updateDownloadPatch(patch(2, DownloadStatus.Stopped));
-		current.resolve([200, generateResultDTO(queue())]);
+		current.resolve([200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} })]);
 		await second.onComplete();
 
 		// Assert
@@ -78,7 +175,7 @@ describe('DownloadStore reconnect snapshots', () => {
 	test('Should retain the queue and live patches after a failed reconnect without retrying automatically', async () => {
 		// Arrange
 		const store = useDownloadStore();
-		mock.onGet(url).reply(200, generateResultDTO(queue()));
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.setup()).onComplete();
 		const held = Promise.withResolvers<[number, unknown]>();
 		mock.onGet(url).reply(() => held.promise);
@@ -99,7 +196,7 @@ describe('DownloadStore reconnect snapshots', () => {
 			{ id: 'current', status: DownloadStatus.Paused }, { id: 'removed', status: DownloadStatus.Queued },
 		]);
 		expect(mock.history.get).toHaveLength(1);
-		mock.onGet(url).reply(200, generateResultDTO(queue(DownloadStatus.Completed, ['current'])));
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(DownloadStatus.Completed, ['current']), patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.reconcileAfterReconnect()).onComplete();
 		expect(store.serverDownloads[0]!.downloads.map(({ id, status }) => ({ id, status }))).toEqual([
 			{ id: 'current', status: DownloadStatus.Completed },
@@ -109,17 +206,17 @@ describe('DownloadStore reconnect snapshots', () => {
 	test('Should reject an old-session snapshot and buffered patches after reset', async () => {
 		// Arrange
 		const store = useDownloadStore();
-		mock.onGet(url).reply(200, generateResultDTO(queue()));
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.setup()).onComplete();
 		const old = Promise.withResolvers<[number, unknown]>();
-		mock.onGet(url).replyOnce(() => old.promise).onGet(url).reply(200, generateResultDTO(queue(DownloadStatus.Paused, ['current'])));
+		mock.onGet(url).replyOnce(() => old.promise).onGet(url).reply(200, generateResultDTO({ downloads: queue(DownloadStatus.Paused, ['current']), patchSequenceByServer: {} }));
 		const reconnect = subscribeSpyTo(store.reconcileAfterReconnect());
 		store.updateDownloadPatch(patch(100, DownloadStatus.Completed));
 
 		// Act
 		store.$reset();
 		await subscribeSpyTo(store.fetchDownloadList()).onComplete();
-		old.resolve([200, generateResultDTO(queue(DownloadStatus.Downloading))]);
+		old.resolve([200, generateResultDTO({ downloads: queue(DownloadStatus.Downloading), patchSequenceByServer: {} })]);
 		await reconnect.onComplete();
 		store.updateDownloadPatch(patch(1, DownloadStatus.Stopped));
 
@@ -133,7 +230,7 @@ describe('DownloadStore reconnect snapshots', () => {
 	test('Should apply a buffered patch to a new task supplied by the snapshot without another lookup', async () => {
 		// Arrange
 		const store = useDownloadStore();
-		mock.onGet(url).reply(200, generateResultDTO(queue()));
+		mock.onGet(url).reply(200, generateResultDTO({ downloads: queue(), patchSequenceByServer: {} }));
 		await subscribeSpyTo(store.setup()).onComplete();
 		const held = Promise.withResolvers<[number, unknown]>();
 		mock.onGet(url).reply(() => held.promise);
@@ -144,7 +241,7 @@ describe('DownloadStore reconnect snapshots', () => {
 		// Act
 		const reconnect = subscribeSpyTo(store.reconcileAfterReconnect());
 		store.updateDownloadPatch(created);
-		held.resolve([200, generateResultDTO(queue(DownloadStatus.Queued, ['created-during-outage']))]);
+		held.resolve([200, generateResultDTO({ downloads: queue(DownloadStatus.Queued, ['created-during-outage']), patchSequenceByServer: {} })]);
 		await reconnect.onComplete();
 
 		// Assert

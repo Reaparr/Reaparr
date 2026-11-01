@@ -52,7 +52,7 @@ describe('Downloads page', () => {
 			let refreshRequests = 0;
 			cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => {
 				refreshRequests++;
-				request.reply({ statusCode: 200, body: generateResultDTO(refreshedDownloads) });
+				request.reply({ statusCode: 200, body: generateResultDTO({ downloads: refreshedDownloads, patchSequenceByServer: {} }) });
 			}).as('refreshDownloads');
 
 			cy.clock();
@@ -61,6 +61,79 @@ describe('Downloads page', () => {
 			cy.wait('@refreshDownloads');
 			getVisibleCy(`column-status-${initialTask.id}`).should('have.text', refreshedStatus);
 			cy.then(() => expect(refreshRequests).to.equal(1));
+		});
+	});
+
+	it('Should keep snapshot status and controls ahead of late patches while accepting newer patches', () => {
+		cy.basePageSetup({
+			seed: 47021,
+			plexAccountCount: 1,
+			plexServerCount: 1,
+			plexMovieLibraryCount: 1,
+			movieDownloadTask: 1,
+			isLoggedIn: true,
+		}).then((data) => {
+			const initialDownloads = cloneDeep(data.serverDownloadProgress);
+			const initialTask = initialDownloads[0]!.downloads[0]!;
+			initialTask.status = DownloadStatus.Queued;
+			const completedDownloads = cloneDeep(initialDownloads);
+			const completedTask = completedDownloads[0]!.downloads[0]!;
+			completedTask.status = DownloadStatus.Completed;
+			completedTask.percentage = 100;
+			completedTask.dataReceived = completedTask.dataTotal;
+			const held = Promise.withResolvers<null>();
+			let requests = 0;
+			cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => {
+				if (++requests === 2) {
+					return held.promise.then(() => request.reply({
+						statusCode: 200,
+						body: generateResultDTO({
+							downloads: completedDownloads,
+							patchSequenceByServer: { [completedDownloads[0]!.id]: 10 },
+						}),
+					}));
+				}
+				request.reply({
+					statusCode: 200,
+					body: generateResultDTO({ downloads: initialDownloads, patchSequenceByServer: {} }),
+				});
+			}).as('snapshot');
+
+			cy.visit(route('/downloads'));
+			cy.wait('@snapshot');
+			getVisibleCy(`column-status-${initialTask.id}`).should('have.text', DownloadStatus.Queued);
+			cy.clock();
+			cy.hubPublish('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
+			cy.tick(251);
+			cy.wrap(null).should(() => expect(requests).to.equal(2));
+
+			const publishPatch = (sequence: number, status: DownloadStatus) => cy.hubPublish('download', MessageTypes.DownloadPatch, toDownloadPatchMessagePackTuple({
+				serverId: completedDownloads[0]!.id,
+				sequence,
+				deletedIds: [],
+				upserts: [{
+					id: initialTask.id, parentId: '', status, percentage: status === DownloadStatus.Completed ? 100 : 50,
+					dataReceived: status === DownloadStatus.Completed ? completedTask.dataTotal : completedTask.dataTotal / 2,
+					dataTotal: completedTask.dataTotal, downloadSpeed: status === DownloadStatus.Downloading ? 1024 : 0, timeRemaining: 0,
+				}],
+			}));
+
+			publishPatch(10, DownloadStatus.Downloading);
+			cy.then(() => held.resolve(null));
+			cy.wait('@snapshot');
+			getVisibleCy(`column-status-${initialTask.id}`).should('have.text', DownloadStatus.Completed);
+			getVisibleCy(`column-actions-clear-${initialTask.id}`).should('exist');
+			getVisibleCy(`column-actions-restart-${initialTask.id}`).should('exist');
+
+			publishPatch(10, DownloadStatus.Paused);
+			getVisibleCy(`column-status-${initialTask.id}`).should('have.text', DownloadStatus.Completed);
+			getVisibleCy(`column-actions-clear-${initialTask.id}`).should('exist');
+			getVisibleCy(`column-actions-restart-${initialTask.id}`).should('exist');
+
+			publishPatch(11, DownloadStatus.Downloading);
+			getVisibleCy(`column-status-${initialTask.id}`).should('have.text', DownloadStatus.Downloading);
+			getVisibleCy(`column-actions-pause-${initialTask.id}`).should('exist');
+			getVisibleCy(`column-actions-stop-${initialTask.id}`).should('exist');
 		});
 	});
 
@@ -177,7 +250,7 @@ describe('Downloads page', () => {
 			removed.status = DownloadStatus.Completed;
 			active.status = DownloadStatus.Queued;
 			cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => {
-				request.reply({ statusCode: 200, body: generateResultDTO(queue) });
+				request.reply({ statusCode: 200, body: generateResultDTO({ downloads: queue, patchSequenceByServer: {} }) });
 			}).as('recipientQueue');
 			cy.visit(route('/downloads'));
 			cy.getCy(`column-status-${removed.id}`).first().scrollIntoView().should('have.text', DownloadStatus.Completed);
@@ -212,7 +285,7 @@ describe('Downloads page', () => {
 			setStatus(completed, DownloadStatus.Completed);
 			setStatus(retained, DownloadStatus.Stopped);
 			cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => {
-				request.reply({ statusCode: 200, body: generateResultDTO(queue) });
+				request.reply({ statusCode: 200, body: generateResultDTO({ downloads: queue, patchSequenceByServer: {} }) });
 			}).as('queue');
 			const failure = generateFailedResultDTO({
 				statusCode: 503, errors: [{ message: 'Download mutation unavailable', reasons: [], metadata: {} }],
@@ -280,7 +353,7 @@ describe('Downloads page', () => {
 			const held = Promise.withResolvers<null>();
 			let requests = 0;
 			cy.intercept({ method: 'GET', pathname: '/api/Download' }, (request) => {
-				const response = generateResultDTO(cloneDeep(queue));
+				const response = generateResultDTO({ downloads: cloneDeep(queue), patchSequenceByServer: {} });
 				if (++requests === 2) return held.promise.then(() => request.reply({ statusCode: 200, body: response }));
 				request.reply({ statusCode: 200, body: response });
 			}).as('recoveryQueue');
