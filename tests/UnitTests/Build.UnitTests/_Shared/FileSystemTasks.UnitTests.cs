@@ -67,43 +67,51 @@ public class FileSystemTasksUnitTests : BaseUnitTest
         IFileSystem fileSystem = realFileSystem ? new System.IO.Abstractions.FileSystem() : new MockFileSystem();
         var root = fileSystem.Path.Combine(
             fileSystem.Path.GetTempPath(), nameof(FileSystemTasksUnitTests), Guid.NewGuid().ToString("N"));
-        var paths = new BuildPaths(root, fileSystem);
-        var artifacts = paths.ArtifactDirectory("linux-x64");
-        var publish = paths.PublishDirectory("linux-x64");
-        var binary = fileSystem.Path.Combine(publish, "Reaparr.AppHost");
-        var index = fileSystem.Path.Combine(publish, "wwwroot", "index.html");
-        var control = fileSystem.Path.Combine(paths.ArtifactDirectory("win-x64"), "keep.bin");
-        var files = new Dictionary<string, byte[]>
+        try
         {
-            [binary] = [0, 1, 2, 255],
-            [index] = "frontend"u8.ToArray(),
-            [fileSystem.Path.Combine(artifacts, "old.AppImage")] = [9],
-            [fileSystem.Path.Combine(artifacts, "old-output", "stale.bin")] = [8],
-            [fileSystem.Path.Combine(artifacts, "publish-backup", "stale.bin")] = [7],
-            [control] = [6, 5],
-        };
-        foreach (var (file, bytes) in files)
-        {
-            fileSystem.Directory.CreateDirectory(fileSystem.Path.GetDirectoryName(file)!);
-            fileSystem.File.WriteAllBytes(file, bytes);
+            var paths = new BuildPaths(root, fileSystem);
+            var artifacts = paths.ArtifactDirectory("linux-x64");
+            var publish = paths.PublishDirectory("linux-x64");
+            var binary = fileSystem.Path.Combine(publish, "Reaparr.AppHost");
+            var index = fileSystem.Path.Combine(publish, "wwwroot", "index.html");
+            var control = fileSystem.Path.Combine(paths.ArtifactDirectory("win-x64"), "keep.bin");
+            var files = new Dictionary<string, byte[]>
+            {
+                [binary] = [0, 1, 2, 255],
+                [index] = "frontend"u8.ToArray(),
+                [fileSystem.Path.Combine(artifacts, "old.AppImage")] = [9],
+                [fileSystem.Path.Combine(artifacts, "old-output", "stale.bin")] = [8],
+                [fileSystem.Path.Combine(artifacts, "publish-backup", "stale.bin")] = [7],
+                [control] = [6, 5],
+            };
+            foreach (var (file, bytes) in files)
+            {
+                fileSystem.Directory.CreateDirectory(fileSystem.Path.GetDirectoryName(file)!);
+                fileSystem.File.WriteAllBytes(file, bytes);
+            }
+            fileSystem.File.Exists(fileSystem.Path.Combine(artifacts, "old.AppImage")).ShouldBeTrue();
+            fileSystem.File.ReadAllBytes(binary).ShouldBe([0, 1, 2, 255]);
+            var fileSystemTasks = new FileSystemTasks(fileSystem);
+
+            // Act
+            fileSystemTasks.ClearArtifactDirectory(
+                new BuildDirectoryPath(fileSystem, root),
+                new BuildDirectoryPath(fileSystem, artifacts),
+                new BuildDirectoryPath(fileSystem, publish));
+
+            // Assert
+            fileSystem.Directory.EnumerateFiles(artifacts, "*", SearchOption.AllDirectories)
+                .Order(StringComparer.Ordinal).ShouldBe(new[] { binary, index }.Order(StringComparer.Ordinal));
+            fileSystem.Directory.EnumerateDirectories(artifacts).ShouldBe([publish]);
+            fileSystem.File.ReadAllBytes(binary).ShouldBe([0, 1, 2, 255]);
+            fileSystem.File.ReadAllBytes(index).ShouldBe("frontend"u8.ToArray());
+            fileSystem.File.ReadAllBytes(control).ShouldBe([6, 5]);
         }
-        fileSystem.File.Exists(fileSystem.Path.Combine(artifacts, "old.AppImage")).ShouldBeTrue();
-        fileSystem.File.ReadAllBytes(binary).ShouldBe([0, 1, 2, 255]);
-        var fileSystemTasks = new FileSystemTasks(fileSystem);
-
-        // Act
-        fileSystemTasks.ClearArtifactDirectory(
-            new BuildDirectoryPath(fileSystem, root),
-            new BuildDirectoryPath(fileSystem, artifacts),
-            new BuildDirectoryPath(fileSystem, publish));
-
-        // Assert
-        fileSystem.Directory.EnumerateFiles(artifacts, "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal).ShouldBe(new[] { binary, index }.Order(StringComparer.Ordinal));
-        fileSystem.Directory.EnumerateDirectories(artifacts).ShouldBe([publish]);
-        fileSystem.File.ReadAllBytes(binary).ShouldBe([0, 1, 2, 255]);
-        fileSystem.File.ReadAllBytes(index).ShouldBe("frontend"u8.ToArray());
-        fileSystem.File.ReadAllBytes(control).ShouldBe([6, 5]);
+        finally
+        {
+            if (realFileSystem && fileSystem.Directory.Exists(root))
+                fileSystem.Directory.Delete(root, recursive: true);
+        }
     }
 
     [Test]

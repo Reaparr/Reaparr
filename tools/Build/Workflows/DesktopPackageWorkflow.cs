@@ -117,16 +117,11 @@ internal sealed class DesktopPackageBuildCommandHandler : ICommandHandler<Deskto
             return;
         }
 
-        var normalizedArtifactDirectory = _fileSystem
-            .Path.GetFullPath(artifactDirectory)
-            .TrimEnd(_fileSystem.Path.DirectorySeparatorChar, _fileSystem.Path.AltDirectorySeparatorChar);
-        var normalizedPublishDirectory = _fileSystem
-            .Path.GetFullPath(publishDirectory)
-            .TrimEnd(_fileSystem.Path.DirectorySeparatorChar, _fileSystem.Path.AltDirectorySeparatorChar);
-        var artifactContainsPublish = normalizedPublishDirectory.StartsWith(
-            normalizedArtifactDirectory + _fileSystem.Path.DirectorySeparatorChar,
-            StringComparison.OrdinalIgnoreCase
-        );
+        var artifactContainsPublish = new BuildDirectoryPath(_fileSystem, artifactDirectory)
+            .IsParentOf(
+                new BuildDirectoryPath(_fileSystem, publishDirectory),
+                _fileSystem.Path.DirectorySeparatorChar
+            );
         if (artifactContainsPublish)
         {
             _log.Here()

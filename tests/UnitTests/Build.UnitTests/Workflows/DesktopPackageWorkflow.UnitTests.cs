@@ -68,6 +68,8 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
     [Arguments(false, true, null)]
     [Arguments(false, false, ".artifacts")]
     [Arguments(false, false, ".artifacts/linux-x64")]
+    [Arguments(false, false, ".artifacts/./linux-x64/")]
+    [Arguments(false, false, "/")]
     public async Task ShouldRetainFiles_WhenCleanupIsDisabledOrCustomOutputContainsPublish(
         bool dryRun, bool preserveArtifacts, string? artifactOverride)
     {
