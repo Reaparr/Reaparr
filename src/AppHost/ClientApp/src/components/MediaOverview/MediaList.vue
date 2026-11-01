@@ -113,6 +113,7 @@
 import Log from 'consola';
 import { get, set } from '@vueuse/core';
 import { type DownloadMediaDTO, type PlexMediaDTO, type PlexMediaSlimDTO, PlexMediaType } from '@dto';
+import { toDownloadSelectionKind } from '@composables/conversion';
 import type { ISelection } from '@interfaces';
 import {
 	useI18n,
@@ -267,6 +268,7 @@ useMediaOverviewBarDownloadCommandBus().on(() => {
 			plexLibraryId: mediaItem.plexLibraryId,
 			plexServerId: mediaItem.plexServerId,
 			qualities: mediaItem.qualities,
+			selectionKind: toDownloadSelectionKind(PlexMediaType.Season),
 			keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
 		});
 	}
@@ -278,6 +280,7 @@ useMediaOverviewBarDownloadCommandBus().on(() => {
 			plexLibraryId: mediaItem.plexLibraryId,
 			plexServerId: mediaItem.plexServerId,
 			qualities: mediaItem.qualities,
+			selectionKind: toDownloadSelectionKind(PlexMediaType.Episode),
 			keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
 		});
 	}

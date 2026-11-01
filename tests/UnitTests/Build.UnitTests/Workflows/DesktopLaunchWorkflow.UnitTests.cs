@@ -7,16 +7,14 @@ namespace Reaparr.Build.UnitTests;
 internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildCommandHandler>
 {
     [Test]
-    public async Task ShouldLaunchNewestTopLevelAppImage_WhenLinuxPackagedLaunchIsRequested()
+    public async Task ShouldLaunchOnlyTopLevelAppImage_WhenLinuxPackagedLaunchIsRequested()
     {
         // Arrange
         const string rootDirectory = "/repo";
         const string artifactDirectorySetting = "release-output";
-        const string olderArtifactName = "Reaparr-1.0.0.AppImage";
-        const string newestArtifactName = "Reaparr-1.1.0.AppImage";
+        const string artifactName = "Reaparr-1.1.0.AppImage";
         const string nestedArtifactName = "Reaparr-nested.AppImage";
-        var olderWriteTime = new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero);
-        var newestWriteTime = new DateTimeOffset(2026, 10, 17, 12, 0, 0, TimeSpan.Zero);
+        var writeTime = new DateTimeOffset(2026, 10, 17, 12, 0, 0, TimeSpan.Zero);
 
         SetupFileSystem(system =>
         {
@@ -25,23 +23,20 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
             system.AddDirectory(artifactDirectory);
             system.AddDirectory(nestedArtifactDirectory);
             system.AddFile(
-                system.Path.Combine(artifactDirectory, olderArtifactName),
-                new MockFileData("older") { LastWriteTime = olderWriteTime }
-            );
-            system.AddFile(
-                system.Path.Combine(artifactDirectory, newestArtifactName),
-                new MockFileData("newest") { LastWriteTime = newestWriteTime }
+                system.Path.Combine(artifactDirectory, artifactName),
+                new MockFileData("app image") { LastWriteTime = writeTime }
             );
             system.AddFile(
                 system.Path.Combine(nestedArtifactDirectory, nestedArtifactName),
-                new MockFileData("nested") { LastWriteTime = newestWriteTime.AddDays(1) }
+                new MockFileData("nested") { LastWriteTime = writeTime.AddDays(1) }
             );
             system.AddFile(system.Path.Combine(artifactDirectory, "not-an-app-image.zip"), new MockFileData("other"));
         });
 
+        SetupDependencies(builder => builder.Register(_ => rootDirectory).As<string>().SingleInstance());
         var fileSystem = Mock.Container.Resolve<IFileSystem>();
         var artifactDirectory = fileSystem.Path.GetFullPath(artifactDirectorySetting, rootDirectory);
-        var newestArtifact = fileSystem.Path.Combine(artifactDirectory, newestArtifactName);
+        var appImage = fileSystem.Path.Combine(artifactDirectory, artifactName);
 
         var settings = new DesktopCommandSettings
         {
@@ -50,14 +45,12 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
             ArtifactDirectory = artifactDirectorySetting,
         };
 
-        SetupDependencies(builder => builder.Register(_ => rootDirectory).As<string>().SingleInstance());
-
         Mock.Mock<IDesktopCommandRunner>()
             .Setup(x =>
                 x.ExecuteCommandAsync(
                     "chmod",
                     It.Is<IReadOnlyList<string>>(arguments =>
-                        arguments.Count == 2 && arguments[0] == "+x" && arguments[1] == newestArtifact
+                        arguments.Count == 2 && arguments[0] == "+x" && arguments[1] == appImage
                     ),
                     null
                 )
@@ -68,7 +61,7 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         Mock.Mock<IDesktopCommandRunner>()
             .Setup(x =>
                 x.ExecuteCommandAsync(
-                    newestArtifact,
+                    appImage,
                     It.Is<IReadOnlyList<string>>(arguments => arguments.Count == 0),
                     null
                 )
@@ -83,6 +76,56 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(17);
+        Mock.Mock<IDesktopCommandRunner>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldFailWithoutCommandsOrFileChanges_WhenMultipleTopLevelAppImagesExist()
+    {
+        // Arrange
+        const string rootDirectory = "/repo";
+        const string artifactDirectorySetting = "release-output";
+        var older = new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero);
+        SetupFileSystem(system =>
+        {
+            var directory = system.Path.GetFullPath(artifactDirectorySetting, rootDirectory);
+            system.AddFile(system.Path.Combine(directory, "Reaparr-1.0.AppImage"), new MockFileData("old") { LastWriteTime = older });
+            system.AddFile(system.Path.Combine(directory, "Reaparr-2.0.AppImage"), new MockFileData("new") { LastWriteTime = older.AddDays(1) });
+            system.AddFile(system.Path.Combine(directory, "nested", "Reaparr.AppImage"), new MockFileData("nested"));
+            system.AddFile(system.Path.Combine(directory, "Reaparr.zip"), new MockFileData("archive"));
+        });
+        SetupDependencies(builder => builder.Register(_ => rootDirectory).As<string>().SingleInstance());
+        var fileSystem = Mock.Container.Resolve<IFileSystem>();
+        var directory = fileSystem.Path.GetFullPath(artifactDirectorySetting, rootDirectory);
+        fileSystem.Directory.EnumerateFiles(directory, "*.AppImage", SearchOption.TopDirectoryOnly)
+            .Select(fileSystem.Path.GetFileName).Order(StringComparer.Ordinal)
+            .ShouldBe(["Reaparr-1.0.AppImage", "Reaparr-2.0.AppImage"]);
+        var before = fileSystem.Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .Select(path => (path, fileSystem.File.ReadAllText(path), fileSystem.File.GetLastWriteTimeUtc(path), fileSystem.File.GetAttributes(path)))
+            .ToArray();
+        var settings = new DesktopCommandSettings
+        {
+            RuntimeIdentifier = "linux-x64",
+            LaunchMode = "packaged",
+            ArtifactDirectory = artifactDirectorySetting,
+        };
+        Mock.Mock<IDesktopCommandRunner>()
+            .Setup(x => x.ExecuteCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
+            .Verifiable(Times.Never());
+
+        // Act
+        var result = await Sut.ExecuteAsync(new DesktopLaunchBuildCommand(settings), CancellationToken);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Errors[0].Message.ShouldContain("Multiple packaged Linux artifacts");
+        result.Errors[0].Message.ShouldContain("exactly one top-level AppImage");
+        fileSystem.Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .Select(path => (path, fileSystem.File.ReadAllText(path), fileSystem.File.GetLastWriteTimeUtc(path), fileSystem.File.GetAttributes(path)))
+            .ShouldBe(before);
         Mock.Mock<IDesktopCommandRunner>().Verify();
     }
 
@@ -108,6 +151,9 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         var settings = new DesktopCommandSettings { RuntimeIdentifier = runtimeIdentifier, LaunchMode = "packaged" };
 
         SetupDependencies(builder => builder.Register(_ => rootDirectory).As<string>().SingleInstance());
+        Mock.Mock<IDesktopCommandRunner>()
+            .Setup(x => x.ExecuteCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
+            .Verifiable(Times.Never());
 
         // Act
         var result = await Sut.ExecuteAsync(new DesktopLaunchBuildCommand(settings), CancellationToken);
@@ -116,6 +162,7 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         result.Errors[0].Message.ShouldContain("No packaged Linux artifact");
+        Mock.Mock<IDesktopCommandRunner>().Verify();
     }
 
     [Test]
@@ -127,6 +174,9 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         var settings = new DesktopCommandSettings { RuntimeIdentifier = "linux-x64", LaunchMode = "packaged" };
 
         SetupDependencies(builder => builder.Register(_ => "/repo").As<string>().SingleInstance());
+        Mock.Mock<IDesktopCommandRunner>()
+            .Setup(x => x.ExecuteCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
+            .Verifiable(Times.Never());
 
         // Act
         var result = await Sut.ExecuteAsync(new DesktopLaunchBuildCommand(settings), CancellationToken);
@@ -135,6 +185,7 @@ internal class DesktopLaunchWorkflowUnitTests : BaseUnitTest<DesktopLaunchBuildC
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         result.Errors[0].Message.ShouldContain("artifact directory");
+        Mock.Mock<IDesktopCommandRunner>().Verify();
     }
 
     [Test]

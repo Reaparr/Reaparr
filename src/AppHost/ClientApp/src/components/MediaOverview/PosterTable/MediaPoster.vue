@@ -128,7 +128,7 @@
 				v-if="supportsMediaQuality"
 				class="media-poster-quality-bar"
 				:qualities="mediaItem.qualities"
-				clickable
+				:clickable="mediaType !== PlexMediaType.MusicArtist"
 				@download="onDownload" />
 			<QLoadingOverlay :loading="loading" />
 		</template>
@@ -184,7 +184,7 @@ import {
 	useSettingsStore,
 	useLibraryStore,
 } from '@store';
-import { getPlexMediaComparisonState } from '@composables';
+import { getPlexMediaComparisonState, toDownloadMedia } from '@composables';
 import Convert from '@class/Convert';
 import MediaPosterCard from './MediaPosterCard.vue';
 
@@ -233,14 +233,12 @@ const comparisonBadgeClickable = computed(() => {
 });
 
 function onDownload(mediaQualities: PlexMediaQualityDTO[]) {
-	const downloadCommand: DownloadMediaDTO = {
-		type: get(mediaType),
-		mediaIds: [props.mediaItem.id],
+	if (get(mediaType) === PlexMediaType.MusicArtist && mediaQualities.length > 0)
+		return;
 
-		plexLibraryId: props.mediaItem.plexLibraryId,
-		plexServerId: props.mediaItem.plexServerId,
+	const downloadCommand: DownloadMediaDTO = {
+		...toDownloadMedia(props.mediaItem)[0]!,
 		qualities: mediaQualities,
-		keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
 	};
 
 	emit('download', [downloadCommand]);

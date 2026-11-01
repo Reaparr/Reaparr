@@ -10,7 +10,12 @@ public class CreateDownloadTasksEndpointRequestValidator : Validator<CreateDownl
 {
     public CreateDownloadTasksEndpointRequestValidator()
     {
-        RuleFor(x => x.Request).NotNull();
+        RuleFor(x => x.Request)
+            .NotNull()
+            .DependentRules(() =>
+            {
+                RuleForEach(x => x.Request.DownloadMedias).NotNull().SetValidator(new DownloadMediaDTOValidator());
+            });
     }
 }
 

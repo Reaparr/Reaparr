@@ -38,7 +38,7 @@ describe('SignalrStore refresh notifications', () => {
 			errors: [],
 			successes: [],
 			statusCode: 200,
-			value: [],
+			value: { downloads: [], patchSequenceByServer: {} },
 		});
 		setActivePinia(createPinia());
 		vi.useFakeTimers();
@@ -62,9 +62,9 @@ describe('SignalrStore refresh notifications', () => {
 		}];
 		mock.resetHandlers();
 		mock.onGet('/api/Download')
-			.replyOnce(200, generateResultDTO([]))
+			.replyOnce(200, generateResultDTO({ downloads: [], patchSequenceByServer: {} }))
 			.onGet('/api/Download')
-			.reply(200, generateResultDTO(downloads));
+			.reply(200, generateResultDTO({ downloads, patchSequenceByServer: {} }));
 		const signalrStore = useSignalrStore();
 		const downloadStore = useDownloadStore();
 

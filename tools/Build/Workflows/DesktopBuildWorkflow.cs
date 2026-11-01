@@ -83,14 +83,10 @@ internal sealed class DesktopRunBuildCommandHandler : ICommandHandler<DesktopRun
                 var sourcePublishDirectory = _paths.PublishDirectory(runtime.RuntimeIdentifier);
                 var targetRoot = _fileSystem.Path.Combine(artifactDirectory, "publish");
 
-                var normalizedSource = _fileSystem
-                    .Path.GetFullPath(sourcePublishDirectory)
-                    .TrimEnd(_fileSystem.Path.DirectorySeparatorChar, _fileSystem.Path.AltDirectorySeparatorChar);
-                var normalizedTarget = _fileSystem
-                    .Path.GetFullPath(targetRoot)
-                    .TrimEnd(_fileSystem.Path.DirectorySeparatorChar, _fileSystem.Path.AltDirectorySeparatorChar);
+                var sourcePath = new BuildDirectoryPath(_fileSystem, sourcePublishDirectory);
+                var targetPath = new BuildDirectoryPath(_fileSystem, targetRoot);
 
-                if (string.Equals(normalizedSource, normalizedTarget, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(sourcePath.Value, targetPath.Value, StringComparison.OrdinalIgnoreCase))
                 {
                     _log.Here()
                         .Information(
@@ -100,8 +96,8 @@ internal sealed class DesktopRunBuildCommandHandler : ICommandHandler<DesktopRun
                 }
                 else
                 {
-                    _fileSystemTasks.ClearDirectory(targetRoot);
-                    _fileSystemTasks.CopyDirectory(sourcePublishDirectory, targetRoot);
+                    _fileSystemTasks.ClearDirectory(targetPath);
+                    _fileSystemTasks.CopyDirectory(sourcePath, targetPath);
                     _log.Here()
                         .Information("Exported Windows publish directory to {ArtifactPublishDirectory}", targetRoot);
                 }

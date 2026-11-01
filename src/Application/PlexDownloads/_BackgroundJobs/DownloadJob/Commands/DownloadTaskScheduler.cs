@@ -76,23 +76,25 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
     public async Task<List<DownloadTaskKey>> GetCurrentlyDownloadingKeysByServer(int plexServerId)
     {
         var keysById = new Dictionary<Guid, DownloadTaskKey>();
+        var capturedJobKeys = new HashSet<JobKey>();
         var contexts = await _scheduler.GetCurrentlyExecutingJobs(CancellationToken.None);
         foreach (var context in contexts.Where(x => x.JobDetail.Key.Group == nameof(JobTypes.DownloadJob)))
         {
             var key = context.MergedJobDataMap.GetPayload<DownloadJobPayload>()?.DownloadTaskKey;
-            if (key is not null)
-                keysById[key.Id] = key;
+            if (key is null)
+                continue;
+
+            keysById[key.Id] = key;
+            capturedJobKeys.Add(context.JobDetail.Key);
         }
 
         var jobKeys = await _scheduler.GetJobKeys(JobTypes.DownloadJob, CancellationToken.None);
         foreach (var jobKey in jobKeys)
         {
-            if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
+            if (capturedJobKeys.Contains(jobKey))
                 continue;
 
-            var key = (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))
-                ?.JobDataMap.GetPayload<DownloadJobPayload>()
-                ?.DownloadTaskKey;
+            var key = await GetActiveStoredKey(jobKey);
             if (key is not null)
                 keysById[key.Id] = key;
         }
@@ -103,5 +105,15 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
     public async Task<bool> IsServerDownloading(int plexServerId)
     {
         return (await GetCurrentlyDownloadingKeysByServer(plexServerId)).Any(x => x.PlexServerId == plexServerId);
+    }
+
+    private async ValueTask<DownloadTaskKey?> GetActiveStoredKey(JobKey jobKey)
+    {
+        if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
+            return null;
+
+        return (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))?.JobDataMap
+            .GetPayload<DownloadJobPayload>()
+            ?.DownloadTaskKey;
     }
 }

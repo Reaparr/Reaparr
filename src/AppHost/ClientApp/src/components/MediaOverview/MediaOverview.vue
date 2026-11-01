@@ -177,7 +177,8 @@ import { useSubscription } from '@vueuse/rxjs';
 import { get, set } from '@vueuse/core';
 import { filter, finalize, switchMap, take } from 'rxjs';
 import { DialogType } from '@enums';
-import { LibrarySyncJobStatus, PhotoItemKind, type DownloadMediaDTO, PlexMediaType, ViewMode } from '@dto';
+import { LibrarySyncJobStatus, type DownloadMediaDTO, PlexMediaType, ViewMode } from '@dto';
+import { toDownloadSelectionKind } from '@composables/conversion';
 import type { IMediaOverviewBarActions } from '@interfaces';
 import { useGlobalStore } from '@store';
 import {
@@ -313,11 +314,7 @@ useMediaOverviewBarDownloadCommandBus().on(() => {
 		mediaIds: mediaOverviewStore.selection.keys,
 		type: mediaOverviewStore.getMediaType,
 		qualities: [],
-		...(mediaOverviewStore.getMediaType === PlexMediaType.PhotoAlbum
-			? { selectionKind: PhotoItemKind.Album }
-			: mediaOverviewStore.getMediaType === PlexMediaType.PhotoImage
-				? { selectionKind: PhotoItemKind.Asset }
-				: {}),
+		selectionKind: toDownloadSelectionKind(mediaOverviewStore.getMediaType),
 		keepCompletedInDownloadFolder: settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder,
 	};
 	sendMediaOverviewDownloadCommand([downloadCommand]);

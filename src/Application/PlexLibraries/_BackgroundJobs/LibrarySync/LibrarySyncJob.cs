@@ -146,16 +146,9 @@ public class LibrarySyncJob : IJob
         if (persistenceResult.IsFailed)
             context.SetResult(JobStatus.Failed, persistenceResult);
 
-        // Use a short-lived token to continue processing the queue after cancellation.
+        // Deliver refresh notifications even when the Quartz job token has been cancelled.
         using var cleanupTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cleanupToken = cleanupTokenSource.Token;
-
-        // Schedule the next library from the queue
-        // A failed notification or cancelled job token must not prevent the next library from running.
-        var dispatchResult = await Result.Try(() =>
-            _commandExecutor.Send(new CheckQueuedPlexLibraryToSyncCommand(), cleanupToken)
-        );
-        dispatchResult.LogIfFailed();
 
         // Send PlexLibrary refresh notification
         var notificationResult = await Result.Try(() =>

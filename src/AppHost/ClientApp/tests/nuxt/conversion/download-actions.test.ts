@@ -28,9 +28,9 @@ describe('download-actions.conversion', () => {
 		expect(selection).toMatchObject({ type: PlexMediaType.PhotoImage, selectionKind: PhotoItemKind.Asset });
 	});
 
-	test('Should omit photo selector metadata for non-photo media', () => {
+	test('Should set photo selector metadata to null for non-photo media', () => {
 		const [selection] = toDownloadMedia(media(PlexMediaType.Movie));
 
-		expect(selection).not.toHaveProperty('selectionKind');
+		expect(selection).toHaveProperty('selectionKind', null);
 	});
 });

@@ -15,7 +15,7 @@ import { plexServerApi, plexServerConnectionApi } from '@api';
 import { RefreshDataType } from '@dto';
 import { sortPlexServerConnections } from '@composables/common';
 import { useServerStore, useSignalrStore } from '@store';
-import { assign, cloneDeep } from 'lodash-es';
+import { cloneDeep } from 'lodash-es';
 
 interface IServerConnectionStoreState {
 	serverConnections: PlexServerConnectionDTO[];
@@ -73,7 +73,7 @@ export const useServerConnectionStore = defineStore(StoreNames.ServerConnectionS
 						if (index === -1) {
 							return res.value;
 						}
-						assign(state.serverConnections[index]!.latestConnectionStatus, res.value);
+						state.serverConnections[index]!.latestConnectionStatus = res.value;
 					}
 					return res?.value ?? null;
 				}),

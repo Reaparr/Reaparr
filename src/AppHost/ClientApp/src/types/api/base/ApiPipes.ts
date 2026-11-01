@@ -6,27 +6,52 @@ import Axios from 'axios';
 import type { BaseResultDTO, ErrorDTO } from '@dto';
 import type { ResultDTO } from '@interfaces';
 
+const activeApiRequests = new Set<AbortController>();
+let apiRequestSuspensions = 0;
+
+export function suspendApiRequests(): () => void {
+	apiRequestSuspensions += 1;
+	for (const controller of activeApiRequests) controller.abort();
+	activeApiRequests.clear();
+	let resumed = false;
+
+	return () => {
+		if (resumed) return;
+		resumed = true;
+		apiRequestSuspensions -= 1;
+	};
+}
+
 export function axiosObservable<T>(config: AxiosRequestConfig): Observable<AxiosResponse<T>> {
 	return new Observable<AxiosResponse<T>>((subscriber) => {
+		if (apiRequestSuspensions > 0) {
+			subscriber.complete();
+			return;
+		}
+
 		const controller = new AbortController();
+		activeApiRequests.add(controller);
 
 		Axios.request<T>({
 			...config,
 			signal: controller.signal,
 		})
 			.then((res) => {
-				subscriber.next(res);
+				if (!controller.signal.aborted) subscriber.next(res);
 				subscriber.complete();
 			})
 			.catch((err) => {
-				if (err?.code === 'ERR_CANCELED') {
+				if (controller.signal.aborted || err?.code === 'ERR_CANCELED') {
 					subscriber.complete();
 				} else {
 					subscriber.error(err);
 				}
 			});
 
-		return () => controller.abort();
+		return () => {
+			activeApiRequests.delete(controller);
+			controller.abort();
+		};
 	});
 }
 

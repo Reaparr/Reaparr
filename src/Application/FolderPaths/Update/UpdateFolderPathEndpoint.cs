@@ -65,9 +65,44 @@ public class UpdateFolderPathEndpoint : Endpoint<UpdateFolderPathEndpointRequest
             return;
         }
 
+        if (
+            (folderPathDb.FolderType, folderPathDb.MediaType) != (folderPath.FolderType, folderPath.MediaType)
+            && !await CanChangeRoleAsync(folderPath)
+        )
+        {
+            await Send.FluentResult(
+                ResultExtensions.Create400BadRequestResult("The folder role is required by a default or assigned owner."),
+                ct
+            );
+            return;
+        }
+
         _dbContext.Entry(folderPathDb).CurrentValues.SetValues(folderPath);
         await _dbContext.SaveChangesAsync(ct);
 
         await Send.FluentResult(Result.Ok(folderPathDb), path => path.ToDTO(), ct);
     }
+
+    private async Task<bool> CanChangeRoleAsync(FolderPath folderPath)
+    {
+        // Default resolvers use these IDs regardless of the stored role; reserved IDs 8–10 remain editable.
+        if (
+            folderPath.Id >= FolderTypeDefaults.DefaultDownloadFolderId
+            && folderPath.Id <= PlexMediaType.Games.ToDefaultDestinationFolderId()
+        )
+            return false;
+
+        // A library destination keeps its assigned role; editing its name or path remains supported.
+        if (await _dbContext.PlexLibraries.IgnoreIsEnabledFilter().AnyAsync(x => x.DefaultDestinationId == folderPath.Id))
+            return false;
+
+        if (folderPath.FolderType == FolderType.DownloadFolder)
+            return true;
+
+        return !await IsAssignedDownloadFolderAsync(folderPath.Id);
+    }
+
+    private async Task<bool> IsAssignedDownloadFolderAsync(int folderPathId) =>
+        await _dbContext.SonarrIntegrations.AnyAsync(x => x.DownloadFolderId == folderPathId)
+        || await _dbContext.RadarrIntegrations.AnyAsync(x => x.DownloadFolderId == folderPathId);
 }

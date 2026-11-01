@@ -12,7 +12,7 @@
 						{{ t('components.update-available-dialog.current-version', { version: globalStore.version }) }}
 					</span>
 					<span class="update-dialog__title-version">
-						{{ t('components.update-available-dialog.latest-version', { version: latestVersion }) }}
+						{{ t('components.update-available-dialog.latest-version', { version: updateStore.newestVersion }) }}
 					</span>
 				</span>
 			</div>
@@ -134,7 +134,6 @@ const globalStore = useGlobalStore();
 const updateStore = useUpdateStore();
 
 const releaseIndex = ref(0);
-const latestVersion = computed(() => updateStore.releaseNotes.at(0)?.version ?? '?');
 const desktopUpdateButtonLabel = computed(() => {
 	if (updateStore.isApplyingUpdate) {
 		return t('components.update-available-dialog.restarting');

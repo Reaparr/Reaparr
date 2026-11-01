@@ -164,6 +164,18 @@ public sealed class DesktopSingleInstanceCoordinator : IDesktopSingleInstanceCoo
         return Result.Fail("Timed out while connecting to the primary desktop instance");
     }
 
+    internal static async ValueTask<bool> IsRelaunchSignalAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[SIGNAL_MESSAGE.Length];
+        var bytesRead = await stream.ReadAtLeastAsync(
+            buffer,
+            buffer.Length,
+            throwOnEndOfStream: false,
+            cancellationToken
+        );
+        return bytesRead == buffer.Length && Encoding.UTF8.GetString(buffer) == SIGNAL_MESSAGE;
+    }
+
     private async Task ListenAsync(Func<CancellationToken, Task<Result>> onSignal, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
@@ -179,12 +191,9 @@ public sealed class DesktopSingleInstanceCoordinator : IDesktopSingleInstanceCoo
                 );
 
                 await server.WaitForConnectionAsync(cancellationToken);
-                var buffer = new byte[SIGNAL_MESSAGE.Length];
-                var bytesRead = await server.ReadAsync(buffer, cancellationToken);
-                var message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                if (message != SIGNAL_MESSAGE)
+                if (!await IsRelaunchSignalAsync(server, cancellationToken))
                 {
-                    _log.Here().Warning("Received unknown desktop relaunch signal: {Message}", message);
+                    _log.Here().Warning("Received unknown or incomplete desktop relaunch signal");
                     continue;
                 }
 

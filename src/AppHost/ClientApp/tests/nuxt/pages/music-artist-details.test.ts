@@ -9,6 +9,7 @@ import { PlexMediaType } from '@dto';
 import { baseSetup } from '@services-test-base';
 import { useDialogStore, useDownloadStore, useMediaStore, useSettingsStore } from '@store';
 import { resetMediaOverviewCommandsBus, sendMediaOverviewDownloadCommand } from '@/composables/event-bus';
+import { toDownloadSelectionKind } from '@composables/conversion';
 import ConfirmationSection from '@/components/Views/Settings/ConfirmationSection.vue';
 import MusicArtistDetails from '@/pages/music/[id]/details/[artistId].vue';
 import { createI18n } from 'vue-i18n';
@@ -209,19 +210,31 @@ describe('Music artist details page', () => {
 		expect(wrapper.get('.media-title').text()).toBe('Artist');
 	});
 
-	test('Should reject invalid direct-navigation IDs without requesting media', async () => {
+	test.each([
+		{ library: 'not-an-id', destination: '/music' },
+		{ library: '2.5', destination: '/music' },
+		{ library: 'Infinity', destination: '/music' },
+		{ library: '9007199254740992', destination: '/music' },
+		{ library: '0', destination: '/music' },
+		{ library: '-1', destination: '/music' },
+		{ library: '1', destination: '/music/1' },
+		{ library: '4', destination: '/music/4' },
+	])('Should recover to $destination from an invalid artist route with library=$library', async ({ library, destination }) => {
 		// Arrange
+		route.params.id = library;
 		route.params.artistId = 'not-an-id';
 		const request = vi.spyOn(useMediaStore(), 'getMediaDataDetailById');
 
 		// Act
 		const wrapper = await render();
+		const routerPush = vi.spyOn(useRouter(), 'push').mockResolvedValue(undefined);
+		await wrapper.get('button').trigger('click');
 
 		// Assert
 		expect(request).not.toHaveBeenCalled();
 		expect(wrapper.get('[data-cy="music-details-error"]').text()).toContain('Invalid music library or artist.');
 		expect(wrapper.find('[data-cy="music-media-list-empty"]').exists()).toBe(false);
-		expect(wrapper.get('button').text()).toContain('Back');
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith(destination);
 	});
 	test.each([
 		[PlexMediaType.MusicArtist, 'ask-download-music-artist-confirmation'],
@@ -238,7 +251,7 @@ describe('Music artist details page', () => {
 			stubs: { QSection: { template: '<section><slot /></section>' }, HelpGroup: { template: '<div><slot /></div>' }, HelpRow: { template: '<div><slot /></div>' } },
 		} });
 		mounted.push(settings);
-		const command = [{ type, mediaIds: [12], plexServerId: 2, plexLibraryId: 4, qualities: [], keepCompletedInDownloadFolder: false }];
+		const command = [{ type, mediaIds: [12], plexServerId: 2, plexLibraryId: 4, qualities: [], selectionKind: toDownloadSelectionKind(type), keepCompletedInDownloadFolder: false }];
 		sendMediaOverviewDownloadCommand(command);
 		expect(open).toHaveBeenCalledExactlyOnceWith(command);
 		open.mockClear();
@@ -252,5 +265,40 @@ describe('Music artist details page', () => {
 		expect(download).toHaveBeenCalledExactlyOnceWith({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
 		expect(useSettingsStore().confirmationSettings.askDownloadMovieConfirmation).toBe(true);
 		expect(useSettingsStore().confirmationSettings.askDownloadTvShowConfirmation).toBe(true);
+	});
+
+	test.each([
+		{ album: false, track: true, reverse: false, confirm: true },
+		{ album: true, track: false, reverse: false, confirm: true },
+		{ album: false, track: true, reverse: true, confirm: true },
+		{ album: true, track: false, reverse: true, confirm: true },
+		{ album: false, track: false, reverse: false, confirm: false },
+		{ album: true, track: true, reverse: false, confirm: true },
+	])('Should respect mixed music confirmation with album=$album track=$track reverse=$reverse', async ({ album, track, reverse, confirm }) => {
+		// Arrange
+		const settings = useSettingsStore().confirmationSettings;
+		settings.askDownloadMusicAlbumConfirmation = album;
+		settings.askDownloadMusicTrackConfirmation = track;
+		vi.spyOn(useMediaStore(), 'getMediaDataDetailById').mockReturnValue(of(artist()));
+		const open = vi.spyOn(useDialogStore(), 'openMediaConfirmationDownloadDialog');
+		const download = vi.spyOn(useDownloadStore(), 'downloadMedia').mockImplementation(() => undefined);
+		await render();
+		const command = [PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack].map((type, index) => ({
+			type, mediaIds: [20 + index], plexServerId: 2, plexLibraryId: 4,
+			qualities: [], selectionKind: toDownloadSelectionKind(type), keepCompletedInDownloadFolder: false,
+		}));
+		if (reverse) command.reverse();
+
+		// Act
+		sendMediaOverviewDownloadCommand(command);
+
+		// Assert
+		if (confirm) {
+			expect(open).toHaveBeenCalledExactlyOnceWith(command);
+			expect(download).not.toHaveBeenCalled();
+		} else {
+			expect(open).not.toHaveBeenCalled();
+			expect(download).toHaveBeenCalledExactlyOnceWith({ downloadMedias: command, customDestinationFolderPath: '', destinationFolderPathId: null });
+		}
 	});
 });

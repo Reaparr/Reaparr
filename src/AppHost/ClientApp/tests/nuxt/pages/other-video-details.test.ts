@@ -8,6 +8,7 @@ import { generatePlexMedia } from '@mock';
 import { AudioQuality, PlexMediaType, VideoQuality, type PlexMediaDTO } from '@dto';
 import { useDialogStore, useDownloadStore, useMediaStore, useSettingsStore } from '@store';
 import { resetMediaOverviewCommandsBus, sendMediaOverviewDownloadCommand } from '@/composables/event-bus';
+import { toDownloadSelectionKind } from '@composables/conversion';
 import ConfirmationSection from '@/components/Views/Settings/ConfirmationSection.vue';
 import OtherVideoDetails from '@/pages/other-videos/[libraryId]/details/[videoId].vue';
 import { createI18n } from 'vue-i18n';
@@ -205,7 +206,7 @@ describe('Other Videos root detail - request lifetime', () => {
 			stubs: { QSection: { template: '<section><slot /></section>' }, HelpGroup: { template: '<div><slot /></div>' }, HelpRow: { template: '<div><slot /></div>' } },
 		} });
 		mounted.push(settings);
-		const command = [{ type: PlexMediaType.OtherVideos, mediaIds: [20], plexServerId: 3, plexLibraryId: 5, qualities: [], keepCompletedInDownloadFolder: false }];
+		const command = [{ type: PlexMediaType.OtherVideos, mediaIds: [20], plexServerId: 3, plexLibraryId: 5, qualities: [], selectionKind: toDownloadSelectionKind(PlexMediaType.OtherVideos), keepCompletedInDownloadFolder: false }];
 		sendMediaOverviewDownloadCommand(command);
 		expect(open).toHaveBeenCalledExactlyOnceWith(command);
 		open.mockClear();

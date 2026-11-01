@@ -1,14 +1,14 @@
 namespace Reaparr.Application;
 
-public class GetAllDownloadTasksEndpoint : EndpointWithoutRequest<List<ServerDownloadProgressDTO>>
+public class GetAllDownloadTasksEndpoint : EndpointWithoutRequest<DownloadSnapshotDTO>
 {
     private readonly ILogger _log;
-    private readonly IReaparrDbContext _dbContext;
+    private readonly IDownloadTaskUpdateDispatcher _downloadTaskUpdateDispatcher;
 
-    public GetAllDownloadTasksEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public GetAllDownloadTasksEndpoint(ILogger log, IDownloadTaskUpdateDispatcher downloadTaskUpdateDispatcher)
     {
         _log = log.ForContext<GetAllDownloadTasksEndpoint>();
-        _dbContext = dbContext;
+        _downloadTaskUpdateDispatcher = downloadTaskUpdateDispatcher;
     }
 
     public override void Configure()
@@ -16,7 +16,7 @@ public class GetAllDownloadTasksEndpoint : EndpointWithoutRequest<List<ServerDow
         Get(ApiRoutes.DownloadController);
 
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<List<ServerDownloadProgressDTO>>))
+            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<DownloadSnapshotDTO>))
                 .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
         );
     }
@@ -24,7 +24,7 @@ public class GetAllDownloadTasksEndpoint : EndpointWithoutRequest<List<ServerDow
     public override async Task HandleAsync(CancellationToken ct)
     {
         _log.Here().DebugApiCall(HttpContext);
-        var downloadList = await _dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: ct);
-        await Send.FluentResult(Result.Ok(downloadList), x => x.ToServerDownloadProgressDTOList(), ct);
+        var snapshot = await _downloadTaskUpdateDispatcher.GetSnapshotAsync(ct);
+        await Send.FluentResult(Result.Ok(snapshot), ct);
     }
 }

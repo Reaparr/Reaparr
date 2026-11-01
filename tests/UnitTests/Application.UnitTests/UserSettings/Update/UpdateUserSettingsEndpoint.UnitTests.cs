@@ -377,6 +377,129 @@ public class UpdateUserSettingsEndpointUnitTests
     }
 
     [Test]
+    [Arguments(100, 0, false, 500)]
+    [Arguments(0, 100, false, 100)]
+    [Arguments(100, 300, false, 300)]
+    [Arguments(100, 0, true, 500)]
+    public async Task ShouldRedistributeEffectiveShares_WhenManualCapChanges(
+        int oldCap, int newCap, bool removeSetting, int expectedFirstKb)
+    {
+        // Arrange
+        var machines = await SetupDownloadingServersAsync();
+        var dbContext = IDbContext;
+        (await dbContext.DownloadTaskMovieFile.Select(x => x.PlexServer!.MachineIdentifier).Distinct().OrderBy(x => x)
+            .ToArrayAsync(CancellationToken)).ShouldBe(machines.Order().ToArray());
+        var beforeFiles = await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.DownloadStatus }).ToArrayAsync(CancellationToken);
+        var settings = new UserSettings();
+        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        {
+            Enabled = true,
+            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+        };
+        if (oldCap > 0)
+            settings.ServerSettings.SetDownloadSpeedLimit(machines[0], oldCap);
+        using var limits = new DownloadSpeedLimitProvider(settings);
+        var allocator = new UpdateScheduledDownloadLimitsCommandHandler(
+            Mock.Container.Resolve<ILogger>(), settings, Mock.Container.Resolve<IReaparrDbContextFactory>(), limits, TimeProvider.System);
+        var command = new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.Parse("2026-10-05T12:00:00Z"));
+        var initial = await allocator.ExecuteAsync(command, CancellationToken);
+        initial.IsSuccess.ShouldBeTrue();
+        initial.Errors.Count.ShouldBe(0);
+        limits.GetEffectiveDownloadSpeedLimit(machines[0]).ShouldBe((oldCap > 0 ? oldCap : 500) * 1024L);
+        var dto = new UserSettings
+        {
+            DownloadManagerSettings = settings.DownloadManagerSettings,
+            ServerSettings = new PlexServerSettingsModule
+            {
+                Data = removeSetting ? [] : [PlexServerSettingItemModule.Create("First server", machines[0]) with { DownloadSpeedLimit = newCap }],
+            },
+        }.ToDTO();
+        Result? allocationResult = null;
+        var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
+        scheduler.Setup(x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None))
+            .Returns(async () => { allocationResult = await allocator.ExecuteAsync(command, CancellationToken.None); })
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpoint = await TestEndpointHandleAsync(
+            new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
+            services =>
+            {
+                services.AddSingleton<IUserSettings>(settings);
+                services.AddSingleton(scheduler.Object);
+            });
+
+        // Assert
+        endpoint.IsValid.ShouldBeTrue();
+        endpoint.StatusCode.ShouldBe(200);
+        allocationResult.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        allocationResult.Errors.Count.ShouldBe(0);
+        limits.GetEffectiveDownloadSpeedLimit(machines[0]).ShouldBe(expectedFirstKb * 1024L);
+        limits.GetEffectiveDownloadSpeedLimit(machines[1]).ShouldBe((1000 - expectedFirstKb) * 1024L);
+        (await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.DownloadStatus }).ToArrayAsync(CancellationToken)).ShouldBe(beforeFiles);
+        scheduler.Verify();
+        scheduler.Verify(x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    [Test]
+    public async Task ShouldNotRefreshAllocation_WhenOnlyServerNamesOrderOrUnlimitedRowsChange()
+    {
+        // Arrange
+        var settings = new UserSettings();
+        settings.ServerSettings.SetDownloadSpeedLimit("limited", 100);
+        settings.ServerSettings.SetDownloadSpeedLimit("unlimited", 0);
+        var dto = new UserSettings
+        {
+            ServerSettings = new PlexServerSettingsModule
+            {
+                Data = [settings.ServerSettings.Data[1] with { PlexServerName = "Renamed" },
+                    settings.ServerSettings.Data[0] with { AllowStreamDownloader = true },
+                    PlexServerSettingItemModule.Create("New default", "new-unlimited")],
+            },
+        }.ToDTO();
+        var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
+
+        // Act
+        var endpoint = await TestEndpointHandleAsync(new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
+            services =>
+            {
+                services.AddSingleton<IUserSettings>(settings);
+                services.AddSingleton(scheduler.Object);
+            });
+
+        // Assert
+        endpoint.IsValid.ShouldBeTrue();
+        endpoint.StatusCode.ShouldBe(200);
+        settings.ServerSettings.Data.Select(x => (x.MachineIdentifier, x.DownloadSpeedLimit))
+            .ShouldBe([("unlimited", 0), ("limited", 100), ("new-unlimited", 0)]);
+        scheduler.Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
+    private async Task<string[]> SetupDownloadingServersAsync()
+    {
+        await SetupDatabase(71997, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 0;
+        });
+        var dbContext = IDbContext;
+        foreach (var library in await dbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.Movie).ToListAsync(CancellationToken))
+        {
+            var task = FakeData.GetMovieDownloadTask(new Seed(71997 + library.Id)).Generate();
+            new[] { task }.SetRelationshipIds(library.PlexServerId, library.Id);
+            dbContext.DownloadTaskMovie.Add(task);
+        }
+        await dbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
+            x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading), CancellationToken);
+        return await dbContext.PlexServers.OrderBy(x => x.Id).Select(x => x.MachineIdentifier).ToArrayAsync(CancellationToken);
+    }
+
+    [Test]
     public async Task ShouldKeepTheLatestTimezone_WhenSettingsUpdatesOverlap()
     {
         // Arrange

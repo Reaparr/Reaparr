@@ -32,7 +32,7 @@ describe('DownloadStore.getDownloadTaskById()', () => {
 			seed: new Seed(config.seed!),
 		})];
 		const queuedDownloadTask = serverDownloads[0]!.downloads[0]!;
-		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO(serverDownloads));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: serverDownloads, patchSequenceByServer: {} }));
 
 		// Act
 		await subscribeSpyTo(downloadStore.setup()).onComplete();

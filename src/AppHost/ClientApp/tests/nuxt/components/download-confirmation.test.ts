@@ -10,13 +10,13 @@ import { useDialogStore, useDownloadStore, useFolderPathStore } from '@store';
 import { DialogType } from '@enums';
 import {
 	FolderType,
-	PhotoItemKind,
 	PlexMediaType,
 	type DownloadMediaDTO,
 	type DownloadPreviewContainerDTO,
 	type DownloadPreviewRequest,
 	type FolderPathDTO,
 } from '@dto';
+import { toDownloadSelectionKind } from '@composables/conversion';
 import DownloadConfirmation from '@/components/Dialogs/DownloadConfirmation.vue';
 import messages from '@/lang/en-US.json';
 
@@ -37,20 +37,14 @@ const DirectoryBrowser = defineComponent({
 });
 
 function command(type: PlexMediaType): DownloadMediaDTO[] {
-	let selectionKind: PhotoItemKind | undefined;
-	if (type === PlexMediaType.PhotoAlbum) {
-		selectionKind = PhotoItemKind.Album;
-	} else if (type === PlexMediaType.PhotoImage) {
-		selectionKind = PhotoItemKind.Asset;
-	}
 	return [{
 		type,
 		mediaIds: [101],
 		plexServerId: 3,
 		plexLibraryId: 4,
 		qualities: [],
+		selectionKind: toDownloadSelectionKind(type),
 		keepCompletedInDownloadFolder: false,
-		...(selectionKind === undefined ? {} : { selectionKind }),
 	}];
 }
 
@@ -219,6 +213,9 @@ describe('DownloadConfirmation - family destinations and preview lifetime', () =
 		expect(wrapper.text()).not.toContain('Stale artist');
 		expect(wrapper.text()).toContain('/destination/41');
 		await wrapper.get('[data-cy="download-confirmation-submit"]').findAll('button')[0]!.trigger('click');
-		expect(wrapper.emitted('download')?.[0]?.[0]).toMatchObject({ destinationFolderPathId: 41, downloadMedias: [{ type: PlexMediaType.PhotoImage }] });
+		expect(wrapper.emitted('download')?.[0]?.[0]).toMatchObject({
+			destinationFolderPathId: 41,
+			downloadMedias: [{ type: PlexMediaType.PhotoImage, selectionKind: toDownloadSelectionKind(PlexMediaType.PhotoImage) }],
+		});
 	});
 });

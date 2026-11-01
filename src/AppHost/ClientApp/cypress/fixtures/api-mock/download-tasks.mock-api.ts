@@ -24,7 +24,7 @@ export function setupMockDownloadTasksEndpoints(
 	}
 	cy.intercept('GET', DownloadPaths.getAllDownloadTasksEndpoint(), {
 		statusCode: 200,
-		body: generateResultDTO(this.serverDownloadProgress),
+		body: generateResultDTO({ downloads: this.serverDownloadProgress, patchSequenceByServer: {} }),
 		...headers,
 	}).then(() => {
 		if (config.debugDisplayData) {

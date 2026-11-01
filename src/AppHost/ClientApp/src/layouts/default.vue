@@ -70,6 +70,7 @@ const showNotificationsDrawerState = ref(false);
 
 const pageLoading = ref(true);
 const pageApiLoading = ref(true);
+const pendingPageCallbacks = new Set<ReturnType<typeof setTimeout>>();
 
 const isLoading = computed((): boolean => get(pageLoading) || get(pageApiLoading));
 const isEmptyLayout = computed((): boolean => route.fullPath.includes('setup') || route.fullPath.includes('login'),
@@ -83,6 +84,18 @@ function toggleNotificationsDrawer() {
 	set(showNotificationsDrawerState, !get(showNotificationsDrawerState));
 }
 
+function clearPendingPageCallbacks(): void {
+	for (const timer of pendingPageCallbacks) {
+		clearTimeout(timer);
+	}
+	pendingPageCallbacks.clear();
+}
+
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+	if (!isLoggedIn) clearPendingPageCallbacks();
+}, { flush: 'sync' });
+onScopeDispose(clearPendingPageCallbacks);
+
 watch(() => $q.screen.gt.sm, (isDesktop) => {
 	set(showNavigationDrawerState, isDesktop);
 	set(showNotificationsDrawerState, false);
@@ -95,24 +108,27 @@ watch(() => route.fullPath, () => {
 	}
 });
 
-nuxtApp.hook('page:start', () => {
+onScopeDispose(nuxtApp.hook('page:start', () => {
 	Log.debug('page:start');
 	set(pageLoading, true);
-});
+}));
 
-nuxtApp.hook('page:finish', () => {
+onScopeDispose(nuxtApp.hook('page:finish', () => {
 	Log.debug('page:finish');
 	set(pageLoading, false);
 	if (authStore.isLoggedIn) {
-		setTimeout(() => {
+		const timer = setTimeout(() => {
+			pendingPageCallbacks.delete(timer);
+			if (!authStore.isLoggedIn) return;
 			if (settingsStore.generalSettings.firstTimeSetup && !route.fullPath.includes('setup')) {
 				router.push('/setup');
 			} else if (!settingsStore.generalSettings.hasBeenInvitedToDiscord && !route.fullPath.includes('setup')) {
 				dialogStore.openDialog(DialogType.DiscordServerInviteDialog);
 			}
 		}, 1000);
+		pendingPageCallbacks.add(timer);
 	}
-});
+}));
 
 onMounted(() => {
 	useSubscription(

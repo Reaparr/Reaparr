@@ -131,7 +131,8 @@ const dates = computed(() => [
 ].filter((date): date is { key: string; label: string; value: string } => !!date.value && Number.isFinite(Date.parse(date.value)) && !date.value.startsWith('0001-')));
 
 function backToArtists(): void {
-	router.push(get(libraryId) > 0 ? `/music/${get(libraryId)}` : '/music');
+	const id = get(libraryId);
+	router.push(Number.isSafeInteger(id) && id > 0 ? `/music/${id}` : '/music');
 }
 
 function onAction(event: IMediaOverviewBarActions): void {
@@ -176,7 +177,7 @@ listenMediaOverviewDownloadCommand((command) => {
 		|| ![PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack].includes(item.type)))
 		return;
 	if (!first) return;
-	if (settingsStore.isConfirmationEnabled(first.type)) {
+	if (command.some((item) => settingsStore.isConfirmationEnabled(item.type))) {
 		dialogStore.openMediaConfirmationDownloadDialog(command);
 	} else {
 		downloadStore.downloadMedia({

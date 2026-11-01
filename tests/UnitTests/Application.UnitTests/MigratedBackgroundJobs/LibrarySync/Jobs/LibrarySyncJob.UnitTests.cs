@@ -123,7 +123,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await ExecuteWithListenerAsync(context.Object);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.OrderBy(x => x.PlexLibraryId).ToListAsync(CancellationToken);
@@ -245,7 +245,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object).WaitAsync(cancellation.Token);
+        await ExecuteWithListenerAsync(context.Object).WaitAsync(cancellation.Token);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.OrderBy(x => x.PlexLibraryId).ToListAsync(CancellationToken);
@@ -361,7 +361,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Verifiable(Times.Once());
 
         // Act
-        var execution = Sut.Execute(context.Object);
+        var execution = ExecuteWithListenerAsync(context.Object);
         var firstCompleted = await Task.WhenAny(execution, leaseRequested.Task).WaitAsync(CancellationToken);
         firstCompleted.ShouldBe(leaseRequested.Task);
         execution.IsCompleted.ShouldBeFalse();
@@ -457,7 +457,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await ExecuteWithListenerAsync(context.Object);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.SingleAsync(CancellationToken);
@@ -584,7 +584,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await ExecuteWithListenerAsync(context.Object);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.SingleAsync(CancellationToken);
@@ -658,7 +658,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await ExecuteWithListenerAsync(context.Object);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.SingleAsync(CancellationToken);
@@ -734,7 +734,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await ExecuteWithListenerAsync(context.Object);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.SingleAsync(CancellationToken);
@@ -751,5 +751,14 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<IMediaOverviewRebuildCoordinator>()
             .Verify(x => x.AcquireLibrarySyncLeaseAsync(It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+    }
+
+    private async Task ExecuteWithListenerAsync(IJobExecutionContext context)
+    {
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+        await Sut.Execute(context);
+        await Mock.Create<LibrarySyncJobListener>().JobWasExecuted(context, null, CancellationToken);
     }
 }

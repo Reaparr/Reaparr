@@ -2,9 +2,9 @@ import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { HubConnectionState } from '@microsoft/signalr';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
-import { useSignalrStore, useLibraryStore } from '@store';
+import { useSignalrStore, useLibraryStore, useDownloadStore } from '@store';
 import { PlexLibraryPaths } from '@api/api-paths';
-import { LibrarySyncJobStatus, LogSeverity } from '@dto';
+import { DownloadStatus, LibrarySyncJobStatus, LogSeverity, MessageTypes, PlexMediaType, type ServerDownloadProgressDTO } from '@dto';
 import { generateLibrarySyncJobQueue, generateResultDTO } from '@mock';
 import { flushPromises } from '@vue/test-utils';
 
@@ -44,7 +44,7 @@ describe('SignalrStore connections', () => {
 			errors: [],
 			successes: [],
 			statusCode: 200,
-			value: [],
+			value: { downloads: [], patchSequenceByServer: {} },
 		});
 		setActivePinia(createPinia());
 		hubConnections.clear();
@@ -105,6 +105,71 @@ describe('SignalrStore connections', () => {
 		// Assert
 		expect(mock.history.get.filter((request) => request.url === PlexLibraryPaths.getLibrarySyncStatusEndpoint())).toHaveLength(1);
 		expect(libraryStore.getLibrarySyncQueue(11)).toEqual(queue);
+	});
+
+	test('Should restore the download queue on reconnect and ignore a replaced connection callback', async () => {
+		// Arrange
+		const signalrStore = useSignalrStore();
+		const downloadStore = useDownloadStore();
+		const initial = downloadQueue(DownloadStatus.Downloading);
+		mock.onGet('/api/Download').reply(200, generateResultDTO({ downloads: initial, patchSequenceByServer: {} }));
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		await subscribeSpyTo(downloadStore.setup()).onComplete();
+		const oldDownloadHub = hubConnections.get('download')!;
+		mock.onGet('/api/Download').reply(200, generateResultDTO({ downloads: downloadQueue(DownloadStatus.Paused), patchSequenceByServer: {} }));
+		mock.resetHistory();
+
+		// Act
+		oldDownloadHub.reconnected?.();
+		await flushPromises();
+
+		// Assert
+		expect(downloadStore.serverDownloads[0]!.downloads[0]!.status).toBe(DownloadStatus.Paused);
+		expect(mock.history.get.filter((request) => request.url === '/api/Download')).toHaveLength(1);
+		await signalrStore.resetSession();
+		for (const name of hubConnections.keys()) hubConnections.set(name, createHub());
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		mock.resetHistory();
+		oldDownloadHub.reconnected?.();
+		await flushPromises();
+		expect(mock.history.get.filter((request) => request.url === '/api/Download')).toHaveLength(0);
+		expect(downloadStore.serverDownloads[0]!.downloads[0]!.status).toBe(DownloadStatus.Paused);
+		await signalrStore.resetSession();
+	});
+
+	test('Should cancel an old reconnect lookup and reject its retained event handler after session teardown', async () => {
+		// Arrange
+		const signalrStore = useSignalrStore();
+		const downloadStore = useDownloadStore();
+		mock.onGet('/api/Download').reply(200, generateResultDTO({ downloads: downloadQueue(DownloadStatus.Queued), patchSequenceByServer: {} }));
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		await subscribeSpyTo(downloadStore.setup()).onComplete();
+		const oldHub = hubConnections.get('download')!;
+		const oldPatchHandler = oldHub.handlers.get(MessageTypes.DownloadPatch)!;
+		const held = Promise.withResolvers<[number, unknown]>();
+		mock.onGet('/api/Download').replyOnce(() => held.promise);
+		oldHub.reconnected?.();
+		await flushPromises();
+		const oldSignal = mock.history.get.at(-1)!.signal;
+
+		// Act
+		await signalrStore.resetSession();
+		downloadStore.$reset();
+		for (const name of hubConnections.keys()) hubConnections.set(name, createHub());
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		mock.onGet('/api/Download').reply(200, generateResultDTO({ downloads: downloadQueue(DownloadStatus.Paused), patchSequenceByServer: {} }));
+		await subscribeSpyTo(downloadStore.fetchDownloadList()).onComplete();
+		oldPatchHandler([7, 999, [], ['current']]);
+		held.resolve([200, generateResultDTO({ downloads: [], patchSequenceByServer: {} })]);
+		await flushPromises();
+
+		// Assert
+		expect(oldSignal?.aborted).toBe(true);
+		expect(downloadStore.serverDownloads[0]!.downloads.map(({ id, status }) => ({ id, status }))).toEqual([
+			{ id: 'current', status: DownloadStatus.Paused },
+		]);
+		expect(downloadStore.latestPatchSequenceByServer).toEqual({});
+		await signalrStore.resetSession();
 	});
 	test('Should share one connection setup when setup is requested concurrently or repeatedly', async () => {
 		// Arrange
@@ -202,12 +267,12 @@ describe('SignalrStore connections', () => {
 		expect([...hubConnections.values()].map((hub) => hub.state)).toEqual(oldHubs.map(() => HubConnectionState.Connected));
 		await signalrStore.resetSession();
 	});
-	test('Should surface failed teardown and retry it before starting another session', async () => {
+	test.each(['logs', 'download'] as const)('Should retry failed %s hub teardown before starting another session', async (hubName) => {
 		// Arrange
 		const signalrStore = useSignalrStore();
 		await subscribeSpyTo(signalrStore.setup()).onComplete();
-		const oldLogHub = hubConnections.get('logs')!;
-		vi.mocked(oldLogHub.stop).mockRejectedValueOnce(new Error('Hub stop failed'));
+		const oldHub = hubConnections.get(hubName)!;
+		vi.mocked(oldHub.stop).mockRejectedValueOnce(new Error('Hub stop failed'));
 
 		// Act
 		await expect(signalrStore.resetSession()).rejects.toThrow('Hub stop failed');
@@ -219,9 +284,9 @@ describe('SignalrStore connections', () => {
 
 		// Assert
 		expect(result.getLastValue()?.isSuccess).toBe(true);
-		expect(oldLogHub.stop).toHaveBeenCalledTimes(2);
-		expect(oldLogHub.state).toBe(HubConnectionState.Disconnected);
-		expect(oldLogHub.handlers.size).toBe(0);
+		expect(oldHub.stop).toHaveBeenCalledTimes(2);
+		expect(oldHub.state).toBe(HubConnectionState.Disconnected);
+		expect(oldHub.handlers.size).toBe(0);
 		await signalrStore.resetSession();
 	});
 });
@@ -240,4 +305,11 @@ function createHub(state = HubConnectionState.Disconnected): MockHub {
 	};
 
 	return hub;
+}
+
+function downloadQueue(status: DownloadStatus): ServerDownloadProgressDTO[] {
+	return [{ id: 7, downloadableTasksCount: 1, downloads: [{
+		id: 'current', title: 'Current movie', status, mediaType: PlexMediaType.Movie, children: [], percentage: 0,
+		dataReceived: 0, dataTotal: 100, downloadSpeed: 0, timeRemaining: 0,
+	}] }];
 }

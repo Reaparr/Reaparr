@@ -61,39 +61,7 @@ internal sealed class DesktopPackageBuildCommandHandler : ICommandHandler<Deskto
 
         if (!settings.DryRun)
         {
-            var publishDirectory = _paths.PublishDirectory(runtime.RuntimeIdentifier);
-            var normalizedArtifactDirectory = _fileSystem
-                .Path.GetFullPath(artifactDirectory)
-                .TrimEnd(_fileSystem.Path.DirectorySeparatorChar, _fileSystem.Path.AltDirectorySeparatorChar);
-            var normalizedPublishDirectory = _fileSystem
-                .Path.GetFullPath(publishDirectory)
-                .TrimEnd(_fileSystem.Path.DirectorySeparatorChar, _fileSystem.Path.AltDirectorySeparatorChar);
-
-            var artifactContainsPublish = normalizedPublishDirectory.StartsWith(
-                normalizedArtifactDirectory + _fileSystem.Path.DirectorySeparatorChar,
-                StringComparison.OrdinalIgnoreCase
-            );
-
-            if (!settings.PreserveExistingArtifacts)
-            {
-                if (artifactContainsPublish)
-                {
-                    _log.Here()
-                        .Information(
-                            "Skipping artifact directory cleanup because it contains the publish directory required for packaging: {ArtifactDirectory}",
-                            artifactDirectory
-                        );
-                    _fileSystem.Directory.CreateDirectory(artifactDirectory);
-                }
-                else
-                {
-                    _fileSystemTasks.ClearArtifactDirectory(_paths.RootDirectory, artifactDirectory);
-                }
-            }
-            else
-            {
-                _fileSystem.Directory.CreateDirectory(artifactDirectory);
-            }
+            PrepareArtifactDirectory(settings, runtime.RuntimeIdentifier, artifactDirectory);
 
             await _commandRunner.RunCommandAsync(
                 "vpk",
@@ -128,6 +96,48 @@ internal sealed class DesktopPackageBuildCommandHandler : ICommandHandler<Deskto
             );
 
         return Result.Ok(0);
+    }
+
+    private void PrepareArtifactDirectory(DesktopCommandSettings settings, string rid, string artifactDirectory)
+    {
+        if (settings.PreserveExistingArtifacts)
+        {
+            _fileSystem.Directory.CreateDirectory(artifactDirectory);
+            return;
+        }
+
+        var publishDirectory = _paths.PublishDirectory(rid);
+        if (string.IsNullOrWhiteSpace(settings.ArtifactDirectory))
+        {
+            _fileSystemTasks.ClearArtifactDirectory(
+                new BuildDirectoryPath(_fileSystem, _paths.RootDirectory),
+                new BuildDirectoryPath(_fileSystem, artifactDirectory),
+                new BuildDirectoryPath(_fileSystem, publishDirectory)
+            );
+            return;
+        }
+
+        var artifactContainsPublish = new BuildDirectoryPath(_fileSystem, artifactDirectory)
+            .IsParentOf(
+                new BuildDirectoryPath(_fileSystem, publishDirectory),
+                _fileSystem.Path.DirectorySeparatorChar
+            );
+        if (artifactContainsPublish)
+        {
+            _log.Here()
+                .Information(
+                    "Skipping artifact directory cleanup because it contains the publish directory required for packaging: {ArtifactDirectory}",
+                    artifactDirectory
+                );
+            _fileSystem.Directory.CreateDirectory(artifactDirectory);
+        }
+        else
+        {
+            _fileSystemTasks.ClearArtifactDirectory(
+                new BuildDirectoryPath(_fileSystem, _paths.RootDirectory),
+                new BuildDirectoryPath(_fileSystem, artifactDirectory)
+            );
+        }
     }
 
     internal string GetArtifactDirectory(DesktopCommandSettings settings, string rid) =>

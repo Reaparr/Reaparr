@@ -14,6 +14,7 @@ import { IntegrationPaths } from '@api/generated/Integration';
 import { headers, route } from '@fixtures';
 import { generateFailedResultDTO, generateResultDTO } from '@mock';
 import { escapeRegExp } from 'lodash-es';
+import type { PlexLibraryDTO } from '@dto';
 
 const failedResult = (statusCode: number, message: string) => generateFailedResultDTO({
 	statusCode,
@@ -21,6 +22,36 @@ const failedResult = (statusCode: number, message: string) => generateFailedResu
 });
 
 const browser = Cypress.browser.name === 'firefox' ? 'Firefox' : 'Google Chrome';
+
+function installExpiryResponses(libraries: PlexLibraryDTO[], currentLibraryTitle: string): () => void {
+	let session: 'old' | 'new' = 'old';
+	let logsRequestCount = 0;
+	let failNextNewSetup = true;
+	const currentLibraries = libraries.map((library, index) => index === 0 ? { ...library, title: currentLibraryTitle } : library);
+	cy.intercept('GET', DebugPaths.getAllLogsEndpoint(), (request) => {
+		logsRequestCount += 1;
+		if (session === 'new' || logsRequestCount === 1) {
+			request.alias = 'initialLogs';
+			request.reply({ statusCode: 200, body: generateResultDTO([]), ...headers });
+			return;
+		}
+		request.alias = 'expiredLogs';
+		request.reply({ statusCode: 401, body: failedResult(401, 'Session expired'), ...headers });
+	});
+	cy.intercept('GET', PlexLibraryPaths.getAllPlexLibrariesEndpoint(), (request) => {
+		if (session === 'new' && failNextNewSetup) {
+			failNextNewSetup = false;
+			request.alias = 'expiredSetupLibrary';
+			request.reply({ statusCode: 401, body: failedResult(401, 'Initialization session expired'), ...headers });
+			return;
+		}
+		request.alias = session === 'new' ? 'currentSessionLibraries' : 'oldSessionLibraries';
+		request.reply({ statusCode: 200, body: generateResultDTO(session === 'new' ? currentLibraries : libraries), ...headers });
+	});
+	return () => {
+		session = 'new';
+	};
+}
 
 describe('Global API error pipeline', () => {
 	beforeEach(() => {
@@ -167,6 +198,63 @@ describe('Global API error pipeline', () => {
 		cy.wait('@recoveredIntegrations');
 		cy.getCy('page-load-completed').should('be.visible');
 		cy.getCy('alert-dialog').should('not.exist');
+	});
+
+	it('Redirects an authenticated UI to clean Login on a protected 401 and recovers with a new session', () => {
+		cy.basePageSetup({
+			isLoggedIn: true, plexAccountCount: 1, plexServerCount: 1, plexMovieLibraryCount: 1, plexTvShowLibraryCount: 0,
+		});
+		cy.visit(route('/'));
+		cy.getCy('page-load-completed').should('be.visible');
+		cy.getPageData().then((pageData) => {
+			const oldServer = pageData.plexServers[0];
+			const oldLibrary = pageData.plexLibraries[0];
+			if (!oldServer || !oldLibrary) throw new Error('Expected an authenticated server and library');
+			const currentLibraryTitle = 'CURRENT-SESSION-LIBRARY';
+			const enterNewSession = installExpiryResponses(pageData.plexLibraries, currentLibraryTitle);
+
+			cy.get('.navigation-drawer').should('be.visible').contains('Settings').click();
+			cy.get('.navigation-drawer').contains('Logs').click();
+			cy.wait('@initialLogs').its('response.statusCode').should('eq', 200);
+			cy.getCy('live-log-viewer').should('be.visible');
+			cy.getCy('live-log-viewer').find('button').filter(':has(.mdi-refresh)').click();
+			cy.wait('@expiredLogs').should(({ request, response }) => {
+				expect(request.method).to.equal('GET');
+				expect(new URL(request.url).pathname).to.equal('/api/Debug/logs');
+				expect(response?.statusCode).to.equal(401);
+			});
+			cy.url().should('eq', route('/login'));
+			cy.getCy('login-submit-button').should('be.visible').and('be.enabled');
+			cy.getCy('alert-dialog').should('not.exist');
+			cy.getCy('live-log-viewer').should('not.exist');
+			cy.getCy(`server-drawer-item-${oldServer.id}`).should('not.exist');
+
+			cy.then(() => enterNewSession());
+			cy.intercept('POST', AuthenticationPaths.appUserLoginEndpoint(), {
+				statusCode: 200, body: generateResultDTO(true),
+			}).as('sessionLogin');
+			cy.interceptAuthenticationStatus(true);
+			cy.getCy('login-username-input').type('admin');
+			cy.getCy('login-password-input').type('password');
+			cy.getCy('login-submit-button').click();
+			cy.wait('@sessionLogin').its('response.statusCode').should('eq', 200);
+			cy.wait('@expiredSetupLibrary').its('response.statusCode').should('eq', 401);
+			cy.url().should('eq', route('/login'));
+			cy.getCy('login-submit-button').should('be.visible').and('be.enabled');
+			cy.getCy('alert-dialog').should('not.exist');
+
+			cy.getCy('login-username-input').clear().type('admin');
+			cy.getCy('login-password-input').clear().type('password');
+			cy.getCy('login-submit-button').click();
+			cy.wait('@sessionLogin').its('response.statusCode').should('eq', 200);
+			cy.wait('@currentSessionLibraries').its('response.statusCode').should('eq', 200);
+			cy.url().should('eq', route('/'));
+			cy.getCy('page-load-completed').should('be.visible');
+			cy.getCy('alert-dialog').should('not.exist');
+			cy.getCy(`server-drawer-item-${oldServer.id}`).click();
+			cy.getCy(`server-drawer-library-${oldLibrary.id}`).should('be.visible')
+				.and('contain.text', currentLibraryTitle).and('not.contain.text', oldLibrary.title);
+		});
 	});
 
 	it('Shows HTTP errors on submit, reopens repeats, preserves local validation, and recovers from connectivity loss', () => {

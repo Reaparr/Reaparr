@@ -106,6 +106,7 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
                 [
                     "publish",
                     _paths.AppHostProject,
+                    "--no-restore",
                     $"-p:PublishProfile={runtime.PublishProfile}",
                     $"-p:Version={settings.Version}",
                     $"-p:InformationalVersion={settings.InformationalVersion}",
@@ -113,20 +114,11 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
                     "-p:CSharpier_Bypass=true",
                 ]
             );
-        }
-
-        if (!settings.DryRun)
-        {
             var sourceDirectory = GetFrontendPublicDirectory(settings);
             if (!_fileSystem.Directory.Exists(sourceDirectory))
                 return Result.Fail<int>($"Generated frontend output directory was not found at '{sourceDirectory}'.");
 
-            var wwwrootDirectory = _fileSystem.Path.Combine(
-                _paths.PublishDirectory(runtime.RuntimeIdentifier),
-                "wwwroot"
-            );
-            _fileSystemTasks.ClearArtifactDirectory(_paths.RootDirectory, wwwrootDirectory);
-            _fileSystemTasks.CopyDirectory(sourceDirectory, wwwrootDirectory);
+            CopyFrontendOutput(sourceDirectory, _paths.PublishDirectory(runtime.RuntimeIdentifier));
         }
 
         _log.Here()
@@ -137,6 +129,15 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
             );
 
         return Result.Ok(0);
+    }
+
+    private void CopyFrontendOutput(string sourceDirectory, string publishDirectory)
+    {
+        var frontendPath = new BuildDirectoryPath(_fileSystem, sourceDirectory);
+        var wwwrootPath = new BuildDirectoryPath(
+            _fileSystem, _fileSystem.Path.Combine(publishDirectory, "wwwroot"));
+        _fileSystemTasks.ClearArtifactDirectory(new BuildDirectoryPath(_fileSystem, _paths.RootDirectory), wwwrootPath);
+        _fileSystemTasks.CopyDirectory(frontendPath, wwwrootPath);
     }
 
     private string GetFrontendPublicDirectory(DesktopCommandSettings settings) =>

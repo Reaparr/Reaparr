@@ -46,6 +46,7 @@
 						<!-- Username Login Field -->
 						<q-input
 							v-model="username"
+							:disable="loggingIn"
 							color="red"
 							full-width
 							outlined
@@ -57,6 +58,7 @@
 						<!-- Password Login Field -->
 						<PasswordInputField
 							v-model="password"
+							:disable="loggingIn"
 							disable-validation
 							class="q-my-md"
 							cy="login-password-input" />
@@ -65,6 +67,7 @@
 						<!-- Remember Me -->
 						<q-checkbox
 							v-model="rememberMe"
+							:disable="loggingIn"
 							data-cy="login-remember-me-input"
 							:label="$t('pages.login.remember-me')" />
 					</QCol>
@@ -87,6 +90,8 @@
 					cy="login-submit-button"
 					label="Login"
 					class="login-button"
+					:disabled="loggingIn"
+					:loading="loggingIn"
 					@click="onLogin" />
 			</QCardActions>
 		</QCard>
@@ -97,7 +102,7 @@
 import Log from 'consola';
 import { get, set } from '@vueuse/core';
 import { useAuthenticationStore } from '@store';
-import { useSubscription } from '@vueuse/rxjs';
+import { finalize } from 'rxjs';
 
 const authStore = useAuthenticationStore();
 const username = ref('');
@@ -105,13 +110,22 @@ const password = ref('');
 const rememberMe = ref(false);
 const invalidCredentials = ref(false);
 const lockedOut = ref(false);
+const loggingIn = ref(false);
 
-function onLogin() {
-	useSubscription(authStore.login(get(username), get(password), get(rememberMe)).subscribe((statusCode) => {
-		Log.info('Login Status Code:', statusCode);
-		set(invalidCredentials, statusCode === 401);
-		set(lockedOut, statusCode === 403);
-	}));
+function onLogin(): void {
+	if (get(loggingIn)) return;
+	set(loggingIn, true);
+	// Global initialization must continue if navigation unmounts Login.
+	authStore.login(get(username), get(password), get(rememberMe)).pipe(
+		finalize(() => set(loggingIn, false)),
+	).subscribe({
+		next: (statusCode) => {
+			Log.info('Login Status Code:', statusCode);
+			set(invalidCredentials, statusCode === 401);
+			set(lockedOut, statusCode === 403);
+		},
+		error: (error) => Log.error('Login failed', error),
+	});
 }
 </script>
 

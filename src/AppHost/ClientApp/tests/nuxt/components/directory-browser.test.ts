@@ -5,7 +5,7 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import { baseSetup, baseVars, getAxiosMock } from '@services-test-base';
-import { generateResultDTO } from '@mock';
+import { generateFailedResultDTO, generateResultDTO } from '@mock';
 import { FolderPathPaths } from '@api/api-paths';
 import { useDialogStore } from '@store';
 import DirectoryBrowser from '@/components/Dialogs/DirectoryBrowser.vue';
@@ -15,9 +15,10 @@ import messages from '@/lang/en-US.json';
 
 const CardDialog = defineComponent({
 	name: 'QCardDialog',
+	props: { loading: Boolean },
 	emits: ['opened', 'closed'],
-	setup(_, { slots, emit }) {
-		return () => h('section', [
+	setup(props, { slots, emit }) {
+		return () => h('section', { 'aria-busy': props.loading }, [
 			slots.title?.(),
 			slots['top-row']?.(),
 			slots.default?.(),
@@ -30,8 +31,14 @@ const PTextField = defineComponent({
 	name: 'PTextField',
 	props: { modelValue: { type: String, default: '' } },
 	emits: ['update:modelValue'],
-	setup(props) {
-		return () => h('input', { value: props.modelValue });
+	setup(props, { emit }) {
+		return () => h('input', {
+			value: props.modelValue,
+			onInput: (event: Event) => {
+				if (event.target instanceof HTMLInputElement)
+					emit('update:modelValue', event.target.value);
+			},
+		});
 	},
 });
 
@@ -88,6 +95,27 @@ const writableDirectory: FileSystemModelDTO = {
 	hasReadPermission: true,
 	hasWritePermission: true,
 };
+
+function directoryResult(directory: string, writable = true): FileSystemDTO {
+	return {
+		current: { ...writableDirectory, path: directory, hasWritePermission: writable },
+		directories: [{
+			...writableDirectory,
+			name: `${directory.slice(directory.lastIndexOf('/') + 1)}-child`,
+			path: `${directory}/child`,
+		}],
+		files: [],
+		parent: directory.slice(0, directory.lastIndexOf('/')) || '/',
+	};
+}
+
+function deferredDirectoryResponse() {
+	let reply!: (value: [number, unknown]) => void;
+	const response = new Promise<[number, unknown]>((resolve) => {
+		reply = resolve;
+	});
+	return { response, reply };
+}
 
 const mounted: Array<{ unmount: () => void }> = [];
 
@@ -182,5 +210,162 @@ describe('DirectoryBrowser', () => {
 		expect(wrapper.getComponent(PTextField).attributes('readonly')).toBeDefined();
 		expect(mock.history.get.length).toBe(initialRequests);
 		expect(wrapper.emitted('confirm')).toBeUndefined();
+	});
+
+	test('Should accept only the latest directory permissions and parent after reordered lookups', async () => {
+		// Arrange
+		const wrapper = await render({ saving: false, errorMessage: '' });
+		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
+		await flushPromises();
+		const oldBack = wrapper.get('[data-cy="directory-browser-row-return"]');
+		const older = deferredDirectoryResponse();
+		const newer = deferredDirectoryResponse();
+		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
+		mock.resetHandlers();
+		mock.onGet(endpoint).replyOnce(() => older.response)
+			.onGet(endpoint).replyOnce(() => newer.response)
+			.onGet(endpoint).reply(200, generateResultDTO(directoryResult('/root')));
+		const confirm = wrapper.get('[data-cy="directory-browser-confirm-button"]');
+
+		try {
+			// Act: changing the path revokes the previous writable result immediately.
+			await wrapper.get('input').setValue('/old-folder');
+			await vi.waitFor(() => expect(mock.history.get).toHaveLength(2));
+			expect(confirm.attributes('disabled')).toBeDefined();
+			expect(wrapper.find('[data-cy="directory-browser-row-0"]').exists()).toBe(false);
+			expect(wrapper.find('[data-cy="directory-browser-row-return"]').exists()).toBe(false);
+			wrapper.getComponent({ name: 'ConfirmButton' }).vm.$emit('click');
+			await oldBack.trigger('click');
+			expect(wrapper.emitted('confirm')).toBeUndefined();
+			expect(mock.history.get).toHaveLength(2);
+			await wrapper.get('input').setValue('/root/new');
+			await vi.waitFor(() => expect(mock.history.get).toHaveLength(3));
+			newer.reply([200, generateResultDTO(directoryResult('/root/new', false))]);
+			await flushPromises();
+			older.reply([200, generateResultDTO(directoryResult('/old-folder'))]);
+			await flushPromises();
+
+			// Assert: the late writable response cannot replace the newer read-only result.
+			expect(wrapper.get('input').element.value).toBe('/root/new');
+			expect(wrapper.get('[data-cy="directory-browser-row-0"]').text()).toContain('new-child');
+			expect(confirm.attributes('disabled')).toBeDefined();
+			wrapper.getComponent({ name: 'ConfirmButton' }).vm.$emit('click');
+			expect(wrapper.emitted('confirm')).toBeUndefined();
+
+			// Act and assert: Back uses the newer parent and permits the resolved writable path.
+			await wrapper.get('[data-cy="directory-browser-row-return"]').trigger('click');
+			await flushPromises();
+			expect(mock.history.get.at(-1)?.params).toEqual({ path: '/root' });
+			expect(confirm.attributes('disabled')).toBeUndefined();
+			await confirm.trigger('click');
+			expect(wrapper.emitted('confirm')).toEqual([[folderPath]]);
+		} finally {
+			older.reply([200, generateResultDTO(directoryResult('/old-folder'))]);
+			newer.reply([200, generateResultDTO(directoryResult('/root/new', false))]);
+			await flushPromises();
+		}
+	});
+
+	test('Should keep path editing nonblocking and progress owned by the latest pending lookup', async () => {
+		// Arrange
+		const wrapper = await render({ saving: false, errorMessage: '' });
+		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
+		await flushPromises();
+		const older = deferredDirectoryResponse();
+		const newer = deferredDirectoryResponse();
+		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
+		mock.resetHandlers();
+		mock.onGet(endpoint).replyOnce(() => older.response)
+			.onGet(endpoint).replyOnce(() => newer.response);
+
+		try {
+			// Act: replacing a pending lookup keeps the input available and busy.
+			await wrapper.get('input').setValue('/older');
+			await vi.waitFor(() => expect(mock.history.get).toHaveLength(2));
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('true');
+			expect(wrapper.get('input').attributes('readonly')).toBeUndefined();
+			expect(wrapper.getComponent(CardDialog).attributes('aria-busy')).toBe('false');
+			await wrapper.get('input').setValue('/newer');
+			await vi.waitFor(() => expect(mock.history.get).toHaveLength(3));
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('true');
+			older.reply([200, generateResultDTO(directoryResult('/older'))]);
+			await flushPromises();
+
+			// Assert: completing an obsolete lookup cannot stop the current progress.
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('true');
+			expect(wrapper.get('input').element.value).toBe('/newer');
+			expect(wrapper.find('[data-cy="directory-browser-row-0"]').exists()).toBe(false);
+			expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeDefined();
+			newer.reply([200, generateResultDTO(directoryResult('/newer'))]);
+			await flushPromises();
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('false');
+			expect(wrapper.get('[data-cy="directory-browser-row-0"]').text()).toContain('newer-child');
+			expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeUndefined();
+		} finally {
+			older.reply([200, generateResultDTO(directoryResult('/older'))]);
+			newer.reply([200, generateResultDTO(directoryResult('/newer'))]);
+			await flushPromises();
+		}
+	});
+
+	test('Should release a failed first load and allow correction to a writable directory', async () => {
+		// Arrange
+		const wrapper = await render({ saving: false, errorMessage: '' });
+		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
+		mock.resetHandlers();
+		mock.onGet(endpoint).replyOnce(500, generateFailedResultDTO({ statusCode: 500 }))
+			.onGet(endpoint).reply(200, generateResultDTO(directoryResult('/root/recovered')));
+		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
+
+		// Act and assert: failure leaves no permissions and releases the first-load overlay.
+		await flushPromises();
+		expect(wrapper.getComponent(CardDialog).attributes('aria-busy')).toBe('false');
+		expect(wrapper.get('input').attributes('aria-busy')).toBe('false');
+		expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-cy="directory-browser-row-0"]').exists()).toBe(false);
+		expect(wrapper.get('input').attributes('readonly')).toBeUndefined();
+		await wrapper.get('input').setValue('/root/recovered');
+		await flushPromises();
+		await wrapper.get('[data-cy="directory-browser-confirm-button"]').trigger('click');
+		expect(wrapper.emitted('confirm')).toEqual([[{ ...folderPath, directory: '/root/recovered' }]]);
+	});
+
+	test('Should keep a reopened dialog independent of a previous pending lookup', async () => {
+		// Arrange
+		const wrapper = await render({ saving: false, errorMessage: '' });
+		const old = deferredDirectoryResponse();
+		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
+		mock.resetHandlers();
+		mock.onGet(endpoint).replyOnce(() => old.response)
+			.onGet(endpoint).reply(200, generateResultDTO(directoryResult('/new-dialog')));
+		const dialog = wrapper.getComponent(CardDialog);
+		const reopened = { ...folderPath, id: 8, displayName: 'Other destination', directory: '/new-dialog' };
+		dialog.vm.$emit('opened', folderPath);
+		await vi.waitFor(() => expect(mock.history.get).toHaveLength(1));
+		expect(wrapper.get('input').attributes('aria-busy')).toBe('true');
+
+		try {
+			// Act: close and reopen before the old read-only response arrives.
+			dialog.vm.$emit('closed');
+			await flushPromises();
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('false');
+			wrapper.getComponent({ name: 'ConfirmButton' }).vm.$emit('click');
+			expect(wrapper.emitted('confirm')).toBeUndefined();
+			dialog.vm.$emit('opened', reopened);
+			await flushPromises();
+			old.reply([200, generateResultDTO(directoryResult('/root', false))]);
+			await flushPromises();
+
+			// Assert
+			expect(wrapper.get('input').element.value).toBe('/new-dialog');
+			expect(wrapper.get('[data-cy="directory-browser-row-0"]').text()).toContain('new-dialog-child');
+			expect(wrapper.get('input').attributes('aria-busy')).toBe('false');
+			expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeUndefined();
+			await wrapper.get('[data-cy="directory-browser-confirm-button"]').trigger('click');
+			expect(wrapper.emitted('confirm')).toEqual([[reopened]]);
+		} finally {
+			old.reply([200, generateResultDTO(directoryResult('/root', false))]);
+			await flushPromises();
+		}
 	});
 });

@@ -31,10 +31,7 @@ public class GetAllPlexServerConnectionsEndpoint : EndpointWithoutRequest<List<P
 
         foreach (var plexServer in plexServers)
         {
-            var chosenConnectionResult = await _dbContext.ChoosePlexServerConnection(
-                plexServer.Id,
-                cancellationToken: ct
-            );
+            var chosenConnectionResult = plexServer.ChoosePlexServerConnection();
 
             if (chosenConnectionResult.IsFailed)
                 continue;

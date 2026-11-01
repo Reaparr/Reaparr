@@ -269,6 +269,8 @@ export enum DesktopMessageType {
   DesktopReady = "DesktopReady",
 }
 
+export type DictionaryOfInt32AndInt64 = Record<string, number>;
+
 export type DictionaryOfInt32AndListOfInt32 = Record<string, ListOfInt32>;
 
 export type DictionaryOfStringAndBoolean = Record<string, boolean>;
@@ -321,6 +323,26 @@ export interface DownloadMediaDTO {
   /** @format int32 */
   plexLibraryId: number;
   /** @format int32 */
+  plexServerId: number;
+  qualities: ListOfPlexMediaQualityDTO;
+  selectionKind?: PhotoItemKind | null;
+  type: PlexMediaType;
+}
+
+export interface DownloadMediaDTOOp35DFD53C379E {
+  keepCompletedInDownloadFolder: boolean;
+  mediaIds: ListOfInt32OpC4FD0FCD9F0B;
+  /**
+   * @format int32
+   * @min 0
+   * @exclusiveMin true
+   */
+  plexLibraryId: number;
+  /**
+   * @format int32
+   * @min 0
+   * @exclusiveMin true
+   */
   plexServerId: number;
   qualities: ListOfPlexMediaQualityDTO;
   selectionKind?: PhotoItemKind | null;
@@ -437,6 +459,11 @@ export interface DownloadProgressMessagePackDTO {
 export interface DownloadScheduleDTO {
   days: DictionaryOfStringAndDictionaryOfStringAndNullableOfInt32;
   enabled: boolean;
+}
+
+export interface DownloadSnapshotDTO {
+  downloads: ListOfServerDownloadProgressDTO;
+  patchSequenceByServer: DictionaryOfInt32AndInt64;
 }
 
 export enum DownloadStatus {
@@ -845,7 +872,8 @@ export interface LibrarySyncProgressItemDTO {
 export type ListOfDownloadMediaDTO = DownloadMediaDTO[];
 
 /** @minItems 1 */
-export type ListOfDownloadMediaDTOOpDF26594E59F4 = DownloadMediaDTO[];
+export type ListOfDownloadMediaDTOOpDF26594E59F4 =
+  DownloadMediaDTOOp35DFD53C379E[];
 
 export type ListOfDownloadPatchEntryMessagePackDTO =
   DownloadPatchEntryMessagePackDTO[];
@@ -868,6 +896,9 @@ export type ListOfGuid = string[];
 export type ListOfIError = IError[];
 
 export type ListOfInt32 = number[];
+
+/** @minItems 1 */
+export type ListOfInt32OpC4FD0FCD9F0B = number[];
 
 export type ListOfMediaNavigationIndexDTO = MediaNavigationIndexDTO[];
 
@@ -914,6 +945,8 @@ export type ListOfPlexRoleDTO = PlexRoleDTO[];
 export type ListOfPlexServerAccessRapportDTO = PlexServerAccessRapportDTO[];
 
 export type ListOfPlexServerSettingItemModule = PlexServerSettingItemModule[];
+
+export type ListOfServerDownloadProgressDTO = ServerDownloadProgressDTO[];
 
 export type ListOfString = string[];
 
@@ -1812,6 +1845,15 @@ export interface ResultDTOOfDownloadPreviewContainerDTO {
   value?: DownloadPreviewContainerDTO | null;
 }
 
+export interface ResultDTOOfDownloadSnapshotDTO {
+  errors: IReadOnlyListOfErrorDTO;
+  isSuccess: boolean;
+  /** @format int32 */
+  statusCode: number;
+  successes: IReadOnlyListOfSuccessDTO;
+  value?: DownloadSnapshotDTO | null;
+}
+
 export interface ResultDTOOfDownloadTaskCreationReportDTO {
   errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
@@ -1991,15 +2033,6 @@ export interface ResultDTOOfListOfRefreshPlexAccountAccessRapportDTO {
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
   value?: RefreshPlexAccountAccessRapportDTO[] | null;
-}
-
-export interface ResultDTOOfListOfServerDownloadProgressDTO {
-  errors: IReadOnlyListOfErrorDTO;
-  isSuccess: boolean;
-  /** @format int32 */
-  statusCode: number;
-  successes: IReadOnlyListOfSuccessDTO;
-  value?: ServerDownloadProgressDTO[] | null;
 }
 
 export interface ResultDTOOfListOfString {

@@ -25,13 +25,18 @@ public static partial class DbContextExtensions
         if (plexServer is null)
             return ResultExtensions.EntityNotFound(nameof(PlexServer), plexServerId);
 
+        return plexServer.ChoosePlexServerConnection();
+    }
+
+    public static Result<PlexServerConnection> ChoosePlexServerConnection(this PlexServer plexServer)
+    {
         if (!plexServer.IsEnabled)
         {
             return _log.Here()
                 .ErrorResult(
                     "Cannot choose PlexServer connection, server {ServerName} with id {Id} is disabled",
                     plexServer.Name,
-                    plexServerId
+                    plexServer.Id
                 );
         }
 
@@ -57,7 +62,14 @@ public static partial class DbContextExtensions
                 .Add504GatewayTimeoutError();
         }
 
-        var successPlexServerConnections = plexServerConnections.Where(x => x.IsOnline).ToList();
+        return ChooseOnlineConnection(plexServer, plexServerConnections.Where(x => x.IsOnline).ToList());
+    }
+
+    private static Result<PlexServerConnection> ChooseOnlineConnection(
+        PlexServer plexServer,
+        List<PlexServerConnection> successPlexServerConnections
+    )
+    {
 
         // Find based on preference
         if (plexServer.PreferredConnectionId > 0)

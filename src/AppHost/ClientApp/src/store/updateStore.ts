@@ -10,6 +10,7 @@ import { useSignalrStore } from '@store';
 interface IUpdateStoreState {
 	updateCheckError: string | null;
 	hasUpdateAvailable: boolean;
+	newestVersion: string;
 	releaseNotes: ReleaseNoteDTO[];
 	downloadProgress: number;
 	isDownloading: boolean;
@@ -20,6 +21,7 @@ export const useUpdateStore = defineStore(StoreNames.UpdateStore, () => {
 	const defaultState: IUpdateStoreState = {
 		updateCheckError: null,
 		hasUpdateAvailable: false,
+		newestVersion: '?',
 		releaseNotes: [],
 		downloadProgress: 0,
 		isDownloading: false,
@@ -46,6 +48,7 @@ export const useUpdateStore = defineStore(StoreNames.UpdateStore, () => {
 			return updateApi.checkForUpdateEndpoint().pipe(tap(({ isSuccess, value }) => {
 				if (isSuccess && value) {
 					state.hasUpdateAvailable = value.isUpdateAvailable;
+					state.newestVersion = value.newestVersion;
 					state.releaseNotes = value.releaseNotes;
 				}
 			}));
