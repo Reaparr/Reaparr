@@ -57,7 +57,14 @@ public static partial class FakeData
         return _folderPathFaker.RuleFor(x => x.Id, _ => ids++).UseSeed(seed.Next());
     }
 
-    private static readonly Faker<PlexServerConnection> _plexServerConnectionFaker = new Faker<PlexServerConnection>()
+    public static Faker<PlexServerConnection> GetPlexServerConnections(
+        Seed seed,
+        Action<FakeDataConfig>? options = null,
+        bool isCustom = false,
+        int plexServerId = 0
+    )
+    {
+        return new Faker<PlexServerConnection>()
         .StrictMode(true)
         .Ignore(x => x.Id)
         .RuleFor(x => x.Protocol, f => f.Internet.Protocol())
@@ -67,22 +74,11 @@ public static partial class FakeData
         .RuleFor(x => x.Relay, _ => false)
         .RuleFor(x => x.IPv4, _ => true)
         .RuleFor(x => x.IPv6, _ => false)
-        .RuleFor(x => x.IsCustom, _ => false)
+        .RuleFor(x => x.IsCustom, _ => isCustom)
         .RuleFor(x => x.Url, (_, x) => $"{x.Protocol}://{x.Address}:{x.Port}")
         .Ignore(x => x.LatestConnectionStatus)
         .Ignore(x => x.PlexServer)
-        .RuleFor(x => x.PlexServerId, _ => 0);
-
-    public static Faker<PlexServerConnection> GetPlexServerConnections(
-        Seed seed,
-        Action<FakeDataConfig>? options = null,
-        bool isCustom = false,
-        int plexServerId = 0
-    )
-    {
-        return _plexServerConnectionFaker
-            .RuleFor(x => x.IsCustom, _ => isCustom)
-            .RuleFor(x => x.PlexServerId, _ => plexServerId)
+        .RuleFor(x => x.PlexServerId, _ => plexServerId)
             .UseSeed(seed.Next());
     }
 
