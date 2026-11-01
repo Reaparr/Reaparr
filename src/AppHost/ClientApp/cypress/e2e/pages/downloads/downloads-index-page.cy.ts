@@ -55,9 +55,7 @@ describe('Downloads page', () => {
 				request.reply({ statusCode: 200, body: generateResultDTO({ downloads: refreshedDownloads, patchSequenceByServer: {} }) });
 			}).as('refreshDownloads');
 
-			cy.clock();
 			cy.hubPublish('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
-			cy.tick(251);
 			cy.wait('@refreshDownloads');
 			getVisibleCy(`column-status-${initialTask.id}`).should('have.text', refreshedStatus);
 			cy.then(() => expect(refreshRequests).to.equal(1));
@@ -102,9 +100,7 @@ describe('Downloads page', () => {
 			cy.visit(route('/downloads'));
 			cy.wait('@snapshot');
 			getVisibleCy(`column-status-${initialTask.id}`).should('have.text', DownloadStatus.Queued);
-			cy.clock();
 			cy.hubPublish('notifications', MessageTypes.RefreshNotification, RefreshDataType.DownloadTasks);
-			cy.tick(251);
 			cy.wrap(null).should(() => expect(requests).to.equal(2));
 
 			const publishPatch = (sequence: number, status: DownloadStatus) => cy.hubPublish('download', MessageTypes.DownloadPatch, toDownloadPatchMessagePackTuple({
