@@ -2,6 +2,8 @@
 
 ARG VERSION=0.0.0
 ARG INFORMATIONAL_VERSION=0.0.0
+ARG POSTHOG_HOST=
+ARG POSTHOG_PROJECT_TOKEN=
 ARG PORT=7000
 ARG TARGETPLATFORM=linux/amd64
 ARG BUILDPLATFORM=linux/amd64
@@ -30,6 +32,8 @@ FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS back-end
 
 ARG VERSION
 ARG INFORMATIONAL_VERSION
+ARG POSTHOG_HOST
+ARG POSTHOG_PROJECT_TOKEN
 ARG TARGETPLATFORM
 
 WORKDIR /src
@@ -56,10 +60,12 @@ RUN case "${TARGETPLATFORM}" in \
     esac && \
     dotnet publish "AppHost.csproj" -c Release -o /app/publish \
     --no-restore \
-    /p:Version=${VERSION} \
-    /p:InformationalVersion=${INFORMATIONAL_VERSION} \
+    /p:Version="${VERSION}" \
+    /p:InformationalVersion="${INFORMATIONAL_VERSION}" \
+    /p:ReaparrPostHogHost="${POSTHOG_HOST}" \
+    /p:ReaparrPostHogProjectToken="${POSTHOG_PROJECT_TOKEN}" \
     /p:ReaparrRuntimeMode=docker \
-    /p:ReaparrRuntimeIdentifier=${REAPARR_RUNTIME_IDENTIFIER} \
+    /p:ReaparrRuntimeIdentifier="${REAPARR_RUNTIME_IDENTIFIER}" \
     -p:UseAppHost=false \
     -p:CSharpier_Bypass=true
 
