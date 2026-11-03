@@ -70,7 +70,7 @@ public sealed class AppBuildInfo : IAppBuildInfo
             assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
     }
 
-    private string GetAssemblyMetadataValue(string key) =>
+    private string GetAssemblyMetadataValue(string key, string fallback = "unknown") =>
         _attributes.FirstOrDefault(attribute => string.Equals(attribute.Key, key, StringComparison.Ordinal))?.Value
-        ?? "unknown";
+        ?? fallback;
 }

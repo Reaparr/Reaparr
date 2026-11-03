@@ -20,6 +20,7 @@ public class ApplicationModule : Module
         builder.RegisterType<MoveDownloadFileJobQueue>().As<IMoveDownloadFileQueue>().SingleInstance();
         builder.RegisterType<SonarrHttpClientFactory>().As<ISonarrHttpClientFactory>().InstancePerDependency();
         builder.RegisterType<RadarrHttpClientFactory>().As<IRadarrHttpClientFactory>().InstancePerDependency();
+        builder.RegisterType<Telemetry>().As<ITelemetry>().InstancePerLifetimeScope();
 
         builder
             .RegisterType<DirectPlexDownloadClient>()

@@ -16,6 +16,16 @@ public interface IAppBuildInfo
     string RuntimeIdentifier { get; }
 
     /// <summary>
+    /// Gets the embedded PostHog ingestion host, or an empty string when telemetry is not configured.
+    /// </summary>
+    string TelemetryHost { get; }
+
+    /// <summary>
+    /// Gets the embedded PostHog public project ingestion token, or an empty string when telemetry is not configured.
+    /// </summary>
+    string TelemetryProjectToken { get; }
+
+    /// <summary>
     /// Gets the application release version from the entry assembly version metadata.
     /// This should be the stable product version, for example <c>0.36.1</c>.
     /// </summary>

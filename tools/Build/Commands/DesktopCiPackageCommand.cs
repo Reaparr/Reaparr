@@ -24,6 +24,8 @@ internal sealed class DesktopCiPackageCommand(ICommandExecutor commandExecutor) 
             Version = settings.Version,
             InformationalVersion = settings.InformationalVersion,
             Channel = settings.Channel,
+            PostHogHost = settings.PostHogHost,
+            PostHogProjectToken = settings.PostHogProjectToken,
             SkipFrontend = true,
             SkipRestore = false,
             SkipPackage = false,
