@@ -130,3 +130,88 @@ describe('Library access history accounts', () => {
 		});
 	});
 });
+
+describe('Library access timeline local filters', () => {
+	it('filters server, library and zoom without refetching, then refreshes on page reload', () => {
+		cy.basePageSetup({
+			seed: 113,
+			plexAccountCount: 0,
+			plexServerCount: 2,
+			plexMovieLibraryCount: 2,
+			plexTvShowLibraryCount: 0,
+			movieCount: 0,
+		}).then(({ plexServers, plexLibraries }) => {
+			const serverA = plexServers[0]!;
+			const serverB = plexServers[1]!;
+			const [recentLibrary, olderLibrary] = plexLibraries.filter((library) => library.plexServerId === serverA.id);
+			const otherLibrary = plexLibraries.find((library) => library.plexServerId === serverB.id)!;
+			if (!recentLibrary || !olderLibrary) throw new Error('Expected two libraries on the first server');
+			const histories = [
+				{ accountId: 101, library: recentLibrary, grantedAt: relativeTimestamp(5, 10), revokedAt: relativeTimestamp(3, 16) },
+				{ accountId: 102, library: olderLibrary, grantedAt: relativeTimestamp(20, 10), revokedAt: relativeTimestamp(10, 16) },
+				{ accountId: 103, library: otherLibrary, grantedAt: relativeTimestamp(4, 10), revokedAt: relativeTimestamp(2, 16) },
+			];
+			const timeline: PlexLibraryAccessTimelineDTO = {
+				currentState: [],
+				events: histories.flatMap((history, index) => [PlexAccessState.Granted, PlexAccessState.Revoked].map((state, transition) => ({
+					id: index * 2 + transition + 1,
+					plexAccountId: history.accountId,
+					plexAccountName: `Account ${history.accountId}`,
+					plexServerId: history.library.plexServerId,
+					plexServerName: plexServers.find((server) => server.id === history.library.plexServerId)!.name,
+					plexLibraryId: history.library.id,
+					plexLibraryName: history.library.title,
+					createdAt: transition === 0 ? history.grantedAt : history.revokedAt,
+					refreshRunId: `${history.accountId}-${transition}`,
+					state,
+				}))),
+			};
+			const rowIds = histories.map((history) => `account-${history.accountId}-server-${history.library.plexServerId}-library-${history.library.id}`);
+			const assertRows = (expected: string[]) => {
+				cy.get('[data-cy="library-access-timeline-gantt"] [data-row-id]').should(($rows) => {
+					expect($rows.map((_, row) => row.getAttribute('data-row-id')).get().sort()).to.deep.equal([...expected].sort());
+				});
+			};
+			cy.intercept('GET', PlexLibraryPaths.getPlexLibraryAccessTimelineEndpoint(), {
+				statusCode: 200,
+				body: generateResultDTO(timeline),
+				...headers,
+			}).as('localAccessTimeline');
+			// Install before RxJS schedules intervals; leave UI animation timeouts running.
+			cy.clock(Date.now(), ['Date', 'setInterval', 'clearInterval']).as('timelineClock');
+			cy.visit(route('/library/access-history'));
+			cy.getPageData();
+			cy.wait('@localAccessTimeline').its('request.query').should('deep.equal', {});
+			assertRows([rowIds[0]!, rowIds[2]!]);
+
+			cy.get('[data-cy="library-access-timeline-server-filter"]').click();
+			cy.contains('[role="option"]', serverA.name).click();
+			cy.tick(250);
+			assertRows([rowIds[0]!]);
+			cy.get('[data-cy="library-access-timeline-zoom-filter"]').contains('button', 'All').click();
+			cy.tick(250);
+			assertRows([rowIds[0]!, rowIds[1]!]);
+			cy.get('[data-cy="library-access-timeline-gantt"]').should('have.attr', 'data-zoom-preset', 'All');
+			cy.get('[data-cy="library-access-timeline-library-filter"]').click();
+			cy.contains('[role="option"]', olderLibrary.title).click();
+			cy.tick(250);
+			assertRows([rowIds[1]!]);
+			cy.get('[data-cy="library-access-timeline-zoom-filter"]').contains('button', '7d').click();
+			cy.tick(250);
+			cy.get('[data-cy="library-access-timeline-chart"] [data-row-id]').should('not.exist');
+			cy.get('[data-cy="library-access-timeline-server-filter"]').click();
+			cy.contains('[role="option"]', serverB.name).click();
+			cy.tick(250);
+			assertRows([rowIds[2]!]);
+			cy.get('[data-cy="library-access-timeline-gantt"]').should('have.attr', 'data-zoom-preset', '7d');
+			cy.get('@localAccessTimeline.all').should('have.length', 1);
+
+			cy.get('@timelineClock').invoke('restore');
+			cy.reload();
+			cy.getPageData();
+			cy.wait('@localAccessTimeline').its('request.query').should('deep.equal', {});
+			assertRows([rowIds[0]!, rowIds[2]!]);
+			cy.get('@localAccessTimeline.all').should('have.length', 2);
+		});
+	});
+});
