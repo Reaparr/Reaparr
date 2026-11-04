@@ -134,6 +134,7 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     [Test]
     [Arguments("season=00&ep=1", true, "0:1")]
     [Arguments("season=00", false, "0:1,0:2")]
+    [Arguments("season=00&ep=0", false, "0:1,0:2")]
     [Arguments("ep=1", true, "0:1,1:1,2:1")]
     [Arguments("season=1&ep=1", true, "1:1")]
     [Arguments("", false, "0:1,0:2,1:1,1:2,2:1,2:2")]
@@ -196,6 +197,78 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
             .Single(x => x.Name.LocalName == "response")
             .Attribute("total")!.Value.ShouldBe(expected.Length.ToString());
     }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldSearchDailyEpisodesByPersistedAirDate(bool searchByTitle)
+    {
+        // Arrange
+        using var container = await CreateContainer(
+            new Seed(8677),
+            config =>
+            {
+                config.DatabaseOptions = x =>
+                {
+                    x.PlexServerCount = 1;
+                    x.PlexAccountCount = 1;
+                    x.PlexTvShowLibraryCount = 1;
+                    x.TvShowCount = 2;
+                    x.TvShowSeasonCount = 1;
+                    x.TvShowEpisodeCount = 3;
+                    x.SonarrIntegrationCount = 1;
+                };
+            }
+        );
+        await container.DbContext.PlexTvShowEpisodes.ExecuteUpdateAsync(
+            x => x.SetProperty(episode => episode.OriginallyAvailableAt, (DateTime?)null),
+            CancellationToken
+        );
+        await container.DbContext.PlexTvShowEpisodes.Where(x => x.EpisodeNumber == 1).ExecuteUpdateAsync(
+            x => x.SetProperty(episode => episode.OriginallyAvailableAt, new DateTime(2024, 2, 29, 19, 30, 0, DateTimeKind.Utc)),
+            CancellationToken
+        );
+        await container.DbContext.PlexTvShowEpisodes.Where(x => x.EpisodeNumber == 2).ExecuteUpdateAsync(
+            x => x.SetProperty(episode => episode.OriginallyAvailableAt, new DateTime(2024, 2, 28, 0, 0, 0, DateTimeKind.Utc)),
+            CancellationToken
+        );
+        var integration = await container.DbContext.SonarrIntegrations.SingleAsync(CancellationToken);
+        var show = await container.DbContext.PlexTvShows.OrderBy(x => x.Id).FirstAsync(CancellationToken);
+        var targetEpisode = await container.DbContext.PlexTvShowEpisodes.SingleAsync(
+            x => x.TvShowId == show.Id && x.EpisodeNumber == 1,
+            CancellationToken
+        );
+        var showSelector = searchByTitle ? $"q={Uri.EscapeDataString(show.Title)}" : $"tvdbid={show.Guid_TVDB!.Value}";
+        var route = $"/api/public/integrations/{integration.Id}/indexer/api";
+        var url = $"{route}?t=tvsearch&cat=5000&apikey={integration.TorznabApiKey}&{showSelector}";
+        var client = container.GetApiClient();
+
+        // Act
+        var response = await client.GetAsync($"{url}&season=2024&ep=02%2F29", CancellationToken);
+        var xml = await response.Content.ReadAsStringAsync(CancellationToken);
+
+        // Assert
+        response.IsSuccessStatusCode.ShouldBeTrue();
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/xml");
+        var channel = XDocument.Parse(xml).Root!.Element("channel")!;
+        channel.Elements("item").ShouldHaveSingleItem().Element("link")!.Value.ShouldContain($"MediaId={targetEpisode.Id}&");
+        channel.Elements().Single(x => x.Name.LocalName == "response").Attribute("total")!.Value.ShouldBe("1");
+        (await GetRssItems(client, $"{url}&season=2023&ep=02%2F28")).ShouldBeEmpty();
+
+        // Missing air-date metadata must not fall back to an unfiltered or numeric-season search.
+        await container.DbContext.PlexTvShowEpisodes.Where(x => x.Id == targetEpisode.Id).ExecuteUpdateAsync(
+            x => x.SetProperty(episode => episode.OriginallyAvailableAt, (DateTime?)null),
+            CancellationToken
+        );
+        (await GetRssItems(client, $"{url}&season=2024&ep=02%2F29")).ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("season=2023&ep=02%2F29")]
+    [Arguments("ep=02%2F29")]
+    [Arguments("season=2024&ep=banana")]
+    public async Task ShouldReturnTorznabErrorXml_WhenDailyEpisodeSelectorIsInvalid(string selector) =>
+        await AssertInvalidRequest($"t=tvsearch&{selector}", 8678);
 
     [Test]
     public async Task ShouldRemoveMovieFromRss_WhenSynchronizationDeletesIt()

@@ -13,7 +13,9 @@ public class TorznabEndpointRequestValidator : Validator<TorznabEndpointRequest>
             .Must(x => TorznabSearchHelpers.IsPaginationWithinLimit(x.Offset ?? 0, x.Limit ?? 50))
             .WithMessage($"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}.");
         RuleFor(x => x.Season).GreaterThanOrEqualTo(0).When(x => x.Season.HasValue);
-        RuleFor(x => x.Episode).GreaterThanOrEqualTo(0).When(x => x.Episode.HasValue);
+        RuleFor(x => x.Episode)
+            .Must((request, value) => TorznabRequestMappers.TryParseEpisodeSelector(request.Season, value, out _, out _))
+            .WithMessage("Episode must be a non-negative number or MM/dd with a valid season year.");
         RuleFor(x => x.TvdbId).GreaterThanOrEqualTo(0).When(x => x.TvdbId.HasValue);
         RuleFor(x => x.TmdbId).GreaterThanOrEqualTo(0).When(x => x.TmdbId.HasValue);
         RuleFor(x => x.Extended).Must(x => x is null or 0 or 1);
@@ -52,13 +54,14 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
     {
         _log.Here().DebugApiCall(HttpContext, endpointRequest);
         var integration = HttpContext.GetIntegrationIdentity();
-        var request = endpointRequest.ToTorznabRequest(integration);
 
         if (ValidationFailed)
         {
             await Send.TorznabError(201, "Incorrect parameter", ct);
             return;
         }
+
+        var request = endpointRequest.ToTorznabRequest(integration);
 
         switch (request.Mode)
         {
