@@ -5,6 +5,7 @@
 			class="logs-toolbar q-px-none q-pb-xs">
 			<!-- Log Copy -->
 			<q-btn
+				:aria-label="t('components.download-details-dialog.logs.copy-all')"
 				dense
 				flat
 				icon="mdi-content-copy"
@@ -14,6 +15,7 @@
 			</q-btn>
 			<!-- Log Sort -->
 			<q-btn
+				:aria-label="sortAsc ? t('components.download-details-dialog.logs.sort-oldest-first') : t('components.download-details-dialog.logs.sort-newest-first')"
 				:icon="sortAsc ? 'mdi-sort-ascending' : 'mdi-sort-descending'"
 				dense
 				flat
@@ -23,6 +25,7 @@
 			</q-btn>
 			<!-- Log Filter -->
 			<q-btn
+				:aria-label="t('components.download-details-dialog.logs.filter-by-level')"
 				dense
 				flat
 				icon="mdi-filter-outline"
@@ -56,6 +59,7 @@
 			<q-toolbar-title />
 			<!-- Delete Logs -->
 			<q-btn
+				:aria-label="t('components.download-details-dialog.logs.delete-all')"
 				dense
 				flat
 				icon="mdi-delete-sweep"

@@ -126,4 +126,49 @@ describe('Download details opening ownership', () => {
 		visible('download-details-dialog-tab-content-2').should('not.contain.text', 'Wrong first download log');
 		cy.get('@secondLogs.all').should('have.length', 1);
 	});
+
+	it('Should expose named keyboard controls and keep log deletion behind confirmation', () => {
+		cy.intercept({ method: 'GET', pathname: `/api/Download/logs/${first.id}` }, {
+			statusCode: 200, body: generateResultDTO([log(101, 'Older toolbar log'), log(102, 'Newer toolbar log')]), ...headers,
+		}).as('toolbarLogs');
+		cy.intercept({ method: 'DELETE', pathname: `/api/Download/logs/${first.id}` }, {
+			statusCode: 200, body: generateResultDTO(null), ...headers,
+		}).as('deleteLogs');
+		visible(`column-actions-details-${first.id}`).click();
+		cy.wait(['@firstDetails', '@toolbarLogs']);
+		visible('download-details-dialog-tab-2').click();
+
+		cy.findByRole('button', { name: 'Copy all logs' }).should('be.visible');
+		cy.get('.logs-panel .log-row').first().should('contain.text', 'Older toolbar log');
+		cy.findByRole('button', { name: 'Oldest first' }).focus();
+		cy.focused().type('{enter}');
+		cy.findByRole('button', { name: 'Newest first' }).should('be.visible');
+		cy.get('.logs-panel .log-row').first().should('contain.text', 'Newer toolbar log');
+
+		cy.findByRole('button', { name: 'Filter by log level' }).focus();
+		cy.focused().type('{enter}');
+		cy.get('.q-menu').filter(':visible').should('be.visible');
+		cy.get('body').type('{esc}');
+		cy.get('.q-menu').should('not.exist');
+
+		cy.findByRole('button', { name: 'Delete all logs' }).focus();
+		cy.focused().type('{enter}');
+		visible('confirmation-dialog').should('contain.text', 'Are you sure you want to delete all logs for this download task?');
+		cy.get('@deleteLogs.all').should('have.length', 0);
+		visible('confirmation-dialog').findByRole('button', { name: 'Cancel' }).focus();
+		cy.focused().type('{enter}');
+		cy.getCy('confirmation-dialog').should('not.exist');
+		cy.get('@deleteLogs.all').should('have.length', 0);
+		visible('download-details-dialog-tab-content-2').should('contain.text', 'Newer toolbar log');
+
+		cy.findByRole('button', { name: 'Delete all logs' }).focus();
+		cy.focused().type('{enter}');
+		visible('confirmation-dialog').findByRole('button', { name: 'Confirm' }).focus();
+		cy.focused().type('{enter}');
+		cy.wait('@deleteLogs').its('request.query').should('include', {
+			type: first.downloadTaskType, plexServerId: String(first.plexServerId),
+			plexLibraryId: String(first.plexLibraryId),
+		});
+		visible('download-details-dialog-tab-content-2').should('contain.text', 'No logs found for this download task.');
+	});
 });
