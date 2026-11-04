@@ -96,4 +96,35 @@
     <ItemGroup>
         <Folder Include="wwwroot\" />
     </ItemGroup>
+    <ItemGroup Condition="'$(ReaparrTelemetryHost)' != '' and '$(ReaparrTelemetryProjectToken)' != ''">
+        <AssemblyMetadata Include="ReaparrTelemetryHost" Value="$(ReaparrTelemetryHost.TrimEnd('/'))" />
+        <AssemblyMetadata Include="ReaparrTelemetryProjectToken" Value="$(ReaparrTelemetryProjectToken)" />
+    </ItemGroup>
+    <Target Name="ValidateReaparrTelemetryConfiguration" BeforeTargets="PrepareForBuild">
+        <Error
+            Condition="'$(ReaparrTelemetryHost)' != '' and '$(ReaparrTelemetryProjectToken)' == ''"
+            Text="ReaparrTelemetryHost and ReaparrTelemetryProjectToken must be supplied together."
+        />
+        <Error
+            Condition="'$(ReaparrTelemetryHost)' == '' and '$(ReaparrTelemetryProjectToken)' != ''"
+            Text="ReaparrTelemetryHost and ReaparrTelemetryProjectToken must be supplied together."
+        />
+        <PropertyGroup Condition="'$(ReaparrTelemetryHost)' != ''">
+            <_ReaparrTelemetryHostValid>$([System.Text.RegularExpressions.Regex]::IsMatch('$([MSBuild]::Escape($(ReaparrTelemetryHost)))', '(?i)^https://(?:[^\s/?#@:\[\]\\]+|\[[0-9A-Fa-f:.%]+\])(?::[0-9]{1,5})?/?$'))</_ReaparrTelemetryHostValid>
+        </PropertyGroup>
+        <PropertyGroup Condition="'$(_ReaparrTelemetryHostValid)' == 'True'">
+            <_ReaparrTelemetryHostValid>$([System.UriBuilder]::new('$([MSBuild]::Escape($(ReaparrTelemetryHost)))').Uri.IsWellFormedOriginalString())</_ReaparrTelemetryHostValid>
+        </PropertyGroup>
+        <Error
+            Condition="'$(_ReaparrTelemetryHostValid)' == 'False'"
+            Text="ReaparrTelemetryHost must be an absolute HTTPS origin with an optional single trailing slash."
+        />
+        <PropertyGroup Condition="'$(ReaparrTelemetryProjectToken)' != ''">
+            <_ReaparrTelemetryProjectTokenValid>$([System.Text.RegularExpressions.Regex]::IsMatch('$([MSBuild]::Escape($(ReaparrTelemetryProjectToken)))', '^phc_[A-Za-z0-9_-]+$'))</_ReaparrTelemetryProjectTokenValid>
+        </PropertyGroup>
+        <Error
+            Condition="'$(_ReaparrTelemetryProjectTokenValid)' == 'False'"
+            Text="ReaparrTelemetryProjectToken must be a public phc_ project token containing only letters, digits, '-' or '_'."
+        />
+    </Target>
 </Project>
