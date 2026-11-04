@@ -87,7 +87,9 @@
 </template>
 
 <script lang="ts" setup>
-import { set, get } from '@vueuse/core';
+import { set } from '@vueuse/core';
+import { useSubscription } from '@vueuse/rxjs';
+import { EMPTY, Subject, switchMap } from 'rxjs';
 import type { DownloadTaskDTO, DownloadTaskLogDTO, ErrorDTO } from '@dto';
 import { downloadApi } from '@api';
 import { DialogType } from '@enums';
@@ -106,26 +108,38 @@ const errors = ref<ErrorDTO[]>([]);
 
 const logs = ref<DownloadTaskLogDTO[]>([]);
 
-function fetchLogs() {
-	const task = get(downloadTask);
-	const taskId = get(downloadTaskId);
-	if (!taskId || !task) {
-		return;
-	}
+const openingRequests = new Subject<string | null>();
 
-	useSubscription(
-		downloadApi.getDownloadTaskLogsByDownloadTaskIdEndpoint(taskId, {
-			type: task.downloadTaskType,
-			plexLibraryId: task.plexLibraryId,
-			plexServerId: task.plexServerId,
-			take: 50,
-		}).subscribe((data) => {
-			if (data.isSuccess && data.value) {
-				set(logs, [...data.value].sort((a, b) => b.id - a.id));
-			}
+useSubscription(
+	openingRequests.pipe(
+		switchMap((taskId) => {
+			if (!taskId) return EMPTY;
+			return downloadApi.getDownloadTaskByGuidEndpoint(taskId).pipe(
+				switchMap((data) => {
+					set(loading, false);
+					if (!data.isSuccess || !data.value) {
+						set(errors, data.errors ?? []);
+						return EMPTY;
+					}
+
+					const task = data.value;
+					set(errors, []);
+					set(downloadTask, task);
+					return downloadApi.getDownloadTaskLogsByDownloadTaskIdEndpoint(taskId, {
+						type: task.downloadTaskType,
+						plexLibraryId: task.plexLibraryId,
+						plexServerId: task.plexServerId,
+						take: 50,
+					});
+				}),
+			);
 		}),
-	);
-}
+	).subscribe((data) => {
+		if (data.isSuccess && data.value) {
+			set(logs, [...data.value].sort((a, b) => b.id - a.id));
+		}
+	}),
+);
 
 function onOpen(event: string) {
 	set(loading, true);
@@ -134,19 +148,11 @@ function onOpen(event: string) {
 	set(errors, []);
 	set(logs, []);
 
-	useSubscription(downloadApi.getDownloadTaskByGuidEndpoint(get(downloadTaskId)).subscribe((data) => {
-		if (data.isSuccess && data.value) {
-			set(errors, []);
-			set(downloadTask, data.value);
-			fetchLogs();
-		} else {
-			set(errors, data?.errors ?? []);
-		}
-		set(loading, false);
-	}));
+	openingRequests.next(event);
 }
 
 function onClose() {
+	openingRequests.next(null);
 	set(downloadTask, null);
 	set(downloadTaskId, '');
 	set(errors, []);
