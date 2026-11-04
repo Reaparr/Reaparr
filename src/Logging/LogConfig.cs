@@ -97,10 +97,12 @@ public class LogConfig : SlimLogConfig
                     {
                         ["service.name"] = "reaparr",
                         ["service.version"] = _appBuildInfo.InformationalVersion,
-                        ["environment"] = _appBuildInfo.IsDevRelease ? "dev" : "stable",
-                        ["runtime_mode"] = _appBuildInfo.RuntimeMode,
-                        ["platform"] = _appBuildInfo.CurrentOS.ToString(),
+                        ["release_channel"] = _appBuildInfo.IsDevRelease ? "dev" : "stable",
+                        ["operating_system"] = _appBuildInfo.CurrentOS.ToString(),
+                        ["runtime_platform"] = _appBuildInfo.RuntimeMode,
+                        ["runtime_environment"] = _appRuntimeInfo.DotnetEnvironment,
                         ["runtime_identifier"] = _appBuildInfo.RuntimeIdentifier,
+                        ["application_id"] = _appRuntimeInfo.AppRunId,
                     };
                 },
                 ignoreEnvironment: true

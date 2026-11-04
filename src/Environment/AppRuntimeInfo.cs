@@ -8,6 +8,8 @@ public class AppRuntimeInfo : IAppRuntimeInfo
     /// <inheritdoc/>
     public string AppRunId { get; } = Guid.NewGuid().ToString("N");
 
+    public string DotnetEnvironment => GetEnvironmentVariable(EnvKeys.DotNetEnvironment) ?? string.Empty;
+
     /// <inheritdoc/>
     public bool IsAuthenticationDisabled => IsTrue(GetEnvironmentVariable(EnvKeys.DisableAuthentication));
 
@@ -34,10 +36,10 @@ public class AppRuntimeInfo : IAppRuntimeInfo
     public bool IsUnmasked => IsTrue(GetEnvironmentVariable(EnvKeys.Unmasked));
 
     /// <inheritdoc/>
-    public bool IsDevelopmentEnvironment => GetEnvironmentVariable(EnvKeys.DotNetEnvironment) == "Development";
+    public bool IsDevelopmentEnvironment => DotnetEnvironment == "Development";
 
     /// <inheritdoc/>
-    public bool IsProductionEnvironment => GetEnvironmentVariable(EnvKeys.DotNetEnvironment) == "Production";
+    public bool IsProductionEnvironment => DotnetEnvironment == "Production";
 
     /// <inheritdoc/>
     public bool IsIntegrationTestMode => IsTrue(GetEnvironmentVariable(EnvKeys.IntegrationTestMode));
