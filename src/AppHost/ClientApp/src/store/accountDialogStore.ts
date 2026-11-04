@@ -229,41 +229,38 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 					successes: [],
 				});
 			}
+			const session = dialogSession;
+			const accountId = state.id;
 			state.savingLoading = true;
-			if (state.isNewAccount) {
-				const accountData = get(getters.getAccountData);
-				return accountStore.createPlexAccount({
-					customAuthenticationToken: accountData.customAuthenticationToken ?? '',
-					authenticationToken: accountData.authenticationToken ?? '',
-					clientId: accountData.clientId,
-					displayName: accountData.displayName,
-					email: accountData.email,
-					is2Fa: accountData.is2Fa,
-					isEnabled: accountData.isEnabled,
-					isMain: accountData.isMain,
-					isValidated: accountData.isValidated,
-					password: accountData.password,
-					plexId: accountData.plexId,
-					title: accountData.title,
-					username: accountData.username,
-					uuid: accountData.uuid,
-					validatedAt: accountData.validatedAt!,
-				}).pipe(
-					tap((result) => {
-						if (result.isSuccess) {
-							dialogStore.closeDialog(DialogType.AccountDialog);
-						}
-					}),
-					finalize(() => state.savingLoading = false),
-				);
-			}
-			return accountStore.updatePlexAccount(get(getters.getAccountData)).pipe(
+			const accountData = get(getters.getAccountData);
+			const saveRequest = state.isNewAccount
+				? accountStore.createPlexAccount({
+						customAuthenticationToken: accountData.customAuthenticationToken ?? '',
+						authenticationToken: accountData.authenticationToken ?? '',
+						clientId: accountData.clientId,
+						displayName: accountData.displayName,
+						email: accountData.email,
+						is2Fa: accountData.is2Fa,
+						isEnabled: accountData.isEnabled,
+						isMain: accountData.isMain,
+						isValidated: accountData.isValidated,
+						password: accountData.password,
+						plexId: accountData.plexId,
+						title: accountData.title,
+						username: accountData.username,
+						uuid: accountData.uuid,
+						validatedAt: accountData.validatedAt!,
+					})
+				: accountStore.updatePlexAccount(accountData);
+			return saveRequest.pipe(
 				tap((result) => {
-					if (result.isSuccess) {
+					if (result.isSuccess && ownsDialog(session, accountId)) {
 						dialogStore.closeDialog(DialogType.AccountDialog);
 					}
 				}),
-				finalize(() => state.savingLoading = false),
+				finalize(() => {
+					if (ownsDialog(session, accountId)) state.savingLoading = false;
+				}),
 			);
 		},
 		switchInputMode(isAuthTokenMode: boolean) {
