@@ -94,10 +94,7 @@ public class SearchTvShowCommandHandler : ICommandHandler<SearchTvShowCommand, R
         var candidateEpisodeIds = _dbContext.PlexTvShowEpisodes.Where(x =>
             candidateTvShows.Select(tvShow => tvShow.Id).Contains(x.TvShowId)
         );
-        if (request.Season is { } season)
-            candidateEpisodeIds = candidateEpisodeIds.Where(x => x.TvShowSeason!.SeasonNumber == season);
-        if (request.Episode > 0)
-            candidateEpisodeIds = candidateEpisodeIds.Where(x => x.EpisodeNumber == request.Episode);
+        candidateEpisodeIds = ApplyEpisodeSelector(candidateEpisodeIds, request);
 
         var query = _dbContext
             .PlexTvShowEpisodeData.Where(x =>
@@ -124,5 +121,23 @@ public class SearchTvShowCommandHandler : ICommandHandler<SearchTvShowCommand, R
         return Result.Ok(
             TorznabSearchHelpers.CreateResponse($"TV Search results for {request.Query}", request.Offset, total, items)
         );
+    }
+
+    private static IQueryable<PlexTvShowEpisode> ApplyEpisodeSelector(
+        IQueryable<PlexTvShowEpisode> episodes,
+        TorznabRequest request
+    )
+    {
+        if (request.AirDate is { } airDate)
+            return episodes.Where(x =>
+                x.OriginallyAvailableAt.HasValue
+                && DateOnly.FromDateTime(x.OriginallyAvailableAt.Value) == airDate
+            );
+
+        if (request.Season is { } season)
+            episodes = episodes.Where(x => x.TvShowSeason!.SeasonNumber == season);
+        if (request.Episode > 0)
+            episodes = episodes.Where(x => x.EpisodeNumber == request.Episode);
+        return episodes;
     }
 }
