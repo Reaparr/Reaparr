@@ -306,6 +306,136 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
     }
 
     [Test]
+    public async Task ShouldPreservePerTrackPlacementAndFirstQuality_WhenDirectSelectionsOverlapByTrack()
+    {
+        // Arrange
+        await SetupDatabase(
+            62617,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistCount = 1;
+                config.MusicAlbumCount = 1;
+                config.MusicTrackCount = 2;
+            }
+        );
+        var dbContext = IDbContext;
+        var tracks = await dbContext
+            .PlexMusicTracks.Include(x => x.MediaDataList)
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
+        var target = tracks[0];
+        var sibling = tracks[1];
+        var siblingOriginal = sibling.MediaDataList.Single();
+        var siblingAlternate = FakeData
+            .GetPlexMusicTrackMediaData(new Seed(62618))
+            .RuleFor(x => x.Id, _ => 0)
+            .RuleFor(x => x.PlexTrackId, _ => sibling.Id)
+            .RuleFor(x => x.PlexServerId, _ => sibling.PlexServerId)
+            .RuleFor(x => x.PlexLibraryId, _ => sibling.PlexLibraryId)
+            .RuleFor(x => x.PlexApiRatingKey, _ => sibling.PlexApiRatingKey)
+            .RuleFor(x => x.PlexApiMediaId, _ => siblingOriginal.PlexApiMediaId + 1)
+            .Generate();
+        dbContext.PlexMusicTrackData.Add(siblingAlternate);
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        var selections = new List<DownloadMediaDTO>
+        {
+            new()
+            {
+                Type = PlexMediaType.MusicTrack,
+                SelectionKind = null,
+                PlexServerId = target.PlexServerId,
+                PlexLibraryId = target.PlexLibraryId,
+                MediaIds = [target.Id],
+                Qualities = [],
+                KeepCompletedInDownloadFolder = false,
+            },
+            new()
+            {
+                Type = PlexMediaType.MusicTrack,
+                SelectionKind = null,
+                PlexServerId = sibling.PlexServerId,
+                PlexLibraryId = sibling.PlexLibraryId,
+                MediaIds = [sibling.Id],
+                Qualities =
+                [
+                    new PlexMediaQualityDTO
+                    {
+                        MediaId = sibling.Id,
+                        DataId = siblingAlternate.Id,
+                        MediaDataType = PlexMediaType.MusicTrack,
+                        VideoQuality = VideoQuality.Unknown,
+                    },
+                ],
+                KeepCompletedInDownloadFolder = false,
+            },
+            new()
+            {
+                Type = PlexMediaType.MusicTrack,
+                SelectionKind = null,
+                PlexServerId = sibling.PlexServerId,
+                PlexLibraryId = sibling.PlexLibraryId,
+                MediaIds = [sibling.Id],
+                Qualities =
+                [
+                    new PlexMediaQualityDTO
+                    {
+                        MediaId = sibling.Id,
+                        DataId = siblingOriginal.Id,
+                        MediaDataType = PlexMediaType.MusicTrack,
+                        VideoQuality = VideoQuality.Unknown,
+                    },
+                ],
+                KeepCompletedInDownloadFolder = true,
+            },
+        };
+        var request = new CreateDownloadTasksRequest(selections, customDestinationFolderPath: "/direct");
+
+        // Act
+        var first = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(
+            new GenerateDownloadTaskMusicTracksCommand(request)
+        );
+        var repeated = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(
+            new GenerateDownloadTaskMusicTracksCommand(request)
+        );
+
+        // Assert
+        first.IsSuccess.ShouldBeTrue();
+        first.Errors.Count.ShouldBe(0);
+        first.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 2 });
+        repeated.IsSuccess.ShouldBeTrue();
+        repeated.Errors.Count.ShouldBe(0);
+        repeated.Value.ShouldBe(new DownloadTaskCreationReport());
+
+        var files = await dbContext
+            .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiPartId)
+            .ToListAsync(CancellationToken);
+        files.Select(x => (x.Parent!.PlexApiRatingKey, x.PlexApiMediaId, x.PlexApiPartId, x.DirectoryMeta.KeepCompletedInDownloadFolder))
+            .ShouldBe(
+                new[]
+                {
+                    (
+                        target.PlexApiRatingKey,
+                        target.MediaDataList.Single().PlexApiMediaId,
+                        target.MediaDataList.Single().PlexApiPartId,
+                        false
+                    ),
+                    (
+                        sibling.PlexApiRatingKey,
+                        siblingAlternate.PlexApiMediaId,
+                        siblingAlternate.PlexApiPartId,
+                        true
+                    ),
+                }.OrderBy(x => x.Item1).ThenBy(x => x.Item3)
+            );
+        files.Count.ShouldBe(2);
+        (await dbContext.DownloadTaskTrackFileLogs.CountAsync(CancellationToken)).ShouldBe(2);
+    }
+
+    [Test]
     public async Task ShouldFallBackToAutomaticOriginal_WhenRequestedDataIdIsMissing()
     {
         // Arrange

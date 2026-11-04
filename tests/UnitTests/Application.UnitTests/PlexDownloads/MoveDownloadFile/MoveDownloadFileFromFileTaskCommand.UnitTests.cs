@@ -316,6 +316,238 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
     }
+    [Test]
+    public async Task ShouldMoveOnlyDirectlyUnkeptTrackToDestination_WhenAlbumGenerationPreservesPerTrackKeepFlags()
+    {
+        // Arrange
+        await SetupDatabase(
+            52232,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistCount = 1;
+                config.MusicAlbumCount = 1;
+                config.MusicTrackCount = 2;
+            }
+        );
+        var dbContext = IDbContext;
+        var album = await dbContext
+            .PlexMusicAlbums.Include(x => x.PlexArtist)
+            .Include(x => x.Tracks)
+            .SingleAsync(CancellationToken);
+        var tracks = album.Tracks.OrderBy(x => x.Id).ToArray();
+        var paths = Mock.Container.Resolve<IPathProvider>();
+        var destinationRoot = paths.DefaultMusicDestinationFolder;
+        destinationRoot.ShouldNotBe(paths.DefaultDownloadsDestinationFolder);
+
+        var request = new CreateDownloadTasksRequest(
+            [
+                new DownloadMediaDTO
+                {
+                    Type = PlexMediaType.MusicAlbum,
+                    SelectionKind = null,
+                    PlexServerId = album.PlexServerId,
+                    PlexLibraryId = album.PlexLibraryId,
+                    MediaIds = [album.Id],
+                    Qualities = [],
+                    KeepCompletedInDownloadFolder = true,
+                },
+                new DownloadMediaDTO
+                {
+                    Type = PlexMediaType.MusicTrack,
+                    SelectionKind = null,
+                    PlexServerId = tracks[0].PlexServerId,
+                    PlexLibraryId = tracks[0].PlexLibraryId,
+                    MediaIds = [tracks[0].Id],
+                    Qualities = [],
+                    KeepCompletedInDownloadFolder = false,
+                },
+                new DownloadMediaDTO
+                {
+                    Type = PlexMediaType.MusicTrack,
+                    SelectionKind = null,
+                    PlexServerId = tracks[1].PlexServerId,
+                    PlexLibraryId = tracks[1].PlexLibraryId,
+                    MediaIds = [tracks[1].Id],
+                    Qualities = [],
+                    KeepCompletedInDownloadFolder = true,
+                },
+            ],
+            customDestinationFolderPath: destinationRoot
+        );
+        var executor = Mock.Mock<ICommandExecutor>();
+        executor
+            .Setup(x =>
+                x.Send(
+                    It.Is<GenerateDownloadTaskMusicTracksCommand>(c => c.Request.DownloadMedias.Count > 0),
+                    CancellationToken
+                )
+            )
+            .Returns(
+                async (ICommand<Result<DownloadTaskCreationReport>> command, CancellationToken ct) =>
+                {
+                    using var handlerContext = IDbContext;
+                    return await new GenerateDownloadTaskMusicTracksCommandHandler(
+                        Serilog.Log.Logger,
+                        handlerContext
+                    ).ExecuteAsync((GenerateDownloadTaskMusicTracksCommand)command, ct);
+                }
+            )
+            .Verifiable(Times.Once());
+
+        var generation = await new GenerateDownloadTaskMusicAlbumsCommandHandler(
+            Serilog.Log.Logger,
+            dbContext,
+            executor.Object
+        ).ExecuteAsync(
+            new GenerateDownloadTaskMusicAlbumsCommand(request),
+            CancellationToken
+        );
+        generation.IsSuccess.ShouldBeTrue();
+        generation.Errors.Count.ShouldBe(0);
+        generation.Value.ShouldBe(new DownloadTaskCreationReport { MusicAlbums = 1, MusicTracks = 2 });
+        executor.Verify();
+
+        var generatedFiles = await dbContext
+            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        generatedFiles.Length.ShouldBe(2);
+        var aFile = generatedFiles.Single(x => x.PlexApiRatingKey == tracks[0].PlexApiRatingKey);
+        var bFile = generatedFiles.Single(x => x.PlexApiRatingKey == tracks[1].PlexApiRatingKey);
+        aFile.DirectoryMeta.DownloadRootPath.ShouldBe(paths.DefaultDownloadsDestinationFolder);
+        aFile.DirectoryMeta.DestinationRootPath.ShouldBe(destinationRoot);
+        aFile.DirectoryMeta.DownloadRootPath.ShouldNotBe(aFile.DirectoryMeta.DestinationRootPath);
+
+        byte[] aBytes = [11, 12, 13, 14];
+        byte[] bBytes = [21, 22, 23, 24];
+        aFile.DataTotal = aBytes.Length;
+        aFile.DownloadStatus = DownloadStatus.DownloadFinished;
+        bFile.DataTotal = bBytes.Length;
+        bFile.DownloadStatus = DownloadStatus.DownloadFinished;
+        dbContext.Entry(aFile).State = EntityState.Modified;
+        dbContext.Entry(bFile).State = EntityState.Modified;
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        SetupFileSystem(fs =>
+        {
+            fs.AddFile(aFile.DownloadFilePath, new MockFileData(aBytes));
+            fs.AddFile(bFile.DownloadFilePath, new MockFileData(bBytes));
+        });
+        SetupDependencies(b =>
+            b.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>().SingleInstance()
+        );
+        executor = Mock.Mock<ICommandExecutor>();
+        Mock.Mock<IDownloadManagerSettings>().SetupGet(x => x.KeepCompletedInDownloadFolder).Returns(false);
+        executor
+            .Setup(x =>
+                x.Send(
+                    It.Is<MoveFileWithResumeCommand>(c =>
+                        c.SourcePath == aFile.DownloadFilePath
+                        && c.TargetPath == aFile.DestinationFilePath
+                        && c.CurrentOffset == 0
+                        && c.DataTotal == aBytes.Length
+                    ),
+                    CancellationToken
+                )
+            )
+            .Returns<MoveFileWithResumeCommand, CancellationToken>(
+                (c, ct) => Mock.Create<MoveFileWithResumeCommandHandler>().ExecuteAsync(c, ct)
+            )
+            .Verifiable(Times.Once());
+        Mock.Mock<IEventPublisher>()
+            .Setup(x => x.PublishAsync(It.IsAny<SendNotificationResult>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Never());
+
+        // Act
+        var moveA = await TestHandlerExecuteAsync(new MoveDownloadFileFromFileTaskCommand(aFile.ToKey()));
+        var moveB = await TestHandlerExecuteAsync(new MoveDownloadFileFromFileTaskCommand(bFile.ToKey()));
+
+        // Assert
+        moveA.IsSuccess.ShouldBeTrue();
+        moveA.Errors.Count.ShouldBe(0);
+        moveB.IsSuccess.ShouldBeTrue();
+        moveB.Errors.Count.ShouldBe(0);
+        var fs = Mock.Container.Resolve<IFileSystem>();
+        fs.File.ReadAllBytes(aFile.DestinationFilePath).ShouldBe(aBytes);
+        fs.File.Exists(aFile.DownloadFilePath).ShouldBeFalse();
+        fs.File.ReadAllBytes(bFile.DownloadFilePath.RemoveReapTempSuffix()).ShouldBe(bBytes);
+        fs.File.Exists(bFile.DownloadFilePath).ShouldBeFalse();
+        fs.File.Exists(bFile.DestinationFilePath).ShouldBeFalse();
+
+        var persisted = await dbContext
+            .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
+            .ToArrayAsync(CancellationToken);
+        persisted
+            .Select(x =>
+                (
+                    x.Id,
+                    x.ParentId,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.PlexApiRatingKey,
+                    x.PlexApiMediaId,
+                    x.PlexApiPartId,
+                    x.FileName
+                )
+            )
+            .ShouldBe(
+                generatedFiles
+                    .OrderBy(x => x.PlexApiRatingKey)
+                    .Select(x =>
+                        (
+                            x.Id,
+                            x.ParentId,
+                            x.PlexServerId,
+                            x.PlexLibraryId,
+                            x.PlexApiRatingKey,
+                            x.PlexApiMediaId,
+                            x.PlexApiPartId,
+                            x.FileName
+                        )
+                    )
+            );
+        persisted
+            .Select(x =>
+                (
+                    x.PlexApiRatingKey,
+                    x.DownloadStatus,
+                    x.DataTotal,
+                    x.FileDataTransferred,
+                    x.CurrentFileTransferBytesOffset,
+                    x.Percentage,
+                    x.TimeRemaining
+                )
+            )
+            .ShouldBe(
+                new[]
+                {
+                    (
+                        aFile.PlexApiRatingKey,
+                        DownloadStatus.MoveFinished,
+                        (long)aBytes.Length,
+                        (long)aBytes.Length,
+                        (long)aBytes.Length,
+                        100m,
+                        0
+                    ),
+                    (
+                        bFile.PlexApiRatingKey,
+                        DownloadStatus.MoveFinished,
+                        (long)bBytes.Length,
+                        (long)bBytes.Length,
+                        (long)bBytes.Length,
+                        100m,
+                        0
+                    ),
+                }.OrderBy(x => x.Item1)
+            );
+        persisted.Single(x => x.Id == aFile.Id).DirectoryMeta.KeepCompletedInDownloadFolder.ShouldBeFalse();
+        persisted.Single(x => x.Id == bFile.Id).DirectoryMeta.KeepCompletedInDownloadFolder.ShouldBeTrue();
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<IEventPublisher>().Verify();
+    }
+
 
     [Test]
     [Arguments(PlexMediaType.Movie)]

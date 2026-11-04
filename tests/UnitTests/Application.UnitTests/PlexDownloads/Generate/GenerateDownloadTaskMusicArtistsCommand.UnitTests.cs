@@ -94,6 +94,160 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
     }
 
     [Test]
+    public async Task ShouldPreserveDirectTrackPlacement_WhenArtistForwardingUsesRealAlbumAndTrackHandlers()
+    {
+        // Arrange
+        await SetupDatabase(
+            62621,
+            config =>
+            {
+                config.PlexMusicLibraryCount = 1;
+                config.MusicArtistCount = 1;
+                config.MusicAlbumCount = 1;
+                config.MusicTrackCount = 2;
+            }
+        );
+        var dbContext = IDbContext;
+        var artist = await dbContext
+            .PlexMusicArtists.Include(x => x.Albums)
+                .ThenInclude(x => x.Tracks)
+            .SingleAsync(CancellationToken);
+        var album = artist.Albums.Single();
+        var tracks = await dbContext
+            .PlexMusicTracks.Include(x => x.MediaDataList)
+            .Where(x => x.PlexAlbumId == album.Id)
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
+        var target = tracks[0];
+        var sibling = tracks[1];
+        var artistSelection = new DownloadMediaDTO
+        {
+            Type = PlexMediaType.MusicArtist,
+            SelectionKind = null,
+            PlexServerId = artist.PlexServerId,
+            PlexLibraryId = artist.PlexLibraryId,
+            MediaIds = [artist.Id],
+            Qualities = [],
+            KeepCompletedInDownloadFolder = true,
+        };
+        var targetSelection = new DownloadMediaDTO
+        {
+            Type = PlexMediaType.MusicTrack,
+            SelectionKind = null,
+            PlexServerId = target.PlexServerId,
+            PlexLibraryId = target.PlexLibraryId,
+            MediaIds = [target.Id],
+            Qualities = [],
+            KeepCompletedInDownloadFolder = false,
+        };
+        var siblingSelection = new DownloadMediaDTO
+        {
+            Type = PlexMediaType.MusicTrack,
+            SelectionKind = null,
+            PlexServerId = sibling.PlexServerId,
+            PlexLibraryId = sibling.PlexLibraryId,
+            MediaIds = [sibling.Id],
+            Qualities = [],
+            KeepCompletedInDownloadFolder = true,
+        };
+        var request = new CreateDownloadTasksRequest(
+            [artistSelection, targetSelection, siblingSelection],
+            destinationFolderPathId: 7,
+            customDestinationFolderPath: "/artist"
+        );
+        var executor = Mock.Mock<ICommandExecutor>();
+        executor
+            .Setup(x => x.Send(It.IsAny<ICommand<Result<DownloadTaskCreationReport>>>(), CancellationToken))
+            .Returns(
+                async (ICommand<Result<DownloadTaskCreationReport>> command, CancellationToken ct) =>
+                {
+                    using var handlerContext = IDbContext;
+                    return await (
+                        command switch
+                        {
+                            GenerateDownloadTaskMusicAlbumsCommand albumsCommand =>
+                                new GenerateDownloadTaskMusicAlbumsCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext,
+                                    executor.Object
+                                ).ExecuteAsync(albumsCommand, ct),
+                            GenerateDownloadTaskMusicTracksCommand tracksCommand =>
+                                new GenerateDownloadTaskMusicTracksCommandHandler(
+                                    Serilog.Log.Logger,
+                                    handlerContext
+                                ).ExecuteAsync(tracksCommand, ct),
+                            _ => throw new InvalidOperationException($"Unexpected generator {command.GetType().Name}"),
+                        }
+                    );
+                }
+            )
+            .Verifiable(Times.Exactly(3));
+
+        // Act
+        var first = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(
+            new GenerateDownloadTaskMusicArtistsCommand(request)
+        );
+        var repeated = await executor.Object.Send(
+            new GenerateDownloadTaskMusicTracksCommand(
+                new CreateDownloadTasksRequest(
+                    [targetSelection, siblingSelection],
+                    destinationFolderPathId: 7,
+                    customDestinationFolderPath: "/artist"
+                )
+            ),
+            CancellationToken
+        );
+
+        // Assert
+        first.IsSuccess.ShouldBeTrue();
+        first.Errors.Count.ShouldBe(0);
+        first.Value.ShouldBe(
+            new DownloadTaskCreationReport
+            {
+                MusicArtists = 1,
+                MusicAlbums = 1,
+                MusicTracks = 2,
+            }
+        );
+        repeated.IsSuccess.ShouldBeTrue();
+        repeated.Errors.Count.ShouldBe(0);
+        repeated.Value.ShouldBe(new DownloadTaskCreationReport());
+
+        var artistTask = await dbContext.DownloadTaskMusicArtists.SingleAsync(CancellationToken);
+        (artistTask.PlexApiRatingKey, artistTask.PlexServerId, artistTask.PlexLibraryId).ShouldBe(
+            (artist.PlexApiRatingKey, artist.PlexServerId, artist.PlexLibraryId)
+        );
+        (await dbContext.DownloadTaskMusicAlbums.CountAsync(CancellationToken)).ShouldBe(1);
+
+        var files = await dbContext
+            .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
+            .OrderBy(x => x.PlexApiRatingKey)
+            .ThenBy(x => x.PlexApiPartId)
+            .ToListAsync(CancellationToken);
+        files.Select(x => (x.Parent!.PlexApiRatingKey, x.PlexApiMediaId, x.PlexApiPartId, x.DirectoryMeta.KeepCompletedInDownloadFolder))
+            .ShouldBe(
+                new[]
+                {
+                    (
+                        target.PlexApiRatingKey,
+                        target.MediaDataList.Single().PlexApiMediaId,
+                        target.MediaDataList.Single().PlexApiPartId,
+                        false
+                    ),
+                    (
+                        sibling.PlexApiRatingKey,
+                        sibling.MediaDataList.Single().PlexApiMediaId,
+                        sibling.MediaDataList.Single().PlexApiPartId,
+                        true
+                    ),
+                }.OrderBy(x => x.Item1).ThenBy(x => x.Item3)
+            );
+        files.Count.ShouldBe(2);
+        (await dbContext.DownloadTaskTrackFileLogs.CountAsync(CancellationToken)).ShouldBe(2);
+        executor.Verify();
+    }
+
+    [Test]
     public async Task ShouldRejectArtistFromAnotherLibraryWithoutDispatching_WhenOwnershipMismatches()
     {
         // Arrange
