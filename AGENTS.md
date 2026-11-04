@@ -50,7 +50,6 @@ Reaparr is a cross-platform Plex media downloader hosted on GitHub: https://gith
 - Place regression tests according to behavior, fixture cohesion, and existing test conventions—not class length. Extend the existing test class when the regressions belong to its responsibility. Create a sibling test file only for a genuinely distinct behavioral responsibility or materially different setup.
 - Naming an existing test file in a plan does not freeze test placement unless the user explicitly imposed that constraint. Routine placement decisions within the approved behavior and test scope do not require additional approval.
 - For changes containing only tests, fixtures, or documentation, skip CodeScene checks. For mixed changes, evaluate production findings only.
-- Before committing changes that include production source files, run `pre_commit_code_health_safeguard`. Production findings must pass, subject to the scope rules above; report failures or unavailable checks as blockers rather than gaming or bypassing the safeguard. Report test-file findings separately without treating them as production Code Health blockers. If the safeguard cannot distinguish production findings from excluded files, report the limitation rather than assuming production passed or refactoring excluded files.
 - Code Health supplements behavioral tests and technical review; it does not replace them, relax test requirements, or authorize commits.
 
 ---

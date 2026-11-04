@@ -43,6 +43,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
     {
         // Arrange
         Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(false).Verifiable(Times.Once);
+        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]).Verifiable(Times.Once());
+        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["AuthMigration1"]).Verifiable(Times.Once());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
         Mock.Mock<IReaparrDbContextDatabase>()
@@ -55,6 +57,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         // Assert
         result.IsSuccess.ShouldBeTrue();
         Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.Migrate(), Times.Once); // Database creation involves migration
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
+        Mock.Mock<IAuthDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
     }
 
     [Test]
@@ -62,6 +66,7 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
     {
         // Arrange
         Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(false);
+        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]).Verifiable(Times.Once());
         Mock.Mock<IReaparrDbContextDatabase>()
             .Setup(x => x.Migrate())
             .Throws(new Exception("Test Exception"))
@@ -73,6 +78,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
 
         // Assert
         result.IsFailed.ShouldBeTrue();
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.Migrate(), Times.Once);
     }
 
     [Test]
@@ -84,6 +91,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IDirectory>()
             .Setup(x => x.CreateDirectory(It.IsAny<string>()))
             .Returns(new Mock<IDirectoryInfo>().Object);
+        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]).Verifiable(Times.Once());
+        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["AuthMigration1"]).Verifiable(Times.Once());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
         Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok()).Verifiable(Times.Once);
         Mock.Mock<IReaparrDbContextDatabase>()
@@ -103,6 +112,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         mockDbContext.Verify(x => x.CanConnect(), Times.Once);
         mockDbContext.Verify(x => x.EnsureDeleted(), Times.Once); // Database is reset
         mockDbContext.Verify(x => x.Migrate(), Times.Once); // Database is recreated after reset
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
+        Mock.Mock<IAuthDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
     }
 
     [Test]
@@ -310,6 +321,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
             .Setup(x => x.CreateDirectory(It.IsAny<string>()))
             .Returns(new Mock<IDirectoryInfo>().Object);
 
+        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]).Verifiable(Times.Once());
+        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["AuthMigration1"]).Verifiable(Times.Once());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CanConnect()).Returns(false);
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CloseConnection());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
@@ -328,6 +341,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IFile>().Verify(x => x.Copy(dbFiles[0], It.IsAny<string>()), Times.Once);
         Mock.Mock<IFile>().Verify(x => x.Copy(dbFiles[2], It.IsAny<string>()), Times.Once);
         Mock.Mock<IFile>().Verify(x => x.Copy(dbFiles[1], It.IsAny<string>()), Times.Never);
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
+        Mock.Mock<IAuthDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
     }
 
     [Test]
@@ -368,6 +383,7 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CanConnect()).Returns(false);
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CloseConnection());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
+        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]).Verifiable(Times.Once());
         Mock.Mock<IReaparrDbContextDatabase>()
             .Setup(x => x.Migrate())
             .Throws(new Exception("Database creation failed"));
@@ -379,6 +395,7 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         result.IsFailed.ShouldBeTrue();
         Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.EnsureDeleted(), Times.Once);
         Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.Migrate(), Times.Once);
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
     }
 
     [Test]
@@ -408,6 +425,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
             .Setup(x => x.CreateDirectory(It.IsAny<string>()))
             .Returns(new Mock<IDirectoryInfo>().Object);
 
+        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]).Verifiable(Times.Once());
+        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["AuthMigration1"]).Verifiable(Times.Once());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CanConnect()).Returns(false);
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CloseConnection());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
@@ -426,6 +445,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         // Assert
         result.IsSuccess.ShouldBeTrue();
         generalSettingsMock.VerifySet(x => x.FirstTimeSetup = true, Times.Once);
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
+        Mock.Mock<IAuthDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
     }
 
     [Test]
@@ -433,6 +454,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
     {
         // Arrange
         Mock.Mock<IFile>().Setup(x => x.Exists(DatabasePath)).Returns(false); // Database doesn't exist for backup
+        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]).Verifiable(Times.Once());
+        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["AuthMigration1"]).Verifiable(Times.Once());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CanConnect()).Returns(false);
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.CloseConnection());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.EnsureDeleted()).Returns(Result.Ok(true));
@@ -449,6 +472,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         result.IsSuccess.ShouldBeTrue();
         Mock.Mock<IDirectory>().Verify(x => x.CreateDirectory(It.IsAny<string>()), Times.Never);
         Mock.Mock<IFile>().Verify(x => x.Copy(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
+        Mock.Mock<IAuthDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
     }
 
     [Test]
@@ -456,6 +481,8 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
     {
         // Arrange
         Mock.Mock<IFile>().Setup(x => x.Exists(It.IsAny<string>())).Returns(false);
+        Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["Migration1"]).Verifiable(Times.Once());
+        Mock.Mock<IAuthDbContextDatabase>().Setup(x => x.GetPendingMigrations()).Returns(["AuthMigration1"]).Verifiable(Times.Once());
         Mock.Mock<IReaparrDbContextDatabase>().Setup(x => x.Migrate()).Returns(Result.Ok());
         Mock.Mock<IAuthDbContextDatabase>()
             .Setup(x => x.Migrate())
@@ -468,5 +495,7 @@ public class ReaparrDbContextManagerUnitTests : BaseUnitTest<ReaparrDbContextMan
         result.IsFailed.ShouldBeTrue();
         Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.Migrate(), Times.Once);
         Mock.Mock<IAuthDbContextDatabase>().Verify(x => x.Migrate(), Times.Once);
+        Mock.Mock<IReaparrDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
+        Mock.Mock<IAuthDbContextDatabase>().Verify(x => x.GetPendingMigrations(), Times.Once);
     }
 }
