@@ -105,25 +105,23 @@ public class LogConfig : SlimLogConfig
                 },
                 ignoreEnvironment: true
             );
-
-            if (!string.IsNullOrEmpty(_appRuntimeInfo.SEQ_Url))
-                config = config.WriteTo.Seq(
-                    _appRuntimeInfo.SEQ_Url,
-                    apiKey: !string.IsNullOrEmpty(_appRuntimeInfo.SEQ_ApiKey) ? _appRuntimeInfo.SEQ_ApiKey : null,
-                    restrictedToMinimumLevel: minimumLogLevel
-                );
-
-            return config.WriteTo.File(
-                FileTemplate, // This should always be plain file as not to log ASCII characters
-                Path.Combine(_pathProvider.LogsDirectory, "log.txt"),
-                restrictedToMinimumLevel: minimumLogLevel,
-                rollingInterval: RollingInterval.Day,
-                rollOnFileSizeLimit: true,
-                retainedFileCountLimit: 7
-            );
         }
 
-        return config;
+        if (!string.IsNullOrEmpty(_appRuntimeInfo.SEQ_Url))
+            config = config.WriteTo.Seq(
+                _appRuntimeInfo.SEQ_Url,
+                apiKey: !string.IsNullOrEmpty(_appRuntimeInfo.SEQ_ApiKey) ? _appRuntimeInfo.SEQ_ApiKey : null,
+                restrictedToMinimumLevel: minimumLogLevel
+            );
+
+        return config.WriteTo.File(
+            FileTemplate, // This should always be plain file as not to log ASCII characters
+            Path.Combine(_pathProvider.LogsDirectory, "log.txt"),
+            restrictedToMinimumLevel: minimumLogLevel,
+            rollingInterval: RollingInterval.Day,
+            rollOnFileSizeLimit: true,
+            retainedFileCountLimit: 7
+        );
     }
 
     public override Logger GetLogger(LogEventLevel minimumLogLevel = LogEventLevel.Debug) =>
