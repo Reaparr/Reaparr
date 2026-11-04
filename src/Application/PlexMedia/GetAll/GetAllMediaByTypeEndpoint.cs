@@ -177,7 +177,7 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
         var x = string.IsNullOrWhiteSpace(req.Search)
             ? []
             : req
-                .Search.ToLowerInvariant()
+                .Search.ToSearchTitle()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Where(x => x.Length >= 2)
                 .Distinct()
