@@ -14,6 +14,16 @@ on:
                 description: 'Informational version'
                 required: true
                 type: string
+            telemetry_host:
+                description: 'Telemetry HTTPS ingestion origin for release builds'
+                required: false
+                type: string
+                default: ''
+            telemetry_project_token:
+                description: 'Telemetry public project ingestion token for release builds'
+                required: false
+                type: string
+                default: ''
             push:
                 description: 'Push images and create manifests'
                 required: false
@@ -82,6 +92,8 @@ jobs:
                   build-args: |
                       VERSION=${{ inputs.version }}
                       INFORMATIONAL_VERSION=${{ inputs.informational_version }}
+                      TELEMETRY_HOST=${{ inputs.telemetry_host }}
+                      TELEMETRY_PROJECT_TOKEN=${{ inputs.telemetry_project_token }}
                       BUILDPLATFORM=linux/${{ matrix.arch }}
                       TARGETPLATFORM=linux/${{ matrix.arch }}
                   cache-from: |

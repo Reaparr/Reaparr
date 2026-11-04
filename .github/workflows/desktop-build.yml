@@ -14,6 +14,16 @@ on:
                 description: 'Informational version (e.g. 1.2.3-dev.1)'
                 required: true
                 type: string
+            telemetry_host:
+                description: 'Telemetry HTTPS ingestion origin for release builds'
+                required: false
+                type: string
+                default: ''
+            telemetry_project_token:
+                description: 'Telemetry public project ingestion token for release builds'
+                required: false
+                type: string
+                default: ''
             push:
                 description: 'Upload installers to the GitHub Release'
                 required: false
@@ -143,6 +153,8 @@ jobs:
                 shell: bash
                 env:
                     INFORMATIONAL_VERSION: ${{ inputs.informational_version }}
+                    TELEMETRY_HOST: ${{ inputs.telemetry_host }}
+                    TELEMETRY_PROJECT_TOKEN: ${{ inputs.telemetry_project_token }}
                     RID: ${{ matrix.rid }}
                     VERSION: ${{ inputs.version }}
                 run: |
@@ -150,6 +162,8 @@ jobs:
                         --rid "$RID" \
                         --version "$VERSION" \
                         --informational-version "$INFORMATIONAL_VERSION" \
+                        --telemetry-host "$TELEMETRY_HOST" \
+                        --telemetry-project-token "$TELEMETRY_PROJECT_TOKEN" \
                         --channel "$VELOPACK_CHANNEL" \
                         --frontend-public-dir .tmp/frontend-public \
                         --artifact-dir Releases \

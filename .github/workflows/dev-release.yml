@@ -74,6 +74,8 @@ jobs:
             publish_release: true
             version: ${{ needs.semantic-release.outputs.new-release-version }}
             informational_version: ${{ needs.semantic-release.outputs.new-release-version }}
+            telemetry_host: ${{ vars.TELEMETRY_HOST }}
+            telemetry_project_token: ${{ vars.TELEMETRY_PROJECT_TOKEN }}
             velopack_channel: dev
 
     # Build and publish multi-arch Docker images
@@ -89,6 +91,8 @@ jobs:
             push: true
             version: ${{ needs.semantic-release.outputs.new-release-version }}
             informational_version: ${{ needs.semantic-release.outputs.new-release-version }}
+            telemetry_host: ${{ vars.TELEMETRY_HOST }}
+            telemetry_project_token: ${{ vars.TELEMETRY_PROJECT_TOKEN }}
             tags: "dev"
 
     # Notifications (depends on build-and-publish and build-desktop)
