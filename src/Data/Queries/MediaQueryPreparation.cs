@@ -42,14 +42,14 @@ internal static class MediaQueryPreparation
         CancellationToken ct
     )
     {
-        // Specific-library browsing verifies the library, but deliberately preserves its existing access semantics.
+        // Explicit browsing requires an enabled library and server but preserves existing access semantics.
         if (filter.PlexLibraryId > 0)
         {
-            var library = await dbContext
+            return await dbContext
                 .PlexLibraries.IgnoreIsEnabledFilter()
-                .Select(x => new { x.Id, x.IsEnabled })
-                .FirstOrDefaultAsync(x => x.Id == filter.PlexLibraryId, ct);
-            return library is not null && library.IsEnabled ? [library.Id] : [];
+                .Where(x => x.Id == filter.PlexLibraryId && x.IsEnabled && x.PlexServer!.IsEnabled)
+                .Select(x => x.Id)
+                .ToListAsync(ct);
         }
 
         var hasAccounts = await dbContext.PlexAccounts.AnyAsync(ct);
