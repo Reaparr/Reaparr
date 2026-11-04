@@ -20,7 +20,7 @@ public class LogExtensionsUnitTests : BaseUnitTest
         var runtimeInfo = Mock.Container.Resolve<IAppRuntimeInfo>();
         var pathProvider = Mock.Container.Resolve<IPathProvider>();
 
-        return new TestLogConfig(runtimeInfo, pathProvider)
+        return new TestLogConfig(runtimeInfo, pathProvider, Mock.Container.Resolve<IAppBuildInfo>())
             .GetLogger(logEventLevel)
             .ForContext<LogExtensionsUnitTests>();
     }
@@ -153,7 +153,7 @@ public class LogExtensionsUnitTests : BaseUnitTest
             var pathProvider = Mock.Container.Resolve<IPathProvider>();
 
             LogFactory.CloseAndFlush();
-            LogFactory.SetupLogging(new TestLogConfig(runtimeInfo, pathProvider), runtimeInfo);
+            LogFactory.SetupLogging(new TestLogConfig(runtimeInfo, pathProvider, Mock.Container.Resolve<IAppBuildInfo>()), runtimeInfo);
             var log = LogFactory.Create<LogExtensionsUnitTests>();
             var httpContext = new DefaultHttpContext();
             httpContext.Request.Method = HttpMethods.Post;
@@ -200,7 +200,7 @@ public class LogExtensionsUnitTests : BaseUnitTest
             var pathProvider = Mock.Container.Resolve<IPathProvider>();
 
             LogFactory.CloseAndFlush();
-            LogFactory.SetupLogging(new TestLogConfig(runtimeInfo, pathProvider), runtimeInfo);
+            LogFactory.SetupLogging(new TestLogConfig(runtimeInfo, pathProvider, Mock.Container.Resolve<IAppBuildInfo>()), runtimeInfo);
 
             var log = LogFactory.Create<LogExtensionsUnitTests>();
             var httpContext = new DefaultHttpContext();

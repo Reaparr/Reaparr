@@ -4,8 +4,8 @@ namespace Reaparr.BaseTests;
 
 public class TestLogConfig : LogConfig
 {
-    public TestLogConfig(IAppRuntimeInfo appRuntimeInfo, IPathProvider pathProvider)
-        : base(appRuntimeInfo, pathProvider) { }
+    public TestLogConfig(IAppRuntimeInfo appRuntimeInfo, IPathProvider pathProvider, IAppBuildInfo appBuildInfo)
+        : base(appRuntimeInfo, pathProvider, appBuildInfo) { }
 
     /// <inheritdoc/>
     protected override bool UseInteractiveSinks => true;

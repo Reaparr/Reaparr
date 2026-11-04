@@ -10,6 +10,8 @@ public sealed class DesignTimeAppBuildInfo : IAppBuildInfo
 
     public string TelemetryProjectToken => string.Empty;
 
+    public bool HasValidTelemetry => false;
+
     public string Version => "0.0.0";
 
     public string InformationalVersion => "0.0.0-design-time";

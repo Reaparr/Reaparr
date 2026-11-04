@@ -7,7 +7,7 @@ public static class GlobalTestHooks
     {
         var appRuntimeInfo = new MockAppRuntimeInfo { IsUnmasked = true };
         var pathProvider = new MockPathProvider(MockDatabase.GetMemoryDatabaseName());
-        var testLogConfig = new TestLogConfig(appRuntimeInfo, pathProvider);
+        var testLogConfig = new TestLogConfig(appRuntimeInfo, pathProvider, new MockAppBuildInfo());
 
         LogFactory.SetupLogging(testLogConfig, appRuntimeInfo, LogEventLevel.Verbose);
         BogusExtensions.Setup();

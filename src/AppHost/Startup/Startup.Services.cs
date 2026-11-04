@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http;
 using Microsoft.OpenApi;
+using PostHog;
+using PostHog.Config;
 using Reaparr.Application.Contracts;
 using Reaparr.Identity.Contracts;
 using Serilog.Sinks.AspNetCore.App.SignalR.Extensions;
@@ -51,6 +53,24 @@ public static partial class Startup
         });
 
         services.AddOptions();
+        // Release artifacts own the ingestion destination and token; do not bind runtime configuration.
+        services
+            .AddOptions<PostHogOptions>()
+            .Configure<IAppBuildInfo>(
+                static (options, appBuildInfo) =>
+                {
+                    if (!appBuildInfo.HasValidTelemetry)
+                    {
+                        options.Disabled = true;
+                        return;
+                    }
+
+                    options.HostUrl = new Uri(appBuildInfo.TelemetryHost, UriKind.Absolute);
+                    options.ProjectToken = appBuildInfo.TelemetryProjectToken;
+                }
+            );
+
+        services.AddPostHog();
 
         services.ConfigureHttpJsonOptions(options => options.SerializerOptions.ApplyStandardConfiguration());
 
