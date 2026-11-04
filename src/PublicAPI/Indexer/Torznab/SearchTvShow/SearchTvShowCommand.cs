@@ -25,7 +25,7 @@ public class SearchTvShowCommandValidator : AbstractValidator<SearchTvShowComman
             x => x.Request.Season > 0 || x.Request.Episode > 0,
             () =>
             {
-                RuleFor(x => x.Request.Season).GreaterThan(0);
+                RuleFor(x => x.Request.Season).NotNull();
                 RuleFor(x => x.Request)
                     .Must(x => x.HasAnyExternalId)
                     .WithMessage(
@@ -94,8 +94,8 @@ public class SearchTvShowCommandHandler : ICommandHandler<SearchTvShowCommand, R
         var candidateEpisodeIds = _dbContext.PlexTvShowEpisodes.Where(x =>
             candidateTvShows.Select(tvShow => tvShow.Id).Contains(x.TvShowId)
         );
-        if (request.Season > 0)
-            candidateEpisodeIds = candidateEpisodeIds.Where(x => x.TvShowSeason!.SeasonNumber == request.Season);
+        if (request.Season is { } season)
+            candidateEpisodeIds = candidateEpisodeIds.Where(x => x.TvShowSeason!.SeasonNumber == season);
         if (request.Episode > 0)
             candidateEpisodeIds = candidateEpisodeIds.Where(x => x.EpisodeNumber == request.Episode);
 
