@@ -14,7 +14,7 @@ public static class TorznabRequestMappers
         {
             Type = ParseType(request.Type),
             Query = request.Query ?? string.Empty,
-            Season = request.Season ?? 0,
+            Season = request.Season,
             Episode = request.Episode ?? 0,
             TvdbId = request.TvdbId ?? 0,
             ImdbId = request.ImdbId ?? string.Empty,

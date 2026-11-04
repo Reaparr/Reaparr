@@ -132,6 +132,72 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     }
 
     [Test]
+    [Arguments("season=00&ep=1", true, "0:1")]
+    [Arguments("season=00", false, "0:1,0:2")]
+    [Arguments("ep=1", true, "0:1,1:1,2:1")]
+    [Arguments("season=1&ep=1", true, "1:1")]
+    [Arguments("", false, "0:1,0:2,1:1,1:2,2:1,2:2")]
+    public async Task ShouldPreserveSeasonSelection_WhenSonarrSearchesEpisodes(
+        string selectors,
+        bool includeShowId,
+        string expectedEpisodeSelectors
+    )
+    {
+        // Arrange
+        using var container = await CreateContainer(
+            new Seed(8676),
+            config =>
+            {
+                config.DatabaseOptions = x =>
+                {
+                    x.PlexServerCount = 1;
+                    x.PlexAccountCount = 1;
+                    x.PlexTvShowLibraryCount = 1;
+                    x.TvShowCount = 1;
+                    x.TvShowSeasonCount = 3;
+                    x.TvShowEpisodeCount = 2;
+                    x.SonarrIntegrationCount = 1;
+                };
+            }
+        );
+        await container.DbContext.PlexTvShowSeason.ExecuteUpdateAsync(
+            x => x.SetProperty(season => season.SeasonNumber, season => season.SeasonNumber - 1),
+            CancellationToken
+        );
+        var integration = await container.DbContext.SonarrIntegrations.SingleAsync(CancellationToken);
+        var show = await container.DbContext.PlexTvShows.SingleAsync(CancellationToken);
+        var showSelector = includeShowId ? $"&tvdbid={show.Guid_TVDB!.Value}" : string.Empty;
+        var route = $"/api/public/integrations/{integration.Id}/indexer/api";
+        var url = $"{route}?t=tvsearch&cat=5000&limit=50&apikey={integration.TorznabApiKey}&{selectors}{showSelector}";
+        var expected = expectedEpisodeSelectors.Split(',');
+        var client = container.GetApiClient();
+
+        // Act
+        var response = await client.GetAsync(url, CancellationToken);
+        var xml = await response.Content.ReadAsStringAsync(CancellationToken);
+
+        // Assert
+        response.IsSuccessStatusCode.ShouldBeTrue();
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/xml");
+        var channel = XDocument.Parse(xml).Root!.Element("channel")!;
+        channel
+            .Elements("item")
+            .Select(item =>
+            {
+                var attributes = item.Elements().Where(x => x.Name.LocalName == "attr");
+                var season = attributes.Single(x => x.Attribute("name")!.Value == "season").Attribute("value")!.Value;
+                var episode = attributes.Single(x => x.Attribute("name")!.Value == "episode").Attribute("value")!.Value;
+                return $"{season}:{episode}";
+            })
+            .Order()
+            .ShouldBe(expected);
+        channel
+            .Elements()
+            .Single(x => x.Name.LocalName == "response")
+            .Attribute("total")!.Value.ShouldBe(expected.Length.ToString());
+    }
+
+    [Test]
     public async Task ShouldRemoveMovieFromRss_WhenSynchronizationDeletesIt()
     {
         // Arrange
