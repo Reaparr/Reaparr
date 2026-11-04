@@ -73,4 +73,6 @@ public interface IAppBuildInfo
     /// </summary>
     // ReSharper disable once InconsistentNaming
     bool IsMacOS { get; }
+
+    bool HasValidTelemetry { get; }
 }

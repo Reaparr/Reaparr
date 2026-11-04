@@ -38,4 +38,7 @@ public class MockAppBuildInfo : IAppBuildInfo
     public bool IsLinux => CurrentOS == OperatingSystemPlatform.Linux;
 
     public bool IsMacOS => CurrentOS == OperatingSystemPlatform.Osx;
+
+    public bool HasValidTelemetry =>
+        !string.IsNullOrEmpty(TelemetryHost) && !string.IsNullOrEmpty(TelemetryProjectToken);
 }

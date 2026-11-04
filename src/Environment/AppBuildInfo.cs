@@ -61,6 +61,9 @@ public sealed class AppBuildInfo : IAppBuildInfo
     /// <inheritdoc/>
     public bool IsMacOS => OperatingSystem.IsMacOS();
 
+    public bool HasValidTelemetry =>
+        !string.IsNullOrEmpty(TelemetryHost) && !string.IsNullOrEmpty(TelemetryProjectToken);
+
     /// <summary>
     /// Initializes a new instance of <see cref="AppBuildInfo"/> by reading build metadata from the entry assembly.
     /// </summary>
