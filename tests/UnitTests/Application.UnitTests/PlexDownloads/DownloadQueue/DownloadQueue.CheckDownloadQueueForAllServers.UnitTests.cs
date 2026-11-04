@@ -4,6 +4,9 @@ namespace Reaparr.Application.UnitTests;
 
 public class DownloadQueueCheckDownloadQueueForAllServersUnitTests : BaseUnitTest<DownloadQueue>
 {
+    public DownloadQueueCheckDownloadQueueForAllServersUnitTests() =>
+        SetupDependencies(builder => builder.RegisterInstance(TimeProvider.System).As<TimeProvider>());
+
     [Test]
     public async Task ShouldKickQueueForConfiguredPlexServers_WhenCheckingAllServers()
     {

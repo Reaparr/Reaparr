@@ -2,6 +2,9 @@ namespace Reaparr.Application.UnitTests;
 
 public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQueue>
 {
+    public DownloadQueueCheckDownloadQueueUnitTests() =>
+        SetupDependencies(builder => builder.RegisterInstance(TimeProvider.System).As<TimeProvider>());
+
     [Test]
     public async Task ShouldHaveNoUpdates_WhenGivenAnEmptyList()
     {
