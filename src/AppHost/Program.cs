@@ -27,7 +27,7 @@ public class Program
 
         _pathProvider = new PathProvider(_appBuildInfo, _appRuntimeInfo);
         var logBuffer = new LogBufferService();
-        var signalRLogConfig = new SignalRLogConfig(_appRuntimeInfo, _pathProvider, logBuffer);
+        var signalRLogConfig = new SignalRLogConfig(_appRuntimeInfo, _pathProvider, logBuffer, _appBuildInfo);
         _failureDialog = new DesktopStartupFailureDialog(_appBuildInfo, _pathProvider, logBuffer);
 
         // Skip logger setup in integration test mode to preserve test logger
@@ -221,6 +221,8 @@ public class Program
         _log.Here().Fatal("Reaparr failed to start!");
 
         result.LogFatal();
+
+        LogFactory.CloseAndFlush();
 
         if (_appBuildInfo.IsDesktopMode && !_appRuntimeInfo.IsIntegrationTestMode)
         {
