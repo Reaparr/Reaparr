@@ -30,6 +30,7 @@ public static class SettingsModelToDTOMapper
             HideMediaFromOwnedServers = dto.HideMediaFromOwnedServers,
             UseLowQualityPosterImages = dto.UseLowQualityPosterImages,
             HasBeenInvitedToDiscord = dto.HasBeenInvitedToDiscord,
+            HasAgreedToDisclaimer = dto.HasAgreedToDisclaimer,
         };
 
     public static ConfirmationSettingsModule ToModel(this ConfirmationSettingsDTO dto) =>
