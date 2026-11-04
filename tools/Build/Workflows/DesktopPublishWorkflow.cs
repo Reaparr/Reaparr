@@ -50,6 +50,13 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
         if (string.IsNullOrWhiteSpace(settings.InformationalVersion))
             return Result.Fail<int>("An informational version is required. Pass --informational-version <VERSION>.");
 
+        var telemetryValidationError = DesktopCommandSettings.GetTelemetryValidationError(
+            settings.TelemetryHost,
+            settings.TelemetryProjectToken
+        );
+        if (telemetryValidationError is not null)
+            return Result.Fail<int>(telemetryValidationError);
+
         if (!settings.DryRun)
             await _commandRunner.RequireCommandAsync("dotnet");
 
@@ -110,6 +117,8 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
                     $"-p:PublishProfile={runtime.PublishProfile}",
                     $"-p:Version={settings.Version}",
                     $"-p:InformationalVersion={settings.InformationalVersion}",
+                    $"-p:ReaparrTelemetryHost={(settings.TelemetryHost?.EndsWith("/", StringComparison.Ordinal) == true ? settings.TelemetryHost[..^1] : settings.TelemetryHost ?? string.Empty)}",
+                    $"-p:ReaparrTelemetryProjectToken={settings.TelemetryProjectToken ?? string.Empty}",
                     $"-p:PublishDir={publishDirectory}{_fileSystem.Path.DirectorySeparatorChar}",
                     "-p:CSharpier_Bypass=true",
                 ]
@@ -134,8 +143,7 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
     private void CopyFrontendOutput(string sourceDirectory, string publishDirectory)
     {
         var frontendPath = new BuildDirectoryPath(_fileSystem, sourceDirectory);
-        var wwwrootPath = new BuildDirectoryPath(
-            _fileSystem, _fileSystem.Path.Combine(publishDirectory, "wwwroot"));
+        var wwwrootPath = new BuildDirectoryPath(_fileSystem, _fileSystem.Path.Combine(publishDirectory, "wwwroot"));
         _fileSystemTasks.ClearArtifactDirectory(new BuildDirectoryPath(_fileSystem, _paths.RootDirectory), wwwrootPath);
         _fileSystemTasks.CopyDirectory(frontendPath, wwwrootPath);
     }
