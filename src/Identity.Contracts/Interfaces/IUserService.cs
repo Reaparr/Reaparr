@@ -64,4 +64,6 @@ public interface IUserService
     /// Checks if a password is correct for a user
     /// </summary>
     Task<bool> CheckPasswordAsync(AppUser user, string password);
+
+    Task<string> GetTelemetryId();
 }
