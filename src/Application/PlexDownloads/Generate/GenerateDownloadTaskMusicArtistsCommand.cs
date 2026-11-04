@@ -49,7 +49,7 @@ public class GenerateDownloadTaskMusicArtistsCommandHandler
     )
     {
         var request = command.Request;
-        var downloadMedias = request.DownloadMedias.MergeAndGroupList();
+        var downloadMedias = request.DownloadMedias.MergeMusicSelections();
         var artistSelections = downloadMedias.FindAll(x => x.Type == PlexMediaType.MusicArtist);
         if (artistSelections.Count == 0)
             return ResultExtensions.IsEmpty(nameof(artistSelections)).LogWarning();

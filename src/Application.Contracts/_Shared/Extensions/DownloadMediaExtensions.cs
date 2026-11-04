@@ -66,4 +66,47 @@ public static class DownloadMediaExtensions
             })
             .ToList();
     }
+
+    /// <summary>
+    /// Merges music selections while keeping placement choices scoped to each media identity.
+    /// </summary>
+    public static List<DownloadMediaDTO> MergeMusicSelections(this List<DownloadMediaDTO> downloadMediaList)
+    {
+        var result = new List<DownloadMediaDTO>();
+        foreach (
+            var group in downloadMediaList
+                .Where(x => x.Type is PlexMediaType.MusicArtist or PlexMediaType.MusicAlbum or PlexMediaType.MusicTrack)
+                .GroupBy(x => new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.Type,
+                    x.SelectionKind,
+                })
+        )
+        {
+            var keptMediaIds = group
+                .Where(x => x.KeepCompletedInDownloadFolder)
+                .SelectMany(x => x.MediaIds)
+                .ToHashSet();
+            var qualities = group.SelectMany(x => x.Qualities).ToList();
+            foreach (var placement in group.SelectMany(x => x.MediaIds).Distinct().GroupBy(keptMediaIds.Contains))
+            {
+                result.Add(
+                    new DownloadMediaDTO
+                    {
+                        PlexServerId = group.Key.PlexServerId,
+                        PlexLibraryId = group.Key.PlexLibraryId,
+                        Type = group.Key.Type,
+                        SelectionKind = group.Key.SelectionKind,
+                        MediaIds = placement.ToList(),
+                        Qualities = qualities,
+                        KeepCompletedInDownloadFolder = placement.Key,
+                    }
+                );
+            }
+        }
+
+        return result;
+    }
 }
