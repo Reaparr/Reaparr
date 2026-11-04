@@ -20,6 +20,12 @@ public sealed class AppBuildInfo : IAppBuildInfo
     public string RuntimeIdentifier => GetAssemblyMetadataValue("ReaparrRuntimeIdentifier");
 
     /// <inheritdoc/>
+    public string TelemetryHost => GetAssemblyMetadataValue("ReaparrTelemetryHost", string.Empty);
+
+    /// <inheritdoc/>
+    public string TelemetryProjectToken => GetAssemblyMetadataValue("ReaparrTelemetryProjectToken", string.Empty);
+
+    /// <inheritdoc/>
     public bool IsDesktopMode => string.Equals(RuntimeMode, "desktop", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc/>

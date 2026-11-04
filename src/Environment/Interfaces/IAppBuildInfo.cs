@@ -16,12 +16,12 @@ public interface IAppBuildInfo
     string RuntimeIdentifier { get; }
 
     /// <summary>
-    /// Gets the embedded PostHog ingestion host, or an empty string when telemetry is not configured.
+    /// Gets the embedded telemetry ingestion host, or an empty string when telemetry is not configured.
     /// </summary>
     string TelemetryHost { get; }
 
     /// <summary>
-    /// Gets the embedded PostHog public project ingestion token, or an empty string when telemetry is not configured.
+    /// Gets the embedded public telemetry project ingestion token, or an empty string when telemetry is not configured.
     /// </summary>
     string TelemetryProjectToken { get; }
 

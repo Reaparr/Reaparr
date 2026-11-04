@@ -9,6 +9,12 @@ public class MockAppBuildInfo : IAppBuildInfo
     public string RuntimeIdentifier { get; set; } = "linux-x64";
 
     /// <inheritdoc/>
+    public string TelemetryHost { get; set; } = string.Empty;
+
+    /// <inheritdoc/>
+    public string TelemetryProjectToken { get; set; } = string.Empty;
+
+    /// <inheritdoc/>
     public string Version { get; set; } = "0.0.0";
 
     /// <inheritdoc/>
