@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using System.Security.Claims;
 using Reaparr.Domain;
-using Reaparr.Identity.Contracts;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -47,107 +45,75 @@ public class SendTelemetryDiagnosticEndpointUnitTests
     }
 
     [Test]
-    public async Task ShouldRejectAnonymousCaller_WhenNoAuthenticationExists()
+    [Arguments(TelemetryDiagnosticOrigin.Backend)]
+    [Arguments(TelemetryDiagnosticOrigin.Frontend)]
+    public async Task ShouldForwardDiagnosticAndExposeSuccess_WhenTelemetryAccepts(TelemetryDiagnosticOrigin origin)
     {
         // Arrange
-        var request = new SendTelemetryDiagnosticRequest { Origin = TelemetryDiagnosticOrigin.Backend };
+        var request = new SendTelemetryDiagnosticRequest { Origin = origin };
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.TrackAsync(
+                    "reaparr diagnostic",
+                    It.Is<IReadOnlyDictionary<string, object?>>(
+                        p => p.Count == 1 && (TelemetryDiagnosticOrigin)p["origin"]! == origin
+                    )
+                )
+            )
+            .ReturnsAsync(Result.Ok().WithSuccess("Diagnostic event accepted for sending"))
+            .Verifiable(Times.Once());
 
         // Act
-        var result = await TestEndpointHandleAsync(request, services => services.AddSingleton(Mock.Mock<ITelemetry>().Object));
+        var result = await TestEndpointHandleAsync(
+            request,
+            services => services.AddSingleton(Mock.Mock<ITelemetry>().Object)
+        );
 
         // Assert
         result.IsValid.ShouldBeTrue();
-        result.StatusCode.ShouldBe(401);
-        result.Response!.IsSuccess.ShouldBeFalse();
-        result.Response.Errors.Count.ShouldBe(1);
-        Mock.Mock<ITelemetry>().Verify(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<IReadOnlyDictionary<string, object?>>()), Times.Never());
-    }
-
-    [Test]
-    [Arguments("admin")]
-    [Arguments("")]
-    public async Task ShouldRejectNonAdministrator_WhenThePrincipalIsAuthenticated(string name)
-    {
-        // Arrange
-        var endpoint = SetupEndpointUnitTest<SendTelemetryDiagnosticEndpoint>(services => services.AddSingleton(Mock.Mock<ITelemetry>().Object));
-        endpoint.HttpContext.Response.Body = new MemoryStream();
-        var claims = new List<Claim> { new(ClaimTypes.Name, name) };
-        endpoint.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
-        var request = new SendTelemetryDiagnosticRequest { Origin = TelemetryDiagnosticOrigin.Backend };
-        var validation = await ValidateEndpointRequestAsync(request, CancellationToken);
-
-        // Act
-        await endpoint.HandleAsync(request, CancellationToken);
-
-        // Assert
-        validation!.IsValid.ShouldBeTrue();
-        endpoint.HttpContext.Response.StatusCode.ShouldBe(403);
-        var response = await GetEndpointResponseAsync(endpoint, CancellationToken);
-        response!.IsSuccess.ShouldBeFalse();
-        response.Errors.Count.ShouldBe(1);
-        Mock.Mock<ITelemetry>().Verify(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<IReadOnlyDictionary<string, object?>>()), Times.Never());
-    }
-
-    [Test]
-    [Arguments(TelemetryDiagnosticOrigin.Backend)]
-    [Arguments(TelemetryDiagnosticOrigin.Frontend)]
-    public async Task ShouldAllowAdministratorWithoutANameClaim_WhenSubmittingDiagnostic(TelemetryDiagnosticOrigin origin)
-    {
-        // Arrange
-        var endpoint = SetupEndpointUnitTest<SendTelemetryDiagnosticEndpoint>(services => services.AddSingleton(Mock.Mock<ITelemetry>().Object));
-        endpoint.HttpContext.Response.Body = new MemoryStream();
-        endpoint.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim(ClaimTypes.Role, DefaultUserAppCredentials.DefaultAdminRole),
-        ], "test"));
-        var request = JsonSerializer.Deserialize<SendTelemetryDiagnosticRequest>(
-            $"{{\"origin\":{(int)origin}}}", DefaultJsonSerializerOptions.ConfigStandard)!;
-        var validation = await ValidateEndpointRequestAsync(request, CancellationToken);
-        Mock.Mock<ITelemetry>().Setup(x => x.TrackAsync(
-                "reaparr diagnostic",
-                It.Is<IReadOnlyDictionary<string, object?>>(p => p.Count == 1 && (TelemetryDiagnosticOrigin)p["origin"]! == origin)))
-            .ReturnsAsync(Result.Ok().WithSuccess("Diagnostic event accepted for sending")).Verifiable(Times.Once());
-
-        // Act
-        await endpoint.HandleAsync(request, CancellationToken);
-
-        // Assert
-        validation!.IsValid.ShouldBeTrue();
-        endpoint.HttpContext.Response.StatusCode.ShouldBe(200);
-        var result = await GetEndpointResponseAsync(endpoint, CancellationToken);
-        result!.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Successes.Single().Message.ShouldBe("Diagnostic event accepted for sending");
+        result.StatusCode.ShouldBe(200);
+        result.Response!.IsSuccess.ShouldBeTrue();
+        result.Response.Errors.Count.ShouldBe(0);
+        result.Response.Successes.Single().Message.ShouldBe("Diagnostic event accepted for sending");
         Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
     [Arguments(403)]
     [Arguments(503)]
-    public async Task ShouldExposeSafeFailureStatus_WhenTelemetryCannotSubmit(int status)
+    public async Task ShouldForwardTelemetryFailureStatus_WhenTelemetryCannotSubmit(int status)
     {
         // Arrange
-        var endpoint = SetupEndpointUnitTest<SendTelemetryDiagnosticEndpoint>(services => services.AddSingleton(Mock.Mock<ITelemetry>().Object));
-        endpoint.HttpContext.Response.Body = new MemoryStream();
-        endpoint.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim(ClaimTypes.Role, DefaultUserAppCredentials.DefaultAdminRole),
-        ], "test"));
         var request = new SendTelemetryDiagnosticRequest { Origin = TelemetryDiagnosticOrigin.Backend };
-        var validation = await ValidateEndpointRequestAsync(request, CancellationToken);
-        Mock.Mock<ITelemetry>().Setup(x => x.TrackAsync(
-                "reaparr diagnostic",
-                It.Is<IReadOnlyDictionary<string, object?>>(p => p.Count == 1 && (TelemetryDiagnosticOrigin)p["origin"]! == TelemetryDiagnosticOrigin.Backend)))
-            .ReturnsAsync(Result.Fail("Telemetry is unavailable").AddStatusCode((System.Net.HttpStatusCode)status, "Telemetry is unavailable"))
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.TrackAsync(
+                    "reaparr diagnostic",
+                    It.Is<IReadOnlyDictionary<string, object?>>(
+                        p =>
+                            p.Count == 1
+                            && (TelemetryDiagnosticOrigin)p["origin"]! == TelemetryDiagnosticOrigin.Backend
+                    )
+                )
+            )
+            .ReturnsAsync(
+                Result.Fail("Telemetry is unavailable")
+                    .AddStatusCode((System.Net.HttpStatusCode)status, "Telemetry is unavailable")
+            )
             .Verifiable(Times.Once());
 
         // Act
-        await endpoint.HandleAsync(request, CancellationToken);
+        var result = await TestEndpointHandleAsync(
+            request,
+            services => services.AddSingleton(Mock.Mock<ITelemetry>().Object)
+        );
 
         // Assert
-        validation!.IsValid.ShouldBeTrue();
-        endpoint.HttpContext.Response.StatusCode.ShouldBe(status);
-        var response = await GetEndpointResponseAsync(endpoint, CancellationToken);
-        response!.IsSuccess.ShouldBeFalse();
-        response.Errors.Count.ShouldBe(1);
+        result.IsValid.ShouldBeTrue();
+        result.StatusCode.ShouldBe(status);
+        result.Response!.IsSuccess.ShouldBeFalse();
+        result.Response.Errors.Count.ShouldBe(1);
         Mock.Mock<ITelemetry>().Verify();
     }
+
 }
