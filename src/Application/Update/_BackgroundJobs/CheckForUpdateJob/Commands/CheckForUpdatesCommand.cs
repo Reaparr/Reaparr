@@ -39,9 +39,6 @@ public class CheckForUpdatesCommandHandler : ICommandHandler<CheckForUpdatesComm
         CancellationToken cancellationToken
     )
     {
-        var releasesResult = await _commandExecutor.Send(new GetGitHubReleasesCommand(), cancellationToken);
-        var releases = releasesResult.IsSuccess ? releasesResult.Value : [];
-
         // Desktop mode
         if (_appBuildInfo.IsDesktopMode)
         {
@@ -110,16 +107,21 @@ public class CheckForUpdatesCommandHandler : ICommandHandler<CheckForUpdatesComm
                     _appBuildInfo.InformationalVersion
                 );
 
+            var desktopReleasesResult = await _commandExecutor.Send(new GetGitHubReleasesCommand(), cancellationToken);
+
             return Result.Ok(
                 new AppUpdateCheckResult
                 {
                     IsUpdateAvailable = true,
                     NewestVersion = targetVersion,
                     CurrentVersion = _appBuildInfo.InformationalVersion,
-                    ReleaseNotes = releases,
+                    ReleaseNotes = desktopReleasesResult.IsSuccess ? desktopReleasesResult.Value : [],
                 }
             );
         }
+
+        var releasesResult = await _commandExecutor.Send(new GetGitHubReleasesCommand(), cancellationToken);
+        var releases = releasesResult.IsSuccess ? releasesResult.Value : [];
 
         var nonDesktopUpdateResult = await Result.Try(() => _velopackManager.CheckForUpdatesAsync());
         if (nonDesktopUpdateResult.IsSuccess && nonDesktopUpdateResult.Value is not null)
