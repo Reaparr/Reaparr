@@ -69,4 +69,7 @@ public class IdentityUserService : IUserService
     /// <inheritdoc/>
     public async Task<bool> CheckPasswordAsync(AppUser user, string password) =>
         await _userManager.CheckPasswordAsync(user, password);
+
+    public async Task<string> GetTelemetryId() =>
+        (await _userManager.Users.FirstOrDefaultAsync(CancellationToken.None))?.Id ?? string.Empty;
 }

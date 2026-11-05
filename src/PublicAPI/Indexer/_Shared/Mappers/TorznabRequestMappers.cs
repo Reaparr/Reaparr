@@ -1,3 +1,4 @@
+using System.Globalization;
 using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
@@ -9,13 +10,16 @@ public static class TorznabRequestMappers
     public static TorznabRequest ToTorznabRequest(
         this TorznabEndpointRequest request,
         IntegrationIdentity integration
-    ) =>
-        new()
+    )
+    {
+        TryParseEpisodeSelector(request.Season, request.Episode, out var episode, out var airDate);
+        return new TorznabRequest
         {
             Type = ParseType(request.Type),
             Query = request.Query ?? string.Empty,
-            Season = request.Season ?? 0,
-            Episode = request.Episode ?? 0,
+            Season = airDate.HasValue ? null : request.Season,
+            Episode = episode,
+            AirDate = airDate,
             TvdbId = request.TvdbId ?? 0,
             ImdbId = request.ImdbId ?? string.Empty,
             TmdbId = request.TmdbId ?? 0,
@@ -29,6 +33,34 @@ public static class TorznabRequestMappers
                 ?? [],
             Integration = integration,
         };
+    }
+
+    public static bool TryParseEpisodeSelector(
+        int? season,
+        string? value,
+        out int episode,
+        out DateOnly? airDate
+    )
+    {
+        episode = 0;
+        airDate = null;
+        if (string.IsNullOrEmpty(value))
+            return true;
+        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out episode))
+            return episode >= 0;
+        if (season is not (>= 1 and <= 9999) || value.Length != 5)
+            return false;
+
+        Span<char> dateText = stackalloc char[10];
+        season.Value.TryFormat(dateText[..4], out _, "D4", CultureInfo.InvariantCulture);
+        dateText[4] = '/';
+        value.AsSpan().CopyTo(dateText[5..]);
+        if (!DateOnly.TryParseExact(dateText, "yyyy/MM/dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+            return false;
+
+        airDate = date;
+        return true;
+    }
 
     public static TorznabQueryType ParseType(string? value)
     {

@@ -63,7 +63,7 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         if (req.Type == PlexMediaType.Movie)
         {
             var plexMovie = await _dbContext
-                .PlexMovies.IncludeAll()
+                .PlexMovies.Include(x => x.PlexServer).IncludePlexLibrary().IncludeMediaData()
                 .FirstOrDefaultAsync(x => x.Id == req.PlexMediaId, ct);
             if (plexMovie is null)
             {
@@ -71,14 +71,13 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
                 return;
             }
 
-            await SetNestedMovieProperties(plexMovie, ct);
             await ApplyMovieDetailComparisonStateAsync(plexMovie, ct);
 
             await Send.FluentResult(Result.Ok(plexMovie), x => x.ToDTO(), ct);
         }
         else if (req.Type == PlexMediaType.TvShow)
         {
-            var plexTvShowResult = await GetPlexTvShow(req.PlexMediaId, ct);
+            var plexTvShowResult = GetPlexTvShow(req.PlexMediaId);
             if (plexTvShowResult.IsFailed)
             {
                 await Send.FluentResult(plexTvShowResult, ct);
@@ -128,7 +127,7 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         }
     }
 
-    private async Task<Result<PlexTvShow>> GetPlexTvShow(int plexTvShowId, CancellationToken ct)
+    private Result<PlexTvShow> GetPlexTvShow(int plexTvShowId)
     {
         var plexTvShow = _dbContext.PlexTvShows.FirstOrDefault(x => x.Id == plexTvShowId);
 
@@ -148,8 +147,6 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
                 .Where(x => x.TvShowSeasonId == season.Id)
                 .Take(season.ChildCount)
                 .ToList();
-
-        await SetNestedTvShowProperties(plexTvShow, ct);
 
         return Result.Ok(plexTvShow);
     }
@@ -264,31 +261,5 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         }
 
         plexMovie.ComparisonState = items[0].ComparisonId.ToComparisonState();
-    }
-
-    private async Task SetNestedMovieProperties(PlexMovie plexMovie, CancellationToken ct = default)
-    {
-        var plexServerConnection = await _dbContext.ChoosePlexServerConnection(plexMovie.PlexServerId, ct);
-        if (plexServerConnection.IsFailed)
-        {
-            plexServerConnection.ToResult().LogError();
-            return;
-        }
-
-        var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexMovie.PlexServerId, ct);
-        plexServerToken.LogIfFailed();
-    }
-
-    private async Task SetNestedTvShowProperties(PlexTvShow plexTvShow, CancellationToken ct = default)
-    {
-        var plexServerConnection = await _dbContext.ChoosePlexServerConnection(plexTvShow.PlexServerId, ct);
-        if (plexServerConnection.IsFailed)
-        {
-            plexServerConnection.ToResult().LogError();
-            return;
-        }
-
-        var plexServerToken = await _dbContext.GetPlexServerTokenAsync(plexTvShow.PlexServerId, ct);
-        plexServerToken.LogIfFailed();
     }
 }

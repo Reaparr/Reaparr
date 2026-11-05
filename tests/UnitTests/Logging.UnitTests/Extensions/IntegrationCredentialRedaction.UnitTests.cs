@@ -17,7 +17,7 @@ public class IntegrationCredentialRedactionUnitTests : BaseUnitTest
             SetAppRuntimeInfo(x => x.IsUnmasked = false);
             var runtimeInfo = Mock.Container.Resolve<IAppRuntimeInfo>();
             var pathProvider = Mock.Container.Resolve<IPathProvider>();
-            LogFactory.SetupLogging(new TestLogConfig(runtimeInfo, pathProvider), runtimeInfo);
+            LogFactory.SetupLogging(new TestLogConfig(runtimeInfo, pathProvider, Mock.Container.Resolve<IAppBuildInfo>()), runtimeInfo);
             var log = LogFactory.Create<IntegrationCredentialRedactionUnitTests>();
             var secrets = new[]
             {
@@ -70,7 +70,7 @@ public class IntegrationCredentialRedactionUnitTests : BaseUnitTest
         SetAppRuntimeInfo(x => x.IsUnmasked = unmasked);
         var runtimeInfo = Mock.Container.Resolve<IAppRuntimeInfo>();
         var pathProvider = Mock.Container.Resolve<IPathProvider>();
-        using var log = new TestLogConfig(runtimeInfo, pathProvider).GetLogger();
+        using var log = new TestLogConfig(runtimeInfo, pathProvider, Mock.Container.Resolve<IAppBuildInfo>()).GetLogger();
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = HttpMethods.Post;
         httpContext.Request.Scheme = "http";

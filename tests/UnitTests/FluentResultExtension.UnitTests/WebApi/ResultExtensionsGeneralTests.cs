@@ -198,7 +198,8 @@ public class ResultExtensionsGeneralTests
     [Test]
     [Arguments(HttpCodes.Status401Unauthorized)]
     [Arguments(HttpCodes.Status601PlexAuthenticationFailed)]
-    public void ShouldPreserveAuthenticationStatus_WhenConvertingNonGenericFailureToDto(int statusCode)
+    [Arguments((int)HttpStatusCode.Conflict)]
+    public void ShouldPreserveHttpStatus_WhenConvertingNonGenericFailureToDto(int statusCode)
     {
         // Arrange
         var result = Result.Fail("Access denied").AddStatusCode((HttpStatusCode)statusCode, "Access denied");
@@ -218,7 +219,8 @@ public class ResultExtensionsGeneralTests
     [Test]
     [Arguments(HttpCodes.Status401Unauthorized)]
     [Arguments(HttpCodes.Status601PlexAuthenticationFailed)]
-    public void ShouldPreserveAuthenticationStatus_WhenConvertingGenericFailureToDto(int statusCode)
+    [Arguments((int)HttpStatusCode.Conflict)]
+    public void ShouldPreserveHttpStatus_WhenConvertingGenericFailureToDto(int statusCode)
     {
         // Arrange
         var result = new Result<string>().AddStatusCode((HttpStatusCode)statusCode, "Access denied");
@@ -239,7 +241,8 @@ public class ResultExtensionsGeneralTests
     [Test]
     [Arguments(HttpCodes.Status401Unauthorized)]
     [Arguments(HttpCodes.Status601PlexAuthenticationFailed)]
-    public void ShouldPreserveAuthenticationStatus_WhenConvertingMappedFailureToDto(int statusCode)
+    [Arguments((int)HttpStatusCode.Conflict)]
+    public void ShouldPreserveHttpStatus_WhenConvertingMappedFailureToDto(int statusCode)
     {
         // Arrange
         var result = new Result<string>().AddStatusCode((HttpStatusCode)statusCode, "Access denied");

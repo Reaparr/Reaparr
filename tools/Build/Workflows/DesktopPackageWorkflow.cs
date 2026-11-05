@@ -59,39 +59,48 @@ internal sealed class DesktopPackageBuildCommandHandler : ICommandHandler<Deskto
 
         var artifactDirectory = GetArtifactDirectory(settings, runtime.RuntimeIdentifier);
 
-        if (!settings.DryRun)
+        var channel = GetChannel(settings, runtime.RuntimeIdentifier);
+        string[] packArguments =
+        [
+            "pack",
+            "--packId",
+            "Reaparr",
+            "--packTitle",
+            "Reaparr",
+            "--packVersion",
+            settings.Version!,
+            "--packDir",
+            _paths.PublishDirectory(runtime.RuntimeIdentifier),
+            "--mainExe",
+            runtime.MainExecutable,
+            "--runtime",
+            runtime.RuntimeIdentifier,
+            "--channel",
+            channel,
+            "--outputDir",
+            artifactDirectory,
+        ];
+        if (settings.DryRun)
         {
-            PrepareArtifactDirectory(settings, runtime.RuntimeIdentifier, artifactDirectory);
-
-            await _commandRunner.RunCommandAsync(
-                "vpk",
-                [
-                    "pack",
-                    "--packId",
-                    "Reaparr",
-                    "--packTitle",
-                    "Reaparr",
-                    "--packVersion",
-                    settings.Version!,
-                    "--packDir",
-                    _paths.PublishDirectory(runtime.RuntimeIdentifier),
-                    "--mainExe",
-                    runtime.MainExecutable,
-                    "--runtime",
+            _commandRunner.LogCommand("vpk", packArguments);
+            _log.Here()
+                .Information(
+                    "Planned {RuntimeIdentifier} desktop packaging for Velopack channel {Channel} to {ArtifactDirectory}",
                     runtime.RuntimeIdentifier,
-                    "--channel",
-                    GetChannel(settings, runtime.RuntimeIdentifier),
-                    "--outputDir",
-                    artifactDirectory,
-                ]
-            );
+                    channel,
+                    artifactDirectory
+                );
+            return Result.Ok(0);
         }
+
+        PrepareArtifactDirectory(settings, runtime.RuntimeIdentifier, artifactDirectory);
+        await _commandRunner.RunCommandAsync("vpk", packArguments);
 
         _log.Here()
             .Information(
                 "Packaged {RuntimeIdentifier} desktop artifacts for Velopack channel {Channel} to {ArtifactDirectory}",
                 runtime.RuntimeIdentifier,
-                GetChannel(settings, runtime.RuntimeIdentifier),
+                channel,
                 artifactDirectory
             );
 

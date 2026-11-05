@@ -142,6 +142,11 @@ Prefer Reaparr-specific skills over generic skills when both apply.
 - Reaparr has no project-local `BaseEndpoint<,>` requirement; do not introduce a wrapper just to satisfy guidance.
 - Endpoint behavior should usually dispatch through `ICommandExecutor` rather than embedding orchestration logic.
 
+### Constructors
+
+- Always declare explicit constructors for backend classes and structs, including parameterless constructors when no dependencies are required.
+- Use traditional constructor declarations inside the type body rather than primary constructors. Assign injected dependencies to explicit fields or properties in the constructor body.
+
 ### Dependency Injection
 
 - Autofac modules use `*Module : Module`.

@@ -1,4 +1,5 @@
 using Serilog.Enrichers.Sensitive;
+using Serilog.Sinks.OpenTelemetry;
 
 namespace Reaparr.Logging;
 
@@ -6,12 +7,14 @@ public class LogConfig : SlimLogConfig
 {
     private readonly IAppRuntimeInfo _appRuntimeInfo;
     private readonly IPathProvider _pathProvider;
+    private readonly IAppBuildInfo _appBuildInfo;
 
-    protected LogConfig(IAppRuntimeInfo appRuntimeInfo, IPathProvider pathProvider)
+    protected LogConfig(IAppRuntimeInfo appRuntimeInfo, IPathProvider pathProvider, IAppBuildInfo appBuildInfo)
     {
         ArgumentNullException.ThrowIfNull(pathProvider);
         _appRuntimeInfo = appRuntimeInfo;
         _pathProvider = pathProvider;
+        _appBuildInfo = appBuildInfo;
     }
 
     /// <summary>
@@ -72,12 +75,37 @@ public class LogConfig : SlimLogConfig
     }
 
     /// <summary>
-    /// Provides an extended sink configuration with file and Seq sinks.
+    /// Provides an extended sink configuration with file, Seq, and telemetry sinks.
     /// </summary>
     /// <param name="minimumLogLevel">The global minimum log level used before sink-specific filtering.</param>
     protected virtual LoggerConfiguration GetExtendedConfiguration(LogEventLevel minimumLogLevel = LogEventLevel.Debug)
     {
         var config = GetBaseConfiguration(minimumLogLevel).Enrich.WithProperty("AppRunId", _appRuntimeInfo.AppRunId);
+
+        if (_appBuildInfo.HasValidTelemetry)
+        {
+            config.WriteTo.OpenTelemetry(
+                options =>
+                {
+                    options.Endpoint = null;
+                    options.LogsEndpoint = $"{_appBuildInfo.TelemetryHost.TrimEnd('/')}/i/v1/logs";
+                    options.TracesEndpoint = null;
+                    options.Protocol = OtlpProtocol.HttpProtobuf;
+                    options.Headers["Authorization"] = $"Bearer {_appBuildInfo.TelemetryProjectToken}";
+                    options.IncludedData = IncludedData.MessageTemplateTextAttribute;
+                    options.ResourceAttributes = new Dictionary<string, object>
+                    {
+                        ["service.name"] = "reaparr",
+                        ["service.version"] = _appBuildInfo.InformationalVersion,
+                        ["environment"] = _appBuildInfo.IsDevRelease ? "dev" : "stable",
+                        ["runtime_mode"] = _appBuildInfo.RuntimeMode,
+                        ["platform"] = _appBuildInfo.CurrentOS.ToString(),
+                        ["runtime_identifier"] = _appBuildInfo.RuntimeIdentifier,
+                    };
+                },
+                ignoreEnvironment: true
+            );
+        }
 
         if (!string.IsNullOrEmpty(_appRuntimeInfo.SEQ_Url))
             config = config.WriteTo.Seq(

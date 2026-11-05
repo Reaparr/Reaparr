@@ -712,7 +712,7 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
             {
                 Type = TorznabQueryType.Movie,
                 Query = query,
-                Season = 0,
+                Season = null,
                 Episode = 0,
                 TvdbId = 0,
                 ImdbId = imdbId ?? string.Empty,

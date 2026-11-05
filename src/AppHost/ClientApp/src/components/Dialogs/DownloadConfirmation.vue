@@ -110,7 +110,7 @@
 				</div>
 				<q-btn-dropdown
 					data-cy="download-confirmation-submit"
-					:disable="!canDownload"
+					:disable-main-btn="!canDownload"
 					color="green"
 					:label="t('general.commands.download')"
 					outline

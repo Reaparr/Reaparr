@@ -810,11 +810,13 @@ public class SearchTvShowCommandUnitTests : BaseCommandUnitTest<SearchTvShowComm
     }
 
     [Test]
-    public void ShouldPassValidation_WhenSeasonEpisodeWithImdbProvided()
+    [Arguments(0)]
+    [Arguments(1)]
+    public void ShouldPassValidation_WhenSeasonEpisodeWithImdbProvided(int season)
     {
         // Arrange
         var validator = new SearchTvShowCommandValidator();
-        var cmd = CreateCommand(season: 1, episode: 2, imdbId: "imdb://tt12345");
+        var cmd = CreateCommand(season: season, episode: 2, imdbId: "imdb://tt12345");
 
         // Act
         var result = validator.Validate(cmd);
@@ -1027,7 +1029,7 @@ public class SearchTvShowCommandUnitTests : BaseCommandUnitTest<SearchTvShowComm
         int limit = 100,
         int offset = 0,
         string query = "",
-        int season = 0,
+        int? season = null,
         int episode = 0,
         int tvdbId = 0,
         int tmdbId = 0,

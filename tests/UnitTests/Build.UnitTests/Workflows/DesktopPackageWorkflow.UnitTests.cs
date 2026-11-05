@@ -2,6 +2,9 @@ using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using Autofac;
 using FastEndpoints;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.TestCorrelator;
 
 namespace Reaparr.Build.UnitTests;
 
@@ -107,6 +110,9 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         runner.Setup(x => x.RunCommandAsync("vpk",
                 It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(packArguments)), null))
             .Returns(Task.CompletedTask).Verifiable(dryRun ? Times.Never() : Times.Once());
+        runner.Setup(x => x.LogCommand("vpk",
+                It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(packArguments))))
+            .Verifiable(dryRun ? Times.Once() : Times.Never());
         using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
 
         // Act
@@ -160,6 +166,88 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             .ShouldBe(["/repo/.artifacts/linux-x64/old.AppImage"]);
         runner.Verify();
         publisher.Verify();
+    }
+
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(false, true)]
+    public async Task ShouldLogRedactedCommandPlanWithoutSideEffects_WhenPackagingDryRun(
+        bool skipFrontend, bool skipRestore)
+    {
+        // Arrange
+        const string root = "/repo with spaces";
+        SetupFileSystem(system =>
+        {
+            system.AddFile($"{root}/src/AppHost/ClientApp/bun.lock", new MockFileData("lock-sentinel"));
+            system.AddFile($"{root}/.artifacts/linux-x64/old.AppImage", new MockFileData("artifact-sentinel"));
+        });
+        var fileSystem = Mock.Container.Resolve<IFileSystem>();
+        var paths = new BuildPaths(root, fileSystem);
+        var settings = new DesktopCommandSettings
+        {
+            RuntimeIdentifier = "linux-x64",
+            Version = "1.2.3",
+            InformationalVersion = "1.2.3-dev.1",
+            TelemetryHost = "https://telemetry.example.test/",
+            TelemetryProjectToken = "phc_dry-run-test-token_123",
+            SkipFrontend = skipFrontend,
+            SkipRestore = skipRestore,
+            DryRun = true,
+        };
+        using var context = TestCorrelator.CreateContext();
+        using var logger = new LoggerConfiguration().WriteTo.TestCorrelator().CreateLogger();
+        var concreteRunner = new DesktopCommandRunner(paths, fileSystem, logger);
+        var runner = new Mock<IDesktopCommandRunner>(MockBehavior.Strict);
+        runner.Setup(x => x.LogCommand(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>()))
+            .Callback<string, IReadOnlyList<string>>(concreteRunner.LogCommand);
+        var builder = new ContainerBuilder();
+        builder.RegisterModule<BuildModule>();
+        builder.RegisterInstance(paths);
+        builder.RegisterInstance(fileSystem);
+        builder.RegisterInstance(runner.Object).As<IDesktopCommandRunner>();
+        builder.RegisterInstance(logger).As<ILogger>();
+        using var container = builder.Build();
+        var beforeFiles = fileSystem.Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal).Select(file => (file, fileSystem.File.ReadAllText(file))).ToArray();
+        var beforeDirectories = fileSystem.Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal).ToArray();
+        var publish = paths.PublishDirectory("linux-x64");
+        var expectedCommands = new List<string>();
+        if (!skipFrontend)
+            expectedCommands.AddRange(["bun install --frozen-lockfile", "bun run generate --fail-on-error"]);
+        if (!skipRestore)
+            expectedCommands.Add($"dotnet restore \"{paths.AppHostProject}\" --runtime linux-x64");
+        expectedCommands.Add(
+            $"dotnet publish \"{paths.AppHostProject}\" --no-restore -p:PublishProfile=Desktop-linux-x64 " +
+            "-p:Version=1.2.3 -p:InformationalVersion=1.2.3-dev.1 " +
+            "-p:ReaparrTelemetryHost=https://telemetry.example.test -p:ReaparrTelemetryProjectToken=[REDACTED] " +
+            $"\"-p:PublishDir={publish}{fileSystem.Path.DirectorySeparatorChar}\" -p:CSharpier_Bypass=true");
+        expectedCommands.Add(
+            $"vpk pack --packId Reaparr --packTitle Reaparr --packVersion 1.2.3 --packDir \"{publish}\" " +
+            "--mainExe Reaparr.AppHost --runtime linux-x64 --channel linux-x64-dev " +
+            $"--outputDir \"{paths.ArtifactDirectory("linux-x64")}\"");
+
+        // Act
+        var result = await container.Resolve<ICommandExecutor>().Send(new DesktopPackageBuildCommand(settings), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.ShouldBe(0);
+        var events = TestCorrelator.GetLogEventsFromCurrentContext();
+        events.Where(e => e.MessageTemplate.Text == "> {Command}")
+            .Select(e => e.Properties["Command"].ShouldBeOfType<ScalarValue>().Value)
+            .ShouldBe(expectedCommands);
+        events.ShouldContain(e => e.MessageTemplate.Text == "Planned {RuntimeIdentifier} desktop publish to {PublishDirectory}");
+        events.ShouldContain(e => e.MessageTemplate.Text ==
+            "Planned {RuntimeIdentifier} desktop packaging for Velopack channel {Channel} to {ArtifactDirectory}");
+        events.ShouldNotContain(e => e.MessageTemplate.Text.StartsWith("Published") ||
+            e.MessageTemplate.Text.StartsWith("Packaged") || e.MessageTemplate.Text.StartsWith("Installing"));
+        events.ShouldNotContain(e => e.RenderMessage().Contains(settings.TelemetryProjectToken));
+        fileSystem.Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal).Select(file => (file, fileSystem.File.ReadAllText(file))).ShouldBe(beforeFiles);
+        fileSystem.Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal).ShouldBe(beforeDirectories);
     }
 
     private static IContainer CreateBuildContainer(

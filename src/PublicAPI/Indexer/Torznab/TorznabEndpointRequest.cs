@@ -19,16 +19,16 @@ public record TorznabEndpointRequest
     public string? Query { get; init; }
 
     /// <summary>
-    /// Season number for tvsearch queries.
+    /// Season number, or air-date year for daily tvsearch queries.
     /// </summary>
     [QueryParam, BindFrom("season")]
     public int? Season { get; init; }
 
     /// <summary>
-    /// Episode number for tvsearch queries.
+    /// Episode number, or MM/dd for daily tvsearch queries.
     /// </summary>
     [QueryParam, BindFrom("ep")]
-    public int? Episode { get; init; }
+    public string? Episode { get; init; }
 
     /// <summary>
     /// TheTVDB series ID for tvsearch queries.

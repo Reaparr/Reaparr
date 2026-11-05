@@ -16,7 +16,8 @@ public class LogMaskingUnitTests : BaseUnitTest<LogMaskingUnitTests>
 
             var runtimeInfo = Mock.Container.Resolve<IAppRuntimeInfo>();
             var pathProvider = Mock.Container.Resolve<IPathProvider>();
-            var testLogConfig = new TestLogConfig(runtimeInfo, pathProvider);
+            var appBuildInfo = Mock.Container.Resolve<IAppBuildInfo>();
+            var testLogConfig = new TestLogConfig(runtimeInfo, pathProvider, appBuildInfo);
 
             runtimeInfo.IsUnmasked.ShouldBeFalse();
 

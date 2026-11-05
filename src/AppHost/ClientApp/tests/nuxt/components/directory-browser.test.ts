@@ -201,15 +201,65 @@ describe('DirectoryBrowser', () => {
 
 		// Act
 		await wrapper.get('[data-cy="directory-browser-row-0"]').trigger('click');
+		await wrapper.get('[data-cy="directory-browser-navigate-0"]').trigger('click');
+		await wrapper.get('[data-cy="directory-browser-navigate-return"]').trigger('click');
 		await wrapper.get('[data-cy="directory-browser-confirm-button"]').trigger('click');
 		await flushPromises();
 
 		// Assert
 		expect(wrapper.get('[data-cy="directory-browser-save-error"]').text()).toContain('The directory could not be saved.');
 		expect(wrapper.get('[data-cy="directory-browser-confirm-button"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.get('[data-cy="directory-browser-navigate-0"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.get('[data-cy="directory-browser-navigate-return"]').attributes('disabled')).toBeDefined();
 		expect(wrapper.getComponent(PTextField).attributes('readonly')).toBeDefined();
 		expect(mock.history.get.length).toBe(initialRequests);
 		expect(wrapper.emitted('confirm')).toBeUndefined();
+	});
+
+	test('Should navigate once per directory button activation and confirm the resolved parent', async () => {
+		// Arrange
+		const wrapper = await render({ saving: false, errorMessage: '' });
+		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
+		await flushPromises();
+		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
+		mock.onGet(endpoint).reply((request) => [200, generateResultDTO(directoryResult(request.params.path))]);
+		mock.resetHistory();
+
+		// Act
+		await wrapper.get('[data-cy="directory-browser-navigate-0"]').trigger('click');
+		await flushPromises();
+
+		// Assert
+		expect(mock.history.get.map((request) => request.params)).toEqual([{ path: '/root/Movies' }]);
+		expect(wrapper.get('input').element.value).toBe('/root/Movies');
+		await wrapper.get('[data-cy="directory-browser-navigate-return"]').trigger('click');
+		await flushPromises();
+		expect(mock.history.get.map((request) => request.params)).toEqual([{ path: '/root/Movies' }, { path: '/root' }]);
+		expect(wrapper.get('input').element.value).toBe('/root');
+		await wrapper.get('[data-cy="directory-browser-confirm-button"]').trigger('click');
+		expect(wrapper.emitted('confirm')).toEqual([[folderPath]]);
+	});
+
+	test('Should exclude unreadable directory buttons from navigation', async () => {
+		// Arrange
+		const wrapper = await render({ saving: false, errorMessage: '' });
+		const result = directoryResult('/root');
+		result.directories[0]!.hasReadPermission = false;
+		mock.onGet(FolderPathPaths.getFolderPathDirectoryEndpoint()).reply(200, generateResultDTO(result));
+		wrapper.getComponent(CardDialog).vm.$emit('opened', folderPath);
+		await flushPromises();
+		mock.resetHistory();
+
+		// Act
+		const button = wrapper.get('[data-cy="directory-browser-navigate-0"]');
+		await button.trigger('click');
+		await wrapper.get('[data-cy="directory-browser-row-0"]').trigger('click');
+		await flushPromises();
+
+		// Assert
+		expect(button.attributes('disabled')).toBeDefined();
+		expect(mock.history.get).toEqual([]);
+		expect(wrapper.get('input').element.value).toBe('/root');
 	});
 
 	test('Should accept only the latest directory permissions and parent after reordered lookups', async () => {

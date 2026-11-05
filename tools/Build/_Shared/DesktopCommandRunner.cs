@@ -8,6 +8,8 @@ namespace Reaparr.Build;
 
 internal interface IDesktopCommandRunner
 {
+    void LogCommand(string fileName, IReadOnlyList<string> arguments);
+
     Task RunCommandAsync(string fileName, IReadOnlyList<string> arguments, string? workingDirectory = null);
 
     Task<int> ExecuteCommandAsync(string fileName, IReadOnlyList<string> arguments, string? workingDirectory = null);
@@ -162,11 +164,20 @@ internal sealed class DesktopCommandRunner : IDesktopCommandRunner
         return Task.FromResult(false);
     }
 
-    private void LogCommand(string fileName, IReadOnlyList<string> arguments) =>
+    public void LogCommand(string fileName, IReadOnlyList<string> arguments) =>
         _log.Here().Information("> {Command}", FormatCommand(fileName, arguments));
 
     private static string FormatCommand(string fileName, IReadOnlyList<string> arguments) =>
-        string.Join(' ', new[] { fileName }.Concat(arguments.Select(QuoteIfNeeded)));
+        string.Join(' ', new[] { fileName }.Concat(arguments.Select(FormatArgument)));
+
+    private static string FormatArgument(string value)
+    {
+        const string telemetryTokenPrefix = "-p:ReaparrTelemetryProjectToken=";
+        if (value.StartsWith(telemetryTokenPrefix, StringComparison.OrdinalIgnoreCase))
+            return $"{telemetryTokenPrefix}[REDACTED]";
+
+        return QuoteIfNeeded(value);
+    }
 
     private static string QuoteIfNeeded(string value) =>
         value.Any(char.IsWhiteSpace) ? $"\"{value.Replace("\"", "\\\"")}\"" : value;

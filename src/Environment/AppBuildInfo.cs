@@ -20,6 +20,12 @@ public sealed class AppBuildInfo : IAppBuildInfo
     public string RuntimeIdentifier => GetAssemblyMetadataValue("ReaparrRuntimeIdentifier");
 
     /// <inheritdoc/>
+    public string TelemetryHost => GetAssemblyMetadataValue("ReaparrTelemetryHost", string.Empty);
+
+    /// <inheritdoc/>
+    public string TelemetryProjectToken => GetAssemblyMetadataValue("ReaparrTelemetryProjectToken", string.Empty);
+
+    /// <inheritdoc/>
     public bool IsDesktopMode => string.Equals(RuntimeMode, "desktop", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc/>
@@ -55,6 +61,9 @@ public sealed class AppBuildInfo : IAppBuildInfo
     /// <inheritdoc/>
     public bool IsMacOS => OperatingSystem.IsMacOS();
 
+    public bool HasValidTelemetry =>
+        !string.IsNullOrEmpty(TelemetryHost) && !string.IsNullOrEmpty(TelemetryProjectToken);
+
     /// <summary>
     /// Initializes a new instance of <see cref="AppBuildInfo"/> by reading build metadata from the entry assembly.
     /// </summary>
@@ -70,7 +79,7 @@ public sealed class AppBuildInfo : IAppBuildInfo
             assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
     }
 
-    private string GetAssemblyMetadataValue(string key) =>
+    private string GetAssemblyMetadataValue(string key, string fallback = "unknown") =>
         _attributes.FirstOrDefault(attribute => string.Equals(attribute.Key, key, StringComparison.Ordinal))?.Value
-        ?? "unknown";
+        ?? fallback;
 }

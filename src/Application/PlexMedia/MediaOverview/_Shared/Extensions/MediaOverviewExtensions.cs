@@ -56,7 +56,7 @@ internal static class MediaOverviewExtensions
         {
             return await context
                 .PlexLibraries.IgnoreIsEnabledFilter()
-                .Where(x => x.Id == filter.PlexLibraryId && x.IsEnabled && x.Type == libraryType)
+                .Where(x => x.Id == filter.PlexLibraryId && x.IsEnabled && x.PlexServer!.IsEnabled && x.Type == libraryType)
                 .Select(x => x.Id)
                 .ToListAsync(cancellationToken);
         }

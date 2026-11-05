@@ -158,7 +158,7 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
         if (!string.IsNullOrWhiteSpace(req.Search))
         {
             var searchTerms = req
-                .Search.ToLowerInvariant()
+                .Search.ToSearchTitle()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Where(x => x.Length >= 2)
                 .Distinct();

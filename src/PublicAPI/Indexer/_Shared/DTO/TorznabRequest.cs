@@ -6,8 +6,9 @@ public sealed record TorznabRequest
 {
     public required TorznabQueryType Type { get; init; }
     public required string Query { get; init; }
-    public required int Season { get; init; }
+    public required int? Season { get; init; }
     public required int Episode { get; init; }
+    public DateOnly? AirDate { get; init; }
     public required int TvdbId { get; init; }
     public required string ImdbId { get; init; }
     public required int TmdbId { get; init; }
@@ -47,8 +48,9 @@ public sealed record TorznabRequest
         && string.IsNullOrWhiteSpace(ImdbId)
         && TmdbId <= 0
         && TvdbId <= 0
-        && Season <= 0
-        && Episode <= 0;
+        && Season is null
+        && Episode <= 0
+        && AirDate is null;
 
     public bool HasAnyExternalId => !string.IsNullOrWhiteSpace(ImdbId) || TmdbId > 0 || TvdbId > 0;
 }

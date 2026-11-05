@@ -119,6 +119,66 @@ public class CheckForUpdatesCommandUnitTests : BaseUnitTest<CheckForUpdatesComma
         manager.Verify();
     }
 
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(true, true)]
+    public async Task ShouldSkipReleaseNotes_WhenDesktopHasNoUpdateOrUpdateCheckFails(bool installed, bool failCheck)
+    {
+        // Arrange
+        var appBuildInfo = new MockAppBuildInfo
+        {
+            RuntimeMode = "desktop",
+            Version = "0.38.0",
+            InformationalVersion = "0.38.0",
+        };
+        var manager = new Mock<UpdateManager>(
+            new Mock<IUpdateSource>().Object,
+            null!,
+            new Mock<IVelopackLocator>(MockBehavior.Loose).Object
+        );
+        manager.Setup(x => x.IsInstalled).Returns(installed).Verifiable(Times.Once());
+        manager.Setup(x => x.AppId).Returns("Reaparr").Verifiable(Times.Once());
+        manager.Setup(x => x.CurrentVersion).Returns(new SemanticVersion(0, 38, 0)).Verifiable(Times.Once());
+        var failure = new InvalidOperationException("Update feed unavailable");
+        if (failCheck)
+            manager.Setup(x => x.CheckForUpdatesAsync()).ThrowsAsync(failure).Verifiable(Times.Once());
+        else
+            manager
+                .Setup(x => x.CheckForUpdatesAsync())
+                .ReturnsAsync((UpdateInfo?)null)
+                .Verifiable(installed ? Times.Once() : Times.Never());
+        var executor = Mock.Mock<ICommandExecutor>();
+        var sut = new CheckForUpdatesCommandHandler(Log, executor.Object, appBuildInfo, manager.Object);
+
+        // Act
+        var result = await sut.ExecuteAsync(new CheckForUpdatesCommand(), CancellationToken);
+
+        // Assert
+        if (failCheck)
+        {
+            result.IsFailed.ShouldBeTrue();
+            result.IsCancelled.ShouldBeFalse();
+            result.Errors.Count.ShouldBe(1);
+            result.Errors[0].ShouldBeOfType<ExceptionalError>().Exception.ShouldBeSameAs(failure);
+            result.ValueOrDefault.ShouldBeNull();
+        }
+        else
+        {
+            result.IsSuccess.ShouldBeTrue();
+            result.Errors.ShouldBeEmpty();
+            result.Value.IsUpdateAvailable.ShouldBeFalse();
+            result.Value.CurrentVersion.ShouldBe("0.38.0");
+            result.Value.NewestVersion.ShouldBe("0.38.0");
+            result.Value.ReleaseNotes.ShouldBeEmpty();
+        }
+        executor.Verify(
+            x => x.Send(It.IsAny<GetGitHubReleasesCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+        manager.Verify();
+    }
+
     public enum FallbackOutcome
     {
         Failed,

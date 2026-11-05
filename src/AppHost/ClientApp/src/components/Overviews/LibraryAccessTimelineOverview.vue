@@ -84,8 +84,6 @@
 <script setup lang="ts">
 import { get } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
-import { debounceTime, switchMap } from 'rxjs/operators';
-import { Subject } from 'rxjs';
 import { orderBy } from 'lodash-es';
 import { useLibraryAccessTimelineStore, useLibraryStore, useServerStore } from '@store';
 import type { LibraryAccessTimelineZoomPreset } from '@store';
@@ -96,14 +94,12 @@ const { t } = useI18n();
 const serverStore = useServerStore();
 const libraryStore = useLibraryStore();
 const timelineStore = useLibraryAccessTimelineStore();
-const refreshTimeline$ = new Subject<void>();
 
 const selectedServerId = computed({
 	get: () => timelineStore.filters.plexServerId ?? null,
 	set: (value: number | null) => {
 		timelineStore.setServer(value);
 		timelineStore.setLibrary(null);
-		refreshTimeline$.next();
 	},
 });
 
@@ -111,7 +107,6 @@ const selectedLibraryId = computed({
 	get: () => timelineStore.filters.plexLibraryId ?? null,
 	set: (value: number | null) => {
 		timelineStore.setLibrary(value);
-		refreshTimeline$.next();
 	},
 });
 
@@ -120,7 +115,6 @@ const selectedZoomPreset = computed({
 	set: (value: LibraryAccessTimelineZoomPreset) => {
 		timelineStore.setZoomPreset(value);
 		applyZoomPreset(value);
-		refreshTimeline$.next();
 	},
 });
 
@@ -163,14 +157,9 @@ const zoomOptions: { label: string; value: LibraryAccessTimelineZoomPreset }[] =
 	{ label: 'All', value: 'All' },
 ];
 
-useSubscription(refreshTimeline$.pipe(
-	debounceTime(100),
-	switchMap(() => timelineStore.refreshTimeline()),
-).subscribe());
-
 onMounted(() => {
-	refreshTimeline$.next();
 	applyZoomPreset(timelineStore.zoomPreset);
+	useSubscription(timelineStore.refreshTimeline().subscribe());
 });
 
 function applyZoomPreset(zoomPreset: LibraryAccessTimelineZoomPreset) {

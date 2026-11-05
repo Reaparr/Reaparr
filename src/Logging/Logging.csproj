@@ -4,6 +4,7 @@
         <AssemblyName>Reaparr.Logging</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
+        <InternalsVisibleTo Include="Reaparr.Logging.UnitTests" />
         <PackageReference Include="Autofac" Version="9.1.0" />
         <PackageReference Include="CSharpier.MsBuild" Version="1.3.0">
             <PrivateAssets>all</PrivateAssets>
@@ -19,6 +20,7 @@
         <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
         <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
         <PackageReference Include="Serilog.Sinks.Seq" Version="9.0.0" />
+        <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
         <PackageReference Include="Serilog.Sinks.TestCorrelator" Version="4.0.0" />
     </ItemGroup>
     <ItemGroup>

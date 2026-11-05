@@ -467,7 +467,7 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
             {
                 Type = type,
                 Query = query,
-                Season = 0,
+                Season = null,
                 Episode = 0,
                 TvdbId = tvdbId,
                 ImdbId = imdbId,

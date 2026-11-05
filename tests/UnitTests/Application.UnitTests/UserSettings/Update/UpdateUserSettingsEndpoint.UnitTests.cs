@@ -1,5 +1,8 @@
+using System.IO.Abstractions;
+using Autofac;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
+using Reaparr.Environment;
 using Reaparr.Settings;
 
 namespace Reaparr.Application.UnitTests;
@@ -7,6 +10,63 @@ namespace Reaparr.Application.UnitTests;
 public class UpdateUserSettingsEndpointUnitTests
     : BaseEndpointUnitTest<UpdateUserSettingsEndpoint, UpdateUserSettingsEndpointRequest, SettingsModelDTO>
 {
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task ShouldPersistDisclaimerChoice_WhenSettingsAreUpdatedAndReloaded(bool hasAgreed)
+    {
+        // Arrange
+        var settings = new UserSettings();
+        settings.GeneralSettings.HasAgreedToDisclaimer = !hasAgreed;
+        settings.GeneralSettings.DisableAnimatedBackground = true;
+        settings.LanguageSettings.Language = "fr-FR";
+        SetupFileSystem(system => system.AddDirectory(Mock.Container.Resolve<IPathProvider>().ConfigDirectory));
+        var fileSystem = Mock.Container.Resolve<IFileSystem>();
+        var paths = Mock.Container.Resolve<IPathProvider>();
+        var writer = new ConfigManager(
+            Mock.Container.Resolve<ILogger>(),
+            paths,
+            settings,
+            fileSystem.File,
+            fileSystem.Path,
+            fileSystem.Directory
+        );
+        writer.SaveConfig().IsSuccess.ShouldBeTrue();
+        var dto = settings.ToDTO();
+        dto.GeneralSettings.HasAgreedToDisclaimer = hasAgreed;
+        var reloaded = new UserSettings();
+        var reader = new ConfigManager(
+            Mock.Container.Resolve<ILogger>(),
+            paths,
+            reloaded,
+            fileSystem.File,
+            fileSystem.Path,
+            fileSystem.Directory
+        );
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
+            services => services.AddSingleton<IUserSettings>(settings)
+        );
+        var saved = writer.SaveConfig();
+        var loaded = reader.LoadConfig();
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        result.ValidationErrors.ShouldBeEmpty();
+        result.StatusCode.ShouldBe(200);
+        settings.GeneralSettings.HasAgreedToDisclaimer.ShouldBe(hasAgreed);
+        saved.IsSuccess.ShouldBeTrue();
+        saved.Errors.ShouldBeEmpty();
+        loaded.IsSuccess.ShouldBeTrue();
+        loaded.Errors.ShouldBeEmpty();
+        reloaded.GeneralSettings.HasAgreedToDisclaimer.ShouldBe(hasAgreed);
+        reloaded.GeneralSettings.DisableAnimatedBackground.ShouldBeTrue();
+        reloaded.LanguageSettings.Language.ShouldBe("fr-FR");
+        reloaded.ToDTO().ShouldBeEquivalentTo(dto);
+    }
+
     [Test]
     public async Task ShouldRejectNullSettings_WhenNoSettingsBodyIsProvided()
     {
