@@ -60,9 +60,12 @@ public sealed class DiskProvider : IDiskProvider
         if (directories.IsFailed)
             return directories.ToResult();
 
-        var list = directories.Value.OrderBy(x => x.Name).Select(x => x.ToModel()).ToList();
-
-        list.RemoveAll(x => _setToRemove.Contains(x.Name.ToLowerInvariant()));
+        // Mapping probes write permission by creating a temporary file, so exclude hidden directories first.
+        var list = directories
+            .Value.Where(x => !_setToRemove.Contains(x.Name.ToLowerInvariant()))
+            .OrderBy(x => x.Name)
+            .Select(x => x.ToModel())
+            .ToList();
 
         return Result.Ok(list);
     }
