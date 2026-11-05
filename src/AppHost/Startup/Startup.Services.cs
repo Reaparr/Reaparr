@@ -8,8 +8,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http;
 using Microsoft.OpenApi;
-using PostHog;
-using PostHog.Config;
 using Reaparr.Application.Contracts;
 using Reaparr.Identity.Contracts;
 using Serilog.Sinks.AspNetCore.App.SignalR.Extensions;
@@ -29,10 +27,12 @@ public static partial class Startup
     /// <param name="appRuntimeInfo">
     /// Runtime settings controlling integration-test exclusions and the trusted-proxy authentication header name.
     /// </param>
+    /// <param name="appBuildInfo">Immutable build metadata selecting whether native telemetry is registered.</param>
     public static void ConfigureServices(
         this IServiceCollection services,
         IWebHostEnvironment env,
-        IAppRuntimeInfo appRuntimeInfo
+        IAppRuntimeInfo appRuntimeInfo,
+        IAppBuildInfo appBuildInfo
     )
     {
         // This has to always be first
@@ -53,24 +53,7 @@ public static partial class Startup
         });
 
         services.AddOptions();
-        // Release artifacts own the ingestion destination and token; do not bind runtime configuration.
-        services
-            .AddOptions<PostHogOptions>()
-            .Configure<IAppBuildInfo>(
-                static (options, appBuildInfo) =>
-                {
-                    if (!appBuildInfo.HasValidTelemetry)
-                    {
-                        options.Disabled = true;
-                        return;
-                    }
-
-                    options.HostUrl = new Uri(appBuildInfo.TelemetryHost, UriKind.Absolute);
-                    options.ProjectToken = appBuildInfo.TelemetryProjectToken;
-                }
-            );
-
-        services.AddPostHog();
+        services.ConfigureTelemetry(appBuildInfo, appRuntimeInfo);
 
         services.ConfigureHttpJsonOptions(options => options.SerializerOptions.ApplyStandardConfiguration());
 
