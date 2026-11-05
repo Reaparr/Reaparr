@@ -2,10 +2,10 @@ import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { HubConnectionState } from '@microsoft/signalr';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
-import { useSignalrStore, useLibraryStore, useDownloadStore } from '@store';
-import { PlexLibraryPaths } from '@api/api-paths';
-import { DownloadStatus, LibrarySyncJobStatus, LogSeverity, MessageTypes, PlexMediaType, type ServerDownloadProgressDTO } from '@dto';
-import { generateLibrarySyncJobQueue, generateResultDTO } from '@mock';
+import { useSignalrStore, useLibraryStore, useDownloadStore, useNotificationsStore } from '@store';
+import { NotificationPaths, PlexLibraryPaths } from '@api/api-paths';
+import { DownloadStatus, LibrarySyncJobStatus, LogSeverity, MessageTypes, NotificationLevel, PlexMediaType, type NotificationDTO, type ServerDownloadProgressDTO } from '@dto';
+import { generateFailedResultDTO, generateLibrarySyncJobQueue, generateResultDTO } from '@mock';
 import { flushPromises } from '@vue/test-utils';
 
 type HubName = 'progress' | 'download' | 'notifications' | 'logs';
@@ -46,6 +46,7 @@ describe('SignalrStore connections', () => {
 			statusCode: 200,
 			value: { downloads: [], patchSequenceByServer: {} },
 		});
+		mock.onGet(NotificationPaths.getAllNotificationsEndpoint()).reply(200, generateResultDTO([]));
 		setActivePinia(createPinia());
 		hubConnections.clear();
 		hubConnections.set('progress', createHub());
@@ -105,6 +106,59 @@ describe('SignalrStore connections', () => {
 		// Assert
 		expect(mock.history.get.filter((request) => request.url === PlexLibraryPaths.getLibrarySyncStatusEndpoint())).toHaveLength(1);
 		expect(libraryStore.getLibrarySyncQueue(11)).toEqual(queue);
+	});
+
+	test('Should recover notifications missed before the current notification hub reconnects', async () => {
+		// Arrange
+		const signalrStore = useSignalrStore();
+		const notificationsStore = useNotificationsStore();
+		const current = notification(1);
+		const missed = notification(2);
+		const endpoint = NotificationPaths.getAllNotificationsEndpoint();
+		mock.onGet(endpoint).reply(200, generateResultDTO([current]));
+		await subscribeSpyTo(notificationsStore.setup()).onComplete();
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		expect(notificationsStore.getNotifications).toEqual([current]);
+		mock.onGet(endpoint).reply(200, generateResultDTO([current, missed]));
+		mock.resetHistory();
+
+		// Act
+		hubConnections.get('notifications')!.reconnected?.();
+		await flushPromises();
+
+		// Assert
+		expect(notificationsStore.getVisibleNotifications).toEqual([current, missed]);
+		expect(mock.history.get.filter((request) => request.url === endpoint)).toHaveLength(1);
+		await signalrStore.resetSession();
+	});
+
+	test('Should retain notification history after a failed reconnect fetch and recover on the next reconnect', async () => {
+		// Arrange
+		const signalrStore = useSignalrStore();
+		const notificationsStore = useNotificationsStore();
+		const current = notification(1);
+		const missed = notification(2);
+		const endpoint = NotificationPaths.getAllNotificationsEndpoint();
+		mock.onGet(endpoint).reply(200, generateResultDTO([current]));
+		await subscribeSpyTo(notificationsStore.setup()).onComplete();
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		mock.onGet(endpoint).reply(500, generateFailedResultDTO({ statusCode: 500 }));
+		mock.resetHistory();
+
+		// Act
+		const hub = hubConnections.get('notifications')!;
+		hub.reconnected?.();
+		await flushPromises();
+
+		// Assert
+		expect(notificationsStore.getVisibleNotifications).toEqual([current]);
+		expect(mock.history.get.filter((request) => request.url === endpoint)).toHaveLength(1);
+		mock.onGet(endpoint).reply(200, generateResultDTO([current, missed]));
+		hub.reconnected?.();
+		await flushPromises();
+		expect(notificationsStore.getVisibleNotifications).toEqual([current, missed]);
+		expect(mock.history.get.filter((request) => request.url === endpoint)).toHaveLength(2);
+		await signalrStore.resetSession();
 	});
 
 	test('Should restore the download queue on reconnect and ignore a replaced connection callback', async () => {
@@ -205,12 +259,16 @@ describe('SignalrStore connections', () => {
 	test('Should stop old hubs and deliver only new session events after reset and setup', async () => {
 		// Arrange
 		const signalrStore = useSignalrStore();
+		const notificationsStore = useNotificationsStore();
+		await subscribeSpyTo(notificationsStore.setup()).onComplete();
 		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		mock.resetHistory();
 		const oldHubs = [...hubConnections.values()];
 		const oldLogHub = hubConnections.get('logs')!;
 		const oldNotificationHub = hubConnections.get('notifications')!;
 		const oldEvents = subscribeSpyTo(signalrStore.getLogEvents());
 		const event = { sequence: 1, timestamp: '2026-10-18T10:00:00Z', level: LogSeverity.Information, message: 'New session log' };
+		const currentNotification = notification(3);
 
 		// Act
 		await signalrStore.resetSession();
@@ -221,13 +279,17 @@ describe('SignalrStore connections', () => {
 		const currentEvents = subscribeSpyTo(signalrStore.getLogEvents());
 		oldLogHub.handlers.get('LogEvent')?.(event);
 		hubConnections.get('logs')!.handlers.get('LogEvent')?.(event);
+		hubConnections.get('notifications')!.handlers.get(MessageTypes.Notification)?.(currentNotification);
 		oldNotificationHub.reconnected?.();
+		await flushPromises();
 
 		// Assert
 		expect(oldEvents.receivedComplete()).toBe(true);
 		expect(oldEvents.getValues()).toEqual([]);
 		expect(currentEvents.getValues()).toEqual([event]);
 		expect(mock.history.get.filter((request) => request.url === PlexLibraryPaths.getLibrarySyncStatusEndpoint())).toHaveLength(0);
+		expect(notificationsStore.getVisibleNotifications).toEqual([currentNotification]);
+		expect(mock.history.get.filter((request) => request.url === NotificationPaths.getAllNotificationsEndpoint())).toHaveLength(0);
 		for (const hub of oldHubs) {
 			expect(hub.stop).toHaveBeenCalledTimes(1);
 			expect(hub.state).toBe(HubConnectionState.Disconnected);
@@ -312,4 +374,10 @@ function downloadQueue(status: DownloadStatus): ServerDownloadProgressDTO[] {
 		id: 'current', title: 'Current movie', status, mediaType: PlexMediaType.Movie, children: [], percentage: 0,
 		dataReceived: 0, dataTotal: 100, downloadSpeed: 0, timeRemaining: 0,
 	}] }];
+}
+
+function notification(id: number): NotificationDTO {
+	return {
+		id, level: NotificationLevel.Information, createdAt: '2026-11-05T00:00:00Z', message: `Notification ${id}`, hidden: false,
+	};
 }

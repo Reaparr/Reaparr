@@ -209,6 +209,7 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 		notificationConnection?.onreconnected?.(() => {
 			if (notificationHubConnection !== notificationConnection || notificationConnection?.state !== HubConnectionState.Connected) return;
 			libraryStore.refreshLibrarySyncStatus().subscribe();
+			notificationsStore.fetchNotifications().subscribe();
 		});
 	}
 
