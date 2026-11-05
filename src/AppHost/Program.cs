@@ -66,34 +66,9 @@ public class Program
             if (!_appRuntimeInfo.IsIntegrationTestMode)
                 signalRLogConfig.AttachSignalR(app, LogFactory.MinimumLogLevel);
 
-            var configResult = app.SetupConfigFile();
-            if (configResult.IsFailed)
-            {
-                FailedToStart(configResult);
-                return;
-            }
-
-            var configureDatabase = await app.SetupDatabase();
-            if (configureDatabase.IsFailed)
-            {
-                FailedToStart(configureDatabase);
-                return;
-            }
-
-            app.ApplyForwardedHeaders();
-
-            app.ConfigureApplication(app.Environment, _appBuildInfo, _appRuntimeInfo);
-
-            if (_appBuildInfo.IsDesktopMode && !_appRuntimeInfo.IsIntegrationTestMode)
-            {
-                var desktopLifecycleResult = await RunDesktopLifecycleAsync(app);
-                if (desktopLifecycleResult.IsFailed)
-                    FailedToStart(desktopLifecycleResult);
-            }
-            else
-            {
-                await app.RunAsync();
-            }
+            var applicationResult = await RunApplicationAsync(app, _appBuildInfo, _appRuntimeInfo);
+            if (applicationResult.IsFailed)
+                FailedToStart(applicationResult);
         }
         catch (Exception e)
         {
@@ -107,6 +82,42 @@ public class Program
         }
     }
 
+    internal static async Task<Result> RunApplicationAsync(
+        WebApplication app,
+        IAppBuildInfo appBuildInfo,
+        IAppRuntimeInfo appRuntimeInfo,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var isDesktopProcess = appBuildInfo.IsDesktopMode && !appRuntimeInfo.IsIntegrationTestMode;
+        if (isDesktopProcess)
+        {
+            var coordinator = app.Services.GetRequiredService<IDesktopSingleInstanceCoordinator>();
+            if (!coordinator.TryAcquirePrimaryOwnership())
+            {
+                _log.Here().Debug("Signaling the existing Reaparr desktop instance");
+                return await coordinator.SignalPrimaryInstanceAsync(cancellationToken);
+            }
+        }
+
+        var configResult = app.SetupConfigFile();
+        if (configResult.IsFailed)
+            return configResult;
+
+        var databaseResult = await app.SetupDatabase();
+        if (databaseResult.IsFailed)
+            return databaseResult;
+
+        app.ApplyForwardedHeaders();
+        app.ConfigureApplication(app.Environment, appBuildInfo, appRuntimeInfo);
+
+        if (isDesktopProcess)
+            return await RunDesktopLifecycleAsync(app, cancellationToken);
+
+        await app.RunAsync(cancellationToken);
+        return Result.Ok();
+    }
+
     internal static async Task<Result> RunDesktopLifecycleAsync(
         WebApplication app,
         CancellationToken cancellationToken = default,
@@ -116,11 +127,6 @@ public class Program
         var services = app.Services;
         var singleInstanceCoordinator = services.GetRequiredService<IDesktopSingleInstanceCoordinator>();
 
-        if (!singleInstanceCoordinator.TryAcquirePrimaryOwnership())
-        {
-            _log.Here().Debug("Signaling the existing Reaparr desktop instance");
-            return await singleInstanceCoordinator.SignalPrimaryInstanceAsync(cancellationToken);
-        }
 
         await app.StartAsync(cancellationToken);
         // Observe host shutdown before entering the blocking native window loop.
