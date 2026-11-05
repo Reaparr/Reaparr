@@ -1,6 +1,6 @@
 import { headers, route } from '@fixtures';
-import { generateResultDTO } from '@mock';
-import { PlexMediaType, PhotoItemKind, type PhotoAlbumBrowseDTO } from '@dto';
+import { generateFailedResultDTO, generateResultDTO } from '@mock';
+import { FolderType, PlexMediaType, PhotoItemKind, type PhotoAlbumBrowseDTO } from '@dto';
 
 const libraryId = 41;
 const serverId = 3;
@@ -39,6 +39,11 @@ function setup() {
 			plexAccounts: (items) => items.map((item) => ({ ...item, plexServerAccess: [serverId], plexLibraryAccess: [libraryId] })),
 			downloadTasks: (items) => items,
 			settings: (settings) => ({ ...settings, confirmationSettings: { ...settings.confirmationSettings, askDownloadPhotoAlbumConfirmation: true } }),
+			folderPaths: (items) => [...items, {
+				id: 42, directory: '/OldPhotos', displayName: 'Removed photo destination',
+				mediaType: PlexMediaType.PhotoAlbum, folderType: FolderType.PhotosFolder,
+				isDefault: false, isValid: true,
+			}],
 		},
 	});
 	cy.intercept('GET', '**/api/PlexPhoto/albums*', {
@@ -72,6 +77,12 @@ function setup() {
 }
 
 describe('Photos download lifecycle', () => {
+	let releasePreview: (() => void) | undefined;
+	afterEach(() => {
+		releasePreview?.();
+		releasePreview = undefined;
+	});
+
 	it('sends an explicit album selector through preview and create without legacy quality selectors', () => {
 		setup();
 		cy.visit(route('/photos'));
@@ -92,5 +103,81 @@ describe('Photos download lifecycle', () => {
 		cy.getCy('change-view-mode-btn').filter(':visible').click();
 		cy.getCy('view-mode-poster-btn').filter(':visible').click();
 		cy.getCy(`photo-album-${libraryId}-${albumId}`).should('be.visible');
+	});
+
+	it('recovers from a stale destination without closing the dialog or submitting a failed preview', () => {
+		setup();
+		let staleRejected = false;
+		cy.intercept('POST', '**/api/Download/preview', (request) => {
+			if (request.body.destinationFolderPathId === 42) {
+				staleRejected = true;
+				request.alias = 'missingDestination';
+				request.reply({
+					statusCode: 404,
+					body: generateFailedResultDTO({
+						statusCode: 404,
+						errors: [{ message: 'Destination no longer exists', metadata: {}, reasons: [] }],
+					}),
+					...headers,
+				});
+			} else if (staleRejected) {
+				request.alias = 'recoveredPreview';
+				const { promise, resolve } = Promise.withResolvers<undefined>();
+				releasePreview = () => {
+					releasePreview = undefined;
+					request.reply({
+						statusCode: 200,
+						body: generateResultDTO({
+							previews: [{ key: 'album-301', title: 'Recovered album', type: PlexMediaType.PhotoAlbum, size: album.assetBytes, qualities: [], children: [] }],
+							totalSize: album.assetBytes, expanded: {},
+						}),
+						...headers,
+					});
+					resolve(undefined);
+				};
+				return promise;
+			}
+		});
+		cy.visit(route('/photos'));
+		cy.wait('@photoAlbums');
+		cy.getCy('change-view-mode-btn').filter(':visible').click();
+		cy.getCy('view-mode-table-btn').filter(':visible').click();
+		cy.getCy('photo-overview-table').contains('tbody tr', album.title).find('[role="checkbox"]').click();
+		cy.getCy('media-overview-bar-download-button').click();
+		cy.wait('@photoPreview').its('request.body.destinationFolderPathId').should('eq', 5);
+		cy.getCy('download-confirmation-submit').find('button').last().click();
+		cy.getCy('download-confirmation-destination-42').click();
+		cy.wait('@missingDestination').its('response.statusCode').should('eq', 404);
+		cy.getCy('alert-dialog').should('contain.text', 'Destination no longer exists');
+		cy.getCy('close-alert-dialog').click();
+		cy.getCy('alert-dialog').should('not.exist');
+		cy.getCy('download-confirmation-error').should('be.visible');
+		cy.getCy('download-confirmation-submit').find('button').first().should('be.disabled');
+		cy.get('@photoCreate.all').should('have.length', 0);
+		cy.getCy('download-confirmation-submit').find('button').last().should('not.be.disabled').then(($arrow) => {
+			if ($arrow.attr('aria-expanded') !== 'true') cy.wrap($arrow).click();
+		});
+		cy.getCy('download-confirmation-destination-5').click();
+		cy.wrap(null).should(() => expect(releasePreview).to.be.a('function'));
+		cy.getCy('download-confirmation-submit').find('button').first().should('be.disabled');
+		cy.getCy('download-confirmation-submit').find('button').last().should('not.be.disabled').click();
+		cy.get('@photoCreate.all').should('have.length', 0);
+		cy.then(() => releasePreview!());
+		cy.wait('@recoveredPreview').its('request.body').should('include', {
+			destinationFolderPathId: 5, customDestinationFolderPath: '',
+		});
+		cy.getCy('download-confirmation-error').should('not.exist');
+		cy.contains('Recovered album').should('be.visible');
+		cy.get('.download-confirmation-destination-path').should('contain.text', '/Photos');
+		cy.getCy('download-confirmation-submit').find('button').first().should('not.be.disabled').click();
+		cy.wait('@photoCreate').its('request.body').should((body) => {
+			expect(body.destinationFolderPathId).to.eq(5);
+			expect(body.customDestinationFolderPath).to.eq('');
+			expect(body.downloadMedias).to.have.length(1);
+			expect(body.downloadMedias[0]).to.include({ type: PlexMediaType.PhotoAlbum, selectionKind: PhotoItemKind.Album });
+			expect(body.downloadMedias[0].mediaIds).to.deep.equal([albumId]);
+		});
+		cy.get('@photoCreate.all').should('have.length', 1);
+		cy.getCy('download-confirmation-submit').should('not.exist');
 	});
 });
