@@ -81,7 +81,8 @@ public class UpdateUserSettingsEndpoint : Endpoint<UpdateUserSettingsEndpointReq
 
             var timeZoneChanged = _userSettings.DateTimeSettings.TimeZone != settings.DateTimeSettings.TimeZone;
             var downloadLimitsChanged =
-                _userSettings.DownloadManagerSettings.DownloadSchedule != settings.DownloadManagerSettings.DownloadSchedule
+                _userSettings.DownloadManagerSettings.DownloadSchedule
+                    != settings.DownloadManagerSettings.DownloadSchedule
                 || HaveManualLimitsChanged(_userSettings.ServerSettings, settings.ServerSettings);
 
             _userSettings.UpdateSettings(settings);
