@@ -68,7 +68,7 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         var releasePayload = CreateStableReleasePayload();
         var githubHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         githubHandler
-            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases")
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
             .ReturnsAsync(
                 (HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, releasePayload)
             )
@@ -145,7 +145,7 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         // Arrange
         var githubHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         githubHandler
-            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases")
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
             .ReturnsAsync(
                 (HttpRequestMessage request, CancellationToken _) =>
                     new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { RequestMessage = request }
@@ -369,6 +369,84 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         dto.ReleaseNotes.ShouldBeEmpty();
     }
 
+    [Test]
+    public async Task ShouldReturnLaterStableRelease_WhenDockerFallbackFirstPageContainsOnlyDevReleases()
+    {
+        // Arrange
+        var firstPage = Enumerable.Range(1, 100)
+            .Select(index => new GitHubReleaseDTO { TagName = $"v0.39.0-dev.{index}", Prerelease = true })
+            .ToArray();
+        var firstPayload = JsonSerializer.Serialize(firstPage);
+        var secondPayload = CreateStableReleasePayload();
+        var githubHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        githubHandler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
+            .ReturnsAsync(
+                (HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, firstPayload)
+            )
+            .Verifiable(Times.Once());
+        githubHandler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=2")
+            .ReturnsAsync(
+                (HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, secondPayload)
+            )
+            .Verifiable(Times.Once());
+        var githubClientFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+        githubClientFactory
+            .Setup(x => x.CreateClient("GitHub"))
+            .Returns(() =>
+                new HttpClient(githubHandler.Object, disposeHandler: false)
+                {
+                    BaseAddress = new Uri("https://api.github.com/"),
+                }
+            )
+            .Verifiable(Times.Once());
+        var manager = new Mock<UpdateManager>(
+            new Mock<IUpdateSource>().Object,
+            null!,
+            new Mock<IVelopackLocator>(MockBehavior.Loose).Object
+        );
+        manager.Setup(x => x.CheckForUpdatesAsync()).ReturnsAsync((UpdateInfo?)null).Verifiable(Times.Once());
+        using var container = await CreateContainer(
+            new Seed(11007),
+            config =>
+            {
+                config.OverrideAppBuildInfo = new MockAppBuildInfo
+                {
+                    RuntimeMode = "docker",
+                    Version = "0.38.0",
+                    InformationalVersion = "0.38.0",
+                    RuntimeIdentifier = "linux-x64",
+                    CurrentOS = OperatingSystemPlatform.Linux,
+                };
+                config.OverrideServices = builder =>
+                    RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
+            }
+        );
+        var notifications = container.Resolve<MockNotificationHubService>();
+        using var client = container.GetApiClient();
+
+        // Act
+        var response = await client.GETAsync<CheckForUpdateEndpoint, ResultDTO<AppUpdateCheckDTO>>();
+
+        // Assert
+        response.Response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Result.IsSuccess.ShouldBeTrue();
+        response.Result.Errors.ShouldBeEmpty();
+        var dto = response.Result.Value.ShouldNotBeNull();
+        dto.IsUpdateAvailable.ShouldBeTrue();
+        dto.CurrentVersion.ShouldBe("0.38.0");
+        dto.NewestVersion.ShouldBe("0.39.0");
+        dto.ReleaseNotes.Select(x => (x.Version, x.Notes, x.ReleaseDate, x.IsDevRelease))
+            .ShouldBe(
+                [("v0.39.0", "Stable release notes", new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), false)]
+            );
+        notifications.RefreshNotificationList.ShouldNotContain(RefreshDataType.UpdateAvailable);
+        githubHandler.Verify();
+        githubClientFactory.Verify();
+        manager.Verify();
+    }
+
     private static string CreateStableReleasePayload() =>
         JsonSerializer.Serialize(
             new[]
@@ -399,6 +477,7 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         builder.RegisterInstance(githubClientFactory).As<IHttpClientFactory>().SingleInstance();
         builder.RegisterInstance(updateManager).As<UpdateManager>().SingleInstance();
         builder.RegisterType<MockNotificationHubService>().As<INotificationHubService>().AsSelf().SingleInstance();
+        builder.RegisterInstance(new Mock<ITelemetry>(MockBehavior.Strict).Object).As<ITelemetry>().SingleInstance();
     }
 
     private static FakeCommandExecutor CreateCommandExecutor(AppUpdateCheckResult updateResult) =>
