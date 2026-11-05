@@ -43,10 +43,6 @@ public class GetGitHubReleasesCommandHandler
         try
         {
             using var client = _httpClientFactory.CreateGitHubHttpClient();
-            var releases = await client.GetFromJsonAsync<IReadOnlyList<GitHubReleaseDTO>>(
-                "repos/Reaparr/Reaparr/releases",
-                cancellationToken
-            );
 
             var currentVersionString = _appBuildInfo.InformationalVersion;
             if (!TryParseSemVersion(currentVersionString, out var currentVersion))
@@ -60,13 +56,29 @@ public class GetGitHubReleasesCommandHandler
             }
 
             var isDevBuild = _appBuildInfo.IsDevRelease;
-            var filteredReleases = (releases ?? [])
-                .Where(x => x.Prerelease == isDevBuild)
-                .Where(x =>
-                    TryParseReleaseVersion(x.TagName, out var parsedVersion)
-                    && parsedVersion.ComparePrecedenceTo(currentVersion) > 0
-                )
-                .ToList();
+            const int pageSize = 100;
+            var filteredReleases = new List<GitHubReleaseDTO>();
+            for (var page = 1; ; page++)
+            {
+                var releases = await client.GetFromJsonAsync<IReadOnlyList<GitHubReleaseDTO>>(
+                    $"repos/Reaparr/Reaparr/releases?per_page={pageSize}&page={page}",
+                    cancellationToken
+                );
+                if (releases is null or { Count: 0 })
+                    break;
+
+                filteredReleases.AddRange(
+                    releases
+                        .Where(x => x.Prerelease == isDevBuild)
+                        .Where(x =>
+                            TryParseReleaseVersion(x.TagName, out var parsedVersion)
+                            && parsedVersion.ComparePrecedenceTo(currentVersion) > 0
+                        )
+                );
+
+                if (releases.Count < pageSize)
+                    break;
+            }
 
             return Result.Ok(filteredReleases.ToReleaseNotes());
         }

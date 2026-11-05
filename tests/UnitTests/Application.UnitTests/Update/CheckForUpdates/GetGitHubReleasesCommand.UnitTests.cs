@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Moq.Contrib.HttpClient;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -436,6 +437,154 @@ public class GetGitHubReleasesCommandUnitTests : BaseUnitTest<GetGitHubReleasesC
         result.Value.ShouldBeEmpty();
         Mock.Mock<IHttpClientFactory>().Verify();
     }
+
+    [Test]
+    public async Task ShouldReturnLaterStableRelease_WhenFirstPageContainsOnlyDevReleases()
+    {
+        // Arrange
+        var firstPage = Enumerable.Range(1, 100)
+            .Select(index => CreateRelease($"v0.40.0-dev.{index}", isPrerelease: true))
+            .ToArray();
+        GitHubReleaseDTO[] secondPage =
+        [
+            CreateRelease("v0.40.0", isPrerelease: false),
+            CreateRelease("v0.38.0", isPrerelease: false),
+            CreateRelease("v0.37.0", isPrerelease: false),
+            CreateRelease("v0.40.0-dev.101", isPrerelease: true),
+            CreateRelease("invalid", isPrerelease: false),
+        ];
+        SetAppBuildInfo(x => x.InformationalVersion = "0.38.0");
+        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
+            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, firstPage))
+            .Verifiable(Times.Once());
+        handler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=2")
+            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, secondPage))
+            .Verifiable(Times.Once());
+        Mock.Mock<IHttpClientFactory>()
+            .Setup(x => x.CreateClient(HttpClientModule.GitHubClientName))
+            .Returns(new HttpClient(handler.Object, disposeHandler: false) { BaseAddress = new Uri("https://api.github.com/") })
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(new GetGitHubReleasesCommand(), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.ShouldBeEmpty();
+        result.Value.Select(x => x.Version).ShouldBe(["v0.40.0"]);
+        handler.Verify();
+        Mock.Mock<IHttpClientFactory>().Verify();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldRetainMatchingReleasesAcrossPages_WhenFinalDataPageIsFullOrShort(bool fullLastPage)
+    {
+        // Arrange
+        var firstPage = Enumerable.Range(1, 100)
+            .Select(index => CreateRelease($"v0.40.0-dev.{index}", isPrerelease: true))
+            .ToArray();
+        firstPage[0] = CreateRelease("v0.40.0", isPrerelease: false);
+        var secondPage = new List<GitHubReleaseDTO> { CreateRelease("v0.39.0", isPrerelease: false) };
+        if (fullLastPage)
+            secondPage.AddRange(
+                Enumerable.Range(1, 99).Select(index => CreateRelease($"v0.39.0-dev.{index}", isPrerelease: true))
+            );
+        SetAppBuildInfo(x => x.InformationalVersion = "0.38.0");
+        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
+            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, firstPage))
+            .Verifiable(Times.Once());
+        handler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=2")
+            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, secondPage))
+            .Verifiable(Times.Once());
+        if (fullLastPage)
+            handler
+                .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=3")
+                .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, []))
+                .Verifiable(Times.Once());
+        Mock.Mock<IHttpClientFactory>()
+            .Setup(x => x.CreateClient(HttpClientModule.GitHubClientName))
+            .Returns(new HttpClient(handler.Object, disposeHandler: false) { BaseAddress = new Uri("https://api.github.com/") })
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(new GetGitHubReleasesCommand(), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.ShouldBeEmpty();
+        result.Value.Select(x => x.Version).ShouldBe(["v0.40.0", "v0.39.0"]);
+        handler.Verify();
+        Mock.Mock<IHttpClientFactory>().Verify();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldNotReturnPartialReleases_WhenLaterPageFailsOrIsCancelled(bool cancelRequest)
+    {
+        // Arrange
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
+        var firstPage = Enumerable.Range(1, 100)
+            .Select(index => CreateRelease($"v0.40.0-dev.{index}", isPrerelease: true))
+            .ToArray();
+        firstPage[0] = CreateRelease("v0.40.0", isPrerelease: false);
+        SetAppBuildInfo(x => x.InformationalVersion = "0.38.0");
+        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
+            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, firstPage))
+            .Verifiable(Times.Once());
+        handler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=2")
+            .ReturnsAsync(
+                (HttpRequestMessage request, CancellationToken token) =>
+                {
+                    if (cancelRequest)
+                    {
+                        cancellation.Cancel();
+                        token.ThrowIfCancellationRequested();
+                    }
+                    return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { RequestMessage = request };
+                }
+            )
+            .Verifiable(Times.Once());
+        Mock.Mock<IHttpClientFactory>()
+            .Setup(x => x.CreateClient(HttpClientModule.GitHubClientName))
+            .Returns(new HttpClient(handler.Object, disposeHandler: false) { BaseAddress = new Uri("https://api.github.com/") })
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(new GetGitHubReleasesCommand(), cancellation.Token);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.IsCancelled.ShouldBe(cancelRequest);
+        result.Errors.Count.ShouldBe(1);
+        var error = result.Errors[0].ShouldBeOfType<ExceptionalError>();
+        if (!cancelRequest)
+            error.Exception.ShouldBeOfType<HttpRequestException>().StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        result.ValueOrDefault.ShouldBeNull();
+        handler.Verify();
+        Mock.Mock<IHttpClientFactory>().Verify();
+    }
+
+    private static HttpResponseMessage CreateGitHubResponse(
+        HttpRequestMessage request,
+        IReadOnlyList<GitHubReleaseDTO> releases
+    ) =>
+        new(HttpStatusCode.OK)
+        {
+            RequestMessage = request,
+            Content = new StringContent(JsonSerializer.Serialize(releases), Encoding.UTF8, "application/json"),
+        };
 
     private static HttpClient CreateGitHubHttpClient(IReadOnlyList<GitHubReleaseDTO> releases) =>
         new(new GitHubReleasesResponseHandler(releases)) { BaseAddress = new Uri("https://api.github.com/") };
