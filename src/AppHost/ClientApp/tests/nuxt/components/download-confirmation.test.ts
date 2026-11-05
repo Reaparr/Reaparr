@@ -195,6 +195,54 @@ describe('DownloadConfirmation - family destinations and preview lifetime', () =
 		expect(submit().attributes('disabled')).toBeUndefined();
 	});
 
+	test('Should recover a failed destination preview without enabling submission while loading', async () => {
+		// Arrange
+		const initial = new Subject<DownloadPreviewContainerDTO | null>();
+		const failed = new Subject<DownloadPreviewContainerDTO | null>();
+		const recovered = new Subject<DownloadPreviewContainerDTO | null>();
+		const wrapper = await render([
+			folder(5, PlexMediaType.PhotoAlbum, FolderType.PhotosFolder, true),
+			folder(42, PlexMediaType.PhotoAlbum, FolderType.PhotosFolder),
+		], [initial, failed, recovered]);
+		const buttons = () => wrapper.get('[data-cy="download-confirmation-submit"]').findAll('button');
+		wrapper.getComponent(CardDialog).vm.$emit('opened', command(PlexMediaType.PhotoImage));
+		initial.next(preview('Initial image', PlexMediaType.PhotoImage));
+		await flushPromises();
+
+		// Act
+		await buttons()[1]!.trigger('click');
+		await flushPromises();
+		await wrapper.findAllComponents({ name: 'QRadio' }).find((radio) => radio.props('val').id === 42)!.trigger('click');
+		failed.error(new Error('Destination no longer exists'));
+		await flushPromises();
+
+		// Assert
+		expect(wrapper.get('[data-cy="download-confirmation-error"]').text()).toContain('Unable to load the download preview');
+		expect(buttons()[0]!.attributes('disabled')).toBeDefined();
+		expect(buttons()[1]!.attributes('disabled')).toBeUndefined();
+		await buttons()[0]!.trigger('click');
+		expect(wrapper.emitted('download')).toBeUndefined();
+
+		await wrapper.findAllComponents({ name: 'QRadio' }).find((radio) => radio.props('val').id === 5)!.trigger('click');
+		await flushPromises();
+		expect(previewRequests.map((request) => request.destinationFolderPathId)).toEqual([5, 42, 5]);
+		expect(buttons()[0]!.attributes('disabled')).toBeDefined();
+		expect(buttons()[1]!.attributes('disabled')).toBeUndefined();
+		await buttons()[0]!.trigger('click');
+		expect(wrapper.emitted('download')).toBeUndefined();
+
+		recovered.next(preview('Recovered image', PlexMediaType.PhotoImage));
+		await flushPromises();
+		expect(wrapper.find('[data-cy="download-confirmation-error"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain('Recovered image');
+		expect(wrapper.text()).toContain('/destination/5');
+		expect(buttons()[0]!.attributes('disabled')).toBeUndefined();
+		await buttons()[0]!.trigger('click');
+		expect(wrapper.emitted('download')).toEqual([[
+			{ downloadMedias: command(PlexMediaType.PhotoImage), destinationFolderPathId: 5, customDestinationFolderPath: '' },
+		]]);
+	});
+
 	test('Should ignore a cancelled stale preview after a different family selection reopens', async () => {
 		const stale = new Subject<DownloadPreviewContainerDTO | null>();
 		const current = new Subject<DownloadPreviewContainerDTO | null>();
