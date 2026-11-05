@@ -82,6 +82,17 @@ public class UpdatePlexServerConnectionEndpoint
         }
 
         var url = req.Url.Trim();
+        if (existing.Url != url)
+        {
+            // Connection health belongs to the URL that was checked.
+            var status = await _dbContext.PlexServerStatuses.FirstOrDefaultAsync(
+                x => x.PlexServerConnectionId == existing.Id,
+                CancellationToken.None
+            );
+            if (status is not null)
+                _dbContext.PlexServerStatuses.Remove(status);
+        }
+
         var connection = new PlexServerConnection
         {
             Id = existing.Id,

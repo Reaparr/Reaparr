@@ -320,6 +320,139 @@ public class UpdatePlexServerConnectionEndpointUnitTests
         serversAfter.ShouldBe(serversBefore);
     }
 
+    [Test]
+    [Arguments(true, true)]
+    [Arguments(false, true)]
+    [Arguments(true, false)]
+    public async Task ShouldKeepOnlyStatusForUnchangedUrls_WhenUpdatingCustomConnection(
+        bool changeUrl,
+        bool hasStatus
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            44805,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexServerConnectionPerServerCount = 2;
+            }
+        );
+        var dbContext = IDbContext;
+        var connections = await dbContext.PlexServerConnections.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var target = connections[0];
+        var control = connections[1];
+        await dbContext
+            .PlexServerConnections.Where(x => x.Id == target.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.IsCustom, true), CancellationToken);
+        await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .Where(x => x.Id == target.PlexServerId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(x => x.IsEnabled, true).SetProperty(x => x.PreferredConnectionId, target.Id),
+                CancellationToken
+            );
+        await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.IsSuccessful, true),
+            CancellationToken
+        );
+        if (!hasStatus)
+        {
+            await dbContext
+                .PlexServerStatuses.Where(x => x.PlexServerConnectionId == target.Id)
+                .ExecuteDeleteAsync(CancellationToken);
+        }
+        var statusesBefore = await dbContext
+            .PlexServerStatuses.OrderBy(x => x.PlexServerConnectionId)
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexServerId,
+                x.PlexServerConnectionId,
+                x.IsSuccessful,
+                x.StatusCode,
+                x.StatusMessage,
+                x.LastChecked,
+            })
+            .ToListAsync(CancellationToken);
+        int[] expectedStatusConnectionIds = hasStatus ? [target.Id, control.Id] : [control.Id];
+        statusesBefore.Select(x => x.PlexServerConnectionId).ShouldBe(expectedStatusConnectionIds);
+        statusesBefore.ShouldAllBe(x => x.IsSuccessful);
+        var selectedBefore = await dbContext.ChoosePlexServerConnection(target.PlexServerId, CancellationToken);
+        selectedBefore.IsSuccess.ShouldBeTrue();
+        selectedBefore.Errors.Count.ShouldBe(0);
+        selectedBefore.Value.Id.ShouldBe(hasStatus ? target.Id : control.Id);
+        var expectedUrl = changeUrl ? "https://replacement.example.com:32400" : target.Url;
+        var request = new UpdatePlexServerConnectionEndpointRequest
+        {
+            Id = target.Id,
+            PlexServerId = target.PlexServerId,
+            Url = $" {expectedUrl} ",
+            Protocol = changeUrl ? "https" : target.Protocol,
+            Address = changeUrl ? "replacement.example.com" : target.Address,
+            Port = changeUrl ? 32400 : target.Port,
+        };
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(request);
+
+        // Assert
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var result = endpointResult.Response;
+        result.ShouldNotBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.ShouldNotBeNull();
+        result.Value.Id.ShouldBe(target.Id);
+        result.Value.PlexServerId.ShouldBe(target.PlexServerId);
+        result.Value.Url.ShouldBe(expectedUrl);
+        result.Value.Protocol.ShouldBe(request.Protocol.ToLower());
+        result.Value.Address.ShouldBe(request.Address);
+        result.Value.Port.ShouldBe(request.Port);
+        result.Value.IsCustom.ShouldBeTrue();
+        using var verificationContext = IDbContext;
+        var statusesAfter = await verificationContext
+            .PlexServerStatuses.OrderBy(x => x.PlexServerConnectionId)
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexServerId,
+                x.PlexServerConnectionId,
+                x.IsSuccessful,
+                x.StatusCode,
+                x.StatusMessage,
+                x.LastChecked,
+            })
+            .ToListAsync(CancellationToken);
+        statusesAfter.ShouldBe(
+            changeUrl
+                ? statusesBefore.Where(x => x.PlexServerConnectionId != target.Id).ToList()
+                : statusesBefore
+        );
+        var persistedConnections = await verificationContext
+            .PlexServerConnections.Include(x => x.LatestConnectionStatus)
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
+        persistedConnections.Select(x => x.Id).ShouldBe([target.Id, control.Id]);
+        persistedConnections[0].Url.ShouldBe(expectedUrl);
+        persistedConnections[0].IsOnline.ShouldBe(!changeUrl && hasStatus);
+        persistedConnections[1].Url.ShouldBe(control.Url);
+        persistedConnections[1].IsOnline.ShouldBeTrue();
+        var preference = await verificationContext
+            .PlexServers.Where(x => x.Id == target.PlexServerId)
+            .Select(x => x.PreferredConnectionId)
+            .SingleAsync(CancellationToken);
+        preference.ShouldBe(target.Id);
+        var selectedAfter = await verificationContext.ChoosePlexServerConnection(
+            target.PlexServerId,
+            CancellationToken
+        );
+        selectedAfter.IsSuccess.ShouldBeTrue();
+        selectedAfter.Errors.Count.ShouldBe(0);
+        selectedAfter.Value.Id.ShouldBe(!changeUrl && hasStatus ? target.Id : control.Id);
+    }
+
     private static UpdatePlexServerConnectionEndpointRequest CreateInvalidRequest(
         string invalidProperty,
         int connectionId,
