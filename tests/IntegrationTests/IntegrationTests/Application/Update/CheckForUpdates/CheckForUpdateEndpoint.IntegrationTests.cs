@@ -447,6 +447,197 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         manager.Verify();
     }
 
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(true, true)]
+    public async Task ShouldAvoidReleaseNotesRequests_WhenDesktopHasNoUpdateOrUpdateCheckFails(
+        bool installed,
+        bool failCheck
+    )
+    {
+        // Arrange
+        var githubHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        githubHandler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
+            .ReturnsAsync(
+                (HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, "[]")
+            )
+            .Verifiable(Times.Never());
+        var githubClientFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+        githubClientFactory
+            .Setup(x => x.CreateClient("GitHub"))
+            .Returns(() =>
+                new HttpClient(githubHandler.Object, disposeHandler: false)
+                {
+                    BaseAddress = new Uri("https://api.github.com/"),
+                }
+            )
+            .Verifiable(Times.Never());
+        var manager = new Mock<UpdateManager>(
+            new Mock<IUpdateSource>().Object,
+            null!,
+            new Mock<IVelopackLocator>(MockBehavior.Loose).Object
+        );
+        manager.Setup(x => x.IsInstalled).Returns(installed).Verifiable(Times.Once());
+        manager.Setup(x => x.AppId).Returns("Reaparr").Verifiable(Times.Once());
+        manager.Setup(x => x.CurrentVersion).Returns(new SemanticVersion(0, 38, 0)).Verifiable(Times.Once());
+        if (failCheck)
+            manager
+                .Setup(x => x.CheckForUpdatesAsync())
+                .ThrowsAsync(new InvalidOperationException("Update feed unavailable"))
+                .Verifiable(Times.Once());
+        else
+            manager
+                .Setup(x => x.CheckForUpdatesAsync())
+                .ReturnsAsync((UpdateInfo?)null)
+                .Verifiable(installed ? Times.Once() : Times.Never());
+        using var container = await CreateContainer(
+            new Seed(11008),
+            config =>
+            {
+                config.OverrideAppBuildInfo = new MockAppBuildInfo
+                {
+                    RuntimeMode = "desktop",
+                    Version = "0.38.0",
+                    InformationalVersion = "0.38.0",
+                    RuntimeIdentifier = "linux-x64",
+                    CurrentOS = OperatingSystemPlatform.Linux,
+                };
+                config.OverrideServices = builder =>
+                    RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
+            }
+        );
+        var notifications = container.Resolve<MockNotificationHubService>();
+        using var client = container.GetApiClient();
+
+        // Act
+        var response = await client.GETAsync<CheckForUpdateEndpoint, ResultDTO<AppUpdateCheckDTO>>();
+
+        // Assert
+        if (failCheck)
+        {
+            response.Response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+            response.Result.IsSuccess.ShouldBeFalse();
+            response.Result.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
+            response.Result.Errors.Count.ShouldBe(1);
+            response.Result.Errors[0].Message.ShouldBe("Update feed unavailable");
+            response.Result.Value.ShouldBeNull();
+        }
+        else
+        {
+            response.Response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            response.Result.IsSuccess.ShouldBeTrue();
+            response.Result.Errors.ShouldBeEmpty();
+            var dto = response.Result.Value.ShouldNotBeNull();
+            dto.IsUpdateAvailable.ShouldBeFalse();
+            dto.CurrentVersion.ShouldBe("0.38.0");
+            dto.NewestVersion.ShouldBe("0.38.0");
+            dto.ReleaseNotes.ShouldBeEmpty();
+        }
+        response.Result.Successes.ShouldBeEmpty();
+        notifications.RefreshNotificationList.ShouldNotContain(RefreshDataType.UpdateAvailable);
+        githubHandler.Verify();
+        githubClientFactory.Verify();
+        manager.Verify();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldReturnDesktopUpdate_WhenFetchingPagedReleaseNotesOrNotesFail(bool failNotes)
+    {
+        // Arrange
+        var firstPage = Enumerable.Range(1, 100)
+            .Select(index => new GitHubReleaseDTO { TagName = $"v0.39.0-dev.{index}", Prerelease = true })
+            .ToArray();
+        var firstPayload = JsonSerializer.Serialize(firstPage);
+        var secondPayload = CreateStableReleasePayload();
+        var githubHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        githubHandler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
+            .ReturnsAsync(
+                (HttpRequestMessage request, CancellationToken _) =>
+                    failNotes
+                        ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { RequestMessage = request }
+                        : CreateGitHubResponse(request, firstPayload)
+            )
+            .Verifiable(Times.Once());
+        githubHandler
+            .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=2")
+            .ReturnsAsync(
+                (HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, secondPayload)
+            )
+            .Verifiable(failNotes ? Times.Never() : Times.Once());
+        var manager = new Mock<UpdateManager>(
+            new Mock<IUpdateSource>().Object,
+            null!,
+            new Mock<IVelopackLocator>(MockBehavior.Loose).Object
+        );
+        manager.Setup(x => x.IsInstalled).Returns(true).Verifiable(Times.Once());
+        manager.Setup(x => x.AppId).Returns("Reaparr").Verifiable(Times.Once());
+        manager.Setup(x => x.CurrentVersion).Returns(new SemanticVersion(0, 38, 0)).Verifiable(Times.Once());
+        var sequence = new MockSequence();
+        var asset = new VelopackAsset { PackageId = "Reaparr", Version = new SemanticVersion(0, 39, 0) };
+        manager
+            .InSequence(sequence)
+            .Setup(x => x.CheckForUpdatesAsync())
+            .ReturnsAsync(new UpdateInfo(asset, false))
+            .Verifiable(Times.Once());
+        var githubClientFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+        githubClientFactory
+            .InSequence(sequence)
+            .Setup(x => x.CreateClient("GitHub"))
+            .Returns(() =>
+                new HttpClient(githubHandler.Object, disposeHandler: false)
+                {
+                    BaseAddress = new Uri("https://api.github.com/"),
+                }
+            )
+            .Verifiable(Times.Once());
+        using var container = await CreateContainer(
+            new Seed(11009),
+            config =>
+            {
+                config.OverrideAppBuildInfo = new MockAppBuildInfo
+                {
+                    RuntimeMode = "desktop",
+                    Version = "0.38.0",
+                    InformationalVersion = "0.38.0",
+                    RuntimeIdentifier = "linux-x64",
+                    CurrentOS = OperatingSystemPlatform.Linux,
+                };
+                config.OverrideServices = builder =>
+                    RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
+            }
+        );
+        var notifications = container.Resolve<MockNotificationHubService>();
+        using var client = container.GetApiClient();
+
+        // Act
+        var response = await client.GETAsync<CheckForUpdateEndpoint, ResultDTO<AppUpdateCheckDTO>>();
+
+        // Assert
+        response.Response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Result.IsSuccess.ShouldBeTrue();
+        response.Result.Errors.ShouldBeEmpty();
+        var dto = response.Result.Value.ShouldNotBeNull();
+        dto.IsUpdateAvailable.ShouldBeTrue();
+        dto.CurrentVersion.ShouldBe("0.38.0");
+        dto.NewestVersion.ShouldBe("0.39.0");
+        if (failNotes)
+            dto.ReleaseNotes.ShouldBeEmpty();
+        else
+            dto.ReleaseNotes.Select(x => (x.Version, x.Notes, x.ReleaseDate, x.IsDevRelease))
+                .ShouldBe(
+                    [("v0.39.0", "Stable release notes", new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), false)]
+                );
+        notifications.RefreshNotificationList.ShouldNotContain(RefreshDataType.UpdateAvailable);
+        githubHandler.Verify();
+        githubClientFactory.Verify();
+        manager.Verify();
+    }
+
     private static string CreateStableReleasePayload() =>
         JsonSerializer.Serialize(
             new[]
