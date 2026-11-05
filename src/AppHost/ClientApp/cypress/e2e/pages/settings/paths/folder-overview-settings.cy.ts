@@ -220,6 +220,80 @@ describe('Change Folder Paths', () => {
 		});
 	});
 
+	it('navigates readable directories with Tab, Enter and Space and persists the selected path', () => {
+		cy.getPageData().then(({ folderPaths }) => {
+			const folder = folderPaths.find((item) => item.folderType === FolderType.MovieFolder && item.isDefault);
+			if (!folder) throw new Error('Expected the default movie folder fixture');
+			const rootPath = folder.directory;
+			const childPath = `${rootPath.replace(/\/$/, '')}/KeyboardMovies`;
+			const root = directoryLookupResult(rootPath, true);
+			const child = directoryLookupResult(childPath, true);
+			child.parent = rootPath;
+			root.directories = [
+				{ ...child.current!, name: 'Locked', path: `${childPath}-locked`, hasReadPermission: false },
+				child.current!,
+			];
+			const directories = new Map([
+				[rootPath, root],
+				[childPath, child],
+			]);
+			cy.intercept('GET', '**/api/FolderPath/directory*', (request) => {
+				const directory = request.query.path;
+				const result = typeof directory === 'string' ? directories.get(directory) : undefined;
+				if (!result) throw new Error(`Unexpected keyboard directory lookup: ${directory}`);
+				request.reply({ statusCode: 200, body: generateResultDTO(result), ...headers });
+			}).as('keyboardDirectory');
+			const type = kebabCase(FolderType.MovieFolder);
+			cy.getCy(`folder-path-tab-${type}`).click();
+			cy.getCy(`default-${type}-edit-button`).click();
+			cy.wait('@keyboardDirectory');
+			cy.getCy('directory-browser-navigate-0').should('be.disabled');
+
+			cy.getCy('directory-browser-path-field').find('input').focus().should('have.focus');
+			cy.press(Cypress.Keyboard.Keys.TAB);
+			cy.focused().should('have.attr', 'data-cy', 'directory-browser-navigate-return').and('have.attr', 'aria-label', 'Back');
+			cy.getCy('directory-browser-navigate-return').find('.q-focus-helper').should(($highlight) => {
+				expect(Number($highlight.css('opacity')), 'parent keyboard focus highlight').to.be.greaterThan(0);
+			});
+			cy.press(Cypress.Keyboard.Keys.TAB);
+			// Firefox includes the scrollable table itself in the native Tab order.
+			cy.getCy('directory-browser-rows').should('have.focus');
+			cy.press(Cypress.Keyboard.Keys.TAB);
+			cy.focused().should('have.attr', 'data-cy', 'directory-browser-navigate-1');
+			cy.getCy('directory-browser-navigate-1').find('.q-focus-helper').should(($highlight) => {
+				expect(Number($highlight.css('opacity')), 'child keyboard focus highlight').to.be.greaterThan(0);
+			});
+			cy.press(Cypress.Keyboard.Keys.ENTER);
+			cy.wait('@keyboardDirectory').its('request.query.path').should('equal', childPath);
+			cy.getCy('directory-browser-path-field').find('input').should('have.value', childPath).focus();
+			cy.get('@keyboardDirectory.all').should('have.length', 2);
+
+			cy.press(Cypress.Keyboard.Keys.TAB);
+			cy.getCy('directory-browser-navigate-return').should('have.focus');
+			cy.press(Cypress.Keyboard.Keys.SPACE);
+			cy.wait('@keyboardDirectory').its('request.query.path').should('equal', rootPath);
+			cy.getCy('directory-browser-path-field').find('input').should('have.value', rootPath).focus();
+			cy.press(Cypress.Keyboard.Keys.TAB);
+			cy.press(Cypress.Keyboard.Keys.TAB);
+			cy.getCy('directory-browser-rows').should('have.focus');
+			cy.press(Cypress.Keyboard.Keys.TAB);
+			cy.getCy('directory-browser-navigate-1').should('have.focus');
+			cy.press(Cypress.Keyboard.Keys.SPACE);
+			cy.wait('@keyboardDirectory').its('request.query.path').should('equal', childPath);
+			cy.get('@keyboardDirectory.all').should('have.length', 4);
+			cy.getCy('directory-browser-confirm-button').should('not.be.disabled').focus();
+			cy.press(Cypress.Keyboard.Keys.ENTER);
+			cy.wait('@saveFolderPath').its('request.body').should('deep.include', {
+				directory: childPath, folderType: FolderType.MovieFolder, isDefault: true,
+			});
+			cy.getCy(`default-${type}-input`).should('have.value', childPath);
+			cy.reload();
+			cy.wait('@getFolderPaths');
+			cy.getCy(`folder-path-tab-${type}`).click();
+			cy.getCy(`default-${type}-input`).should('have.value', childPath);
+		});
+	});
+
 	it('creates each new media destination and manages a custom music destination through reloads', () => {
 		cy.getPageData();
 

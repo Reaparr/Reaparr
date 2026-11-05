@@ -72,7 +72,17 @@
 								:name="getIcon(returnRow.type)" />
 						</td>
 						<td class="directory-browser-name-cell text-left">
-							{{ returnRow.name }}
+							<q-btn
+								flat
+								dense
+								no-caps
+								align="left"
+								class="full-width"
+								data-cy="directory-browser-navigate-return"
+								:label="returnRow.name"
+								:aria-label="t('general.commands.back')"
+								:disable="saving || !returnRow.hasReadPermission"
+								@click.stop="directoryNavigate(returnRow)" />
 						</td>
 					</tr>
 				</tbody>
@@ -110,7 +120,16 @@
 								</q-tooltip>
 							</q-icon>
 
-							{{ row.name }}
+							<q-btn
+								flat
+								dense
+								no-caps
+								align="left"
+								class="full-width"
+								:data-cy="`directory-browser-navigate-${index}`"
+								:label="row.name"
+								:disable="saving || !row.hasReadPermission"
+								@click.stop="directoryNavigate(row)" />
 						</td>
 					</tr>
 				</tbody>
