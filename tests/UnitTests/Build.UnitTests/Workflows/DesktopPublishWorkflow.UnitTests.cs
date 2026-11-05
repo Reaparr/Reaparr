@@ -456,6 +456,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             system.AddFile("/repo/retained.txt", new MockFileData("retained"));
         });
         var runner = new Mock<IDesktopCommandRunner>(MockBehavior.Strict);
+        runner.Setup(x => x.LogCommand(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>()));
         SetupDependencies(builder =>
         {
             builder.Register(_ => "/repo").As<string>().SingleInstance();
