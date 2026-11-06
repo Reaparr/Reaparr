@@ -1,4 +1,4 @@
-namespace Reaparr.Application;
+namespace Reaparr.Application.Contracts;
 
 public record TestConnectionResult
 {

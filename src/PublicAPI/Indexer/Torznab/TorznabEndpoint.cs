@@ -25,11 +25,13 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public TorznabEndpoint(ILogger logger, ICommandExecutor commandExecutor)
+    public TorznabEndpoint(ILogger logger, ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _log = logger.ForContext<TorznabEndpoint>();
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -66,11 +68,19 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
                 await SendCapabilitiesAsync(ct);
                 break;
             case TorznabRequestMode.Rss:
-                await SendMediaResultAsync(await GetRssAsync(request, ct), ct);
+            {
+                var result = await GetRssAsync(request, ct);
+                _telemetry.ExternalIndexerQueryFinished(request.ToTelemetryReport(result), result);
+                await SendMediaResultAsync(result, ct);
                 break;
+            }
             case TorznabRequestMode.ActiveSearch:
-                await SendMediaResultAsync(await SearchAsync(request, ct), ct);
+            {
+                var result = await SearchAsync(request, ct);
+                _telemetry.ExternalIndexerQueryFinished(request.ToTelemetryReport(result), result);
+                await SendMediaResultAsync(result, ct);
                 break;
+            }
             default:
                 await Send.TorznabError(201, "Incorrect parameter", ct);
                 break;
@@ -90,6 +100,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
 
         if (result.IsFailed)
         {
+            _telemetry.CaptureErrors(result, TelemetryActivity.ConnectionCheck);
             await Send.TorznabError(900, "Indexer request failed", ct);
             return;
         }
@@ -105,6 +116,7 @@ public sealed class TorznabEndpoint : Endpoint<TorznabEndpointRequest>
 
         if (result.IsFailed)
         {
+            _telemetry.CaptureErrors(result, TelemetryActivity.ConnectionCheck);
             await Send.TorznabError(900, "Indexer request failed", ct);
             return;
         }

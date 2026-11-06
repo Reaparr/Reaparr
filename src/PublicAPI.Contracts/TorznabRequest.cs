@@ -1,6 +1,5 @@
-using Reaparr.Application.Contracts;
 
-namespace Reaparr.PublicAPI;
+namespace Reaparr.PublicAPI.Contracts;
 
 public sealed record TorznabRequest
 {

@@ -25,11 +25,13 @@ public class TestConnectionToRadarrEndpoint
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public TestConnectionToRadarrEndpoint(ILogger log, ICommandExecutor commandExecutor)
+    public TestConnectionToRadarrEndpoint(ILogger log, ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _log = log.ForContext<TestConnectionToRadarrEndpoint>();
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -50,6 +52,7 @@ public class TestConnectionToRadarrEndpoint
             new TestConnectionToRadarrCommand(req.IntegrationId, req.Url, req.ApiKey),
             ct
         );
+        _telemetry.IntegrationConnectionTestFinished(IntegrationType.Radarr, req.IntegrationId, result);
         if (result.IsCancelled)
         {
             await Send.FluentResult(result.ToResult<TestConnectionToRadarrEndpointResponse>().LogWarning(), ct);
@@ -57,6 +60,7 @@ public class TestConnectionToRadarrEndpoint
         }
         if (result.IsFailed)
         {
+            _telemetry.CaptureErrors(result, TelemetryActivity.ConnectionCheck);
             await Send.FluentResult(result.ToResult<TestConnectionToRadarrEndpointResponse>().LogError(), ct);
             return;
         }

@@ -1,4 +1,4 @@
-namespace Reaparr.PublicAPI;
+namespace Reaparr.Application.Contracts;
 
 public record TorrentMetadataDTO
 {
