@@ -21,12 +21,18 @@ public class SetServerOwnedEndpoint : Endpoint<SetServerOwnedRequest, ResultDTO<
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
-
-    public SetServerOwnedEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    private readonly ITelemetry _telemetry;
+    public SetServerOwnedEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<SetServerOwnedEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -53,6 +59,11 @@ public class SetServerOwnedEndpoint : Endpoint<SetServerOwnedRequest, ResultDTO<
             return;
         }
 
+        var previousOwnedOverride = await _dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .Where(x => x.Id == req.PlexServerId)
+            .Select(x => x.OwnedOverride)
+            .FirstAsync(ct);
         var updateCount = await _dbContext
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == req.PlexServerId)
@@ -75,6 +86,10 @@ public class SetServerOwnedEndpoint : Endpoint<SetServerOwnedRequest, ResultDTO<
             return;
         }
 
+        if (previousOwnedOverride != req.IsOwned)
+        {
+            _telemetry.PlexServerChanged(TelemetryAction.Owned, plexServer.Id, plexServer);
+        }
         var libraries = await _dbContext
             .PlexLibraries.IgnoreQueryFilters()
             .Where(x => x.PlexServerId == req.PlexServerId)

@@ -23,7 +23,7 @@ public class SendTelemetryDiagnosticEndpointUnitTests
         result.IsValid.ShouldBeFalse();
         result.ValidationErrors.Count.ShouldBe(1);
         result.ValidationErrors.Single().PropertyName.ShouldBe(nameof(SendTelemetryDiagnosticRequest.Origin));
-        Mock.Mock<ITelemetry>().Verify(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<IReadOnlyDictionary<string, object?>>()), Times.Never());
+        Mock.Mock<ITelemetry>().Verify(x => x.SendDiagnostic(It.IsAny<TelemetryDiagnosticOrigin>()), Times.Never());
     }
 
     [Test]
@@ -41,7 +41,7 @@ public class SendTelemetryDiagnosticEndpointUnitTests
 
         // Assert
         Should.Throw<JsonException>(act);
-        Mock.Mock<ITelemetry>().Verify(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<IReadOnlyDictionary<string, object?>>()), Times.Never());
+        Mock.Mock<ITelemetry>().Verify(x => x.SendDiagnostic(It.IsAny<TelemetryDiagnosticOrigin>()), Times.Never());
     }
 
     [Test]
@@ -52,15 +52,8 @@ public class SendTelemetryDiagnosticEndpointUnitTests
         // Arrange
         var request = new SendTelemetryDiagnosticRequest { Origin = origin };
         Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.TrackAsync(
-                    "reaparr diagnostic",
-                    It.Is<IReadOnlyDictionary<string, object?>>(
-                        p => p.Count == 1 && (TelemetryDiagnosticOrigin)p["origin"]! == origin
-                    )
-                )
-            )
-            .ReturnsAsync(Result.Ok().WithSuccess("Diagnostic event accepted for sending"))
+            .Setup(x => x.SendDiagnostic(origin))
+            .Returns(Result.Ok().WithSuccess("Diagnostic event accepted for sending"))
             .Verifiable(Times.Once());
 
         // Act
@@ -86,17 +79,8 @@ public class SendTelemetryDiagnosticEndpointUnitTests
         // Arrange
         var request = new SendTelemetryDiagnosticRequest { Origin = TelemetryDiagnosticOrigin.Backend };
         Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.TrackAsync(
-                    "reaparr diagnostic",
-                    It.Is<IReadOnlyDictionary<string, object?>>(
-                        p =>
-                            p.Count == 1
-                            && (TelemetryDiagnosticOrigin)p["origin"]! == TelemetryDiagnosticOrigin.Backend
-                    )
-                )
-            )
-            .ReturnsAsync(
+            .Setup(x => x.SendDiagnostic(TelemetryDiagnosticOrigin.Backend))
+            .Returns(
                 Result.Fail("Telemetry is unavailable")
                     .AddStatusCode((System.Net.HttpStatusCode)status, "Telemetry is unavailable")
             )

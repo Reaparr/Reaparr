@@ -17,16 +17,19 @@ public class SetupRadarrIntegrationCommandHandler
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IProgressHubService _progressHubService;
+    private readonly ITelemetry _telemetry;
 
     public SetupRadarrIntegrationCommandHandler(
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        IProgressHubService progressHubService
+        IProgressHubService progressHubService,
+        ITelemetry telemetry
     )
     {
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _progressHubService = progressHubService;
+        _telemetry = telemetry;
     }
 
     public async Task<Result<RadarrIntegration>> ExecuteAsync(
@@ -49,6 +52,11 @@ public class SetupRadarrIntegrationCommandHandler
             var error = string.Join("; ", downloadClientResult.Errors.Select(x => x.Message));
             await SendProgress(integration.Id, IntegrationSetupProgressStage.Connecting, false, error: error);
             await SendProgress(integration.Id, IntegrationSetupProgressStage.DownloadClient, false, error: error);
+            _telemetry.IntegrationSetupFinished(
+                integration,
+                downloadClientResult,
+                IntegrationSetupProgressStage.DownloadClient
+            );
             return downloadClientResult.ToResult<RadarrIntegration>().LogWarning();
         }
 
@@ -57,6 +65,12 @@ public class SetupRadarrIntegrationCommandHandler
             var error = string.Join("; ", downloadClientResult.Errors.Select(x => x.Message));
             await SendProgress(integration.Id, IntegrationSetupProgressStage.Connecting, false, error: error);
             await SendProgress(integration.Id, IntegrationSetupProgressStage.DownloadClient, false, error: error);
+            _telemetry.IntegrationSetupFinished(
+                integration,
+                downloadClientResult,
+                IntegrationSetupProgressStage.DownloadClient
+            );
+            _telemetry.CaptureErrors(downloadClientResult, TelemetryActivity.IntegrationSetup);
             return downloadClientResult.ToResult<RadarrIntegration>().LogError();
         }
 
@@ -81,6 +95,7 @@ public class SetupRadarrIntegrationCommandHandler
                 false,
                 error: string.Join("; ", indexerResult.Errors.Select(x => x.Message))
             );
+            _telemetry.IntegrationSetupFinished(integration, indexerResult, IntegrationSetupProgressStage.Indexer);
             return indexerResult.ToResult<RadarrIntegration>().LogWarning();
         }
 
@@ -92,6 +107,8 @@ public class SetupRadarrIntegrationCommandHandler
                 false,
                 error: string.Join("; ", indexerResult.Errors.Select(x => x.Message))
             );
+            _telemetry.IntegrationSetupFinished(integration, indexerResult, IntegrationSetupProgressStage.Indexer);
+            _telemetry.CaptureErrors(indexerResult, TelemetryActivity.IntegrationSetup);
             return indexerResult.ToResult<RadarrIntegration>().LogError();
         }
 
@@ -116,6 +133,11 @@ public class SetupRadarrIntegrationCommandHandler
                 false,
                 error: string.Join("; ", validationResult.Errors.Select(x => x.Message))
             );
+            _telemetry.IntegrationSetupFinished(
+                integration,
+                validationResult,
+                IntegrationSetupProgressStage.Validation
+            );
             return validationResult.ToResult<RadarrIntegration>().LogWarning();
         }
 
@@ -127,6 +149,12 @@ public class SetupRadarrIntegrationCommandHandler
                 false,
                 error: string.Join("; ", validationResult.Errors.Select(x => x.Message))
             );
+            _telemetry.IntegrationSetupFinished(
+                integration,
+                validationResult,
+                IntegrationSetupProgressStage.Validation
+            );
+            _telemetry.CaptureErrors(validationResult, TelemetryActivity.IntegrationSetup);
             return validationResult.ToResult<RadarrIntegration>().LogError();
         }
 
@@ -137,6 +165,7 @@ public class SetupRadarrIntegrationCommandHandler
         integration.LastConnectionTestErrorMessage = null;
         integration.LastConnectionTestedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync(ct);
+        _telemetry.IntegrationSetupFinished(integration, Result.Ok(integration), IntegrationSetupProgressStage.Done);
         await SendProgress(integration.Id, IntegrationSetupProgressStage.Done, true);
         return Result.Ok(integration);
     }

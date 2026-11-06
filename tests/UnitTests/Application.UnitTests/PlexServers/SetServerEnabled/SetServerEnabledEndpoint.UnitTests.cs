@@ -202,6 +202,17 @@ public class SetServerEnabledEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .FirstAsync(x => x.Id == server.Id, CancellationToken);
         updated.IsEnabled.ShouldBe(true);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexServerChanged(
+                        It.IsAny<TelemetryAction>(),
+                        It.IsAny<int>(),
+                        It.IsAny<PlexServer?>()
+                    ),
+                Times.Never()
+            );
+
     }
 
     [Test]

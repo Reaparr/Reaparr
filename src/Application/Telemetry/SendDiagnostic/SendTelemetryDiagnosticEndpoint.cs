@@ -37,10 +37,7 @@ public class SendTelemetryDiagnosticEndpoint : Endpoint<SendTelemetryDiagnosticR
 
     public override async Task HandleAsync(SendTelemetryDiagnosticRequest req, CancellationToken ct)
     {
-        var result = await _telemetry.TrackAsync(
-            "reaparr diagnostic",
-            new Dictionary<string, object?> { ["origin"] = req.Origin!.Value }
-        );
+        var result = _telemetry.SendDiagnostic(req.Origin!.Value);
         await Send.FluentResult(result, ct);
     }
 }

@@ -167,6 +167,7 @@ public class SetupRadarrIntegrationCommandUnitTests : BaseCommandUnitTest<SetupR
             CancellationToken
         );
         var command = new SetupRadarrIntegrationCommand(integration.Id);
+        var exception = new InvalidOperationException("Indexer setup failed");
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<SetupRadarrDownloadClientCommand>(), It.IsAny<CancellationToken>()))
@@ -182,7 +183,7 @@ public class SetupRadarrIntegrationCommandUnitTests : BaseCommandUnitTest<SetupR
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<SetupRadarrIndexerCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Fail<SetupRadarrIndexerCommandResult>("Indexer setup failed"))
+            .ReturnsAsync(Result.Fail<SetupRadarrIndexerCommandResult>(new ExceptionalError(exception)))
             .Verifiable(Times.Once());
         Mock.Mock<IProgressHubService>()
             .Setup(x => x.SendIntegrationSetupProgressAsync(It.IsAny<IntegrationSetupProgressDTO>()))
@@ -205,5 +206,14 @@ public class SetupRadarrIntegrationCommandUnitTests : BaseCommandUnitTest<SetupR
             );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IProgressHubService>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.CaptureErrors(
+                        It.Is<ResultBase>(r => r.IsFailed && r.HasError<ExceptionalError>()),
+                        TelemetryActivity.IntegrationSetup
+                    ),
+                Times.Once
+            );
     }
 }

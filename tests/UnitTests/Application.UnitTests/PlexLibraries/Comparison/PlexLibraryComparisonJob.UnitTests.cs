@@ -47,6 +47,15 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
         context
             .SetupGet(x => x.MergedJobDataMap)
             .Returns(new PlexLibraryComparisonJobPayload(owned.Id, remote.Id).ToJobDataMap());
+        context
+            .SetupGet(x => x.JobDetail)
+            .Returns(
+                JobBuilder
+                    .Create<PlexLibraryComparisonJob>()
+                    .WithIdentity(PlexLibraryComparisonJob.GetJobKey(owned.Id, remote.Id))
+                    .Build()
+            );
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -58,7 +67,7 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
             )
             .Returns<ICommand<Result>, CancellationToken>(
                 (cmd, ct) =>
-                    new CompareMusicPlexLibraryCommandHandler(IDbContext, Log).ExecuteAsync(
+                    new CompareMusicPlexLibraryCommandHandler(IDbContext, Log, Mock.Mock<ITelemetry>().Object).ExecuteAsync(
                         (CompareMusicPlexLibraryCommand)cmd,
                         ct
                     )
@@ -124,6 +133,15 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
         context
             .SetupGet(x => x.MergedJobDataMap)
             .Returns(new PlexLibraryComparisonJobPayload(libraries[1].Id, libraries[0].Id).ToJobDataMap());
+        context
+            .SetupGet(x => x.JobDetail)
+            .Returns(
+                JobBuilder
+                    .Create<PlexLibraryComparisonJob>()
+                    .WithIdentity(PlexLibraryComparisonJob.GetJobKey(libraries[1].Id, libraries[0].Id))
+                    .Build()
+            );
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
 
         // Act
         await Sut.Execute(context.Object);
@@ -189,7 +207,7 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
                     .WithIdentity(PlexLibraryComparisonJob.GetJobKey(owned.Id, remote.Id))
                     .Build()
             );
-        context.SetupGet(x => x.FireTimeUtc).Returns(new DateTimeOffset(2026, 10, 19, 0, 0, 0, TimeSpan.Zero));
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         var executionData = new Dictionary<object, object>();
         context
             .Setup(x => x.Put(It.IsAny<object>(), It.IsAny<object>()))

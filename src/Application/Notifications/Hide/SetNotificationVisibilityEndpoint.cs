@@ -20,11 +20,13 @@ public class SetNotificationVisibilityEndpoint : Endpoint<SetNotificationVisibil
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public SetNotificationVisibilityEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public SetNotificationVisibilityEndpoint(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<SetNotificationVisibilityEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -40,11 +42,13 @@ public class SetNotificationVisibilityEndpoint : Endpoint<SetNotificationVisibil
     public override async Task HandleAsync(SetNotificationVisibilityEndpointRequest req, CancellationToken ct)
     {
         _log.Here().DebugApiCall(HttpContext, req);
-        var changed = await _dbContext
+        var affectedCount = await _dbContext
             .Notifications.Where(x => x.Id == req.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.Hidden, req.Hidden), ct);
 
-        if (changed == 0)
+        _telemetry.NotificationVisibilityProcessed(req.Id, req.Hidden, affectedCount);
+
+        if (affectedCount == 0)
         {
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(Notification), req.Id), ct);
             return;

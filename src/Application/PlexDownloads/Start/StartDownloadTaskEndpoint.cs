@@ -20,10 +20,12 @@ public class StartDownloadTaskEndpointRequestValidator : Validator<StartDownload
 public class StartDownloadTaskEndpoint : Endpoint<StartDownloadTaskEndpointRequest, BaseResultDTO>
 {
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public StartDownloadTaskEndpoint(ICommandExecutor commandExecutor)
+    public StartDownloadTaskEndpoint(ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -40,6 +42,8 @@ public class StartDownloadTaskEndpoint : Endpoint<StartDownloadTaskEndpointReque
     public override async Task HandleAsync(StartDownloadTaskEndpointRequest req, CancellationToken ct)
     {
         var startResult = await _commandExecutor.Send(new StartDownloadTaskCommand(req.DownloadTaskGuid), ct);
+
+        _telemetry.DownloadControlProcessed(TelemetryAction.Start, req.DownloadTaskGuid, startResult);
 
         await Send.FluentResult(startResult, ct);
     }
