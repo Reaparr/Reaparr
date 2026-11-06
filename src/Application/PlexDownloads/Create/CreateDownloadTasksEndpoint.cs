@@ -23,11 +23,13 @@ public class CreateDownloadTasksEndpoint : Endpoint<CreateDownloadTasksEndpointR
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public CreateDownloadTasksEndpoint(ILogger log, ICommandExecutor commandExecutor)
+    public CreateDownloadTasksEndpoint(ILogger log, ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _log = log.ForContext<CreateDownloadTasksEndpoint>();
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -48,6 +50,8 @@ public class CreateDownloadTasksEndpoint : Endpoint<CreateDownloadTasksEndpointR
             _log.Here().Debug("DownloadMediaDTO: {@DownloadMediaDto} ", downloadMediaDto);
 
         var result = await _commandExecutor.Send(new CreateDownloadTasksCommand(req.Request), ct);
+
+        _telemetry.DownloadCreationProcessed(req.Request, result);
 
         await Send.FluentResult(
             result,

@@ -19,12 +19,18 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
-
-    public DeletePlexServerEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    private readonly ITelemetry _telemetry;
+    public DeletePlexServerEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<DeletePlexServerEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -43,6 +49,10 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
     {
         _log.Here().DebugApiCall(HttpContext, req);
 
+        var serverBefore = await _dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .Include(x => x.PlexAccountServers)
+            .FirstOrDefaultAsync(x => x.Id == req.PlexServerId, ct);
         var deletedPlexServersCount = await _dbContext
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == req.PlexServerId)
@@ -54,6 +64,7 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
             return;
         }
 
+        _telemetry.PlexServerChanged(TelemetryAction.Delete, req.PlexServerId, serverBefore);
         var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
         rebuildResult.LogIfFailed();
 

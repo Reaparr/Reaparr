@@ -1,3 +1,10 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
+using Moq;
+using Moq.Contrib.HttpClient;
+using Moq.Protected;
+using PostHog;
+
 namespace Reaparr.IntegrationTests;
 
 public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseIntegrationTests
@@ -5,8 +12,50 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
     [Test]
     public async Task ShouldPreviewAndCreateRecursiveFolderSelectionThroughHttp()
     {
-        // Arrange
-        using var container = await CreatePhotoContainerAsync(new Seed(231159), photoCount: 2);
+        var telemetryBodies = new ConcurrentQueue<string>();
+        PostHogClient? telemetryClient = null;
+        var buildInfo = new MockAppBuildInfo
+        {
+            TelemetryHost = "https://telemetry.example.test",
+            TelemetryProjectToken = "phc_test",
+        };
+        using var container = await CreatePhotoContainerAsync(
+            new Seed(231159),
+            photoCount: 2,
+            config =>
+            {
+                config.OverrideAppBuildInfo = buildInfo;
+                config.OverrideServices = builder =>
+                {
+                    var handler = new Mock<HttpMessageHandler>();
+                    handler
+                        .Protected()
+                        .Setup<Task<HttpResponseMessage>>(
+                            "SendAsync",
+                            ItExpr.IsAny<HttpRequestMessage>(),
+                            ItExpr.IsAny<CancellationToken>()
+                        )
+                        .Returns(async (HttpRequestMessage request, CancellationToken token) =>
+                        {
+                            telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
+                            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+                        });
+                    var httpClient = new HttpClient(handler.Object);
+                    var factory = new Mock<IHttpClientFactory>();
+                    factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+                    telemetryClient = new PostHogClient(
+                        new PostHogOptions
+                        {
+                            ProjectToken = buildInfo.TelemetryProjectToken,
+                            HostUrl = new Uri(buildInfo.TelemetryHost),
+                            EnableCompression = false,
+                        },
+                        httpClientFactory: factory.Object
+                    );
+                    builder.RegisterInstance(telemetryClient).As<IPostHogClient>();
+                };
+            }
+        );
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using var context = await factory.CreateAsync();
         var library = await context.PlexLibraries.SingleAsync(
@@ -45,9 +94,129 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         create.Response.StatusCode.ShouldBe(HttpStatusCode.OK);
         create.Result.IsSuccess.ShouldBeTrue();
         create.Result.Value.ShouldBe(PhotoReport(folders: 3, images: 2));
+        await telemetryClient!.FlushAsync();
+        var nativeEvents = new List<JsonElement>();
+        foreach (var body in telemetryBodies)
+        {
+            using var document = JsonDocument.Parse(body);
+            nativeEvents.AddRange(document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone()));
+        }
+        var previewEvents = nativeEvents
+            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.DownloadPreviewFinished.ToString())
+            .ToArray();
+        previewEvents.Length.ShouldBe(1);
+        var previewProperties = previewEvents.Single().GetProperty("properties");
+        previewProperties
+            .GetProperty(TelemetryProperty.Outcome)
+            .GetString()
+            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+        previewProperties.GetProperty(TelemetryProperty.Downloads.SelectedCount).GetInt32().ShouldBe(selection.MediaIds.Count);
+        previewProperties.GetProperty(TelemetryProperty.Downloads.SelectionCount).GetInt32().ShouldBe(1);
+        previewProperties
+            .GetProperty(TelemetryProperty.Downloads.SelectedMediaTypes)
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ShouldBe([PlexMediaType.PhotoImage.ToString()]);
+        previewProperties
+            .GetProperty(TelemetryProperty.Downloads.CustomDestinationFolderPath)
+            .GetString()
+            .ShouldBe(destination);
+        previewProperties.GetProperty(TelemetryProperty.Downloads.PreviewCount).GetInt32().ShouldBe(1);
+        previewProperties
+            .GetProperty(TelemetryProperty.Downloads.PreviewTotalSize)
+            .GetInt64()
+            .ShouldBe(media.Sum(x => x.Size));
+        previewProperties.GetProperty(TelemetryProperty.Downloads.PreviewTotalChildren).GetInt32().ShouldBe(2);
+        var previewReport = previewProperties.GetProperty(TelemetryProperty.Downloads.Report).EnumerateArray().Single();
+        previewReport.GetProperty(TelemetryProperty.Downloads.ReportId).GetInt32().ShouldBe(library.Id);
+        previewReport.GetProperty(TelemetryProperty.Downloads.ReportTitle).GetString().ShouldBe(previewRoot.Title);
+        previewReport.GetProperty(TelemetryProperty.Downloads.ReportSize).GetInt64().ShouldBe(media.Sum(x => x.Size));
+        previewReport.GetProperty(TelemetryProperty.Downloads.ReportChildCount).GetInt32().ShouldBe(2);
+        previewReport
+            .GetProperty(TelemetryProperty.Downloads.ReportMediaType)
+            .GetString()
+            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        var creationEvents = nativeEvents
+            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.DownloadCreationProcessed.ToString())
+            .ToArray();
+        creationEvents.Length.ShouldBe(1);
+        var creationProperties = creationEvents.Single().GetProperty("properties");
+        creationProperties
+            .GetProperty(TelemetryProperty.Outcome)
+            .GetString()
+            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+        creationProperties.GetProperty(TelemetryProperty.Downloads.SelectedCount).GetInt32().ShouldBe(selection.MediaIds.Count);
+        creationProperties.GetProperty(TelemetryProperty.Downloads.SelectionCount).GetInt32().ShouldBe(1);
+        creationProperties
+            .GetProperty(TelemetryProperty.Downloads.SelectedMediaTypes)
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ShouldBe([PlexMediaType.PhotoImage.ToString()]);
+        creationProperties.GetProperty(TelemetryProperty.Downloads.CreatedTotal).GetInt32().ShouldBe(5);
+        var createdReport = creationProperties.GetProperty(TelemetryProperty.Downloads.CreatedReport);
+        createdReport.GetProperty(TelemetryProperty.Downloads.Movies).GetInt32().ShouldBe(0);
+        createdReport.GetProperty(TelemetryProperty.Downloads.TvShows).GetInt32().ShouldBe(0);
+        createdReport.GetProperty(TelemetryProperty.Downloads.Seasons).GetInt32().ShouldBe(0);
+        createdReport.GetProperty(TelemetryProperty.Downloads.Episodes).GetInt32().ShouldBe(0);
+        createdReport.GetProperty(TelemetryProperty.Downloads.PhotoFolders).GetInt32().ShouldBe(3);
+        createdReport.GetProperty(TelemetryProperty.Downloads.PhotoImages).GetInt32().ShouldBe(2);
+        createdReport.GetProperty(TelemetryProperty.Downloads.MusicArtists).GetInt32().ShouldBe(0);
+        createdReport.GetProperty(TelemetryProperty.Downloads.MusicAlbums).GetInt32().ShouldBe(0);
+        createdReport.GetProperty(TelemetryProperty.Downloads.MusicTracks).GetInt32().ShouldBe(0);
+        createdReport.GetProperty(TelemetryProperty.Downloads.OtherVideos).GetInt32().ShouldBe(0);
         using var finalContext = await factory.CreateAsync();
-        (await finalContext.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(2);
-        (await finalContext.DownloadTaskPhotoFolders.CountAsync(CancellationToken)).ShouldBe(3);
+        var server = await context.PlexServers.SingleAsync(x => x.Id == library.PlexServerId, CancellationToken);
+        var expectedRootName = $"{server.Name.SanitizeFolderName()} - {library.Title.SanitizeFolderName()}".SanitizeFolderName();
+        var expectedDownloadRoot = container.PathProvider.DefaultDownloadsDestinationFolder;
+        var folders = await finalContext
+            .DownloadTaskPhotoFolders.Where(x => x.PlexLibraryId == library.Id)
+            .OrderBy(x => x.RelativePath)
+            .ToListAsync(CancellationToken);
+        folders.Count.ShouldBe(3);
+        folders.ShouldAllBe(x =>
+            x.PlexServerId == library.PlexServerId
+            && x.PlexLibraryId == library.Id
+            && x.DownloadStatus == DownloadStatus.Queued
+            && x.DownloadRootPath == expectedDownloadRoot
+            && x.DestinationRootPath == destination
+        );
+        var rootFolder = folders.Single(x => x.ParentId is null);
+        (rootFolder.RelativePath, rootFolder.Title, rootFolder.DataTotal).ShouldBe(
+            (string.Empty, expectedRootName, media.Sum(x => x.Size))
+        );
+        var tripsFolder = folders.Single(x => x.RelativePath == "Trips");
+        (tripsFolder.ParentId, tripsFolder.Title, tripsFolder.DataTotal).ShouldBe(
+            (rootFolder.Id, "Trips", media.Sum(x => x.Size))
+        );
+        var dayFolder = folders.Single(x => x.RelativePath == "Trips/Day 1");
+        (dayFolder.ParentId, dayFolder.Title, dayFolder.DataTotal).ShouldBe(
+            (tripsFolder.Id, "Day 1", media[1].Size)
+        );
+        var files = await finalContext
+            .DownloadTaskPhotoImageFiles.Where(x => x.PlexLibraryId == library.Id)
+            .OrderBy(x => x.PlexApiPartId)
+            .ToListAsync(CancellationToken);
+        files.Count.ShouldBe(2);
+        files
+            .Select(x => (x.PlexApiRatingKey, x.PlexApiMediaId, x.PlexApiPartId, x.AssetKind, x.DataTotal))
+            .ShouldBe(
+                media.OrderBy(x => x.PlexApiPartId)
+                    .Select(x => (x.PlexApiRatingKey, x.PlexApiMediaId, x.PlexApiPartId, x.AssetKind, x.Size))
+                    .ToArray()
+            );
+        foreach (var file in files)
+        {
+            var source = media.Single(x => x.PlexApiPartId == file.PlexApiPartId);
+            file.ParentId.ShouldBe(source.Id == media[0].Id ? tripsFolder.Id : dayFolder.Id);
+            file.FileName.ShouldBe(source.OriginalFilename);
+            file.FileLocationUrl.ShouldBe(source.Key);
+            file.HashId.ShouldBeNull();
+            file.DownloadStatus.ShouldBe(DownloadStatus.Queued);
+            file.DataReceived.ShouldBe(0);
+            file.DirectoryMeta.DownloadRootPath.ShouldBe(expectedDownloadRoot);
+            file.DirectoryMeta.DestinationRootPath.ShouldBe(destination);
+            file.DestinationFolderPathId.ShouldBeNull();
+        }
     }
 
     [Test]
@@ -167,7 +336,11 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         return client;
     }
 
-    private Task<BaseContainer> CreatePhotoContainerAsync(Seed seed, int photoCount) =>
+    private Task<BaseContainer> CreatePhotoContainerAsync(
+        Seed seed,
+        int photoCount,
+        Action<UnitTestDataConfig>? overrides = null
+    ) =>
         CreateContainer(
             seed,
             config =>
@@ -180,6 +353,7 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
                     x.PhotoCount = photoCount;
                 };
                 config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+                overrides?.Invoke(config);
             }
         );
 

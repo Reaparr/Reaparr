@@ -237,6 +237,70 @@ public class DeletePlexServerConnectionByIdUnitTests
         serversAfter.ShouldBe(serversBefore);
     }
 
+    [Test]
+    public async Task ShouldDeleteCustomConnectionAndClearPreferredConnection_WhenConnectionIsPreferred()
+    {
+        // Arrange
+        await SetupDatabase(
+            44904,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexServerConnectionPerServerCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var server = await dbContext
+            .PlexServers.AsTracking()
+            .Include(x => x.PlexServerConnections)
+            .SingleAsync(CancellationToken);
+        var generated = server.PlexServerConnections.Single();
+        var custom = new PlexServerConnection
+        {
+            Protocol = "https",
+            Address = "custom.example.test",
+            Port = 32400,
+            Url = "https://custom.example.test:32400",
+            Local = false,
+            Relay = false,
+            IPv4 = false,
+            IPv6 = false,
+            PlexServerId = server.Id,
+            IsCustom = true,
+        };
+        dbContext.PlexServerConnections.Add(custom);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        server.PreferredConnectionId = custom.Id;
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(new DeletePlexServerConnectionByIdRequest(custom.Id));
+        dbContext.ClearChangeTracker();
+
+        // Assert
+        endpointResult.IsValid.ShouldBeTrue();
+        var remainingConnection = await dbContext.PlexServerConnections.AnyAsync(
+            x => x.Id == custom.Id,
+            CancellationToken
+        );
+        remainingConnection.ShouldBeFalse();
+        var updatedServer = await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .SingleAsync(x => x.Id == server.Id, CancellationToken);
+        updatedServer.PreferredConnectionId.ShouldBe(0);
+        generated.Id.ShouldNotBe(custom.Id);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexConnectionChanged(
+                        TelemetryAction.Delete,
+                        It.Is<PlexServerConnection>(connection => connection.Id == custom.Id),
+                        custom.Id
+                    ),
+                Times.Once()
+            );
+    }
+
     private sealed record ConnectionSnapshot(
         int Id,
         int PlexServerId,

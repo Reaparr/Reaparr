@@ -13,6 +13,7 @@ public class DownloadJob : IJob
     private readonly IDownloadTaskUpdateDispatcher _downloadTaskUpdateDispatcher;
     private readonly IEventPublisher _eventPublisher;
     private readonly IIndex<PlexDownloadClientType, IPlexDownloadClient> _plexDownloadClientFactory;
+    private readonly ITelemetry _telemetry;
 
     public DownloadJob(
         ILogger log,
@@ -20,7 +21,8 @@ public class DownloadJob : IJob
         IReaparrDbContext dbContext,
         IDownloadTaskUpdateDispatcher downloadTaskUpdateDispatcher,
         IEventPublisher eventPublisher,
-        IIndex<PlexDownloadClientType, IPlexDownloadClient> plexDownloadClientFactory
+        IIndex<PlexDownloadClientType, IPlexDownloadClient> plexDownloadClientFactory,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<DownloadJob>();
@@ -29,6 +31,7 @@ public class DownloadJob : IJob
         _downloadTaskUpdateDispatcher = downloadTaskUpdateDispatcher;
         _eventPublisher = eventPublisher;
         _plexDownloadClientFactory = plexDownloadClientFactory;
+        _telemetry = telemetry;
     }
 
     public static JobKey GetJobKey(Guid id) => new($"{nameof(DownloadJob)}_{id}", nameof(DownloadJob));
@@ -45,6 +48,7 @@ public class DownloadJob : IJob
 
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
         var token = context.CancellationToken;
+        using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.Download, context.GetTelemetryContext());
 
         // Preserve handled outcomes for Quartz listeners while containing unexpected exceptions.
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
@@ -118,6 +122,7 @@ public class DownloadJob : IJob
             }
 
             var clientType = clientTypeResult.Value;
+            _telemetry.SetDownloadJobContext(downloadTask, clientType);
             _log.Here()
                 .Information(
                     "Creating {ClientType} download client for {DownloadTaskFullTitle}",
@@ -138,7 +143,6 @@ public class DownloadJob : IJob
             }
 
             await using var plexDownloadClient = _plexDownloadClientFactory[clientType];
-
             var startResult = await plexDownloadClient.Start(downloadTask.ToKey(), token);
 
             if (startResult.IsCancelled)
@@ -187,6 +191,8 @@ public class DownloadJob : IJob
             return startResult;
         });
 
+        _telemetry.CompleteDownloadJob(Activity.Current, executionResult);
+
         if (executionResult.IsCancelled)
         {
             context.SetResult(JobStatus.Cancelled, executionResult);
@@ -196,6 +202,7 @@ public class DownloadJob : IJob
         {
             context.SetResult(JobStatus.Failed, executionResult);
             executionResult.LogError();
+            _telemetry.CaptureErrors(executionResult, TelemetryActivity.Download);
         }
 
         _log.Here()

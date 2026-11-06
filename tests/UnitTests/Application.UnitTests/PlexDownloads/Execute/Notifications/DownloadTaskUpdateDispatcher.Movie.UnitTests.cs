@@ -301,7 +301,8 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
             delayedDbContextFactory.Object,
             downloadHubService.Object,
             Mock.Mock<ICommandExecutor>().Object,
-            Mock.Mock<IDownloadTaskScheduler>().Object
+            Mock.Mock<IDownloadTaskScheduler>().Object,
+            Mock.Mock<ITelemetry>().Object
         );
 
         sut.OnProgressUpdated(movieFile.ToKey(), initialProgress);

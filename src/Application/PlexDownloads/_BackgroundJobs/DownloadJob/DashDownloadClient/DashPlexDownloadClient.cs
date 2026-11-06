@@ -20,9 +20,10 @@ public class DashPlexDownloadClient : IPlexDownloadClient
     private readonly IDownloadSpeedLimitProvider _speedLimits;
     private readonly INotificationHubService _notificationHubService;
     private readonly IFileInfoFactory _fileInfoFactory;
-
+    private readonly ITelemetry _telemetry;
     private DownloadTaskKey? _downloadTaskKey;
     private string? _dashOutputFilePath;
+    private long _effectiveSpeedLimitBytes;
     private readonly CompositeDisposable _subscriptions = new();
     private readonly Subject<Unit> _destroy = new();
     private TaskCompletionSource<Result>? _terminalWorkCompletion;
@@ -38,7 +39,8 @@ public class DashPlexDownloadClient : IPlexDownloadClient
         IDownloadTaskUpdateDispatcher downloadTaskUpdateDispatcher,
         IDownloadSpeedLimitProvider speedLimits,
         INotificationHubService notificationHubService,
-        IFileInfoFactory fileInfoFactory
+        IFileInfoFactory fileInfoFactory,
+        ITelemetry telemetry
     )
     {
         _dashWrapper = dashWrapper;
@@ -47,6 +49,7 @@ public class DashPlexDownloadClient : IPlexDownloadClient
         _speedLimits = speedLimits;
         _notificationHubService = notificationHubService;
         _fileInfoFactory = fileInfoFactory;
+        _telemetry = telemetry;
         _dbContext = dbContextFactory.Create();
     }
 
@@ -112,6 +115,7 @@ public class DashPlexDownloadClient : IPlexDownloadClient
 
         var outputQuality = downloadUrlResult.Value.TranscodedQuality;
         var normalizedFileName = DashOutputFileNameCleaner.NormalizeForDashOutput(downloadTask.FileName, outputQuality);
+        using var clientActivity = _telemetry.StartDashDownload(downloadTask, outputQuality, normalizedFileName);
         if (!string.Equals(downloadTask.FileName, normalizedFileName, StringComparison.Ordinal))
         {
             await PersistDashOutputFileName(downloadTask, normalizedFileName, cancellationToken);
@@ -130,6 +134,11 @@ public class DashPlexDownloadClient : IPlexDownloadClient
 
         var options = await CreateDashOptions(downloadTask, downloadUrlResult.Value.DownloadUrl);
         _dashOutputFilePath = options.Output;
+        using var attemptActivity = _telemetry.StartDashDownloadAttempt(
+            downloadTask,
+            options.Output,
+            _effectiveSpeedLimitBytes
+        );
         var dashStartTask = _dashWrapper.StartAsync(options);
         try
         {
@@ -147,13 +156,7 @@ public class DashPlexDownloadClient : IPlexDownloadClient
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             var stopResult = await StopRunnerAsync();
-            if (stopResult.IsCancelled)
-                return stopResult;
-
-            if (stopResult.IsFailed)
-                return stopResult.LogError();
-
-            return ResultExtensions.TaskIsCancelled(nameof(DashPlexDownloadClient));
+            return stopResult.LogIfFailed();
         }
     }
 
@@ -200,7 +203,7 @@ public class DashPlexDownloadClient : IPlexDownloadClient
     {
         var serverMachineIdentifier = await _dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
         var speedLimitBytes = _speedLimits.GetEffectiveDownloadSpeedLimit(serverMachineIdentifier);
-
+        _effectiveSpeedLimitBytes = speedLimitBytes;
         return new DashMpdCliOptions
         {
             MpdUrl = downloadUrl,

@@ -79,12 +79,18 @@ public class CreatePlexAccountEndpoint : Endpoint<CreatePlexAccountEndpointReque
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
-
-    public CreatePlexAccountEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    private readonly ITelemetry _telemetry;
+    public CreatePlexAccountEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<CreatePlexAccountEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -172,6 +178,7 @@ public class CreatePlexAccountEndpoint : Endpoint<CreatePlexAccountEndpointReque
             return;
         }
 
+        _telemetry.PlexAccountChanged(TelemetryAction.Create, plexAccountDb.Id, plexAccountDb);
         var result = Result.Ok(plexAccountDb).Add201CreatedRequestSuccess("PlexAccount created successfully.");
 
         await Send.FluentResult(result, model => model.ToDTO(), ct);

@@ -318,7 +318,12 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         targetStatus.ShouldBe(DownloadStatus.Downloading);
         targetRootStatusBefore.ShouldBe(DownloadStatus.Queued);
         targetRootStatusAfter.ShouldBe(DownloadStatus.Downloading);
-        changedKeys.ShouldBe([targetChildKey, targetRootKey]);
+        changedKeys.Select(x => (x.Key, x.Status)).ShouldBe(
+            [
+                (targetChildKey, DownloadStatus.Downloading),
+                (targetRootKey, DownloadStatus.Downloading),
+            ]
+        );
         rootKey.ShouldBe(targetRootKey);
         rootLogs.IsSuccess.ShouldBeTrue();
         rootLogs.Errors.Count.ShouldBe(0);
@@ -460,7 +465,12 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         var changed = await dbContext.DetermineDownloadStatus(targetFile.ToKey(), CancellationToken);
 
         // Assert
-        changed.ShouldBe([targetChild.ToKey(), targetRoot.ToKey()]);
+        changed.Select(x => (x.Key, x.Status)).ShouldBe(
+            [
+                (targetChild.ToKey(), DownloadStatus.Error),
+                (targetRoot.ToKey(), DownloadStatus.Error),
+            ]
+        );
         (await dbContext.GetDownloadStatusAsync(targetFile.ToKey())).ShouldBe(DownloadStatus.Error);
         (await dbContext.GetDownloadTaskStatusAsync(targetChild.ToKey(), CancellationToken)).ShouldBe(
             DownloadStatus.Error

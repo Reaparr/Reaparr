@@ -32,6 +32,7 @@ public class DeletePlexAccountByIdEndpointUnitTests
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
+
         // Act
         var result = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(testAccount.Id));
 
@@ -44,8 +45,18 @@ public class DeletePlexAccountByIdEndpointUnitTests
         IDbContext.PlexLibraries.ToList().ShouldBeEmpty();
         IDbContext.PlexMovies.ToList().ShouldBeEmpty();
         IDbContext.PlexTvShows.ToList().ShouldBeEmpty();
-    }
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexAccountChanged(
+                        TelemetryAction.Delete,
+                        testAccount.Id,
+                        It.Is<PlexAccount?>(account => account == null || account.Id == testAccount.Id)
+                    ),
+                Times.Once()
+            );
 
+    }
     [Test]
     public async Task ShouldDeleteOnlyUnreferencedServersAndLibraries_AfterRemovingDeletedAccountAccess()
     {
@@ -75,7 +86,10 @@ public class DeletePlexAccountByIdEndpointUnitTests
         var sharedServerId = servers[1].Id;
 
         var deleteOnlyLibraryId = libraries.First(x => x.PlexServerId == deleteOnlyServerId).Id;
-        var sharedLibraryId = libraries.First(x => x.PlexServerId == sharedServerId).Id;
+        var sharedLibrary = libraries.First(x => x.PlexServerId == sharedServerId);
+        var sharedLibraryId = sharedLibrary.Id;
+        sharedLibrary.IsEnabled = false;
+        await dbContext.SaveChangesAsync(CancellationToken);
 
         await dbContext.PlexAccountServers.ExecuteDeleteAsync(CancellationToken);
         await dbContext.PlexAccountLibraries.ExecuteDeleteAsync(CancellationToken);
@@ -144,6 +158,7 @@ public class DeletePlexAccountByIdEndpointUnitTests
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
+
         // Act
         var endpoint = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(deleteAccountId));
 
@@ -173,5 +188,15 @@ public class DeletePlexAccountByIdEndpointUnitTests
             .PlexAccountServers.Where(x => x.PlexAccountId == deleteAccountId)
             .ToListAsync(CancellationToken);
         deletedAccountLinks.ShouldBeEmpty();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexAccountChanged(
+                        TelemetryAction.Delete,
+                        deleteAccountId,
+                        It.Is<PlexAccount?>(account => account == null || account.Id == deleteAccountId)
+                    ),
+                Times.Once()
+            );
     }
 }

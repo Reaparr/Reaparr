@@ -32,11 +32,17 @@ public class DeleteAllDownloadTaskLogsByDownloadTaskIdEndpoint
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public DeleteAllDownloadTaskLogsByDownloadTaskIdEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public DeleteAllDownloadTaskLogsByDownloadTaskIdEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<DeleteAllDownloadTaskLogsByDownloadTaskIdEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -61,6 +67,8 @@ public class DeleteAllDownloadTaskLogsByDownloadTaskIdEndpoint
             PlexLibraryId = req.PlexLibraryId,
         };
         var logsResult = await _dbContext.DeleteDownloadTaskLogsAsync(key, ct);
+
+        _telemetry.DownloadLogsCleared(key, logsResult);
 
         logsResult.LogIfFailed();
 

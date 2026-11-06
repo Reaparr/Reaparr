@@ -16,11 +16,13 @@ public class DeleteFolderPathEndpoint : Endpoint<DeleteFolderPathEndpointRequest
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public DeleteFolderPathEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public DeleteFolderPathEndpoint(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<DeleteFolderPathEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -37,9 +39,11 @@ public class DeleteFolderPathEndpoint : Endpoint<DeleteFolderPathEndpointRequest
     public override async Task HandleAsync(DeleteFolderPathEndpointRequest req, CancellationToken ct)
     {
         _log.Here().DebugApiCall(HttpContext, req);
-        await _dbContext.FolderPaths.Where(x => x.Id == req.Id).ExecuteDeleteAsync(ct);
+        var deletedCount = await _dbContext.FolderPaths.Where(x => x.Id == req.Id).ExecuteDeleteAsync(ct);
         _log.Here()
             .Debug("Deleted {FolderPathName} with Id: {CommandId} from the database", nameof(FolderPath), req.Id);
+
+        _telemetry.FolderPathDeleted(req.Id, deletedCount);
 
         await Send.FluentResult(Result.Ok(), ct);
     }

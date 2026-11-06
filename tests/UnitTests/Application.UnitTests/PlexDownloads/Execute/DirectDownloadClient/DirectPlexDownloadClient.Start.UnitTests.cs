@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.ComponentModel;
 using Downloader;
 using DomainDownloadStatus = Reaparr.Domain.DownloadStatus;
@@ -197,8 +198,35 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var serverMachineIdentifier = await dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
 
         SetupSpeedLimitMocks(serverMachineIdentifier);
+        Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(0);
 
         SetupCommandExecutor();
+        int attemptNumber = 0;
+        int configuredSegments = 0;
+        int attemptSegments = 0;
+        long effectiveSpeedLimitBytes = 0;
+        DownloadTaskFileBase? attemptDownloadTask = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.StartDirectDownloadAttempt(
+                    It.IsAny<DownloadTaskFileBase>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<long>()
+                )
+            )
+            .Callback<DownloadTaskFileBase, int, int, int, long>(
+                (task, attempt, configured, segments, speedLimit) =>
+                {
+                    attemptDownloadTask = task;
+                    attemptNumber = attempt;
+                    configuredSegments = configured;
+                    attemptSegments = segments;
+                    effectiveSpeedLimitBytes = speedLimit;
+                }
+            )
+            .Returns((Activity?)null);
 
         // Act
         var fileMock = new Mock<IFile>();
@@ -208,10 +236,16 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             fileMock,
             fileInfoFactoryMock
         );
-        var startResult = await sut.Start(downloadTask.ToKey(), CancellationToken);
 
+        var startResult = await sut.Start(downloadTask.ToKey(), CancellationToken);
         // Assert
         startResult.IsSuccess.ShouldBeTrue();
+        attemptDownloadTask.ShouldNotBeNull();
+        attemptDownloadTask!.Id.ShouldBe(downloadTask.Id);
+        attemptNumber.ShouldBe(1);
+        attemptSegments.ShouldBe(1);
+        configuredSegments.ShouldBe(0);
+        effectiveSpeedLimitBytes.ShouldBe(1000L * 1024);
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Verify(
                 x =>
@@ -2505,6 +2539,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         );
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        var terminalTransportException = new TaskCanceledException("Transport connection cancelled.");
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
         var downloadServiceMock = new Mock<IDownloadService>();
 
@@ -2549,7 +2584,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                     x => x.DownloadFileCompleted += null,
                     downloadServiceMock.Object,
                     new AsyncCompletedEventArgs(
-                        new TaskCanceledException("Transport connection cancelled."),
+                        terminalTransportException,
                         false,
                         null
                     )

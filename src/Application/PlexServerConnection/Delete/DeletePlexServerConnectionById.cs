@@ -14,11 +14,17 @@ public class DeletePlexServerConnectionById : Endpoint<DeletePlexServerConnectio
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public DeletePlexServerConnectionById(ILogger log, IReaparrDbContext dbContext)
+    public DeletePlexServerConnectionById(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<DeletePlexServerConnectionById>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -36,10 +42,12 @@ public class DeletePlexServerConnectionById : Endpoint<DeletePlexServerConnectio
     public override async Task HandleAsync(DeletePlexServerConnectionByIdRequest req, CancellationToken ct)
     {
         _log.Here().DebugApiCall(HttpContext, req);
-        var connection = await _dbContext.PlexServerConnections.FirstOrDefaultAsync(
-            x => x.Id == req.PlexServerConnectionId,
-            ct
-        );
+        var connection = await _dbContext.PlexServerConnections
+            .Include(x => x.PlexServer)
+            .FirstOrDefaultAsync(
+                x => x.Id == req.PlexServerConnectionId,
+                ct
+            );
 
         if (connection is null)
         {
@@ -92,6 +100,13 @@ public class DeletePlexServerConnectionById : Endpoint<DeletePlexServerConnectio
             return;
         }
 
+        _telemetry.PlexConnectionChanged(
+            TelemetryAction.Delete,
+            connection,
+            connection.PlexServer?.PreferredConnectionId
+        );
+
         await Send.FluentResult(Result.Ok(), ct);
     }
+
 }

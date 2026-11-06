@@ -34,11 +34,13 @@ public class CreatePlexServerConnectionEndpoint
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public CreatePlexServerConnectionEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public CreatePlexServerConnectionEndpoint(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<CreatePlexServerConnectionEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -72,8 +74,9 @@ public class CreatePlexServerConnectionEndpoint
             IsCustom = true,
         };
         _dbContext.PlexServerConnections.Add(connection);
-
         await _dbContext.SaveChangesAsync(ct);
+
+        _telemetry.PlexConnectionChanged(TelemetryAction.Create, connection, null);
 
         var result = ResultExtensions.Create201CreatedResult(connection.ToDTO());
         await Send.FluentResult(result, ct);

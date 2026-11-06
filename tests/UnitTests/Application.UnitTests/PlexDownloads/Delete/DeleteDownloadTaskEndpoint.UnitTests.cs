@@ -49,6 +49,15 @@ public class DeleteDownloadTaskEndpointUnitTests
                     ).ExecuteAsync(command, ct)
             )
             .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.DownloadDeletionProcessed(
+                    It.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { episodeFileId })),
+                    It.Is<IReadOnlyCollection<DownloadTaskKey>>(keys => keys.Count > 0),
+                    It.Is<ResultBase>(r => r.IsSuccess)
+                )
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -83,6 +92,7 @@ public class DeleteDownloadTaskEndpointUnitTests
         (await dbContext.DownloadTaskTvShowEpisode.AnyAsync(CancellationToken)).ShouldBeFalse();
         (await dbContext.DownloadTaskTvShowSeason.AnyAsync(CancellationToken)).ShouldBeFalse();
         (await dbContext.DownloadTaskTvShow.AnyAsync(CancellationToken)).ShouldBeFalse();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -171,6 +181,15 @@ public class DeleteDownloadTaskEndpointUnitTests
         var tvShowEpisodeFileCountBefore = await dbContext.DownloadTaskTvShowEpisodeFile.CountAsync(CancellationToken);
 
         var missingId = Guid.NewGuid();
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.DownloadDeletionProcessed(
+                    It.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { missingId })),
+                    It.Is<IReadOnlyCollection<DownloadTaskKey>>(keys => keys.Count == 0),
+                    It.Is<ResultBase>(r => r.IsSuccess)
+                )
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -194,5 +213,6 @@ public class DeleteDownloadTaskEndpointUnitTests
         (await dbContext.DownloadTaskTvShowEpisodeFile.CountAsync(CancellationToken)).ShouldBe(
             tvShowEpisodeFileCountBefore
         );
+        Mock.Mock<ITelemetry>().Verify();
     }
 }

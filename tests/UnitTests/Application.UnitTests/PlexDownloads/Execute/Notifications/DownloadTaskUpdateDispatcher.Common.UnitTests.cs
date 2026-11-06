@@ -624,4 +624,71 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         snapshot.PatchSequenceByServer.ShouldBe(new Dictionary<int, long> { [key.PlexServerId] = 1 });
         Mock.Mock<IDownloadHubService>().Verify();
     }
+    [Test]
+    public async Task ShouldTrackOnlyCommittedRootLifecycleTransition_AndIgnoreDuplicateStatusRequests()
+    {
+        // Arrange
+        await SetupDatabase(84340, config => config.MovieDownloadTasksCount = 1);
+        var key = (await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
+        var rootKey = (await IDbContext.DownloadTaskMovie.FirstAsync(CancellationToken)).ToKey();
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(key.PlexServerId))
+            .ReturnsAsync(false)
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        var lifecycleEvents = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.DownloadLifecycleChanged(It.IsAny<DownloadTaskKey>(), DownloadStatus.Downloading))
+            .Callback<DownloadTaskKey, DownloadStatus>((eventKey, status) => lifecycleEvents.Add((eventKey, status)))
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, CancellationToken.None);
+        await Sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, CancellationToken.None);
+
+        // Assert
+        lifecycleEvents.Count.ShouldBe(1);
+        lifecycleEvents[0].Key.ShouldBe(rootKey);
+        lifecycleEvents[0].Status.ShouldBe(DownloadStatus.Downloading);
+        Mock.Mock<ITelemetry>().Verify();
+        Mock.Mock<IDownloadTaskScheduler>().Verify();
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldPublishLifecycleEventBeforeCancellableChannelWrite()
+    {
+        // Arrange
+        await SetupDatabase(84341, config => config.MovieDownloadTasksCount = 1);
+        var key = (await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
+        var rootKey = (await IDbContext.DownloadTaskMovie.FirstAsync(CancellationToken)).ToKey();
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(key.PlexServerId))
+            .ReturnsAsync(false)
+            .Verifiable(Times.Once());
+        using var cancellation = new CancellationTokenSource();
+        var lifecycleEvents = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.DownloadLifecycleChanged(It.IsAny<DownloadTaskKey>(), DownloadStatus.Downloading))
+            .Callback<DownloadTaskKey, DownloadStatus>(
+                (eventKey, status) =>
+                {
+                    lifecycleEvents.Add((eventKey, status));
+                    cancellation.Cancel();
+                }
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, cancellation.Token);
+
+        lifecycleEvents.Count.ShouldBe(1);
+        lifecycleEvents[0].Key.ShouldBe(rootKey);
+        lifecycleEvents[0].Status.ShouldBe(DownloadStatus.Downloading);
+        Mock.Mock<ITelemetry>().Verify();
+        Mock.Mock<IDownloadTaskScheduler>().Verify();
+    }
 }
