@@ -52,18 +52,21 @@ public class ValidatePlexTokenEndpoint
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
+    private readonly ITelemetry _telemetry;
 
     public ValidatePlexTokenEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        INotificationHubService notificationHubService
+        INotificationHubService notificationHubService,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<ValidatePlexTokenEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -112,6 +115,7 @@ public class ValidatePlexTokenEndpoint
                 ValidatedAt = null,
                 Is2Fa = false,
             };
+            _telemetry.PlexAuthenticationProcessed(req.PlexAccountId, validateResult);
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
@@ -145,10 +149,12 @@ public class ValidatePlexTokenEndpoint
                 ValidatedAt = validateResult.Value.ValidatedAt,
                 Is2Fa = validateResult.Value.Is2Fa,
             };
+            _telemetry.PlexAuthenticationProcessed(req.PlexAccountId, validateResult);
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
 
+        _telemetry.PlexAuthenticationProcessed(req.PlexAccountId, validateResult);
         // Default: return all errors if none of the above conditions matched
         await Send.FluentResult(validateResult, ct);
     }

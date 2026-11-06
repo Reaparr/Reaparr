@@ -60,7 +60,7 @@ public class Program
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Host.ConfigureAutofacBuilder(logBuffer);
-            builder.Services.ConfigureServices(builder.Environment, _appRuntimeInfo);
+            builder.Services.ConfigureServices(builder.Environment, _appRuntimeInfo, _appBuildInfo);
             var app = builder.Build();
 
             if (!_appRuntimeInfo.IsIntegrationTestMode)

@@ -7,10 +7,12 @@ namespace Reaparr.Application;
 public sealed class UpdateScheduledDownloadLimitsJob : IJob
 {
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public UpdateScheduledDownloadLimitsJob(ICommandExecutor commandExecutor)
+    public UpdateScheduledDownloadLimitsJob(ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public static JobKey GetJobKey() =>
@@ -35,13 +37,26 @@ public sealed class UpdateScheduledDownloadLimitsJob : IJob
     /// <inheritdoc />
     public async Task Execute(IJobExecutionContext context)
     {
-        var result = await _commandExecutor.Send(new UpdateScheduledDownloadLimitsCommand(), context.CancellationToken);
+        using var telemetryScope = _telemetry.BeginJob(
+            TelemetryActivity.ScheduledDownloadLimits,
+            context.GetTelemetryContext()
+        );
 
+        var result = await Result.Try(() =>
+            _commandExecutor.Send(new UpdateScheduledDownloadLimitsCommand(), context.CancellationToken)
+        );
         var status =
             result.IsCancelled ? JobStatus.Cancelled
             : result.IsFailed ? JobStatus.Failed
             : JobStatus.Completed;
-        result.LogIfFailed();
+
+        _telemetry.CompleteScheduledDownloadLimits(Activity.Current, result);
+        if (result.IsCancelledOrFailed)
+        {
+            result.LogIfFailed();
+            _telemetry.CaptureErrors(result, TelemetryActivity.ScheduledDownloadLimits);
+        }
+
         context.SetResult(status, result);
     }
 }

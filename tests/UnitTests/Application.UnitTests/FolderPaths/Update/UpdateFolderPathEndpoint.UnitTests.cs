@@ -18,6 +18,20 @@ public class UpdateFolderPathEndpointUnitTests
         }
         var before = await db.FolderPaths.SingleAsync(x => x.Id == folderId, CancellationToken);
         var request = Request(folderId, before.FolderType, before.MediaType);
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.FolderPathChanged(
+                    It.Is<FolderPath>(folder =>
+                        folder.Id == folderId
+                        && folder.FolderType == before.FolderType
+                        && folder.MediaType == before.MediaType
+                        && folder.DisplayName == "Changed name"
+                        && folder.DirectoryPath == "/tmp/folder-role-new"
+                    ),
+                    TelemetryAction.Update
+                )
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var outcome = await TestEndpointHandleAsync(request);
@@ -37,6 +51,7 @@ public class UpdateFolderPathEndpointUnitTests
         resolvedDefault.Id.ShouldBe(2);
         if (folderId == 2)
             resolvedDefault.DirectoryPath.ShouldBe("/tmp/folder-role-new");
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -236,6 +251,51 @@ public class UpdateFolderPathEndpointUnitTests
             (11, "Changed name", "/tmp/folder-role-new", FolderType.MovieFolder, PlexMediaType.Movie));
         (afterControl.Id, afterControl.DisplayName, afterControl.DirectoryPath, afterControl.FolderType, afterControl.MediaType).ShouldBe(
             (control.Id, control.DisplayName, control.DirectoryPath, control.FolderType, control.MediaType));
+    }
+
+    [Test]
+    public async Task ShouldNotReportTelemetry_WhenFolderUpdateIsUnchanged()
+    {
+        // Arrange
+        await SetupDatabase(44207);
+        var db = IDbContext;
+        var before = await db.FolderPaths.SingleAsync(x => x.Id == 2, CancellationToken);
+        var request = new UpdateFolderPathEndpointRequest
+        {
+            FolderPathDTO = new FolderPathDTO
+            {
+                Id = before.Id,
+                FolderType = before.FolderType,
+                MediaType = before.MediaType,
+                DisplayName = before.DisplayName,
+                Directory = before.DirectoryPath,
+                IsValid = before.IsValid,
+                IsDefault = true,
+            },
+        };
+
+        // Act
+        var outcome = await TestEndpointHandleAsync(request);
+
+        // Assert
+        outcome.IsValid.ShouldBeTrue();
+        outcome.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var result = outcome.Response.ShouldNotBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var value = result.Value.ShouldNotBeNull();
+        (value.Id, value.DisplayName, value.Directory, value.FolderType, value.MediaType).ShouldBe(
+            (before.Id, before.DisplayName, before.DirectoryPath, before.FolderType, before.MediaType)
+        );
+        var after = await db.FolderPaths.SingleAsync(x => x.Id == before.Id, CancellationToken);
+        (after.DisplayName, after.DirectoryPath, after.FolderType, after.MediaType).ShouldBe(
+            (before.DisplayName, before.DirectoryPath, before.FolderType, before.MediaType)
+        );
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.FolderPathChanged(It.IsAny<FolderPath>(), TelemetryAction.Update),
+                Times.Never
+            );
     }
 
     private static FolderPath NewFolder(int id, FolderType folderType, PlexMediaType mediaType) => new()

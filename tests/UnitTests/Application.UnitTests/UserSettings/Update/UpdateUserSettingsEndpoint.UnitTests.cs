@@ -147,6 +147,45 @@ public class UpdateUserSettingsEndpointUnitTests
     }
 
     [Test]
+    public async Task ShouldKeepAppliedSettings_WhenSchedulerRefreshFails()
+    {
+        // Arrange
+        var settings = new UserSettings { DateTimeSettings = { TimeZone = "UTC" } };
+        var dto = settings.ToDTO();
+        dto.DateTimeSettings.TimeZone = "Asia/Kathmandu";
+        dto.DownloadManagerSettings.DownloadSchedule.Enabled = true;
+        var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
+        scheduler
+            .Setup(x =>
+                x.RescheduleJob(
+                    UpdateScheduledDownloadLimitsJob.GetTriggerKey(),
+                    It.IsAny<ITrigger>(),
+                    CancellationToken.None
+                )
+            )
+            .ThrowsAsync(new SchedulerException("scheduler unavailable"))
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
+            services =>
+            {
+                services.AddSingleton<IUserSettings>(settings);
+                services.AddSingleton(scheduler.Object);
+            }
+        );
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        settings.DateTimeSettings.TimeZone.ShouldBe("Asia/Kathmandu");
+        result.ValidationErrors.Count.ShouldBe(0);
+        result.StatusCode.ShouldBe(200);
+        settings.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
+        scheduler.Verify();
+    }
+
+    [Test]
     [Arguments(true)]
     [Arguments(false)]
     public async Task ShouldRetainTheCurrentBudget_WhenScheduleDataIsMissing(bool missingSchedule)
@@ -478,6 +517,32 @@ public class UpdateUserSettingsEndpointUnitTests
         scheduler.Verify(x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
+
+    [Test]
+    public async Task ShouldKeepAppliedSettings_WhenTheResponseWriteFails()
+    {
+        // Arrange
+        var settings = new UserSettings();
+        var dto = settings.ToDTO();
+        dto.GeneralSettings.DisableAnimatedBackground = true;
+        var endpoint = SetupEndpointUnitTest<UpdateUserSettingsEndpoint>(services =>
+            services.AddSingleton<IUserSettings>(settings)
+        );
+        endpoint.HttpContext.Response.Body = new ThrowingResponseStream();
+
+        // Act
+        var exception = await Should.ThrowAsync<IOException>(() =>
+            endpoint.HandleAsync(
+                new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
+                CancellationToken
+            )
+        );
+
+        // Assert
+        exception.Message.ShouldBe("response failed");
+        settings.GeneralSettings.DisableAnimatedBackground.ShouldBeTrue();
+    }
+
     private async Task<string[]> SetupDownloadingServersAsync()
     {
         await SetupDatabase(71997, config =>
@@ -600,5 +665,18 @@ public class UpdateUserSettingsEndpointUnitTests
             firstRescheduled.TrySetResult(DateTimeOffset.UnixEpoch);
             await first;
         }
+    }
+
+    private sealed class ThrowingResponseStream : MemoryStream
+    {
+        public override void Write(byte[] buffer, int offset, int count) => throw new IOException("response failed");
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            Task.FromException(new IOException("response failed"));
+
+        public override ValueTask WriteAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default
+        ) => ValueTask.FromException(new IOException("response failed"));
     }
 }

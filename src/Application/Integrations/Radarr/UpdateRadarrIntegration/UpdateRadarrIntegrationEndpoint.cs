@@ -33,8 +33,13 @@ public class UpdateRadarrIntegrationRequestValidator : Validator<UpdateRadarrInt
 public class UpdateRadarrIntegrationEndpoint : Endpoint<UpdateRadarrIntegrationRequest, ResultDTO<RadarrIntegrationDTO>>
 {
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public UpdateRadarrIntegrationEndpoint(IReaparrDbContext dbContext) => _dbContext = dbContext;
+    public UpdateRadarrIntegrationEndpoint(IReaparrDbContext dbContext, ITelemetry telemetry)
+    {
+        _dbContext = dbContext;
+        _telemetry = telemetry;
+    }
 
     public override void Configure()
     {
@@ -57,12 +62,10 @@ public class UpdateRadarrIntegrationEndpoint : Endpoint<UpdateRadarrIntegrationR
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(RadarrIntegration), req.IntegrationId), ct);
             return;
         }
-
         var name = req.Name.Trim();
         var url = req.Url.Trim().TrimEnd('/');
         var apiKey = req.ApiKey.Trim();
         var category = req.Category.Trim();
-
         if (
             !await _dbContext.FolderPaths.AnyAsync(
                 x => x.Id == req.DownloadFolderId && x.FolderType == FolderType.DownloadFolder,
@@ -91,9 +94,14 @@ public class UpdateRadarrIntegrationEndpoint : Endpoint<UpdateRadarrIntegrationR
             );
             return;
         }
+        var originalConfiguration = integration.ToDTO() with
+        {
+            Url = integration.BaseUrl.Trim().TrimEnd('/'),
+            ApiKey = integration.RadarrApiKey.Trim(),
+        };
 
         var connectionIdentityChanged =
-            integration.BaseUrl.Trim().TrimEnd('/') != url || integration.RadarrApiKey.Trim() != apiKey;
+            originalConfiguration.Url != url || originalConfiguration.ApiKey != apiKey;
 
         if (
             integration.ProvisioningState == IntegrationProvisioningState.Configured
@@ -116,6 +124,14 @@ public class UpdateRadarrIntegrationEndpoint : Endpoint<UpdateRadarrIntegrationR
         integration.DownloadFolderId = req.DownloadFolderId;
         await _dbContext.SaveChangesAsync(ct);
 
-        await Send.FluentResult(Result.Ok(integration), model => model.ToDTO(), ct);
+        var updatedConfiguration = integration.ToDTO();
+        var configurationChanged = originalConfiguration != updatedConfiguration;
+        if (configurationChanged)
+        {
+            _telemetry.IntegrationChanged(integration, TelemetryAction.Update, connectionIdentityChanged);
+        }
+
+        await Send.FluentResult(Result.Ok(updatedConfiguration), ct);
     }
+
 }

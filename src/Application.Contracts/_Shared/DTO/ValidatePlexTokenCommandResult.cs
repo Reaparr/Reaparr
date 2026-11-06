@@ -1,4 +1,4 @@
-namespace Reaparr.PlexApi.Contracts;
+namespace Reaparr.Application.Contracts;
 
 public record ValidatePlexTokenCommandResult
 {
