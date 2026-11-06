@@ -1,3 +1,4 @@
+using Autofac;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -12,6 +13,8 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
+        context.SetupGet(x => x.MergedJobDataMap).Returns(new JobDataMap());
+        context.SetupGet(x => x.FireInstanceId).Returns("connection-check-test");
         context.SetupProperty(x => x.Result);
         return context;
     }
@@ -83,15 +86,20 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         Mock.Mock<IProgressHubService>()
             .Setup(x => x.SendJobStatusUpdateAsync(It.IsAny<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>()))
             .Returns(Task.CompletedTask);
+        var dispatchedCommands = new List<CheckAllConnectionsStatusByPlexServerCommand>();
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CheckAllConnectionsStatusByPlexServerCommand>(), It.IsAny<CancellationToken>()))
-            .Returns<CheckAllConnectionsStatusByPlexServerCommand, CancellationToken>(
-                (command, _) =>
-                    Task.FromResult(
+            .Returns<ICommand<Result<List<PlexServerStatus>>>, CancellationToken>(
+                (request, _) =>
+                {
+                    var command = (CheckAllConnectionsStatusByPlexServerCommand)request;
+                    dispatchedCommands.Add(command);
+                    return Task.FromResult(
                         command.PlexServerId == plexServerIds[0]
                             ? Result.Fail<List<PlexServerStatus>>("Plex server is unavailable")
                             : Result.Ok(new List<PlexServerStatus>())
-                    )
+                    );
+                }
             );
         var context = SetupJobContext();
 
@@ -111,5 +119,56 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
                 x => x.Send(It.IsAny<CheckAllConnectionsStatusByPlexServerCommand>(), It.IsAny<CancellationToken>()),
                 Times.Exactly(plexServerIds.Count)
             );
+        dispatchedCommands.Count.ShouldBe(plexServerIds.Count);
+        dispatchedCommands.ShouldAllBe(command => !command.EmitTelemetry);
     }
+
+    [Test]
+    public async Task ShouldCaptureNestedTerminalException_WhenScheduledConnectionCheckFails()
+    {
+        // Arrange
+        await SetupDatabase(
+            135045,
+            config =>
+            {
+                config.PlexServerCount = 1;
+            }
+        );
+
+        Mock.Mock<IProgressHubService>()
+            .Setup(x => x.SendJobStatusUpdateAsync(It.IsAny<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>()))
+            .Returns(Task.CompletedTask);
+        var exception = new InvalidOperationException("connection transport failed");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<CheckAllConnectionsStatusByPlexServerCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<List<PlexServerStatus>>(new ExceptionalError(exception)));
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ScheduledConnectionCheck))
+            .Verifiable(Times.Once());
+        var context = SetupJobContext();
+
+        // Act
+        await Sut.Execute(context.Object);
+
+        // Assert
+        Mock.Mock<ITelemetry>().Verify();
+    }
+    [Test]
+    public async Task ShouldRethrowUnexpectedOuterException()
+    {
+        // Arrange
+        var exception = new InvalidOperationException("Connection catalog unavailable");
+        var database = new Mock<IReaparrDbContext>();
+        database.SetupGet(x => x.PlexServers).Throws(exception);
+        SetupDependencies(builder => builder.RegisterInstance(database.Object).As<IReaparrDbContext>());
+        var context = SetupJobContext();
+
+        // Act
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() => Sut.Execute(context.Object));
+
+        // Assert
+        thrown.ShouldBeSameAs(exception);
+    }
+
+
 }

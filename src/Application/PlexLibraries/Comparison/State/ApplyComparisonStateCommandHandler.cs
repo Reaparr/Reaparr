@@ -1,3 +1,4 @@
+
 namespace Reaparr.Application;
 
 public class ApplyComparisonStateCommandValidator : AbstractValidator<ApplyComparisonStateCommand>
@@ -28,15 +29,27 @@ public class ApplyComparisonStateCommandHandler : ICommandHandler<ApplyCompariso
 {
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public ApplyComparisonStateCommandHandler(IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public ApplyComparisonStateCommandHandler(
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(ApplyComparisonStateCommand command, CancellationToken ct)
     {
+        using var activity = _telemetry.StartComparisonStateApplication(
+            command.MediaType,
+            command.PlexLibraryId,
+            command.Items.Count
+        );
+
         if (command.Items.Count == 0)
             return Result.Ok();
 

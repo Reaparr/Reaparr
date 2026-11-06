@@ -49,6 +49,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
+
     [Test]
     public async Task ShouldCleanUpInterruptedLibrarySyncsBeforeStartingBackgroundJobs()
     {
@@ -63,6 +64,11 @@ public class BootUnitTests : BaseUnitTest<Boot>
             .InSequence(sequence)
             .Setup(x => x.Send(It.IsAny<CreateDefaultAppUserCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .InSequence(sequence)
+            .Setup(x => x.InitializeAsync())
+            .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<IDownloadQueue>()
             .InSequence(sequence)
@@ -90,6 +96,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
 
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<IDownloadQueue>().Verify();
         Mock.Mock<IBackgroundJobsSetup>().Verify();
         Mock.Mock<IMoveDownloadFileQueue>()

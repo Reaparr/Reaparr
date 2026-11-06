@@ -29,16 +29,19 @@ public class AddOrUpdatePlexLibrariesCommandHandler
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
     public AddOrUpdatePlexLibrariesCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
-        ICommandExecutor commandExecutor
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<AddOrUpdatePlexLibrariesCommandHandler>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public async Task<Result<List<PlexLibraryAccessRapport>>> ExecuteAsync(
@@ -49,6 +52,7 @@ public class AddOrUpdatePlexLibrariesCommandHandler
         List<PlexLibraryAccessRapport> rapportList = [];
         List<PlexLibrary> newPlexLibraries = [];
         HashSet<int> changedPlexLibraryIds = [];
+        var refreshRunId = Guid.NewGuid();
 
         var plexAccountId = command.PlexAccountId;
 
@@ -210,9 +214,10 @@ public class AddOrUpdatePlexLibrariesCommandHandler
             }
         }
 
-        await AddHistoryEventsAsync(rapportList, plexAccount, cancellationToken);
+        await AddHistoryEventsAsync(rapportList, plexAccount, refreshRunId, cancellationToken);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _telemetry.LibraryAccessChanged(plexAccountId, refreshRunId, rapportList);
 
         foreach (var rapport in rapportList)
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
@@ -223,7 +228,7 @@ public class AddOrUpdatePlexLibrariesCommandHandler
         if (libraryIdsToSync.Count > 0)
         {
             var queueResult = await _commandExecutor.Send(
-                new QueueLibrarySyncJobCommand(libraryIdsToSync),
+                new QueueLibrarySyncJobCommand(libraryIdsToSync, Trigger: TelemetryTrigger.AccessReconciled),
                 cancellationToken
             );
             if (queueResult.IsFailed)
@@ -281,10 +286,10 @@ public class AddOrUpdatePlexLibrariesCommandHandler
     private async Task AddHistoryEventsAsync(
         List<PlexLibraryAccessRapport> rapportList,
         PlexAccount plexAccount,
+        Guid refreshRunId,
         CancellationToken cancellationToken
     )
     {
-        var refreshRunId = Guid.NewGuid();
         var createdAt = DateTime.UtcNow;
 
         var updatedRows = rapportList

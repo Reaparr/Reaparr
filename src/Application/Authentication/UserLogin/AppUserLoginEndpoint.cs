@@ -37,11 +37,13 @@ public class AppUserLoginEndpoint : Endpoint<AppUserLoginEndpointRequest>
 {
     private readonly ILogger _log;
     private readonly IIdentitySignInService _identitySignInService;
+    private readonly ITelemetry _telemetry;
 
-    public AppUserLoginEndpoint(ILogger log, IIdentitySignInService identitySignInService)
+    public AppUserLoginEndpoint(ILogger log, IIdentitySignInService identitySignInService, ITelemetry telemetry)
     {
         _log = log.ForContext<AppUserLoginEndpoint>();
         _identitySignInService = identitySignInService;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -92,12 +94,17 @@ public class AppUserLoginEndpoint : Endpoint<AppUserLoginEndpointRequest>
         {
             _log.Here().Information("User {Username} signed in successfully", username);
 
-            await Send.FluentResult(Result.Ok(), ct);
+            var result = Result.Ok();
+            _telemetry.AuthenticationProcessed(TelemetryAction.Login, result, req.RememberMe);
+
+            await Send.FluentResult(result, ct);
         }
         else if (signInResult.IsLockedOut)
         {
             var result = _log.Here().WarningResult("User {Username} is locked out", username);
             result.Add403ForbiddenError();
+
+            _telemetry.AuthenticationProcessed(TelemetryAction.Login, result, req.RememberMe);
 
             await Send.FluentResult(result, ct);
         }
@@ -105,6 +112,8 @@ public class AppUserLoginEndpoint : Endpoint<AppUserLoginEndpointRequest>
         {
             var result = _log.Here().WarningResult("Failed to sign in user {Username}", username);
             result.Add401UnauthorizedError();
+
+            _telemetry.AuthenticationProcessed(TelemetryAction.Login, result, req.RememberMe);
 
             await Send.FluentResult(result, ct);
         }

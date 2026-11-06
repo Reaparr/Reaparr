@@ -10,7 +10,7 @@ public class CheckAllConnectionsStatusByPlexServerJob : IJob
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IProgressHubService _progressHubService;
-
+    private readonly ITelemetry _telemetry;
     public static JobKey GetJobKey() =>
         new(nameof(CheckAllConnectionsStatusByPlexServerJob), nameof(CheckAllConnectionsStatusByPlexServerJob));
 
@@ -18,16 +18,26 @@ public class CheckAllConnectionsStatusByPlexServerJob : IJob
         ILogger log,
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        IProgressHubService progressHubService
+        IProgressHubService progressHubService,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<CheckAllConnectionsStatusByPlexServerJob>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _progressHubService = progressHubService;
+        _telemetry = telemetry;
+    }
+    public async Task Execute(IJobExecutionContext context)
+    {
+        using var telemetryScope = _telemetry.BeginJob(
+            TelemetryActivity.ScheduledConnectionCheck,
+            context.GetTelemetryContext()
+        );
+        await ExecuteCore(context);
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    private async Task ExecuteCore(IJobExecutionContext context)
     {
         var cancellationToken = context.CancellationToken;
         var plexServers = await _dbContext
@@ -57,7 +67,10 @@ public class CheckAllConnectionsStatusByPlexServerJob : IJob
                 plexServers.Select(async plexServer =>
                     await Result.Try(() =>
                         _commandExecutor.Send(
-                            new CheckAllConnectionsStatusByPlexServerCommand(plexServer.Id),
+                            new CheckAllConnectionsStatusByPlexServerCommand(
+                                plexServer.Id,
+                                EmitTelemetry: false
+                            ),
                             cancellationToken
                         )
                     )
@@ -70,7 +83,10 @@ public class CheckAllConnectionsStatusByPlexServerJob : IJob
 
             var failedResults = connectionResults.Where(x => x.IsFailed && !x.IsCancelled).ToList();
             foreach (var failedResult in failedResults)
+            {
+                _telemetry.CaptureErrors(failedResult, TelemetryActivity.ScheduledConnectionCheck);
                 failedResult.LogError();
+            }
 
             if (cancelledResults.Count > 0 || failedResults.Count > 0)
             {
@@ -96,6 +112,7 @@ public class CheckAllConnectionsStatusByPlexServerJob : IJob
         if (result.IsFailed)
         {
             context.SetCronJobPayload(JobStatus.Failed, payload);
+            _telemetry.CaptureErrors(result, TelemetryActivity.ScheduledConnectionCheck);
             result.LogError();
         }
     }

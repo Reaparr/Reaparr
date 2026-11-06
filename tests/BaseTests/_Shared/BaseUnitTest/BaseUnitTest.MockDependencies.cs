@@ -52,6 +52,14 @@ public partial class BaseUnitTest
     {
         builder.Register<ILogger>((_, _) => LogFactory.Create()).SingleInstance();
 
+        builder.Register(_ =>
+        {
+            var telemetry = new Mock<ITelemetry>();
+            telemetry.Setup(x => x.InitializeAsync()).Returns(Task.CompletedTask);
+            telemetry.Setup(x => x.SendDiagnostic(It.IsAny<TelemetryDiagnosticOrigin>())).Returns(Result.Ok());
+            return telemetry.Object;
+        }).As<ITelemetry>().SingleInstance();
+
         // Database context can be set up once and then retrieved by its DB name.
         builder
             .Register(

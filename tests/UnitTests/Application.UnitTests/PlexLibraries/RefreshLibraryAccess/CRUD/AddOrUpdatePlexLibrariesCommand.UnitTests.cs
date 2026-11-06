@@ -152,6 +152,78 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
                 x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()),
                 Times.Never()
             );
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.LibraryAccessChanged(
+                    account.Id,
+                    It.IsAny<Guid>(),
+                    It.Is<IReadOnlyCollection<PlexLibraryAccessRapport>>(reports =>
+                        reports.Count == 1
+                        && reports.Single().Data.Count == 1
+                        && reports.Single().Data.Single().State == PlexAccessState.Updated
+                        && reports.Single().Data.Single().PlexServerId == target.PlexServerId
+                        && reports.Single().Data.Single().PlexLibraryId == targetId
+                    )
+                ),
+                Times.Once()
+            );
+    }
+
+    [Test]
+    public async Task ShouldEmitAccessChangedTelemetryForGrantedAndRevokedRows_WhenReconciliationCommits()
+    {
+        // Arrange
+        await SetupDatabase(
+            62615,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 3;
+                config.PlexAccountCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var plexAccount = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
+        var libraries = await dbContext.PlexLibraries.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var revokedLibrary = libraries[^1];
+        var grantedLibrary = libraries[0];
+        var updatedLibrary = libraries[1];
+        await dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccount.Id && x.PlexLibraryId == grantedLibrary.Id)
+            .ExecuteDeleteAsync(CancellationToken);
+        var incomingLibraries = new List<PlexLibrary> { grantedLibrary, updatedLibrary };
+        var request = new AddOrUpdatePlexLibrariesCommand
+        {
+            PlexAccountId = plexAccount.Id,
+            PlexLibraries = incomingLibraries.ToApiLibraries(DateTime.UtcNow),
+        };
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.LibraryAccessChanged(
+                    plexAccount.Id,
+                    It.IsAny<Guid>(),
+                    It.Is<IReadOnlyCollection<PlexLibraryAccessRapport>>(reports =>
+                        reports.Count == 1
+                        && reports.Single().GetGranted.Select(row => row.PlexLibraryId).SequenceEqual(new[] { grantedLibrary.Id })
+                        && reports.Single().GetUpdated.Select(row => row.PlexLibraryId).SequenceEqual(new[] { updatedLibrary.Id })
+                        && reports.Single().GetRevoked.Select(row => row.PlexLibraryId).SequenceEqual(new[] { revokedLibrary.Id })
+                    )
+                )
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(request, CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var access = await dbContext
+            .PlexAccountLibraries.OrderBy(x => x.PlexLibraryId)
+            .Select(x => x.PlexLibraryId)
+            .ToListAsync(CancellationToken);
+        access.ShouldBe(incomingLibraries.Select(x => x.Id).Order());
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
