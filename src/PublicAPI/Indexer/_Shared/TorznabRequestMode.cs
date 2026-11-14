@@ -1,4 +1,4 @@
-namespace Reaparr.PublicAPI.Contracts;
+namespace Reaparr.PublicAPI;
 
 public enum TorznabRequestMode
 {

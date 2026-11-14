@@ -52,7 +52,18 @@ public class TestConnectionToSonarrEndpoint
             new TestConnectionToSonarrCommand(req.IntegrationId, req.Url, req.ApiKey),
             ct
         );
-        _telemetry.IntegrationConnectionTestFinished(IntegrationType.Sonarr, req.IntegrationId, result);
+        _telemetry.IntegrationConnectionTestFinished(
+            IntegrationType.Sonarr,
+            req.IntegrationId,
+            result.IsSuccess
+                ? new ConnectionTestTelemetryDTO
+                {
+                    Status = result.Value.Status,
+                    HttpStatusCode = result.Value.HttpStatusCode,
+                }
+                : null,
+            result
+        );
         if (result.IsCancelled)
         {
             await Send.FluentResult(result.ToResult<TestConnectionToSonarrEndpointResponse>().LogWarning(), ct);

@@ -3,16 +3,19 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenTelemetry;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Trace;
 using PostHog;
+using PostHog.Config;
 using Reaparr.Application;
 using Reaparr.Application.Contracts;
 using Reaparr.Domain;
@@ -37,6 +40,36 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
     private const string LogSecret = "intentional-operational-log-secret";
     private const string FailurePath = "/telemetry-native-failure";
     private const string ExceptionSecret = "accepted-original-exception-text";
+
+    [Test]
+    public void ShouldResolveOneDisabledPostHogClient_WhenAutofacBuildsApplicationContainer()
+    {
+        // Arrange
+        var loggerFactory = new Mock<ILoggerFactory>(MockBehavior.Strict);
+        loggerFactory
+            .Setup(x => x.CreateLogger(It.Is<string>(category => !category.StartsWith("PostHog", StringComparison.Ordinal))))
+            .Returns(NullLogger.Instance);
+        loggerFactory.Setup(x => x.Dispose());
+        var services = new ServiceCollection();
+        services.AddSingleton(loggerFactory.Object);
+        services.AddOptions<PostHogOptions>().Configure(options => options.Disabled = true);
+        services.AddPostHog();
+
+        using var container = BuildPostHogContainer(services);
+
+        // Act
+        var client = container.Resolve<IPostHogClient>();
+        var secondClient = container.Resolve<IPostHogClient>();
+        var accepted = client.Capture(Identity, nameof(TelemetryEvent.NotificationsCleared), null, null, null);
+
+        // Assert
+        client.ShouldBeOfType<PostHogClient>();
+        client.ShouldBeSameAs(secondClient);
+        accepted.ShouldBeFalse();
+        loggerFactory.Verify(
+            x => x.CreateLogger(It.Is<string>(category => category.StartsWith("PostHog", StringComparison.Ordinal))),
+            Times.Never());
+    }
 
     [Test]
     [Arguments(false)]
@@ -103,11 +136,13 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
             logging.ClearProviders();
             logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
             logging.AddSerilog(logger);
-            logging.AddFilter((category, _) => category is not null
+            logging.AddFilter<Serilog.Extensions.Logging.SerilogLoggerProvider>((category, _) => category is not null
                 && category.StartsWith("PostHog", StringComparison.Ordinal));
         });
         builder.Services.ConfigureTelemetry(build.Object, runtime);
         builder.Services.PostConfigure<PostHogOptions>(options => options.EnableCompression = false);
+        using var postHogContainer = BuildPostHogContainer(builder.Services);
+        builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
         // Both hosts share a process: exclude the collector's own incoming requests from instrumentation.
         builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(options =>
             options.Filter = context => context.Request.Host.Value != ingestionAuthority);
@@ -249,6 +284,8 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         builder.Services.AddSingleton<IUserSettings>(new UserSettings());
         builder.Services.AddSingleton<ITelemetry, Telemetry>();
         builder.Services.ConfigureTelemetry(build.Object, runtime);
+        using var postHogContainer = BuildPostHogContainer(builder.Services);
+        builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
         await using var app = builder.Build();
         app.UseRouting();
         app.UseMiddleware<TelemetryContextMiddleware>();
@@ -283,4 +320,13 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
             await receiver.StopAsync();
         }
     }
+
+    private static IContainer BuildPostHogContainer(IServiceCollection services)
+    {
+        var containerBuilder = new ContainerBuilder();
+        containerBuilder.Populate(services);
+        containerBuilder.RegisterModule<AppHostModule>();
+        return containerBuilder.Build();
+    }
+
 }

@@ -52,7 +52,18 @@ public class TestConnectionToRadarrEndpoint
             new TestConnectionToRadarrCommand(req.IntegrationId, req.Url, req.ApiKey),
             ct
         );
-        _telemetry.IntegrationConnectionTestFinished(IntegrationType.Radarr, req.IntegrationId, result);
+        _telemetry.IntegrationConnectionTestFinished(
+            IntegrationType.Radarr,
+            req.IntegrationId,
+            result.IsSuccess
+                ? new ConnectionTestTelemetryDTO
+                {
+                    Status = result.Value.Status,
+                    HttpStatusCode = result.Value.HttpStatusCode,
+                }
+                : null,
+            result
+        );
         if (result.IsCancelled)
         {
             await Send.FluentResult(result.ToResult<TestConnectionToRadarrEndpointResponse>().LogWarning(), ct);

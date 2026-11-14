@@ -332,7 +332,7 @@ public class ValidatePlexTokenEndpointUnitTests
     }
 
     [Test]
-    public async Task ShouldHandleEmptyDisplayName_WhenDisplayNameIsNotProvided()
+    public async Task ShouldPreserveUnvalidatedEnvelope_WhenDisplayNameIsNotProvided()
     {
         // Arrange
         var seed = new Seed(2058);
@@ -341,23 +341,25 @@ public class ValidatePlexTokenEndpointUnitTests
         testAccountDTO.Password = string.Empty;
         testAccountDTO.CustomAuthenticationToken = "valid-token";
 
-        var commandResult = new ValidatePlexTokenCommandResult()
-        {
-            ClientId = testAccountDTO.ClientId,
-            Username = testAccountDTO.Username,
-            Email = testAccountDTO.Email,
-            Title = testAccountDTO.Title,
-            PlexId = testAccountDTO.PlexId,
-            Uuid = testAccountDTO.Uuid,
-            AuthenticationToken = testAccountDTO.AuthenticationToken,
-            IsValidated = true,
-            ValidatedAt = DateTime.UtcNow,
-            Is2Fa = false,
-        };
+        var commandResult = Result.Ok(
+            new ValidatePlexTokenCommandResult
+            {
+                ClientId = testAccountDTO.ClientId,
+                Username = testAccountDTO.Username,
+                Email = testAccountDTO.Email,
+                Title = testAccountDTO.Title,
+                PlexId = testAccountDTO.PlexId,
+                Uuid = testAccountDTO.Uuid,
+                AuthenticationToken = testAccountDTO.AuthenticationToken,
+                IsValidated = false,
+                ValidatedAt = null,
+                Is2Fa = false,
+            }
+        );
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<ValidatePlexTokenCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok(commandResult));
+            .ReturnsAsync(commandResult);
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -374,10 +376,20 @@ public class ValidatePlexTokenEndpointUnitTests
         result.IsSuccess.ShouldBeTrue();
         var value = result.Value;
         value.ShouldNotBeNull();
-        value.IsUnAuthorized.ShouldBeFalse();
-        value.IsValidated.ShouldBeTrue();
+        value.IsValidated.ShouldBeFalse();
+        value.ValidatedAt.ShouldBeNull();
 
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<ValidatePlexTokenCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexAuthenticationProcessed(
+                        null,
+                        It.Is<PlexAuthenticationTelemetryDTO>(payload => !payload.IsValidated),
+                        It.Is<ResultBase>(result => ReferenceEquals(result, commandResult))
+                    ),
+                Times.Once()
+            );
     }
 }

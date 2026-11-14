@@ -1,7 +1,7 @@
 using System.Xml;
 using System.Xml.Serialization;
 
-namespace Reaparr.PublicAPI.Contracts;
+namespace Reaparr.PublicAPI;
 
 [XmlRoot("rss")]
 public record TorznabMediaSearchResponseDTO
