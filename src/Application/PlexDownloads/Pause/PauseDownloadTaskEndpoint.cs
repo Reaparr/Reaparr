@@ -23,10 +23,12 @@ public class PauseDownloadTaskEndpointRequestValidator : Validator<PauseDownload
 public class PauseDownloadTaskEndpoint : Endpoint<PauseDownloadTaskEndpointRequest>
 {
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public PauseDownloadTaskEndpoint(ICommandExecutor commandExecutor)
+    public PauseDownloadTaskEndpoint(ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -44,6 +46,8 @@ public class PauseDownloadTaskEndpoint : Endpoint<PauseDownloadTaskEndpointReque
     public override async Task HandleAsync(PauseDownloadTaskEndpointRequest req, CancellationToken ct)
     {
         var pauseResult = await _commandExecutor.Send(new PauseDownloadTaskCommand(req.DownloadTaskGuid), ct);
+
+        _telemetry.DownloadControlProcessed(TelemetryAction.Pause, req.DownloadTaskGuid, pauseResult);
 
         await Send.FluentResult(pauseResult, ct);
     }

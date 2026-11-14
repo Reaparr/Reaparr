@@ -1,6 +1,10 @@
+using BencodeNET.Parsing;
 using BencodeNET.Objects;
 using BencodeNET.Torrents;
+using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Reaparr.Application.Contracts;
+using Reaparr.Data.Contracts;
 
 // ReSharper disable RedundantAssignment
 
@@ -37,7 +41,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CreateDownloadTasksCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok());
+            .ReturnsAsync(Result.Ok(new DownloadTaskCreationReport { Movies = 1 }));
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -122,7 +126,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CreateDownloadTasksCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok());
+            .ReturnsAsync(Result.Ok(new DownloadTaskCreationReport { Movies = 1 }));
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(request);
@@ -207,6 +211,150 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         torrentFileMock.Verify(f => f.OpenReadStream(), Times.Once);
         torrentFileMock.Verify(f => f.FileName, Times.AtLeastOnce);
     }
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldHandleTaskCreationCancellation_WhenCommandReturnsCancellation(bool cancelExecutionToken)
+    {
+        // Arrange
+        await SetupDatabase(
+            1235,
+            config =>
+            {
+                config.MovieCount = 1;
+                config.MovieDownloadTasksCount = 1;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
+        var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
+        var movieFile = await dbContext.DownloadTaskMovieFile.AsTracking().SingleAsync(CancellationToken);
+        movieFile.RadarrIntegrationId = integration.Id;
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiRatingKey), movieData.PlexApiRatingKey);
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiMediaId), movieData.PlexApiMediaId);
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiPartId), movieData.PlexApiPartId);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var before = await dbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.HashId,
+                x.DownloadStatus,
+                x.RadarrIntegrationId,
+            })
+            .ToArrayAsync(CancellationToken);
+        before.Length.ShouldBe(1);
+        var metadata = CreateSourceMetadata(movieData, movieData.PlexMovieId);
+        var (torrentFile, torrentFileMock) = CreateMockTorrentFile(metadata, "task-creation-cancelled.torrent");
+        var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
+        using var expectedHashStream = torrentFile.OpenReadStream();
+        var expectedHashId = new BencodeParser().Parse<Torrent>(expectedHashStream).GetInfoHash();
+        using var executionCancellation = new CancellationTokenSource();
+        var creationResult = Result.Fail<DownloadTaskCreationReport>(
+            new ExceptionalError(new OperationCanceledException("Task creation was cancelled"))
+        );
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<CreateDownloadTasksCommand>(command =>
+                        command.Request.Integration == integration.Id.ToRadarrIdentity()
+                        && command.Request.DownloadMedias.Count == 1
+                        && command.Request.DownloadMedias[0].MediaIds.SequenceEqual(new[] { metadata.MediaId })
+                        && command.Request.DownloadMedias[0].PlexLibraryId == metadata.LibraryId
+                        && command.Request.DownloadMedias[0].PlexServerId == metadata.ServerId
+                    ),
+                    executionCancellation.Token
+                )
+            )
+            .Returns(() =>
+            {
+                if (cancelExecutionToken)
+                    executionCancellation.Cancel();
+
+                return Task.FromResult(creationResult);
+            })
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.CaptureErrors(
+                    It.Is<ResultBase>(result => result.Errors.Count == 1
+                        && result.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException)),
+                    TelemetryActivity.ExternalDownloadSubmission
+                )
+            )
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.ExternalDownloadSubmissionProcessed(
+                    It.Is<IntegrationIdentity>(value =>
+                        value.Id == integration.Id && value.Type == IntegrationType.Radarr
+                    ),
+                    metadata,
+                    It.Is<string>(hash => hash == expectedHashId),
+                    It.Is<Result<DownloadTaskCreationReport>>(
+                        result => result.IsFailed && result.Errors.Count == 1
+                            && result.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException)
+                    ),
+                    null,
+                    TelemetryStage.TaskCreation
+                )
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(
+            request,
+            integrationIdentity: integration.Id.ToRadarrIdentity(),
+            executionCancellationToken: executionCancellation.Token
+        );
+
+        // Assert
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.ValidationErrors.Count.ShouldBe(0);
+        if (cancelExecutionToken)
+        {
+            endpointResult.Endpoint.HttpContext.Response.Body.Length.ShouldBe(0);
+        }
+        else
+        {
+            endpointResult.Endpoint.HttpContext.Response.Body.Position = 0;
+            using var reader = new StreamReader(endpointResult.Endpoint.HttpContext.Response.Body);
+            (await reader.ReadToEndAsync(CancellationToken)).ShouldBe("Fails.");
+        }
+
+        var after = await dbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.HashId,
+                x.DownloadStatus,
+                x.RadarrIntegrationId,
+            })
+            .ToArrayAsync(CancellationToken);
+        after.ShouldBe(before);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.ExternalDownloadSubmissionProcessed(
+                        It.IsAny<IntegrationIdentity>(),
+                        It.IsAny<TorrentMetadataDTO>(),
+                        It.IsAny<string>(),
+                        It.IsAny<Result<DownloadTaskCreationReport>>(),
+                        It.IsAny<Result<int>>(),
+                        TelemetryStage.HashAssociation
+                    ),
+                Times.Never
+            );
+        torrentFileMock.Verify(x => x.OpenReadStream(), Times.Exactly(2));
+    }
 
     [Test]
     public async Task ShouldReturnRecognizedFailure_WhenValidatedTorrentHasNoOwnedHashTarget()
@@ -229,7 +377,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CreateDownloadTasksCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok())
+            .ReturnsAsync(Result.Ok(new DownloadTaskCreationReport { Movies = 1 }))
             .Verifiable(Times.Once());
 
         // Act
@@ -247,7 +395,311 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         (await reader.ReadToEndAsync(CancellationToken)).ShouldBe("Fails.");
         (await dbContext.DownloadTaskMovieFile.Select(x => x.Id).ToListAsync(CancellationToken)).ShouldBeEmpty();
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.ExternalDownloadSubmissionProcessed(
+                        It.Is<IntegrationIdentity>(i => i.Id == integration.Id && i.Type == IntegrationType.Radarr),
+                        metadata,
+                        It.IsAny<string>(),
+                        It.Is<Result<DownloadTaskCreationReport>>(
+                            result => result.IsSuccess && result.Value.Total == 1
+                        ),
+                        It.Is<Result<int>>(result => result.IsSuccess && result.Value == 0),
+                        TelemetryStage.HashAssociation
+                    ),
+                Times.Once
+            );
         torrentFileMock.Verify(x => x.OpenReadStream(), Times.Once());
+    }
+
+    [Test]
+    public async Task ShouldReturnInternalServerErrorAndPreserveCommittedTask_WhenHashAssociationThrows()
+    {
+        // Arrange
+        await SetupDatabase(
+            1238,
+            config =>
+            {
+                config.MovieCount = 1;
+                config.MovieDownloadTasksCount = 1;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
+        var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
+        var movieFile = await dbContext.DownloadTaskMovieFile.AsTracking().SingleAsync(CancellationToken);
+        movieFile.RadarrIntegrationId = integration.Id;
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiRatingKey), movieData.PlexApiRatingKey);
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiMediaId), movieData.PlexApiMediaId);
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiPartId), movieData.PlexApiPartId);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var before = await dbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.HashId,
+                x.DownloadStatus,
+                x.RadarrIntegrationId,
+            })
+            .ToArrayAsync(CancellationToken);
+        before.Length.ShouldBe(1);
+        var metadata = CreateSourceMetadata(movieData, movieData.PlexMovieId);
+        var (torrentFile, torrentFileMock) = CreateMockTorrentFile(metadata, "association-failure.torrent");
+        var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
+        using var expectedHashStream = torrentFile.OpenReadStream();
+        var expectedHashId = new BencodeParser().Parse<Torrent>(expectedHashStream).GetInfoHash();
+        var endpointDbContext = IDbContext;
+        var createResult = Result.Ok(new DownloadTaskCreationReport { Movies = 1 });
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<CreateDownloadTasksCommand>(command =>
+                        command.Request.Integration == integration.Id.ToRadarrIdentity()
+                        && command.Request.DownloadMedias.Count == 1
+                        && command.Request.DownloadMedias[0].MediaIds.SequenceEqual(new[] { metadata.MediaId })
+                        && command.Request.DownloadMedias[0].PlexLibraryId == metadata.LibraryId
+                        && command.Request.DownloadMedias[0].PlexServerId == metadata.ServerId
+                    ),
+                    CancellationToken
+                )
+            )
+            .Returns(() =>
+            {
+                endpointDbContext.Dispose();
+                return Task.FromResult(createResult);
+            })
+            .Verifiable(Times.Once());
+        Exception? reportedException = null;
+        Exception? capturedException = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.ExternalDownloadSubmissionProcessed(
+                    It.Is<IntegrationIdentity>(value =>
+                        value.Id == integration.Id && value.Type == IntegrationType.Radarr
+                    ),
+                    metadata,
+                    It.Is<string>(hash => hash == expectedHashId),
+                    It.Is<Result<DownloadTaskCreationReport>>(
+                        result => result.IsSuccess && result.Errors.Count == 0 && result.Value.Total == 1
+                    ),
+                    It.Is<Result<int>>(
+                        result =>
+                            result.IsFailed
+                            && result.Errors.Count == 1
+                            && result.Errors.OfType<ExceptionalError>().Count() == 1
+                    ),
+                    TelemetryStage.HashAssociation
+                )
+            )
+            .Callback<
+                IntegrationIdentity,
+                TorrentMetadataDTO,
+                string,
+                Result<DownloadTaskCreationReport>?,
+                Result<int>?,
+                TelemetryStage
+            >(
+                (_, _, _, _, associationResult, _) =>
+                {
+                    reportedException = associationResult!.Errors.OfType<ExceptionalError>().Single().Exception;
+                }
+            )
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.CaptureErrors(
+                    It.Is<ResultBase>(result => result.IsFailed && result.Errors.Count == 1),
+                    TelemetryActivity.ExternalDownloadSubmission
+                )
+            )
+            .Callback<ResultBase, TelemetryActivity>(
+                (result, _) =>
+                {
+                    capturedException = result.Errors.OfType<ExceptionalError>().Single().Exception;
+                }
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(
+            request,
+            services => services.AddSingleton<IReaparrDbContext>(endpointDbContext),
+            integrationIdentity: integration.Id.ToRadarrIdentity()
+        );
+
+        // Assert
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.ValidationErrors.Count.ShouldBe(0);
+        endpointResult.Endpoint.HttpContext.Response.Body.Position = 0;
+        var response = (
+            await JsonSerializer.DeserializeAsync<BaseResultDTO>(
+                endpointResult.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
+        response.IsSuccess.ShouldBeFalse();
+        response.Errors.Count.ShouldBe(1);
+        reportedException.ShouldNotBeNull();
+        reportedException.ShouldBeOfType<ObjectDisposedException>();
+        capturedException.ShouldNotBeNull();
+        ReferenceEquals(reportedException, capturedException).ShouldBeTrue();
+        var after = await IDbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.HashId,
+                x.DownloadStatus,
+                x.RadarrIntegrationId,
+            })
+            .ToArrayAsync(CancellationToken);
+        after.ShouldBe(before);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        torrentFileMock.Verify(x => x.OpenReadStream(), Times.Exactly(2));
+    }
+
+    [Test]
+    public async Task ShouldReportCancellationAndPreserveCommittedTask_WhenHashAssociationIsCancelled()
+    {
+        // Arrange
+        await SetupDatabase(
+            1239,
+            config =>
+            {
+                config.MovieCount = 1;
+                config.MovieDownloadTasksCount = 1;
+                config.RadarrIntegrationCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
+        var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
+        var movieFile = await dbContext.DownloadTaskMovieFile.AsTracking().SingleAsync(CancellationToken);
+        movieFile.RadarrIntegrationId = integration.Id;
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiRatingKey), movieData.PlexApiRatingKey);
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiMediaId), movieData.PlexApiMediaId);
+        movieFile.UpdateInitProperty(nameof(DownloadTaskMovieFile.PlexApiPartId), movieData.PlexApiPartId);
+        await dbContext.SaveChangesAsync(CancellationToken);
+        var before = await dbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.HashId,
+                x.DownloadStatus,
+                x.RadarrIntegrationId,
+            })
+            .ToArrayAsync(CancellationToken);
+        before.Length.ShouldBe(1);
+        var metadata = CreateSourceMetadata(movieData, movieData.PlexMovieId);
+        var (torrentFile, torrentFileMock) = CreateMockTorrentFile(metadata, "association-cancelled.torrent");
+        var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
+        using var expectedHashStream = torrentFile.OpenReadStream();
+        var expectedHashId = new BencodeParser().Parse<Torrent>(expectedHashStream).GetInfoHash();
+        using var cancellation = new CancellationTokenSource();
+        var endpointDbContext = IDbContext;
+        var createResult = Result.Ok(new DownloadTaskCreationReport { Movies = 1 });
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<CreateDownloadTasksCommand>(command =>
+                        command.Request.Integration == integration.Id.ToRadarrIdentity()
+                        && command.Request.DownloadMedias.Count == 1
+                        && command.Request.DownloadMedias[0].MediaIds.SequenceEqual(new[] { metadata.MediaId })
+                        && command.Request.DownloadMedias[0].PlexLibraryId == metadata.LibraryId
+                        && command.Request.DownloadMedias[0].PlexServerId == metadata.ServerId
+                    ),
+                    cancellation.Token
+                )
+            )
+            .Returns(() =>
+            {
+                cancellation.Cancel();
+                return Task.FromResult(createResult);
+            })
+            .Verifiable(Times.Once());
+        Exception? cancellationException = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.ExternalDownloadSubmissionProcessed(
+                    It.Is<IntegrationIdentity>(value =>
+                        value.Id == integration.Id && value.Type == IntegrationType.Radarr
+                    ),
+                    metadata,
+                    It.Is<string>(hash => hash == expectedHashId),
+                    It.Is<Result<DownloadTaskCreationReport>>(
+                        result => result.IsSuccess && result.Errors.Count == 0 && result.Value.Total == 1
+                    ),
+                    It.Is<Result<int>>(
+                        result =>
+                            result.IsFailed
+                            && result.Errors.Count == 1
+                            && result.Errors.OfType<ExceptionalError>().Count() == 1
+                            && result.Errors.OfType<ExceptionalError>().Single().Exception
+                                is OperationCanceledException
+                    ),
+                    TelemetryStage.HashAssociation
+                )
+            )
+            .Callback<
+                IntegrationIdentity,
+                TorrentMetadataDTO,
+                string,
+                Result<DownloadTaskCreationReport>?,
+                Result<int>?,
+                TelemetryStage
+            >(
+                (_, _, _, _, associationResult, _) =>
+                {
+                    cancellationException = associationResult!.Errors.OfType<ExceptionalError>().Single().Exception;
+                }
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(
+            request,
+            services => services.AddSingleton<IReaparrDbContext>(endpointDbContext),
+            integration.Id.ToRadarrIdentity(),
+            cancellation.Token
+        );
+
+        // Assert
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.ValidationErrors.Count.ShouldBe(0);
+        endpointResult.Endpoint.HttpContext.Response.Body.Length.ShouldBe(0);
+        cancellationException.ShouldNotBeNull();
+        (cancellationException is OperationCanceledException).ShouldBeTrue();
+        var after = await IDbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.ParentId,
+                x.HashId,
+                x.DownloadStatus,
+                x.RadarrIntegrationId,
+            })
+            .ToArrayAsync(CancellationToken);
+        after.ShouldBe(before);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ExternalDownloadSubmission),
+                Times.Never
+            );
+        torrentFileMock.Verify(x => x.OpenReadStream(), Times.Exactly(2));
     }
 
     [Test]
@@ -436,7 +888,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CreateDownloadTasksCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok());
+            .ReturnsAsync(Result.Ok(new DownloadTaskCreationReport { Movies = 1 }));
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -514,7 +966,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
 
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CreateDownloadTasksCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok());
+            .ReturnsAsync(Result.Ok(new DownloadTaskCreationReport { Episodes = 1 }));
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(

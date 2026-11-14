@@ -1,3 +1,5 @@
+using Reaparr.Application.Contracts;
+
 namespace Reaparr.PublicAPI.UnitTests;
 
 public class AddTorrentValidationUnitTests

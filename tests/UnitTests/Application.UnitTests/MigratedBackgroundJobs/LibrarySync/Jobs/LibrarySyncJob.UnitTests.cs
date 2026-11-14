@@ -15,9 +15,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         var payload = new LibrarySyncJobPayload(serverId, libraryId, forceMediaRefresh).ToJobDataMap();
         var jobDetail = new Mock<IJobDetail>();
         jobDetail.SetupGet(x => x.JobDataMap).Returns(payload);
+        jobDetail.SetupGet(x => x.Key).Returns(LibrarySyncJob.GetJobKey(serverId, libraryId));
         var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
         context.SetupGet(x => x.MergedJobDataMap).Returns(payload);
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         context.SetupProperty(x => x.Result);
         return context;

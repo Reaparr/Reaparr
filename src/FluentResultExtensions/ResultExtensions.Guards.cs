@@ -80,23 +80,14 @@ public static partial class ResultExtensions
     extension(Result result)
     {
         public bool HasException => result.HasError<ExceptionalError>();
-
-        public bool IsCancelled =>
-            result.Errors.OfType<ExceptionalError>().Any(e => e.Exception is OperationCanceledException);
-
-        public bool IsCancelledOrFailed =>
-            result.IsFailed
-            || result.Errors.OfType<ExceptionalError>().Any(e => e.Exception is OperationCanceledException);
     }
 
-    extension<T>(Result<T> result)
+    extension(ResultBase result)
     {
         public bool IsCancelled =>
-            result.Errors.OfType<ExceptionalError>().Any(e => e.Exception is OperationCanceledException);
+            result.Reasons.OfType<ExceptionalError>().Any(static error => error.Exception is OperationCanceledException);
 
-        public bool IsCancelledOrFailed =>
-            result.IsFailed
-            || result.Errors.OfType<ExceptionalError>().Any(e => e.Exception is OperationCanceledException);
+        public bool IsCancelledOrFailed => result.IsFailed || result.IsCancelled;
     }
 
     #endregion

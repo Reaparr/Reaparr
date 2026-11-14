@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -9,11 +10,15 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         CancellationToken cancellationToken = default
     )
     {
-        var jobDetail = new Mock<IJobDetail>();
-        jobDetail.SetupGet(x => x.JobDataMap).Returns(new MoveDownloadFileJobPayload(key).ToJobDataMap());
+        var payload = new MoveDownloadFileJobPayload(key).ToJobDataMap();
+        var jobDetail = JobBuilder
+            .Create<MoveDownloadFileJob>()
+            .WithIdentity(MoveDownloadFileJob.GetJobKey(key.Id))
+            .UsingJobData(payload)
+            .Build();
         var context = new Mock<IJobExecutionContext>();
-        context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
-        context.SetupGet(x => x.MergedJobDataMap).Returns(jobDetail.Object.JobDataMap);
+        context.SetupGet(x => x.JobDetail).Returns(jobDetail);
+        context.SetupGet(x => x.MergedJobDataMap).Returns(payload);
         context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         context.SetupGet(x => x.FireInstanceId).Returns("move-job-test");
         context.SetupGet(x => x.Scheduler).Returns(Moq.Mock.Of<IScheduler>());
@@ -241,7 +246,10 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
                 )
             )
             .Returns<MoveDownloadFileFromFileTaskCommand, CancellationToken>(
-                (c, ct) => Mock.Create<MoveDownloadFileFromFileTaskCommandHandler>().ExecuteAsync(c, ct)
+                (c, ct) =>
+                {
+                    return Mock.Create<MoveDownloadFileFromFileTaskCommandHandler>().ExecuteAsync(c, ct);
+                }
             )
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -288,9 +296,23 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
 
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.StartMoveDownloadFile(
+                    It.Is<DownloadTaskFileBase>(task => task.Id == target.Id),
+                    target.DownloadFilePath,
+                    expectedDestination,
+                    scenario == "keep",
+                    scenario == "keep" ? TelemetryRetentionReason.GlobalSetting : TelemetryRetentionReason.Destination
+                )
+            )
+            .Returns((Activity?)null)
+            .Verifiable(Times.Once());
+
         // Act
         await Sut.Execute(context);
 
+        // Assert
         if (scenario == "cleanup-failure")
             context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
         else
@@ -347,6 +369,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IMoveDownloadFileQueue>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -752,6 +775,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         await dbContext.SaveChangesAsync(CancellationToken);
         var key = target.ToKey();
         SetupFileSystem(fs => fs.AddFile(target.DestinationFilePath, new MockFileData(new byte[] { 1, 2, 3, 4 })));
+        Mock.Mock<IDownloadManagerSettings>().SetupGet(x => x.KeepCompletedInDownloadFolder).Returns(false);
         var context = SetupJobContext(key);
         var realDispatcher = Mock.Create<DownloadTaskUpdateDispatcher>();
         Mock.Mock<IDownloadTaskUpdateDispatcher>()

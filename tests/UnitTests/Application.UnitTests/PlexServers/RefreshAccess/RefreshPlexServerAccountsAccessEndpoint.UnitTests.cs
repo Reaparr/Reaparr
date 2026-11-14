@@ -60,6 +60,22 @@ public class RefreshPlexServerAccountsAccessEndpointUnitTests
                 .Verifiable(Times.Once());
         }
 
+        Result<List<RefreshPlexAccountAccessRapportDTO>>? capturedResult = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.PlexAccessRefreshRequested(
+                    TelemetryScope.Server,
+                    It.IsAny<Result<List<RefreshPlexAccountAccessRapportDTO>>>(),
+                    null,
+                    serverId,
+                    accounts.Count
+                )
+            )
+            .Callback<TelemetryScope, Result<List<RefreshPlexAccountAccessRapportDTO>>, int?, int?, int>(
+                (_, result, _, _, _) => capturedResult = result
+            )
+            .Verifiable(Times.Once());
+
         // Act
         var response = await TestEndpointHandleAsync(
             new RefreshPlexServerAccountsAccessEndpointRequest { PlexServerId = serverId }
@@ -67,6 +83,10 @@ public class RefreshPlexServerAccountsAccessEndpointUnitTests
 
         // Assert
         response.ValidationResult!.IsValid.ShouldBeTrue();
+        capturedResult.ShouldNotBeNull();
+        capturedResult.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException).ShouldBe(cancelled);
+        capturedResult.IsFailed.ShouldBe(failed);
+        capturedResult.Errors.Count.ShouldBe(failed ? 1 : 0);
         response.Response.ShouldNotBeNull();
         response.Response.IsSuccess.ShouldBe(!failed);
         response.Response.Errors.Count.ShouldBe(failed ? 1 : 0);
@@ -84,5 +104,6 @@ public class RefreshPlexServerAccountsAccessEndpointUnitTests
                 .ToListAsync(CancellationToken)
         ).ShouldBe(before);
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 }

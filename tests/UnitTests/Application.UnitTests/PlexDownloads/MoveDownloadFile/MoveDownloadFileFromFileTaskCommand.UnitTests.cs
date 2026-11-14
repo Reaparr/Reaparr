@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reactive.Subjects;
 
 namespace Reaparr.Application.UnitTests;
@@ -264,12 +265,55 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
 
+        DownloadTaskFileBase? moveDownloadTask = null;
+        string? moveSourcePath = null;
+        string? moveDestinationPath = null;
+        var moveKeepInDownloads = false;
+        TelemetryRetentionReason? moveRetentionReason = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.StartMoveDownloadFile(
+                    It.IsAny<DownloadTaskFileBase>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<TelemetryRetentionReason>()
+                )
+            )
+            .Callback<DownloadTaskFileBase, string, string, bool, TelemetryRetentionReason>(
+                (task, source, destination, keepInDownloads, reason) =>
+                {
+                    moveDownloadTask = task;
+                    moveSourcePath = source;
+                    moveDestinationPath = destination;
+                    moveKeepInDownloads = keepInDownloads;
+                    moveRetentionReason = reason;
+                }
+            )
+            .Returns((Activity?)null)
+            .Verifiable(Times.Once());
+
         // Act
         var result = await TestHandlerExecuteAsync(new MoveDownloadFileFromFileTaskCommand(key, progress));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
+        moveDownloadTask.ShouldNotBeNull();
+        moveDownloadTask!.ToKey().ShouldBe(key);
+        moveSourcePath.ShouldBe(sourcePath);
+        moveDestinationPath.ShouldBe(destinationPath);
+        moveDownloadTask.DataTotal.ShouldBe(content.Length);
+        moveKeepInDownloads.ShouldBe(keep || strategy == "in-place");
+        moveRetentionReason.ShouldBe(
+            strategy switch
+            {
+                "keep-task" => TelemetryRetentionReason.TaskSetting,
+                "keep-global" or "renamed-kept" => TelemetryRetentionReason.GlobalSetting,
+                "in-place" => TelemetryRetentionReason.SamePath,
+                _ => TelemetryRetentionReason.Destination,
+            }
+        );
         fs.File.ReadAllBytes(finalPath).ShouldBe(content);
         fs.Path.GetFileName(finalPath).ShouldBe(target.FileName);
         fs.File.Exists(sourcePath).ShouldBeFalse();
@@ -314,6 +358,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         controlLogs.Errors.Count.ShouldBe(0);
         controlLogs.Value.ShouldBeEmpty();
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
     }
 
@@ -826,7 +871,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         var handler = Mock.Create<MoveDownloadFileFromFileTaskCommandHandler>();
         var fs = Mock.Container.Resolve<IFileSystem>();
 
-        // Act and assert
+        // Act
         for (var i = 0; i < tasks.Length; i++)
         {
             using var progress = new Subject<IDownloadFileTransferProgress>();
@@ -837,6 +882,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                 new MoveDownloadFileFromFileTaskCommand(tasks[i].ToKey(), progress),
                 CancellationToken
             );
+            // Assert
             result.IsSuccess.ShouldBeTrue();
             result.Errors.ShouldBeEmpty();
             fs.File.ReadAllBytes(tasks[i].DestinationFilePath).ShouldBe(contents[i]);
@@ -1289,6 +1335,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         SetupDependencies(b =>
             b.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>().SingleInstance()
         );
+        Mock.Mock<IDownloadManagerSettings>().SetupGet(x => x.KeepCompletedInDownloadFolder).Returns(false);
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<MoveFileWithResumeCommand>(), It.IsAny<CancellationToken>()))
             .Verifiable(Times.Never());

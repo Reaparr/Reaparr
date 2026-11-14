@@ -4,11 +4,13 @@ public sealed class AllJobListener : IJobListener
 {
     private readonly ILogger _log;
     private readonly IProgressHubService _progressHubService;
+    private readonly ITelemetry _telemetry;
 
-    public AllJobListener(ILogger log, IProgressHubService progressHubService)
+    public AllJobListener(ILogger log, IProgressHubService progressHubService, ITelemetry telemetry)
     {
         _log = log.ForContext<AllJobListener>();
         _progressHubService = progressHubService;
+        _telemetry = telemetry;
     }
 
     public string Name => nameof(AllJobListener);
@@ -23,7 +25,17 @@ public sealed class AllJobListener : IJobListener
         IJobExecutionContext context,
         JobExecutionException? jobException,
         CancellationToken cancellationToken = default
-    ) => Publish(context, BackgroundJobTerminalOutcome.From(context, jobException).Status);
+    )
+    {
+        var exception = jobException?.InnerException ?? jobException;
+        if (exception is not null && (exception is not OperationCanceledException || !context.CancellationToken.IsCancellationRequested))
+        {
+            using var scope = _telemetry.BeginJob(TelemetryActivity.BackgroundJob, context.GetTelemetryContext());
+            _telemetry.CaptureException(exception, TelemetryActivity.BackgroundJob);
+        }
+
+        return Publish(context, BackgroundJobTerminalOutcome.From(context, jobException).Status);
+    }
 
     private async Task Publish(IJobExecutionContext context, JobStatus status)
     {

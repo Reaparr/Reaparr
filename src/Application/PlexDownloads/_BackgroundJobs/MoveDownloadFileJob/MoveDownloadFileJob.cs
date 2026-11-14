@@ -13,13 +13,14 @@ public class MoveDownloadFileJob : IJob
     private readonly IReaparrDbContext _dbContext;
     private readonly IDownloadTaskUpdateDispatcher _downloadTaskUpdateDispatcher;
     private readonly IMoveDownloadFileQueue _moveDownloadFileQueue;
-
+    private readonly ITelemetry _telemetry;
     public MoveDownloadFileJob(
         ILogger log,
         ICommandExecutor commandExecutor,
         IReaparrDbContext dbContext,
         IDownloadTaskUpdateDispatcher downloadTaskUpdateDispatcher,
-        IMoveDownloadFileQueue moveDownloadFileQueue
+        IMoveDownloadFileQueue moveDownloadFileQueue,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<MoveDownloadFileJob>();
@@ -27,6 +28,7 @@ public class MoveDownloadFileJob : IJob
         _dbContext = dbContext;
         _downloadTaskUpdateDispatcher = downloadTaskUpdateDispatcher;
         _moveDownloadFileQueue = moveDownloadFileQueue;
+        _telemetry = telemetry;
     }
 
     public static JobKey GetJobKey(Guid id) => new($"{nameof(MoveDownloadFileJob)}_{id}", nameof(MoveDownloadFileJob));
@@ -56,7 +58,11 @@ public class MoveDownloadFileJob : IJob
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
         var ct = context.CancellationToken;
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
-
+        using var telemetryScope = _telemetry.BeginJob(
+            TelemetryActivity.MoveDownloadJob,
+            context.GetTelemetryContext()
+        );
+        _telemetry.SetMoveDownloadJobContext(downloadTaskKey, GetRetryCount(context));
         async Task QueueNextAsync()
         {
             // An individual job cancellation must not cancel continuation of unrelated waiting moves.
@@ -65,6 +71,7 @@ public class MoveDownloadFileJob : IJob
             var queueResult = await Result.Try(() => _moveDownloadFileQueue.CheckMoveDownloadFileJobQueue(queueToken));
             queueResult.LogIfFailed();
         }
+        var captureTerminalException = true;
 
         var executionResult = await Result.Try(async Task<Result> () =>
         {
@@ -159,6 +166,8 @@ public class MoveDownloadFileJob : IJob
                     await context.Scheduler.ScheduleJob(retryTrigger, ct);
                 });
                 retryResult.LogIfFailed();
+                _telemetry.CaptureErrors(retryResult, TelemetryActivity.MoveDownloadJob);
+                captureTerminalException = false;
                 return moveResult;
             }
 
@@ -216,6 +225,8 @@ public class MoveDownloadFileJob : IJob
             return Result.Ok();
         });
 
+        _telemetry.CompleteDownloadJob(Activity.Current, executionResult);
+
         if (executionResult.IsCancelled)
         {
             context.SetResult(JobStatus.Cancelled, executionResult);
@@ -232,7 +243,10 @@ public class MoveDownloadFileJob : IJob
                 );
 
             executionResult.LogError();
+            if (captureTerminalException)
+                _telemetry.CaptureErrors(executionResult, TelemetryActivity.MoveDownloadJob);
             await QueueNextAsync();
         }
     }
+
 }

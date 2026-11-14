@@ -1,15 +1,5 @@
 namespace Reaparr.Application;
 
-public record RefreshLibraryMediaEndpointRequest
-{
-    [RouteParam]
-    public int PlexLibraryId { get; init; }
-
-    public bool ForceLibrarySync { get; init; }
-
-    public bool ForceMediaRefresh { get; init; }
-}
-
 public class RefreshLibraryMediaEndpointRequestValidator : Validator<RefreshLibraryMediaEndpointRequest>
 {
     public RefreshLibraryMediaEndpointRequestValidator()
@@ -24,12 +14,19 @@ public class RefreshLibraryMediaEndpoint
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public RefreshLibraryMediaEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public RefreshLibraryMediaEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<RefreshLibraryMediaEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -54,14 +51,18 @@ public class RefreshLibraryMediaEndpoint
         );
         if (result.IsCancelledOrFailed)
         {
+            _telemetry.LibraryRefreshRequested(req, result);
             await Send.FluentResult(result, ct);
             return;
         }
 
         var plexLibrary = await _dbContext.PlexLibraries.GetAsync(req.PlexLibraryId, cancellationToken: ct);
+
         if (plexLibrary is null)
         {
-            await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexLibrary), req.PlexLibraryId), ct: ct);
+            var notFound = ResultExtensions.EntityNotFound(nameof(PlexLibrary), req.PlexLibraryId);
+            _telemetry.LibraryRefreshRequested(req, notFound);
+            await Send.FluentResult(notFound, ct: ct);
             return;
         }
 
@@ -70,13 +71,13 @@ public class RefreshLibraryMediaEndpoint
             .FirstOrDefaultAsync(ct);
         if (queueItem is null)
         {
-            await Send.FluentResult(
-                ResultExtensions.EntityNotFound(nameof(LibrarySyncJobQueue), req.PlexLibraryId),
-                ct: ct
-            );
+            var notFound = ResultExtensions.EntityNotFound(nameof(LibrarySyncJobQueue), req.PlexLibraryId);
+            _telemetry.LibraryRefreshRequested(req, notFound);
+            await Send.FluentResult(notFound, ct: ct);
             return;
         }
 
+        _telemetry.LibraryRefreshRequested(req, result, queueItem.Status);
         await Send.FluentResult(Result.Ok(queueItem), x => x.ToDTO(), ct);
     }
 }

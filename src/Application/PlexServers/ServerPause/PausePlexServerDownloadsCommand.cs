@@ -16,18 +16,21 @@ public class PausePlexServerDownloadsCommandHandler : ICommandHandler<PausePlexS
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IDownloadTaskScheduler _downloadTaskScheduler;
+    private readonly ITelemetry _telemetry;
 
     public PausePlexServerDownloadsCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        IDownloadTaskScheduler downloadTaskScheduler
+        IDownloadTaskScheduler downloadTaskScheduler,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<PausePlexServerDownloadsCommandHandler>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _downloadTaskScheduler = downloadTaskScheduler;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(PausePlexServerDownloadsCommand command, CancellationToken cancellationToken)
@@ -47,6 +50,7 @@ public class PausePlexServerDownloadsCommandHandler : ICommandHandler<PausePlexS
             .PlexServers.Where(x => x.Id == command.PlexServerId)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.IsDownloadsPausedByUser, true), cancellationToken);
 
+        _telemetry.ServerDownloadControlProcessed(command.PlexServerId, TelemetryAction.Pause, true);
         var downloadingKeys = await _downloadTaskScheduler.GetCurrentlyDownloadingKeysByServer(command.PlexServerId);
         foreach (var downloadKey in downloadingKeys)
         {

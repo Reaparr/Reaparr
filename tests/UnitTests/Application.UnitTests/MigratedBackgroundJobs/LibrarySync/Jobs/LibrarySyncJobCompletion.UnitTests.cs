@@ -53,7 +53,45 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
         await Mock.Create<LibrarySyncJobListener>().JobWasExecuted(context.Object, null, CancellationToken);
 
         // Assert
-        await AssertQueueAsync(current, next, expectedStatus);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncFinished(
+                        It.Is<LibrarySyncJobQueue>(queue =>
+                            queue.PlexServerId == current.PlexServerId
+                            && queue.PlexLibraryId == current.Id
+                            && queue.CreatedAt == new DateTime(2026, 10, 22, 11, 0, 0, DateTimeKind.Utc)
+                        ),
+                        current.Type,
+                        false,
+                        expectedStatus,
+                        offline
+                    ),
+                offline ? Times.Never() : Times.Once()
+            );
+        var rows = await IDbContext
+            .LibrarySyncJobQueues.AsNoTracking()
+            .OrderBy(x => x.PlexLibraryId)
+            .ToListAsync(CancellationToken);
+        rows.Select(x => new { x.PlexLibraryId, x.Status, x.IsServerOffline }).ShouldBe(
+            [
+                new
+                {
+                    PlexLibraryId = current.Id,
+                    Status = expectedStatus,
+                    IsServerOffline = offline,
+                },
+                new
+                {
+                    PlexLibraryId = next.Id,
+                    Status = offline ? LibrarySyncJobStatus.Queued : LibrarySyncJobStatus.Processing,
+                    IsServerOffline = offline,
+                },
+            ]
+        );
+        rows[0].CompletedAt.HasValue.ShouldBe(!offline);
+        rows[1].StartedAt.HasValue.ShouldBe(!offline);
+        rows[1].CompletedAt.ShouldBeNull();
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IScheduler>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
@@ -108,27 +146,17 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
             notification.Returns(Task.CompletedTask).Verifiable(Times.Once());
     }
 
-    private async Task AssertQueueAsync(PlexLibrary current, PlexLibrary next, LibrarySyncJobStatus expectedStatus)
-    {
-        var rows = await IDbContext.LibrarySyncJobQueues.AsNoTracking().OrderBy(x => x.PlexLibraryId).ToListAsync(CancellationToken);
-        var offline = expectedStatus == LibrarySyncJobStatus.Queued;
-        rows.Select(x => new { x.PlexLibraryId, x.Status, x.IsServerOffline }).ShouldBe([
-            new { PlexLibraryId = current.Id, Status = expectedStatus, IsServerOffline = offline },
-            new { PlexLibraryId = next.Id, Status = offline ? LibrarySyncJobStatus.Queued : LibrarySyncJobStatus.Processing, IsServerOffline = offline },
-        ]);
-        rows[0].CompletedAt.HasValue.ShouldBe(!offline);
-        rows[1].StartedAt.HasValue.ShouldBe(!offline);
-        rows[1].CompletedAt.ShouldBeNull();
-    }
 
     private static Mock<IJobExecutionContext> SetupContext(PlexLibrary library, CancellationToken cancellationToken)
     {
         var payload = new LibrarySyncJobPayload(library.PlexServerId, library.Id).ToJobDataMap();
         var jobDetail = new Mock<IJobDetail>();
         jobDetail.SetupGet(x => x.JobDataMap).Returns(payload);
+        jobDetail.SetupGet(x => x.Key).Returns(LibrarySyncJob.GetJobKey(library.PlexServerId, library.Id));
         var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
         context.SetupGet(x => x.MergedJobDataMap).Returns(payload);
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         context.SetupProperty(x => x.Result);
         return context;

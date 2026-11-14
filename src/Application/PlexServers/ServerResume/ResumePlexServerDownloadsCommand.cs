@@ -15,16 +15,19 @@ public class ResumePlexServerDownloadsCommandHandler : ICommandHandler<ResumePle
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly IDownloadQueue _downloadQueue;
+    private readonly ITelemetry _telemetry;
 
     public ResumePlexServerDownloadsCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
-        IDownloadQueue downloadQueue
+        IDownloadQueue downloadQueue,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<ResumePlexServerDownloadsCommandHandler>();
         _dbContext = dbContext;
         _downloadQueue = downloadQueue;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(
@@ -46,6 +49,7 @@ public class ResumePlexServerDownloadsCommandHandler : ICommandHandler<ResumePle
         if (updateResult.IsFailed)
             return updateResult.ToResult().LogIfFailed();
 
+        _telemetry.ServerDownloadControlProcessed(command.PlexServerId, TelemetryAction.Resume, false);
         // The resume has committed, so its queue wake-up must no longer be tied to the request token.
         // The boot-time all-server queue check provides reconciliation if the process stops before this is queued.
         var queueResult = await Result.Try(() =>

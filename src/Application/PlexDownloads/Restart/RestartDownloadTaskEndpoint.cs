@@ -17,9 +17,18 @@ public class RestartDownloadTaskEndpointRequestValidator : Validator<RestartDown
     }
 }
 
-public class RestartDownloadTaskEndpoint(ICommandExecutor commandExecutor)
+public class RestartDownloadTaskEndpoint
     : Endpoint<RestartDownloadTaskEndpointRequest>
 {
+    private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
+
+    public RestartDownloadTaskEndpoint(ICommandExecutor commandExecutor, ITelemetry telemetry)
+    {
+        _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
+    }
+
     public override void Configure()
     {
         Put(ApiRoutes.DownloadController + "/restart/{DownloadTaskGuid}");
@@ -34,7 +43,9 @@ public class RestartDownloadTaskEndpoint(ICommandExecutor commandExecutor)
 
     public override async Task HandleAsync(RestartDownloadTaskEndpointRequest req, CancellationToken ct)
     {
-        var restartResult = await commandExecutor.Send(new RestartDownloadTaskCommand(req.DownloadTaskGuid), ct);
+        var restartResult = await _commandExecutor.Send(new RestartDownloadTaskCommand(req.DownloadTaskGuid), ct);
+
+        _telemetry.DownloadControlProcessed(TelemetryAction.Restart, req.DownloadTaskGuid, restartResult);
 
         await Send.FluentResult(restartResult, ct);
     }

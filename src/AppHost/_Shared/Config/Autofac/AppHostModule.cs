@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using PostHog;
+
 namespace Reaparr.AppHost;
 
 /// <summary>
@@ -8,6 +11,11 @@ public class AppHostModule : Module
     /// <inheritdoc/>
     protected override void Load(ContainerBuilder builder)
     {
+        builder
+            .RegisterType<PostHogClient>()
+            .As<IPostHogClient>()
+            .SingleInstance()
+            .WithParameter(new TypedParameter(typeof(ILoggerFactory), NullLoggerFactory.Instance));
         builder.Register(c => c.Resolve<IHttpClientFactory>().CreateClient()).As<HttpClient>().InstancePerDependency();
 
         // This needs to be registered in order to fire Boot on Application startup
