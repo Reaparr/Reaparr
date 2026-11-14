@@ -4,8 +4,10 @@ namespace Reaparr.Application;
 /// Validates enabled Plex accounts and refreshes their accessible Plex servers and libraries.
 /// Pass a Plex account id to refresh only that account, or zero to refresh all enabled accounts.
 /// </summary>
-public record RefreshPlexAccountAccessCommand(int PlexAccountId = 0)
-    : ICommand<Result<List<RefreshPlexAccountAccessRapportDTO>>>;
+public record RefreshPlexAccountAccessCommand(
+    int PlexAccountId = 0,
+    TelemetryTrigger Trigger = TelemetryTrigger.Manual
+) : ICommand<Result<List<RefreshPlexAccountAccessRapportDTO>>>;
 
 public class RefreshPlexAccountAccessCommandValidator : AbstractValidator<RefreshPlexAccountAccessCommand>
 {
@@ -22,18 +24,21 @@ public class RefreshPlexAccountAccessCommandHandler
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
+    private readonly ITelemetry _telemetry;
 
     public RefreshPlexAccountAccessCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        INotificationHubService notificationHubService
+        INotificationHubService notificationHubService,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<RefreshPlexAccountAccessCommandHandler>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
+        _telemetry = telemetry;
     }
 
     public async Task<Result<List<RefreshPlexAccountAccessRapportDTO>>> ExecuteAsync(
@@ -64,7 +69,14 @@ public class RefreshPlexAccountAccessCommandHandler
             );
 
             if (validationResult.IsCancelled)
+            {
+                _telemetry.PlexAccessRefreshFinished(
+                    plexAccount.Id,
+                    command.Trigger,
+                    validationResult
+                );
                 return validationResult.ToResult();
+            }
 
             if (validationResult.HasPlex401UnauthorizedError())
             {
@@ -79,14 +91,32 @@ public class RefreshPlexAccountAccessCommandHandler
 
                 var revokeResult = await RevokeAllAccess(plexAccount, cancellationToken);
                 if (revokeResult.IsCancelled)
+                {
+                    _telemetry.PlexAccessRefreshFinished(
+                        plexAccount.Id,
+                        command.Trigger,
+                        revokeResult
+                    );
                     return revokeResult.ToResult();
+                }
                 if (revokeResult.IsFailed)
                 {
                     revokeResult.LogError();
                     errors.AddRange(revokeResult.Errors);
+                    _telemetry.PlexAccessRefreshFinished(
+                        plexAccount.Id,
+                        command.Trigger,
+                        revokeResult
+                    );
                     continue;
                 }
 
+                _telemetry.PlexAccessRefreshFinished(
+                    plexAccount.Id,
+                    command.Trigger,
+                    revokeResult,
+                    revokeResult.Value
+                );
                 rapports.Add(revokeResult.Value);
                 continue;
             }
@@ -95,6 +125,11 @@ public class RefreshPlexAccountAccessCommandHandler
             {
                 validationResult.LogError();
                 errors.AddRange(validationResult.Errors);
+                _telemetry.PlexAccessRefreshFinished(
+                    plexAccount.Id,
+                    command.Trigger,
+                    validationResult
+                );
                 continue;
             }
 
@@ -108,12 +143,24 @@ public class RefreshPlexAccountAccessCommandHandler
             );
 
             if (serverAccessResult.IsCancelled)
+            {
+                _telemetry.PlexAccessRefreshFinished(
+                    plexAccount.Id,
+                    command.Trigger,
+                    serverAccessResult
+                );
                 return serverAccessResult.ToResult();
+            }
 
             if (serverAccessResult.IsFailed)
             {
                 serverAccessResult.LogError();
                 errors.AddRange(serverAccessResult.Errors);
+                _telemetry.PlexAccessRefreshFinished(
+                    plexAccount.Id,
+                    command.Trigger,
+                    serverAccessResult
+                );
                 continue;
             }
 
@@ -138,16 +185,30 @@ public class RefreshPlexAccountAccessCommandHandler
             );
 
             if (libraryAccessResult.IsCancelled)
+            {
+                _telemetry.PlexAccessRefreshFinished(
+                    plexAccount.Id,
+                    command.Trigger,
+                    libraryAccessResult
+                );
                 return libraryAccessResult.ToResult();
+            }
 
             if (libraryAccessResult.IsFailed)
             {
                 libraryAccessResult.LogError();
                 errors.AddRange(libraryAccessResult.Errors);
+                _telemetry.PlexAccessRefreshFinished(
+                    plexAccount.Id,
+                    command.Trigger,
+                    libraryAccessResult
+                );
                 continue;
             }
 
-            rapports.Add(ToDTO(serverAccessRapport, libraryAccessResult.Value));
+            var rapport = ToDTO(serverAccessRapport, libraryAccessResult.Value);
+            _telemetry.PlexAccessRefreshFinished(plexAccount.Id, command.Trigger, libraryAccessResult, rapport);
+            rapports.Add(rapport);
         }
 
         await _notificationHubService.SendRefreshNotificationAsync([
@@ -162,6 +223,7 @@ public class RefreshPlexAccountAccessCommandHandler
 
         return Result.Ok(rapports).WithErrors(errors);
     }
+
 
     private async Task<Result<RefreshPlexAccountAccessRapportDTO>> RevokeAllAccess(
         PlexAccount plexAccount,

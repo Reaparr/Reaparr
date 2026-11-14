@@ -1,6 +1,12 @@
+using System.Diagnostics;
+using Autofac;
+using Microsoft.Extensions.DependencyInjection;
+using PostHog;
+using Reaparr.Identity.Contracts;
+
 namespace Reaparr.Application.UnitTests;
 
-public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlexAccountAccessCommandHandler>
+public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<RefreshPlexAccountAccessCommand>
 {
     [Test]
     public async Task ShouldReportFailureAndPreserveAccess_WhenRevocationTransactionFails()
@@ -59,7 +65,9 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(account.Id), CancellationToken);
+        var result = await TestHandlerExecuteAsync<List<RefreshPlexAccountAccessRapportDTO>>(
+            new RefreshPlexAccountAccessCommand(account.Id)
+        );
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -212,7 +220,9 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             .Verifiable(cancelled ? Times.Never() : Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(), CancellationToken);
+        var result = await TestHandlerExecuteAsync<List<RefreshPlexAccountAccessRapportDTO>>(
+            new RefreshPlexAccountAccessCommand()
+        );
 
         // Assert
         result.IsCancelled.ShouldBe(cancelled);
@@ -281,7 +291,9 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(), CancellationToken);
+        var result = await TestHandlerExecuteAsync<List<RefreshPlexAccountAccessRapportDTO>>(
+            new RefreshPlexAccountAccessCommand()
+        );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -295,6 +307,129 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             );
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<RefreshLibraryAccessCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+    }
+
+    [Test]
+    public async Task ShouldReportPartial_WhenSomeLibrariesAreOffline()
+    {
+        // Arrange
+        SetAppBuildInfo(build =>
+        {
+            build.TelemetryHost = "https://telemetry.example.test";
+            build.TelemetryProjectToken = "phc_test";
+        });
+        await SetupDatabase(
+            77607,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexServerCount = 2;
+            }
+        );
+
+        var account = await IDbContext.PlexAccounts.SingleAsync(CancellationToken);
+        var servers = await IDbContext.PlexServers.OrderBy(x => x.Id).Take(2).ToListAsync(CancellationToken);
+        var serverRapport = new RefreshPlexServerAccessRapport(account.Id, account.DisplayName);
+        serverRapport.AddUpdated(servers[0].Id, servers[0].Name);
+        serverRapport.AddUpdated(servers[1].Id, servers[1].Name);
+        const string identity = "a4eb5051-3c16-4b94-81a9-470b34b376a9";
+        var user = new Mock<IUserService>(MockBehavior.Strict);
+        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
+        using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
+        var client = new Mock<IPostHogClient>(MockBehavior.Strict);
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            services.GetRequiredService<IServiceScopeFactory>(),
+            source,
+            new UserSettings()
+        );
+        SetupDependencies(builder => builder.RegisterInstance(telemetry).As<ITelemetry>().ExternallyOwned());
+        Dictionary<string, object>? capturedProperties = null;
+
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
+        client.Setup(x => x.Capture(identity, TelemetryProtocol.ProfileEvent,
+                It.IsAny<Dictionary<string, object>>(), null, null, null))
+            .Returns(true)
+            .Verifiable(Times.Once());
+        client.Setup(x => x.Capture(identity, nameof(TelemetryEvent.PlexAccessRefreshFinished),
+                It.IsAny<Dictionary<string, object>>(), null, null, null))
+            .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
+                (_, _, properties, _, _, _) => capturedProperties = properties)
+            .Returns(true)
+            .Verifiable(Times.Once());
+
+        Mock.SetupCommand(() => It.IsAny<ValidatePlexTokenCommand>())
+            .ReturnsAsync(
+                Result.Ok(
+                    new ValidatePlexTokenCommandResult
+                    {
+                        ClientId = account.ClientId,
+                        Username = account.Username,
+                        Email = account.Email,
+                        Title = account.Title,
+                        PlexId = account.PlexId,
+                        Uuid = account.Uuid,
+                        AuthenticationToken = account.GetAuthToken,
+                        IsValidated = true,
+                        ValidatedAt = DateTime.UtcNow,
+                        Is2Fa = account.Is2Fa,
+                    }
+                )
+            )
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => It.IsAny<RefreshPlexServerAccessCommand>())
+            .ReturnsAsync(Result.Ok(serverRapport))
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => It.IsAny<RefreshLibraryAccessCommand>())
+            .ReturnsAsync(
+                Result.Ok(
+                    new PlexLibraryAccessRefreshResponse
+                    {
+                        Reports = [],
+                        OfflineServers = [servers[1].Id],
+                    }
+                )
+            )
+            .Verifiable(Times.Once());
+        Mock.Mock<INotificationHubService>()
+            .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        await telemetry.InitializeAsync();
+
+        // Act
+        var result = await TestHandlerExecuteAsync<List<RefreshPlexAccountAccessRapportDTO>>(
+            new RefreshPlexAccountAccessCommand(account.Id, TelemetryTrigger.Manual)
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var report = result.Value.ShouldHaveSingleItem();
+        report.PlexAccountId.ShouldBe(account.Id);
+        report.PlexAccountName.ShouldBe(account.DisplayName);
+        report
+            .Access.Select(x => (x.PlexServerId, x.IsServerOffline))
+            .OrderBy(x => x.PlexServerId)
+            .ShouldBe(
+                [
+                    (servers[0].Id, false),
+                    (servers[1].Id, true),
+                ]
+            );
+        capturedProperties.ShouldNotBeNull();
+        capturedProperties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Partial));
+        capturedProperties[TelemetryProperty.AccountId].ShouldBe(account.Id);
+        capturedProperties[TelemetryProperty.Trigger].ShouldBe(nameof(TelemetryTrigger.Manual));
+        capturedProperties[TelemetryProperty.Accounts.AccessCount].ShouldBe(2);
+        user.Verify();
+        client.Verify();
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<INotificationHubService>().Verify();
     }
 
     [Test]
@@ -382,7 +517,9 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(plexAccount.Id), CancellationToken);
+        var result = await TestHandlerExecuteAsync<List<RefreshPlexAccountAccessRapportDTO>>(
+            new RefreshPlexAccountAccessCommand(plexAccount.Id)
+        );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -418,7 +555,9 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseUnitTest<RefreshPlex
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(new RefreshPlexAccountAccessCommand(), CancellationToken);
+        var result = await TestHandlerExecuteAsync<List<RefreshPlexAccountAccessRapportDTO>>(
+            new RefreshPlexAccountAccessCommand()
+        );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
