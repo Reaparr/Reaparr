@@ -12,7 +12,8 @@ public partial interface ITelemetry
     /// </summary>
     void PlexAuthenticationProcessed(
         int? accountId,
-        Result<ValidatePlexTokenCommandResult> result
+        PlexAuthenticationTelemetryDTO? authentication,
+        ResultBase result
     );
 
     /// <summary>
@@ -21,6 +22,7 @@ public partial interface ITelemetry
     void PlexAuthenticationProcessed(
         TelemetryAuthenticationMethod method,
         int? accountId,
+        PlexAuthenticationTelemetryDTO? authentication,
         ResultBase result
     );
 
@@ -47,14 +49,9 @@ public partial interface ITelemetry
     );
 
     /// <summary>
-    /// Records completion of a Plex access refresh.
+    /// Records an access refresh that ends during token validation, before access reconciliation.
     /// </summary>
-    void PlexAccessRefreshFinished(
-        int accountId,
-        TelemetryTrigger trigger,
-        Result<ValidatePlexTokenCommandResult> result,
-        RefreshPlexAccountAccessRapportDTO? rapport = null
-    );
+    void PlexAccessRefreshValidationFinished(int accountId, TelemetryTrigger trigger, ResultBase result);
 
     /// <summary>
     /// Records completion of a Plex access refresh.

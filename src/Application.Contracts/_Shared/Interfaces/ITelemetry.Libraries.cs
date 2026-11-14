@@ -7,13 +7,17 @@ public partial interface ITelemetry
     /// <summary>
     /// Records completion of a media query.
     /// </summary>
-    void MediaQueryFinished(GetAllMediaByTypeRequest request, string? filter, Result<PlexMediaStatisticsDTO> result);
+    void MediaQueryFinished(
+        MediaQueryTelemetryDTO request,
+        string? filter,
+        Result<PlexMediaStatisticsDTO> result
+    );
 
     /// <summary>
     /// Records completion of a photo search.
     /// </summary>
     void PhotoSearchFinished(
-        SearchPhotoAssetsQuery query,
+        PhotoSearchTelemetryDTO query,
         IReadOnlyList<string> searchTerms,
         Result<PhotoAssetPageDTO> result
     );
@@ -22,7 +26,7 @@ public partial interface ITelemetry
     /// Records a requested library refresh.
     /// </summary>
     void LibraryRefreshRequested(
-        RefreshLibraryMediaEndpointRequest request,
+        LibraryRefreshTelemetryDTO request,
         ResultBase result,
         LibrarySyncJobStatus? queueStatus = null
     );
@@ -30,7 +34,7 @@ public partial interface ITelemetry
     /// <summary>
     /// Records a requested server media sync.
     /// </summary>
-    void ServerMediaSyncRequested(SyncPlexServerMediaEndpointRequest request, ResultBase result);
+    void ServerMediaSyncRequested(ServerMediaSyncTelemetryDTO request, ResultBase result);
 
     /// <summary>
     /// Records a queued library synchronization.

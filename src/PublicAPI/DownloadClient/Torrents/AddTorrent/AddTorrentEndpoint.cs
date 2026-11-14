@@ -163,7 +163,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         {
             _telemetry.ExternalDownloadSubmissionProcessed(
                 identity,
-                metadata,
+                ToTelemetryDTO(metadata),
                 hashId,
                 null,
                 null,
@@ -209,7 +209,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
                 );
             _telemetry.ExternalDownloadSubmissionProcessed(
                 identity,
-                metadata,
+                ToTelemetryDTO(metadata),
                 hashId,
                 null,
                 null,
@@ -228,7 +228,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         _log.Here().Warning("[Torrent/Add] Torrent source no longer exists: {MetaData}", metadata);
         _telemetry.ExternalDownloadSubmissionProcessed(
             identity,
-            metadata,
+            ToTelemetryDTO(metadata),
             hashId,
             null,
             null,
@@ -278,7 +278,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
             _telemetry.CaptureErrors(createResult, TelemetryActivity.ExternalDownloadSubmission);
             _telemetry.ExternalDownloadSubmissionProcessed(
                 identity,
-                metadata,
+                ToTelemetryDTO(metadata),
                 torrent.HashId,
                 createResult,
                 null,
@@ -297,7 +297,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         );
         _telemetry.ExternalDownloadSubmissionProcessed(
             identity,
-            metadata,
+            ToTelemetryDTO(metadata),
             torrent.HashId,
             createResult,
             associationResult,
@@ -325,6 +325,19 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
 
         await Send.StringAsync("Ok.", cancellation: ct);
     }
+
+    private static TorrentMetadataTelemetryDTO ToTelemetryDTO(TorrentMetadataDTO metadata) =>
+        new()
+        {
+            Type = metadata.Type,
+            MediaId = metadata.MediaId,
+            DataId = metadata.DataId,
+            PartId = metadata.PartId,
+            PlexApiPartId = metadata.PlexApiPartId,
+            VideoQuality = metadata.VideoQuality,
+            LibraryId = metadata.LibraryId,
+            ServerId = metadata.ServerId,
+        };
 
     private Task<MediaSourceIdentity?> GetValidatedMediaSourceAsync(
         TorrentMetadataDTO metadata,

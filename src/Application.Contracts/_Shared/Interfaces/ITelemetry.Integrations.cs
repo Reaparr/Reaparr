@@ -58,7 +58,8 @@ public partial interface ITelemetry
     void IntegrationConnectionTestFinished(
         IntegrationType provider,
         Guid? integrationId,
-        Result<TestConnectionResult> result
+        ConnectionTestTelemetryDTO? report,
+        ResultBase result
     );
 
     /// <summary>
@@ -71,7 +72,7 @@ public partial interface ITelemetry
     /// </summary>
     void TorrentMetadataGenerated(
         IntegrationIdentity integration,
-        TorrentMetadataDTO metadata,
+        TorrentMetadataTelemetryDTO metadata,
         string fileName,
         long fileSize,
         int pieceLength,
@@ -83,7 +84,7 @@ public partial interface ITelemetry
     /// </summary>
     void ExternalDownloadSubmissionProcessed(
         IntegrationIdentity integration,
-        TorrentMetadataDTO metadata,
+        TorrentMetadataTelemetryDTO metadata,
         string hashId,
         Result<DownloadTaskCreationReport>? creationResult,
         Result<int>? associationResult,
@@ -95,3 +96,4 @@ public partial interface ITelemetry
     /// </summary>
     void ExternalDownloadRemovalProcessed(IntegrationIdentity integration, ExternalDownloadRemovalReport report);
 }
+

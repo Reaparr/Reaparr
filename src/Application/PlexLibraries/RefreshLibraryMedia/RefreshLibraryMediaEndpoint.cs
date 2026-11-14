@@ -1,5 +1,15 @@
 namespace Reaparr.Application;
 
+public record RefreshLibraryMediaEndpointRequest
+{
+    [RouteParam]
+    public int PlexLibraryId { get; init; }
+
+    public bool ForceLibrarySync { get; init; }
+
+    public bool ForceMediaRefresh { get; init; }
+}
+
 public class RefreshLibraryMediaEndpointRequestValidator : Validator<RefreshLibraryMediaEndpointRequest>
 {
     public RefreshLibraryMediaEndpointRequestValidator()
@@ -51,7 +61,7 @@ public class RefreshLibraryMediaEndpoint
         );
         if (result.IsCancelledOrFailed)
         {
-            _telemetry.LibraryRefreshRequested(req, result);
+            _telemetry.LibraryRefreshRequested(ToTelemetryDTO(req), result);
             await Send.FluentResult(result, ct);
             return;
         }
@@ -61,7 +71,7 @@ public class RefreshLibraryMediaEndpoint
         if (plexLibrary is null)
         {
             var notFound = ResultExtensions.EntityNotFound(nameof(PlexLibrary), req.PlexLibraryId);
-            _telemetry.LibraryRefreshRequested(req, notFound);
+            _telemetry.LibraryRefreshRequested(ToTelemetryDTO(req), notFound);
             await Send.FluentResult(notFound, ct: ct);
             return;
         }
@@ -72,12 +82,20 @@ public class RefreshLibraryMediaEndpoint
         if (queueItem is null)
         {
             var notFound = ResultExtensions.EntityNotFound(nameof(LibrarySyncJobQueue), req.PlexLibraryId);
-            _telemetry.LibraryRefreshRequested(req, notFound);
+            _telemetry.LibraryRefreshRequested(ToTelemetryDTO(req), notFound);
             await Send.FluentResult(notFound, ct: ct);
             return;
         }
 
-        _telemetry.LibraryRefreshRequested(req, result, queueItem.Status);
+        _telemetry.LibraryRefreshRequested(ToTelemetryDTO(req), result, queueItem.Status);
         await Send.FluentResult(Result.Ok(queueItem), x => x.ToDTO(), ct);
     }
+
+    private static LibraryRefreshTelemetryDTO ToTelemetryDTO(RefreshLibraryMediaEndpointRequest request) =>
+        new()
+        {
+            PlexLibraryId = request.PlexLibraryId,
+            ForceLibrarySync = request.ForceLibrarySync,
+            ForceMediaRefresh = request.ForceMediaRefresh,
+        };
 }

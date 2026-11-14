@@ -44,10 +44,7 @@ public class ValidatePlexServerConnectionEndpoint
     public override async Task HandleAsync(ValidatePlexServerConnectionEndpointRequest req, CancellationToken ct)
     {
         var result = await _commandExecutor.Send(new ValidatePlexConnectionUrlCommand(req.Url), ct);
-        _telemetry.ConnectionCheckFinished(
-            result,
-            result.IsSuccess ? TelemetryHealth.Healthy : TelemetryHealth.Unknown
-        );
+        _telemetry.ConnectionCheckFinished(result);
         await Send.FluentResult(result, ct);
     }
 }
