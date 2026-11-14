@@ -119,8 +119,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
                 x => x.Send(It.IsAny<CheckAllConnectionsStatusByPlexServerCommand>(), It.IsAny<CancellationToken>()),
                 Times.Exactly(plexServerIds.Count)
             );
-        dispatchedCommands.Count.ShouldBe(plexServerIds.Count);
-        dispatchedCommands.ShouldAllBe(command => !command.EmitTelemetry);
+        dispatchedCommands.Select(command => command.PlexServerId).Order().ShouldBe(plexServerIds);
     }
 
     [Test]
@@ -153,8 +152,9 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         // Assert
         Mock.Mock<ITelemetry>().Verify();
     }
+
     [Test]
-    public async Task ShouldRethrowUnexpectedOuterException()
+    public async Task ShouldRethrowUnexpectedOuterException_WhenDatabaseAccessFails()
     {
         // Arrange
         var exception = new InvalidOperationException("Connection catalog unavailable");

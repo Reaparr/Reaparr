@@ -43,6 +43,7 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var statuses = await IDbContext.PlexServerStatuses.ToListAsync(CancellationToken);
         statuses.Count.ShouldBe(statusCount);
 
@@ -54,6 +55,12 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
         updatedStatus.PlexServerId.ShouldBe(plexServerConnection.PlexServerId);
         updatedStatus.PlexServerConnectionId.ShouldBe(plexServerConnection.Id);
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.ConnectionCheckFinished(It.IsAny<int>(), It.IsAny<Result<PlexServerStatus>>()),
+                Times.Never()
+            );
+        Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
     }
 
     [Test]
@@ -96,6 +103,7 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var insertedStatus = await IDbContext.PlexServerStatuses.SingleAsync(CancellationToken);
         insertedStatus.IsSuccessful.ShouldBeTrue();
         insertedStatus.StatusCode.ShouldBe(200);
@@ -103,5 +111,11 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
         insertedStatus.PlexServerId.ShouldBe(plexServerConnection.PlexServerId);
         insertedStatus.PlexServerConnectionId.ShouldBe(plexServerConnection.Id);
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.ConnectionCheckFinished(It.IsAny<int>(), It.IsAny<Result<PlexServerStatus>>()),
+                Times.Never()
+            );
+        Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
     }
 }

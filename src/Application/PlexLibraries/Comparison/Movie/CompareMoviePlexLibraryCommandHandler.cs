@@ -14,15 +14,21 @@ public class CompareMoviePlexLibraryCommandHandler : ICommandHandler<CompareMovi
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public CompareMoviePlexLibraryCommandHandler(ILogger log, IReaparrDbContext dbContext)
+    public CompareMoviePlexLibraryCommandHandler(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<CompareMoviePlexLibraryCommandHandler>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(CompareMoviePlexLibraryCommand command, CancellationToken cancellationToken)
     {
+        using var activity = _telemetry.StartMovieComparison(
+            command.OwnedPlexLibraryId,
+            command.RemotePlexLibraryId
+        );
         return await Result.Try(
             new Func<Task<Result>>(async () =>
             {

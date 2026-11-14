@@ -365,7 +365,9 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         var changed = await dbContext.DetermineDownloadStatus(key, CancellationToken);
 
         // Assert
-        changed.ShouldBe(ancestorKeys);
+        changed.Select(x => (x.Key, x.Status)).ShouldBe(
+            ancestorKeys.Select(x => (x, DownloadStatus.Error))
+        );
         (await dbContext.GetDownloadTaskKeyAsync(target.Id, CancellationToken)).ShouldBe(canonicalKey);
         (await dbContext.GetDownloadTaskTypeAsync(target.Id, CancellationToken)).ShouldBe(canonicalKey.Type);
         (await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: CancellationToken)).ShouldBe(rootKey);
@@ -596,7 +598,9 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         var changedKeys = await dbContext.DetermineDownloadStatus(testDownloadTask.ToKey(), CancellationToken);
 
         // Assert
-        changedKeys.ShouldBe([targetMovie.ToKey()]);
+        changedKeys.Select(x => (x.Key, x.Status)).ShouldBe(
+            [(targetMovie.ToKey(), DownloadStatus.DownloadFinished)]
+        );
         var after = await dbContext
             .DownloadTaskMovie.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.DownloadStatus })
@@ -645,7 +649,9 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         );
 
         // Assert
-        changedKeys.ShouldBe(expectedChangedKeys);
+        changedKeys.Select(x => (x.Key, x.Status)).ShouldBe(
+            expectedChangedKeys.Select(x => (x, DownloadStatus.Error))
+        );
         var after = await dbContext.DownloadTaskTvShow.IncludeAll().ToListAsync(CancellationToken);
         after
             .Cast<DownloadTaskBase>()

@@ -15,15 +15,25 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
     private const int BATCH_SIZE = 100;
     private readonly IReaparrDbContext _dbContext;
     private readonly ILogger _log;
+    private readonly ITelemetry _telemetry;
 
-    public CompareMusicPlexLibraryCommandHandler(IReaparrDbContext dbContext, ILogger log)
+    public CompareMusicPlexLibraryCommandHandler(
+        IReaparrDbContext dbContext,
+        ILogger log,
+        ITelemetry telemetry
+    )
     {
         _dbContext = dbContext;
         _log = log.ForContext<CompareMusicPlexLibraryCommandHandler>();
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(CompareMusicPlexLibraryCommand command, CancellationToken cancellationToken)
     {
+        using var activity = _telemetry.StartMusicComparison(
+            command.OwnedPlexLibraryId,
+            command.RemotePlexLibraryId
+        );
         var result = await _dbContext.ExecuteTransactionAsync(
             async (ctx, ct) =>
             {

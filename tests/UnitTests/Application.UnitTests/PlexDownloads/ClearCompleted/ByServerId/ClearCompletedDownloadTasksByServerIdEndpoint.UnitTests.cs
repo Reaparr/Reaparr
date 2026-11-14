@@ -45,6 +45,14 @@ public class ClearCompletedDownloadTasksByServerIdEndpointUnitTests
                 rootsAtNotification = await dbContext.DownloadTaskMovie.Select(x => x.Id).OrderBy(x => x).ToArrayAsync(CancellationToken);
             })
             .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.CompletedDownloadsCleared(
+                    targetServerId,
+                    It.Is<Result<int>>(r => r.IsSuccess && r.Value == 1)
+                )
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var endpoint = await TestEndpointHandleAsync(new ClearCompletedDownloadTasksByServerIdEndpointRequest { PlexServerId = targetServerId });
@@ -61,6 +69,7 @@ public class ClearCompletedDownloadTasksByServerIdEndpointUnitTests
         (await dbContext.DownloadTaskMovieFile.Select(x => x.Id).OrderBy(x => x).ToArrayAsync(CancellationToken)).ShouldBe(expectedFiles);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -84,6 +93,14 @@ public class ClearCompletedDownloadTasksByServerIdEndpointUnitTests
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.Is<ClearCompletedDownloadTasksByServerIdCommand>(c => c.PlexServerId == targetServerId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(failure).Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.CompletedDownloadsCleared(
+                    targetServerId,
+                    failure
+                )
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var endpoint = await TestEndpointHandleAsync(new ClearCompletedDownloadTasksByServerIdEndpointRequest { PlexServerId = targetServerId });
@@ -97,5 +114,6 @@ public class ClearCompletedDownloadTasksByServerIdEndpointUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify(x => x.SendRefreshNotificationAsync(It.IsAny<RefreshDataType>()), Times.Never());
         Mock.Mock<INotificationHubService>().Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Never());
+        Mock.Mock<ITelemetry>().Verify();
     }
 }

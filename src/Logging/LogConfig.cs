@@ -92,7 +92,9 @@ public class LogConfig : SlimLogConfig
                     options.TracesEndpoint = null;
                     options.Protocol = OtlpProtocol.HttpProtobuf;
                     options.Headers["Authorization"] = $"Bearer {_appBuildInfo.TelemetryProjectToken}";
-                    options.IncludedData = IncludedData.MessageTemplateTextAttribute;
+                    options.IncludedData = IncludedData.MessageTemplateTextAttribute
+                        | IncludedData.TraceIdField
+                        | IncludedData.SpanIdField;
                     options.ResourceAttributes = new Dictionary<string, object>
                     {
                         ["service.name"] = "reaparr",

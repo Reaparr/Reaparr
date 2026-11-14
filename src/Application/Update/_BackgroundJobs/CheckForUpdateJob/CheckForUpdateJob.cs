@@ -10,22 +10,27 @@ public class CheckForUpdateJob : IJob
     private readonly ICommandExecutor _commandExecutor;
     private readonly ILogger _log;
     private readonly INotificationHubService _notificationHubService;
+    private readonly ITelemetry _telemetry;
 
     public static JobKey GetJobKey() => new(nameof(CheckForUpdateJob), nameof(CheckForUpdateJob));
 
     public CheckForUpdateJob(
         ILogger log,
         ICommandExecutor commandExecutor,
-        INotificationHubService notificationHubService
+        INotificationHubService notificationHubService,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<CheckForUpdateJob>();
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
+        _telemetry = telemetry;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.UpdateCheck, context.GetTelemetryContext());
+
         _log.Here().Debug("Executing job: {JobName}", nameof(CheckForUpdateJob));
 
         // Jobs must not throw — Quartz would otherwise keep re-executing.
@@ -50,6 +55,7 @@ public class CheckForUpdateJob : IJob
         {
             context.SetResult(JobStatus.Failed, result);
             result.LogError();
+            _telemetry.CaptureErrors(result, TelemetryActivity.UpdateCheck);
         }
     }
 }

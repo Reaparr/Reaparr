@@ -16,6 +16,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
     private readonly IReaparrDbContext _dbContext;
     private readonly IPath _path;
     private readonly IDirectory _directory;
+    private readonly ITelemetry _telemetry;
     private static readonly StringComparer _pathComparer = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
@@ -27,13 +28,15 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
         ILogger log,
         IReaparrDbContext dbContext,
         IPath path,
-        IDirectory directory
+        IDirectory directory,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<CleanUpDownloadTaskFoldersCommandHandler>();
         _dbContext = dbContext;
         _path = path;
         _directory = directory;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(
@@ -47,6 +50,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
         if (downloadTask is null)
             return ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogError();
 
+        using var cleanupActivity = _telemetry.StartDownloadCleanup(downloadTask);
         var filePath = downloadTask.DownloadFilePath;
         if (string.IsNullOrEmpty(filePath))
             return ResultExtensions.IsEmpty(nameof(filePath)).LogError();

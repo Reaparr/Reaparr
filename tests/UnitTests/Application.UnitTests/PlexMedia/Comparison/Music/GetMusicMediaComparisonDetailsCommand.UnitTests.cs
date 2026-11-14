@@ -115,7 +115,7 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
             )
             .Returns<ICommand<Result>, CancellationToken>(
                 (cmd, ct) =>
-                    new ApplyComparisonStateCommandHandler(IDbContext, executor.Object).ExecuteAsync(
+                    new ApplyComparisonStateCommandHandler(IDbContext, executor.Object, Mock.Mock<ITelemetry>().Object).ExecuteAsync(
                         (ApplyComparisonStateCommand)cmd,
                         ct
                     )
@@ -431,7 +431,7 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
             )
             .Returns<ICommand<Result>, CancellationToken>(
                 (cmd, ct) =>
-                    new ApplyComparisonStateCommandHandler(IDbContext, executor.Object).ExecuteAsync(
+                    new ApplyComparisonStateCommandHandler(IDbContext, executor.Object, Mock.Mock<ITelemetry>().Object).ExecuteAsync(
                         (ApplyComparisonStateCommand)cmd,
                         ct
                     )

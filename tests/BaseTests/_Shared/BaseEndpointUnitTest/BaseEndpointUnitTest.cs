@@ -17,11 +17,13 @@ public abstract class BaseEndpointUnitTest<TEndpoint, TRequest> : BaseEndpointUn
     /// <param name="request">The request DTO passed to the endpoint.</param>
     /// <param name="extraServices">Optional test-specific service registrations.</param>
     /// <param name="integrationIdentity">Optional database-backed integration identity to authenticate before endpoint execution.</param>
+    /// <param name="executionCancellationToken">Optional token used only for endpoint execution; validation and response capture use the fixture token.</param>
     /// <returns>The endpoint, validation outcome, HTTP status metadata, and captured response body.</returns>
     protected async Task<EndpointUnitTestResult<TEndpoint, object>> TestEndpointHandleAsync(
         TRequest request,
         Action<IServiceCollection>? extraServices = null,
-        IntegrationIdentity? integrationIdentity = null
+        IntegrationIdentity? integrationIdentity = null,
+        CancellationToken? executionCancellationToken = null
     )
     {
         var endpoint = SetupEndpointUnitTest<TEndpoint>(extraServices);
@@ -40,7 +42,7 @@ public abstract class BaseEndpointUnitTest<TEndpoint, TRequest> : BaseEndpointUn
             };
         }
 
-        await endpoint.HandleAsync(request, CancellationToken);
+        await endpoint.HandleAsync(request, executionCancellationToken ?? CancellationToken);
 
         return new EndpointUnitTestResult<TEndpoint, object>
         {

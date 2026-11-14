@@ -14,11 +14,17 @@ public class CheckConnectionStatusByIdEndpoint : Endpoint<CheckConnectionStatusB
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public CheckConnectionStatusByIdEndpoint(ILogger log, ICommandExecutor commandExecutor)
+    public CheckConnectionStatusByIdEndpoint(
+        ILogger log,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<CheckConnectionStatusByIdEndpoint>();
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -37,6 +43,7 @@ public class CheckConnectionStatusByIdEndpoint : Endpoint<CheckConnectionStatusB
     {
         _log.Here().DebugApiCall(HttpContext, req);
         var result = await _commandExecutor.Send(new CheckConnectionStatusByIdCommand(req.PlexServerConnectionId), ct);
+        _telemetry.ConnectionCheckFinished(req.PlexServerConnectionId, result);
         if (result.IsFailed)
             await Send.FluentResult(result.ToResult(), ct);
         else

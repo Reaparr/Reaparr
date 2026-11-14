@@ -67,10 +67,7 @@ public class CheckAllConnectionsStatusByPlexServerJob : IJob
                 plexServers.Select(async plexServer =>
                     await Result.Try(() =>
                         _commandExecutor.Send(
-                            new CheckAllConnectionsStatusByPlexServerCommand(
-                                plexServer.Id,
-                                EmitTelemetry: false
-                            ),
+                            new CheckAllConnectionsStatusByPlexServerCommand(plexServer.Id),
                             cancellationToken
                         )
                     )

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -157,6 +158,11 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         // Assert
         retryAccepted.ShouldBeTrue();
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.CaptureErrors(It.Is<ResultBase>(result => result.IsFailed), TelemetryActivity.MediaOverviewSnapshot),
+                Times.Once()
+            );
     }
 
     [Test]
@@ -179,6 +185,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             .Verifiable(Times.Once());
 
         coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeTrue();
+        // Act
         var executeTask = Sut.Execute(context.Object);
         await rebuildStarted.Task;
         coordinator.RequestRebuild(null, DateTimeOffset.UtcNow).ShouldBeFalse();
@@ -192,9 +199,69 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
             .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Once());
     }
 
+    [Test]
+    public async Task ShouldDisposeTelemetryScopeAndMarkJobCompleted_WhenNoRebuildIsPending()
+    {
+        // Arrange
+        var context = CreateJobContext();
+        context.SetupProperty(x => x.Result);
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        SetupDependencies(builder =>
+            builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
+        );
+        var completedAt = DateTimeOffset.UtcNow;
+        var initialScope = coordinator.BeginRebuild(completedAt);
+        initialScope.ShouldNotBeNull();
+        coordinator.CompleteRebuild(true, completedAt).ShouldBeNull();
+
+        var telemetryScope = new Mock<IDisposable>(MockBehavior.Strict);
+        telemetryScope.Setup(x => x.Dispose()).Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.BeginJob(
+                    TelemetryActivity.MediaOverviewSnapshot,
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
+                )
+            )
+            .Returns(telemetryScope.Object)
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.Execute(context.Object);
+
+        // Assert
+        var terminalResult = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
+        terminalResult.Status.ShouldBe(JobStatus.Completed);
+        terminalResult.ErrorSummary.ShouldBeNull();
+        context.VerifySet(
+            x => x.Result = It.Is<BackgroundJobResult>(
+                result => result.Status == JobStatus.Completed && result.ErrorSummary == null
+            ),
+            Times.Once()
+        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<RebuildMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<IScheduler>()
+            .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ITelemetry>().Verify();
+        telemetryScope.Verify();
+
+    }
+
     private static Mock<IJobExecutionContext> CreateJobContext()
     {
         var context = new Mock<IJobExecutionContext>(MockBehavior.Loose);
+        context.SetupGet(x => x.JobDetail)
+            .Returns(
+                JobBuilder
+                    .Create<MediaOverviewSnapshotJob>()
+                    .WithIdentity(MediaOverviewSnapshotJob.GetJobKey())
+                    .Build()
+            );
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);
         context.SetupGet(x => x.MergedJobDataMap).Returns(new JobDataMap());
         return context;
