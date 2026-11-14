@@ -1,5 +1,15 @@
 namespace Reaparr.Application;
 
+public record SyncPlexServerMediaEndpointRequest
+{
+    [RouteParam]
+    public int PlexServerId { get; init; }
+
+    public bool ForceLibrarySync { get; init; }
+
+    public bool ForceMediaRefresh { get; init; }
+}
+
 /// <summary>
 /// Sync all media from a Plex server by queuing sync jobs for all its libraries.
 /// </summary>
@@ -55,7 +65,7 @@ public class SyncPlexServerMediaEndpoint : Endpoint<SyncPlexServerMediaEndpointR
             var warnResult = _log.Here()
                 .WarningResult("Plex server {Name} is disabled and cannot be synced", serverName)
                 .Add400BadRequestError();
-            _telemetry.ServerMediaSyncRequested(req, warnResult);
+            _telemetry.ServerMediaSyncRequested(ToTelemetryDTO(req), warnResult);
             await Send.FluentResult(warnResult, ct);
             return;
         }
@@ -71,7 +81,7 @@ public class SyncPlexServerMediaEndpoint : Endpoint<SyncPlexServerMediaEndpointR
             var warnResult = _log.Here()
                 .WarningResult("Plex server {Name} has no libraries available to sync", name)
                 .Add400BadRequestError();
-            _telemetry.ServerMediaSyncRequested(req, warnResult);
+            _telemetry.ServerMediaSyncRequested(ToTelemetryDTO(req), warnResult);
             await Send.FluentResult(warnResult, ct);
             return;
         }
@@ -80,7 +90,16 @@ public class SyncPlexServerMediaEndpoint : Endpoint<SyncPlexServerMediaEndpointR
             new QueueLibrarySyncJobCommand(libraryIds, req.ForceLibrarySync, req.ForceMediaRefresh),
             ct
         );
-        _telemetry.ServerMediaSyncRequested(req, result);
+        _telemetry.ServerMediaSyncRequested(ToTelemetryDTO(req), result);
         await Send.FluentResult(result, ct);
     }
+
+    private static ServerMediaSyncTelemetryDTO ToTelemetryDTO(SyncPlexServerMediaEndpointRequest request) =>
+        new()
+        {
+            PlexServerId = request.PlexServerId,
+            ForceLibrarySync = request.ForceLibrarySync,
+            ForceMediaRefresh = request.ForceMediaRefresh,
+        };
+
 }

@@ -65,10 +65,32 @@ public class SyncPlexServerMediaEndpointUnitTests
             .Setup(x => x.Send(It.IsAny<QueueLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        ServerMediaSyncTelemetryDTO? telemetryRequest = null;
+        ResultBase? telemetryResult = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.ServerMediaSyncRequested(
+                    It.IsAny<ServerMediaSyncTelemetryDTO>(),
+                    It.IsAny<ResultBase>()
+                )
+            )
+            .Callback<ServerMediaSyncTelemetryDTO, ResultBase>(
+                (request, result) =>
+                {
+                    telemetryRequest = request;
+                    telemetryResult = result;
+                }
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new SyncPlexServerMediaEndpointRequest { PlexServerId = plexServerId }
+            new SyncPlexServerMediaEndpointRequest
+            {
+                PlexServerId = plexServerId,
+                ForceLibrarySync = true,
+                ForceMediaRefresh = true,
+            }
         );
 
         // Assert
@@ -84,6 +106,12 @@ public class SyncPlexServerMediaEndpointUnitTests
                     ),
                 Times.Once()
             );
+        telemetryRequest.ShouldNotBeNull();
+        telemetryRequest.PlexServerId.ShouldBe(plexServerId);
+        telemetryRequest.ForceLibrarySync.ShouldBeTrue();
+        telemetryRequest.ForceMediaRefresh.ShouldBeTrue();
+        telemetryResult.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]

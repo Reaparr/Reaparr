@@ -218,6 +218,15 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
             .Setup(x => x.Send(It.IsAny<QueueMediaOverviewRebuildCommand>(), CancellationToken))
             .ReturnsAsync(Result.Ok())
             .Verifiable(cancelled ? Times.Never() : Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.PlexAccessRefreshValidationFinished(
+                targetId,
+                TelemetryTrigger.Manual,
+                It.Is<ResultBase>(validation =>
+                    validation.Errors.Count == 1
+                    && validation.Errors[0] == failure)
+            ))
+            .Verifiable(failingStage == "validation" ? Times.Once() : Times.Never());
 
         // Act
         var result = await TestHandlerExecuteAsync<List<RefreshPlexAccountAccessRapportDTO>>(
@@ -251,6 +260,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
         ).ShouldBe(before);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]

@@ -70,7 +70,7 @@ public class RefreshPlexAccountAccessCommandHandler
 
             if (validationResult.IsCancelled)
             {
-                _telemetry.PlexAccessRefreshFinished(
+                _telemetry.PlexAccessRefreshValidationFinished(
                     plexAccount.Id,
                     command.Trigger,
                     validationResult
@@ -125,7 +125,7 @@ public class RefreshPlexAccountAccessCommandHandler
             {
                 validationResult.LogError();
                 errors.AddRange(validationResult.Errors);
-                _telemetry.PlexAccessRefreshFinished(
+                _telemetry.PlexAccessRefreshValidationFinished(
                     plexAccount.Id,
                     command.Trigger,
                     validationResult

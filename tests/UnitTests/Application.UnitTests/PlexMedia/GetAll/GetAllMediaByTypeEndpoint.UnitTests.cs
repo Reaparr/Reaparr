@@ -99,6 +99,100 @@ public class GetAllMediaByTypeEndpointUnitTests
     }
 
     [Test]
+    public async Task ShouldProjectMediaQueryTelemetryWithoutChangingResponse()
+    {
+        // Arrange
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetMediaOverviewCommand>(command =>
+                        command.Filter.MediaType == PlexMediaType.Movie
+                        && command.Filter.PlexLibraryId == 17
+                        && command.Filter.Parameters.Page == 2
+                        && command.Filter.Parameters.PageSize == 30
+                    ),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(
+                Result.Ok(
+                    new PagedMediaQueryResult
+                    {
+                        Page = 2,
+                        PageSize = 30,
+                        TotalCount = 2,
+                        MediaCount = 2,
+                        TotalMediaSize = 4096,
+                    }
+                )
+            )
+            .Verifiable(Times.Once());
+        MediaQueryTelemetryDTO? telemetryRequest = null;
+        string? telemetryFilter = null;
+        Result<PlexMediaStatisticsDTO>? telemetryResult = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.MediaQueryFinished(
+                    It.IsAny<MediaQueryTelemetryDTO>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<Result<PlexMediaStatisticsDTO>>()
+                )
+            )
+            .Callback<MediaQueryTelemetryDTO, string?, Result<PlexMediaStatisticsDTO>>(
+                (request, filter, result) =>
+                {
+                    telemetryRequest = request;
+                    telemetryFilter = filter;
+                    telemetryResult = result;
+                }
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(
+            new GetAllMediaByTypeRequest
+            {
+                MediaType = PlexMediaType.Movie,
+                PlexLibraryId = 17,
+                Page = 2,
+                PageSize = 30,
+                Search = "Alpha Beta",
+                Sort = "title:desc",
+            }
+        );
+
+        // Assert
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.StatusCode.ShouldBe(200);
+        endpointResult.Endpoint.HttpContext.Response.Body.Position = 0;
+        var response = await JsonSerializer.DeserializeAsync<ResultDTO<PlexMediaStatisticsDTO>>(
+            endpointResult.Endpoint.HttpContext.Response.Body,
+            DefaultJsonSerializerOptions.ConfigStandard,
+            CancellationToken
+        );
+        response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        response.Errors.Count.ShouldBe(0);
+        var value = response.Value.ShouldNotBeNull();
+        (value.Page, value.PageSize, value.TotalCount, value.MediaCount, value.TotalMediaSize)
+            .ShouldBe((2, 30, 2, 2, 4096L));
+        telemetryRequest.ShouldNotBeNull();
+        telemetryRequest.MediaType.ShouldBe(PlexMediaType.Movie);
+        telemetryRequest.PlexLibraryId.ShouldBe(17);
+        telemetryRequest.Page.ShouldBe(2);
+        telemetryRequest.PageSize.ShouldBe(30);
+        telemetryRequest.Search.ShouldBe("Alpha Beta");
+        telemetryRequest.Sort.ShouldBe("title:desc");
+        telemetryFilter.ShouldBe("SearchTitle:contains:alpha&SearchTitle:contains:beta");
+        telemetryResult.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        telemetryResult.Errors.Count.ShouldBe(0);
+        telemetryResult.Value.TotalCount.ShouldBe(2);
+        telemetryResult.Value.MediaCount.ShouldBe(2);
+        telemetryResult.Value.TotalMediaSize.ShouldBe(4096);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+    }
+
+    [Test]
     [Arguments(PlexMediaType.Movie, "MediaDataList")]
     [Arguments(PlexMediaType.TvShow, "Qualities")]
     [Arguments(PlexMediaType.OtherVideos, "MediaDataList")]

@@ -1,6 +1,5 @@
 using BencodeNET.Objects;
 using BencodeNET.Torrents;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
 
@@ -119,7 +118,7 @@ public class DownloadTorrentEndpoint : Endpoint<DownloadTorrentEndpointRequest>
         var torrentBytes = torrent.EncodeAsBytes();
         _telemetry.TorrentMetadataGenerated(
             HttpContext.GetIntegrationIdentity(),
-            req,
+            ToTelemetryDTO(req),
             fileInfo.FileName,
             fileInfo.Size,
             PIECE_LENGTH,
@@ -129,6 +128,19 @@ public class DownloadTorrentEndpoint : Endpoint<DownloadTorrentEndpointRequest>
         // Return the torrent file
         await Send.BytesAsync(torrentBytes, fileName, "application/x-bittorrent", cancellation: ct);
     }
+
+    private static TorrentMetadataTelemetryDTO ToTelemetryDTO(TorrentMetadataDTO metadata) =>
+        new()
+        {
+            Type = metadata.Type,
+            MediaId = metadata.MediaId,
+            DataId = metadata.DataId,
+            PartId = metadata.PartId,
+            PlexApiPartId = metadata.PlexApiPartId,
+            VideoQuality = metadata.VideoQuality,
+            LibraryId = metadata.LibraryId,
+            ServerId = metadata.ServerId,
+        };
 
     private Task<MediaFileInfo?> GetFileInfoAsync(DownloadTorrentEndpointRequest req, CancellationToken ct) =>
         req.Type switch

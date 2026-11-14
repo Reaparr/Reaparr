@@ -50,6 +50,7 @@ public static partial class Startup
         );
 
         app.UseRouting();
+        app.UseMiddleware<TelemetryContextMiddleware>();
 
         if (!appRuntimeInfo.IsIntegrationTestMode)
         {

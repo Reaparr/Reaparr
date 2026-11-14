@@ -2,6 +2,56 @@ using FlexQuery.NET.Models;
 
 namespace Reaparr.Application;
 
+public record GetAllMediaByTypeRequest
+{
+    [QueryParam, BindFrom("mediaType")]
+    public required PlexMediaType MediaType { get; init; }
+
+    /// <summary>
+    /// Is > 0 when a specific <see cref="PlexLibrary" /> is requested, and 0 when all are requested.
+    /// </summary>
+    [QueryParam, BindFrom("plexLibraryId")]
+    public int? PlexLibraryId { get; init; }
+
+    /// <summary>The page number (1-indexed).</summary>
+    [QueryParam, BindFrom("page")]
+    public int? Page { get; init; }
+
+    /// <summary>The number of items per page.</summary>
+    [QueryParam, BindFrom("size")]
+    public int? PageSize { get; init; }
+
+    [QueryParam, BindFrom("q")]
+    public string? Search { get; init; }
+
+    [QueryParam, BindFrom("countryId")]
+    public int? CountryId { get; init; }
+
+    [QueryParam, BindFrom("genreId")]
+    public int? GenreId { get; init; }
+
+    [QueryParam, BindFrom("roleId")]
+    public int? RoleId { get; init; }
+
+    [QueryParam, BindFrom("qualityId")]
+    public int? QualityId { get; init; }
+
+    [QueryParam, BindFrom("comparisonState")]
+    public PlexMediaComparisonState? ComparisonState { get; init; }
+
+    /// <summary>The sorting expression (e.g., "title:asc").</summary>
+    [QueryParam, BindFrom("sort")]
+    public string? Sort { get; init; }
+
+    [QueryParam, BindFrom("filterOfflineMedia")]
+    [DefaultValue(false)]
+    public bool FilterOfflineMedia { get; init; }
+
+    [QueryParam, BindFrom("filterOwnedMedia")]
+    [DefaultValue(false)]
+    public bool FilterOwnedMedia { get; init; }
+}
+
 public class GetAllMediaByTypeRequestValidator : Validator<GetAllMediaByTypeRequest>
 {
     public GetAllMediaByTypeRequestValidator()
@@ -104,10 +154,21 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
         var statisticsResult = result.IsSuccess
             ? Result.Ok(ToStatisticsDTO(result.Value))
             : result.ToResult<PlexMediaStatisticsDTO>();
-        _telemetry.MediaQueryFinished(req, filter, statisticsResult);
+        _telemetry.MediaQueryFinished(ToTelemetryDTO(req), filter, statisticsResult);
 
         await Send.FluentResult(statisticsResult, ct);
     }
+
+    private static MediaQueryTelemetryDTO ToTelemetryDTO(GetAllMediaByTypeRequest request) =>
+        new()
+        {
+            Search = request.Search,
+            MediaType = request.MediaType,
+            Page = request.Page,
+            PageSize = request.PageSize,
+            PlexLibraryId = request.PlexLibraryId,
+            Sort = request.Sort,
+        };
 
     private static string BuildFilter(GetAllMediaByTypeRequest req)
     {
