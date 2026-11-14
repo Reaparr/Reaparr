@@ -3,9 +3,12 @@ using System.Diagnostics;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using Autofac;
-using Microsoft.Extensions.DependencyInjection;
 using PostHog;
 using Reaparr.Identity.Contracts;
+using Quartz;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -31,7 +34,6 @@ public class TelemetryUnitTests : BaseUnitTest
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new ConcurrentQueue<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -46,7 +48,7 @@ public class TelemetryUnitTests : BaseUnitTest
             .Returns(true)
             .Verifiable(Times.Once());
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         await telemetry.InitializeAsync();
         using var request = new Activity(nameof(ShouldUseExistingIdentityAndNativeContext_WhenEventsAreCaptured))
             .SetIdFormat(ActivityIdFormat.W3C).Start();
@@ -115,7 +117,6 @@ public class TelemetryUnitTests : BaseUnitTest
         );
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
@@ -125,7 +126,7 @@ public class TelemetryUnitTests : BaseUnitTest
             .Returns(true)
             .Verifiable(Times.Exactly(8));
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         await telemetry.InitializeAsync();
         events.Clear();
 
@@ -270,9 +271,9 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = string.Empty;
         });
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        var scopes = new Mock<IServiceScopeFactory>(MockBehavior.Strict);
+        var user = new Mock<IUserService>(MockBehavior.Strict);
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(), scopes.Object,
+        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(), user.Object,
             source, new UserSettings());
 
         // Act
@@ -280,13 +281,17 @@ public class TelemetryUnitTests : BaseUnitTest
         telemetry.NotificationsCleared(3);
         telemetry.CaptureException(new IOException("ordinary transport failure"), TelemetryActivity.Download);
         var diagnostic = telemetry.SendDiagnostic(TelemetryDiagnosticOrigin.Backend);
+        using var jobScope = telemetry.BeginJob(
+            TelemetryActivity.PlexAccessRefresh,
+            (default, null, "unconfigured-refresh", "unconfigured-fire"));
 
         // Assert
+        jobScope.ShouldBeNull();
         diagnostic.IsFailed.ShouldBeTrue();
         diagnostic.Errors.Count.ShouldBe(1);
         diagnostic.FindStatusCode().ShouldBe(503);
         diagnostic.Errors.Single().Message.ShouldBe("Telemetry is unconfigured or disabled");
-        scopes.Verify(x => x.CreateScope(), Times.Never());
+        user.Verify(x => x.GetTelemetryId(), Times.Never());
         client.Invocations.ShouldBeEmpty();
         telemetry.BeginRequest("session-data").ShouldBeNull();
         telemetry.StartActivity(TelemetryActivity.Download).ShouldBeNull();
@@ -304,11 +309,10 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
         client.Setup(x => x.Capture(Identity, nameof(TelemetryEvent.NotificationsCleared), It.IsAny<Dictionary<string, object>>(), null, null, null))
             .Returns(() => throws ? throw new IOException("private SDK transport details") : false)
@@ -349,11 +353,10 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         user.Setup(x => x.GetTelemetryId()).ThrowsAsync(new IOException("identity database unavailable")).Verifiable(Times.Once());
 
         // Act
@@ -388,7 +391,6 @@ public class TelemetryUnitTests : BaseUnitTest
         var changes = new ConcurrentQueue<Dictionary<string, object>>();
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         client.Setup(x => x.Capture(Identity, nameof(TelemetryEvent.SettingsChanged), It.IsAny<Dictionary<string, object>>(), null, null, null))
@@ -407,7 +409,7 @@ public class TelemetryUnitTests : BaseUnitTest
             .Returns(true)
             .Verifiable(Times.Once());
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, settings);
+            user.Object, source, settings);
         await telemetry.InitializeAsync();
 
         // Act
@@ -452,7 +454,6 @@ public class TelemetryUnitTests : BaseUnitTest
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         using var listener = new ActivityListener
         {
@@ -462,7 +463,7 @@ public class TelemetryUnitTests : BaseUnitTest
         ActivitySource.AddActivityListener(listener);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         await telemetry.InitializeAsync();
         using var ambient = new Activity(nameof(ShouldRestoreAmbientContext_WhenWorkerParentIsSupplied)).SetIdFormat(ActivityIdFormat.W3C).Start();
         var parent = hasParent ? new ActivityContext(
@@ -496,6 +497,132 @@ public class TelemetryUnitTests : BaseUnitTest
     }
 
     [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldCaptureTerminalFailureInJobContext_WhenRefreshFailsAfterAwait(bool throws)
+    {
+        // Arrange
+        SetAppBuildInfo(build =>
+        {
+            build.TelemetryHost = Host;
+            build.TelemetryProjectToken = "phc_test";
+        });
+        const string capturedLogMessage = "Captured job exception";
+        const string restoredLogMessage = "After job";
+        var logs = new List<LogEvent>();
+        var sink = new Mock<ILogEventSink>(MockBehavior.Strict);
+        sink.Setup(x => x.Emit(It.IsAny<LogEvent>()))
+            .Callback<LogEvent>(logs.Add)
+            .Verifiable(Times.Exactly(2));
+        using var logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .Enrich.FromLogContext()
+            .Filter.ByIncludingOnly(entry =>
+                entry.MessageTemplate.Text == capturedLogMessage || entry.MessageTemplate.Text == restoredLogMessage)
+            .WriteTo.Sink(sink.Object)
+            .CreateLogger();
+        using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = candidate => ReferenceEquals(candidate, source),
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+        var failure = new IOException("Account refresh failed after await");
+        var captures = new List<(Exception Exception, Activity? Activity, Dictionary<string, object> Properties)>();
+        var user = new Mock<IUserService>(MockBehavior.Strict);
+        var client = new Mock<IPostHogClient>(MockBehavior.Strict);
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
+        client.Setup(x => x.Capture(Identity, TelemetryProtocol.ProfileEvent,
+                It.IsAny<Dictionary<string, object>>(), null, null, null))
+            .Returns(true)
+            .Verifiable(Times.Once());
+        client.Setup(x => x.CaptureException(failure, Identity,
+                It.IsAny<Dictionary<string, object>>(), null, null, null))
+            .Callback<Exception, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
+                (exception, _, properties, _, _, _) =>
+                {
+                    captures.Add((exception, Activity.Current, properties!));
+                    logger.Information(capturedLogMessage);
+                })
+            .Returns(true)
+            .Verifiable(Times.Once());
+        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object, source, new UserSettings());
+        await telemetry.InitializeAsync();
+        using var ambient = new Activity(nameof(ShouldCaptureTerminalFailureInJobContext_WhenRefreshFailsAfterAwait))
+            .SetIdFormat(ActivityIdFormat.W3C).Start();
+        using var ambientLogContext = Serilog.Context.LogContext.PushProperty(TelemetryProperty.JobName, "scheduler");
+        const string session = "native-refresh-session";
+        var data = new JobDataMap
+        {
+            [TelemetryProtocol.TraceParentMetadata] = ambient.Id!,
+            [TelemetryProtocol.SessionIdMetadata] = session,
+        };
+        var context = new Mock<IJobExecutionContext>();
+        context.SetupGet(x => x.JobDetail).Returns(
+            JobBuilder.Create<RefreshPlexAccountAccessJob>()
+                .WithIdentity(RefreshPlexAccountAccessJob.GetJobKey()).Build());
+        context.SetupGet(x => x.MergedJobDataMap).Returns(data);
+        context.SetupGet(x => x.FireInstanceId).Returns("refresh-fire");
+        context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);
+        context.SetupProperty(x => x.Result);
+        var executor = new Mock<ICommandExecutor>(MockBehavior.Strict);
+        executor.Setup(x => x.Send(
+                It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
+                CancellationToken.None))
+            .Returns(async () =>
+            {
+                await Task.Yield();
+                if (throws)
+                    throw failure;
+                return Result.Fail<List<RefreshPlexAccountAccessRapportDTO>>(new ExceptionalError(failure));
+            })
+            .Verifiable(Times.Once());
+        var job = new RefreshPlexAccountAccessJob(logger, executor.Object, telemetry);
+
+        // Act
+        await job.Execute(context.Object);
+        logger.Information(restoredLogMessage);
+
+        // Assert
+        var terminal = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
+        terminal.Status.ShouldBe(JobStatus.Failed);
+        terminal.ErrorSummary.ShouldBe(failure.Message);
+        var captured = captures.Single();
+        captured.Exception.ShouldBeSameAs(failure);
+        var worker = captured.Activity.ShouldNotBeNull();
+        worker.OperationName.ShouldBe(nameof(TelemetryActivity.PlexAccessRefresh));
+        worker.Kind.ShouldBe(ActivityKind.Consumer);
+        worker.TraceId.ShouldBe(ambient.TraceId);
+        worker.ParentSpanId.ShouldBe(ambient.SpanId);
+        worker.SpanId.ShouldNotBe(ambient.SpanId);
+        worker.Status.ShouldBe(ActivityStatusCode.Error);
+        captured.Properties[TelemetryProtocol.TraceId].ShouldBe(worker.TraceId.ToHexString());
+        captured.Properties[TelemetryProtocol.SpanId].ShouldBe(worker.SpanId.ToHexString());
+        captured.Properties[TelemetryProtocol.SessionId].ShouldBe(session);
+        stopped.ShouldBe([worker]);
+        Activity.Current.ShouldBeSameAs(ambient);
+        ambient.Status.ShouldBe(ActivityStatusCode.Unset);
+        var terminalLog = logs.Single(x => x.MessageTemplate.Text == capturedLogMessage);
+        terminalLog.Properties[TelemetryProtocol.DistinctIdTag].ShouldBeOfType<ScalarValue>().Value.ShouldBe(Identity);
+        terminalLog.Properties[TelemetryProtocol.SessionIdTag].ShouldBeOfType<ScalarValue>().Value.ShouldBe(session);
+        terminalLog.Properties[TelemetryProperty.JobName].ShouldBeOfType<ScalarValue>().Value
+            .ShouldBe(RefreshPlexAccountAccessJob.GetJobKey().ToString());
+        terminalLog.Properties[TelemetryProperty.FireInstanceId].ShouldBeOfType<ScalarValue>().Value.ShouldBe("refresh-fire");
+        var restoredLog = logs.Single(x => x.MessageTemplate.Text == restoredLogMessage);
+        restoredLog.Properties[TelemetryProperty.JobName].ShouldBeOfType<ScalarValue>().Value.ShouldBe("scheduler");
+        restoredLog.Properties.ContainsKey(TelemetryProtocol.SessionIdTag).ShouldBeFalse();
+        restoredLog.Properties.ContainsKey(TelemetryProtocol.DistinctIdTag).ShouldBeFalse();
+        user.Verify();
+        client.Verify();
+        executor.Verify();
+        sink.Verify();
+    }
+
+    [Test]
     public async Task ShouldCaptureOriginalUnexpectedErrors_WhenResultsContainUnexpectedExceptions()
     {
         // Arrange
@@ -506,7 +633,6 @@ public class TelemetryUnitTests : BaseUnitTest
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var captured = new List<Exception>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -517,7 +643,7 @@ public class TelemetryUnitTests : BaseUnitTest
             .Returns(true)
             .Verifiable(Times.Exactly(2));
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         await telemetry.InitializeAsync();
         var failure = new IOException("Password=original-native-exception");
         var transportTimeout = new OperationCanceledException("transport timeout, not caller cancellation");
@@ -550,7 +676,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -575,7 +700,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -634,7 +759,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -661,7 +785,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -697,7 +821,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -750,7 +873,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -807,7 +930,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -849,7 +971,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -915,7 +1037,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -955,7 +1076,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1108,7 +1229,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1123,7 +1243,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1182,7 +1302,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1215,7 +1334,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1259,7 +1378,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1278,7 +1396,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1372,7 +1490,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1416,7 +1533,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1518,7 +1635,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1555,7 +1671,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1597,7 +1713,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1625,7 +1740,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1678,7 +1793,6 @@ public class TelemetryUnitTests : BaseUnitTest
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1691,7 +1805,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1745,7 +1859,6 @@ public class TelemetryUnitTests : BaseUnitTest
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1758,7 +1871,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1816,7 +1929,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.RuntimeMode = runtimeMode;
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1834,7 +1946,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1872,7 +1984,6 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryProjectToken = "phc_test";
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -1915,7 +2026,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );
@@ -1926,38 +2037,34 @@ public class TelemetryUnitTests : BaseUnitTest
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.Credentials,
             null,
-            validatedReport,
-            Result.Ok(signIn)
+            Result.Ok(signIn),
+            validatedReport
         );
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.Credentials,
             null,
-            validatedReport,
             Result.Ok(signIn).WithError(new PlexError("verification required")
             {
                 Code = PlexErrorCodes.EnterVerificationCode,
-            })
+            }),
+            validatedReport
         );
         telemetry.PlexAuthenticationProcessed(
             12,
-            null,
             Result.Fail<ValidatePlexTokenCommandResult>("unauthorized").AddPlex401UnauthorizedError()
         );
         telemetry.PlexAuthenticationProcessed(
             12,
-            null,
             Result.Try((Action)(() => throw new OperationCanceledException()))
         );
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.GenerateToken,
             12,
-            null,
             Result.Ok()
         );
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.GenerateToken,
             12,
-            null,
             Result.Fail("verification required").WithError(new PlexError("verification required")
             {
                 Code = PlexErrorCodes.EnterVerificationCode,
@@ -1966,23 +2073,20 @@ public class TelemetryUnitTests : BaseUnitTest
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.GenerateToken,
             12,
-            null,
             Result.Fail("unauthorized").AddStatusCode(System.Net.HttpStatusCode.Unauthorized)
         );
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.GenerateToken,
             12,
-            null,
             Result.Try((Action)(() => throw new OperationCanceledException()))
         );
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.Credentials,
             null,
-            null,
             Result.Try((Action)(() => throw new OperationCanceledException()))
         );
-        telemetry.PlexAuthenticationProcessed(12, rejectedReport, Result.Ok(validation));
-        telemetry.PlexAuthenticationProcessed(12, validatedReport, Result.Ok(validation));
+        telemetry.PlexAuthenticationProcessed(12, Result.Ok(validation), rejectedReport);
+        telemetry.PlexAuthenticationProcessed(12, Result.Ok(validation), validatedReport);
 
         // Assert
         events.Select(x => x.Name).ShouldAllBe(x => x == nameof(TelemetryEvent.PlexAuthenticationProcessed));
@@ -2023,7 +2127,6 @@ public class TelemetryUnitTests : BaseUnitTest
         });
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -2036,7 +2139,7 @@ public class TelemetryUnitTests : BaseUnitTest
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );

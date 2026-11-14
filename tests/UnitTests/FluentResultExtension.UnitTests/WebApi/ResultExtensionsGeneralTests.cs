@@ -18,6 +18,89 @@ public class ResultExtensionsGeneralTests
     }
 
     [Test]
+    public void ShouldFindStatusCode_WhenResultBaseContainsGenericResult()
+    {
+        // Arrange
+        ResultBase result = Result.Fail<string>("failed").AddStatusCode(HttpStatusCode.BadRequest);
+
+        // Act
+        var hasStatusCode = result.HasStatusCode((int)HttpStatusCode.BadRequest);
+
+        // Assert
+        hasStatusCode.ShouldBeTrue();
+    }
+
+    [Test]
+    public void ShouldFindStatusCode_WhenMatchingStatusIsOnLaterReason()
+    {
+        // Arrange
+        var result = Result.Ok()
+            .WithSuccess(new Success("first reason"))
+            .WithSuccess(new Success("later reason").WithMetadata(ResultExtensions.StatusCodeName, 418));
+
+        // Act
+        var hasStatusCode = result.HasStatusCode(418);
+
+        // Assert
+        hasStatusCode.ShouldBeTrue();
+    }
+
+    [Test]
+    public void ShouldMatchAnyStatusCode_WhenStatusCodeIsZero()
+    {
+        // Arrange
+        var result = Result.Ok().WithSuccess(new Success("status").WithMetadata(ResultExtensions.StatusCodeName, 418));
+
+        // Act
+        var hasStatusCode = result.HasStatusCode(0);
+
+        // Assert
+        hasStatusCode.ShouldBeTrue();
+    }
+
+    [Test]
+    public void ShouldNotFindStatusCode_WhenNoStatusMetadataExists()
+    {
+        // Arrange
+        var result = Result.Ok().WithSuccess(new Success("without status"));
+
+        // Act
+        var hasStatusCode = result.HasStatusCode();
+
+        // Assert
+        hasStatusCode.ShouldBeFalse();
+    }
+
+    [Test]
+    public void ShouldFindStatusCode_WhenMatchingStatusIsOnSuccessReason()
+    {
+        // Arrange
+        var result = Result.Ok().WithSuccess(
+            new Success("created").WithMetadata(ResultExtensions.StatusCodeName, (int)HttpStatusCode.Created)
+        );
+
+        // Act
+        var hasStatusCode = result.HasStatusCode((int)HttpStatusCode.Created);
+
+        // Assert
+        hasStatusCode.ShouldBeTrue();
+    }
+
+    [Test]
+    public void ShouldNotFindStatusCode_WhenStatusCodeExistsOnlyOnNestedReason()
+    {
+        // Arrange
+        var nestedReason = new Error("nested").WithMetadata(ResultExtensions.StatusCodeName, HttpCodes.Status404NotFound);
+        var result = Result.Fail(new Error("outer").CausedBy(nestedReason));
+
+        // Act
+        var hasStatusCode = result.HasStatusCode(HttpCodes.Status404NotFound);
+
+        // Assert
+        hasStatusCode.ShouldBeFalse();
+    }
+
+    [Test]
     [Arguments(HttpStatusCode.NoContent)]
     [Arguments(HttpStatusCode.Forbidden)]
     [Arguments(HttpStatusCode.InternalServerError)]

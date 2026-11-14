@@ -3,18 +3,22 @@ namespace Reaparr.Data.Contracts;
 public static partial class DbContextExtensions
 {
     /// <summary>
-    /// This will determine the download status of the download task and it's children. It will start from the lower nested hierarchy and traverse up to the root to determine the <see cref="DownloadStatus"/>.
+    /// Recomputes aggregate download statuses from the starting node through its ancestors and persists changed values.
     /// </summary>
     /// <param name="dbContext">The <see cref="IReaparrDbContext"/> to extend from. </param>
     /// <param name="key">The <see cref="DownloadTaskKey"/> to traverse from. </param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to observe. </param>
-    public static async Task<List<DownloadTaskKey>> DetermineDownloadStatus(
+    /// <returns>
+    /// Changed hierarchy nodes paired with the aggregate status written by this operation; unchanged nodes are omitted.
+    /// The caller uses these values to report actual root transitions without another query or substituting a child status.
+    /// </returns>
+    public static async Task<List<(DownloadTaskKey Key, DownloadStatus Status)>> DetermineDownloadStatus(
         this IReaparrDbContext dbContext,
         DownloadTaskKey key,
         CancellationToken cancellationToken = default
     )
     {
-        var changedKeys = new List<DownloadTaskKey>();
+        var changedKeys = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
         var serverId = key.PlexServerId;
         var libraryId = key.PlexLibraryId;
 
@@ -45,7 +49,7 @@ public static partial class DbContextExtensions
                             );
 
                         if (changedCount > 0)
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, newStatus));
 
                         parentKey = null;
                         break;
@@ -68,7 +72,7 @@ public static partial class DbContextExtensions
                             );
 
                         if (changedCount > 0)
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, newStatus));
 
                         parentKey = null;
                         break;
@@ -104,7 +108,7 @@ public static partial class DbContextExtensions
                             );
 
                         if (changedCount > 0)
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, newStatus));
 
                         parentKey = new DownloadTaskKey
                         {
@@ -147,7 +151,7 @@ public static partial class DbContextExtensions
                             );
 
                         if (changedCount > 0)
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, newStatus));
 
                         parentKey = new DownloadTaskKey
                         {
@@ -203,7 +207,7 @@ public static partial class DbContextExtensions
                                 cancellationToken
                             );
                         if (changedCount > 0)
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, newStatus));
                         parentKey = await dbContext
                             .DownloadTaskPhotoFolders.Where(x => x.Id == folderId)
                             .ProjectToParentKey()
@@ -232,7 +236,7 @@ public static partial class DbContextExtensions
                                     cancellationToken
                                 ) > 0
                         )
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, status));
                         parentKey = null;
                         break;
                     }
@@ -258,7 +262,7 @@ public static partial class DbContextExtensions
                                     cancellationToken
                                 ) > 0
                         )
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, status));
                         break;
                     }
                     case DownloadTaskType.MusicTrack:
@@ -283,7 +287,7 @@ public static partial class DbContextExtensions
                                     cancellationToken
                                 ) > 0
                         )
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, status));
                         break;
                     }
                     case DownloadTaskType.MusicTrackData:
@@ -308,7 +312,7 @@ public static partial class DbContextExtensions
                                     cancellationToken
                                 ) > 0
                         )
-                            changedKeys.Add(currentParentKey);
+                            changedKeys.Add((currentParentKey, status));
                         parentKey = null;
                         break;
                     }

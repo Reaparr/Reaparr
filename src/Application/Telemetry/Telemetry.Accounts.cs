@@ -59,8 +59,7 @@ public sealed partial class Telemetry
             return TelemetryOutcome.NotRequired;
 
         if (
-            HasStatusCode(
-                result,
+            result.HasStatusCode(
                 method == TelemetryAuthenticationMethod.GenerateToken
                     ? StatusCodes.Status401Unauthorized
                     : HttpCodes.Status601PlexAuthenticationFailed
@@ -137,7 +136,7 @@ public sealed partial class Telemetry
             if (
                 scope == TelemetryScope.Server
                 && accountCount == 0
-                && HasStatusCode(result, StatusCodes.Status409Conflict)
+                && result.HasStatusCode(StatusCodes.Status409Conflict)
             )
                 return TelemetryOutcome.Rejected;
 

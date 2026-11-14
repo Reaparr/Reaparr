@@ -9,7 +9,7 @@ public sealed partial class Telemetry
     {
         var outcome = result.IsSuccess
             ? TelemetryOutcome.Succeeded
-            : HasStatusCode(result, StatusCodes.Status403Forbidden) ? TelemetryOutcome.LockedOut : TelemetryOutcome.Rejected;
+            : result.HasStatusCode(StatusCodes.Status403Forbidden) ? TelemetryOutcome.LockedOut : TelemetryOutcome.Rejected;
         var properties = new Dictionary<string, object>
         {
             [TelemetryProperty.Action] = action.ToString(),

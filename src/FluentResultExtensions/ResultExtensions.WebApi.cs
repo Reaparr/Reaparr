@@ -19,7 +19,7 @@ public static partial class ResultExtensions
 
     #region HasStatusCode
 
-    public static bool HasStatusCode(this Result result, int statusCode = 0)
+    public static bool HasStatusCode(this ResultBase result, int statusCode = 0)
     {
         foreach (var reason in result.Reasons)
         foreach (var (key, metaData) in reason.Metadata)
@@ -28,10 +28,6 @@ public static partial class ResultExtensions
 
         return false;
     }
-
-    public static bool HasStatusCode<T>(this Result<T> result, int statusCode) =>
-        result.ToResult().HasStatusCode(statusCode);
-
     #endregion
 
     #region GetStatusCodeError
