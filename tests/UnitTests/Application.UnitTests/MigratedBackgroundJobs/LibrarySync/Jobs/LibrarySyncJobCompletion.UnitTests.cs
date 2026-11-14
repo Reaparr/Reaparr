@@ -6,23 +6,16 @@ namespace Reaparr.Application.UnitTests;
 [NotInParallel]
 public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
 {
-    private void SetupRunJob()
+    private void SetupBeginJob()
     {
         Mock.Mock<ITelemetry>()
             .Setup(x =>
-                x.RunJobAsync(
-                    It.IsAny<TelemetryActivity>(),
-                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>(),
-                    It.IsAny<Func<Task>>()
+                x.BeginJob(
+                    TelemetryActivity.LibrarySync,
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
                 )
             )
-            .Returns(
-                (
-                    TelemetryActivity operation,
-                    (ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId) telemetryContext,
-                    Func<Task> execute
-                ) => execute()
-            )
+            .Returns((IDisposable?)null)
             .Verifiable(Times.Once());
     }
     [Test]
@@ -68,7 +61,7 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
             .ReturnsAsync(new DateTimeOffset(2026, 10, 22, 12, 0, 0, TimeSpan.Zero))
             .Verifiable(offline ? Times.Never() : Times.Once());
 
-        SetupRunJob();
+        SetupBeginJob();
         // Act
         await Sut.Execute(context.Object);
         await Mock.Create<LibrarySyncJobListener>().JobWasExecuted(context.Object, null, CancellationToken);

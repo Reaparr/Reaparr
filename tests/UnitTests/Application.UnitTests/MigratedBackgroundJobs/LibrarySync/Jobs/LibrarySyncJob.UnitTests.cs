@@ -25,23 +25,16 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         context.SetupProperty(x => x.Result);
         return context;
     }
-    private void SetupRunJob()
+    private void SetupBeginJob()
     {
         Mock.Mock<ITelemetry>()
             .Setup(x =>
-                x.RunJobAsync(
-                    It.IsAny<TelemetryActivity>(),
-                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>(),
-                    It.IsAny<Func<Task>>()
+                x.BeginJob(
+                    TelemetryActivity.LibrarySync,
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
                 )
             )
-            .Returns(
-                (
-                    TelemetryActivity operation,
-                    (ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId) telemetryContext,
-                    Func<Task> execute
-                ) => execute()
-            )
+            .Returns((IDisposable?)null)
             .Verifiable(Times.Once());
     }
 
@@ -143,8 +136,13 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-
-        SetupRunJob();
+        if (expectedStatus != LibrarySyncJobStatus.Completed)
+        {
+            Mock.Mock<ITelemetry>()
+                .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+                .Verifiable(Times.Once());
+        }
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -268,7 +266,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
-        SetupRunJob();
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object).WaitAsync(cancellation.Token);
 
@@ -385,8 +383,10 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-
-        SetupRunJob();
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+            .Verifiable(Times.Once());
+        SetupBeginJob();
         // Act
         var execution = ExecuteWithListenerAsync(context.Object);
         var firstCompleted = await Task.WhenAny(execution, leaseRequested.Task).WaitAsync(CancellationToken);
@@ -483,8 +483,13 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-
-        SetupRunJob();
+        if (cancelled)
+        {
+            Mock.Mock<ITelemetry>()
+                .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+                .Verifiable(Times.Once());
+        }
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -536,7 +541,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         await dbContext.SaveChangesAsync(CancellationToken);
         var context = SetupJobContext(library.PlexServerId, library.Id);
 
-        SetupRunJob();
+        SetupBeginJob();
         // Act
         await Sut.Execute(context.Object);
 
@@ -614,8 +619,10 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-
-        SetupRunJob();
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+            .Verifiable(Times.Once());
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -691,7 +698,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
-        SetupRunJob();
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -768,8 +775,10 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-
-        SetupRunJob();
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+            .Verifiable(Times.Once());
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
