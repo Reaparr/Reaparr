@@ -1,14 +1,21 @@
+using System.Diagnostics;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
 
 public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAccountAccessJob>
 {
-    private static IJobExecutionContext SetupJobContext()
+    private static IJobExecutionContext SetupJobContext(CancellationToken cancellationToken = default)
     {
+        var jobDetail = new Mock<IJobDetail>();
+        jobDetail.SetupGet(x => x.Key).Returns(RefreshPlexAccountAccessJob.GetJobKey());
+
         var context = new Mock<IJobExecutionContext>();
+        context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
+        context.SetupGet(x => x.MergedJobDataMap).Returns(new JobDataMap());
+        context.SetupGet(x => x.FireInstanceId).Returns("account-access-test");
         context.SetupProperty(x => x.Result);
-        context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);
+        context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         return context.Object;
     }
 
@@ -16,55 +23,120 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
     public async Task ShouldComplete_WhenAccountAccessRefreshSucceeds()
     {
         // Arrange
+        var context = SetupJobContext();
+        var telemetryScope = new Mock<IDisposable>(MockBehavior.Strict);
+        telemetryScope.Setup(x => x.Dispose()).Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.BeginJob(
+                    TelemetryActivity.PlexAccessRefresh,
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
+                )
+            )
+            .Returns(telemetryScope.Object)
+            .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<RefreshPlexAccountAccessCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok(new List<RefreshPlexAccountAccessRapportDTO>()));
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
+                    CancellationToken.None
+                )
+            )
+            .ReturnsAsync(Result.Ok(new List<RefreshPlexAccountAccessRapportDTO>()))
+            .Verifiable(Times.Once());
 
         // Act
-        var action = () => Sut.Execute(SetupJobContext());
+        await Sut.Execute(context);
 
         // Assert
-        await action.ShouldNotThrowAsync();
-        Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<RefreshPlexAccountAccessCommand>(), It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
+        context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Completed);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        telemetryScope.Verify();
     }
 
     [Test]
-    public async Task ShouldComplete_WhenAccountAccessRefreshIsCancelled()
+    public async Task ShouldCancel_WhenAccountAccessRefreshObservesCallerCancellation()
     {
         // Arrange
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+        var context = SetupJobContext(cancellationSource.Token);
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<RefreshPlexAccountAccessCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-                ResultExtensions
-                    .TaskIsCancelled(nameof(RefreshPlexAccountAccessCommand))
-                    .ToResult<List<RefreshPlexAccountAccessRapportDTO>>()
-            );
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
+                    cancellationSource.Token
+                )
+            )
+            .ThrowsAsync(new OperationCanceledException(cancellationSource.Token))
+            .Verifiable(Times.Once());
 
         // Act
-        var action = () => Sut.Execute(SetupJobContext());
+        await Sut.Execute(context);
 
         // Assert
-        await action.ShouldNotThrowAsync();
+        context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.PlexAccessRefresh), Times.Never());
+        Mock.Mock<ITelemetry>()
+            .Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<TelemetryActivity>()), Times.Never());
+    }
+
+    [Test]
+    public async Task ShouldCancel_WhenAccountAccessRefreshReturnsCancellation()
+    {
+        // Arrange
+        var context = SetupJobContext();
+        var cancellation =
+            ResultExtensions
+                .TaskIsCancelled(nameof(RefreshPlexAccountAccessJob))
+                .ToResult<List<RefreshPlexAccountAccessRapportDTO>>();
         Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<RefreshPlexAccountAccessCommand>(), It.IsAny<CancellationToken>()),
-                Times.Once()
-            );
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
+                    CancellationToken.None
+                )
+            )
+            .ReturnsAsync(cancellation)
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(cancellation, TelemetryActivity.PlexAccessRefresh))
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.Execute(context);
+
+        // Assert
+        var result = context.Result.ShouldBeOfType<BackgroundJobResult>();
+        result.Status.ShouldBe(JobStatus.Cancelled);
+        result.ErrorSummary.ShouldBe(cancellation.Errors.Single().Message);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<TelemetryActivity>()), Times.Never());
     }
 
     [Test]
     public async Task ShouldFail_WhenAccountAccessRefreshFails()
     {
         // Arrange
-        Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<RefreshPlexAccountAccessCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Fail<List<RefreshPlexAccountAccessRapportDTO>>("Refresh failed"));
-
         var context = SetupJobContext();
+        var failure = Result.Fail<List<RefreshPlexAccountAccessRapportDTO>>("Refresh failed");
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
+                    CancellationToken.None
+                )
+            )
+            .ReturnsAsync(failure)
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(failure, TelemetryActivity.PlexAccessRefresh))
+            .Verifiable(Times.Once());
 
         // Act
         await Sut.Execute(context);
@@ -73,5 +145,114 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
         var result = context.Result.ShouldBeOfType<BackgroundJobResult>();
         result.Status.ShouldBe(JobStatus.Failed);
         result.ErrorSummary.ShouldBe("Refresh failed");
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
+
+    [Test]
+    public async Task ShouldContainUnexpectedRefreshExceptionAndMarkJobFailed()
+    {
+        // Arrange
+        var context = SetupJobContext();
+        var exception = new InvalidOperationException("refresh access failed");
+        Exception? capturedException = null;
+        var scopeDisposed = false;
+        var capturedBeforeScopeDispose = false;
+        var telemetryScope = new Mock<IDisposable>(MockBehavior.Strict);
+        telemetryScope
+            .Setup(x => x.Dispose())
+            .Callback(() => scopeDisposed = true)
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.BeginJob(
+                    TelemetryActivity.PlexAccessRefresh,
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
+                )
+            )
+            .Returns(telemetryScope.Object)
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
+                    CancellationToken.None
+                )
+            )
+            .ThrowsAsync(exception)
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.CaptureException(
+                    It.Is<Exception>(captured => ReferenceEquals(captured, exception)),
+                    TelemetryActivity.PlexAccessRefresh
+                )
+            )
+            .Callback<Exception, TelemetryActivity>(
+                (captured, _) =>
+                {
+                    capturedException = captured;
+                    capturedBeforeScopeDispose = !scopeDisposed;
+                }
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.Execute(context);
+
+        // Assert
+        var terminalResult = context.Result.ShouldBeOfType<BackgroundJobResult>();
+        terminalResult.Status.ShouldBe(JobStatus.Failed);
+        terminalResult.ErrorSummary.ShouldBe(exception.Message);
+        capturedException.ShouldBeSameAs(exception);
+        capturedBeforeScopeDispose.ShouldBeTrue();
+        scopeDisposed.ShouldBeTrue();
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        telemetryScope.Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.PlexAccessRefresh), Times.Never());
+    }
+
+    [Test]
+    public async Task ShouldFail_WhenAccountAccessRefreshThrowsUnrequestedCancellation()
+    {
+        // Arrange
+        var context = SetupJobContext();
+        var exception = new OperationCanceledException("account access refresh timed out");
+        Exception? capturedException = null;
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
+                    CancellationToken.None
+                )
+            )
+            .ThrowsAsync(exception)
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.CaptureException(
+                    It.Is<Exception>(captured => ReferenceEquals(captured, exception)),
+                    TelemetryActivity.PlexAccessRefresh
+                )
+            )
+            .Callback<Exception, TelemetryActivity>((captured, _) => capturedException = captured)
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.Execute(context);
+
+        // Assert
+        var result = context.Result.ShouldBeOfType<BackgroundJobResult>();
+        result.Status.ShouldBe(JobStatus.Failed);
+        result.ErrorSummary.ShouldBe(exception.Message);
+        capturedException.ShouldBeSameAs(exception);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.PlexAccessRefresh), Times.Never());
+    }
+
+
 }

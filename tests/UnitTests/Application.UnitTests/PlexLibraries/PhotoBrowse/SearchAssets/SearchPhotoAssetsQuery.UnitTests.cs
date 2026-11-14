@@ -125,20 +125,60 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
             .PlexPhotoMediaData.Where(x => x.Id == assets[2].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "unrelated"), CancellationToken);
 
+        var telemetryCalls = new List<(
+            PhotoSearchTelemetryDTO Query,
+            IReadOnlyList<string> SearchTerms,
+            Result<PhotoAssetPageDTO> Result
+        )>();
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.PhotoSearchFinished(
+                    It.IsAny<PhotoSearchTelemetryDTO>(),
+                    It.IsAny<IReadOnlyList<string>>(),
+                    It.IsAny<Result<PhotoAssetPageDTO>>()
+                )
+            )
+            .Callback<PhotoSearchTelemetryDTO, IReadOnlyList<string>, Result<PhotoAssetPageDTO>>(
+                (query, searchTerms, result) => telemetryCalls.Add((query, searchTerms, result))
+            )
+            .Verifiable(Times.Exactly(3));
+
         // Act
         var normalized = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("Café, résumé!", 1, 100)
+            new SearchPhotoAssetsQuery("The Café, résumé!", 1, 100)
         );
         var accentTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("résumé", 1, 100));
         var shortTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("a", 1, 100));
 
         // Assert
         normalized.IsSuccess.ShouldBeTrue();
+        normalized.Errors.Count.ShouldBe(0);
         normalized.Value.TotalCount.ShouldBe(2);
         normalized.Value.Items.Select(x => x.Id).ShouldBe(matchingIds.OrderBy(x => x));
         accentTerm.IsSuccess.ShouldBeTrue();
+        accentTerm.Errors.Count.ShouldBe(0);
         accentTerm.Value.TotalCount.ShouldBe(2);
+        shortTerm.IsFailed.ShouldBeTrue();
+        shortTerm.Errors.Count.ShouldBe(1);
         shortTerm.Has400BadRequestError().ShouldBeTrue();
+
+        telemetryCalls.Count.ShouldBe(3);
+        telemetryCalls.Select(call => call.Query.Page).ShouldBe([1, 1, 1]);
+        telemetryCalls.Select(call => call.Query.PageSize).ShouldBe([100, 100, 100]);
+        telemetryCalls.Select(call => call.Query.Sort).ShouldBe([SortType.Title, SortType.Title, SortType.Title]);
+        telemetryCalls
+            .Select(call => call.Query.Direction)
+            .ShouldBe([SortDirection.Asc, SortDirection.Asc, SortDirection.Asc]);
+        telemetryCalls[0].SearchTerms.ShouldBe(["cafe", "resume"]);
+        telemetryCalls[0].Result.IsSuccess.ShouldBeTrue();
+        telemetryCalls[0].Result.Errors.Count.ShouldBe(0);
+        telemetryCalls[1].SearchTerms.ShouldBe(["resume"]);
+        telemetryCalls[1].Result.IsSuccess.ShouldBeTrue();
+        telemetryCalls[1].Result.Errors.Count.ShouldBe(0);
+        telemetryCalls[2].SearchTerms.ShouldBeEmpty();
+        telemetryCalls[2].Result.IsFailed.ShouldBeTrue();
+        telemetryCalls[2].Result.Errors.Count.ShouldBe(1);
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]

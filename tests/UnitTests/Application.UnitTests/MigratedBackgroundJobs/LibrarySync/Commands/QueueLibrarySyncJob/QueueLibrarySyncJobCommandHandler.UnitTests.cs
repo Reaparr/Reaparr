@@ -1,6 +1,11 @@
+using System.Data.Common;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Reaparr.Data;
+
 namespace Reaparr.Application.UnitTests;
 
-public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibrarySyncJobCommandHandler>
+public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<QueueLibrarySyncJobCommand>
 {
     [Test]
     public async Task ShouldPersistForceMediaRefresh_WhenQueuingNewLibrary()
@@ -24,7 +29,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id], ForceMediaRefresh: true);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -57,7 +62,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand(libraryIds);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -120,7 +125,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ReturnsAsync(Result.Ok());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -168,7 +173,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -203,7 +208,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -242,7 +247,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -303,7 +308,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -358,7 +363,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -413,7 +418,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -457,7 +462,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -515,7 +520,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -562,7 +567,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ReturnsAsync(Result.Ok());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -611,7 +616,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ReturnsAsync(Result.Ok());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -671,7 +676,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ReturnsAsync(Result.Ok());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -723,7 +728,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ReturnsAsync(Result.Ok());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -771,7 +776,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -834,7 +839,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -874,7 +879,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -905,7 +910,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -935,7 +940,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -962,7 +967,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand([99999]); // Non-existent library ID
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -1034,7 +1039,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ReturnsAsync(Result.Ok());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -1089,7 +1094,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .ReturnsAsync(Result.Ok());
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -1187,7 +1192,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         var command = new QueueLibrarySyncJobCommand(allLibraryIds);
 
         // Act
-        var result = await Sut.ExecuteAsync(command, CancellationToken);
+        var result = await TestHandlerExecuteAsync(command);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -1254,9 +1259,8 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(
-            new QueueLibrarySyncJobCommand([library.Id], ForceLibrarySync: true),
-            CancellationToken
+        var result = await TestHandlerExecuteAsync(
+            new QueueLibrarySyncJobCommand([library.Id], ForceLibrarySync: true)
         );
 
         // Assert
@@ -1300,9 +1304,8 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Sut.ExecuteAsync(
-            new QueueLibrarySyncJobCommand([library.Id], ForceLibrarySync: true),
-            CancellationToken
+        var result = await TestHandlerExecuteAsync(
+            new QueueLibrarySyncJobCommand([library.Id], ForceLibrarySync: true)
         );
 
         // Assert
@@ -1313,5 +1316,511 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseUnitTest<QueueLibr
         queueItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldEmitQueueAdmission_WhenAQueueRowIsCreatedOrReset()
+    {
+        // Arrange
+        await SetupDatabase(
+            3042,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+            }
+        );
+        var library = IDbContext.PlexLibraries.Single();
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
+
+        var command = new QueueLibrarySyncJobCommand(
+            [library.Id],
+            ForceLibrarySync: true,
+            Trigger: TelemetryTrigger.Manual
+        );
+        // Act
+        var first = await TestHandlerExecuteAsync(command);
+        var firstCreatedAt = IDbContext.LibrarySyncJobQueues.Single().CreatedAt;
+        var second = await TestHandlerExecuteAsync(command);
+
+        // Assert
+        first.IsSuccess.ShouldBeTrue();
+        first.Errors.Count.ShouldBe(0);
+        second.IsSuccess.ShouldBeTrue();
+        second.Errors.Count.ShouldBe(0);
+        IDbContext.LibrarySyncJobQueues.Single().CreatedAt.ShouldBe(firstCreatedAt);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncQueued(
+                        It.Is<(int PlexLibraryId, int PlexServerId, DateTime CreatedAt, bool ForceMediaRefresh)>(
+                            admission =>
+                                admission.PlexServerId == library.PlexServerId
+                                && admission.PlexLibraryId == library.Id
+                                && admission.CreatedAt == firstCreatedAt
+                                && !admission.ForceMediaRefresh
+                        ),
+                        library.Type,
+                        true,
+                        TelemetryTrigger.Manual
+                    ),
+                Times.Once()
+            );
+    }
+
+    [Test]
+    public async Task ShouldResetBatchWithOneQueueUpdate_WhenMultipleExistingRowsAreEligible()
+    {
+        // Arrange
+        await SetupDatabase(
+            3045,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 3;
+            }
+        );
+        using var dbContext = IDbContext;
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var originalCreatedAt = DateTime.UtcNow.AddHours(-6);
+        var resetLibraryIds = libraries.Take(2).Select(x => x.Id).ToList();
+        await dbContext
+            .PlexLibraries.Where(x => resetLibraryIds.Contains(x.Id))
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.SyncedAt, DateTime.UtcNow.AddHours(-4)), CancellationToken);
+        await dbContext.LibrarySyncJobQueues.AddRangeAsync(
+            [
+                new LibrarySyncJobQueue
+                {
+                    PlexServerId = libraries[0].PlexServerId,
+                    PlexLibraryId = libraries[0].Id,
+                    Priority = 1,
+                    Status = LibrarySyncJobStatus.Completed,
+                    CreatedAt = originalCreatedAt,
+                    StartedAt = originalCreatedAt.AddMinutes(1),
+                    CompletedAt = originalCreatedAt.AddMinutes(2),
+                    ErrorMessage = "completed error",
+                    IsServerOffline = true,
+                },
+                new LibrarySyncJobQueue
+                {
+                    PlexServerId = libraries[1].PlexServerId,
+                    PlexLibraryId = libraries[1].Id,
+                    Priority = 1,
+                    Status = LibrarySyncJobStatus.Failed,
+                    CreatedAt = originalCreatedAt,
+                    StartedAt = originalCreatedAt.AddMinutes(1),
+                    CompletedAt = originalCreatedAt.AddMinutes(2),
+                    ErrorMessage = "failed error",
+                    IsServerOffline = true,
+                },
+                new LibrarySyncJobQueue
+                {
+                    PlexServerId = libraries[2].PlexServerId,
+                    PlexLibraryId = libraries[2].Id,
+                    Priority = 1,
+                    Status = LibrarySyncJobStatus.Processing,
+                    CreatedAt = originalCreatedAt,
+                    StartedAt = originalCreatedAt.AddMinutes(1),
+                },
+            ],
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        var queueTableName = ((DbContext)dbContext).Model.FindEntityType(typeof(LibrarySyncJobQueue))!.GetTableName()!;
+        var writeCounter = new QueueResetWriteCounter(queueTableName);
+        await using var commandContext = CreateContext(dbContext.DatabaseName, writeCounter);
+        SetupDependencies(builder =>
+        {
+            builder
+                .RegisterInstance(commandContext)
+                .As<IReaparrDbContext>()
+                .ExternallyOwned();
+            builder.RegisterType<QueueLibrarySyncJobCommandHandler>().InstancePerDependency();
+        });
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        var command = new QueueLibrarySyncJobCommand(resetLibraryIds);
+
+        // Act
+        var result = await TestHandlerExecuteAsync(command);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        writeCounter.ResetUpdateCount.ShouldBe(1);
+        var queueItems = await dbContext
+            .LibrarySyncJobQueues.OrderBy(x => x.PlexLibraryId)
+            .Select(x =>
+                new
+                {
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.Status,
+                    x.CreatedAt,
+                    x.StartedAt,
+                    x.CompletedAt,
+                    x.ErrorMessage,
+                    x.IsServerOffline,
+                }
+            )
+            .ToListAsync(CancellationToken);
+        queueItems
+            .Select(x => (x.PlexServerId, x.PlexLibraryId, x.Status))
+            .ShouldBe(
+                [
+                    (libraries[0].PlexServerId, libraries[0].Id, LibrarySyncJobStatus.Queued),
+                    (libraries[1].PlexServerId, libraries[1].Id, LibrarySyncJobStatus.Queued),
+                    (libraries[2].PlexServerId, libraries[2].Id, LibrarySyncJobStatus.Processing),
+                ]
+            );
+        var resetRows = queueItems.Where(x => resetLibraryIds.Contains(x.PlexLibraryId)).ToList();
+        resetRows.ShouldAllBe(x =>
+            x.CreatedAt != originalCreatedAt
+            && x.StartedAt == null
+            && x.CompletedAt == null
+            && x.ErrorMessage == null
+            && !x.IsServerOffline
+        );
+        resetRows.Select(x => x.CreatedAt).Distinct().Count().ShouldBe(1);
+        var processingRow = queueItems.Single(x => x.PlexLibraryId == libraries[2].Id);
+        processingRow.CreatedAt.ShouldBe(originalCreatedAt);
+        processingRow.StartedAt.ShouldNotBeNull();
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldEmitOnlyRowsActuallyReset_WhenAnotherHandlerWinsPartOfBatch()
+    {
+        // Arrange
+        await SetupDatabase(
+            3043,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 2;
+            }
+        );
+        using var dbContext = IDbContext;
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var firstLibrary = libraries[0];
+        var secondLibrary = libraries[1];
+        var originalCreatedAt = DateTime.UtcNow.AddHours(-6);
+        await dbContext.LibrarySyncJobQueues.AddRangeAsync(
+            [
+                new LibrarySyncJobQueue
+                {
+                    PlexServerId = firstLibrary.PlexServerId,
+                    PlexLibraryId = firstLibrary.Id,
+                    Priority = 1,
+                    Status = LibrarySyncJobStatus.Completed,
+                    CreatedAt = originalCreatedAt,
+                    CompletedAt = originalCreatedAt,
+                },
+                new LibrarySyncJobQueue
+                {
+                    PlexServerId = secondLibrary.PlexServerId,
+                    PlexLibraryId = secondLibrary.Id,
+                    Priority = 1,
+                    Status = LibrarySyncJobStatus.Completed,
+                    CreatedAt = originalCreatedAt,
+                    CompletedAt = originalCreatedAt,
+                },
+            ],
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        var updateGate = new QueueResetUpdateGate();
+        await using var firstContext = CreateContext(dbContext.DatabaseName, updateGate);
+        await using var secondContext = CreateContext(dbContext.DatabaseName);
+        var contextNumber = 0;
+        SetupDependencies(builder =>
+        {
+            builder
+                .Register((_, _) =>
+                    Interlocked.Increment(ref contextNumber) == 1 ? firstContext : secondContext
+                )
+                .As<IReaparrDbContext>()
+                .ExternallyOwned();
+            builder.RegisterType<QueueLibrarySyncJobCommandHandler>().InstancePerDependency();
+        });
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
+
+        var firstCommand = new QueueLibrarySyncJobCommand(
+            [firstLibrary.Id, secondLibrary.Id],
+            Trigger: TelemetryTrigger.Manual
+        );
+        var secondCommand = new QueueLibrarySyncJobCommand([firstLibrary.Id], Trigger: TelemetryTrigger.Manual);
+
+        // Act
+        Task<Result>? firstTask = null;
+        Task<Result>? secondTask = null;
+        try
+        {
+            firstTask = TestHandlerExecuteAsync(firstCommand);
+            await updateGate.UpdateEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+            secondTask = TestHandlerExecuteAsync(secondCommand);
+            var secondResult = await secondTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+            updateGate.ReleaseUpdate.TrySetResult();
+            var firstResult = await firstTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+
+        // Assert
+        firstResult.IsSuccess.ShouldBeTrue();
+        firstResult.Errors.Count.ShouldBe(0);
+        secondResult.IsSuccess.ShouldBeTrue();
+        secondResult.Errors.Count.ShouldBe(0);
+        Mock.Mock<ICommandExecutor>().Verify();
+
+        var queueItems = await dbContext
+            .LibrarySyncJobQueues
+            .Where(x => x.PlexLibraryId == firstLibrary.Id || x.PlexLibraryId == secondLibrary.Id)
+            .OrderBy(x => x.PlexLibraryId)
+            .Select(x => new
+            {
+                x.PlexLibraryId,
+                x.PlexServerId,
+                x.Status,
+                x.CreatedAt,
+                x.CompletedAt,
+            })
+            .ToListAsync(CancellationToken);
+        queueItems.Count.ShouldBe(2);
+        queueItems
+            .Select(x => (x.PlexLibraryId, x.PlexServerId, x.Status))
+            .ShouldBe(
+                [
+                    (firstLibrary.Id, firstLibrary.PlexServerId, LibrarySyncJobStatus.Queued),
+                    (secondLibrary.Id, secondLibrary.PlexServerId, LibrarySyncJobStatus.Queued),
+                ]
+            );
+        queueItems.ShouldAllBe(x => x.CreatedAt != originalCreatedAt && x.CompletedAt == null);
+
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncQueued(
+                        It.Is<(int PlexLibraryId, int PlexServerId, DateTime CreatedAt, bool ForceMediaRefresh)>(
+                            admission =>
+                                admission.PlexLibraryId == firstLibrary.Id
+                                && admission.PlexServerId == firstLibrary.PlexServerId
+                                && admission.CreatedAt == queueItems.Single(y => y.PlexLibraryId == firstLibrary.Id).CreatedAt
+                                && !admission.ForceMediaRefresh
+                        ),
+                        firstLibrary.Type,
+                        false,
+                        TelemetryTrigger.Manual
+                    ),
+                Times.Once()
+            );
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncQueued(
+                        It.Is<(int PlexLibraryId, int PlexServerId, DateTime CreatedAt, bool ForceMediaRefresh)>(
+                            admission =>
+                                admission.PlexLibraryId == secondLibrary.Id
+                                && admission.PlexServerId == secondLibrary.PlexServerId
+                                && admission.CreatedAt == queueItems.Single(y => y.PlexLibraryId == secondLibrary.Id).CreatedAt
+                                && !admission.ForceMediaRefresh
+                        ),
+                        secondLibrary.Type,
+                        false,
+                        TelemetryTrigger.Manual
+                    ),
+                Times.Once()
+            );
+        }
+        finally
+        {
+            updateGate.ReleaseUpdate.TrySetResult();
+            if (firstTask is not null)
+                await firstTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+            if (secondTask is not null)
+                await secondTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+        }
+    }
+
+    [Test]
+    public async Task ShouldNotEmitAdmission_WhenAnotherHandlerWinsEveryReset()
+    {
+        // Arrange
+        await SetupDatabase(
+            3044,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+            }
+        );
+        using var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var originalCreatedAt = DateTime.UtcNow.AddHours(-6);
+        await dbContext.LibrarySyncJobQueues.AddAsync(
+            new LibrarySyncJobQueue
+            {
+                PlexServerId = library.PlexServerId,
+                PlexLibraryId = library.Id,
+                Priority = 1,
+                Status = LibrarySyncJobStatus.Completed,
+                CreatedAt = originalCreatedAt,
+                CompletedAt = originalCreatedAt,
+            },
+            CancellationToken
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        var updateGate = new QueueResetUpdateGate();
+        await using var firstContext = CreateContext(dbContext.DatabaseName, updateGate);
+        await using var secondContext = CreateContext(dbContext.DatabaseName);
+        var contextNumber = 0;
+        SetupDependencies(builder =>
+        {
+            builder
+                .Register((_, _) =>
+                    Interlocked.Increment(ref contextNumber) == 1 ? firstContext : secondContext
+                )
+                .As<IReaparrDbContext>()
+                .ExternallyOwned();
+            builder.RegisterType<QueueLibrarySyncJobCommandHandler>().InstancePerDependency();
+        });
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Exactly(2));
+
+        var command = new QueueLibrarySyncJobCommand([library.Id], Trigger: TelemetryTrigger.Manual);
+
+        // Act
+        Task<Result>? firstTask = null;
+        Task<Result>? secondTask = null;
+        try
+        {
+            firstTask = TestHandlerExecuteAsync(command);
+            await updateGate.UpdateEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+            secondTask = TestHandlerExecuteAsync(command);
+            var secondResult = await secondTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+            updateGate.ReleaseUpdate.TrySetResult();
+            var firstResult = await firstTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+
+        // Assert
+        firstResult.IsSuccess.ShouldBeTrue();
+        firstResult.Errors.Count.ShouldBe(0);
+        secondResult.IsSuccess.ShouldBeTrue();
+        secondResult.Errors.Count.ShouldBe(0);
+        Mock.Mock<ICommandExecutor>().Verify();
+
+        var queueItem = await dbContext
+            .LibrarySyncJobQueues
+            .SingleAsync(x => x.PlexLibraryId == library.Id, CancellationToken);
+        queueItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
+        queueItem.CreatedAt.ShouldNotBe(originalCreatedAt);
+        queueItem.CompletedAt.ShouldBeNull();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncQueued(
+                        It.Is<(int PlexLibraryId, int PlexServerId, DateTime CreatedAt, bool ForceMediaRefresh)>(
+                            admission =>
+                                admission.PlexLibraryId == library.Id
+                                && admission.PlexServerId == library.PlexServerId
+                                && admission.CreatedAt == queueItem.CreatedAt
+                                && !admission.ForceMediaRefresh
+                        ),
+                        library.Type,
+                        false,
+                        TelemetryTrigger.Manual
+                    ),
+                Times.Once()
+            );
+        }
+        finally
+        {
+            updateGate.ReleaseUpdate.TrySetResult();
+            if (firstTask is not null)
+                await firstTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+            if (secondTask is not null)
+                await secondTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
+        }
+    }
+
+    private ReaparrDbContext CreateContext(string databaseName, IInterceptor? interceptor = null)
+    {
+        var options = new DbContextOptionsBuilder<ReaparrDbContext>();
+        options.ConfigureSqlite(databaseName, SqliteOpenMode.Memory);
+        options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+        if (interceptor is not null)
+            options.AddInterceptors(interceptor);
+        return new ReaparrDbContext(
+            options.Options,
+            Mock.Container.Resolve<ILogger>(),
+            Mock.Container.Resolve<IPathProvider>(),
+            Mock.Container.Resolve<IAppRuntimeInfo>(),
+            databaseName
+        );
+    }
+
+    private sealed class QueueResetWriteCounter : DbCommandInterceptor
+    {
+        private readonly string _queueTableName;
+        private int _resetUpdateCount;
+
+        public QueueResetWriteCounter(string queueTableName)
+        {
+            _queueTableName = queueTableName;
+        }
+
+        public int ResetUpdateCount => Volatile.Read(ref _resetUpdateCount);
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default
+        )
+        {
+            if (
+                command.CommandText.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase)
+                && command.CommandText.Contains(_queueTableName, StringComparison.Ordinal)
+            )
+                Interlocked.Increment(ref _resetUpdateCount);
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class QueueResetUpdateGate : DbTransactionInterceptor
+    {
+        private int _transactionPauseClaimed;
+
+        public TaskCompletionSource UpdateEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseUpdate { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<DbTransaction>> TransactionStartingAsync(
+            DbConnection connection,
+            TransactionStartingEventData eventData,
+            InterceptionResult<DbTransaction> result,
+            CancellationToken cancellationToken = default
+        )
+        {
+            if (Interlocked.Exchange(ref _transactionPauseClaimed, 1) == 0)
+            {
+                UpdateEntered.TrySetResult();
+                await ReleaseUpdate.Task.WaitAsync(cancellationToken);
+            }
+
+            return result;
+        }
     }
 }

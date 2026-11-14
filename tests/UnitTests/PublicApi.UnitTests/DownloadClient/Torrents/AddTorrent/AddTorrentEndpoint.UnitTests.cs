@@ -292,7 +292,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                     It.Is<IntegrationIdentity>(value =>
                         value.Id == integration.Id && value.Type == IntegrationType.Radarr
                     ),
-                    metadata,
+                    ToTelemetryMetadata(metadata),
                     It.Is<string>(hash => hash == expectedHashId),
                     It.Is<Result<DownloadTaskCreationReport>>(
                         result => result.IsFailed && result.Errors.Count == 1
@@ -345,7 +345,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                 x =>
                     x.ExternalDownloadSubmissionProcessed(
                         It.IsAny<IntegrationIdentity>(),
-                        It.IsAny<TorrentMetadataDTO>(),
+                        It.IsAny<TorrentMetadataTelemetryDTO>(),
                         It.IsAny<string>(),
                         It.IsAny<Result<DownloadTaskCreationReport>>(),
                         It.IsAny<Result<int>>(),
@@ -400,7 +400,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                 x =>
                     x.ExternalDownloadSubmissionProcessed(
                         It.Is<IntegrationIdentity>(i => i.Id == integration.Id && i.Type == IntegrationType.Radarr),
-                        metadata,
+                        ToTelemetryMetadata(metadata),
                         It.IsAny<string>(),
                         It.Is<Result<DownloadTaskCreationReport>>(
                             result => result.IsSuccess && result.Value.Total == 1
@@ -481,7 +481,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                     It.Is<IntegrationIdentity>(value =>
                         value.Id == integration.Id && value.Type == IntegrationType.Radarr
                     ),
-                    metadata,
+                    ToTelemetryMetadata(metadata),
                     It.Is<string>(hash => hash == expectedHashId),
                     It.Is<Result<DownloadTaskCreationReport>>(
                         result => result.IsSuccess && result.Errors.Count == 0 && result.Value.Total == 1
@@ -497,7 +497,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
             )
             .Callback<
                 IntegrationIdentity,
-                TorrentMetadataDTO,
+                TorrentMetadataTelemetryDTO,
                 string,
                 Result<DownloadTaskCreationReport>?,
                 Result<int>?,
@@ -634,7 +634,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                     It.Is<IntegrationIdentity>(value =>
                         value.Id == integration.Id && value.Type == IntegrationType.Radarr
                     ),
-                    metadata,
+                    ToTelemetryMetadata(metadata),
                     It.Is<string>(hash => hash == expectedHashId),
                     It.Is<Result<DownloadTaskCreationReport>>(
                         result => result.IsSuccess && result.Errors.Count == 0 && result.Value.Total == 1
@@ -652,7 +652,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
             )
             .Callback<
                 IntegrationIdentity,
-                TorrentMetadataDTO,
+                TorrentMetadataTelemetryDTO,
                 string,
                 Result<DownloadTaskCreationReport>?,
                 Result<int>?,
@@ -1014,6 +1014,19 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
             VideoQuality = source.VideoQuality,
             LibraryId = source.PlexLibraryId,
             ServerId = source.PlexServerId,
+        };
+
+    private static TorrentMetadataTelemetryDTO ToTelemetryMetadata(TorrentMetadataDTO metadata) =>
+        new()
+        {
+            Type = metadata.Type,
+            MediaId = metadata.MediaId,
+            DataId = metadata.DataId,
+            PartId = metadata.PartId,
+            PlexApiPartId = metadata.PlexApiPartId,
+            VideoQuality = metadata.VideoQuality,
+            LibraryId = metadata.LibraryId,
+            ServerId = metadata.ServerId,
         };
 
     private static TorrentMetadataDTO CreateValidTorrentMetadata(PlexMediaType type = PlexMediaType.Movie) =>

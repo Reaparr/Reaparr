@@ -1,23 +1,127 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
+using System.Text.Json;
+using Moq;
+using Moq.Contrib.HttpClient;
+using PostHog;
 
 namespace Reaparr.IntegrationTests;
 
 public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTests
 {
+    public RefreshPlexPhotoLibraryCommandIntegrationTests() { }
+
     [Test]
     public async Task ShouldPersistMergedPhotoFilesAndMemberships_ThenPreserveOtherLibrariesAcrossRefreshDisableReenable()
     {
         // Arrange
         var seed = new Seed(9625);
-        using var container = await CreatePhotoRefreshContainer(seed);
+        var telemetryBodies = new ConcurrentQueue<string>();
+        var telemetryRequests = new ConcurrentQueue<(
+            HttpMethod Method,
+            string? RequestUri,
+            string? Authorization,
+            string? ContentType,
+            string Body
+        )>();
+        var telemetryHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        Mock<IHttpClientFactory>? telemetryFactory = null;
+        var buildInfo = new MockAppBuildInfo
+        {
+            TelemetryHost = "https://telemetry.example.test",
+            TelemetryProjectToken = "phc_test",
+        };
+        using var container = await CreateContainer(
+            seed,
+            config =>
+            {
+                config.HttpClientOptions = (http, _) => http.SetupIdentityRequest(seed);
+                config.OverrideAppBuildInfo = buildInfo;
+                config.OverrideServices = builder =>
+                {
+                    telemetryHandler
+                        .SetupRequest(HttpMethod.Post, $"{buildInfo.TelemetryHost.TrimEnd('/')}/batch")
+                        .Returns(
+                            async (HttpRequestMessage request, CancellationToken token) =>
+                            {
+                                var body = request.Content is null
+                                    ? string.Empty
+                                    : await request.Content.ReadAsStringAsync(token);
+                                telemetryBodies.Enqueue(body);
+                                telemetryRequests.Enqueue(
+                                    (
+                                        request.Method,
+                                        request.RequestUri?.ToString(),
+                                        request.Headers.Authorization?.ToString(),
+                                        request.Content?.Headers.ContentType?.MediaType,
+                                        body
+                                    )
+                                );
+                                return new HttpResponseMessage(HttpStatusCode.OK)
+                                {
+                                    Content = new StringContent("{}"),
+                                };
+                            }
+                        )
+                        .Verifiable(Times.AtLeastOnce());
+                    var httpClient = new HttpClient(telemetryHandler.Object, disposeHandler: false);
+                    telemetryFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+                    telemetryFactory
+                        .Setup(x => x.CreateClient(It.IsAny<string>()))
+                        .Returns(httpClient)
+                        .Verifiable(Times.Once());
+                    var telemetryClient = new PostHogClient(
+                        new PostHogOptions
+                        {
+                            ProjectToken = buildInfo.TelemetryProjectToken,
+                            HostUrl = new Uri(buildInfo.TelemetryHost),
+                            EnableCompression = false,
+                        },
+                        httpClientFactory: telemetryFactory.Object
+                    );
+                    builder.RegisterInstance(telemetryClient).As<IPostHogClient>();
+                };
+                config.DatabaseOptions = database =>
+                {
+                    database.PlexAccountCount = 1;
+                    database.PlexServerCount = 1;
+                    database.PlexMusicLibraryCount = 1;
+                    database.PlexPhotoLibraryCount = 1;
+                    database.PlexOtherVideoLibraryCount = 1;
+                    database.MusicArtistCount = 2;
+                    database.MusicAlbumCount = 2;
+                    database.MusicTrackCount = 2;
+                    database.OtherVideoCount = 3;
+                };
+                config.BaseMockHttpClientOptions = plex =>
+                {
+                    plex.GenerateFromDatabase = true;
+                    plex.PlexServerAccessCount = 1;
+                    plex.MusicLibraryCount = 1;
+                    plex.PhotoLibraryCount = 1;
+                    plex.OtherVideoLibraryCount = 1;
+                    plex.ArtistsPerLibraryCount = 2;
+                    plex.AlbumsPerArtistCount = 2;
+                    plex.TracksPerAlbumCount = 2;
+                    plex.PhotoAlbumsPerLibraryCount = 2;
+                    plex.PhotosPerAlbumCount = 2;
+                    plex.PhotoClipsPerAlbumCount = 1;
+                    plex.PhotoAlbumsOverlap = true;
+                };
+            }
+        );
+        var telemetryClient = container.Resolve<IPostHogClient>();
         using var client = container.GetApiClient();
         await client.SignIn();
+        telemetryBodies.Clear();
+        telemetryRequests.Clear();
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using var beforeContext = await factory.CreateAsync();
         var photoLibrary = await beforeContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
             CancellationToken
         );
+
         var firstArtists = await beforeContext
             .PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey)
             .Select(x => new { x.Id, x.PlexApiRatingKey })
@@ -87,9 +191,16 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         (await beforeContext.PlexPhotoAlbums.CountAsync(CancellationToken)).ShouldBe(0);
         (await beforeContext.PlexPhotoMediaData.CountAsync(CancellationToken)).ShouldBe(0);
 
-        var beforeBrowse = await ReadBrowseAssetsAsync(client, photoLibrary.Id);
-        beforeBrowse.Items.ShouldBeEmpty();
-        (beforeBrowse.TotalCount, beforeBrowse.TotalBytes).ShouldBe((0, 0L));
+        var beforeBrowseResponse = await ReadBrowseAssetsAsync(client, photoLibrary.Id);
+        beforeBrowseResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        beforeBrowseResponse.Result.ShouldNotBeNull();
+        var beforeBrowse = beforeBrowseResponse.Result!;
+        beforeBrowse.IsSuccess.ShouldBeTrue();
+        beforeBrowse.Errors.Count.ShouldBe(0);
+        beforeBrowse.Value.ShouldNotBeNull();
+        var beforeBrowseValue = beforeBrowse.Value!;
+        beforeBrowseValue.Items.ShouldBeEmpty();
+        (beforeBrowseValue.TotalCount, beforeBrowseValue.TotalBytes).ShouldBe((0, 0L));
 
         // Act
         var refresh = await client.POSTAsync<
@@ -97,10 +208,77 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             RefreshLibraryMediaEndpointRequest,
             ResultDTO<LibrarySyncJobQueueDTO>
         >(new RefreshLibraryMediaEndpointRequest { PlexLibraryId = photoLibrary.Id });
+
+        // Assert
         refresh.Response.IsSuccessStatusCode.ShouldBeTrue();
         refresh.Result.IsSuccess.ShouldBeTrue();
         refresh.Result.Errors.Count.ShouldBe(0);
+        var refreshQueue = refresh.Result.Value.ShouldNotBeNull();
+        refreshQueue.PlexLibraryId.ShouldBe(photoLibrary.Id);
+        refreshQueue.PlexServerId.ShouldBe(photoLibrary.PlexServerId);
         await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
+        await telemetryClient.FlushAsync();
+        var firstNativeEvents = new List<JsonElement>();
+        foreach (var body in telemetryBodies)
+        {
+            using var document = JsonDocument.Parse(body);
+            firstNativeEvents.AddRange(
+                document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone())
+            );
+        }
+        var firstRefreshRequests = firstNativeEvents
+            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryRefreshRequested.ToString())
+            .ToArray();
+        firstRefreshRequests.Length.ShouldBe(1);
+        var refreshRequestProperties = firstRefreshRequests.Single().GetProperty("properties");
+        refreshRequestProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
+        refreshRequestProperties
+            .GetProperty(TelemetryProperty.Libraries.ForceLibrarySync)
+            .GetBoolean()
+            .ShouldBeFalse();
+        refreshRequestProperties
+            .GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh)
+            .GetBoolean()
+            .ShouldBeFalse();
+        refreshRequestProperties
+            .GetProperty(TelemetryProperty.Outcome)
+            .GetString()
+            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+        refreshRequestProperties
+            .GetProperty(TelemetryProperty.Libraries.QueueStatus)
+            .GetString()
+            .ShouldBe(refreshQueue.Status.ToString());
+        var queuedEvents = firstNativeEvents
+            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibrarySyncQueued.ToString())
+            .ToArray();
+        queuedEvents.Length.ShouldBe(1);
+        var queuedProperties = queuedEvents.Single().GetProperty("properties");
+        queuedProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
+        queuedProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
+        queuedProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        queuedProperties.GetProperty(TelemetryProperty.Libraries.ForceLibrarySync).GetBoolean().ShouldBeFalse();
+        queuedProperties.GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh).GetBoolean().ShouldBeFalse();
+        queuedProperties.GetProperty(TelemetryProperty.Trigger).GetString().ShouldBe(TelemetryTrigger.Manual.ToString());
+        var admissionCreatedAt = queuedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString();
+        admissionCreatedAt.ShouldNotBeNullOrWhiteSpace();
+        var finishedEvents = firstNativeEvents
+            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibrarySyncFinished.ToString())
+            .ToArray();
+        finishedEvents.Length.ShouldBe(1);
+        var finishedProperties = finishedEvents.Single().GetProperty("properties");
+        finishedProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
+        finishedProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
+        finishedProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        finishedProperties.GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh).GetBoolean().ShouldBeFalse();
+        finishedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString().ShouldBe(admissionCreatedAt);
+        finishedProperties
+            .GetProperty(TelemetryProperty.Outcome)
+            .GetString()
+            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+        firstNativeEvents
+            .Count(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryComparisonFinished.ToString())
+            .ShouldBe(0);
+        telemetryBodies.Clear();
 
         // Assert
         using var firstContext = await factory.CreateAsync();
@@ -168,21 +346,48 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             .ToListAsync(CancellationToken);
         firstAlbums.Count.ShouldBe(2);
         firstFiles.Count.ShouldBe(5);
-        firstMemberships.Count.ShouldBe(6);
+        firstMemberships.ShouldBe(
+            new[]
+            {
+                new { PlexPhotoAlbumId = firstAlbums[0].Id, PlexPhotoMediaDataId = firstFiles[0].Id },
+                new { PlexPhotoAlbumId = firstAlbums[0].Id, PlexPhotoMediaDataId = firstFiles[1].Id },
+                new { PlexPhotoAlbumId = firstAlbums[0].Id, PlexPhotoMediaDataId = firstFiles[2].Id },
+                new { PlexPhotoAlbumId = firstAlbums[1].Id, PlexPhotoMediaDataId = firstFiles[0].Id },
+                new { PlexPhotoAlbumId = firstAlbums[1].Id, PlexPhotoMediaDataId = firstFiles[3].Id },
+                new { PlexPhotoAlbumId = firstAlbums[1].Id, PlexPhotoMediaDataId = firstFiles[4].Id },
+            }
+                .OrderBy(x => x.PlexPhotoAlbumId)
+                .ThenBy(x => x.PlexPhotoMediaDataId)
+        );
+        firstFiles.Select(x => x.AssetKind).ShouldBe(
+            new[]
+            {
+                PhotoAssetKind.Image,
+                PhotoAssetKind.Image,
+                PhotoAssetKind.VideoClip,
+                PhotoAssetKind.Image,
+                PhotoAssetKind.VideoClip,
+            }
+        );
         firstFolders.ShouldContain(x => x.ParentId == null && x.IsActive == true);
         firstFolders.Where(x => x.ParentId == null).Count().ShouldBe(1);
         firstFiles.ShouldAllBe(x => x.PlexPhotoFolderId.HasValue && x.OriginalFilename.Length > 0);
-        firstFiles.Select(x => x.AssetKind).ShouldContain(PhotoAssetKind.Image);
-        firstFiles.Select(x => x.AssetKind).ShouldContain(PhotoAssetKind.VideoClip);
         firstFolders.ShouldAllBe(x => x.ParentId == null || x.RelativePath.Length > 0);
         firstFolders
             .Where(x => x.ParentId == null)
             .ShouldAllBe(x => x.RootIdentityKey != null && x.SourceRootPath != null);
 
-        var publishedBrowse = await ReadBrowseAssetsAsync(client, photoLibrary.Id);
-        publishedBrowse.Items.Select(x => x.Id).Order().ShouldBe(firstFiles.Select(x => x.Id).Order());
-        publishedBrowse.Items.ShouldAllBe(x => x.PlexLibraryId == photoLibrary.Id);
-        (publishedBrowse.TotalCount, publishedBrowse.TotalBytes).ShouldBe((5, firstFiles.Sum(x => x.Size)));
+        var publishedBrowseResponse = await ReadBrowseAssetsAsync(client, photoLibrary.Id);
+        publishedBrowseResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        publishedBrowseResponse.Result.ShouldNotBeNull();
+        var publishedBrowse = publishedBrowseResponse.Result!;
+        publishedBrowse.IsSuccess.ShouldBeTrue();
+        publishedBrowse.Errors.Count.ShouldBe(0);
+        publishedBrowse.Value.ShouldNotBeNull();
+        var publishedBrowseValue = publishedBrowse.Value!;
+        publishedBrowseValue.Items.Select(x => x.Id).Order().ShouldBe(firstFiles.Select(x => x.Id).Order());
+        publishedBrowseValue.Items.ShouldAllBe(x => x.PlexLibraryId == photoLibrary.Id);
+        (publishedBrowseValue.TotalCount, publishedBrowseValue.TotalBytes).ShouldBe((5, firstFiles.Sum(x => x.Size)));
         (
             await firstContext
                 .PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey)
@@ -380,6 +585,8 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                 })
                 .ToListAsync(CancellationToken)
         ).ShouldBe(firstVideoData);
+        await telemetryClient.FlushAsync();
+        telemetryBodies.Clear();
 
         var disable = await client.PUTAsync<
             SetLibraryEnabledEndpoint,
@@ -502,6 +709,8 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                 })
                 .ToListAsync(CancellationToken)
         ).ShouldBe(firstVideoData);
+        await telemetryClient.FlushAsync();
+        telemetryBodies.Clear();
 
         await container.BackgroundJobScheduler.Standby(CancellationToken);
         try
@@ -553,6 +762,58 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             maxRetries: 60,
             delayMs: 250
         );
+        await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
+        await telemetryClient.FlushAsync();
+        var finalNativeEvents = new List<JsonElement>();
+        foreach (var body in telemetryBodies)
+        {
+            using var document = JsonDocument.Parse(body);
+            finalNativeEvents.AddRange(document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone()));
+        }
+        finalNativeEvents
+            .Count(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryRefreshRequested.ToString())
+            .ShouldBe(0);
+        var enabledEvents = finalNativeEvents
+            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.PlexLibraryChanged.ToString())
+            .ToArray();
+        enabledEvents.Length.ShouldBe(1);
+        var enabledProperties = enabledEvents.Single().GetProperty("properties");
+        enabledProperties.GetProperty(TelemetryProperty.Action).GetString().ShouldBe(TelemetryAction.Enabled.ToString());
+        enabledProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
+        enabledProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
+        enabledProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        enabledProperties.GetProperty(TelemetryProperty.Libraries.IsEnabled).GetBoolean().ShouldBeTrue();
+        enabledProperties
+            .GetProperty(TelemetryProperty.Outcome)
+            .GetString()
+            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+        var finalQueuedEvents = finalNativeEvents
+            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibrarySyncQueued.ToString())
+            .ToArray();
+        finalQueuedEvents.Length.ShouldBe(1);
+        var finalQueuedProperties = finalQueuedEvents.Single().GetProperty("properties");
+        finalQueuedProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
+        finalQueuedProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
+        finalQueuedProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        finalQueuedProperties.GetProperty(TelemetryProperty.Trigger).GetString().ShouldBe(TelemetryTrigger.Manual.ToString());
+        var finalAdmissionCreatedAt = finalQueuedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString();
+        finalAdmissionCreatedAt.ShouldNotBeNullOrWhiteSpace();
+        var finalFinishedEvents = finalNativeEvents
+            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibrarySyncFinished.ToString())
+            .ToArray();
+        finalFinishedEvents.Length.ShouldBe(1);
+        var finalFinishedProperties = finalFinishedEvents.Single().GetProperty("properties");
+        finalFinishedProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
+        finalFinishedProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
+        finalFinishedProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        finalFinishedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString().ShouldBe(finalAdmissionCreatedAt);
+        finalFinishedProperties
+            .GetProperty(TelemetryProperty.Outcome)
+            .GetString()
+            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+        finalNativeEvents
+            .Count(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryComparisonFinished.ToString())
+            .ShouldBe(0);
 
         using var enabledContext = await factory.CreateAsync();
         (
@@ -568,12 +829,19 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             )
         ).ShouldBe(5);
 
-        var enabledBrowse = await ReadBrowseAssetsAsync(client, photoLibrary.Id);
-        enabledBrowse
+        var enabledBrowseResponse = await ReadBrowseAssetsAsync(client, photoLibrary.Id);
+        enabledBrowseResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        enabledBrowseResponse.Result.ShouldNotBeNull();
+        var enabledBrowse = enabledBrowseResponse.Result!;
+        enabledBrowse.IsSuccess.ShouldBeTrue();
+        enabledBrowse.Errors.Count.ShouldBe(0);
+        enabledBrowse.Value.ShouldNotBeNull();
+        var enabledBrowseValue = enabledBrowse.Value!;
+        enabledBrowseValue
             .Items.Select(x => x.PlexApiRatingKey)
             .Order()
             .ShouldBe(firstFiles.Select(x => x.PlexApiRatingKey).Order());
-        (enabledBrowse.TotalCount, enabledBrowse.TotalBytes).ShouldBe((5, firstFiles.Sum(x => x.Size)));
+        (enabledBrowseValue.TotalCount, enabledBrowseValue.TotalBytes).ShouldBe((5, firstFiles.Sum(x => x.Size)));
         (
             await enabledContext
                 .PlexMusicArtists.OrderBy(x => x.PlexApiRatingKey)
@@ -644,58 +912,33 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                 })
                 .ToListAsync(CancellationToken)
         ).ShouldBe(firstVideoData);
+        foreach (var request in telemetryRequests)
+        {
+            request.Method.ShouldBe(HttpMethod.Post);
+            request.RequestUri.ShouldBe($"{buildInfo.TelemetryHost.TrimEnd('/')}/batch");
+            request.Authorization.ShouldBeNull();
+            request.ContentType.ShouldBe("application/json");
+            using var document = JsonDocument.Parse(request.Body);
+            document.RootElement.GetProperty("api_key").GetString().ShouldBe(buildInfo.TelemetryProjectToken);
+            document.RootElement.GetProperty("batch").ValueKind.ShouldBe(JsonValueKind.Array);
+        }
+        telemetryHandler.Verify();
+        telemetryFactory!.Verify();
     }
 
-    private Task<BaseContainer> CreatePhotoRefreshContainer(Seed seed) =>
-        CreateContainer(
-            seed,
-            config =>
-            {
-                config.HttpClientOptions = (http, _) => http.SetupIdentityRequest(seed);
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexAccountCount = 1;
-                    database.PlexServerCount = 1;
-                    database.PlexMusicLibraryCount = 1;
-                    database.PlexPhotoLibraryCount = 1;
-                    database.PlexOtherVideoLibraryCount = 1;
-                    database.MusicArtistCount = 2;
-                    database.MusicAlbumCount = 2;
-                    database.MusicTrackCount = 2;
-                    database.OtherVideoCount = 3;
-                };
-                config.BaseMockHttpClientOptions = plex =>
-                {
-                    plex.GenerateFromDatabase = true;
-                    plex.PlexServerAccessCount = 1;
-                    plex.MusicLibraryCount = 1;
-                    plex.PhotoLibraryCount = 1;
-                    plex.OtherVideoLibraryCount = 1;
-                    plex.ArtistsPerLibraryCount = 2;
-                    plex.AlbumsPerArtistCount = 2;
-                    plex.TracksPerAlbumCount = 2;
-                    plex.PhotoAlbumsPerLibraryCount = 2;
-                    plex.PhotosPerAlbumCount = 2;
-                    plex.PhotoClipsPerAlbumCount = 1;
-                    plex.PhotoAlbumsOverlap = true;
-                };
-            }
-        );
 
-    private async Task<PhotoAssetPageDTO> ReadBrowseAssetsAsync(HttpClient client, int libraryId)
+    private async Task<(HttpStatusCode StatusCode, ResultDTO<PhotoAssetPageDTO>? Result)> ReadBrowseAssetsAsync(
+        HttpClient client,
+        int libraryId
+    )
     {
         using var response = await client.GetAsync(
             $"{ApiRoutes.PlexPhotoController}/assets?plexLibraryId={libraryId}",
             CancellationToken
         );
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<ResultDTO<PhotoAssetPageDTO>>(
             cancellationToken: CancellationToken
         );
-        result.ShouldNotBeNull();
-        result.IsSuccess.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(0);
-        result.Value.ShouldNotBeNull();
-        return result.Value;
+        return (response.StatusCode, result);
     }
 }
