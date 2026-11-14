@@ -1336,11 +1336,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(2));
 
-        var command = new QueueLibrarySyncJobCommand(
-            [library.Id],
-            ForceLibrarySync: true,
-            Trigger: TelemetryTrigger.Manual
-        );
+        var command = new QueueLibrarySyncJobCommand([library.Id], ForceLibrarySync: true);
         // Act
         var first = await TestHandlerExecuteAsync(command);
         var firstCreatedAt = IDbContext.LibrarySyncJobQueues.Single().CreatedAt;
@@ -1557,11 +1553,8 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(2));
 
-        var firstCommand = new QueueLibrarySyncJobCommand(
-            [firstLibrary.Id, secondLibrary.Id],
-            Trigger: TelemetryTrigger.Manual
-        );
-        var secondCommand = new QueueLibrarySyncJobCommand([firstLibrary.Id], Trigger: TelemetryTrigger.Manual);
+        var firstCommand = new QueueLibrarySyncJobCommand([firstLibrary.Id, secondLibrary.Id]);
+        var secondCommand = new QueueLibrarySyncJobCommand([firstLibrary.Id]);
 
         // Act
         Task<Result>? firstTask = null;
@@ -1700,7 +1693,7 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(2));
 
-        var command = new QueueLibrarySyncJobCommand([library.Id], Trigger: TelemetryTrigger.Manual);
+        var command = new QueueLibrarySyncJobCommand([library.Id]);
 
         // Act
         Task<Result>? firstTask = null;

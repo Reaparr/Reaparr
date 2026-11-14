@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
-using Microsoft.Extensions.DependencyInjection;
 using Moq.Protected;
 using PostHog;
 using Reaparr.Identity.Contracts;
@@ -45,7 +44,6 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
             HostUrl = new Uri("https://telemetry.example.test"),
             EnableCompression = false,
         }, httpClientFactory: factory.Object);
-        using var services = new ServiceCollection().AddScoped(_ => Mock.Mock<IUserService>().Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var settings = new UserSettings();
         settings.DownloadManagerSettings.DownloadSegments = 0;
@@ -58,7 +56,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         settings.NetworkSettings.ReverseProxyUrl = "http://192.168.1.5:5000/reaparr?section=42";
         settings.IntegrationsSettings.Sonarr.SonarrApiKey = "excluded-legacy-api-key";
         using var telemetry = new Telemetry(client, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, settings);
+            Mock.Mock<IUserService>().Object, source, settings);
         using var activity = new Activity(nameof(ShouldExportNativeSettingsProfilesAndOriginalExceptionChains_WhenTelemetryIsConfigured))
             .SetIdFormat(ActivityIdFormat.W3C).Start();
         const string session = "0197af2c-8533-71b3-a351-80da30db084a";
@@ -137,7 +135,6 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         const string identity = "a564b3b1-0bc4-4c51-8a30-bf24863b8d9c";
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var deliveredEvents = new ConcurrentQueue<JsonElement>();
         var requestBodies = new ConcurrentQueue<string>();
@@ -169,7 +166,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
             EnableCompression = false,
         }, httpClientFactory: factory.Object);
         using var telemetry = new Telemetry(client, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         await telemetry.InitializeAsync();
 
         // Act
@@ -264,10 +261,9 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
                 (captured, _, _, _, _, _) => exceptions.Add(captured))
             .Returns(true)
             .Verifiable(outcome == TelemetryOutcome.Failed ? Times.Once() : Times.Never());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         await telemetry.InitializeAsync();
         events.Clear();
         using var activity = new Activity(nameof(ShouldCaptureOnlyUnexpectedQueryFailures_WhenTheResultIsConsumed)).Start();
@@ -348,7 +344,6 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         var destinationPath = downloadTask.DestinationFilePath;
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         using var listener = new ActivityListener
         {
@@ -357,7 +352,7 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         };
         ActivitySource.AddActivityListener(listener);
         using var telemetry = new Telemetry(new Mock<IPostHogClient>().Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         await telemetry.InitializeAsync();
         using var activity = telemetry.StartMoveDownloadFile(
             downloadTask, sourcePath, destinationPath, false, TelemetryRetentionReason.Destination

@@ -67,17 +67,10 @@ public class MetadataSyncJob : IJob
             new ProcessMovieMetadataCommand(serverId, serverName),
             cancellationToken
         );
-        if (movieResult.IsCancelled)
+        if (movieResult.IsCancelledOrFailed)
         {
-            context.SetResult(JobStatus.Cancelled, movieResult);
-            _telemetry.MetadataSyncFinished(serverId, processedCount, movieResult);
-            return;
-        }
-
-        if (movieResult.IsFailed)
-        {
-            context.SetResult(JobStatus.Failed, movieResult);
-            movieResult.LogError();
+            context.SetResult(movieResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, movieResult);
+            movieResult.LogIfFailed();
             _telemetry.MetadataSyncFinished(serverId, processedCount, movieResult);
             _telemetry.CaptureErrors(movieResult, TelemetryActivity.MetadataSync);
             return;
@@ -89,17 +82,10 @@ public class MetadataSyncJob : IJob
             new ProcessEpisodeMetadataCommand(serverId, serverName),
             cancellationToken
         );
-        if (episodeResult.IsCancelled)
+        if (episodeResult.IsCancelledOrFailed)
         {
-            context.SetResult(JobStatus.Cancelled, episodeResult);
-            _telemetry.MetadataSyncFinished(serverId, processedCount, episodeResult);
-            return;
-        }
-
-        if (episodeResult.IsFailed)
-        {
-            context.SetResult(JobStatus.Failed, episodeResult);
-            episodeResult.LogError();
+            context.SetResult(episodeResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, episodeResult);
+            episodeResult.LogIfFailed();
             _telemetry.MetadataSyncFinished(serverId, processedCount, episodeResult);
             _telemetry.CaptureErrors(episodeResult, TelemetryActivity.MetadataSync);
             return;

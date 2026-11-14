@@ -30,11 +30,6 @@ public partial interface ITelemetry
     void HttpRequestFailed(Exception exception, string method, string? route);
 
     /// <summary>
-    /// Begins telemetry scope for an HTTP request.
-    /// </summary>
-    IDisposable? BeginRequest(string? sessionId);
-
-    /// <summary>
     /// Begins telemetry scope for a background job.
     /// </summary>
     IDisposable? BeginJob(

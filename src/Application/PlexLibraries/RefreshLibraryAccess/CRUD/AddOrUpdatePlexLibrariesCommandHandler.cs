@@ -228,11 +228,11 @@ public class AddOrUpdatePlexLibrariesCommandHandler
         if (libraryIdsToSync.Count > 0)
         {
             var queueResult = await _commandExecutor.Send(
-                new QueueLibrarySyncJobCommand(libraryIdsToSync, Trigger: TelemetryTrigger.AccessReconciled),
+                new QueueLibrarySyncJobCommand(libraryIdsToSync),
                 cancellationToken
             );
-            if (queueResult.IsFailed)
-                return queueResult.ToResult<List<PlexLibraryAccessRapport>>().LogError();
+            if (queueResult.IsCancelledOrFailed)
+                return queueResult.LogIfFailed().ToResult<List<PlexLibraryAccessRapport>>();
         }
 
         var newLibraryIds = newPlexLibraries.Select(x => x.Id).ToHashSet();
@@ -249,8 +249,8 @@ public class AddOrUpdatePlexLibrariesCommandHandler
                 new InvalidateLibraryComparisonJobsCommand(affectedLibraryIds),
                 cancellationToken
             );
-            if (invalidationResult.IsFailed)
-                return invalidationResult.ToResult<List<PlexLibraryAccessRapport>>().LogError();
+            if (invalidationResult.IsCancelledOrFailed)
+                return invalidationResult.LogIfFailed().ToResult<List<PlexLibraryAccessRapport>>();
         }
 
         foreach (var libraryId in affectedLibraryIds)
@@ -259,8 +259,8 @@ public class AddOrUpdatePlexLibrariesCommandHandler
                 new ScheduleAffectedLibraryComparisonJobsCommand(libraryId),
                 cancellationToken
             );
-            if (comparisonResult.IsFailed)
-                return comparisonResult.ToResult<List<PlexLibraryAccessRapport>>().LogError();
+            if (comparisonResult.IsCancelledOrFailed)
+                return comparisonResult.LogIfFailed().ToResult<List<PlexLibraryAccessRapport>>();
         }
 
         return Result.Ok(rapportList);

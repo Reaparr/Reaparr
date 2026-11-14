@@ -59,10 +59,12 @@ public sealed class AllJobListener : IJobListener
                 );
         });
 
-        if (result.IsFailed && !result.IsCancelled)
+        if (result.IsCancelledOrFailed)
         {
-            result.WithError($"Failed to publish Quartz lifecycle event for {context.JobDetail.Key}");
-            result.LogError();
+            if (!result.IsCancelled)
+                result.WithError($"Failed to publish Quartz lifecycle event for {context.JobDetail.Key}");
+
+            result.LogIfFailed();
         }
     }
 }

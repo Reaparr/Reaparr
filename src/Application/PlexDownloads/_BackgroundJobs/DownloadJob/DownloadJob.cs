@@ -38,6 +38,7 @@ public class DownloadJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.Download, context.GetTelemetryContext());
         var payloadResult = context.GetRequiredPayload<DownloadJobPayload>();
         if (payloadResult.IsFailed)
         {
@@ -48,7 +49,6 @@ public class DownloadJob : IJob
 
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
         var token = context.CancellationToken;
-        using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.Download, context.GetTelemetryContext());
 
         // Preserve handled outcomes for Quartz listeners while containing unexpected exceptions.
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
@@ -81,17 +81,8 @@ public class DownloadJob : IJob
             }
 
             var result = await SetDownloadAndDestination(downloadTask, token);
-            if (result.IsCancelled)
-            {
-                result.LogWarning();
-                return result.ToResult();
-            }
-
-            if (result.IsFailed)
-            {
-                result.LogError();
-                return result.ToResult();
-            }
+            if (result.IsCancelledOrFailed)
+                return result.LogIfFailed().ToResult();
 
             downloadTask = result.Value;
 
@@ -193,15 +184,13 @@ public class DownloadJob : IJob
 
         _telemetry.CompleteDownloadJob(Activity.Current, executionResult);
 
-        if (executionResult.IsCancelled)
+        if (executionResult.IsCancelledOrFailed)
         {
-            context.SetResult(JobStatus.Cancelled, executionResult);
-            executionResult.LogWarning();
-        }
-        else if (executionResult.IsFailed)
-        {
-            context.SetResult(JobStatus.Failed, executionResult);
-            executionResult.LogError();
+            context.SetResult(
+                executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
+                executionResult
+            );
+            executionResult.LogIfFailed();
             _telemetry.CaptureErrors(executionResult, TelemetryActivity.Download);
         }
 

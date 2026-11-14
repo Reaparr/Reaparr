@@ -27,56 +27,55 @@ public class RefreshPlexAccountAccessJob : IJob
     public static JobKey GetJobKey() =>
         new(nameof(JobTypes.RefreshPlexAccountAccessJob), nameof(JobTypes.RefreshPlexAccountAccessJob));
 
-    public Task Execute(IJobExecutionContext context)
+    public async Task Execute(IJobExecutionContext context)
     {
-        return _telemetry.RunJobAsync(
+        using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.PlexAccessRefresh,
-            context.GetTelemetryContext(),
-            async () =>
+            context.GetTelemetryContext()
+        );
+
+        var cancellationToken = context.CancellationToken;
+        _log.Here().Debug("Executing job: {JobName}", nameof(RefreshPlexAccountAccessJob));
+
+        var executionResult = await Result.Try(
+            async Task<Result<List<RefreshPlexAccountAccessRapportDTO>>> () =>
             {
-                try
-                {
-                    var cancellationToken = context.CancellationToken;
-                    _log.Here().Debug("Executing job: {JobName}", nameof(RefreshPlexAccountAccessJob));
+                var result = await _commandExecutor.Send(
+                    new RefreshPlexAccountAccessCommand(Trigger: TelemetryTrigger.Scheduled),
+                    cancellationToken
+                );
 
-                    var result = await _commandExecutor.Send(
-                        new RefreshPlexAccountAccessCommand(Trigger: TelemetryTrigger.Scheduled),
-                        cancellationToken
+                if (result.IsCancelledOrFailed)
+                    return result;
+
+                _log.Here()
+                    .Debug(
+                        "{JobName} refreshed access for {PlexAccountCount} Plex accounts",
+                        nameof(RefreshPlexAccountAccessJob),
+                        result.Value.Count
                     );
+                return result;
+            },
+            exception =>
+            {
+                if (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
+                    return new Error(exception.Message).CausedBy(exception);
 
-                    if (result.IsCancelledOrFailed)
-                    {
-                        context.SetResult(
-                            result.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
-                            result
-                        );
-                        result.LogIfFailed();
-                        _telemetry.CaptureErrors(result, TelemetryActivity.PlexAccessRefresh);
-                        return;
-                    }
-
-                    _log.Here()
-                        .Debug(
-                            "{JobName} refreshed access for {PlexAccountCount} Plex accounts",
-                            nameof(RefreshPlexAccountAccessJob),
-                            result.Value.Count
-                        );
-                    context.SetResult(JobStatus.Completed);
-                }
-                catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
-                {
-                    var cancellationResult = ResultExtensions.TaskIsCancelled(nameof(RefreshPlexAccountAccessJob));
-                    context.SetResult(JobStatus.Cancelled, cancellationResult);
-                    cancellationResult.LogIfFailed();
-                }
-                catch (Exception exception)
-                {
-                    var failureResult = Result.Fail(new ExceptionalError(exception));
-                    context.SetResult(JobStatus.Failed, failureResult);
-                    failureResult.LogIfFailed();
-                    _telemetry.CaptureException(exception, TelemetryActivity.PlexAccessRefresh);
-                }
+                return new ExceptionalError(exception);
             }
         );
+
+        if (executionResult.IsCancelledOrFailed)
+        {
+            context.SetResult(
+                executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
+                executionResult
+            );
+            executionResult.LogIfFailed();
+            _telemetry.CaptureErrors(executionResult, TelemetryActivity.PlexAccessRefresh);
+            return;
+        }
+
+        context.SetResult(JobStatus.Completed);
     }
 }

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Autofac;
-using Microsoft.Extensions.DependencyInjection;
 using PostHog;
 using Reaparr.Identity.Contracts;
 
@@ -344,13 +343,12 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
         serverRapport.AddUpdated(servers[1].Id, servers[1].Name);
         const string identity = "a4eb5051-3c16-4b94-81a9-470b34b376a9";
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         using var telemetry = new Telemetry(
             client.Object,
             Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
+            user.Object,
             source,
             new UserSettings()
         );

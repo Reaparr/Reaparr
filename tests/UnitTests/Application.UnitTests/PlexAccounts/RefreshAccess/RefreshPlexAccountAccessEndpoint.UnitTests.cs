@@ -62,11 +62,10 @@ public class RefreshPlexAccountAccessEndpointUnitTests
         int? expectedAccountId = accountId > 0 ? accountId : null;
         var expectedIssues = outcome == TelemetryOutcome.Failed ? 1 : 0;
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var services = new ServiceCollection().AddScoped(_ => user.Object).BuildServiceProvider();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            services.GetRequiredService<IServiceScopeFactory>(), source, new UserSettings());
+            user.Object, source, new UserSettings());
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
         client.Setup(x => x.Capture(identity, TelemetryProtocol.ProfileEvent,
                 It.IsAny<Dictionary<string, object>>(), null, null, null))

@@ -9,12 +9,19 @@ public class CheckPlexLibrariesForUpdatesJob : IJob
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public CheckPlexLibrariesForUpdatesJob(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public CheckPlexLibrariesForUpdatesJob(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<CheckPlexLibrariesForUpdatesJob>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     protected JobTypes JobType => JobTypes.CheckPlexLibrariesForUpdatesJob;
@@ -24,100 +31,109 @@ public class CheckPlexLibrariesForUpdatesJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
-        _log.Here().Debug("Executing job: {JobName}", nameof(CheckPlexLibrariesForUpdatesJob));
-
-        var cancellationToken = context.CancellationToken;
-
-        var enabledServerIds = await _dbContext.PlexServers.Select(x => x.Id).ToListAsync(cancellationToken);
-
-        if (enabledServerIds.Count == 0)
-        {
-            _log.Here().Debug("No enabled Plex servers found for automatic library sync");
-            context.SetResult(JobStatus.Completed);
-            return;
-        }
-
-        var accountMappings = await _dbContext
-            .PlexAccountServers.Where(x => enabledServerIds.Contains(x.PlexServerId))
-            .GroupBy(x => x.PlexServerId)
-            .Select(x => new { PlexServerId = x.Key, PlexAccountId = x.Min(y => y.PlexAccountId) })
-            .ToDictionaryAsync(x => x.PlexServerId, x => x.PlexAccountId, cancellationToken);
-
-        var serversWithTokenMappings = new List<int>();
-        foreach (var serverId in enabledServerIds)
-        {
-            if (!accountMappings.TryGetValue(serverId, out var accountId) || accountId <= 0)
-            {
-                _log.Here()
-                    .Warning(
-                        "No Plex account-server token mapping found for PlexServer with id {PlexServerId}; skipping refresh",
-                        serverId
-                    );
-                continue;
-            }
-
-            var refreshResult = await _commandExecutor.Send(
-                new RefreshLibraryAccessCommand(accountId, serverId),
-                cancellationToken
-            );
-
-            if (refreshResult.IsCancelled)
-            {
-                context.SetResult(JobStatus.Cancelled, refreshResult);
-                refreshResult.LogWarning();
-                return;
-            }
-
-            if (refreshResult.IsFailed)
-            {
-                refreshResult.ToResult().LogError();
-                continue;
-            }
-
-            serversWithTokenMappings.Add(serverId);
-        }
-
-        if (serversWithTokenMappings.Count == 0)
-        {
-            _log.Here().Debug("No Plex servers with token mappings found for automatic library sync");
-            context.SetResult(JobStatus.Completed);
-            return;
-        }
-
-        var outdatedLibraryIds = await _dbContext
-            .PlexLibraries.Where(x => serversWithTokenMappings.Contains(x.PlexServerId) && x.Outdated)
-            .Select(x => x.Id)
-            .ToListAsync(cancellationToken);
-
-        if (outdatedLibraryIds.Count == 0)
-        {
-            _log.Here().Debug("No outdated Plex libraries found for automatic sync");
-            context.SetResult(JobStatus.Completed);
-            return;
-        }
-
-        _log.Here()
-            .Information("Queueing {Count} outdated Plex libraries for automatic sync", outdatedLibraryIds.Count);
-
-        var queueResult = await _commandExecutor.Send(
-            new QueueLibrarySyncJobCommand(outdatedLibraryIds),
-            cancellationToken
+        using var telemetryScope = _telemetry.BeginJob(
+            TelemetryActivity.LibraryUpdateCheck,
+            context.GetTelemetryContext()
         );
 
-        if (queueResult.IsCancelled)
-        {
-            context.SetResult(JobStatus.Cancelled, queueResult);
-            queueResult.LogWarning();
-            return;
-        }
+        var cancellationToken = context.CancellationToken;
+        _log.Here().Debug("Executing job: {JobName}", nameof(CheckPlexLibrariesForUpdatesJob));
 
-        if (queueResult.IsFailed)
-        {
-            context.SetResult(JobStatus.Failed, queueResult);
-            queueResult.LogError();
-            return;
-        }
+        var result = await Result.Try(
+            async Task<Result> () =>
+            {
+                var enabledServerIds = await _dbContext
+                    .PlexServers.Select(x => x.Id)
+                    .ToListAsync(cancellationToken);
 
-        context.SetResult(JobStatus.Completed);
+                if (enabledServerIds.Count == 0)
+                {
+                    _log.Here().Debug("No enabled Plex servers found for automatic library sync");
+                    context.SetResult(JobStatus.Completed);
+                    return Result.Ok();
+                }
+
+                var accountMappings = await _dbContext
+                    .PlexAccountServers.Where(x => enabledServerIds.Contains(x.PlexServerId))
+                    .GroupBy(x => x.PlexServerId)
+                    .Select(x => new { PlexServerId = x.Key, PlexAccountId = x.Min(y => y.PlexAccountId) })
+                    .ToDictionaryAsync(x => x.PlexServerId, x => x.PlexAccountId, cancellationToken);
+
+                var serversWithTokenMappings = new List<int>();
+                foreach (var serverId in enabledServerIds)
+                {
+                    if (!accountMappings.TryGetValue(serverId, out var accountId) || accountId <= 0)
+                    {
+                        _log.Here()
+                            .Warning(
+                                "No Plex account-server token mapping found for PlexServer with id {PlexServerId}; skipping refresh",
+                                serverId
+                            );
+                        continue;
+                    }
+
+                    var refreshResult = await _commandExecutor.Send(
+                        new RefreshLibraryAccessCommand(accountId, serverId),
+                        cancellationToken
+                    );
+
+                    if (refreshResult.IsCancelledOrFailed)
+                    {
+                        if (refreshResult.IsCancelled)
+                            return refreshResult.ToResult();
+
+                        refreshResult.LogIfFailed();
+                        _telemetry.CaptureErrors(refreshResult, TelemetryActivity.LibraryUpdateCheck);
+                        continue;
+                    }
+
+                    serversWithTokenMappings.Add(serverId);
+                }
+
+                if (serversWithTokenMappings.Count == 0)
+                {
+                    _log.Here().Debug("No Plex servers with token mappings found for automatic library sync");
+                    context.SetResult(JobStatus.Completed);
+                    return Result.Ok();
+                }
+
+                var outdatedLibraryIds = await _dbContext
+                    .PlexLibraries.Where(x => serversWithTokenMappings.Contains(x.PlexServerId) && x.Outdated)
+                    .Select(x => x.Id)
+                    .ToListAsync(cancellationToken);
+
+                if (outdatedLibraryIds.Count == 0)
+                {
+                    _log.Here().Debug("No outdated Plex libraries found for automatic sync");
+                    context.SetResult(JobStatus.Completed);
+                    return Result.Ok();
+                }
+
+                _log.Here()
+                    .Information("Queueing {Count} outdated Plex libraries for automatic sync", outdatedLibraryIds.Count);
+
+                var queueResult = await _commandExecutor.Send(
+                    new QueueLibrarySyncJobCommand(outdatedLibraryIds),
+                    cancellationToken
+                );
+
+                if (queueResult.IsCancelledOrFailed)
+                    return queueResult;
+
+                context.SetResult(JobStatus.Completed);
+                return Result.Ok();
+            },
+            exception =>
+                exception is OperationCanceledException && !cancellationToken.IsCancellationRequested
+                    ? new Error(exception.Message).CausedBy(exception)
+                    : new ExceptionalError(exception)
+        );
+
+        if (result.IsCancelledOrFailed)
+        {
+            context.SetResult(result.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, result);
+            result.LogIfFailed();
+            _telemetry.CaptureErrors(result, TelemetryActivity.LibraryUpdateCheck);
+        }
     }
 }

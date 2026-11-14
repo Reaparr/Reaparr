@@ -42,9 +42,7 @@ public sealed class UpdateScheduledDownloadLimitsJob : IJob
             context.GetTelemetryContext()
         );
 
-        var result = await Result.Try(() =>
-            _commandExecutor.Send(new UpdateScheduledDownloadLimitsCommand(), context.CancellationToken)
-        );
+        var result = await _commandExecutor.Send(new UpdateScheduledDownloadLimitsCommand(), context.CancellationToken);
         var status =
             result.IsCancelled ? JobStatus.Cancelled
             : result.IsFailed ? JobStatus.Failed

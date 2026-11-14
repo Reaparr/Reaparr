@@ -103,7 +103,8 @@ public class GeneratePlexTokenEndpoint
             _telemetry.PlexAuthenticationProcessed(
                 TelemetryAuthenticationMethod.GenerateToken,
                 req.PlexAccountId,
-                validateResult
+                validateResult,
+                new PlexAuthenticationTelemetryDTO { IsValidated = validateResult.Value.IsValidated }
             );
             await Send.FluentResult(Result.Ok(response), ct);
             return;

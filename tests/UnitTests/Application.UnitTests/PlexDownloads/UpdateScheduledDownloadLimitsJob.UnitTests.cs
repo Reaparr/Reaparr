@@ -85,7 +85,7 @@ public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateSche
     }
 
     [Test]
-    public async Task ShouldCaptureUnexpectedCommandExceptionOnceAtTerminalBoundary()
+    public async Task ShouldCaptureOriginalCommandFailureOnce_WhenCommandReturnsExceptionalResult()
     {
         // Arrange
         var context = new Mock<IJobExecutionContext>();
@@ -95,26 +95,34 @@ public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateSche
         context.SetupGet(x => x.MergedJobDataMap).Returns(new JobDataMap());
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);
         var exception = new InvalidOperationException("scheduled limit update failed");
+        var commandResult = Result.Fail(new ExceptionalError(exception));
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
-                    It.IsAny<UpdateScheduledDownloadLimitsCommand>(),
+                    It.Is<UpdateScheduledDownloadLimitsCommand>(command => command.LocalTime == null),
                     CancellationToken.None
                 )
             )
-            .ThrowsAsync(exception);
+            .ReturnsAsync(commandResult)
+            .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.ScheduledDownloadLimits))
+            .Setup(x => x.CaptureErrors(commandResult, TelemetryActivity.ScheduledDownloadLimits))
             .Verifiable(Times.Once());
 
         // Act
         await Sut.Execute(context.Object);
 
         // Assert
-        context.Object.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
+        var outcome = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
+        outcome.Status.ShouldBe(JobStatus.Failed);
+        outcome.ErrorSummary.ShouldBe(exception.Message);
+        commandResult.IsFailed.ShouldBeTrue();
+        commandResult.Errors.Count.ShouldBe(1);
+        commandResult.Errors.Single().ShouldBeOfType<ExceptionalError>().Exception.ShouldBeSameAs(exception);
+        Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>()
             .Verify(
-                x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.ScheduledDownloadLimits),
+                x => x.CaptureErrors(commandResult, TelemetryActivity.ScheduledDownloadLimits),
                 Times.Once()
             );
     }

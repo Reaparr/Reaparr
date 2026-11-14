@@ -46,6 +46,10 @@ public class MoveDownloadFileJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var telemetryScope = _telemetry.BeginJob(
+            TelemetryActivity.MoveDownloadJob,
+            context.GetTelemetryContext()
+        );
         var payloadResult = context.GetRequiredPayload<MoveDownloadFileJobPayload>();
         if (payloadResult.IsFailed)
         {
@@ -58,10 +62,6 @@ public class MoveDownloadFileJob : IJob
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
         var ct = context.CancellationToken;
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
-        using var telemetryScope = _telemetry.BeginJob(
-            TelemetryActivity.MoveDownloadJob,
-            context.GetTelemetryContext()
-        );
         _telemetry.SetMoveDownloadJobContext(downloadTaskKey, GetRetryCount(context));
         async Task QueueNextAsync()
         {
@@ -112,9 +112,7 @@ public class MoveDownloadFileJob : IJob
                 return Result.Ok();
             }
 
-            var moveResult = await Result.Try(() =>
-                _commandExecutor.Send(new MoveDownloadFileFromFileTaskCommand(downloadTaskKey), ct)
-            );
+            var moveResult = await _commandExecutor.Send(new MoveDownloadFileFromFileTaskCommand(downloadTaskKey), ct);
 
             if (moveResult.IsCancelled)
             {
@@ -171,17 +169,7 @@ public class MoveDownloadFileJob : IJob
                 return moveResult;
             }
 
-            var downloadTaskResult = await Result.Try(() =>
-                _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, CancellationToken.None)
-            );
-
-            if (downloadTaskResult.IsFailed)
-            {
-                downloadTaskResult.LogError();
-                return downloadTaskResult.ToResult();
-            }
-
-            var downloadTask = downloadTaskResult.Value;
+            var downloadTask = await _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, CancellationToken.None);
             if (downloadTask is null)
             {
                 return ResultExtensions.EntityNotFound(nameof(DownloadTaskGeneric), downloadTaskKey.Id).LogError();
@@ -196,11 +184,9 @@ public class MoveDownloadFileJob : IJob
                 );
 
                 // Clean up the Download task folders
-                var cleanupResult = await Result.Try(() =>
-                    _commandExecutor.Send(
-                        new CleanUpDownloadTaskFoldersCommand(downloadTaskKey),
-                        CancellationToken.None
-                    )
+                var cleanupResult = await _commandExecutor.Send(
+                    new CleanUpDownloadTaskFoldersCommand(downloadTaskKey),
+                    CancellationToken.None
                 );
                 if (cleanupResult.IsCancelled)
                 {

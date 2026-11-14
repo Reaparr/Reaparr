@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -19,6 +20,18 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         context.SetupGet(x => x.MergedJobDataMap).Returns(new JobDataMap());
         context.SetupProperty(x => x.Result);
         return context.Object;
+    }
+    private void SetupBeginJob()
+    {
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.BeginJob(
+                    TelemetryActivity.LibraryUpdateCheck,
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
+                )
+            )
+            .Returns((IDisposable?)null)
+            .Verifiable(Times.Once());
     }
 
     [Test]
@@ -75,11 +88,13 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
             .Verifiable(Times.Never());
         var context = SetupJobContext();
 
+        SetupBeginJob();
         // Act
         await Sut.Execute(context);
 
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -136,11 +151,13 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
             .Verifiable(Times.Never());
         var context = SetupJobContext();
 
+        SetupBeginJob();
         // Act
         await Sut.Execute(context);
 
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -230,11 +247,13 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
             .Verifiable(Times.Once());
         var context = SetupJobContext();
 
+        SetupBeginJob();
         // Act
         await Sut.Execute(context);
 
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
     [Test]
     public async Task ShouldContainUnexpectedRefreshExceptionAndMarkJobFailed()
@@ -271,7 +290,7 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         await dbContext.SaveChangesAsync(CancellationToken);
 
         var exception = new InvalidOperationException("refresh access failed");
-        Exception? capturedException = null;
+        ResultBase? capturedResult = null;
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -284,16 +303,12 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
             .ThrowsAsync(exception)
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.CaptureException(
-                    It.Is<Exception>(captured => ReferenceEquals(captured, exception)),
-                    TelemetryActivity.LibraryUpdateCheck
-                )
-            )
-            .Callback<Exception, TelemetryActivity>((captured, _) => capturedException = captured)
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibraryUpdateCheck))
+            .Callback<ResultBase, TelemetryActivity>((captured, _) => capturedResult = captured)
             .Verifiable(Times.Once());
         var context = SetupJobContext();
 
+        SetupBeginJob();
         // Act
         await Sut.Execute(context);
 
@@ -301,11 +316,13 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         var terminalResult = context.Result.ShouldBeOfType<BackgroundJobResult>();
         terminalResult.Status.ShouldBe(JobStatus.Failed);
         terminalResult.ErrorSummary.ShouldBe(exception.Message);
-        capturedException.ShouldBeSameAs(exception);
+        capturedResult.ShouldNotBeNull();
+        capturedResult!.HasException<InvalidOperationException>(out var capturedErrors).ShouldBeTrue();
+        capturedErrors.OfType<ExceptionalError>().Single().Exception.ShouldBeSameAs(exception);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<ITelemetry>()
-            .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibraryUpdateCheck), Times.Never());
+            .Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<TelemetryActivity>()), Times.Never());
     }
 
     [Test]
@@ -324,13 +341,18 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         cancellationSource.Cancel();
         var context = SetupJobContext(cancellationSource.Token);
 
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibraryUpdateCheck))
+            .Verifiable(Times.Once());
+        SetupBeginJob();
         // Act
         await Sut.Execute(context);
 
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);
+        Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<ITelemetry>()
-            .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibraryUpdateCheck), Times.Never());
+            .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibraryUpdateCheck), Times.Once());
         Mock.Mock<ITelemetry>()
             .Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<TelemetryActivity>()), Times.Never());
     }

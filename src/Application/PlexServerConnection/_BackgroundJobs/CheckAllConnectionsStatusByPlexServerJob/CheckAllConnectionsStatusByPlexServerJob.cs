@@ -34,83 +34,78 @@ public class CheckAllConnectionsStatusByPlexServerJob : IJob
             TelemetryActivity.ScheduledConnectionCheck,
             context.GetTelemetryContext()
         );
-        await ExecuteCore(context);
-    }
 
-    private async Task ExecuteCore(IJobExecutionContext context)
-    {
         var cancellationToken = context.CancellationToken;
-        var plexServers = await _dbContext
-            .PlexServers.Include(x => x.PlexServerConnections)
-            .ToListAsync(cancellationToken);
+        var payload = new CheckAllConnectionStatusUpdateDTO { PlexServersWithConnectionIds = [] };
+        var result = await Result.Try(
+            async Task<Result> () =>
+            {
+                var plexServers = await _dbContext
+                    .PlexServers.Include(x => x.PlexServerConnections)
+                    .ToListAsync(cancellationToken);
 
-        if (!plexServers.Any())
-        {
-            return;
-        }
+                if (!plexServers.Any())
+                    return Result.Ok();
 
-        // Send start job status update
-        var payload = new CheckAllConnectionStatusUpdateDTO
-        {
-            PlexServersWithConnectionIds = plexServers.ToDictionary(
-                x => x.Id,
-                x => x.PlexServerConnections.Select(y => y.Id).ToList()
-            ),
-        };
+                payload = new CheckAllConnectionStatusUpdateDTO
+                {
+                    PlexServersWithConnectionIds = plexServers.ToDictionary(
+                        x => x.Id,
+                        x => x.PlexServerConnections.Select(y => y.Id).ToList()
+                    ),
+                };
 
-        var result = await Result.Try(async Task () =>
-        {
-            var startedUpdate = context.SetCronJobPayload(JobStatus.Started, payload);
-            await _progressHubService.SendJobStatusUpdateAsync(startedUpdate);
+                // Send start job status update
+                var startedUpdate = context.SetCronJobPayload(JobStatus.Started, payload);
+                await _progressHubService.SendJobStatusUpdateAsync(startedUpdate);
 
-            var connectionResults = await Task.WhenAll(
-                plexServers.Select(async plexServer =>
-                    await Result.Try(() =>
+                var connectionResults = await Task.WhenAll(
+                    plexServers.Select(plexServer =>
                         _commandExecutor.Send(
                             new CheckAllConnectionsStatusByPlexServerCommand(plexServer.Id),
                             cancellationToken
                         )
                     )
-                )
-            );
-
-            var cancelledResults = connectionResults.Where(x => x.IsCancelled).ToList();
-            foreach (var cancelledResult in cancelledResults)
-                cancelledResult.LogWarning();
-
-            var failedResults = connectionResults.Where(x => x.IsFailed && !x.IsCancelled).ToList();
-            foreach (var failedResult in failedResults)
-            {
-                _telemetry.CaptureErrors(failedResult, TelemetryActivity.ScheduledConnectionCheck);
-                failedResult.LogError();
-            }
-
-            if (cancelledResults.Count > 0 || failedResults.Count > 0)
-            {
-                context.SetCronJobPayload(cancelledResults.Count > 0 ? JobStatus.Cancelled : JobStatus.Failed, payload);
-                return;
-            }
-
-            _log.Here()
-                .Debug(
-                    "{JobName} for servers with ids: {PlexServerIds} completed",
-                    nameof(CheckAllConnectionsStatusByPlexServerJob),
-                    plexServers.Select(x => x.Id).ToList()
                 );
-        });
 
-        if (result.IsCancelled)
-        {
-            context.SetCronJobPayload(JobStatus.Cancelled, payload);
-            result.LogWarning();
-            return;
-        }
+                var terminalResults = connectionResults.Where(x => x.IsCancelledOrFailed).ToList();
+                foreach (var terminalResult in terminalResults)
+                {
+                    terminalResult.LogIfFailed();
+                    _telemetry.CaptureErrors(terminalResult, TelemetryActivity.ScheduledConnectionCheck);
+                }
 
-        if (result.IsFailed)
+                if (terminalResults.Count > 0)
+                {
+                    context.SetCronJobPayload(
+                        terminalResults.Any(x => x.IsCancelled) ? JobStatus.Cancelled : JobStatus.Failed,
+                        payload
+                    );
+                    return Result.Ok();
+                }
+
+                _log.Here()
+                    .Debug(
+                        "{JobName} for servers with ids: {PlexServerIds} completed",
+                        nameof(CheckAllConnectionsStatusByPlexServerJob),
+                        plexServers.Select(x => x.Id).ToList()
+                    );
+                return Result.Ok();
+            },
+            exception =>
+                exception is OperationCanceledException && !cancellationToken.IsCancellationRequested
+                    ? new Error(exception.Message).CausedBy(exception)
+                    : new ExceptionalError(exception)
+        );
+
+        if (result.IsCancelledOrFailed)
         {
-            context.SetCronJobPayload(JobStatus.Failed, payload);
+            context.SetCronJobPayload(
+                result.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
+                payload
+            );
+            result.LogIfFailed();
             _telemetry.CaptureErrors(result, TelemetryActivity.ScheduledConnectionCheck);
-            result.LogError();
         }
     }
 }

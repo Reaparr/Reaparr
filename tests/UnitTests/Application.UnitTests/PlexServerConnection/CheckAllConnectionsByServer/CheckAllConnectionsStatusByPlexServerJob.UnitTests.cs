@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Autofac;
 using Quartz;
 
@@ -5,13 +6,13 @@ namespace Reaparr.Application.UnitTests;
 
 public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<CheckAllConnectionsStatusByPlexServerJob>
 {
-    private static Mock<IJobExecutionContext> SetupJobContext()
+    private static Mock<IJobExecutionContext> SetupJobContext(CancellationToken cancellationToken = default)
     {
         var jobDetail = new Mock<IJobDetail>();
         jobDetail.SetupGet(x => x.Key).Returns(CheckAllConnectionsStatusByPlexServerJob.GetJobKey());
 
         var context = new Mock<IJobExecutionContext>();
-        context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);
+        context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
         context.SetupGet(x => x.MergedJobDataMap).Returns(new JobDataMap());
         context.SetupGet(x => x.FireInstanceId).Returns("connection-check-test");
@@ -19,27 +20,55 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         return context;
     }
 
+    private void SetupBeginJob()
+    {
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.BeginJob(
+                    TelemetryActivity.ScheduledConnectionCheck,
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
+                )
+            )
+            .Returns((IDisposable?)null)
+            .Verifiable(Times.Once());
+    }
+
     [Test]
     public async Task ShouldSetFailedStatus_WhenCommandThrows()
     {
         // Arrange
         await SetupDatabase(135045, config => config.PlexServerCount = 1);
+        var exception = new InvalidOperationException("connection check failed");
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CheckAllConnectionsStatusByPlexServerCommand>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("connection check failed"));
+            .ThrowsAsync(exception)
+            .Verifiable(Times.Once());
         Mock.Mock<IProgressHubService>()
             .Setup(x => x.SendJobStatusUpdateAsync(It.IsAny<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>()))
-            .Returns(Task.CompletedTask);
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        ResultBase? capturedResult = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ScheduledConnectionCheck))
+            .Callback<ResultBase, TelemetryActivity>((captured, _) => capturedResult = captured)
+            .Verifiable(Times.Once());
         var context = SetupJobContext();
 
+        SetupBeginJob();
         // Act
         await Sut.Execute(context.Object);
 
         // Assert
         var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
         update.Status.ShouldBe(JobStatus.Failed);
-    }
+        capturedResult.ShouldNotBeNull();
+        capturedResult!.HasException<InvalidOperationException>(out var capturedErrors).ShouldBeTrue();
+        capturedErrors.OfType<ExceptionalError>().Single().Exception.ShouldBeSameAs(exception);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<IProgressHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
 
+    }
     [Test]
     public async Task ShouldSetCancelledStatus_WhenCommandIsCancelled()
     {
@@ -47,11 +76,22 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         await SetupDatabase(135046, config => config.PlexServerCount = 1);
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CheckAllConnectionsStatusByPlexServerCommand>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.FromCanceled<Result<List<PlexServerStatus>>>(new CancellationToken(true)));
+            .ReturnsAsync(
+                ResultExtensions
+                    .TaskIsCancelled(nameof(CheckAllConnectionsStatusByPlexServerJob))
+                    .ToResult<List<PlexServerStatus>>()
+            )
+            .Verifiable(Times.Once());
         Mock.Mock<IProgressHubService>()
             .Setup(x => x.SendJobStatusUpdateAsync(It.IsAny<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>()))
-            .Returns(Task.CompletedTask);
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ScheduledConnectionCheck))
+            .Verifiable(Times.Once());
         var context = SetupJobContext();
+
+        SetupBeginJob();
 
         // Act
         await Sut.Execute(context.Object);
@@ -59,10 +99,13 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         // Assert
         var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
         update.Status.ShouldBe(JobStatus.Cancelled);
-    }
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<IProgressHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
 
+    }
     [Test]
-    public async Task ShouldComplete_WhenOneOrMorePlexServersAreUnavailable()
+    public async Task ShouldFail_WhenOneOrMorePlexServersAreUnavailable()
     {
         // Arrange
         await SetupDatabase(
@@ -102,6 +145,10 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
                 }
             );
         var context = SetupJobContext();
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ScheduledConnectionCheck))
+            .Verifiable(Times.Once());
+        SetupBeginJob();
 
         // Act
         var action = () => Sut.Execute(context.Object);
@@ -145,6 +192,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
             .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ScheduledConnectionCheck))
             .Verifiable(Times.Once());
         var context = SetupJobContext();
+        SetupBeginJob();
 
         // Act
         await Sut.Execute(context.Object);
@@ -154,20 +202,27 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
     }
 
     [Test]
-    public async Task ShouldRethrowUnexpectedOuterException_WhenDatabaseAccessFails()
+    public async Task ShouldSetFailedStatus_WhenDatabaseAccessFails()
     {
         // Arrange
         var exception = new InvalidOperationException("Connection catalog unavailable");
         var database = new Mock<IReaparrDbContext>();
         database.SetupGet(x => x.PlexServers).Throws(exception);
         SetupDependencies(builder => builder.RegisterInstance(database.Object).As<IReaparrDbContext>());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ScheduledConnectionCheck))
+            .Verifiable(Times.Once());
         var context = SetupJobContext();
 
+        SetupBeginJob();
         // Act
-        var thrown = await Should.ThrowAsync<InvalidOperationException>(() => Sut.Execute(context.Object));
+        await Sut.Execute(context.Object);
 
         // Assert
-        thrown.ShouldBeSameAs(exception);
+        var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
+        update.Status.ShouldBe(JobStatus.Failed);
+        update.Data.PlexServersWithConnectionIds.ShouldBeEmpty();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
 
