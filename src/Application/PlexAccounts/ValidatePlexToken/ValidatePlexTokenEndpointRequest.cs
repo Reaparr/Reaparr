@@ -115,7 +115,7 @@ public class ValidatePlexTokenEndpoint
                 ValidatedAt = null,
                 Is2Fa = false,
             };
-            _telemetry.PlexAuthenticationProcessed(req.PlexAccountId, null, validateResult);
+            _telemetry.PlexAuthenticationProcessed(req.PlexAccountId, validateResult);
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
@@ -151,14 +151,14 @@ public class ValidatePlexTokenEndpoint
             };
             _telemetry.PlexAuthenticationProcessed(
                 req.PlexAccountId,
-                new PlexAuthenticationTelemetryDTO { IsValidated = validateResult.Value.IsValidated },
-                validateResult
+                validateResult,
+                new PlexAuthenticationTelemetryDTO { IsValidated = validateResult.Value.IsValidated }
             );
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
 
-        _telemetry.PlexAuthenticationProcessed(req.PlexAccountId, null, validateResult);
+        _telemetry.PlexAuthenticationProcessed(req.PlexAccountId, validateResult);
         // Default: return all errors if none of the above conditions matched
         await Send.FluentResult(validateResult, ct);
     }

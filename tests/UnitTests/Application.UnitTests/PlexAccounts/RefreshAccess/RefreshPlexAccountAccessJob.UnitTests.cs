@@ -18,23 +18,32 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
         context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         return context.Object;
     }
+    private void SetupRunJob()
+    {
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.RunJobAsync(
+                    It.IsAny<TelemetryActivity>(),
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>(),
+                    It.IsAny<Func<Task>>()
+                )
+            )
+            .Returns(
+                (
+                    TelemetryActivity operation,
+                    (ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId) telemetryContext,
+                    Func<Task> execute
+                ) => execute()
+            )
+            .Verifiable(Times.Once());
+    }
 
     [Test]
     public async Task ShouldComplete_WhenAccountAccessRefreshSucceeds()
     {
         // Arrange
         var context = SetupJobContext();
-        var telemetryScope = new Mock<IDisposable>(MockBehavior.Strict);
-        telemetryScope.Setup(x => x.Dispose()).Verifiable(Times.Once());
-        Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.BeginJob(
-                    TelemetryActivity.PlexAccessRefresh,
-                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
-                )
-            )
-            .Returns(telemetryScope.Object)
-            .Verifiable(Times.Once());
+        SetupRunJob();
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -52,7 +61,6 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Completed);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
-        telemetryScope.Verify();
     }
 
     [Test]
@@ -72,12 +80,14 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
             .ThrowsAsync(new OperationCanceledException(cancellationSource.Token))
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await Sut.Execute(context);
 
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<ITelemetry>()
             .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.PlexAccessRefresh), Times.Never());
         Mock.Mock<ITelemetry>()
@@ -106,6 +116,7 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
             .Setup(x => x.CaptureErrors(cancellation, TelemetryActivity.PlexAccessRefresh))
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await Sut.Execute(context);
 
@@ -138,6 +149,7 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
             .Setup(x => x.CaptureErrors(failure, TelemetryActivity.PlexAccessRefresh))
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await Sut.Execute(context);
 
@@ -156,22 +168,7 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
         var context = SetupJobContext();
         var exception = new InvalidOperationException("refresh access failed");
         Exception? capturedException = null;
-        var scopeDisposed = false;
-        var capturedBeforeScopeDispose = false;
-        var telemetryScope = new Mock<IDisposable>(MockBehavior.Strict);
-        telemetryScope
-            .Setup(x => x.Dispose())
-            .Callback(() => scopeDisposed = true)
-            .Verifiable(Times.Once());
-        Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.BeginJob(
-                    TelemetryActivity.PlexAccessRefresh,
-                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
-                )
-            )
-            .Returns(telemetryScope.Object)
-            .Verifiable(Times.Once());
+        SetupRunJob();
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -188,13 +185,7 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
                     TelemetryActivity.PlexAccessRefresh
                 )
             )
-            .Callback<Exception, TelemetryActivity>(
-                (captured, _) =>
-                {
-                    capturedException = captured;
-                    capturedBeforeScopeDispose = !scopeDisposed;
-                }
-            )
+            .Callback<Exception, TelemetryActivity>((captured, _) => capturedException = captured)
             .Verifiable(Times.Once());
 
         // Act
@@ -205,11 +196,8 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
         terminalResult.Status.ShouldBe(JobStatus.Failed);
         terminalResult.ErrorSummary.ShouldBe(exception.Message);
         capturedException.ShouldBeSameAs(exception);
-        capturedBeforeScopeDispose.ShouldBeTrue();
-        scopeDisposed.ShouldBeTrue();
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
-        telemetryScope.Verify();
         Mock.Mock<ITelemetry>()
             .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.PlexAccessRefresh), Times.Never());
     }
@@ -240,6 +228,7 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
             .Callback<Exception, TelemetryActivity>((captured, _) => capturedException = captured)
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await Sut.Execute(context);
 

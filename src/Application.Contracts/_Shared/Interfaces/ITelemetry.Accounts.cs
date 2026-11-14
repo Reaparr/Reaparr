@@ -12,8 +12,8 @@ public partial interface ITelemetry
     /// </summary>
     void PlexAuthenticationProcessed(
         int? accountId,
-        PlexAuthenticationTelemetryDTO? authentication,
-        ResultBase result
+        ResultBase result,
+        PlexAuthenticationTelemetryDTO? authentication = null
     );
 
     /// <summary>
@@ -22,8 +22,8 @@ public partial interface ITelemetry
     void PlexAuthenticationProcessed(
         TelemetryAuthenticationMethod method,
         int? accountId,
-        PlexAuthenticationTelemetryDTO? authentication,
-        ResultBase result
+        ResultBase result,
+        PlexAuthenticationTelemetryDTO? authentication = null
     );
 
     /// <summary>

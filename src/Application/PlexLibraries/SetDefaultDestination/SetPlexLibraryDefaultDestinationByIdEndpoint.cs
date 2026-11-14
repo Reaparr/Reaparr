@@ -21,10 +21,12 @@ public class SetPlexLibraryDefaultDestinationByIdEndpoint
     : Endpoint<SetPlexLibraryDefaultDestinationByIdEndpointRequest, BaseResultDTO>
 {
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public SetPlexLibraryDefaultDestinationByIdEndpoint(IReaparrDbContext dbContext)
+    public SetPlexLibraryDefaultDestinationByIdEndpoint(IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -44,27 +46,29 @@ public class SetPlexLibraryDefaultDestinationByIdEndpoint
         CancellationToken ct
     )
     {
-        var libraryType = await _dbContext
+        var library = await _dbContext
             .PlexLibraries.Where(x => x.Id == req.PlexLibraryId)
-            .Select(x => (PlexMediaType?)x.Type)
+            .Select(x => new
+            {
+                x.Type,
+                x.PlexServerId,
+                x.DefaultDestinationId,
+            })
             .SingleOrDefaultAsync(ct);
-        if (libraryType is null)
+        if (library is null)
         {
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexLibrary), req.PlexLibraryId), ct);
             return;
         }
 
-        var folder = await _dbContext
-            .FolderPaths.Where(x => x.Id == req.FolderPathId)
-            .Select(x => new { x.MediaType, x.FolderType })
-            .SingleOrDefaultAsync(ct);
+        var folder = await _dbContext.FolderPaths.Where(x => x.Id == req.FolderPathId).SingleOrDefaultAsync(ct);
         if (folder is null)
         {
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(FolderPath), req.FolderPathId), ct);
             return;
         }
 
-        if (folder.MediaType != libraryType.Value || !IsDestinationFolderType(libraryType.Value, folder.FolderType))
+        if (folder.MediaType != library.Type || !IsDestinationFolderType(library.Type, folder.FolderType))
         {
             await Send.FluentResult(
                 ResultExtensions.Create400BadRequestResult(
@@ -72,6 +76,12 @@ public class SetPlexLibraryDefaultDestinationByIdEndpoint
                 ),
                 ct
             );
+            return;
+        }
+
+        if (library.DefaultDestinationId == req.FolderPathId)
+        {
+            await Send.FluentResult(Result.Ok(), ct);
             return;
         }
 
@@ -88,9 +98,11 @@ public class SetPlexLibraryDefaultDestinationByIdEndpoint
                 ),
                 ct
             );
+            return;
         }
-        else
-            await Send.FluentResult(Result.Ok(), ct);
+
+        _telemetry.PlexLibraryChanged(library.PlexServerId, req.PlexLibraryId, library.Type, folder);
+        await Send.FluentResult(Result.Ok(), ct);
     }
 
     private static bool IsDestinationFolderType(PlexMediaType mediaType, FolderType folderType) =>

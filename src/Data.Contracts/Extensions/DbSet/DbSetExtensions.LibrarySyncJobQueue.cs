@@ -3,7 +3,7 @@ namespace Reaparr.Data.Contracts;
 public static partial class DbSetExtensions
 {
     /// <summary>
-    ///  Resets the status of <see cref="LibrarySyncJobStatus.Completed"/> or <see cref="LibrarySyncJobStatus.Failed"/> library sync jobs to <see cref="LibrarySyncJobStatus.Queued"/> for the specified library IDs.
+    /// Resets completed, failed, or cancelled library sync jobs to queued for the specified library IDs.
     /// </summary>
     public static async Task<int> ResetLibrarySyncJobQueue(
         this IQueryable<LibrarySyncJobQueue> dbSet,

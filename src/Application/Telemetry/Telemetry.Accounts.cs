@@ -22,8 +22,8 @@ public sealed partial class Telemetry
     /// <inheritdoc/>
     public void PlexAuthenticationProcessed(
         int? accountId,
-        PlexAuthenticationTelemetryDTO? authentication,
-        ResultBase result
+        ResultBase result,
+        PlexAuthenticationTelemetryDTO? authentication = null
     )
     {
         var outcome = AuthenticationOutcome(
@@ -38,8 +38,8 @@ public sealed partial class Telemetry
     public void PlexAuthenticationProcessed(
         TelemetryAuthenticationMethod method,
         int? accountId,
-        PlexAuthenticationTelemetryDTO? authentication,
-        ResultBase result
+        ResultBase result,
+        PlexAuthenticationTelemetryDTO? authentication = null
     )
     {
         var outcome = AuthenticationOutcome(method, authentication, result);

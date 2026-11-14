@@ -358,13 +358,17 @@ public class ValidatePlexTokenEndpointUnitTests
         );
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.IsAny<ValidatePlexTokenCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(commandResult);
+            .Setup(x => x.Send(
+                It.Is<ValidatePlexTokenCommand>(command => command.AuthenticationToken == testAccountDTO.AuthenticationToken),
+                CancellationToken))
+            .ReturnsAsync(commandResult)
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
             new ValidatePlexTokenEndpointRequest()
             {
+                PlexAccountId = 0,
                 DisplayName = "UnknownDisplayName", // Default value
                 ManualAuthenticationToken = testAccountDTO.AuthenticationToken,
             }
@@ -372,22 +376,24 @@ public class ValidatePlexTokenEndpointUnitTests
         var result = endpointResult.Response;
 
         // Assert
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
         result.ShouldNotBeNull();
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var value = result.Value;
         value.ShouldNotBeNull();
         value.IsValidated.ShouldBeFalse();
         value.ValidatedAt.ShouldBeNull();
 
-        Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<ValidatePlexTokenCommand>(), It.IsAny<CancellationToken>()), Times.Once());
+        Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>()
             .Verify(
                 x =>
                     x.PlexAuthenticationProcessed(
-                        null,
-                        It.Is<PlexAuthenticationTelemetryDTO>(payload => !payload.IsValidated),
-                        It.Is<ResultBase>(result => ReferenceEquals(result, commandResult))
+                        0,
+                        It.Is<ResultBase>(result => ReferenceEquals(result, commandResult)),
+                        It.Is<PlexAuthenticationTelemetryDTO>(payload => !payload.IsValidated)
                     ),
                 Times.Once()
             );

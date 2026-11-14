@@ -7,11 +7,16 @@ public class RefreshPlexAccountAccessJob : IJob
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
-
-    public RefreshPlexAccountAccessJob(ILogger log, ICommandExecutor commandExecutor)
+    private readonly ITelemetry _telemetry;
+    public RefreshPlexAccountAccessJob(
+        ILogger log,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<RefreshPlexAccountAccessJob>();
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     protected JobTypes JobType => JobTypes.RefreshPlexAccountAccessJob;
@@ -22,33 +27,56 @@ public class RefreshPlexAccountAccessJob : IJob
     public static JobKey GetJobKey() =>
         new(nameof(JobTypes.RefreshPlexAccountAccessJob), nameof(JobTypes.RefreshPlexAccountAccessJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public Task Execute(IJobExecutionContext context)
     {
-        var cancellationToken = context.CancellationToken;
-        _log.Here().Debug("Executing job: {JobName}", nameof(RefreshPlexAccountAccessJob));
+        return _telemetry.RunJobAsync(
+            TelemetryActivity.PlexAccessRefresh,
+            context.GetTelemetryContext(),
+            async () =>
+            {
+                try
+                {
+                    var cancellationToken = context.CancellationToken;
+                    _log.Here().Debug("Executing job: {JobName}", nameof(RefreshPlexAccountAccessJob));
 
-        var result = await _commandExecutor.Send(new RefreshPlexAccountAccessCommand(), cancellationToken);
+                    var result = await _commandExecutor.Send(
+                        new RefreshPlexAccountAccessCommand(Trigger: TelemetryTrigger.Scheduled),
+                        cancellationToken
+                    );
 
-        if (result.IsCancelled)
-        {
-            context.SetResult(JobStatus.Cancelled, result);
-            result.LogWarning();
-            return;
-        }
+                    if (result.IsCancelledOrFailed)
+                    {
+                        context.SetResult(
+                            result.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
+                            result
+                        );
+                        result.LogIfFailed();
+                        _telemetry.CaptureErrors(result, TelemetryActivity.PlexAccessRefresh);
+                        return;
+                    }
 
-        if (result.IsFailed)
-        {
-            context.SetResult(JobStatus.Failed, result);
-            result.LogError();
-            return;
-        }
-
-        _log.Here()
-            .Debug(
-                "{JobName} refreshed access for {PlexAccountCount} Plex accounts",
-                nameof(RefreshPlexAccountAccessJob),
-                result.Value.Count
-            );
-        context.SetResult(JobStatus.Completed);
+                    _log.Here()
+                        .Debug(
+                            "{JobName} refreshed access for {PlexAccountCount} Plex accounts",
+                            nameof(RefreshPlexAccountAccessJob),
+                            result.Value.Count
+                        );
+                    context.SetResult(JobStatus.Completed);
+                }
+                catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
+                {
+                    var cancellationResult = ResultExtensions.TaskIsCancelled(nameof(RefreshPlexAccountAccessJob));
+                    context.SetResult(JobStatus.Cancelled, cancellationResult);
+                    cancellationResult.LogIfFailed();
+                }
+                catch (Exception exception)
+                {
+                    var failureResult = Result.Fail(new ExceptionalError(exception));
+                    context.SetResult(JobStatus.Failed, failureResult);
+                    failureResult.LogIfFailed();
+                    _telemetry.CaptureException(exception, TelemetryActivity.PlexAccessRefresh);
+                }
+            }
+        );
     }
 }

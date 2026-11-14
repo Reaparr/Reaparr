@@ -11,18 +11,21 @@ public class ApplyUpdateEndpoint : EndpointWithoutRequest<BaseResultDTO>
     private readonly UpdateManager _velopackManager;
     private readonly IHostApplicationLifetime _appLifetime;
     private readonly ILogger _log;
+    private readonly ITelemetry _telemetry;
 
     public ApplyUpdateEndpoint(
         ILogger log,
         IAppBuildInfo appBuildInfo,
         UpdateManager velopackManager,
-        IHostApplicationLifetime appLifetime
+        IHostApplicationLifetime appLifetime,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<ApplyUpdateEndpoint>();
         _appBuildInfo = appBuildInfo;
         _velopackManager = velopackManager;
         _appLifetime = appLifetime;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -62,31 +65,44 @@ public class ApplyUpdateEndpoint : EndpointWithoutRequest<BaseResultDTO>
                 asset.Version
             );
 
+        var parentContext = Activity.Current?.Context ?? default;
         HttpContext.Response.OnCompleted(() =>
         {
-            _ = Task.Run(async () => await ApplyUpdateAfterResponseAsync(asset));
-
+            _ = Task.Run(() => ApplyUpdateAfterResponseAsync(asset, parentContext));
             return Task.CompletedTask;
         });
 
+        _telemetry.UpdateApplyAccepted(asset.PackageId, asset.Version.ToString());
         await Send.FluentResult(Result.Ok(), ct);
     }
 
-    private async Task ApplyUpdateAfterResponseAsync(VelopackAsset asset)
+    private async Task ApplyUpdateAfterResponseAsync(VelopackAsset asset, ActivityContext parentContext)
     {
+        using var activity = _telemetry.StartUpdateLauncher(asset.PackageId, asset.Version.ToString(), parentContext);
+
+        _log.Here()
+            .Warning(
+                "Launching Velopack updater to wait for Reaparr exit, apply update, and restart; AppId: {AppId}; CurrentVersion: {CurrentVersion}; PackageId: {PackageId}; PackageVersion: {PackageVersion}",
+                _velopackManager.AppId,
+                _velopackManager.CurrentVersion,
+                asset.PackageId,
+                asset.Version
+            );
+
+        var launchResult = Result.Try(() =>
+            _velopackManager.WaitExitThenApplyUpdates(asset, silent: false, restart: true, restartArgs: [])
+        );
+        _telemetry.UpdateLauncherFinished(launchResult, asset.PackageId, asset.Version.ToString());
+
+        if (launchResult.IsCancelledOrFailed)
+        {
+            launchResult.LogIfFailed();
+            _telemetry.CaptureErrors(launchResult, TelemetryActivity.UpdateLauncher);
+            return;
+        }
+
         try
         {
-            _log.Here()
-                .Warning(
-                    "Launching Velopack updater to wait for Reaparr exit, apply update, and restart; AppId: {AppId}; CurrentVersion: {CurrentVersion}; PackageId: {PackageId}; PackageVersion: {PackageVersion}",
-                    _velopackManager.AppId,
-                    _velopackManager.CurrentVersion,
-                    asset.PackageId,
-                    asset.Version
-                );
-
-            _velopackManager.WaitExitThenApplyUpdates(asset, silent: false, restart: true, restartArgs: []);
-
             _log.Here()
                 .Warning(
                     "Velopack updater launched; stopping Reaparr host before exiting process; AppId: {AppId}; CurrentVersion: {CurrentVersion}; PackageId: {PackageId}; PackageVersion: {PackageVersion}",
@@ -127,10 +143,11 @@ public class ApplyUpdateEndpoint : EndpointWithoutRequest<BaseResultDTO>
         }
         catch (Exception ex)
         {
+            _telemetry.CaptureErrors(Result.Fail(new ExceptionalError(ex)), TelemetryActivity.UpdateLauncher);
             _log.Here()
                 .Error(
                     ex,
-                    "Velopack WaitExitThenApplyUpdates failed; AppId: {AppId}; CurrentVersion: {CurrentVersion}; PackageId: {PackageId}; PackageVersion: {PackageVersion}",
+                    "Velopack update shutdown failed; AppId: {AppId}; CurrentVersion: {CurrentVersion}; PackageId: {PackageId}; PackageVersion: {PackageVersion}",
                     _velopackManager.AppId,
                     _velopackManager.CurrentVersion,
                     asset.PackageId,

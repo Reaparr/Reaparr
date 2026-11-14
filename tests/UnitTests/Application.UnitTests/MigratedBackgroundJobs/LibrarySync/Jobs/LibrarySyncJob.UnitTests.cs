@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -23,6 +24,25 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         context.SetupProperty(x => x.Result);
         return context;
+    }
+    private void SetupRunJob()
+    {
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.RunJobAsync(
+                    It.IsAny<TelemetryActivity>(),
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>(),
+                    It.IsAny<Func<Task>>()
+                )
+            )
+            .Returns(
+                (
+                    TelemetryActivity operation,
+                    (ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId) telemetryContext,
+                    Func<Task> execute
+                ) => execute()
+            )
+            .Verifiable(Times.Once());
     }
 
     [Test]
@@ -124,6 +144,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -162,6 +183,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -246,6 +268,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await ExecuteWithListenerAsync(context.Object).WaitAsync(cancellation.Token);
 
@@ -278,6 +301,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
                 Times.Never
             );
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -362,6 +386,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         var execution = ExecuteWithListenerAsync(context.Object);
         var firstCompleted = await Task.WhenAny(execution, leaseRequested.Task).WaitAsync(CancellationToken);
@@ -391,6 +416,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<RefreshLibraryMediaCommand>(), It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -458,6 +484,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -472,6 +499,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Status.ShouldBe(cancelled ? JobStatus.Cancelled : JobStatus.Completed);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -508,6 +536,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         await dbContext.SaveChangesAsync(CancellationToken);
         var context = SetupJobContext(library.PlexServerId, library.Id);
 
+        SetupRunJob();
         // Act
         await Sut.Execute(context.Object);
 
@@ -527,6 +556,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             );
         Mock.Mock<INotificationHubService>()
             .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Never);
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -585,6 +615,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -602,6 +633,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<RefreshLibraryMediaCommand>(), It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -659,6 +691,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -678,6 +711,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<IMediaOverviewRebuildCoordinator>()
             .Verify(x => x.AcquireLibrarySyncLeaseAsync(It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -735,6 +769,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
+        SetupRunJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -753,6 +788,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<IMediaOverviewRebuildCoordinator>()
             .Verify(x => x.AcquireLibrarySyncLeaseAsync(It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     private async Task ExecuteWithListenerAsync(IJobExecutionContext context)

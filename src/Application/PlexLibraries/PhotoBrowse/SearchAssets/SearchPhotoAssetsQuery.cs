@@ -37,10 +37,12 @@ public sealed class SearchPhotoAssetsQueryValidator : AbstractValidator<SearchPh
 public sealed class SearchPhotoAssetsQueryHandler : ICommandHandler<SearchPhotoAssetsQuery, Result<PhotoAssetPageDTO>>
 {
     private readonly IReaparrDbContextFactory _dbContextFactory;
+    private readonly ITelemetry _telemetry;
 
-    public SearchPhotoAssetsQueryHandler(IReaparrDbContextFactory dbContextFactory)
+    public SearchPhotoAssetsQueryHandler(IReaparrDbContextFactory dbContextFactory, ITelemetry telemetry)
     {
         _dbContextFactory = dbContextFactory;
+        _telemetry = telemetry;
     }
 
     public async Task<Result<PhotoAssetPageDTO>> ExecuteAsync(
@@ -48,23 +50,34 @@ public sealed class SearchPhotoAssetsQueryHandler : ICommandHandler<SearchPhotoA
         CancellationToken cancellationToken
     )
     {
-        if (PhotoBrowseQuerySupport.GetSearchTerms(query.Query).Length == 0)
-            return ResultExtensions.Create400BadRequestResult("Search query must contain an effective title term.");
+        var searchTerms = PhotoBrowseQuerySupport.GetSearchTerms(query.Query);
+        if (searchTerms.Length == 0)
+        {
+            var invalid = ResultExtensions
+                .Create400BadRequestResult("Search query must contain an effective title term.")
+                .ToResult<PhotoAssetPageDTO>();
+            _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), searchTerms, invalid);
+            return invalid;
+        }
 
         using var context = await _dbContextFactory.CreateAsync();
         var scopeResult = await context.ResolvePlexPhotoBrowseScopeAsync(null, cancellationToken);
         if (scopeResult.IsCancelledOrFailed)
-            return scopeResult.ToResult<PhotoAssetPageDTO>();
+        {
+            var failed = scopeResult.ToResult<PhotoAssetPageDTO>();
+            _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), searchTerms, failed);
+            return failed;
+        }
 
         var (totalCount, totalBytes, assetIds) = await LoadAssetPageAsync(
             context,
             scopeResult.Value.LibraryIds,
             query,
+            searchTerms,
             cancellationToken
         );
         var items = await PhotoBrowseQuerySupport.LoadAssetItemsAsync(context, assetIds, cancellationToken);
-
-        return Result.Ok(
+        var result = Result.Ok(
             new PhotoAssetPageDTO
             {
                 Items = items,
@@ -74,18 +87,30 @@ public sealed class SearchPhotoAssetsQueryHandler : ICommandHandler<SearchPhotoA
                 TotalBytes = totalBytes,
             }
         );
+        _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), searchTerms, result);
+        return result;
+
     }
+
+    private static PhotoSearchTelemetryDTO ToTelemetryDTO(SearchPhotoAssetsQuery query) =>
+        new()
+        {
+            Page = query.Page,
+            PageSize = query.PageSize,
+            Sort = query.Sort,
+            Direction = query.Direction,
+        };
 
     private static async Task<(int TotalCount, long TotalBytes, List<int> AssetIds)> LoadAssetPageAsync(
         IReaparrDbContext context,
         IReadOnlyList<int> allowedLibraryIds,
         SearchPhotoAssetsQuery query,
+        IReadOnlyList<string> searchTerms,
         CancellationToken cancellationToken
     )
     {
-        var terms = PhotoBrowseQuerySupport.GetSearchTerms(query.Query);
         var assets = context.PlexPhotoMediaData.Where(x => allowedLibraryIds.Contains(x.PlexLibraryId));
-        foreach (var term in terms)
+        foreach (var term in searchTerms)
             assets = assets.Where(x => x.SearchTitle.Contains(term));
 
         var (totalCount, totalBytes) = await assets.GetPlexPhotoAssetTotalsAsync();

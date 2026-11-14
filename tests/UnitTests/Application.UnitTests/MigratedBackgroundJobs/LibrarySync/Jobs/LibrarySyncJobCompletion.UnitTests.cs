@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -5,6 +6,25 @@ namespace Reaparr.Application.UnitTests;
 [NotInParallel]
 public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
 {
+    private void SetupRunJob()
+    {
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.RunJobAsync(
+                    It.IsAny<TelemetryActivity>(),
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>(),
+                    It.IsAny<Func<Task>>()
+                )
+            )
+            .Returns(
+                (
+                    TelemetryActivity operation,
+                    (ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId) telemetryContext,
+                    Func<Task> execute
+                ) => execute()
+            )
+            .Verifiable(Times.Once());
+    }
     [Test]
     [Arguments(LibrarySyncJobStatus.Completed, false)]
     [Arguments(LibrarySyncJobStatus.Failed, false)]
@@ -48,6 +68,7 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
             .ReturnsAsync(new DateTimeOffset(2026, 10, 22, 12, 0, 0, TimeSpan.Zero))
             .Verifiable(offline ? Times.Never() : Times.Once());
 
+        SetupRunJob();
         // Act
         await Sut.Execute(context.Object);
         await Mock.Create<LibrarySyncJobListener>().JobWasExecuted(context.Object, null, CancellationToken);
@@ -100,6 +121,7 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
             It.IsAny<CancellationToken>()), expectedStatus == LibrarySyncJobStatus.Completed ? Times.Once() : Times.Never());
         Mock.Mock<IScheduler>().Verify(x => x.ScheduleJob(
             It.IsAny<IJobDetail>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()), offline ? Times.Never() : Times.Once());
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     private async Task<List<PlexLibrary>> SetupQueueAsync(bool offline)
