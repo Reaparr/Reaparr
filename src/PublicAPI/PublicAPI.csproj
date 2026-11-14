@@ -13,6 +13,7 @@
         <PackageReference Include="FastEndpoints" Version="8.3.0" />
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\Application.Contracts\Application.Contracts.csproj" />
         <ProjectReference Include="..\Data.Contracts\Data.Contracts.csproj" />
         <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
         <ProjectReference Include="..\Domain\Domain.csproj" />
@@ -27,6 +28,7 @@
         <Using Include="FluentValidation" />
         <Using Include="Microsoft.AspNetCore.Http" />
         <Using Include="Microsoft.EntityFrameworkCore" />
+        <Using Include="Reaparr.Application.Contracts" />
         <Using Include="Reaparr.Data.Contracts" />
         <Using Include="Reaparr.Domain" />
         <Using Include="Reaparr.FluentResultExtensions" />

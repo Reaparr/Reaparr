@@ -19,6 +19,8 @@
         <ProjectReference Include="..\..\BaseTests\BaseTests.csproj" />
     </ItemGroup>
     <ItemGroup>
+        <Using Include="Reaparr.Application.Contracts" />
+        <Using Include="Reaparr.PublicAPI.Contracts" />
         <Using Include="Microsoft.EntityFrameworkCore" />
         <Using Include="Reaparr.FluentResults" />
         <Using Include="Reaparr.FluentResultExtensions" />

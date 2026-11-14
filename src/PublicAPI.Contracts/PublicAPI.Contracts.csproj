@@ -4,9 +4,15 @@
         <RootNamespace>Reaparr.PublicAPI.Contracts</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
+        <ProjectReference Include="..\Domain\Domain.csproj" />
+    </ItemGroup>
+    <ItemGroup>
         <PackageReference Include="CSharpier.MsBuild" Version="1.3.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+    </ItemGroup>
+    <ItemGroup>
+        <Using Include="Reaparr.Domain" />
     </ItemGroup>
 </Project>

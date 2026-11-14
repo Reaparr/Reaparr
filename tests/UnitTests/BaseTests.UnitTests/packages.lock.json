@@ -1541,6 +1541,7 @@
           "Autofac": "[9.1.0, )",
           "BencodeNET": "[5.0.0, )",
           "FastEndpoints": "[8.3.0, )",
+          "Reaparr.Application.Contracts": "[1.0.0, )",
           "Reaparr.Data.Contracts": "[1.0.0, )",
           "Reaparr.Domain": "[1.0.0, )",
           "Reaparr.Identity.Contracts": "[1.0.0, )",
@@ -1549,7 +1550,10 @@
         }
       },
       "Reaparr.PublicAPI.Contracts": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Reaparr.Domain": "[1.0.0, )"
+        }
       },
       "Reaparr.Settings": {
         "type": "Project",

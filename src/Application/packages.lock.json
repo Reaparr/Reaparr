@@ -666,7 +666,10 @@
         }
       },
       "Reaparr.PublicAPI.Contracts": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Reaparr.Domain": "[1.0.0, )"
+        }
       },
       "Reaparr.Settings": {
         "type": "Project",
