@@ -1474,6 +1474,7 @@
           "FluentValidation": "[12.1.1, )",
           "Microsoft.Extensions.DependencyInjection": "[10.0.13, )",
           "Reaparr.Domain": "[1.0.0, )",
+          "Reaparr.Environment": "[1.0.0, )",
           "Serilog.AspNetCore": "[10.0.0, )",
           "Spectre.Console.Cli": "[0.55.0, )",
           "System.IO.Abstractions": "[22.1.1, )"
@@ -1656,10 +1657,7 @@
         }
       },
       "Reaparr.PublicAPI.Contracts": {
-        "type": "Project",
-        "dependencies": {
-          "Reaparr.Domain": "[1.0.0, )"
-        }
+        "type": "Project"
       },
       "Reaparr.Settings": {
         "type": "Project",
