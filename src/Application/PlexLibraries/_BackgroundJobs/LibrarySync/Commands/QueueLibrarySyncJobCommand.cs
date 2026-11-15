@@ -6,7 +6,8 @@ namespace Reaparr.Application;
 public record QueueLibrarySyncJobCommand(
     List<int> PlexLibraryIds,
     bool ForceLibrarySync = false,
-    bool ForceMediaRefresh = false
+    bool ForceMediaRefresh = false,
+    TelemetryTrigger Trigger = TelemetryTrigger.Manual
 ) : ICommand<Result>;
 
 public class QueueLibrarySyncJobCommandValidator : AbstractValidator<QueueLibrarySyncJobCommand>
@@ -24,18 +25,21 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
+    private readonly ITelemetry _telemetry;
 
     public QueueLibrarySyncJobCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        INotificationHubService notificationHubService
+        INotificationHubService notificationHubService,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<QueueLibrarySyncJobCommandHandler>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(QueueLibrarySyncJobCommand command, CancellationToken cancellationToken)
@@ -90,10 +94,17 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
             .Distinct()
             .ToList();
 
-        // Reset completed/failed items
-        if (itemsToReset.Any())
+        // Reset completed/failed items and retain only rows this conditional update admitted.
+        List<LibrarySyncJobQueue> resetAdmissions = [];
+        if (itemsToReset.Count > 0)
         {
-            await _dbContext.LibrarySyncJobQueues.ResetLibrarySyncJobQueue(itemsToReset, token: cancellationToken);
+            var resetResult = await _dbContext.ExecuteTransactionAsync(
+                (ctx, txCt) => ctx.LibrarySyncJobQueues.ResetLibrarySyncJobQueue(itemsToReset, txCt),
+                cancellationToken
+            );
+            if (resetResult.IsFailed)
+                return resetResult.ToResult().LogIfFailed();
+            resetAdmissions = resetResult.Value;
         }
 
         if (command.ForceMediaRefresh && queuedForceRefreshLibraryIds.Any())
@@ -101,6 +112,21 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
             await _dbContext
                 .LibrarySyncJobQueues.Where(x => queuedForceRefreshLibraryIds.Contains(x.PlexLibraryId))
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.ForceMediaRefresh, true), cancellationToken);
+        }
+
+        foreach (var admission in resetAdmissions)
+        {
+            _telemetry.LibrarySyncQueued(
+                (
+                    admission.PlexLibraryId,
+                    admission.PlexServerId,
+                    admission.CreatedAt,
+                    admission.ForceMediaRefresh || command.ForceMediaRefresh
+                ),
+                libraries.Single(x => x.Id == admission.PlexLibraryId).Type,
+                command.ForceLibrarySync,
+                command.Trigger
+            );
         }
 
         // Get ALL existing library IDs (including those we just reset, which are now Queued)
@@ -142,6 +168,16 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
         {
             await _dbContext.LibrarySyncJobQueues.AddRangeAsync(itemsToAdd, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        foreach (var item in itemsToAdd)
+        {
+            _telemetry.LibrarySyncQueued(
+                (item.PlexLibraryId, item.PlexServerId, item.CreatedAt, item.ForceMediaRefresh),
+                libraries.Single(x => x.Id == item.PlexLibraryId).Type,
+                command.ForceLibrarySync,
+                command.Trigger
+            );
         }
 
         var hasAdmission = itemsToAdd.Any() || itemsToReset.Any();
