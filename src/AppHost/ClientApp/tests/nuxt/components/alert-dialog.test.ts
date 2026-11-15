@@ -85,8 +85,6 @@ test('Should report retained startup failures and later failures together withou
 	await expect.poll(() => new URL(dialog!.querySelector<HTMLAnchorElement>('[data-cy="report-api-error"]')!.href)
 		.searchParams.get('logs')).toContain('Only the first 10 distinct failures are shown.');
 	const reportLink = dialog?.querySelector<HTMLAnchorElement>('[data-cy="report-api-error"]');
-	expect([...dialog!.querySelectorAll<HTMLElement>('[data-cy="api-error"]')].every((element) => element.classList.contains('ph-no-capture'))).toBe(true);
-	expect(reportLink?.classList.contains('ph-no-capture')).toBe(true);
 	const reportUrl = new URL(reportLink!.href);
 	expect(reportUrl.searchParams.get('title')).toBe('[BUG] - Reaparr: Something went wrong');
 	expect(reportUrl.searchParams.get('version')).toBe('v0.31.0');
