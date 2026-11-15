@@ -12,7 +12,6 @@
 		</template>
 		<template #top-row>
 			<QAlert
-				class="ph-no-capture"
 				v-if="errorMessage"
 				cy="directory-browser-save-error"
 				role="alert"
