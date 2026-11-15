@@ -8,7 +8,12 @@ namespace Reaparr.Build;
 
 internal interface IDesktopCommandRunner
 {
-    Task RunCommandAsync(string fileName, IReadOnlyList<string> arguments, string? workingDirectory = null);
+    Task RunCommandAsync(
+        string fileName,
+        IReadOnlyList<string> arguments,
+        string? workingDirectory = null,
+        IReadOnlyDictionary<string, string?>? environmentVariables = null
+    );
 
     Task<int> ExecuteCommandAsync(string fileName, IReadOnlyList<string> arguments, string? workingDirectory = null);
 
@@ -30,7 +35,12 @@ internal sealed class DesktopCommandRunner : IDesktopCommandRunner
         _log = logger.ForContext<DesktopCommandRunner>();
     }
 
-    public async Task RunCommandAsync(string fileName, IReadOnlyList<string> arguments, string? workingDirectory = null)
+    public async Task RunCommandAsync(
+        string fileName,
+        IReadOnlyList<string> arguments,
+        string? workingDirectory = null,
+        IReadOnlyDictionary<string, string?>? environmentVariables = null
+    )
     {
         LogCommand(fileName, arguments);
 
@@ -40,6 +50,8 @@ internal sealed class DesktopCommandRunner : IDesktopCommandRunner
         try
         {
             var command = Cli.Wrap(fileName).WithArguments(arguments).WithWorkingDirectory(resolvedWorkingDirectory);
+            if (environmentVariables is not null)
+                command = command.WithEnvironmentVariables(environmentVariables);
 
             await foreach (var commandEvent in command.ListenAsync())
             {

@@ -37,8 +37,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             .ReturnsAsync(Result.Ok(0)).Verifiable(Times.Once());
         var runner = Mock.Mock<IDesktopCommandRunner>();
         runner.Setup(x => x.RequireCommandAsync("vpk")).Returns(Task.CompletedTask).Verifiable(Times.Once());
-        runner.Setup(x => x.RunCommandAsync("vpk",
-                It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(packArguments)), null))
+        runner.Setup(x => x.RunCommandAsync("vpk", It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(packArguments)), null, null))
             .Callback(() => filesAtPack = fileSystem.Directory
                 .EnumerateFiles("/repo/.artifacts", "*", SearchOption.AllDirectories)
                 .Order(StringComparer.Ordinal)
@@ -104,8 +103,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         var runner = Mock.Mock<IDesktopCommandRunner>();
         runner.Setup(x => x.RequireCommandAsync("vpk")).Returns(Task.CompletedTask)
             .Verifiable(dryRun ? Times.Never() : Times.Once());
-        runner.Setup(x => x.RunCommandAsync("vpk",
-                It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(packArguments)), null))
+        runner.Setup(x => x.RunCommandAsync("vpk", It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(packArguments)), null, null))
             .Returns(Task.CompletedTask).Verifiable(dryRun ? Times.Never() : Times.Once());
         using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
 
@@ -145,7 +143,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             .ReturnsAsync(Result.Fail<int>("publish failed")).Verifiable(Times.Once());
         var runner = Mock.Mock<IDesktopCommandRunner>();
         runner.Setup(x => x.RequireCommandAsync("vpk")).Returns(Task.CompletedTask).Verifiable(Times.Once());
-        runner.Setup(x => x.RunCommandAsync("vpk", It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
+        runner.Setup(x => x.RunCommandAsync("vpk", It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null))
             .Returns(Task.CompletedTask).Verifiable(Times.Never());
         using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
 

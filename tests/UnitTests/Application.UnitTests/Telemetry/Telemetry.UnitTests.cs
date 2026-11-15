@@ -53,7 +53,8 @@ public class TelemetryUnitTests : BaseUnitTest
         using var request = new Activity(nameof(ShouldUseExistingIdentityAndNativeContext_WhenEventsAreCaptured))
             .SetIdFormat(ActivityIdFormat.W3C).Start();
         const string session = "0197af2c-8533-71b3-a351-80da30db084a";
-        using var requestContext = telemetry.BeginRequest(session);
+        ITelemetry facade = telemetry;
+        using var requestContext = facade.BeginRequest(session);
 
         // Act
         var diagnostic = telemetry.SendDiagnostic(origin);
@@ -81,6 +82,61 @@ public class TelemetryUnitTests : BaseUnitTest
         client.Verify();
         client.Verify(x => x.FlushAsync(), Times.Never());
         client.Verify(x => x.Dispose(), Times.Never());
+    }
+
+    [Test]
+    public async Task ShouldReturnBrowserBootstrap_WhenTelemetryIsConfiguredAndStartupIdentityIsCached()
+    {
+        // Arrange
+        SetAppBuildInfo(build =>
+        {
+            build.TelemetryHost = Host;
+            build.TelemetryProjectToken = "phc_test";
+            build.InformationalVersion = "0.40.0-dev.1";
+            build.RuntimeMode = "desktop";
+            build.RuntimeIdentifier = "linux-x64";
+            build.CurrentOS = OperatingSystemPlatform.Linux;
+        });
+        var user = new Mock<IUserService>(MockBehavior.Strict);
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
+        using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
+        var client = new Mock<IPostHogClient>(MockBehavior.Strict);
+        client.Setup(x =>
+                x.Capture(
+                    Identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
+            .Returns(true)
+            .Verifiable(Times.Once());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
+        await telemetry.InitializeAsync();
+
+        // Act
+        var bootstrap = telemetry.GetBrowserBootstrap();
+
+        // Assert
+        bootstrap.ShouldNotBeNull();
+        bootstrap.ApiHost.ShouldBe(Host);
+        bootstrap.ProjectToken.ShouldBe("phc_test");
+        bootstrap.DistinctId.ShouldBe(Identity);
+        bootstrap.Release.ShouldBe("0.40.0-dev.1");
+        bootstrap.Environment.ShouldBe(TelemetryProtocol.DevelopmentEnvironment);
+        bootstrap.RuntimeMode.ShouldBe("desktop");
+        bootstrap.RuntimeIdentifier.ShouldBe("linux-x64");
+        bootstrap.Platform.ShouldBe(nameof(OperatingSystemPlatform.Linux));
+        user.Verify();
+        client.Verify();
     }
 
     [Test]
@@ -278,6 +334,7 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Act
         await telemetry.InitializeAsync();
+        var bootstrap = telemetry.GetBrowserBootstrap();
         telemetry.NotificationsCleared(3);
         telemetry.CaptureException(new IOException("ordinary transport failure"), TelemetryActivity.Download);
         var diagnostic = telemetry.SendDiagnostic(TelemetryDiagnosticOrigin.Backend);
@@ -286,6 +343,7 @@ public class TelemetryUnitTests : BaseUnitTest
             (default, null, "unconfigured-refresh", "unconfigured-fire"));
 
         // Assert
+        bootstrap.ShouldBeNull();
         jobScope.ShouldBeNull();
         diagnostic.IsFailed.ShouldBeTrue();
         diagnostic.Errors.Count.ShouldBe(1);
@@ -363,6 +421,7 @@ public class TelemetryUnitTests : BaseUnitTest
         await telemetry.InitializeAsync();
 
         // Assert
+        telemetry.GetBrowserBootstrap().ShouldBeNull();
         user.Verify();
         client.Invocations.ShouldBeEmpty();
     }

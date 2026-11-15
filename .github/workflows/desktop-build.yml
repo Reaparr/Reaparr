@@ -58,6 +58,9 @@ jobs:
             -   name: Generate frontend
                 shell: bash
                 working-directory: src/AppHost/ClientApp/
+                env:
+                    NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
+                    NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
                 run: bun run generate --fail-on-error
 
             -   name: Upload generated frontend artifact

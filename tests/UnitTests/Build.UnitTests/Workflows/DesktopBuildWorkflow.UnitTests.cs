@@ -129,11 +129,9 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         var runner = Mock.Mock<IDesktopCommandRunner>();
         runner.Setup(x => x.RequireCommandAsync("vpk")).Returns(Task.CompletedTask).Verifiable(Times.Once());
         runner.Setup(x => x.RequireCommandAsync("dotnet")).Returns(Task.CompletedTask).Verifiable(Times.Once());
-        runner.Setup(x => x.RunCommandAsync("dotnet",
-                It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "publish" && arguments.Contains("--no-restore")), null))
+        runner.Setup(x => x.RunCommandAsync("dotnet", It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "publish" && arguments.Contains("--no-restore")), null, null))
             .Returns(Task.CompletedTask).Verifiable(Times.Once());
-        runner.Setup(x => x.RunCommandAsync("vpk",
-                It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "pack" && arguments[arguments.Count - 1] == artifacts), null))
+        runner.Setup(x => x.RunCommandAsync("vpk", It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "pack" && arguments[arguments.Count - 1] == artifacts), null, null))
             .Returns(Task.CompletedTask).Verifiable(Times.Once());
         runner.Setup(x => x.ExecuteCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
             .Verifiable(Times.Never());
@@ -152,7 +150,7 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
             .Order(StringComparer.Ordinal)
             .Select(path => (fileSystem.Path.GetFileName(path), fileSystem.File.ReadAllText(path)))
             .ShouldBe([("Reaparr-1.0.AppImage", "old"), ("Reaparr-2.0.AppImage", "new")]);
-        runner.Verify(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()),
+        runner.Verify(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null),
             Times.Exactly(2));
         runner.Verify();
     }
@@ -192,7 +190,7 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         launcher.Setup(x => x.ExecuteAsync(
                 It.Is<DesktopLaunchBuildCommand>(c => ReferenceEquals(c.Settings, settings)), CancellationToken))
             .ReturnsAsync(Result.Ok(0)).Verifiable(Times.Once());
-        runner.Setup(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
+        runner.Setup(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null))
             .Returns(Task.CompletedTask).Verifiable(Times.Never());
         using var container = CreateBuildContainer(paths, fileSystem, runner.Object);
         using var scope = container.BeginLifetimeScope(builder =>

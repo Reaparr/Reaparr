@@ -54,6 +54,7 @@ public static partial class Startup
 
         services.AddOptions();
         services.ConfigureTelemetry(appBuildInfo, appRuntimeInfo);
+        services.AddHttpForwarder();
 
         services.ConfigureHttpJsonOptions(options => options.SerializerOptions.ApplyStandardConfiguration());
 

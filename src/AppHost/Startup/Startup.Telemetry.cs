@@ -29,6 +29,7 @@ public static partial class Startup
             return;
 
         var ingestionHost = new Uri(appBuildInfo.TelemetryHost, UriKind.Absolute);
+        var assetOrigin = TelemetryProxy.GetAssetOrigin(ingestionHost);
         services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
                 .AddService(TelemetryProtocol.Service, serviceVersion: appBuildInfo.InformationalVersion)
@@ -41,18 +42,22 @@ public static partial class Startup
                     [TelemetryProtocol.RuntimeIdentifier] = appBuildInfo.RuntimeIdentifier,
                     [TelemetryProtocol.ApplicationId] = appRuntimeInfo.AppRunId,
                 }))
-            .WithTracing(tracing => tracing
-                .SetSampler(new ParentBasedSampler(new AlwaysOnSampler()))
-                .AddSource(TelemetryProtocol.ActivitySourceName)
-                .AddAspNetCoreInstrumentation(options => options.RecordException = false)
-                .AddHttpClientInstrumentation(options =>
-                {
-                    options.RecordException = false;
-                    options.FilterHttpRequestMessage = request => request.RequestUri is not { } target
-                        || target.Scheme != ingestionHost.Scheme
-                        || target.Host != ingestionHost.Host
-                        || target.Port != ingestionHost.Port;
-                })
+                .WithTracing(tracing => tracing
+                    .SetSampler(new ParentBasedSampler(new AlwaysOnSampler()))
+                    .AddSource(TelemetryProtocol.ActivitySourceName)
+                    .AddAspNetCoreInstrumentation(options =>
+                    {
+                        options.RecordException = false;
+                        options.Filter = context =>
+                            !context.Request.Path.StartsWithSegments(TelemetryProtocol.ProxyPath);
+                    })
+                    .AddHttpClientInstrumentation(options =>
+                    {
+                        options.RecordException = false;
+                        options.FilterHttpRequestMessage = request =>
+                            request.RequestUri is not { } target
+                            || !TelemetryProxy.IsTelemetryDestination(target, ingestionHost, assetOrigin);
+                    })
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri($"{appBuildInfo.TelemetryHost.TrimEnd('/')}{TelemetryProtocol.TracesPath}");
