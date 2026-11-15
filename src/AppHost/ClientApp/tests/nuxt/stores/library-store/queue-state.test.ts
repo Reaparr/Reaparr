@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+
 import { JobStatus, JobTypes, LibrarySyncJobStatus, PlexConnectionTypes, type LibrarySyncJobQueueDTO, type PlexServerConnectionDTO, type PlexServerStatusDTO } from '@dto';
 import { LibrarySyncWaitingReason } from '@enums';
 import { PlexLibraryPaths } from '@api/api-paths';
@@ -11,6 +12,13 @@ import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-tes
 import { generateJobStatusUpdate } from '@factories';
 import type { ResultDTO } from '@interfaces';
 import { flushPromises } from '@vue/test-utils';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 describe('LibraryStore queue state', () => {
 	let { mock } = baseVars();
@@ -23,6 +31,7 @@ describe('LibraryStore queue state', () => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
 		vi.restoreAllMocks();
+		capture.mockClear();
 	});
 
 	test('Should expose queued and processing rows separately by library and server', () => {
@@ -121,6 +130,12 @@ describe('LibraryStore queue state', () => {
 		expect(result.getFirstValue()).toEqual(queue);
 		expect(libraryStore.getLibrarySyncQueue(11)).toEqual(queue);
 		expect(mock.history.get.filter((request) => request.url === PlexLibraryPaths.getLibrarySyncStatusEndpoint())).toHaveLength(0);
+		expect(capture).toHaveBeenCalledTimes(1);
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendLibraryInteraction, {
+			action: FrontendTelemetryAction.Refresh,
+			library_id: 11,
+			force_media_refresh: true,
+		});
 	});
 
 	test('Should retain known queues when refresh admission is rejected', async () => {
@@ -201,6 +216,11 @@ describe('LibraryStore queue state', () => {
 		expect(result.getFirstValue()?.isSuccess).toBe(true);
 		expect(libraryStore.getLibrarySyncQueue(11)).toEqual(queue);
 		expect(mock.history.get.filter((request) => request.url === PlexLibraryPaths.getLibrarySyncStatusEndpoint())).toHaveLength(1);
+		expect(capture).toHaveBeenCalledTimes(1);
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendLibraryInteraction, {
+			action: FrontendTelemetryAction.Cancel,
+			library_id: 11,
+		});
 	});
 
 	test('Should leave queues unchanged when cancellation fails', async () => {

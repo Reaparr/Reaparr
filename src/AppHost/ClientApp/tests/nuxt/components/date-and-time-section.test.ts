@@ -2,12 +2,20 @@ import { useNuxtApp } from '#app';
 import { fireEvent, getByRole, queryByRole, waitFor } from '@testing-library/dom';
 import { h, nextTick, render } from 'vue';
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+
 import { baseSetup, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateResultDTO, generateSettingsModel } from '@mock';
 import { SettingsPaths } from '@api-urls';
 import { useSettingsStore } from '@store';
 import type { SettingsModelDTO } from '@dto';
 import DateAndTimeSection from '@components/Views/Settings/DateAndTimeSection.vue';
+import { FrontendTelemetryAction, FrontendTelemetryEvent, FrontendTelemetrySettingsModule } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 describe('DateAndTimeSection searchable timezone selection', () => {
 	let container: HTMLElement;
@@ -30,6 +38,7 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		// Drain initialization writes from the native store before exercising the component.
 		await vi.advanceTimersByTimeAsync(600);
 		mock.resetHistory();
+		capture.mockClear();
 		vi.useRealTimers();
 		container = document.createElement('div');
 		document.body.append(container);
@@ -74,6 +83,11 @@ describe('DateAndTimeSection searchable timezone selection', () => {
 		const saved: SettingsModelDTO = JSON.parse(mock.history.put[0]!.data);
 		expect(saved.dateTimeSettings).toEqual({ ...settings.dateTimeSettings, timeZone: 'Asia/Tokyo' });
 		expect(saved.downloadManagerSettings).toEqual(settings.downloadManagerSettings);
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendSettingsInteraction, {
+			action: FrontendTelemetryAction.Update,
+			settings_module: FrontendTelemetrySettingsModule.DateTime,
+		});
+		expect(JSON.stringify(capture.mock.calls)).not.toContain('Asia/Tokyo');
 		expect(store.dateTimeSettings.timeZone).toBe('Asia/Tokyo');
 	});
 	test('Should update both time-format examples when the selected timezone crosses midnight', async () => {

@@ -1,8 +1,21 @@
-import { describe, beforeAll, test, expect } from 'vitest';
-import { baseSetup } from '@services-test-base';
+import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { mockNuxtImport } from '@nuxt/test-utils/runtime';
+import { baseSetup, getAxiosMock } from '@services-test-base';
 import { PlexMediaType, type CreateDownloadTasksRequest, type DownloadTaskCreationReportDTO } from '@dto';
 import { generateResultDTO } from '@mock';
 import { translateDownloadNotification } from '@composables';
+import { DownloadPaths } from '@api-urls';
+import { useDownloadStore } from '@store';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
+const { notifyCreate } = vi.hoisted(() => ({ notifyCreate: vi.fn() }));
+mockNuxtImport('Notify', () => ({ create: notifyCreate }));
 
 const request = (type: PlexMediaType): CreateDownloadTasksRequest => ({
 	customDestinationFolderPath: '',
@@ -150,5 +163,37 @@ describe('translateDownloadNotification()', () => {
 			{ ...downloadRequest.downloadMedias[0]!, mediaIds: [2] },
 		];
 		expect(translateDownloadNotification(report, downloadRequest)).toBe(expected);
+	});
+});
+describe('DownloadStore.downloadMedia telemetry', () => {
+	beforeAll(() => {
+		baseSetup();
+	});
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		capture.mockClear();
+		notifyCreate.mockClear();
+	});
+
+	test('Should capture only structured selection context for an actual download', () => {
+		const mock = getAxiosMock();
+		const report = familyReport({ movies: 1, total: 1 });
+		mock.onPost(DownloadPaths.createDownloadTasksEndpoint()).reply(200, generateResultDTO(report));
+		mock.onGet(DownloadPaths.getAllDownloadTasksEndpoint()).reply(200, generateResultDTO({ downloads: [], patchSequenceByServer: {} }));
+		const store = useDownloadStore();
+
+		store.downloadMedia(request(PlexMediaType.Movie));
+
+		expect(capture).toHaveBeenCalledTimes(1);
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendDownloadInteraction, {
+			action: FrontendTelemetryAction.Download,
+			selection_count: 1,
+			selection_group_count: 1,
+			media_ids: [1],
+			media_types: [PlexMediaType.Movie],
+			library_ids: [1],
+			server_ids: [1],
+		});
 	});
 });

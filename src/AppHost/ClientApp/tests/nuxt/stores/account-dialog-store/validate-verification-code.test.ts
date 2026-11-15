@@ -1,9 +1,17 @@
 import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { PlexAccountPaths } from '@api-urls';
 import { generateFailedResultDTO, generateResultDTO } from '@mock';
 import { useAccountDialogStore, useDialogStore } from '@store';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 describe('AccountDialogStore.validateVerificationCode()', () => {
 	let { mock } = baseVars();
@@ -15,6 +23,7 @@ describe('AccountDialogStore.validateVerificationCode()', () => {
 	beforeEach(() => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		capture.mockClear();
 	});
 
 	function openNewCredentialAccount() {
@@ -60,6 +69,13 @@ describe('AccountDialogStore.validateVerificationCode()', () => {
 		expect(accountDialogStore.email).toEqual('user@test.dev');
 		expect(accountDialogStore.authenticationToken).toEqual('valid-token');
 		expect(closeDialogSpy).toHaveBeenCalledWith('account-verification-code-dialog');
+		expect(capture).toHaveBeenCalledTimes(1);
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendAccountInteraction, {
+			action: FrontendTelemetryAction.ValidateCredentials,
+			account_id: 0,
+			verification_code_required: true,
+		});
+		expect(JSON.stringify(capture.mock.calls)).not.toContain('123456');
 	});
 
 	test('Should keep verification dialog open and not update state when verification code is rejected', async () => {

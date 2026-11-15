@@ -1,11 +1,19 @@
-import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { FolderPathPaths } from '@api/api-paths';
 import { generateDefaultFolderPaths, generateFailedResultDTO, generateFolderPath, generateResultDTO } from '@mock';
 import type { FolderPathDTO, BaseResultDTO } from '@dto';
 import { PlexMediaType } from '@dto';
 import { useFolderPathStore } from '@store';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 function createInitialFolderPaths(): FolderPathDTO[] {
 	const defaults = generateDefaultFolderPaths({ config: { seed: 4901 } });
@@ -40,6 +48,7 @@ describe('FolderPathStore mutations', () => {
 	beforeEach(() => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		capture.mockClear();
 	});
 
 	async function setupStore(folderPaths: FolderPathDTO[]) {
@@ -83,6 +92,21 @@ describe('FolderPathStore mutations', () => {
 		// Assert retry
 		expect(retried.getFirstValue()).toEqual(successfulResult);
 		expect(store.getFolderPaths()).toEqual([...initialFolderPaths, createdFolderPath]);
+		expect(capture).toHaveBeenCalledTimes(2);
+		expect(capture.mock.calls).toEqual([
+			[FrontendTelemetryEvent.FrontendFolderInteraction, {
+				action: FrontendTelemetryAction.Create,
+				folder_type: candidate.folderType,
+				media_type: candidate.mediaType,
+			}],
+			[FrontendTelemetryEvent.FrontendFolderInteraction, {
+				action: FrontendTelemetryAction.Create,
+				folder_type: candidate.folderType,
+				media_type: candidate.mediaType,
+			}],
+		]);
+		expect(JSON.stringify(capture.mock.calls)).not.toContain('/library/tv');
+		expect(JSON.stringify(capture.mock.calls)).not.toContain('Library TV');
 	});
 
 	test.each([
@@ -127,6 +151,17 @@ describe('FolderPathStore mutations', () => {
 		// Assert retry
 		expect(retried.getFirstValue()).toEqual(successfulResult);
 		expect(store.getFolderPaths()).toEqual([initialFolderPaths[0], updated]);
+		const expectedAction = field === 'directory' ? FrontendTelemetryAction.Confirm : FrontendTelemetryAction.Update;
+		expect(capture.mock.calls).toEqual([
+			[FrontendTelemetryEvent.FrontendFolderInteraction, {
+				action: expectedAction,
+				folder_path_id: existing.id,
+			}],
+			[FrontendTelemetryEvent.FrontendFolderInteraction, {
+				action: expectedAction,
+				folder_path_id: existing.id,
+			}],
+		]);
 	});
 
 	test('Should preserve a failed delete and remove only the retried folder path', async () => {
@@ -160,6 +195,15 @@ describe('FolderPathStore mutations', () => {
 
 		// Assert retry
 		expect(retried.getFirstValue()).toEqual(successfulResult);
+		expect(capture).toHaveBeenCalledTimes(2);
+		expect(capture).toHaveBeenNthCalledWith(1, FrontendTelemetryEvent.FrontendFolderInteraction, {
+			action: FrontendTelemetryAction.Delete,
+			folder_path_id: deletedFolderPath.id,
+		});
+		expect(capture).toHaveBeenNthCalledWith(2, FrontendTelemetryEvent.FrontendFolderInteraction, {
+			action: FrontendTelemetryAction.Delete,
+			folder_path_id: deletedFolderPath.id,
+		});
 		expect(store.getFolderPaths()).toEqual([initialFolderPaths[0]]);
 	});
 });

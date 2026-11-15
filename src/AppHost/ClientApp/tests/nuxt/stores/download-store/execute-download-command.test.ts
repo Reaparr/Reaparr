@@ -1,10 +1,18 @@
-import { describe, beforeAll, beforeEach, test, expect } from 'vitest';
+import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { DownloadActions, DownloadStatus, PlexMediaType, type ServerDownloadProgressDTO } from '@dto';
 import { generateFailedResultDTO, generateResultDTO } from '@mock';
 import { DownloadPaths } from '@api-urls';
 import { useDownloadStore } from '@store';
+
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 const commands = [
 	{ name: 'Delete', action: DownloadActions.Delete, ids: ['retained'], url: DownloadPaths.deleteDownloadTaskEndpoint() },
@@ -25,6 +33,7 @@ describe('DownloadStore.executeDownloadCommand()', () => {
 	beforeEach(() => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		capture.mockClear();
 	});
 
 	test.each(commands)('Should preserve the failure and queue when $name fails', async ({ action, ids, url }) => {
@@ -66,5 +75,20 @@ describe('DownloadStore.executeDownloadCommand()', () => {
 		expect(result.getLastValue()?.isSuccess).toBe(true);
 		expect(store.serverDownloads).toEqual([]);
 		expect(mock.history.get).toHaveLength(1);
+	});
+	test('Should capture an ID-only control action after validation', async () => {
+		const store = useDownloadStore();
+		const failure = generateFailedResultDTO({ statusCode: 503, errors: [] });
+		mock.onDelete(DownloadPaths.deleteDownloadTaskEndpoint()).reply(503, failure);
+
+		const result = subscribeSpyTo(store.executeDownloadCommand(DownloadActions.Delete, ['retained'], 7));
+		await result.onComplete();
+
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendDownloadInteraction, {
+			action: FrontendTelemetryAction.Delete,
+			server_id: 7,
+			download_task_ids: ['retained'],
+			selection_count: 1,
+		});
 	});
 });

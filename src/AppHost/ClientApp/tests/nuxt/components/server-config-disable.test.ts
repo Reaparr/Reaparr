@@ -7,8 +7,9 @@ import { createI18n } from 'vue-i18n';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateFailedResultDTO, generatePlexServers, generateResultDTO } from '@mock';
 import { PlexServerPaths } from '@api-urls';
-import { useDialogStore, useServerStore } from '@store';
+import { useDialogStore, useServerStore, useSettingsStore } from '@store';
 import { DialogType } from '@enums';
+import { FrontendTelemetryAction, FrontendTelemetryEvent, FrontendTelemetrySettingsModule } from '@composables/telemetry/events';
 import type { PlexServerDTO } from '@dto';
 import ServerConfigTabContent from '@/components/Dialogs/ServerDialog/Tabs/ServerConfigTabContent.vue';
 import messages from '@/lang/en-US.json';
@@ -22,6 +23,22 @@ const Confirmation = defineComponent({
 		}, props.confirmLoading ? 'Disabling' : 'Confirm');
 	},
 });
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
+
+const Toggle = defineComponent({
+	props: { modelValue: { type: Boolean, default: false } },
+	emits: ['update:modelValue'],
+	setup(props, { emit }) {
+		return () => h('button', {
+			'data-cy': 'server-config-toggle',
+			onClick: () => emit('update:modelValue', !props.modelValue),
+		});
+	},
+});
 
 describe('ServerConfigTabContent - disable recovery', () => {
 	let { mock } = baseVars();
@@ -33,6 +50,7 @@ describe('ServerConfigTabContent - disable recovery', () => {
 		mock = getAxiosMock();
 		pinia = createPinia();
 		setActivePinia(pinia);
+		capture.mockClear();
 	});
 	afterEach(() => {
 		wrapper?.unmount();
@@ -49,7 +67,7 @@ describe('ServerConfigTabContent - disable recovery', () => {
 				stubs: {
 					HelpGroup: { template: '<section><slot /></section>' },
 					HelpRow: { template: '<div><slot /></div>' },
-					QToggle: true, DownloadLimitInput: true, ConfirmationDialog: Confirmation,
+					QToggle: Toggle, DownloadLimitInput: true, ConfirmationDialog: Confirmation,
 				},
 			},
 		});
@@ -107,5 +125,33 @@ describe('ServerConfigTabContent - disable recovery', () => {
 		expect(mock.history.put.map((request) => [request.url, JSON.parse(request.data)])).toEqual([
 			[endpoint, { isEnabled: false }], [endpoint, { isEnabled: false }], [endpoint, { isEnabled: false }],
 		]);
+	});
+	test('Should capture one structured server intent when stream downloader is enabled', async () => {
+		// Arrange
+		const server = generatePlexServers({ config: { seed: 55002, plexServerCount: 1 } })[0]!;
+		const serverStore = useServerStore();
+		mock.onGet(PlexServerPaths.getAllPlexServersEndpoint()).reply(200, generateResultDTO([server]));
+		await subscribeSpyTo(serverStore.setup()).onComplete();
+		const settingsStore = useSettingsStore();
+		settingsStore.serverSettings.data.push({
+			machineIdentifier: server.machineIdentifier,
+			plexServerName: '',
+			downloadSpeedLimit: 0,
+			allowStreamDownloader: false,
+		});
+		const rendered = await render(server);
+		const toggles = rendered.findAllComponents(Toggle);
+
+		// Act
+		await toggles[2]!.trigger('click');
+
+		// Assert
+		expect(settingsStore.getServerSettings(server.machineIdentifier)?.allowStreamDownloader).toBe(true);
+		expect(capture).toHaveBeenCalledTimes(1);
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendSettingsInteraction, {
+			action: FrontendTelemetryAction.Update,
+			settings_module: FrontendTelemetrySettingsModule.Server,
+			server_id: server.id,
+		});
 	});
 });

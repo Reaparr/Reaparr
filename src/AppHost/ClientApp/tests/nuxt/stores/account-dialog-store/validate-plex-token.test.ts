@@ -1,9 +1,17 @@
 import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { PlexAccountPaths } from '@api-urls';
 import { generateFailedResultDTO, generateResultDTO } from '@mock';
 import { useAccountDialogStore, useDialogStore } from '@store';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 describe('AccountDialogStore.validatePlexToken()', () => {
 	let { mock } = baseVars();
@@ -15,6 +23,7 @@ describe('AccountDialogStore.validatePlexToken()', () => {
 	beforeEach(() => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		capture.mockClear();
 	});
 
 	function openNewTokenAccount() {
@@ -62,6 +71,13 @@ describe('AccountDialogStore.validatePlexToken()', () => {
 		expect(accountDialogStore.getAccountData.authenticationToken).toEqual('');
 		expect(mock.history.post[0]?.data).toContain('"plexAccountId":0');
 		expect(openDialogSpy).toHaveBeenCalledWith('account-token-validate-dialog');
+		expect(capture).toHaveBeenCalledTimes(1);
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendAccountInteraction, {
+			action: FrontendTelemetryAction.ValidateToken,
+			account_id: 0,
+			is_new_account: true,
+		});
+		expect(JSON.stringify(capture.mock.calls)).not.toContain('valid-token');
 	});
 
 	test('Should set displayName from email when token validates but displayName is empty', async () => {

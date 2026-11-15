@@ -1,10 +1,18 @@
-import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { PlexServerConnectionPaths } from '@api-urls';
 import { generateFailedResultDTO, generatePlexServerConnection, generateResultDTO } from '@mock';
 import type { PlexServerStatusDTO } from '@dto';
 import { useServerConnectionStore } from '@store';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 describe('ServerConnectionStore.checkServerConnection()', () => {
 	let { mock } = baseVars();
@@ -12,6 +20,7 @@ describe('ServerConnectionStore.checkServerConnection()', () => {
 	beforeEach(() => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		capture.mockClear();
 	});
 
 	async function setupConnections() {
@@ -65,6 +74,20 @@ describe('ServerConnectionStore.checkServerConnection()', () => {
 		expect(mock.history.get.map((request) => request.url)).toEqual([
 			PlexServerConnectionPaths.getAllPlexServerConnectionsEndpoint(), checkPath, checkPath,
 		]);
+		expect(capture).toHaveBeenCalledTimes(2);
+		expect(capture.mock.calls).toEqual([
+			[FrontendTelemetryEvent.FrontendConnectionInteraction, {
+				action: FrontendTelemetryAction.TestConnection,
+				connection_id: 1,
+				server_id: 1,
+			}],
+			[FrontendTelemetryEvent.FrontendConnectionInteraction, {
+				action: FrontendTelemetryAction.TestConnection,
+				connection_id: 1,
+				server_id: 1,
+			}],
+		]);
+		expect(JSON.stringify(capture.mock.calls)).not.toContain('connection-1.test');
 	});
 
 	test.each([200, 500])('Should preserve the previous status and clear loading when the check request fails with HTTP %i', async (code) => {

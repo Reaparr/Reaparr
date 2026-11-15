@@ -1,10 +1,18 @@
 import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+
 import { of, Subject } from 'rxjs';
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { generateFailedResultDTO, generatePlexAccount, generateResultDTO } from '@mock';
 import type { BaseResultDTO } from '@dto';
 import { useAccountDialogStore, useAccountStore, useDialogStore } from '@store';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 describe('AccountDialogStore.deleteAccount()', () => {
 	let { mock: _mock } = baseVars();
@@ -16,6 +24,7 @@ describe('AccountDialogStore.deleteAccount()', () => {
 	beforeEach(() => {
 		_mock = getAxiosMock();
 		setActivePinia(createPinia());
+		capture.mockClear();
 	});
 
 	test('Should stop delete loading after delete request completes', async () => {
@@ -38,6 +47,11 @@ describe('AccountDialogStore.deleteAccount()', () => {
 		expect(deleteSpy).toHaveBeenCalledWith(9);
 		expect(closeDialogSpy).toHaveBeenCalledWith('account-dialog');
 		expect(accountDialogStore.deleteLoading).toEqual(false);
+		expect(capture).toHaveBeenCalledTimes(1);
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendAccountInteraction, {
+			action: FrontendTelemetryAction.Delete,
+			account_id: 9,
+		});
 	});
 
 	test('Should not close dialog when delete request fails', async () => {
