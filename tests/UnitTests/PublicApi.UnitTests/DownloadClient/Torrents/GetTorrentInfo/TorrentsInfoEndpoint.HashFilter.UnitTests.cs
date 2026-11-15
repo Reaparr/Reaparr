@@ -1,11 +1,8 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
-using System.Reactive.Linq;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Reaparr.Application.Contracts;
 using Reaparr.Data.Contracts;
-using Reaparr.PublicAPI.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 
@@ -55,11 +52,10 @@ public class TorrentsInfoEndpointHashFilterUnitTests
 
                     // Table names only identify the endpoint's two ToListAsync readers; ReadCount is the proof.
                     var commandText = reader.Command.CommandText;
-                    var target = commandText.Contains(MovieTableName, StringComparison.Ordinal)
-                        ? movieReads
-                        : commandText.Contains(EpisodeTableName, StringComparison.Ordinal)
-                            ? episodeReads
-                            : null;
+                    var target =
+                        commandText.Contains(MovieTableName, StringComparison.Ordinal) ? movieReads
+                        : commandText.Contains(EpisodeTableName, StringComparison.Ordinal) ? episodeReads
+                        : null;
                     if (target is null)
                         return;
 
@@ -73,11 +69,7 @@ public class TorrentsInfoEndpointHashFilterUnitTests
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new TorrentsInfoEndpointRequest
-            {
-                Hashes = expected.Hashes,
-                Category = Category.ToUpperInvariant(),
-            },
+            new TorrentsInfoEndpointRequest { Hashes = expected.Hashes, Category = Category.ToUpperInvariant() },
             integrationIdentity: fixture.OwnerIdentity
         );
 
@@ -87,8 +79,7 @@ public class TorrentsInfoEndpointHashFilterUnitTests
         endpointResult.ValidationErrors.Count.ShouldBe(0);
         endpointResult.Response.ShouldNotBeNull();
         var actual = endpointResult
-            .Response!
-            .Select(x => (x.Hash, x.State, x.Category, x.SavePath, x.ContentPath))
+            .Response!.Select(x => (x.Hash, x.State, x.Category, x.SavePath, x.ContentPath))
             .OrderBy(x => x.Hash)
             .ToList();
         var expectedRows = expected
@@ -125,8 +116,12 @@ public class TorrentsInfoEndpointHashFilterUnitTests
         var ownedServerId = servers[1].Id;
         var ownerIntegration = integrations[0];
         var foreignIntegration = integrations[1];
-        var ownership = (Owner: ownerIntegration.Id, Foreign: foreignIntegration.Id,
-            NonOwnedServer: nonOwnedServerId, OwnedServer: ownedServerId);
+        var ownership = (
+            Owner: ownerIntegration.Id,
+            Foreign: foreignIntegration.Id,
+            NonOwnedServer: nonOwnedServerId,
+            OwnedServer: ownedServerId
+        );
 
         await dbContext
             .PlexServers.Where(x => x.Id == nonOwnedServerId)
@@ -163,18 +158,15 @@ public class TorrentsInfoEndpointHashFilterUnitTests
 
         await dbContext.SaveChangesAsync(CancellationToken);
 
-        return new TestFixture(
-            ownerIntegration.Id.ToRadarrIdentity(),
-            movieFiles.Count,
-            episodeFiles.Count
-        );
+        return new TestFixture(ownerIntegration.Id.ToRadarrIdentity(), movieFiles.Count, episodeFiles.Count);
     }
 
     private static void ConfigureFile(
         IReaparrDbContext dbContext,
         DownloadTaskFileBase file,
         int index,
-        (Guid Owner, Guid Foreign, int NonOwnedServer, int OwnedServer) ownership)
+        (Guid Owner, Guid Foreign, int NonOwnedServer, int OwnedServer) ownership
+    )
     {
         var isEpisode = file.MediaType == PlexMediaType.Episode;
         var isForeignOwnerControl = index == EligibleFileCount;
@@ -223,7 +215,8 @@ public class TorrentsInfoEndpointHashFilterUnitTests
             Enumerable.Range(0, EligibleFileCount).Select(index => ExpectedTorrent(false, index)).ToList(),
             Enumerable.Range(0, EligibleFileCount).Select(index => ExpectedTorrent(true, index)).ToList(),
             EligibleFileCount,
-            EligibleFileCount);
+            EligibleFileCount
+        );
     }
 
     private static TorrentExpectation ExpectedTorrent(bool isEpisode, int index)

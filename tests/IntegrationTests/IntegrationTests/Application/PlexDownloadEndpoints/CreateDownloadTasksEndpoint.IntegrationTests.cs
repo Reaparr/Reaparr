@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
-using Moq;
 using Moq.Contrib.HttpClient;
 using Reaparr.Settings.Contracts;
 

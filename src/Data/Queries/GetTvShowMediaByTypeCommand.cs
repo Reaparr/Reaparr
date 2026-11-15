@@ -1,7 +1,6 @@
 using FlexQuery.NET;
 using FlexQuery.NET.Models;
 using Reaparr.Application.Contracts;
-using Reaparr.Data.Contracts;
 using static Reaparr.Data.MediaByTypeQuerySupport;
 
 namespace Reaparr.Data;

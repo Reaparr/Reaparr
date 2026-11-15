@@ -1,4 +1,3 @@
-using LukeHagar.PlexAPI.SDK;
 using Reaparr.Data.Contracts;
 using Reaparr.PlexApi.Contracts;
 

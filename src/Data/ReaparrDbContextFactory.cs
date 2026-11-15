@@ -2,19 +2,18 @@ namespace Reaparr.Data;
 
 public class ReaparrDbContextFactory : IReaparrDbContextFactory
 {
-    private readonly Func<IReaparrDbContext> _factory;
+    private readonly ILogger _log;
+    private readonly IPathProvider _pathProvider;
+    private readonly IAppRuntimeInfo _appRuntimeInfo;
 
-    /// <summary>
-    /// Uses Autofac's Func&lt;T&gt; factory delegation pattern.
-    /// Autofac automatically provides Func&lt;T&gt; for any registered type.
-    /// This ensures test overrides of IReaparrDbContext are respected.
-    /// </summary>
-    public ReaparrDbContextFactory(Func<IReaparrDbContext> factory)
+    public ReaparrDbContextFactory(ILogger log, IPathProvider pathProvider, IAppRuntimeInfo appRuntimeInfo)
     {
-        _factory = factory;
+        _log = log;
+        _pathProvider = pathProvider;
+        _appRuntimeInfo = appRuntimeInfo;
     }
 
-    public IReaparrDbContext Create() => _factory();
+    public IReaparrDbContext Create() => new ReaparrDbContext(_log, _pathProvider, _appRuntimeInfo);
 
-    public Task<IReaparrDbContext> CreateAsync() => Task.FromResult(_factory());
+    public Task<IReaparrDbContext> CreateAsync() => Task.FromResult(Create());
 }

@@ -1,9 +1,7 @@
 using System.Reactive.Disposables;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Reaparr.Application.Contracts;
-using Reaparr.Domain;
 
 namespace Reaparr.AppHost.UnitTests;
 
@@ -17,7 +15,10 @@ public class TelemetryContextMiddlewareUnitTests : BaseUnitTest
         context.Request.Headers[TelemetryProtocol.SessionIdHeader] = "native-session-data";
         var disposed = false;
         var scope = Disposable.Create(() => disposed = true);
-        Mock.Mock<ITelemetry>().Setup(x => x.BeginRequest("native-session-data")).Returns(scope).Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.BeginRequest("native-session-data"))
+            .Returns(scope)
+            .Verifiable(Times.Once());
         var middleware = new TelemetryContextMiddleware(httpContext =>
         {
             disposed.ShouldBeFalse();
@@ -31,7 +32,11 @@ public class TelemetryContextMiddlewareUnitTests : BaseUnitTest
         // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status202Accepted);
         disposed.ShouldBeTrue();
-        Mock.Mock<ITelemetry>().Verify(x => x.HttpRequestFailed(It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<string?>()), Times.Never());
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.HttpRequestFailed(It.IsAny<Exception>(), It.IsAny<string>(), It.IsAny<string?>()),
+                Times.Never()
+            );
         Mock.Mock<ITelemetry>().Verify();
     }
 
@@ -44,17 +49,26 @@ public class TelemetryContextMiddlewareUnitTests : BaseUnitTest
         context.Request.Method = HttpMethods.Post;
         context.Request.Path = "/api/work/42";
         context.Request.QueryString = new QueryString("?apiKey=must-not-be-context");
-        context.SetEndpoint(new RouteEndpoint(_ => Task.CompletedTask,
-            RoutePatternFactory.Parse("/api/work/{id}"), 0, EndpointMetadataCollection.Empty, "work"));
+        context.SetEndpoint(
+            new RouteEndpoint(
+                _ => Task.CompletedTask,
+                RoutePatternFactory.Parse("/api/work/{id}"),
+                0,
+                EndpointMetadataCollection.Empty,
+                "work"
+            )
+        );
         var disposed = false;
         Mock.Mock<ITelemetry>().Setup(x => x.BeginRequest(null)).Returns(Disposable.Create(() => disposed = true));
-        Mock.Mock<ITelemetry>().Setup(x => x.HttpRequestFailed(failure, HttpMethods.Post, "/api/work/{id}"))
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.HttpRequestFailed(failure, HttpMethods.Post, "/api/work/{id}"))
             .Verifiable(Times.Once());
         var middleware = new TelemetryContextMiddleware(_ => Task.FromException(failure));
 
         // Act
         var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
-            middleware.InvokeAsync(context, Mock.Mock<ITelemetry>().Object));
+            middleware.InvokeAsync(context, Mock.Mock<ITelemetry>().Object)
+        );
 
         // Assert
         thrown.ShouldBeSameAs(failure);
@@ -87,7 +101,10 @@ public class TelemetryContextMiddlewareUnitTests : BaseUnitTest
 
         // Assert
         thrown.ShouldBeSameAs(cancellation);
-        Mock.Mock<ITelemetry>().Verify(x => x.HttpRequestFailed(cancellation, HttpMethods.Get, "/api/work"),
-            requestCancelled ? Times.Never() : Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.HttpRequestFailed(cancellation, HttpMethods.Get, "/api/work"),
+                requestCancelled ? Times.Never() : Times.Once()
+            );
     }
 }

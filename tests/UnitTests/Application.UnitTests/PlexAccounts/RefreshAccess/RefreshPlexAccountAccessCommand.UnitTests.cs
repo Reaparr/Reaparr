@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Autofac;
 using PostHog;
 using Reaparr.Identity.Contracts;
 
@@ -218,13 +217,13 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
             .ReturnsAsync(Result.Ok())
             .Verifiable(cancelled ? Times.Never() : Times.Once());
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.PlexAccessRefreshValidationFinished(
-                targetId,
-                TelemetryTrigger.Manual,
-                It.Is<ResultBase>(validation =>
-                    validation.Errors.Count == 1
-                    && validation.Errors[0] == failure)
-            ))
+            .Setup(x =>
+                x.PlexAccessRefreshValidationFinished(
+                    targetId,
+                    TelemetryTrigger.Manual,
+                    It.Is<ResultBase>(validation => validation.Errors.Count == 1 && validation.Errors[0] == failure)
+                )
+            )
             .Verifiable(failingStage == "validation" ? Times.Once() : Times.Never());
 
         // Act
@@ -356,14 +355,33 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
         Dictionary<string, object>? capturedProperties = null;
 
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(identity, TelemetryProtocol.ProfileEvent,
-                It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        client.Setup(x => x.Capture(identity, nameof(TelemetryEvent.PlexAccessRefreshFinished),
-                It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    nameof(TelemetryEvent.PlexAccessRefreshFinished),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
-                (_, _, properties, _, _, _) => capturedProperties = properties)
+                (_, _, properties, _, _, _) => capturedProperties = properties
+            )
             .Returns(true)
             .Verifiable(Times.Once());
 
@@ -391,13 +409,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
             .Verifiable(Times.Once());
         Mock.SetupCommand(() => It.IsAny<RefreshLibraryAccessCommand>())
             .ReturnsAsync(
-                Result.Ok(
-                    new PlexLibraryAccessRefreshResponse
-                    {
-                        Reports = [],
-                        OfflineServers = [servers[1].Id],
-                    }
-                )
+                Result.Ok(new PlexLibraryAccessRefreshResponse { Reports = [], OfflineServers = [servers[1].Id] })
             )
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
@@ -423,12 +435,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
         report
             .Access.Select(x => (x.PlexServerId, x.IsServerOffline))
             .OrderBy(x => x.PlexServerId)
-            .ShouldBe(
-                [
-                    (servers[0].Id, false),
-                    (servers[1].Id, true),
-                ]
-            );
+            .ShouldBe([(servers[0].Id, false), (servers[1].Id, true)]);
         capturedProperties.ShouldNotBeNull();
         capturedProperties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Partial));
         capturedProperties[TelemetryProperty.AccountId].ShouldBe(account.Id);

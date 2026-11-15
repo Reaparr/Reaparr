@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Reaparr.Domain;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -14,10 +13,16 @@ public class SendTelemetryDiagnosticEndpointUnitTests
     public async Task ShouldRejectMissingOrUnknownOrigin_WhenRequestIsInvalid(string json)
     {
         // Arrange
-        var request = JsonSerializer.Deserialize<SendTelemetryDiagnosticRequest>(json, DefaultJsonSerializerOptions.ConfigStandard)!;
+        var request = JsonSerializer.Deserialize<SendTelemetryDiagnosticRequest>(
+            json,
+            DefaultJsonSerializerOptions.ConfigStandard
+        )!;
 
         // Act
-        var result = await TestEndpointHandleAsync(request, services => services.AddSingleton(Mock.Mock<ITelemetry>().Object));
+        var result = await TestEndpointHandleAsync(
+            request,
+            services => services.AddSingleton(Mock.Mock<ITelemetry>().Object)
+        );
 
         // Assert
         result.IsValid.ShouldBeFalse();
@@ -81,7 +86,8 @@ public class SendTelemetryDiagnosticEndpointUnitTests
         Mock.Mock<ITelemetry>()
             .Setup(x => x.SendDiagnostic(TelemetryDiagnosticOrigin.Backend))
             .Returns(
-                Result.Fail("Telemetry is unavailable")
+                Result
+                    .Fail("Telemetry is unavailable")
                     .AddStatusCode((System.Net.HttpStatusCode)status, "Telemetry is unavailable")
             )
             .Verifiable(Times.Once());
@@ -99,5 +105,4 @@ public class SendTelemetryDiagnosticEndpointUnitTests
         result.Response.Errors.Count.ShouldBe(1);
         Mock.Mock<ITelemetry>().Verify();
     }
-
 }

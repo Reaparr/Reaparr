@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using Moq;
-using Moq.Contrib.HttpClient;
 using Moq.Protected;
 using PostHog;
 
@@ -35,11 +33,13 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
                             ItExpr.IsAny<HttpRequestMessage>(),
                             ItExpr.IsAny<CancellationToken>()
                         )
-                        .Returns(async (HttpRequestMessage request, CancellationToken token) =>
-                        {
-                            telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
-                            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
-                        });
+                        .Returns(
+                            async (HttpRequestMessage request, CancellationToken token) =>
+                            {
+                                telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
+                                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+                            }
+                        );
                     var httpClient = new HttpClient(handler.Object);
                     var factory = new Mock<IHttpClientFactory>();
                     factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
@@ -66,7 +66,7 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         await PauseServerAsync(container, library.PlexServerId);
         using var client = await CreateSignedInClientAsync(container);
         var destination = container.PathProvider.DefaultPhotosDestinationFolder;
- 
+
         // Act
         var preview = await client.POSTAsync<
             GetDownloadPreviewEndpoint,
@@ -100,7 +100,9 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         foreach (var body in telemetryBodies)
         {
             using var document = JsonDocument.Parse(body);
-            nativeEvents.AddRange(document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone()));
+            nativeEvents.AddRange(
+                document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone())
+            );
         }
         var previewEvents = nativeEvents
             .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.DownloadPreviewFinished.ToString())
@@ -111,7 +113,10 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
             .ShouldBe(TelemetryOutcome.Succeeded.ToString());
-        previewProperties.GetProperty(TelemetryProperty.Downloads.SelectedCount).GetInt32().ShouldBe(selection.MediaIds.Count);
+        previewProperties
+            .GetProperty(TelemetryProperty.Downloads.SelectedCount)
+            .GetInt32()
+            .ShouldBe(selection.MediaIds.Count);
         previewProperties.GetProperty(TelemetryProperty.Downloads.SelectionCount).GetInt32().ShouldBe(1);
         previewProperties
             .GetProperty(TelemetryProperty.Downloads.SelectedMediaTypes)
@@ -146,7 +151,10 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
             .ShouldBe(TelemetryOutcome.Succeeded.ToString());
-        creationProperties.GetProperty(TelemetryProperty.Downloads.SelectedCount).GetInt32().ShouldBe(selection.MediaIds.Count);
+        creationProperties
+            .GetProperty(TelemetryProperty.Downloads.SelectedCount)
+            .GetInt32()
+            .ShouldBe(selection.MediaIds.Count);
         creationProperties.GetProperty(TelemetryProperty.Downloads.SelectionCount).GetInt32().ShouldBe(1);
         creationProperties
             .GetProperty(TelemetryProperty.Downloads.SelectedMediaTypes)
@@ -167,7 +175,8 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         createdReport.GetProperty(TelemetryProperty.Downloads.OtherVideos).GetInt32().ShouldBe(0);
         using var finalContext = await factory.CreateAsync();
         var server = await context.PlexServers.SingleAsync(x => x.Id == library.PlexServerId, CancellationToken);
-        var expectedRootName = $"{server.Name.SanitizeFolderName()} - {library.Title.SanitizeFolderName()}".SanitizeFolderName();
+        var expectedRootName =
+            $"{server.Name.SanitizeFolderName()} - {library.Title.SanitizeFolderName()}".SanitizeFolderName();
         var expectedDownloadRoot = container.PathProvider.DefaultDownloadsDestinationFolder;
         var folders = await finalContext
             .DownloadTaskPhotoFolders.Where(x => x.PlexLibraryId == library.Id)
@@ -211,7 +220,8 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         files
             .Select(x => (x.PlexApiRatingKey, x.PlexApiMediaId, x.PlexApiPartId, x.AssetKind, x.DataTotal))
             .ShouldBe(
-                media.OrderBy(x => x.PlexApiPartId)
+                media
+                    .OrderBy(x => x.PlexApiPartId)
                     .Select(x => (x.PlexApiRatingKey, x.PlexApiMediaId, x.PlexApiPartId, x.AssetKind, x.Size))
                     .ToArray()
             );
@@ -346,16 +356,13 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         await client.SignIn();
         return client;
     }
- 
+
     private async Task PauseServerAsync(BaseContainer container, int serverId)
     {
         using var context = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
-        await context.PlexServers
-            .Where(x => x.Id == serverId)
-            .ExecuteUpdateAsync(
-                update => update.SetProperty(x => x.IsDownloadsPausedByUser, true),
-                CancellationToken
-            );
+        await context
+            .PlexServers.Where(x => x.Id == serverId)
+            .ExecuteUpdateAsync(update => update.SetProperty(x => x.IsDownloadsPausedByUser, true), CancellationToken);
     }
 
     private Task<BaseContainer> CreatePhotoContainerAsync(

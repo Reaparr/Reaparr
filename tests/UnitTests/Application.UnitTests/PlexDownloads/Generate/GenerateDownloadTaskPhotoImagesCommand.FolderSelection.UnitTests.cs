@@ -1,5 +1,3 @@
-using Reaparr.Data;
-
 namespace Reaparr.Application.UnitTests;
 
 public class GenerateDownloadTaskPhotoImagesFolderSelectionUnitTests

@@ -1,12 +1,9 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
-using Autofac;
 using PostHog;
-using Reaparr.Identity.Contracts;
 using Quartz;
-using Serilog;
+using Reaparr.Identity.Contracts;
 using Serilog.Core;
 using Serilog.Events;
 
@@ -37,21 +34,48 @@ public class TelemetryUnitTests : BaseUnitTest
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new ConcurrentQueue<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.Capture(Identity, It.Is<string>(name =>
-                name == TelemetryProtocol.DiagnosticEvent || name == nameof(TelemetryEvent.NotificationsCleared)),
-                It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    Identity,
+                    It.Is<string>(name =>
+                        name == TelemetryProtocol.DiagnosticEvent || name == nameof(TelemetryEvent.NotificationsCleared)
+                    ),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
-                (_, name, properties, _, _, _) => events.Enqueue((name, properties!)))
+                (_, name, properties, _, _, _) => events.Enqueue((name, properties!))
+            )
             .Returns(true)
             .Verifiable(Times.Exactly(2));
-        client.Setup(x => x.Capture(Identity, TelemetryProtocol.ProfileEvent, It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    Identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, new UserSettings());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
         await telemetry.InitializeAsync();
         using var request = new Activity(nameof(ShouldUseExistingIdentityAndNativeContext_WhenEventsAreCaptured))
-            .SetIdFormat(ActivityIdFormat.W3C).Start();
+            .SetIdFormat(ActivityIdFormat.W3C)
+            .Start();
         const string session = "0197af2c-8533-71b3-a351-80da30db084a";
         ITelemetry facade = telemetry;
         using var requestContext = facade.BeginRequest(session);
@@ -101,7 +125,8 @@ public class TelemetryUnitTests : BaseUnitTest
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x =>
+        client
+            .Setup(x =>
                 x.Capture(
                     Identity,
                     TelemetryProtocol.ProfileEvent,
@@ -148,7 +173,10 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryHost = Host;
             build.TelemetryProjectToken = "phc_test";
         });
-        var integration = new IntegrationIdentity(IntegrationType.Radarr, Guid.Parse("06fdf6ef-e3fc-457d-b35f-e3619e498d47"));
+        var integration = new IntegrationIdentity(
+            IntegrationType.Radarr,
+            Guid.Parse("06fdf6ef-e3fc-457d-b35f-e3619e498d47")
+        );
         var metadata = new TorrentMetadataTelemetryDTO
         {
             Type = PlexMediaType.Movie,
@@ -162,9 +190,7 @@ public class TelemetryUnitTests : BaseUnitTest
         };
         var report = new DownloadTaskCreationReport { Movies = 2, Episodes = 3 };
         var associationFailed = Result.Fail<int>("association failed");
-        var associationCancelled = Result.Fail<int>(
-            new ExceptionalError(new OperationCanceledException())
-        );
+        var associationCancelled = Result.Fail<int>(new ExceptionalError(new OperationCanceledException()));
         var associationFailedWithoutCreation = Result.Fail<int>(
             new ExceptionalError(new InvalidOperationException("association failed"))
         );
@@ -176,13 +202,22 @@ public class TelemetryUnitTests : BaseUnitTest
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
-                (_, name, properties, _, _, _) => events.Add((name, properties!)))
+                (_, name, properties, _, _, _) => events.Add((name, properties!))
+            )
             .Returns(true)
             .Verifiable(Times.Exactly(8));
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, new UserSettings());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
         await telemetry.InitializeAsync();
         events.Clear();
 
@@ -238,15 +273,17 @@ public class TelemetryUnitTests : BaseUnitTest
         );
 
         // Assert
-        events.Select(x => x.Name).ShouldBe([
-            nameof(TelemetryEvent.TorrentMetadataGenerated),
-            nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
-            nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
-            nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
-            nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
-            nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
-            nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
-        ]);
+        events
+            .Select(x => x.Name)
+            .ShouldBe([
+                nameof(TelemetryEvent.TorrentMetadataGenerated),
+                nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
+                nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
+                nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
+                nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
+                nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
+                nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed),
+            ]);
         foreach (var captured in events)
         {
             captured.Properties[TelemetryProperty.IntegrationId].ShouldBe(integration.Id);
@@ -287,9 +324,7 @@ public class TelemetryUnitTests : BaseUnitTest
         failedAssociation[TelemetryProperty.Stage].ShouldBe(nameof(TelemetryStage.HashAssociation));
         failedAssociation[TelemetryProperty.Integrations.AssociatedTaskCount].ShouldBe(0);
         failedAssociation[TelemetryProperty.Integrations.CreatedTotal].ShouldBe(5);
-        var failedCreated = (Dictionary<string, object>)failedAssociation[
-            TelemetryProperty.Integrations.CreatedReport
-        ];
+        var failedCreated = (Dictionary<string, object>)failedAssociation[TelemetryProperty.Integrations.CreatedReport];
         failedCreated[TelemetryProperty.Integrations.CreatedMovies].ShouldBe(2);
         failedCreated[TelemetryProperty.Integrations.CreatedEpisodes].ShouldBe(3);
         var cancelledAssociation = events[4].Properties;
@@ -298,9 +333,8 @@ public class TelemetryUnitTests : BaseUnitTest
         cancelledAssociation[TelemetryProperty.Stage].ShouldBe(nameof(TelemetryStage.HashAssociation));
         cancelledAssociation[TelemetryProperty.Integrations.AssociatedTaskCount].ShouldBe(0);
         cancelledAssociation[TelemetryProperty.Integrations.CreatedTotal].ShouldBe(5);
-        var cancelledCreated = (Dictionary<string, object>)cancelledAssociation[
-            TelemetryProperty.Integrations.CreatedReport
-        ];
+        var cancelledCreated =
+            (Dictionary<string, object>)cancelledAssociation[TelemetryProperty.Integrations.CreatedReport];
         cancelledCreated[TelemetryProperty.Integrations.CreatedMovies].ShouldBe(2);
         cancelledCreated[TelemetryProperty.Integrations.CreatedEpisodes].ShouldBe(3);
         var failedWithoutCreation = events[5].Properties;
@@ -329,8 +363,13 @@ public class TelemetryUnitTests : BaseUnitTest
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         var user = new Mock<IUserService>(MockBehavior.Strict);
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(), user.Object,
-            source, new UserSettings());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
 
         // Act
         await telemetry.InitializeAsync();
@@ -340,7 +379,8 @@ public class TelemetryUnitTests : BaseUnitTest
         var diagnostic = telemetry.SendDiagnostic(TelemetryDiagnosticOrigin.Backend);
         using var jobScope = telemetry.BeginJob(
             TelemetryActivity.PlexAccessRefresh,
-            (default, null, "unconfigured-refresh", "unconfigured-fire"));
+            (default, null, "unconfigured-refresh", "unconfigured-fire")
+        );
 
         // Assert
         bootstrap.ShouldBeNull();
@@ -369,16 +409,51 @@ public class TelemetryUnitTests : BaseUnitTest
         var user = new Mock<IUserService>(MockBehavior.Strict);
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, new UserSettings());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, nameof(TelemetryEvent.NotificationsCleared), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    Identity,
+                    nameof(TelemetryEvent.NotificationsCleared),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(() => throws ? throw new IOException("private SDK transport details") : false)
             .Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, TelemetryProtocol.DiagnosticEvent, It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    Identity,
+                    TelemetryProtocol.DiagnosticEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(() => throws ? throw new IOException("private SDK transport details") : false)
             .Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, TelemetryProtocol.ProfileEvent, It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    Identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
         await telemetry.InitializeAsync();
@@ -393,10 +468,30 @@ public class TelemetryUnitTests : BaseUnitTest
         diagnostic.FindStatusCode().ShouldBe(503);
         diagnostic.Errors.Single().Message.ShouldBe("Telemetry could not accept the event");
         diagnostic.Errors.OfType<ExceptionalError>().ShouldBeEmpty();
-        client.Verify(x => x.Capture(Identity, nameof(TelemetryEvent.NotificationsCleared),
-            It.Is<Dictionary<string, object>>(p => (int)p[TelemetryProperty.DeletedCount] == 3), null, null, null), Times.Once());
-        client.Verify(x => x.Capture(Identity, TelemetryProtocol.DiagnosticEvent,
-            It.IsAny<Dictionary<string, object>>(), null, null, null), Times.Once());
+        client.Verify(
+            x =>
+                x.Capture(
+                    Identity,
+                    nameof(TelemetryEvent.NotificationsCleared),
+                    It.Is<Dictionary<string, object>>(p => (int)p[TelemetryProperty.DeletedCount] == 3),
+                    null,
+                    null,
+                    null
+                ),
+            Times.Once()
+        );
+        client.Verify(
+            x =>
+                x.Capture(
+                    Identity,
+                    TelemetryProtocol.DiagnosticEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                ),
+            Times.Once()
+        );
         client.Verify();
         user.Verify();
     }
@@ -434,14 +529,13 @@ public class TelemetryUnitTests : BaseUnitTest
         ActivitySource.AddActivityListener(listener);
         var logs = new List<LogEvent>();
         var sink = new Mock<ILogEventSink>(MockBehavior.Strict);
-        sink.Setup(x => x.Emit(It.IsAny<LogEvent>()))
-            .Callback<LogEvent>(logs.Add)
-            .Verifiable(Times.Exactly(2));
+        sink.Setup(x => x.Emit(It.IsAny<LogEvent>())).Callback<LogEvent>(logs.Add).Verifiable(Times.Exactly(2));
         using var logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .Enrich.FromLogContext()
             .Filter.ByIncludingOnly(entry =>
-                entry.MessageTemplate.Text == requestLogMessage || entry.MessageTemplate.Text == jobLogMessage)
+                entry.MessageTemplate.Text == requestLogMessage || entry.MessageTemplate.Text == jobLogMessage
+            )
             .WriteTo.Sink(sink.Object)
             .CreateLogger();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -516,33 +610,72 @@ public class TelemetryUnitTests : BaseUnitTest
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["10:00"] = 123, ["18:00"] = null } },
+            Days = new()
+            {
+                ["Monday"] = new() { ["10:00"] = 123, ["18:00"] = null },
+            },
         };
         settings.NetworkSettings.ReverseProxyUrl = "http://192.168.4.20:5000/reaparr";
-        var first = new TaskCompletionSource<Dictionary<string, object>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var second = new TaskCompletionSource<Dictionary<string, object>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = new TaskCompletionSource<Dictionary<string, object>>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        var second = new TaskCompletionSource<Dictionary<string, object>>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         var changes = new ConcurrentQueue<Dictionary<string, object>>();
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.Capture(Identity, nameof(TelemetryEvent.SettingsChanged), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    Identity,
+                    nameof(TelemetryEvent.SettingsChanged),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) =>
                 {
                     changes.Enqueue(properties!);
                     if (!((JsonElement)properties![keepPath]).GetBoolean())
                         first.TrySetResult(properties);
-                    else if (((JsonElement)properties[schedulePath]).GetProperty("days").GetProperty("Monday").GetProperty("10:00").GetInt32() == 456)
+                    else if (
+                        ((JsonElement)properties[schedulePath])
+                            .GetProperty("days")
+                            .GetProperty("Monday")
+                            .GetProperty("10:00")
+                            .GetInt32() == 456
+                    )
                         second.TrySetResult(properties);
-                })
+                }
+            )
             .Returns(true)
             .Verifiable(Times.Exactly(2));
-        client.Setup(x => x.Capture(Identity, TelemetryProtocol.ProfileEvent, It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    Identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, settings);
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            settings
+        );
         await telemetry.InitializeAsync();
 
         // Act
@@ -561,17 +694,43 @@ public class TelemetryUnitTests : BaseUnitTest
         var firstProfile = (Dictionary<string, object>)firstCapture[TelemetryProtocol.PersonProperties];
         ((JsonElement)firstCapture[keepPath]).GetBoolean().ShouldBeFalse();
         ((JsonElement)firstProfile[keepPath]).GetBoolean().ShouldBeFalse();
-        ((JsonElement)firstProfile[schedulePath]).GetProperty("days").GetProperty("Monday").GetProperty("10:00").GetInt32().ShouldBe(123);
-        ((JsonElement)firstProfile[schedulePath]).GetProperty("days").GetProperty("Monday").GetProperty("18:00").ValueKind.ShouldBe(JsonValueKind.Null);
-        ((JsonElement)firstProfile["settings.networkSettings.reverseProxyUrl"]).GetString().ShouldBe("http://192.168.4.20:5000/reaparr");
+        ((JsonElement)firstProfile[schedulePath])
+            .GetProperty("days")
+            .GetProperty("Monday")
+            .GetProperty("10:00")
+            .GetInt32()
+            .ShouldBe(123);
+        ((JsonElement)firstProfile[schedulePath])
+            .GetProperty("days")
+            .GetProperty("Monday")
+            .GetProperty("18:00")
+            .ValueKind.ShouldBe(JsonValueKind.Null);
+        ((JsonElement)firstProfile["settings.networkSettings.reverseProxyUrl"])
+            .GetString()
+            .ShouldBe("http://192.168.4.20:5000/reaparr");
         ((JsonElement)secondCapture[keepPath]).GetBoolean().ShouldBeTrue();
-        ((JsonElement)secondCapture[schedulePath]).GetProperty("days").GetProperty("Monday").GetProperty("10:00").GetInt32().ShouldBe(456);
-        firstProfile.Keys.All(key => key.StartsWith(TelemetryProfileProperty.SettingsPrefix, StringComparison.Ordinal)).ShouldBeTrue();
+        ((JsonElement)secondCapture[schedulePath])
+            .GetProperty("days")
+            .GetProperty("Monday")
+            .GetProperty("10:00")
+            .GetInt32()
+            .ShouldBe(456);
+        firstProfile
+            .Keys.All(key => key.StartsWith(TelemetryProfileProperty.SettingsPrefix, StringComparison.Ordinal))
+            .ShouldBeTrue();
         changes.Count.ShouldBe(countAtDisposal);
         user.Verify();
         client.Verify();
-        client.Verify(x => x.IdentifyAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(),
-            It.IsAny<Dictionary<string, object>>(), It.IsAny<CancellationToken>()), Times.Never());
+        client.Verify(
+            x =>
+                x.IdentifyAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<Dictionary<string, object>>(),
+                    It.IsAny<Dictionary<string, object>>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Never()
+        );
     }
 
     [Test]
@@ -595,13 +754,24 @@ public class TelemetryUnitTests : BaseUnitTest
         };
         ActivitySource.AddActivityListener(listener);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, new UserSettings());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
         await telemetry.InitializeAsync();
-        using var ambient = new Activity(nameof(ShouldRestoreAmbientContext_WhenWorkerParentIsSupplied)).SetIdFormat(ActivityIdFormat.W3C).Start();
-        var parent = hasParent ? new ActivityContext(
-            ActivityTraceId.CreateFromString("0123456789abcdef0123456789abcdef"),
-            ActivitySpanId.CreateFromString("0123456789abcdef"), ActivityTraceFlags.Recorded) : default;
+        using var ambient = new Activity(nameof(ShouldRestoreAmbientContext_WhenWorkerParentIsSupplied))
+            .SetIdFormat(ActivityIdFormat.W3C)
+            .Start();
+        var parent = hasParent
+            ? new ActivityContext(
+                ActivityTraceId.CreateFromString("0123456789abcdef0123456789abcdef"),
+                ActivitySpanId.CreateFromString("0123456789abcdef"),
+                ActivityTraceFlags.Recorded
+            )
+            : default;
         const string session = "session-supplied-by-native-client";
         Activity? worker;
 
@@ -644,14 +814,13 @@ public class TelemetryUnitTests : BaseUnitTest
         const string restoredLogMessage = "After job";
         var logs = new List<LogEvent>();
         var sink = new Mock<ILogEventSink>(MockBehavior.Strict);
-        sink.Setup(x => x.Emit(It.IsAny<LogEvent>()))
-            .Callback<LogEvent>(logs.Add)
-            .Verifiable(Times.Exactly(2));
+        sink.Setup(x => x.Emit(It.IsAny<LogEvent>())).Callback<LogEvent>(logs.Add).Verifiable(Times.Exactly(2));
         using var logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .Enrich.FromLogContext()
             .Filter.ByIncludingOnly(entry =>
-                entry.MessageTemplate.Text == capturedLogMessage || entry.MessageTemplate.Text == restoredLogMessage)
+                entry.MessageTemplate.Text == capturedLogMessage || entry.MessageTemplate.Text == restoredLogMessage
+            )
             .WriteTo.Sink(sink.Object)
             .CreateLogger();
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
@@ -668,25 +837,41 @@ public class TelemetryUnitTests : BaseUnitTest
         var user = new Mock<IUserService>(MockBehavior.Strict);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, TelemetryProtocol.ProfileEvent,
-                It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    Identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        client.Setup(x => x.CaptureException(failure, Identity,
-                It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x => x.CaptureException(failure, Identity, It.IsAny<Dictionary<string, object>>(), null, null, null))
             .Callback<Exception, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (exception, _, properties, _, _, _) =>
                 {
                     captures.Add((exception, Activity.Current, properties!));
                     logger.Information(capturedLogMessage);
-                })
+                }
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, new UserSettings());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
         await telemetry.InitializeAsync();
         using var ambient = new Activity(nameof(ShouldCaptureTerminalFailureInJobContext_WhenRefreshFailsAfterAwait))
-            .SetIdFormat(ActivityIdFormat.W3C).Start();
+            .SetIdFormat(ActivityIdFormat.W3C)
+            .Start();
         using var ambientLogContext = Serilog.Context.LogContext.PushProperty(TelemetryProperty.JobName, "scheduler");
         const string session = "native-refresh-session";
         var data = new JobDataMap
@@ -695,17 +880,26 @@ public class TelemetryUnitTests : BaseUnitTest
             [TelemetryProtocol.SessionIdMetadata] = session,
         };
         var context = new Mock<IJobExecutionContext>();
-        context.SetupGet(x => x.JobDetail).Returns(
-            JobBuilder.Create<RefreshPlexAccountAccessJob>()
-                .WithIdentity(RefreshPlexAccountAccessJob.GetJobKey()).Build());
+        context
+            .SetupGet(x => x.JobDetail)
+            .Returns(
+                JobBuilder
+                    .Create<RefreshPlexAccountAccessJob>()
+                    .WithIdentity(RefreshPlexAccountAccessJob.GetJobKey())
+                    .Build()
+            );
         context.SetupGet(x => x.MergedJobDataMap).Returns(data);
         context.SetupGet(x => x.FireInstanceId).Returns("refresh-fire");
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);
         context.SetupProperty(x => x.Result);
         var executor = new Mock<ICommandExecutor>(MockBehavior.Strict);
-        executor.Setup(x => x.Send(
-                It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
-                CancellationToken.None))
+        executor
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
+                    CancellationToken.None
+                )
+            )
             .Returns(async () =>
             {
                 await Task.Yield();
@@ -742,9 +936,14 @@ public class TelemetryUnitTests : BaseUnitTest
         var terminalLog = logs.Single(x => x.MessageTemplate.Text == capturedLogMessage);
         terminalLog.Properties[TelemetryProtocol.DistinctIdTag].ShouldBeOfType<ScalarValue>().Value.ShouldBe(Identity);
         terminalLog.Properties[TelemetryProtocol.SessionIdTag].ShouldBeOfType<ScalarValue>().Value.ShouldBe(session);
-        terminalLog.Properties[TelemetryProperty.JobName].ShouldBeOfType<ScalarValue>().Value
-            .ShouldBe(RefreshPlexAccountAccessJob.GetJobKey().ToString());
-        terminalLog.Properties[TelemetryProperty.FireInstanceId].ShouldBeOfType<ScalarValue>().Value.ShouldBe("refresh-fire");
+        terminalLog
+            .Properties[TelemetryProperty.JobName]
+            .ShouldBeOfType<ScalarValue>()
+            .Value.ShouldBe(RefreshPlexAccountAccessJob.GetJobKey().ToString());
+        terminalLog
+            .Properties[TelemetryProperty.FireInstanceId]
+            .ShouldBeOfType<ScalarValue>()
+            .Value.ShouldBe("refresh-fire");
         var restoredLog = logs.Single(x => x.MessageTemplate.Text == restoredLogMessage);
         restoredLog.Properties[TelemetryProperty.JobName].ShouldBeOfType<ScalarValue>().Value.ShouldBe("scheduler");
         restoredLog.Properties.ContainsKey(TelemetryProtocol.SessionIdTag).ShouldBeFalse();
@@ -769,32 +968,68 @@ public class TelemetryUnitTests : BaseUnitTest
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var captured = new List<Exception>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.CaptureException(It.IsAny<Exception>(), Identity,
-                It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.CaptureException(
+                    It.IsAny<Exception>(),
+                    Identity,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Callback<Exception, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
-                (exception, _, _, _, _, _) => captured.Add(exception))
+                (exception, _, _, _, _, _) => captured.Add(exception)
+            )
             .Returns(true)
             .Verifiable(Times.Exactly(2));
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, new UserSettings());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
         await telemetry.InitializeAsync();
         var failure = new IOException("Password=original-native-exception");
         var transportTimeout = new OperationCanceledException("transport timeout, not caller cancellation");
-        using var operation = new Activity(nameof(ShouldCaptureOriginalUnexpectedErrors_WhenResultsContainUnexpectedExceptions)).Start();
+        using var operation = new Activity(
+            nameof(ShouldCaptureOriginalUnexpectedErrors_WhenResultsContainUnexpectedExceptions)
+        ).Start();
 
         // Act
         telemetry.CaptureErrors(Result.Fail("Expected rejection"), TelemetryActivity.Download);
-        telemetry.CaptureErrors(ResultExtensions.TaskIsCancelled(nameof(ShouldCaptureOriginalUnexpectedErrors_WhenResultsContainUnexpectedExceptions)), TelemetryActivity.Download);
-        telemetry.CaptureErrors(Result.Fail(new Error("Terminal worker failure").CausedBy(new ExceptionalError(failure))), TelemetryActivity.Download);
+        telemetry.CaptureErrors(
+            ResultExtensions.TaskIsCancelled(
+                nameof(ShouldCaptureOriginalUnexpectedErrors_WhenResultsContainUnexpectedExceptions)
+            ),
+            TelemetryActivity.Download
+        );
+        telemetry.CaptureErrors(
+            Result.Fail(new Error("Terminal worker failure").CausedBy(new ExceptionalError(failure))),
+            TelemetryActivity.Download
+        );
         telemetry.CaptureException(transportTimeout, TelemetryActivity.Download);
 
         // Assert
         captured.ShouldBe(new Exception[] { failure, transportTimeout });
         captured[0].Message.ShouldBe("Password=original-native-exception");
         operation.Status.ShouldBe(ActivityStatusCode.Error);
-        client.Verify(x => x.CaptureException(It.IsAny<Exception>(), Identity,
-            It.Is<Dictionary<string, object>>(p => (string)p[TelemetryProperty.Stage] == nameof(TelemetryActivity.Download)),
-            null, null, null), Times.Exactly(2));
+        client.Verify(
+            x =>
+                x.CaptureException(
+                    It.IsAny<Exception>(),
+                    Identity,
+                    It.Is<Dictionary<string, object>>(p =>
+                        (string)p[TelemetryProperty.Stage] == nameof(TelemetryActivity.Download)
+                    ),
+                    null,
+                    null,
+                    null
+                ),
+            Times.Exactly(2)
+        );
         user.Verify();
         client.Verify();
     }
@@ -824,7 +1059,10 @@ public class TelemetryUnitTests : BaseUnitTest
         );
         ResultBase failed = Result.Fail("connection failed");
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -846,14 +1084,16 @@ public class TelemetryUnitTests : BaseUnitTest
         telemetry.IntegrationConnectionTestFinished(IntegrationType.Radarr, null, null, cancelled);
 
         // Assert
-        events.Select(x => x.Name).ShouldBe(
-            new[]
-            {
-                nameof(TelemetryEvent.IntegrationConnectionTestFinished),
-                nameof(TelemetryEvent.IntegrationConnectionTestFinished),
-                nameof(TelemetryEvent.IntegrationConnectionTestFinished),
-            }
-        );
+        events
+            .Select(x => x.Name)
+            .ShouldBe(
+                new[]
+                {
+                    nameof(TelemetryEvent.IntegrationConnectionTestFinished),
+                    nameof(TelemetryEvent.IntegrationConnectionTestFinished),
+                    nameof(TelemetryEvent.IntegrationConnectionTestFinished),
+                }
+            );
         var stored = events[0].Properties;
         stored[TelemetryProperty.Mode].ShouldBe(nameof(TelemetryMode.Stored));
         stored[TelemetryProperty.IntegrationId].ShouldBe(integrationId);
@@ -901,15 +1141,20 @@ public class TelemetryUnitTests : BaseUnitTest
             Status = status,
             HttpStatusCode = status == TestConnectionStatus.InvalidApiKey ? StatusCodes.Status401Unauthorized : null,
         };
-        var result = Result.Ok(new TestConnectionResult
-        {
-            Status = status,
-            HttpStatusCode = report.HttpStatusCode,
-            TestedAt = new DateTime(2026, 11, 5, 13, 0, 0, DateTimeKind.Utc),
-            ErrorMessage = "private upstream response",
-        });
+        var result = Result.Ok(
+            new TestConnectionResult
+            {
+                Status = status,
+                HttpStatusCode = report.HttpStatusCode,
+                TestedAt = new DateTime(2026, 11, 5, 13, 0, 0, DateTimeKind.Utc),
+                ErrorMessage = "private upstream response",
+            }
+        );
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -997,7 +1242,10 @@ public class TelemetryUnitTests : BaseUnitTest
             new ExceptionalError(new OperationCanceledException($"api_key={indexerApiKey}"))
         );
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1018,13 +1266,15 @@ public class TelemetryUnitTests : BaseUnitTest
         telemetry.ExternalIndexerQueryFinished(searchReport, cancelled);
 
         // Assert
-        events.Select(x => x.Name).ShouldBe(
-            new[]
-            {
-                nameof(TelemetryEvent.ExternalIndexerQueryFinished),
-                nameof(TelemetryEvent.ExternalIndexerQueryFinished),
-            }
-        );
+        events
+            .Select(x => x.Name)
+            .ShouldBe(
+                new[]
+                {
+                    nameof(TelemetryEvent.ExternalIndexerQueryFinished),
+                    nameof(TelemetryEvent.ExternalIndexerQueryFinished),
+                }
+            );
         var rss = events[0].Properties;
         rss[TelemetryProperty.Mode].ShouldBe(nameof(TelemetryMode.Rss));
         rss[TelemetryProperty.Integrations.QueryType].ShouldBe(queryType.ToString());
@@ -1095,7 +1345,10 @@ public class TelemetryUnitTests : BaseUnitTest
             DownloadFolderId = 23,
         };
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1121,21 +1374,24 @@ public class TelemetryUnitTests : BaseUnitTest
         );
 
         // Assert
-        events.Select(x => x.Name).ShouldBe(
-            new[]
-            {
-                nameof(TelemetryEvent.IntegrationChanged),
-                nameof(TelemetryEvent.IntegrationChanged),
-                nameof(TelemetryEvent.IntegrationSetupFinished),
-            }
-        );
+        events
+            .Select(x => x.Name)
+            .ShouldBe(
+                new[]
+                {
+                    nameof(TelemetryEvent.IntegrationChanged),
+                    nameof(TelemetryEvent.IntegrationChanged),
+                    nameof(TelemetryEvent.IntegrationSetupFinished),
+                }
+            );
         var changed = events[0].Properties;
         changed[TelemetryProperty.Provider].ShouldBe(nameof(IntegrationType.Sonarr));
         changed[TelemetryProperty.Configuration.Name].ShouldBe("Sonarr");
         changed[TelemetryProperty.Configuration.Url].ShouldBe("https://sonarr.example.test");
         changed[TelemetryProperty.Configuration.Category].ShouldBe("tv");
         changed[TelemetryProperty.Configuration.DownloadFolderId].ShouldBe(13);
-        changed[TelemetryProperty.Configuration.ProvisioningState].ShouldBe(nameof(IntegrationProvisioningState.Configured));
+        changed[TelemetryProperty.Configuration.ProvisioningState]
+            .ShouldBe(nameof(IntegrationProvisioningState.Configured));
         changed[TelemetryProperty.Configuration.ExternalDownloadClientId].ShouldBe(11);
         changed[TelemetryProperty.Configuration.ExternalIndexerId].ShouldBe(12);
         changed[TelemetryProperty.Action].ShouldBe(nameof(TelemetryAction.Update));
@@ -1200,7 +1456,10 @@ public class TelemetryUnitTests : BaseUnitTest
             Direction = Reaparr.Domain.SortDirection.Desc,
         };
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1217,11 +1476,7 @@ public class TelemetryUnitTests : BaseUnitTest
         events.Clear();
 
         // Act
-        telemetry.MediaQueryFinished(
-            mediaRequest,
-            "owned",
-            Result.Fail<PlexMediaStatisticsDTO>("media query failed")
-        );
+        telemetry.MediaQueryFinished(mediaRequest, "owned", Result.Fail<PlexMediaStatisticsDTO>("media query failed"));
         telemetry.PhotoSearchFinished(
             photoRequest,
             ["cafe", "sunset"],
@@ -1247,12 +1502,7 @@ public class TelemetryUnitTests : BaseUnitTest
             Result.Fail("server sync failed")
         );
         telemetry.LibrarySyncQueued(
-            (
-                PlexLibraryId: 12,
-                PlexServerId: 34,
-                CreatedAt: createdAt,
-                ForceMediaRefresh: false
-            ),
+            (PlexLibraryId: 12, PlexServerId: 34, CreatedAt: createdAt, ForceMediaRefresh: false),
             PlexMediaType.Movie,
             forceLibrarySync: true,
             trigger: TelemetryTrigger.Manual
@@ -1264,33 +1514,31 @@ public class TelemetryUnitTests : BaseUnitTest
             status: LibrarySyncJobStatus.Completed,
             offline: true
         );
-        telemetry.LibrarySyncCancellationProcessed(
-            42,
-            Result.Ok(),
-            interrupted: false,
-            noOp: true
-        );
+        telemetry.LibrarySyncCancellationProcessed(42, Result.Ok(), interrupted: false, noOp: true);
         telemetry.PhotoSearchFinished(
             photoRequest,
             [],
-            ResultExtensions.Create400BadRequestResult("Search requires an effective title term")
+            ResultExtensions
+                .Create400BadRequestResult("Search requires an effective title term")
                 .ToResult<PhotoAssetPageDTO>()
         );
 
         // Assert
-        events.Select(x => x.Name).ShouldBe(
-            new[]
-            {
-                nameof(TelemetryEvent.MediaQueryFinished),
-                nameof(TelemetryEvent.PhotoSearchFinished),
-                nameof(TelemetryEvent.LibraryRefreshRequested),
-                nameof(TelemetryEvent.ServerMediaSyncRequested),
-                nameof(TelemetryEvent.LibrarySyncQueued),
-                nameof(TelemetryEvent.LibrarySyncFinished),
-                nameof(TelemetryEvent.LibrarySyncCancellationProcessed),
-                nameof(TelemetryEvent.PhotoSearchFinished),
-            }
-        );
+        events
+            .Select(x => x.Name)
+            .ShouldBe(
+                new[]
+                {
+                    nameof(TelemetryEvent.MediaQueryFinished),
+                    nameof(TelemetryEvent.PhotoSearchFinished),
+                    nameof(TelemetryEvent.LibraryRefreshRequested),
+                    nameof(TelemetryEvent.ServerMediaSyncRequested),
+                    nameof(TelemetryEvent.LibrarySyncQueued),
+                    nameof(TelemetryEvent.LibrarySyncFinished),
+                    nameof(TelemetryEvent.LibrarySyncCancellationProcessed),
+                    nameof(TelemetryEvent.PhotoSearchFinished),
+                }
+            );
         var media = events[0].Properties;
         media[TelemetryProperty.MediaType].ShouldBe(nameof(PlexMediaType.Movie));
         media[TelemetryProperty.Libraries.Search].ShouldBe("alpha beta");
@@ -1367,7 +1615,10 @@ public class TelemetryUnitTests : BaseUnitTest
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         var refreshRunId = Guid.Parse("36791bc4-08eb-49b2-966e-85cd61ce2189");
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1399,9 +1650,7 @@ public class TelemetryUnitTests : BaseUnitTest
             7,
             refreshRunId,
             [
-                new PlexLibraryAccessRapport("account", 31, "Home")
-                    .AddGranted(11, "Movies")
-                    .AddUpdated(12, "Series"),
+                new PlexLibraryAccessRapport("account", 31, "Home").AddGranted(11, "Movies").AddUpdated(12, "Series"),
                 new PlexLibraryAccessRapport("account", 32, "Remote").AddRevoked(13, "Photos"),
             ]
         );
@@ -1413,9 +1662,11 @@ public class TelemetryUnitTests : BaseUnitTest
         change.Properties[TelemetryProperty.Libraries.Granted].ShouldBe(1);
         change.Properties[TelemetryProperty.Libraries.Revoked].ShouldBe(1);
         change.Properties[TelemetryProperty.Outcome].ShouldBe(nameof(TelemetryOutcome.Succeeded));
-        var access = change.Properties[TelemetryProperty.Libraries.Access]
+        var access = change
+            .Properties[TelemetryProperty.Libraries.Access]
             .ShouldBeOfType<List<Dictionary<string, object>>>();
-        access.Select(x => x[TelemetryProperty.Libraries.State])
+        access
+            .Select(x => x[TelemetryProperty.Libraries.State])
             .ShouldBe(new object[] { nameof(PlexAccessState.Granted), nameof(PlexAccessState.Revoked) });
         access.Select(x => x[TelemetryProperty.LibraryId]).ShouldBe(new object[] { 11, 13 });
         access.Select(x => x[TelemetryProperty.ServerId]).ShouldBe(new object[] { 31, 32 });
@@ -1458,7 +1709,10 @@ public class TelemetryUnitTests : BaseUnitTest
             CleanupFailureCount = 5,
         };
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1515,12 +1769,12 @@ public class TelemetryUnitTests : BaseUnitTest
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
         var emptyReports = new List<RefreshPlexAccountAccessRapportDTO>();
-        var reports = new List<RefreshPlexAccountAccessRapportDTO>
-        {
-            new(2, "Account"),
-        };
+        var reports = new List<RefreshPlexAccountAccessRapportDTO> { new(2, "Account") };
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1537,22 +1791,14 @@ public class TelemetryUnitTests : BaseUnitTest
         events.Clear();
 
         // Act
-        telemetry.PlexAccessRefreshRequested(
-            TelemetryScope.Account,
-            Result.Ok(emptyReports),
-            accountId: 7
-        );
+        telemetry.PlexAccessRefreshRequested(TelemetryScope.Account, Result.Ok(emptyReports), accountId: 7);
         telemetry.PlexAccessRefreshRequested(
             TelemetryScope.Account,
             Result.Ok(emptyReports),
             accountId: 7,
             serverId: 13
         );
-        telemetry.PlexAccessRefreshRequested(
-            TelemetryScope.Server,
-            Result.Ok(emptyReports),
-            serverId: 13
-        );
+        telemetry.PlexAccessRefreshRequested(TelemetryScope.Server, Result.Ok(emptyReports), serverId: 13);
         telemetry.PlexAccessRefreshRequested(
             TelemetryScope.Server,
             Result.Fail<List<RefreshPlexAccountAccessRapportDTO>>("missing").Add404NotFoundError(),
@@ -1565,7 +1811,8 @@ public class TelemetryUnitTests : BaseUnitTest
         );
         telemetry.PlexAccessRefreshRequested(
             TelemetryScope.Server,
-            Result.Fail<List<RefreshPlexAccountAccessRapportDTO>>("disabled")
+            Result
+                .Fail<List<RefreshPlexAccountAccessRapportDTO>>("disabled")
                 .AddStatusCode(System.Net.HttpStatusCode.Conflict),
             serverId: 13
         );
@@ -1584,26 +1831,30 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Assert
         events.Select(x => x.Name).ShouldAllBe(x => x == nameof(TelemetryEvent.PlexAccessRefreshRequested));
-        events.Select(x => x.Properties[TelemetryProperty.Outcome]).ShouldBe([
-            nameof(TelemetryOutcome.NoOp),
-            nameof(TelemetryOutcome.Accepted),
-            nameof(TelemetryOutcome.NoOp),
-            nameof(TelemetryOutcome.Failed),
-            nameof(TelemetryOutcome.Failed),
-            nameof(TelemetryOutcome.Rejected),
-            nameof(TelemetryOutcome.Partial),
-            nameof(TelemetryOutcome.Cancelled),
-        ]);
-        events.Select(x => x.Properties[TelemetryProperty.Scope]).ShouldBe([
-            nameof(TelemetryScope.Account),
-            nameof(TelemetryScope.Account),
-            nameof(TelemetryScope.Server),
-            nameof(TelemetryScope.Server),
-            nameof(TelemetryScope.Server),
-            nameof(TelemetryScope.Server),
-            nameof(TelemetryScope.Server),
-            nameof(TelemetryScope.Server),
-        ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Outcome])
+            .ShouldBe([
+                nameof(TelemetryOutcome.NoOp),
+                nameof(TelemetryOutcome.Accepted),
+                nameof(TelemetryOutcome.NoOp),
+                nameof(TelemetryOutcome.Failed),
+                nameof(TelemetryOutcome.Failed),
+                nameof(TelemetryOutcome.Rejected),
+                nameof(TelemetryOutcome.Partial),
+                nameof(TelemetryOutcome.Cancelled),
+            ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Scope])
+            .ShouldBe([
+                nameof(TelemetryScope.Account),
+                nameof(TelemetryScope.Account),
+                nameof(TelemetryScope.Server),
+                nameof(TelemetryScope.Server),
+                nameof(TelemetryScope.Server),
+                nameof(TelemetryScope.Server),
+                nameof(TelemetryScope.Server),
+                nameof(TelemetryScope.Server),
+            ]);
         events.ShouldAllBe(x => (string)x.Properties[TelemetryProperty.Trigger] == nameof(TelemetryTrigger.Manual));
         events[0].Properties[TelemetryProperty.AccountId].ShouldBe(7);
         events[1].Properties[TelemetryProperty.ServerId].ShouldBe(13);
@@ -1657,7 +1908,10 @@ public class TelemetryUnitTests : BaseUnitTest
             ],
         };
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1674,11 +1928,7 @@ public class TelemetryUnitTests : BaseUnitTest
         events.Clear();
 
         // Act
-        telemetry.PlexAccessRefreshValidationFinished(
-            42,
-            TelemetryTrigger.Manual,
-            Result.Fail("token invalid")
-        );
+        telemetry.PlexAccessRefreshValidationFinished(42, TelemetryTrigger.Manual, Result.Fail("token invalid"));
         telemetry.PlexAccessRefreshFinished(
             42,
             TelemetryTrigger.Manual,
@@ -1702,50 +1952,34 @@ public class TelemetryUnitTests : BaseUnitTest
         telemetry.PlexAccessRefreshFinished(
             42,
             TelemetryTrigger.Manual,
-            Result.Ok(
-                new PlexLibraryAccessRefreshResponse
-                {
-                    OfflineServers = [13],
-                    Reports = [],
-                }
-            )
+            Result.Ok(new PlexLibraryAccessRefreshResponse { OfflineServers = [13], Reports = [] })
         );
         telemetry.PlexAccessRefreshFinished(
             42,
             TelemetryTrigger.Manual,
-            Result.Ok(
-                new PlexLibraryAccessRefreshResponse
-                {
-                    OfflineServers = [],
-                    Reports = [],
-                }
-            )
+            Result.Ok(new PlexLibraryAccessRefreshResponse { OfflineServers = [], Reports = [] })
         );
         telemetry.PlexAccessRefreshFinished(
             42,
             TelemetryTrigger.Scheduled,
-            Result.Ok(
-                new PlexLibraryAccessRefreshResponse
-                {
-                    OfflineServers = [],
-                    Reports = [],
-                }
-            ),
+            Result.Ok(new PlexLibraryAccessRefreshResponse { OfflineServers = [], Reports = [] }),
             rapport
         );
 
         // Assert
         events.Select(x => x.Name).ShouldAllBe(x => x == nameof(TelemetryEvent.PlexAccessRefreshFinished));
-        events.Select(x => x.Properties[TelemetryProperty.Outcome]).ShouldBe([
-            nameof(TelemetryOutcome.Failed),
-            nameof(TelemetryOutcome.Partial),
-            nameof(TelemetryOutcome.Partial),
-            nameof(TelemetryOutcome.Partial),
-            nameof(TelemetryOutcome.Cancelled),
-            nameof(TelemetryOutcome.Partial),
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Succeeded),
-        ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Outcome])
+            .ShouldBe([
+                nameof(TelemetryOutcome.Failed),
+                nameof(TelemetryOutcome.Partial),
+                nameof(TelemetryOutcome.Partial),
+                nameof(TelemetryOutcome.Partial),
+                nameof(TelemetryOutcome.Cancelled),
+                nameof(TelemetryOutcome.Partial),
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Succeeded),
+            ]);
         events.ShouldAllBe(x => (int)x.Properties[TelemetryProperty.AccountId] == 42);
         events[0].Properties[TelemetryProperty.Trigger].ShouldBe(nameof(TelemetryTrigger.Manual));
         events[7].Properties[TelemetryProperty.Trigger].ShouldBe(nameof(TelemetryTrigger.Scheduled));
@@ -1782,20 +2016,16 @@ public class TelemetryUnitTests : BaseUnitTest
                 PlexServerConnectionId = 88,
             };
         var healthy = Result.Ok(new List<PlexServerStatus> { Status(successful: true) });
-        var unhealthy = Result.Ok(
-                new List<PlexServerStatus>
-                {
-                    Status(successful: false),
-                    Status(successful: false),
-                }
-            )
+        var unhealthy = Result
+            .Ok(new List<PlexServerStatus> { Status(successful: false), Status(successful: false) })
             .WithError("all connections failed");
         var unexpected = Result.Fail<List<PlexServerStatus>>("probe failed");
-        var cancelled = Result.Fail<List<PlexServerStatus>>(
-            new ExceptionalError(new OperationCanceledException())
-        );
+        var cancelled = Result.Fail<List<PlexServerStatus>>(new ExceptionalError(new OperationCanceledException()));
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1819,18 +2049,22 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Assert
         events.Select(x => x.Name).ShouldAllBe(x => x == nameof(TelemetryEvent.PlexConnectionCheckFinished));
-        events.Select(x => x.Properties[TelemetryProperty.Outcome]).ShouldBe([
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Rejected),
-            nameof(TelemetryOutcome.Cancelled),
-        ]);
-        events.Select(x => x.Properties[TelemetryProperty.Health]).ShouldBe([
-            nameof(TelemetryHealth.Healthy),
-            nameof(TelemetryHealth.Unhealthy),
-            nameof(TelemetryHealth.Unknown),
-            nameof(TelemetryHealth.Unknown),
-        ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Outcome])
+            .ShouldBe([
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Rejected),
+                nameof(TelemetryOutcome.Cancelled),
+            ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Health])
+            .ShouldBe([
+                nameof(TelemetryHealth.Healthy),
+                nameof(TelemetryHealth.Unhealthy),
+                nameof(TelemetryHealth.Unknown),
+                nameof(TelemetryHealth.Unknown),
+            ]);
         events.ShouldAllBe(x => (int)x.Properties[TelemetryProperty.ServerId] == 77);
         user.Verify();
         client.Verify();
@@ -1864,7 +2098,10 @@ public class TelemetryUnitTests : BaseUnitTest
         var failed = Result.Fail<PlexServerStatus>("probe failed");
         var cancelled = Result.Fail<PlexServerStatus>(new ExceptionalError(new OperationCanceledException()));
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1890,25 +2127,27 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Assert
         events.Select(x => x.Name).ShouldAllBe(x => x == nameof(TelemetryEvent.PlexConnectionCheckFinished));
-        events.Select(x => x.Properties[TelemetryProperty.Outcome]).ShouldBe([
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Failed),
-            nameof(TelemetryOutcome.Cancelled),
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Rejected),
-        ]);
-        events.Select(x => x.Properties[TelemetryProperty.Health]).ShouldBe([
-            nameof(TelemetryHealth.Healthy),
-            nameof(TelemetryHealth.Unhealthy),
-            nameof(TelemetryHealth.Unknown),
-            nameof(TelemetryHealth.Unknown),
-            nameof(TelemetryHealth.Healthy),
-            nameof(TelemetryHealth.Unknown),
-        ]);
-        events.Take(4).ShouldAllBe(
-            x => (int)x.Properties[TelemetryProperty.Accounts.PlexServerConnectionId] == 88
-        );
+        events
+            .Select(x => x.Properties[TelemetryProperty.Outcome])
+            .ShouldBe([
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Failed),
+                nameof(TelemetryOutcome.Cancelled),
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Rejected),
+            ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Health])
+            .ShouldBe([
+                nameof(TelemetryHealth.Healthy),
+                nameof(TelemetryHealth.Unhealthy),
+                nameof(TelemetryHealth.Unknown),
+                nameof(TelemetryHealth.Unknown),
+                nameof(TelemetryHealth.Healthy),
+                nameof(TelemetryHealth.Unknown),
+            ]);
+        events.Take(4).ShouldAllBe(x => (int)x.Properties[TelemetryProperty.Accounts.PlexServerConnectionId] == 88);
         events[0].Properties[TelemetryProperty.ServerId].ShouldBe(77);
         events[2].Properties[TelemetryProperty.ServerId].ShouldBeNull();
         user.Verify();
@@ -1929,7 +2168,10 @@ public class TelemetryUnitTests : BaseUnitTest
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -1948,34 +2190,32 @@ public class TelemetryUnitTests : BaseUnitTest
         // Act
         telemetry.ServerInspectionRequested(31, Result.Ok());
         telemetry.ServerInspectionRequested(31, Result.Fail("already queued"));
-        telemetry.ServerInspectionRequested(
-            31,
-            Result.Try((Action)(() => throw new OperationCanceledException()))
-        );
+        telemetry.ServerInspectionRequested(31, Result.Try((Action)(() => throw new OperationCanceledException())));
         telemetry.ServerInspectionFinished(31, Result.Ok());
         telemetry.ServerInspectionFinished(31, Result.Fail("inspection failed"));
-        telemetry.ServerInspectionFinished(
-            31,
-            Result.Try((Action)(() => throw new OperationCanceledException()))
-        );
+        telemetry.ServerInspectionFinished(31, Result.Try((Action)(() => throw new OperationCanceledException())));
 
         // Assert
-        events.Select(x => x.Name).ShouldBe([
-            nameof(TelemetryEvent.ServerInspectionRequested),
-            nameof(TelemetryEvent.ServerInspectionRequested),
-            nameof(TelemetryEvent.ServerInspectionRequested),
-            nameof(TelemetryEvent.ServerInspectionFinished),
-            nameof(TelemetryEvent.ServerInspectionFinished),
-            nameof(TelemetryEvent.ServerInspectionFinished),
-        ]);
-        events.Select(x => x.Properties[TelemetryProperty.Outcome]).ShouldBe([
-            nameof(TelemetryOutcome.Accepted),
-            nameof(TelemetryOutcome.Rejected),
-            nameof(TelemetryOutcome.Cancelled),
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Failed),
-            nameof(TelemetryOutcome.Cancelled),
-        ]);
+        events
+            .Select(x => x.Name)
+            .ShouldBe([
+                nameof(TelemetryEvent.ServerInspectionRequested),
+                nameof(TelemetryEvent.ServerInspectionRequested),
+                nameof(TelemetryEvent.ServerInspectionRequested),
+                nameof(TelemetryEvent.ServerInspectionFinished),
+                nameof(TelemetryEvent.ServerInspectionFinished),
+                nameof(TelemetryEvent.ServerInspectionFinished),
+            ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Outcome])
+            .ShouldBe([
+                nameof(TelemetryOutcome.Accepted),
+                nameof(TelemetryOutcome.Rejected),
+                nameof(TelemetryOutcome.Cancelled),
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Failed),
+                nameof(TelemetryOutcome.Cancelled),
+            ]);
         events.ShouldAllBe(x => (int)x.Properties[TelemetryProperty.ServerId] == 31);
         user.Verify();
         client.Verify();
@@ -1995,7 +2235,10 @@ public class TelemetryUnitTests : BaseUnitTest
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -2024,13 +2267,15 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Assert
         events.Select(x => x.Name).ShouldAllBe(x => x == nameof(TelemetryEvent.CredentialsUpdateProcessed));
-        events.Select(x => x.Properties[TelemetryProperty.Outcome]).ShouldBe([
-            nameof(TelemetryOutcome.Partial),
-            nameof(TelemetryOutcome.Failed),
-            nameof(TelemetryOutcome.NoOp),
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Failed),
-        ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Outcome])
+            .ShouldBe([
+                nameof(TelemetryOutcome.Partial),
+                nameof(TelemetryOutcome.Failed),
+                nameof(TelemetryOutcome.NoOp),
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Failed),
+            ]);
         events[0].Properties[TelemetryProperty.Actions.UsernameChanged].ShouldBe(true);
         events[0].Properties[TelemetryProperty.Actions.PasswordChanged].ShouldBe(false);
         events[3].Properties[TelemetryProperty.Actions.UsernameChanged].ShouldBe(false);
@@ -2065,12 +2310,16 @@ public class TelemetryUnitTests : BaseUnitTest
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        ResultBase result = cancelled
-            ? Result.Try((Action)(() => throw new OperationCanceledException()))
-            : failed ? Result.Try((Action)(() => throw new InvalidOperationException("download failed"))) : Result.Ok();
+        ResultBase result =
+            cancelled ? Result.Try((Action)(() => throw new OperationCanceledException()))
+            : failed ? Result.Try((Action)(() => throw new InvalidOperationException("download failed")))
+            : Result.Ok();
         var targetVersion = hasVersion ? "9.9.9" : null;
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -2087,11 +2336,7 @@ public class TelemetryUnitTests : BaseUnitTest
         events.Clear();
 
         // Act
-        telemetry.UpdateDownloadFinished(
-            result,
-            targetVersion,
-            hasVersion ? pendingRestart : null
-        );
+        telemetry.UpdateDownloadFinished(result, targetVersion, hasVersion ? pendingRestart : null);
 
         // Assert
         var properties = events.Single(x => x.Name == nameof(TelemetryEvent.UpdateDownloadFinished)).Properties;
@@ -2150,7 +2395,10 @@ public class TelemetryUnitTests : BaseUnitTest
         var validatedReport = new PlexAuthenticationTelemetryDTO { IsValidated = true };
         var rejectedReport = new PlexAuthenticationTelemetryDTO { IsValidated = false };
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -2176,32 +2424,23 @@ public class TelemetryUnitTests : BaseUnitTest
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.Credentials,
             null,
-            Result.Ok(signIn).WithError(new PlexError("verification required")
-            {
-                Code = PlexErrorCodes.EnterVerificationCode,
-            }),
+            Result
+                .Ok(signIn)
+                .WithError(new PlexError("verification required") { Code = PlexErrorCodes.EnterVerificationCode }),
             validatedReport
         );
         telemetry.PlexAuthenticationProcessed(
             12,
             Result.Fail<ValidatePlexTokenCommandResult>("unauthorized").AddPlex401UnauthorizedError()
         );
-        telemetry.PlexAuthenticationProcessed(
-            12,
-            Result.Try((Action)(() => throw new OperationCanceledException()))
-        );
+        telemetry.PlexAuthenticationProcessed(12, Result.Try((Action)(() => throw new OperationCanceledException())));
+        telemetry.PlexAuthenticationProcessed(TelemetryAuthenticationMethod.GenerateToken, 12, Result.Ok());
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.GenerateToken,
             12,
-            Result.Ok()
-        );
-        telemetry.PlexAuthenticationProcessed(
-            TelemetryAuthenticationMethod.GenerateToken,
-            12,
-            Result.Fail("verification required").WithError(new PlexError("verification required")
-            {
-                Code = PlexErrorCodes.EnterVerificationCode,
-            })
+            Result
+                .Fail("verification required")
+                .WithError(new PlexError("verification required") { Code = PlexErrorCodes.EnterVerificationCode })
         );
         telemetry.PlexAuthenticationProcessed(
             TelemetryAuthenticationMethod.GenerateToken,
@@ -2223,19 +2462,21 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Assert
         events.Select(x => x.Name).ShouldAllBe(x => x == nameof(TelemetryEvent.PlexAuthenticationProcessed));
-        events.Select(x => x.Properties[TelemetryProperty.Outcome]).ShouldBe([
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.NotRequired),
-            nameof(TelemetryOutcome.Rejected),
-            nameof(TelemetryOutcome.Cancelled),
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.NotRequired),
-            nameof(TelemetryOutcome.Rejected),
-            nameof(TelemetryOutcome.Cancelled),
-            nameof(TelemetryOutcome.Cancelled),
-            nameof(TelemetryOutcome.Rejected),
-            nameof(TelemetryOutcome.Succeeded),
-        ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Outcome])
+            .ShouldBe([
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.NotRequired),
+                nameof(TelemetryOutcome.Rejected),
+                nameof(TelemetryOutcome.Cancelled),
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.NotRequired),
+                nameof(TelemetryOutcome.Rejected),
+                nameof(TelemetryOutcome.Cancelled),
+                nameof(TelemetryOutcome.Cancelled),
+                nameof(TelemetryOutcome.Rejected),
+                nameof(TelemetryOutcome.Succeeded),
+            ]);
         events[0].Properties[TelemetryProperty.Method].ShouldBe(nameof(TelemetryAuthenticationMethod.Credentials));
         events.ShouldAllBe(x => !x.Properties.ContainsKey(nameof(PlexSignInCommandResult.Password)));
         events.ShouldAllBe(x => !x.Properties.ContainsKey(nameof(ValidatePlexTokenCommandResult.AuthenticationToken)));
@@ -2247,7 +2488,6 @@ public class TelemetryUnitTests : BaseUnitTest
         user.Verify();
         client.Verify();
     }
-
 
     [Test]
     public async Task ShouldProjectAuthenticationResult_WhenOutcomeAndRememberMeVary()
@@ -2263,7 +2503,10 @@ public class TelemetryUnitTests : BaseUnitTest
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(Identity, It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), null, null, null)
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
                 (_, name, properties, _, _, _) => events.Add((name, properties!))
             )
@@ -2293,12 +2536,14 @@ public class TelemetryUnitTests : BaseUnitTest
 
         // Assert
         events.Select(x => x.Name).ShouldAllBe(x => x == nameof(TelemetryEvent.AuthenticationProcessed));
-        events.Select(x => x.Properties[TelemetryProperty.Outcome]).ShouldBe([
-            nameof(TelemetryOutcome.Rejected),
-            nameof(TelemetryOutcome.LockedOut),
-            nameof(TelemetryOutcome.Succeeded),
-            nameof(TelemetryOutcome.Succeeded),
-        ]);
+        events
+            .Select(x => x.Properties[TelemetryProperty.Outcome])
+            .ShouldBe([
+                nameof(TelemetryOutcome.Rejected),
+                nameof(TelemetryOutcome.LockedOut),
+                nameof(TelemetryOutcome.Succeeded),
+                nameof(TelemetryOutcome.Succeeded),
+            ]);
         events.ShouldAllBe(x => (string)x.Properties[TelemetryProperty.Action] == nameof(TelemetryAction.Login));
         events[2].Properties[TelemetryProperty.Actions.RememberMe].ShouldBe(true);
         events[3].Properties.ContainsKey(TelemetryProperty.Actions.RememberMe).ShouldBeFalse();

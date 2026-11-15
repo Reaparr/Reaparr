@@ -1,5 +1,3 @@
-using Reaparr.BaseTests;
-
 namespace Reaparr.PlexApi.UnitTests;
 
 public class PlexMediaDataMapperBaseUnitTests : BaseUnitTest

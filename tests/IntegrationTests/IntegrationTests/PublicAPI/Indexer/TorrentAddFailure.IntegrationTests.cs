@@ -1,15 +1,11 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Xml.Linq;
 using BencodeNET.Parsing;
 using BencodeNET.Torrents;
-using Moq;
-using Moq.Contrib.HttpClient;
 using Moq.Protected;
 using PostHog;
-
 
 namespace Reaparr.IntegrationTests;
 
@@ -50,11 +46,13 @@ public class TorrentAddFailureIntegrationTests : BaseIntegrationTests
                             ItExpr.IsAny<HttpRequestMessage>(),
                             ItExpr.IsAny<CancellationToken>()
                         )
-                        .Returns(async (HttpRequestMessage request, CancellationToken token) =>
-                        {
-                            telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
-                            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
-                        });
+                        .Returns(
+                            async (HttpRequestMessage request, CancellationToken token) =>
+                            {
+                                telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
+                                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+                            }
+                        );
                     var httpClient = new HttpClient(handler.Object);
                     var factory = new Mock<IHttpClientFactory>();
                     factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
@@ -137,10 +135,14 @@ public class TorrentAddFailureIntegrationTests : BaseIntegrationTests
         foreach (var body in telemetryBodies)
         {
             using var document = JsonDocument.Parse(body);
-            nativeEvents.AddRange(document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone()));
+            nativeEvents.AddRange(
+                document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone())
+            );
         }
         var submissions = nativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.ExternalDownloadSubmissionProcessed.ToString())
+            .Where(item =>
+                item.GetProperty("event").GetString() == TelemetryEvent.ExternalDownloadSubmissionProcessed.ToString()
+            )
             .ToArray();
         submissions.Length.ShouldBe(1);
         var submissionProperties = submissions.Single().GetProperty("properties");

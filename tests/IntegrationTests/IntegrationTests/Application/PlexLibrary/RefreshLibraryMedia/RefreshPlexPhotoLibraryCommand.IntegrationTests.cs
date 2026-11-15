@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Moq;
 using Moq.Contrib.HttpClient;
 using PostHog;
 
@@ -17,13 +16,14 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         // Arrange
         var seed = new Seed(9625);
         var telemetryBodies = new ConcurrentQueue<string>();
-        var telemetryRequests = new ConcurrentQueue<(
-            HttpMethod Method,
-            string? RequestUri,
-            string? Authorization,
-            string? ContentType,
-            string Body
-        )>();
+        var telemetryRequests =
+            new ConcurrentQueue<(
+                HttpMethod Method,
+                string? RequestUri,
+                string? Authorization,
+                string? ContentType,
+                string Body
+            )>();
         var telemetryHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         Mock<IHttpClientFactory>? telemetryFactory = null;
         var buildInfo = new MockAppBuildInfo
@@ -57,10 +57,7 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                                         body
                                     )
                                 );
-                                return new HttpResponseMessage(HttpStatusCode.OK)
-                                {
-                                    Content = new StringContent("{}"),
-                                };
+                                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
                             }
                         )
                         .Verifiable(Times.AtLeastOnce());
@@ -232,10 +229,7 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         firstRefreshRequests.Length.ShouldBe(1);
         var refreshRequestProperties = firstRefreshRequests.Single().GetProperty("properties");
         refreshRequestProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
-        refreshRequestProperties
-            .GetProperty(TelemetryProperty.Libraries.ForceLibrarySync)
-            .GetBoolean()
-            .ShouldBeFalse();
+        refreshRequestProperties.GetProperty(TelemetryProperty.Libraries.ForceLibrarySync).GetBoolean().ShouldBeFalse();
         refreshRequestProperties
             .GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh)
             .GetBoolean()
@@ -255,10 +249,16 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         var queuedProperties = queuedEvents.Single().GetProperty("properties");
         queuedProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
         queuedProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
-        queuedProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        queuedProperties
+            .GetProperty(TelemetryProperty.MediaType)
+            .GetString()
+            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
         queuedProperties.GetProperty(TelemetryProperty.Libraries.ForceLibrarySync).GetBoolean().ShouldBeFalse();
         queuedProperties.GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh).GetBoolean().ShouldBeFalse();
-        queuedProperties.GetProperty(TelemetryProperty.Trigger).GetString().ShouldBe(TelemetryTrigger.Manual.ToString());
+        queuedProperties
+            .GetProperty(TelemetryProperty.Trigger)
+            .GetString()
+            .ShouldBe(TelemetryTrigger.Manual.ToString());
         var admissionCreatedAt = queuedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString();
         admissionCreatedAt.ShouldNotBeNullOrWhiteSpace();
         var finishedEvents = firstNativeEvents
@@ -268,7 +268,10 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         var finishedProperties = finishedEvents.Single().GetProperty("properties");
         finishedProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
         finishedProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
-        finishedProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        finishedProperties
+            .GetProperty(TelemetryProperty.MediaType)
+            .GetString()
+            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
         finishedProperties.GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh).GetBoolean().ShouldBeFalse();
         finishedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString().ShouldBe(admissionCreatedAt);
         finishedProperties
@@ -359,16 +362,18 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
                 .OrderBy(x => x.PlexPhotoAlbumId)
                 .ThenBy(x => x.PlexPhotoMediaDataId)
         );
-        firstFiles.Select(x => x.AssetKind).ShouldBe(
-            new[]
-            {
-                PhotoAssetKind.Image,
-                PhotoAssetKind.Image,
-                PhotoAssetKind.VideoClip,
-                PhotoAssetKind.Image,
-                PhotoAssetKind.VideoClip,
-            }
-        );
+        firstFiles
+            .Select(x => x.AssetKind)
+            .ShouldBe(
+                new[]
+                {
+                    PhotoAssetKind.Image,
+                    PhotoAssetKind.Image,
+                    PhotoAssetKind.VideoClip,
+                    PhotoAssetKind.Image,
+                    PhotoAssetKind.VideoClip,
+                }
+            );
         firstFolders.ShouldContain(x => x.ParentId == null && x.IsActive == true);
         firstFolders.Where(x => x.ParentId == null).Count().ShouldBe(1);
         firstFiles.ShouldAllBe(x => x.PlexPhotoFolderId.HasValue && x.OriginalFilename.Length > 0);
@@ -768,7 +773,9 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         foreach (var body in telemetryBodies)
         {
             using var document = JsonDocument.Parse(body);
-            finalNativeEvents.AddRange(document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone()));
+            finalNativeEvents.AddRange(
+                document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone())
+            );
         }
         finalNativeEvents
             .Count(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryRefreshRequested.ToString())
@@ -778,10 +785,16 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             .ToArray();
         enabledEvents.Length.ShouldBe(1);
         var enabledProperties = enabledEvents.Single().GetProperty("properties");
-        enabledProperties.GetProperty(TelemetryProperty.Action).GetString().ShouldBe(TelemetryAction.Enabled.ToString());
+        enabledProperties
+            .GetProperty(TelemetryProperty.Action)
+            .GetString()
+            .ShouldBe(TelemetryAction.Enabled.ToString());
         enabledProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
         enabledProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
-        enabledProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        enabledProperties
+            .GetProperty(TelemetryProperty.MediaType)
+            .GetString()
+            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
         enabledProperties.GetProperty(TelemetryProperty.Libraries.IsEnabled).GetBoolean().ShouldBeTrue();
         enabledProperties
             .GetProperty(TelemetryProperty.Outcome)
@@ -794,8 +807,14 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         var finalQueuedProperties = finalQueuedEvents.Single().GetProperty("properties");
         finalQueuedProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
         finalQueuedProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
-        finalQueuedProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
-        finalQueuedProperties.GetProperty(TelemetryProperty.Trigger).GetString().ShouldBe(TelemetryTrigger.Manual.ToString());
+        finalQueuedProperties
+            .GetProperty(TelemetryProperty.MediaType)
+            .GetString()
+            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        finalQueuedProperties
+            .GetProperty(TelemetryProperty.Trigger)
+            .GetString()
+            .ShouldBe(TelemetryTrigger.Manual.ToString());
         var finalAdmissionCreatedAt = finalQueuedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString();
         finalAdmissionCreatedAt.ShouldNotBeNullOrWhiteSpace();
         var finalFinishedEvents = finalNativeEvents
@@ -805,7 +824,10 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         var finalFinishedProperties = finalFinishedEvents.Single().GetProperty("properties");
         finalFinishedProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
         finalFinishedProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
-        finalFinishedProperties.GetProperty(TelemetryProperty.MediaType).GetString().ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+        finalFinishedProperties
+            .GetProperty(TelemetryProperty.MediaType)
+            .GetString()
+            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
         finalFinishedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString().ShouldBe(finalAdmissionCreatedAt);
         finalFinishedProperties
             .GetProperty(TelemetryProperty.Outcome)
@@ -925,7 +947,6 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         telemetryHandler.Verify();
         telemetryFactory!.Verify();
     }
-
 
     private async Task<(HttpStatusCode StatusCode, ResultDTO<PhotoAssetPageDTO>? Result)> ReadBrowseAssetsAsync(
         HttpClient client,

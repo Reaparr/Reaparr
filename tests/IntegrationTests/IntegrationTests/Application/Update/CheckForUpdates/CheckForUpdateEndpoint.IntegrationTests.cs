@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Moq;
 using Moq.Contrib.HttpClient;
 using NuGet.Versioning;
 using Velopack;
@@ -402,9 +401,7 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         {
             BaseAddress = new Uri("https://telemetry.example.test/"),
         };
-        Mock.Get(githubClientFactory)
-            .Setup(x => x.CreateClient("PostHogClient"))
-            .Returns(telemetryClient);
+        Mock.Get(githubClientFactory).Setup(x => x.CreateClient("PostHogClient")).Returns(telemetryClient);
         builder.RegisterInstance(githubClientFactory).As<IHttpClientFactory>().SingleInstance();
         builder.RegisterInstance(updateManager).As<UpdateManager>().SingleInstance();
         builder.RegisterType<MockNotificationHubService>().As<INotificationHubService>().AsSelf().SingleInstance();

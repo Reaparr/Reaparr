@@ -1,6 +1,3 @@
-using Reaparr.Application.Contracts;
-using Reaparr.Data.Contracts;
-
 namespace Reaparr.Data;
 
 public static partial class PlexMediaQueryMapper

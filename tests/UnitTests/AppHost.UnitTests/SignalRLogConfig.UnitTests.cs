@@ -2,13 +2,10 @@ using System.Collections.Concurrent;
 using Autofac;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Reaparr.Environment;
-using Reaparr.Logging;
 using Reaparr.SignalR;
-using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.AspNetCore.App.SignalR.Extensions;
 
@@ -28,8 +25,11 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
         var seqReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var liveEvents = new ConcurrentQueue<LiveLogEventDTO>();
         var client = new Mock<IClientProxy>();
-        client.Setup(x => x.SendCoreAsync(nameof(ILogHub.LogEvent), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
-            .Callback<string, object?[], CancellationToken>((_, arguments, _) => liveEvents.Enqueue((LiveLogEventDTO)arguments[0]!))
+        client
+            .Setup(x => x.SendCoreAsync(nameof(ILogHub.LogEvent), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+            .Callback<string, object?[], CancellationToken>(
+                (_, arguments, _) => liveEvents.Enqueue((LiveLogEventDTO)arguments[0]!)
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         var clients = new Mock<IHubClients>();
@@ -62,7 +62,8 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
             Mock.Container.Resolve<IAppRuntimeInfo>(),
             pathProvider.Object,
             buffer,
-            Mock.Container.Resolve<IAppBuildInfo>());
+            Mock.Container.Resolve<IAppBuildInfo>()
+        );
         using var logger = config.GetLogger(LogEventLevel.Debug);
         var contextualLogger = logger.ForContext("Regression", true);
         contextualLogger.Debug("Before SignalR attachment");

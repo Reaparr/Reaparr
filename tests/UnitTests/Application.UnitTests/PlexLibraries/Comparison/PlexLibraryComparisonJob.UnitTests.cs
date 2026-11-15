@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -67,10 +66,11 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
             )
             .Returns<ICommand<Result>, CancellationToken>(
                 (cmd, ct) =>
-                    new CompareMusicPlexLibraryCommandHandler(IDbContext, Log, Mock.Mock<ITelemetry>().Object).ExecuteAsync(
-                        (CompareMusicPlexLibraryCommand)cmd,
-                        ct
-                    )
+                    new CompareMusicPlexLibraryCommandHandler(
+                        IDbContext,
+                        Log,
+                        Mock.Mock<ITelemetry>().Object
+                    ).ExecuteAsync((CompareMusicPlexLibraryCommand)cmd, ct)
             )
             .Verifiable(Times.Once());
 

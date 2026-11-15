@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Autofac;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -67,8 +66,8 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IProgressHubService>().Verify();
         Mock.Mock<ITelemetry>().Verify();
-
     }
+
     [Test]
     public async Task ShouldSetCancelledStatus_WhenCommandIsCancelled()
     {
@@ -102,8 +101,8 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IProgressHubService>().Verify();
         Mock.Mock<ITelemetry>().Verify();
-
     }
+
     [Test]
     public async Task ShouldFail_WhenOneOrMorePlexServersAreUnavailable()
     {
@@ -224,6 +223,4 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         update.Data.PlexServersWithConnectionIds.ShouldBeEmpty();
         Mock.Mock<ITelemetry>().Verify();
     }
-
-
 }

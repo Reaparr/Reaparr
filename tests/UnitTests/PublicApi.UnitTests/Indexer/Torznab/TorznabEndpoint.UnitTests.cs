@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI.UnitTests;
 
 public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, TorznabEndpointRequest>
@@ -45,17 +43,22 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
         var xml = await reader.ReadToEndAsync();
         xml.ShouldContain("tv-rss-result");
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ITelemetry>().Verify(
-            x => x.ExternalIndexerQueryFinished(
-                It.Is<ExternalIndexerQueryReport>(report =>
-                    report.Integration == integration
-                    && report.Type == ExternalIndexerQueryType.Search
-                    && report.Mode == TelemetryMode.Rss
-                    && report.Categories.SequenceEqual(request.Categories)
-                    && report.ReturnedItemCount == 1
-                    && report.TotalCount == 1),
-                searchResult),
-            Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.ExternalIndexerQueryFinished(
+                        It.Is<ExternalIndexerQueryReport>(report =>
+                            report.Integration == integration
+                            && report.Type == ExternalIndexerQueryType.Search
+                            && report.Mode == TelemetryMode.Rss
+                            && report.Categories.SequenceEqual(request.Categories)
+                            && report.ReturnedItemCount == 1
+                            && report.TotalCount == 1
+                        ),
+                        searchResult
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
@@ -236,17 +239,16 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
             .Verify(
                 x =>
                     x.ExternalIndexerQueryFinished(
-                        It.Is<ExternalIndexerQueryReport>(
-                            report =>
-                                report.Integration.Id == integration.Id
-                                && report.Integration.Type == IntegrationType.Radarr
-                                && report.Type == ExternalIndexerQueryType.Search
-                                && report.Mode == TelemetryMode.Rss
+                        It.Is<ExternalIndexerQueryReport>(report =>
+                            report.Integration.Id == integration.Id
+                            && report.Integration.Type == IntegrationType.Radarr
+                            && report.Type == ExternalIndexerQueryType.Search
+                            && report.Mode == TelemetryMode.Rss
                         ),
-                        It.Is<ResultBase>(
-                            result =>
-                                result.Errors.OfType<ExceptionalError>()
-                                    .Any(error => error.Exception is OperationCanceledException)
+                        It.Is<ResultBase>(result =>
+                            result
+                                .Errors.OfType<ExceptionalError>()
+                                .Any(error => error.Exception is OperationCanceledException)
                         )
                     ),
                 Times.Once

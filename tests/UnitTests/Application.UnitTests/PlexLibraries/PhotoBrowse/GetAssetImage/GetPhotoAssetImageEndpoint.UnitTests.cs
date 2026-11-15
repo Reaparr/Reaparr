@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
@@ -529,12 +528,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var originalETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
         if (changeRepresentation)
-            request = request with
-            {
-                Representation = PhotoImageRepresentation.Converted,
-                Width = 320,
-                Height = 240,
-            };
+            request = request with { Representation = PhotoImageRepresentation.Converted, Width = 320, Height = 240 };
         else
         {
             var updatedAt = (asset.UpdatedAt ?? asset.AddedAt).AddSeconds(1);
@@ -651,11 +645,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         firstETag.ShouldContain("320x240");
         var endpoint = initial.Endpoint;
         endpoint.HttpContext.Response.Clear();
-        request = request with
-        {
-            Width = 640,
-            Height = 480,
-        };
+        request = request with { Width = 640, Height = 480 };
         endpoint.HttpContext.Request.Headers.IfNoneMatch = firstETag;
 
         // Act
@@ -889,7 +879,11 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object).AddSingleton<ILogger>(Serilog.Log.Logger)
+            services =>
+                services
+                    .AddMemoryCache()
+                    .AddSingleton<IHttpClientFactory>(clientFactory.Object)
+                    .AddSingleton<ILogger>(Serilog.Log.Logger)
         );
 
         // Assert
@@ -898,7 +892,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         result.Endpoint.HttpContext.Response.Headers.CacheControl.ToString().ShouldBe("no-store");
         result.Endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBeEmpty();
         handler.RequestUris.Count.ShouldBe(1);
-        var warnings = TestCorrelator.GetLogEventsFromCurrentContext()
+        var warnings = TestCorrelator
+            .GetLogEventsFromCurrentContext()
             .Where(x => x.MessageTemplate.Text == "{Message}" && x.Exception is not null)
             .ToList();
         warnings.Count.ShouldBe(1);
@@ -925,7 +920,10 @@ public class GetPhotoAssetImageEndpointUnitTests
         byte[] payload = [1, 2, 3];
         var failure = new IOException("The upstream connection ended during the image.");
         var handler = new StubHttpMessageHandler(
-            new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new FailingImageStream(payload, failure)) }
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new FailingImageStream(payload, failure)),
+            }
         );
         handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
@@ -933,7 +931,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         var lifetime = new Mock<IHttpRequestLifetimeFeature>(MockBehavior.Strict);
         lifetime.Setup(x => x.Abort()).Verifiable(Times.Once());
         var endpoint = SetupEndpointUnitTest<GetPhotoAssetImageEndpoint>(services =>
-            services.AddMemoryCache()
+            services
+                .AddMemoryCache()
                 .AddSingleton<IHttpClientFactory>(clientFactory.Object)
                 .AddSingleton<ILogger>(Serilog.Log.Logger)
         );
@@ -961,7 +960,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
         endpoint.HttpContext.Response.ContentType.ShouldBe("image/jpeg");
         handler.RequestUris.Select(x => x.AbsolutePath).ShouldBe([asset.Key]);
-        var warnings = TestCorrelator.GetLogEventsFromCurrentContext()
+        var warnings = TestCorrelator
+            .GetLogEventsFromCurrentContext()
             .Where(x => x.MessageTemplate.Text == "Photo image transport failed after response started: {Message}")
             .ToList();
         warnings.Count.ShouldBe(1);
@@ -998,9 +998,13 @@ public class GetPhotoAssetImageEndpointUnitTests
         }
 
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
         public override void Flush() => throw new NotSupportedException();
+
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
         public override void SetLength(long value) => throw new NotSupportedException();
+
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 

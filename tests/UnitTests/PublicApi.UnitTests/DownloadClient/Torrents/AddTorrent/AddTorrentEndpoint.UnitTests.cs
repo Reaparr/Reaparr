@@ -1,9 +1,8 @@
-using BencodeNET.Parsing;
-using BencodeNET.Objects;
-using BencodeNET.Torrents;
 using System.Text.Json;
+using BencodeNET.Objects;
+using BencodeNET.Parsing;
+using BencodeNET.Torrents;
 using Microsoft.Extensions.DependencyInjection;
-using Reaparr.Application.Contracts;
 using Reaparr.Data.Contracts;
 
 // ReSharper disable RedundantAssignment
@@ -211,6 +210,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         torrentFileMock.Verify(f => f.OpenReadStream(), Times.Once);
         torrentFileMock.Verify(f => f.FileName, Times.AtLeastOnce);
     }
+
     [Test]
     [Arguments(false)]
     [Arguments(true)]
@@ -280,8 +280,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         Mock.Mock<ITelemetry>()
             .Setup(x =>
                 x.CaptureErrors(
-                    It.Is<ResultBase>(result => result.Errors.Count == 1
-                        && result.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException)),
+                    It.Is<ResultBase>(result =>
+                        result.Errors.Count == 1
+                        && result
+                            .Errors.OfType<ExceptionalError>()
+                            .Any(error => error.Exception is OperationCanceledException)
+                    ),
                     TelemetryActivity.ExternalDownloadSubmission
                 )
             )
@@ -294,9 +298,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                     ),
                     ToTelemetryMetadata(metadata),
                     It.Is<string>(hash => hash == expectedHashId),
-                    It.Is<Result<DownloadTaskCreationReport>>(
-                        result => result.IsFailed && result.Errors.Count == 1
-                            && result.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException)
+                    It.Is<Result<DownloadTaskCreationReport>>(result =>
+                        result.IsFailed
+                        && result.Errors.Count == 1
+                        && result
+                            .Errors.OfType<ExceptionalError>()
+                            .Any(error => error.Exception is OperationCanceledException)
                     ),
                     null,
                     TelemetryStage.TaskCreation
@@ -402,8 +409,8 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                         It.Is<IntegrationIdentity>(i => i.Id == integration.Id && i.Type == IntegrationType.Radarr),
                         ToTelemetryMetadata(metadata),
                         It.IsAny<string>(),
-                        It.Is<Result<DownloadTaskCreationReport>>(
-                            result => result.IsSuccess && result.Value.Total == 1
+                        It.Is<Result<DownloadTaskCreationReport>>(result =>
+                            result.IsSuccess && result.Value.Total == 1
                         ),
                         It.Is<Result<int>>(result => result.IsSuccess && result.Value == 0),
                         TelemetryStage.HashAssociation
@@ -483,14 +490,13 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                     ),
                     ToTelemetryMetadata(metadata),
                     It.Is<string>(hash => hash == expectedHashId),
-                    It.Is<Result<DownloadTaskCreationReport>>(
-                        result => result.IsSuccess && result.Errors.Count == 0 && result.Value.Total == 1
+                    It.Is<Result<DownloadTaskCreationReport>>(result =>
+                        result.IsSuccess && result.Errors.Count == 0 && result.Value.Total == 1
                     ),
-                    It.Is<Result<int>>(
-                        result =>
-                            result.IsFailed
-                            && result.Errors.Count == 1
-                            && result.Errors.OfType<ExceptionalError>().Count() == 1
+                    It.Is<Result<int>>(result =>
+                        result.IsFailed
+                        && result.Errors.Count == 1
+                        && result.Errors.OfType<ExceptionalError>().Count() == 1
                     ),
                     TelemetryStage.HashAssociation
                 )
@@ -636,16 +642,14 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                     ),
                     ToTelemetryMetadata(metadata),
                     It.Is<string>(hash => hash == expectedHashId),
-                    It.Is<Result<DownloadTaskCreationReport>>(
-                        result => result.IsSuccess && result.Errors.Count == 0 && result.Value.Total == 1
+                    It.Is<Result<DownloadTaskCreationReport>>(result =>
+                        result.IsSuccess && result.Errors.Count == 0 && result.Value.Total == 1
                     ),
-                    It.Is<Result<int>>(
-                        result =>
-                            result.IsFailed
-                            && result.Errors.Count == 1
-                            && result.Errors.OfType<ExceptionalError>().Count() == 1
-                            && result.Errors.OfType<ExceptionalError>().Single().Exception
-                                is OperationCanceledException
+                    It.Is<Result<int>>(result =>
+                        result.IsFailed
+                        && result.Errors.Count == 1
+                        && result.Errors.OfType<ExceptionalError>().Count() == 1
+                        && result.Errors.OfType<ExceptionalError>().Single().Exception is OperationCanceledException
                     ),
                     TelemetryStage.HashAssociation
                 )

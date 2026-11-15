@@ -1,5 +1,4 @@
 using Autofac;
-using Microsoft.AspNetCore.Http;
 using Reaparr.Application;
 using Reaparr.Environment;
 using Serilog.Sinks.TestCorrelator;
@@ -17,7 +16,10 @@ public class IntegrationCredentialRedactionUnitTests : BaseUnitTest
             SetAppRuntimeInfo(x => x.IsUnmasked = false);
             var runtimeInfo = Mock.Container.Resolve<IAppRuntimeInfo>();
             var pathProvider = Mock.Container.Resolve<IPathProvider>();
-            LogFactory.SetupLogging(new TestLogConfig(runtimeInfo, pathProvider, Mock.Container.Resolve<IAppBuildInfo>()), runtimeInfo);
+            LogFactory.SetupLogging(
+                new TestLogConfig(runtimeInfo, pathProvider, Mock.Container.Resolve<IAppBuildInfo>()),
+                runtimeInfo
+            );
             var log = LogFactory.Create<IntegrationCredentialRedactionUnitTests>();
             var secrets = new[]
             {
@@ -70,7 +72,11 @@ public class IntegrationCredentialRedactionUnitTests : BaseUnitTest
         SetAppRuntimeInfo(x => x.IsUnmasked = unmasked);
         var runtimeInfo = Mock.Container.Resolve<IAppRuntimeInfo>();
         var pathProvider = Mock.Container.Resolve<IPathProvider>();
-        using var log = new TestLogConfig(runtimeInfo, pathProvider, Mock.Container.Resolve<IAppBuildInfo>()).GetLogger();
+        using var log = new TestLogConfig(
+            runtimeInfo,
+            pathProvider,
+            Mock.Container.Resolve<IAppBuildInfo>()
+        ).GetLogger();
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Method = HttpMethods.Post;
         httpContext.Request.Scheme = "http";

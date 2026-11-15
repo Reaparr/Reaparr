@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Reaparr.Identity.Contracts;
@@ -40,15 +39,21 @@ public class UpdateCredentialsEndpointUnitTests
         var request = new UpdateCredentialsEndpointRequest { Username = "new-user", Password = "new-password" };
 
         // Act
-        var outcome = await TestEndpointHandleAsync(request, services => services.AddSingleton(Mock.Mock<IUserService>().Object));
+        var outcome = await TestEndpointHandleAsync(
+            request,
+            services => services.AddSingleton(Mock.Mock<IUserService>().Object)
+        );
 
         // Assert
         outcome.IsValid.ShouldBeTrue();
         outcome.Endpoint.HttpContext.Response.Body.Position = 0;
-        var response = (await JsonSerializer.DeserializeAsync<BaseResultDTO>(
-            outcome.Endpoint.HttpContext.Response.Body,
-            DefaultJsonSerializerOptions.ConfigStandard,
-            CancellationToken)).ShouldNotBeNull();
+        var response = (
+            await JsonSerializer.DeserializeAsync<BaseResultDTO>(
+                outcome.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeFalse();
         response.StatusCode.ShouldBe((int)HttpStatusCode.BadRequest);
         response.Errors.ShouldHaveSingleItem().Message.ShouldBe("reset failed");
@@ -92,10 +97,13 @@ public class UpdateCredentialsEndpointUnitTests
         // Assert
         outcome.IsValid.ShouldBeTrue();
         outcome.Endpoint.HttpContext.Response.Body.Position = 0;
-        var response = (await JsonSerializer.DeserializeAsync<BaseResultDTO>(
-            outcome.Endpoint.HttpContext.Response.Body,
-            DefaultJsonSerializerOptions.ConfigStandard,
-            CancellationToken)).ShouldNotBeNull();
+        var response = (
+            await JsonSerializer.DeserializeAsync<BaseResultDTO>(
+                outcome.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeFalse();
         response.StatusCode.ShouldBe((int)HttpStatusCode.BadRequest);
         response.Errors.ShouldHaveSingleItem().Message.ShouldBe("reset failed");

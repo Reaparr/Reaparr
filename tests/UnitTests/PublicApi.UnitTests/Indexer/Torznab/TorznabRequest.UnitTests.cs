@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI.UnitTests;
 
 public class TorznabRequestUnitTests
@@ -167,14 +165,16 @@ public class TorznabRequestUnitTests
             Season = 2,
             Episode = 3,
         };
-        var response = Result.Ok(new TorznabMediaSearchResponseDTO
-        {
-            Channel = new TorznabChannel
+        var response = Result.Ok(
+            new TorznabMediaSearchResponseDTO
             {
-                Items = [new TorznabItem(), new TorznabItem()],
-                Response = new TorznabResponseMetadata { Total = 7 },
-            },
-        });
+                Channel = new TorznabChannel
+                {
+                    Items = [new TorznabItem(), new TorznabItem()],
+                    Response = new TorznabResponseMetadata { Total = 7 },
+                },
+            }
+        );
         var cancelled = Result.Fail<TorznabMediaSearchResponseDTO>(
             new ExceptionalError(new OperationCanceledException())
         );

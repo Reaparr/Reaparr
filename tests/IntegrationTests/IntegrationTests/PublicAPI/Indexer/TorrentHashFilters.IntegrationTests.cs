@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -16,15 +15,19 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
     public async Task ShouldFilterAuthenticatedTorrentHashesWithoutChangingWireFieldsOrTasks()
     {
         // Arrange
-        using var container = await CreateContainer(new Seed(8641), config => config.DatabaseOptions = database =>
-        {
-            database.PlexServerCount = 1;
-            database.MovieDownloadTasksCount = 2;
-            database.TvShowDownloadTasksCount = 2;
-            database.TvShowSeasonDownloadTasksCount = 1;
-            database.TvShowEpisodeDownloadTasksCount = 1;
-            database.RadarrIntegrationCount = 2;
-        });
+        using var container = await CreateContainer(
+            new Seed(8641),
+            config =>
+                config.DatabaseOptions = database =>
+                {
+                    database.PlexServerCount = 1;
+                    database.MovieDownloadTasksCount = 2;
+                    database.TvShowDownloadTasksCount = 2;
+                    database.TvShowSeasonDownloadTasksCount = 1;
+                    database.TvShowEpisodeDownloadTasksCount = 1;
+                    database.RadarrIntegrationCount = 2;
+                }
+        );
         using var db = container.DbContext;
         var integrations = await db.RadarrIntegrations.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
         integrations.Select(x => x.Id).Distinct().Count().ShouldBe(2);
@@ -33,24 +36,43 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
         var owners = integrations.Select(x => x.Id).ToArray();
         var files = await ArrangeMovieFilesAsync(db, owners);
         files.AddRange(await ArrangeEpisodeFilesAsync(db, owners));
-        await db.PlexServers.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true)
-            .SetProperty(y => y.OwnedOverride, false), CancellationToken);
+        await db.PlexServers.ExecuteUpdateAsync(
+            x => x.SetProperty(y => y.IsEnabled, true).SetProperty(y => y.OwnedOverride, false),
+            CancellationToken
+        );
         await db.SaveChangesAsync(CancellationToken);
-        var before = files.OrderBy(x => x.Id).Select(x =>
-            (x.Id, ParentId: x.ToParentKey()!.Id, x.HashId, x.DownloadStatus, x.SonarrIntegrationId, x.RadarrIntegrationId)).ToArray();
+        var before = files
+            .OrderBy(x => x.Id)
+            .Select(x =>
+                (
+                    x.Id,
+                    ParentId: x.ToParentKey()!.Id,
+                    x.HashId,
+                    x.DownloadStatus,
+                    x.SonarrIntegrationId,
+                    x.RadarrIntegrationId
+                )
+            )
+            .ToArray();
         var movie = ExpectedWire(files[0], MovieHash, "pausedUP");
         var episode = ExpectedWire(files[2], EpisodeHash, "downloading");
         var both = new[] { movie, episode }.OrderBy(x => x.Hash).ToArray();
         (string Query, TorrentWire[] Expected)[] requests =
         [
             ($"hashes={MovieHash.ToUpperInvariant()}", [movie]),
-            ($"hashes={Uri.EscapeDataString($"{MovieHash.ToUpperInvariant()}|{EpisodeHash.ToUpperInvariant()}|{ForeignMovieHash}|{ForeignEpisodeHash}")}", both),
+            (
+                $"hashes={Uri.EscapeDataString($"{MovieHash.ToUpperInvariant()}|{EpisodeHash.ToUpperInvariant()}|{ForeignMovieHash}|{ForeignEpisodeHash}")}",
+                both
+            ),
             ("hashes=ALL", both),
             ($"hashes=all&category={Uri.EscapeDataString(Category.ToLowerInvariant())}", both),
             ("hashes=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", []),
         ];
         using var client = container.GetApiClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", integrations[0].QBittorrentApiKey);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            integrations[0].QBittorrentApiKey
+        );
         var route = $"/api/public/integrations/{integrations[0].Id}/download-client/api/v2/torrents/info";
 
         // Act and Assert — each request crosses real routing, authentication, SQL and JSON serialization.
@@ -59,24 +81,49 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
             using var response = await client.GetAsync($"{route}?{request.Query}", CancellationToken);
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(CancellationToken));
-            var actual = document.RootElement.EnumerateArray().Select(x => new TorrentWire(
-                x.GetProperty("hash").GetString(), x.GetProperty("state").GetString(), x.GetProperty("category").GetString(),
-                x.GetProperty("save_path").GetString(), x.GetProperty("content_path").GetString(),
-                x.GetProperty("name").GetString(), x.GetProperty("size").GetInt64())).OrderBy(x => x.Hash).ToArray();
+            var actual = document
+                .RootElement.EnumerateArray()
+                .Select(x => new TorrentWire(
+                    x.GetProperty("hash").GetString(),
+                    x.GetProperty("state").GetString(),
+                    x.GetProperty("category").GetString(),
+                    x.GetProperty("save_path").GetString(),
+                    x.GetProperty("content_path").GetString(),
+                    x.GetProperty("name").GetString(),
+                    x.GetProperty("size").GetInt64()
+                ))
+                .OrderBy(x => x.Hash)
+                .ToArray();
             actual.ShouldBe(request.Expected);
         }
         using var afterContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
         var movies = await afterContext.DownloadTaskMovieFile.ToListAsync(CancellationToken);
         var episodes = await afterContext.DownloadTaskTvShowEpisodeFile.ToListAsync(CancellationToken);
-        movies.Cast<DownloadTaskFileBase>().Concat(episodes).OrderBy(x => x.Id).Select(x =>
-            (x.Id, ParentId: x.ToParentKey()!.Id, x.HashId, x.DownloadStatus, x.SonarrIntegrationId, x.RadarrIntegrationId)).ShouldBe(before);
+        movies
+            .Cast<DownloadTaskFileBase>()
+            .Concat(episodes)
+            .OrderBy(x => x.Id)
+            .Select(x =>
+                (
+                    x.Id,
+                    ParentId: x.ToParentKey()!.Id,
+                    x.HashId,
+                    x.DownloadStatus,
+                    x.SonarrIntegrationId,
+                    x.RadarrIntegrationId
+                )
+            )
+            .ShouldBe(before);
     }
 
     private async Task<List<DownloadTaskFileBase>> ArrangeMovieFilesAsync(IReaparrDbContext db, Guid[] owners)
     {
         var files = new List<DownloadTaskFileBase>();
-        var movieRoots = await db.DownloadTaskMovie.AsTracking().Include(x => x.Children)
-            .OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var movieRoots = await db
+            .DownloadTaskMovie.AsTracking()
+            .Include(x => x.Children)
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         movieRoots.Count.ShouldBe(2);
         for (var index = 0; index < movieRoots.Count; index++)
         {
@@ -96,7 +143,11 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
     private async Task<List<DownloadTaskFileBase>> ArrangeEpisodeFilesAsync(IReaparrDbContext db, Guid[] owners)
     {
         var files = new List<DownloadTaskFileBase>();
-        var tvRoots = await db.DownloadTaskTvShow.AsTracking().IncludeAll().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var tvRoots = await db
+            .DownloadTaskTvShow.AsTracking()
+            .IncludeAll()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         tvRoots.Count.ShouldBe(2);
         for (var index = 0; index < tvRoots.Count; index++)
         {
@@ -115,9 +166,24 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
         return files;
     }
 
-    private static TorrentWire ExpectedWire(DownloadTaskFileBase file, string hash, string state) => new(
-        hash, state, Category, file.DownloadDirectory, Path.Combine(file.DownloadDirectory, file.FileName), file.FileName, file.DataTotal);
+    private static TorrentWire ExpectedWire(DownloadTaskFileBase file, string hash, string state) =>
+        new(
+            hash,
+            state,
+            Category,
+            file.DownloadDirectory,
+            Path.Combine(file.DownloadDirectory, file.FileName),
+            file.FileName,
+            file.DataTotal
+        );
 
     private sealed record TorrentWire(
-        string? Hash, string? State, string? Category, string? SavePath, string? ContentPath, string? Name, long Size);
+        string? Hash,
+        string? State,
+        string? Category,
+        string? SavePath,
+        string? ContentPath,
+        string? Name,
+        long Size
+    );
 }

@@ -1,5 +1,4 @@
 using System.Net;
-using MediaTypeHeaderValue = System.Net.Http.Headers.MediaTypeHeaderValue;
 using System.Reactive.Disposables;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Features;
@@ -10,8 +9,8 @@ using Microsoft.Net.Http.Headers;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Instrumentation.Http;
 using Reaparr.Application.Contracts;
-using Reaparr.Domain;
 using Yarp.ReverseProxy.Forwarder;
+using MediaTypeHeaderValue = System.Net.Http.Headers.MediaTypeHeaderValue;
 
 namespace Reaparr.AppHost.UnitTests;
 
@@ -28,19 +27,21 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         var requestBytes = new byte[] { 0x1F, 0x8B, 0x08, 0x00, 0xFF, 0x00 };
         var responseBytes = new byte[] { 0x00, 0x9F, 0xFF, 0x01 };
         byte[]? capturedRequestBody = null;
-        var handler = new RecordingHandler(async (request, cancellationToken) =>
-        {
-            capturedRequestBody = await request.Content!.ReadAsByteArrayAsync(cancellationToken);
-            var response = new HttpResponseMessage(HttpStatusCode.MultiStatus)
+        var handler = new RecordingHandler(
+            async (request, cancellationToken) =>
             {
-                Content = new ByteArrayContent(responseBytes),
-            };
-            response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-            response.Content.Headers.ContentEncoding.Add("br");
-            response.Headers.TryAddWithoutValidation(HeaderNames.SetCookie, "reaparr=must-not-reach-browser");
-            response.Headers.TryAddWithoutValidation(HeaderNames.Location, "https://evil.example.test/login");
-            return response;
-        });
+                capturedRequestBody = await request.Content!.ReadAsByteArrayAsync(cancellationToken);
+                var response = new HttpResponseMessage(HttpStatusCode.MultiStatus)
+                {
+                    Content = new ByteArrayContent(responseBytes),
+                };
+                response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                response.Content.Headers.ContentEncoding.Add("br");
+                response.Headers.TryAddWithoutValidation(HeaderNames.SetCookie, "reaparr=must-not-reach-browser");
+                response.Headers.TryAddWithoutValidation(HeaderNames.Location, "https://evil.example.test/login");
+                return response;
+            }
+        );
         using var serviceProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var appBuildInfo = new MockAppBuildInfo
@@ -107,8 +108,9 @@ public class TelemetryProxyUnitTests : BaseUnitTest
     public async Task ShouldNotForwardArbitraryApplicationAuthorization()
     {
         // Arrange
-        var handler = new RecordingHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)));
+        var handler = new RecordingHandler(
+            (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent))
+        );
         using var serviceProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var context = CreateContext(HttpMethods.Get, "/i/v1/e");
@@ -137,9 +139,15 @@ public class TelemetryProxyUnitTests : BaseUnitTest
     public async Task ShouldRouteRegionalBinaryAssets_AndKeepCustomConfiguredOrigin()
     {
         // Arrange
-        var euHandler = new RecordingHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)));
-        var usHandler = new RecordingHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)));
-        var customHandler = new RecordingHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)));
+        var euHandler = new RecordingHandler(
+            (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent))
+        );
+        var usHandler = new RecordingHandler(
+            (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent))
+        );
+        var customHandler = new RecordingHandler(
+            (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent))
+        );
         using var euProvider = CreateForwarderServiceProvider();
         using var usProvider = CreateForwarderServiceProvider();
         using var customProvider = CreateForwarderServiceProvider();
@@ -156,11 +164,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         await new TelemetryProxy(
             euProvider.GetRequiredService<IHttpForwarder>(),
             euInvoker,
-            new MockAppBuildInfo
-            {
-                TelemetryHost = "https://eu.i.posthog.com",
-                TelemetryProjectToken = "phc_eu",
-            },
+            new MockAppBuildInfo { TelemetryHost = "https://eu.i.posthog.com", TelemetryProjectToken = "phc_eu" },
             runtime
         ).InvokeAsync(euContext);
 
@@ -168,11 +172,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         await new TelemetryProxy(
             usProvider.GetRequiredService<IHttpForwarder>(),
             usInvoker,
-            new MockAppBuildInfo
-            {
-                TelemetryHost = "https://us.i.posthog.com",
-                TelemetryProjectToken = "phc_us",
-            },
+            new MockAppBuildInfo { TelemetryHost = "https://us.i.posthog.com", TelemetryProjectToken = "phc_us" },
             runtime
         ).InvokeAsync(usContext);
 
@@ -180,11 +180,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         await new TelemetryProxy(
             customProvider.GetRequiredService<IHttpForwarder>(),
             customInvoker,
-            new MockAppBuildInfo
-            {
-                TelemetryHost = "https://proxy.example.test",
-                TelemetryProjectToken = "phc_custom",
-            },
+            new MockAppBuildInfo { TelemetryHost = "https://proxy.example.test", TelemetryProjectToken = "phc_custom" },
             runtime
         ).InvokeAsync(customContext);
 
@@ -221,23 +217,27 @@ public class TelemetryProxyUnitTests : BaseUnitTest
         aspNetOptions.Filter!(CreateContext(HttpMethods.Get, "/e/i/v1/e")).ShouldBeFalse();
         aspNetOptions.Filter!(CreateContext(HttpMethods.Get, "/api/work")).ShouldBeTrue();
         httpOptions.FilterHttpRequestMessage.ShouldNotBeNull();
-        httpOptions.FilterHttpRequestMessage!(
-            new HttpRequestMessage(HttpMethod.Get, "https://eu.i.posthog.com/i/v1/e")
-        ).ShouldBeFalse();
-        httpOptions.FilterHttpRequestMessage!(
-            new HttpRequestMessage(HttpMethod.Get, "https://eu-assets.i.posthog.com/static/app.js")
-        ).ShouldBeFalse();
-        httpOptions.FilterHttpRequestMessage!(
-            new HttpRequestMessage(HttpMethod.Get, "https://eu-assets.i.posthog.com/other")
-        ).ShouldBeTrue();
+        httpOptions
+            .FilterHttpRequestMessage!(new HttpRequestMessage(HttpMethod.Get, "https://eu.i.posthog.com/i/v1/e"))
+            .ShouldBeFalse();
+        httpOptions
+            .FilterHttpRequestMessage!(
+                new HttpRequestMessage(HttpMethod.Get, "https://eu-assets.i.posthog.com/static/app.js")
+            )
+            .ShouldBeFalse();
+        httpOptions
+            .FilterHttpRequestMessage!(new HttpRequestMessage(HttpMethod.Get, "https://eu-assets.i.posthog.com/other"))
+            .ShouldBeTrue();
     }
 
     [Test]
     public async Task ShouldReturnNotFoundWithoutTransmission_WhenTelemetryIsDisabled()
     {
         // Arrange
-        var handler = new RecordingHandler((_, _) =>
-            Task.FromException<HttpResponseMessage>(new InvalidOperationException("upstream must not be contacted")));
+        var handler = new RecordingHandler(
+            (_, _) =>
+                Task.FromException<HttpResponseMessage>(new InvalidOperationException("upstream must not be contacted"))
+        );
         using var serviceProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var feature = new MaxRequestBodySizeFeature();
@@ -262,8 +262,10 @@ public class TelemetryProxyUnitTests : BaseUnitTest
     public async Task ShouldRejectUnsupportedMethodsWithoutTransmission()
     {
         // Arrange
-        var handler = new RecordingHandler((_, _) =>
-            Task.FromException<HttpResponseMessage>(new InvalidOperationException("upstream must not be contacted")));
+        var handler = new RecordingHandler(
+            (_, _) =>
+                Task.FromException<HttpResponseMessage>(new InvalidOperationException("upstream must not be contacted"))
+        );
         using var serviceProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var feature = new MaxRequestBodySizeFeature();
@@ -293,8 +295,9 @@ public class TelemetryProxyUnitTests : BaseUnitTest
     public async Task ShouldPreserveNativeFailureResponses_ForUpstreamFailureAndCancellation()
     {
         // Arrange
-        var failureHandler = new RecordingHandler((_, _) =>
-            Task.FromException<HttpResponseMessage>(new HttpRequestException("upstream unavailable")));
+        var failureHandler = new RecordingHandler(
+            (_, _) => Task.FromException<HttpResponseMessage>(new HttpRequestException("upstream unavailable"))
+        );
         using var failureProvider = CreateForwarderServiceProvider();
         using var failureInvoker = new HttpMessageInvoker(failureHandler, disposeHandler: false);
         var failureContext = CreateContext(HttpMethods.Get, "/i/v1/e");
@@ -311,8 +314,12 @@ public class TelemetryProxyUnitTests : BaseUnitTest
 
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        var cancellationHandler = new RecordingHandler((_, _) =>
-            Task.FromException<HttpResponseMessage>(new InvalidOperationException("canceled request must not complete")));
+        var cancellationHandler = new RecordingHandler(
+            (_, _) =>
+                Task.FromException<HttpResponseMessage>(
+                    new InvalidOperationException("canceled request must not complete")
+                )
+        );
         using var cancellationProvider = CreateForwarderServiceProvider();
         using var cancellationInvoker = new HttpMessageInvoker(cancellationHandler, disposeHandler: false);
         var cancellationContext = CreateContext(HttpMethods.Get, "/i/v1/e");
@@ -342,8 +349,9 @@ public class TelemetryProxyUnitTests : BaseUnitTest
     public async Task ShouldBypassBusinessTelemetryForProxyBranch_AndKeepOrdinaryPathsInPipeline()
     {
         // Arrange
-        var handler = new RecordingHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)));
+        var handler = new RecordingHandler(
+            (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent))
+        );
         using var forwarderProvider = CreateForwarderServiceProvider();
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         var telemetry = new Mock<ITelemetry>(MockBehavior.Strict);

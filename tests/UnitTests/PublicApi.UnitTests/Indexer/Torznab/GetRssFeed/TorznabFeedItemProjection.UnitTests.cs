@@ -1,5 +1,4 @@
 using System.Globalization;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 

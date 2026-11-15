@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 
@@ -965,6 +964,7 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
                 Times.Never
             );
     }
+
     [Test]
     public async Task ShouldTrackNoOp_WhenNoDownloadTaskMatches()
     {
@@ -984,28 +984,30 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
                 x =>
                     x.ExternalDownloadRemovalProcessed(
                         It.IsAny<IntegrationIdentity>(),
-                        It.Is<ExternalDownloadRemovalReport>(
-                            report =>
-                                report.Result == null
-                                && report.Stage == TelemetryStage.Lookup
-                                && report.RequestedHashCount == 1
-                                && !report.AllRequested
-                                && report.MatchedCount == 0
-                                && report.ActiveCount == 0
-                                && report.NonActiveCount == 0
-                                && report.EligibleCount == 0
-                                && report.DeletedCount == 0
-                                && report.DeleteFiles
-                                && report.StopFailureCount == 0
-                                && report.StopCancellationCount == 0
-                                && report.FileFailureCount == 0
-                                && report.FileCancellationCount == 0
-                                && report.CleanupFailureCount == 0
+                        It.Is<ExternalDownloadRemovalReport>(report =>
+                            report.Result == null
+                            && report.Stage == TelemetryStage.Lookup
+                            && report.RequestedHashCount == 1
+                            && !report.AllRequested
+                            && report.MatchedCount == 0
+                            && report.ActiveCount == 0
+                            && report.NonActiveCount == 0
+                            && report.EligibleCount == 0
+                            && report.DeletedCount == 0
+                            && report.DeleteFiles
+                            && report.StopFailureCount == 0
+                            && report.StopCancellationCount == 0
+                            && report.FileFailureCount == 0
+                            && report.FileCancellationCount == 0
+                            && report.CleanupFailureCount == 0
                         )
                     ),
                 Times.Once
             );
         Mock.Mock<ICommandExecutor>()
-            .Verify(x => x.Send(It.IsAny<DeleteDownloadTasksByKeyCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+            .Verify(
+                x => x.Send(It.IsAny<DeleteDownloadTasksByKeyCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never
+            );
     }
 }

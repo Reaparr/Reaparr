@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using Reaparr.FluentResultExtensions;
 
 namespace Reaparr.IntegrationTests;
 

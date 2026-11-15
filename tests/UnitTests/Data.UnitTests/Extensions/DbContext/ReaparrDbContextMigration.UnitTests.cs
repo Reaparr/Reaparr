@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Reaparr.Environment;
-using Reaparr.FileSystem.Contracts;
 
 namespace Reaparr.Data.UnitTests;
 

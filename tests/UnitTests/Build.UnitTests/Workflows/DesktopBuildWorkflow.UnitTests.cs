@@ -1,7 +1,6 @@
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using Autofac;
-using FastEndpoints;
 
 namespace Reaparr.Build.UnitTests;
 
@@ -35,16 +34,31 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         SetupDependencies(builder => builder.Register(_ => "/repo").As<string>().SingleInstance());
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<DesktopPublishBuildCommand>(command => ReferenceEquals(command.Settings, settings)), CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<DesktopPublishBuildCommand>(command => ReferenceEquals(command.Settings, settings)),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(0))
             .Verifiable(Times.Once());
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<DesktopPackageBuildCommand>(command => ReferenceEquals(command.Settings, settings)), CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<DesktopPackageBuildCommand>(command => ReferenceEquals(command.Settings, settings)),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(0))
             .Verifiable(Times.Never());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<DesktopLaunchBuildCommand>(command => ReferenceEquals(command.Settings, settings)), CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<DesktopLaunchBuildCommand>(command => ReferenceEquals(command.Settings, settings)),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(0))
             .Verifiable(Times.Never());
 
@@ -80,12 +94,22 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         SetupDependencies(builder => builder.Register(_ => "/repo").As<string>().SingleInstance());
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<DesktopPackageBuildCommand>(command => ReferenceEquals(command.Settings, settings)), CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<DesktopPackageBuildCommand>(command => ReferenceEquals(command.Settings, settings)),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(0))
             .Verifiable(Times.Once());
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(It.Is<DesktopLaunchBuildCommand>(command => ReferenceEquals(command.Settings, settings)), CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<DesktopLaunchBuildCommand>(command => ReferenceEquals(command.Settings, settings)),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(0))
             .Verifiable(Times.Never());
 
@@ -107,7 +131,10 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         SetupFileSystem(system =>
         {
             var paths = new BuildPaths(rootDirectory, system);
-            system.AddFile(system.Path.Combine(paths.FrontendPublicDirectory, "index.html"), new MockFileData("frontend"));
+            system.AddFile(
+                system.Path.Combine(paths.FrontendPublicDirectory, "index.html"),
+                new MockFileData("frontend")
+            );
             var artifacts = system.Path.GetFullPath("release-output", rootDirectory);
             system.AddFile(system.Path.Combine(artifacts, "Reaparr-1.0.AppImage"), new MockFileData("old"));
             system.AddFile(system.Path.Combine(artifacts, "Reaparr-2.0.AppImage"), new MockFileData("new"));
@@ -129,29 +156,60 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         var runner = Mock.Mock<IDesktopCommandRunner>();
         runner.Setup(x => x.RequireCommandAsync("vpk")).Returns(Task.CompletedTask).Verifiable(Times.Once());
         runner.Setup(x => x.RequireCommandAsync("dotnet")).Returns(Task.CompletedTask).Verifiable(Times.Once());
-        runner.Setup(x => x.RunCommandAsync("dotnet", It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "publish" && arguments.Contains("--no-restore")), null, null))
-            .Returns(Task.CompletedTask).Verifiable(Times.Once());
-        runner.Setup(x => x.RunCommandAsync("vpk", It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "pack" && arguments[arguments.Count - 1] == artifacts), null, null))
-            .Returns(Task.CompletedTask).Verifiable(Times.Once());
-        runner.Setup(x => x.ExecuteCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
+        runner
+            .Setup(x =>
+                x.RunCommandAsync(
+                    "dotnet",
+                    It.Is<IReadOnlyList<string>>(arguments =>
+                        arguments[0] == "publish" && arguments.Contains("--no-restore")
+                    ),
+                    null,
+                    null
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        runner
+            .Setup(x =>
+                x.RunCommandAsync(
+                    "vpk",
+                    It.Is<IReadOnlyList<string>>(arguments =>
+                        arguments[0] == "pack" && arguments[arguments.Count - 1] == artifacts
+                    ),
+                    null,
+                    null
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        runner
+            .Setup(x =>
+                x.ExecuteCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>())
+            )
             .Verifiable(Times.Never());
         using var container = CreateBuildContainer(paths, fileSystem, runner.Object);
 
         // Act
-        var result = await container.Resolve<ICommandExecutor>().Send(new DesktopRunBuildCommand(settings), CancellationToken);
+        var result = await container
+            .Resolve<ICommandExecutor>()
+            .Send(new DesktopRunBuildCommand(settings), CancellationToken);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         result.Errors[0].Message.ShouldContain("Multiple packaged Linux artifacts");
-        fileSystem.File.ReadAllText(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "wwwroot", "index.html"))
+        fileSystem
+            .File.ReadAllText(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "wwwroot", "index.html"))
             .ShouldBe("frontend");
-        fileSystem.Directory.EnumerateFiles(artifacts, "*.AppImage", SearchOption.TopDirectoryOnly)
+        fileSystem
+            .Directory.EnumerateFiles(artifacts, "*.AppImage", SearchOption.TopDirectoryOnly)
             .Order(StringComparer.Ordinal)
             .Select(path => (fileSystem.Path.GetFileName(path), fileSystem.File.ReadAllText(path)))
             .ShouldBe([("Reaparr-1.0.AppImage", "old"), ("Reaparr-2.0.AppImage", "new")]);
-        runner.Verify(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null),
-            Times.Exactly(2));
+        runner.Verify(
+            x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null),
+            Times.Exactly(2)
+        );
         runner.Verify();
     }
 
@@ -163,7 +221,10 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         // Arrange
         SetupFileSystem(system =>
         {
-            system.AddFile("/repo/.artifacts/win-x64/publish/Reaparr.AppHost.exe", new MockFileData(new byte[] { 0, 1, 255 }));
+            system.AddFile(
+                "/repo/.artifacts/win-x64/publish/Reaparr.AppHost.exe",
+                new MockFileData(new byte[] { 0, 1, 255 })
+            );
             system.AddFile("/repo/.artifacts/win-x64/publish/nested/config.json", new MockFileData("config"));
             if (customOutput)
                 system.AddFile("/repo/release-output/publish/stale.bin", new MockFileData("stale"));
@@ -184,14 +245,30 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         var runner = Mock.Mock<IDesktopCommandRunner>();
         var publisher = new Mock<ICommandHandler<DesktopPublishBuildCommand, Result<int>>>(MockBehavior.Strict);
         var launcher = new Mock<ICommandHandler<DesktopLaunchBuildCommand, Result<int>>>(MockBehavior.Strict);
-        publisher.Setup(x => x.ExecuteAsync(
-                It.Is<DesktopPublishBuildCommand>(c => ReferenceEquals(c.Settings, settings)), CancellationToken))
-            .ReturnsAsync(Result.Ok(0)).Verifiable(Times.Once());
-        launcher.Setup(x => x.ExecuteAsync(
-                It.Is<DesktopLaunchBuildCommand>(c => ReferenceEquals(c.Settings, settings)), CancellationToken))
-            .ReturnsAsync(Result.Ok(0)).Verifiable(Times.Once());
-        runner.Setup(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null))
-            .Returns(Task.CompletedTask).Verifiable(Times.Never());
+        publisher
+            .Setup(x =>
+                x.ExecuteAsync(
+                    It.Is<DesktopPublishBuildCommand>(c => ReferenceEquals(c.Settings, settings)),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Ok(0))
+            .Verifiable(Times.Once());
+        launcher
+            .Setup(x =>
+                x.ExecuteAsync(
+                    It.Is<DesktopLaunchBuildCommand>(c => ReferenceEquals(c.Settings, settings)),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(Result.Ok(0))
+            .Verifiable(Times.Once());
+        runner
+            .Setup(x =>
+                x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null)
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Never());
         using var container = CreateBuildContainer(paths, fileSystem, runner.Object);
         using var scope = container.BeginLifetimeScope(builder =>
         {
@@ -200,20 +277,30 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         });
 
         // Act
-        var result = await scope.Resolve<ICommandExecutor>().Send(new DesktopRunBuildCommand(settings), CancellationToken);
+        var result = await scope
+            .Resolve<ICommandExecutor>()
+            .Send(new DesktopRunBuildCommand(settings), CancellationToken);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(0);
-        fileSystem.Directory.EnumerateFiles(exportedPublish, "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal).ShouldBe(new[]
-            {
-                fileSystem.Path.Combine(exportedPublish, "Reaparr.AppHost.exe"),
-                fileSystem.Path.Combine(exportedPublish, "nested", "config.json"),
-            }.Order(StringComparer.Ordinal));
-        fileSystem.File.ReadAllBytes(fileSystem.Path.Combine(exportedPublish, "Reaparr.AppHost.exe")).ShouldBe([0, 1, 255]);
-        fileSystem.File.ReadAllText(fileSystem.Path.Combine(exportedPublish, "nested", "config.json")).ShouldBe("config");
+        fileSystem
+            .Directory.EnumerateFiles(exportedPublish, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(
+                new[]
+                {
+                    fileSystem.Path.Combine(exportedPublish, "Reaparr.AppHost.exe"),
+                    fileSystem.Path.Combine(exportedPublish, "nested", "config.json"),
+                }.Order(StringComparer.Ordinal)
+            );
+        fileSystem
+            .File.ReadAllBytes(fileSystem.Path.Combine(exportedPublish, "Reaparr.AppHost.exe"))
+            .ShouldBe([0, 1, 255]);
+        fileSystem
+            .File.ReadAllText(fileSystem.Path.Combine(exportedPublish, "nested", "config.json"))
+            .ShouldBe("config");
         fileSystem.File.ReadAllBytes(fileSystem.Path.Combine(artifacts, "Reaparr.AppHost.exe")).ShouldBe([0, 1, 255]);
         fileSystem.File.ReadAllBytes(fileSystem.Path.Combine(publish, "Reaparr.AppHost.exe")).ShouldBe([0, 1, 255]);
         fileSystem.File.ReadAllText(fileSystem.Path.Combine(publish, "nested", "config.json")).ShouldBe("config");
@@ -223,15 +310,20 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
     }
 
     private static IContainer CreateBuildContainer(
-        BuildPaths paths, IFileSystem fileSystem, IDesktopCommandRunner runner)
+        BuildPaths paths,
+        IFileSystem fileSystem,
+        IDesktopCommandRunner runner
+    )
     {
         var builder = new ContainerBuilder();
         builder.RegisterModule<BuildModule>();
         builder.RegisterInstance(paths);
         builder.RegisterInstance(fileSystem);
         builder.RegisterInstance(runner);
-        builder.Register(_ => new Serilog.LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
-            .As<Serilog.ILogger>().SingleInstance();
+        builder
+            .Register(_ => new Serilog.LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
+            .As<Serilog.ILogger>()
+            .SingleInstance();
         return builder.Build();
     }
 }

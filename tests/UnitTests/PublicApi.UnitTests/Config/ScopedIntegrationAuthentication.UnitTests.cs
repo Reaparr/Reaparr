@@ -1,6 +1,3 @@
-using Reaparr.Application.Contracts;
-using Reaparr.PublicAPI.Contracts;
-
 namespace Reaparr.PublicAPI.UnitTests.Config;
 
 public class ScopedIntegrationAuthenticationUnitTests : BaseUnitTest

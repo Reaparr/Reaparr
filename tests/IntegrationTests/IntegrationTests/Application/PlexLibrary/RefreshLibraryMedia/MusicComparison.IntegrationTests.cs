@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
-using Moq;
 using Quartz.Impl.Matchers;
 
 namespace Reaparr.IntegrationTests;

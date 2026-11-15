@@ -1,13 +1,12 @@
-using System.Reflection;
-using System.IO.Abstractions;
-using System.Runtime.Loader;
 using System.Diagnostics;
+using System.IO.Abstractions;
+using System.IO.Abstractions.TestingHelpers;
+using System.Reflection;
+using System.Runtime.Loader;
 using System.Text.Json;
 using System.Xml.Linq;
-using Reaparr.Domain;
-using Reaparr.Environment;
-using System.IO.Abstractions.TestingHelpers;
 using Autofac;
+using Reaparr.Environment;
 
 namespace Reaparr.Build.UnitTests;
 
@@ -38,7 +37,9 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
         Mock.Mock<IDesktopCommandRunner>()
-            .Setup(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null))
+            .Setup(x =>
+                x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null)
+            )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
 
@@ -99,13 +100,16 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             .Verifiable(Times.Once());
         Mock.Mock<IDesktopCommandRunner>()
             .Setup(x =>
-                x.RunCommandAsync("dotnet", It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(publishArguments)), null, null)
+                x.RunCommandAsync(
+                    "dotnet",
+                    It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(publishArguments)),
+                    null,
+                    null
+                )
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-        Mock.Mock<IDesktopCommandRunner>()
-            .Setup(x => x.RequireCommandAsync("bun"))
-            .Verifiable(Times.Never());
+        Mock.Mock<IDesktopCommandRunner>().Setup(x => x.RequireCommandAsync("bun")).Verifiable(Times.Never());
         Mock.Mock<IDesktopCommandRunner>()
             .Setup(x => x.RunCommandAsync("bun", It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null))
             .Verifiable(Times.Never());
@@ -121,7 +125,13 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         fileSystem.File.ReadAllText("/repo/src/AppHost/ClientApp/.output/public/index.html").ShouldBe("frontend");
         Mock.Mock<IDesktopCommandRunner>()
             .Verify(
-                x => x.RunCommandAsync("dotnet", It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "restore"), It.IsAny<string?>(), null),
+                x =>
+                    x.RunCommandAsync(
+                        "dotnet",
+                        It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "restore"),
+                        It.IsAny<string?>(),
+                        null
+                    ),
                 Times.Never()
             );
         Mock.Mock<IDesktopCommandRunner>().Verify();
@@ -160,32 +170,49 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<IDesktopCommandRunner>()
-            .Setup(x => x.RunCommandAsync(
-                "bun",
-                It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(new[] { "run", "generate", "--fail-on-error" })),
-                "/repo/src/AppHost/ClientApp",
-                It.Is<IReadOnlyDictionary<string, string?>?>(environment =>
-                    environment != null
-                    && environment.Count == 2
-                    && environment[EnvKeys.NuxtPublicRpHost] == host
-                    && environment[EnvKeys.NuxtPublicRpKey] == token)))
+            .Setup(x =>
+                x.RunCommandAsync(
+                    "bun",
+                    It.Is<IReadOnlyList<string>>(arguments =>
+                        arguments.SequenceEqual(new[] { "run", "generate", "--fail-on-error" })
+                    ),
+                    "/repo/src/AppHost/ClientApp",
+                    It.Is<IReadOnlyDictionary<string, string?>?>(environment =>
+                        environment != null
+                        && environment.Count == 2
+                        && environment[EnvKeys.NuxtPublicRpHost] == host
+                        && environment[EnvKeys.NuxtPublicRpKey] == token
+                    )
+                )
+            )
             .Callback(() => executionOrder.Add("generate"))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<IDesktopCommandRunner>()
-            .Setup(x => x.RunCommandAsync(
-                "dotnet",
-                It.Is<IReadOnlyList<string>>(arguments =>
-                    arguments[0] == "publish"
-                    && arguments.Contains($"-p:ReaparrTelemetryHost={host}")
-                    && arguments.Contains($"-p:ReaparrTelemetryProjectToken={token}")),
-                null,
-                null))
+            .Setup(x =>
+                x.RunCommandAsync(
+                    "dotnet",
+                    It.Is<IReadOnlyList<string>>(arguments =>
+                        arguments[0] == "publish"
+                        && arguments.Contains($"-p:ReaparrTelemetryHost={host}")
+                        && arguments.Contains($"-p:ReaparrTelemetryProjectToken={token}")
+                    ),
+                    null,
+                    null
+                )
+            )
             .Callback(() => executionOrder.Add("publish"))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         Mock.Mock<IDesktopCommandRunner>()
-            .Setup(x => x.RunCommandAsync("bun", It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "install"), It.IsAny<string?>(), null))
+            .Setup(x =>
+                x.RunCommandAsync(
+                    "bun",
+                    It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "install"),
+                    It.IsAny<string?>(),
+                    null
+                )
+            )
             .Verifiable(Times.Never());
 
         // Act
@@ -218,7 +245,10 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
 
         // Act
         var executor = container.Resolve<ICommandExecutor>();
-        var result = await executor.Send(new DesktopPublishBuildCommand(DesktopCiPackageCommand.CreateCiSettings(settings)), CancellationToken);
+        var result = await executor.Send(
+            new DesktopPublishBuildCommand(DesktopCiPackageCommand.CreateCiSettings(settings)),
+            CancellationToken
+        );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -277,14 +307,16 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
 
         // Act
         var unconfiguredResult = await executor.Send(
-            new DesktopPublishBuildCommand(new DesktopCommandSettings
-            {
-                RuntimeIdentifier = "linux-x64",
-                Version = "1.2.3",
-                InformationalVersion = "1.2.3-dev.1",
-                SkipFrontend = true,
-                SkipRestore = false,
-            }),
+            new DesktopPublishBuildCommand(
+                new DesktopCommandSettings
+                {
+                    RuntimeIdentifier = "linux-x64",
+                    Version = "1.2.3",
+                    InformationalVersion = "1.2.3-dev.1",
+                    SkipFrontend = true,
+                    SkipRestore = false,
+                }
+            ),
             CancellationToken
         );
 
@@ -454,10 +486,9 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         fileSystem.File.Exists(assetsPath).ShouldBeFalse();
 
         // Act
-        var result = await container.Resolve<ICommandExecutor>().Send(
-            new DesktopPublishBuildCommand(settings),
-            CancellationToken
-        );
+        var result = await container
+            .Resolve<ICommandExecutor>()
+            .Send(new DesktopPublishBuildCommand(settings), CancellationToken);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -465,11 +496,12 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         result.Value.ShouldBe(0);
         using var assets = JsonDocument.Parse(fileSystem.File.ReadAllText(assetsPath));
         assets.RootElement.GetProperty("targets").TryGetProperty("net10.0/linux-x64", out _).ShouldBeTrue();
-        fileSystem.File.Exists(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "AppHost.dll"))
+        fileSystem
+            .File.Exists(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "AppHost.dll"))
             .ShouldBeTrue();
-        fileSystem.File.ReadAllText(
-            fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "wwwroot", "index.html")
-        ).ShouldBe("frontend-fixture");
+        fileSystem
+            .File.ReadAllText(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "wwwroot", "index.html"))
+            .ShouldBe("frontend-fixture");
     }
 
     [Test]
@@ -495,19 +527,20 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         fileSystem.File.Exists(assetsPath).ShouldBeFalse();
 
         // Act
-        var result = await container.Resolve<ICommandExecutor>().Send(
-            new DesktopPublishBuildCommand(settings),
-            CancellationToken
-        );
+        var result = await container
+            .Resolve<ICommandExecutor>()
+            .Send(new DesktopPublishBuildCommand(settings), CancellationToken);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         result.Errors.Single().Message.ShouldContain("--no-restore");
         fileSystem.File.Exists(assetsPath).ShouldBeFalse();
-        fileSystem.File.Exists(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "AppHost.dll"))
+        fileSystem
+            .File.Exists(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "AppHost.dll"))
             .ShouldBeFalse();
-        fileSystem.File.ReadAllText(fileSystem.Path.Combine(paths.FrontendPublicDirectory, "index.html"))
+        fileSystem
+            .File.ReadAllText(fileSystem.Path.Combine(paths.FrontendPublicDirectory, "index.html"))
             .ShouldBe("frontend-fixture");
     }
 
@@ -518,7 +551,10 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         SetupFileSystem(system =>
         {
             system.AddFile("/repo/src/AppHost/AppHost.csproj", new MockFileData("project-sentinel"));
-            system.AddFile("/repo/src/AppHost/ClientApp/.output/public/index.html", new MockFileData("frontend-fixture"));
+            system.AddFile(
+                "/repo/src/AppHost/ClientApp/.output/public/index.html",
+                new MockFileData("frontend-fixture")
+            );
             system.AddFile("/repo/retained.txt", new MockFileData("retained"));
         });
         var runner = new Mock<IDesktopCommandRunner>(MockBehavior.Strict);
@@ -538,12 +574,15 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             SkipRestore = false,
             DryRun = true,
         };
-        fileSystem.File.ReadAllText(fileSystem.Path.Combine(paths.FrontendPublicDirectory, "index.html"))
+        fileSystem
+            .File.ReadAllText(fileSystem.Path.Combine(paths.FrontendPublicDirectory, "index.html"))
             .ShouldBe("frontend-fixture");
-        var before = fileSystem.Directory
-            .EnumerateFiles(paths.RootDirectory, "*", SearchOption.AllDirectories)
+        var before = fileSystem
+            .Directory.EnumerateFiles(paths.RootDirectory, "*", SearchOption.AllDirectories)
             .Order(StringComparer.Ordinal)
-            .Select(file => (fileSystem.Path.GetRelativePath(paths.RootDirectory, file), fileSystem.File.ReadAllText(file)))
+            .Select(file =>
+                (fileSystem.Path.GetRelativePath(paths.RootDirectory, file), fileSystem.File.ReadAllText(file))
+            )
             .ToArray();
 
         // Act
@@ -553,15 +592,17 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(0);
-        fileSystem.Directory
-            .EnumerateFiles(paths.RootDirectory, "*", SearchOption.AllDirectories)
+        fileSystem
+            .Directory.EnumerateFiles(paths.RootDirectory, "*", SearchOption.AllDirectories)
             .Order(StringComparer.Ordinal)
-            .Select(file => (fileSystem.Path.GetRelativePath(paths.RootDirectory, file), fileSystem.File.ReadAllText(file)))
+            .Select(file =>
+                (fileSystem.Path.GetRelativePath(paths.RootDirectory, file), fileSystem.File.ReadAllText(file))
+            )
             .ShouldBe(before);
         fileSystem.Directory.Exists(paths.ArtifactDirectory("linux-x64")).ShouldBeFalse();
-        fileSystem.Directory.Exists(
-            fileSystem.Path.Combine(fileSystem.Path.GetDirectoryName(paths.AppHostProject)!, "obj")
-        ).ShouldBeFalse();
+        fileSystem
+            .Directory.Exists(fileSystem.Path.Combine(fileSystem.Path.GetDirectoryName(paths.AppHostProject)!, "obj"))
+            .ShouldBeFalse();
         runner.Verify(x => x.RequireCommandAsync(It.IsAny<string>()), Times.Never);
         runner.Verify(
             x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null),
@@ -599,16 +640,24 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpKey, "inherited-stale-key");
 
             // Act
-            await container.Resolve<IDesktopCommandRunner>().RunCommandAsync(
-                "dotnet",
-                ["msbuild", paths.AppHostProject, "-target:ExportTelemetryEnvironment", "-verbosity:quiet", "-nologo"],
-                paths.RootDirectory,
-                new Dictionary<string, string?>
-                {
-                    [EnvKeys.NuxtPublicRpHost] = "https://frontend.example.test",
-                    [EnvKeys.NuxtPublicRpKey] = "phc_frontend",
-                }
-            );
+            await container
+                .Resolve<IDesktopCommandRunner>()
+                .RunCommandAsync(
+                    "dotnet",
+                    [
+                        "msbuild",
+                        paths.AppHostProject,
+                        "-target:ExportTelemetryEnvironment",
+                        "-verbosity:quiet",
+                        "-nologo",
+                    ],
+                    paths.RootDirectory,
+                    new Dictionary<string, string?>
+                    {
+                        [EnvKeys.NuxtPublicRpHost] = "https://frontend.example.test",
+                        [EnvKeys.NuxtPublicRpKey] = "phc_frontend",
+                    }
+                );
 
             // Assert
             File.ReadAllLines(outputPath).ShouldBe(["https://frontend.example.test|phc_frontend"]);
@@ -616,16 +665,24 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe("inherited-stale-key");
 
             // Act
-            await container.Resolve<IDesktopCommandRunner>().RunCommandAsync(
-                "dotnet",
-                ["msbuild", paths.AppHostProject, "-target:ExportTelemetryEnvironment", "-verbosity:quiet", "-nologo"],
-                paths.RootDirectory,
-                new Dictionary<string, string?>
-                {
-                    [EnvKeys.NuxtPublicRpHost] = string.Empty,
-                    [EnvKeys.NuxtPublicRpKey] = string.Empty,
-                }
-            );
+            await container
+                .Resolve<IDesktopCommandRunner>()
+                .RunCommandAsync(
+                    "dotnet",
+                    [
+                        "msbuild",
+                        paths.AppHostProject,
+                        "-target:ExportTelemetryEnvironment",
+                        "-verbosity:quiet",
+                        "-nologo",
+                    ],
+                    paths.RootDirectory,
+                    new Dictionary<string, string?>
+                    {
+                        [EnvKeys.NuxtPublicRpHost] = string.Empty,
+                        [EnvKeys.NuxtPublicRpKey] = string.Empty,
+                    }
+                );
 
             // Assert
             File.ReadAllLines(outputPath).ShouldBe(["|"]);
@@ -680,21 +737,47 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 fileSystem.Path.Combine(root, "Directory.Build.props"),
                 File.ReadAllText(repositoryPropertiesPath)
             );
-            var appHostProject = XDocument.Load(fileSystem.Path.Combine(repositoryRoot, "src", "AppHost", "AppHost.csproj")).Root!;
-            var metadata = appHostProject.Elements("ItemGroup").Single(group =>
-                group.Elements("AssemblyMetadata").Any(item => (string?)item.Attribute("Include") == "ReaparrTelemetryHost"));
-            var validation = appHostProject.Elements("Target").Single(target =>
-                (string?)target.Attribute("Name") == "ValidateReaparrTelemetryConfiguration");
+            var appHostProject = XDocument
+                .Load(fileSystem.Path.Combine(repositoryRoot, "src", "AppHost", "AppHost.csproj"))
+                .Root!;
+            var metadata = appHostProject
+                .Elements("ItemGroup")
+                .Single(group =>
+                    group
+                        .Elements("AssemblyMetadata")
+                        .Any(item => (string?)item.Attribute("Include") == "ReaparrTelemetryHost")
+                );
+            var validation = appHostProject
+                .Elements("Target")
+                .Single(target => (string?)target.Attribute("Name") == "ValidateReaparrTelemetryConfiguration");
             telemetryConfiguration = $"{metadata}\n{validation}";
         }
         var linkedEnvironmentSources = includeAppHostBuildConfiguration
             ? $"""
-              <ItemGroup>
-                <Compile Include="{Path.Combine(repositoryRoot, "src", "Environment", "AppBuildInfo.cs")}" Link="Environment/AppBuildInfo.cs" />
-                <Compile Include="{Path.Combine(repositoryRoot, "src", "Environment", "Interfaces", "IAppBuildInfo.cs")}" Link="Environment/Interfaces/IAppBuildInfo.cs" />
-                <Compile Include="{Path.Combine(repositoryRoot, "src", "Environment", "_Shared", "Enums", "OperatingSystemPlatform.cs")}" Link="Environment/_Shared/Enums/OperatingSystemPlatform.cs" />
-              </ItemGroup>
-              """
+                <ItemGroup>
+                  <Compile Include="{Path.Combine(
+                    repositoryRoot,
+                    "src",
+                    "Environment",
+                    "AppBuildInfo.cs"
+                )}" Link="Environment/AppBuildInfo.cs" />
+                  <Compile Include="{Path.Combine(
+                    repositoryRoot,
+                    "src",
+                    "Environment",
+                    "Interfaces",
+                    "IAppBuildInfo.cs"
+                )}" Link="Environment/Interfaces/IAppBuildInfo.cs" />
+                  <Compile Include="{Path.Combine(
+                    repositoryRoot,
+                    "src",
+                    "Environment",
+                    "_Shared",
+                    "Enums",
+                    "OperatingSystemPlatform.cs"
+                )}" Link="Environment/_Shared/Enums/OperatingSystemPlatform.cs" />
+                </ItemGroup>
+                """
             : string.Empty;
         fileSystem.File.WriteAllText(
             paths.AppHostProject,
@@ -714,16 +797,13 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         );
         var programSource = includeAppHostBuildConfiguration
             ? """
-              using Reaparr.Environment;
+                using Reaparr.Environment;
 
-              var buildInfo = new AppBuildInfo();
-              System.Console.WriteLine($"{buildInfo.TelemetryHost}|{buildInfo.TelemetryProjectToken}");
-              """
+                var buildInfo = new AppBuildInfo();
+                System.Console.WriteLine($"{buildInfo.TelemetryHost}|{buildInfo.TelemetryProjectToken}");
+                """
             : "System.Console.WriteLine(\"desktop-restore-fixture\");";
-        fileSystem.File.WriteAllText(
-            fileSystem.Path.Combine(projectDirectory, "Program.cs"),
-            programSource
-        );
+        fileSystem.File.WriteAllText(fileSystem.Path.Combine(projectDirectory, "Program.cs"), programSource);
         var profileDirectory = fileSystem.Path.Combine(projectDirectory, "Properties", "PublishProfiles");
         fileSystem.Directory.CreateDirectory(profileDirectory);
         fileSystem.File.WriteAllText(
@@ -758,7 +838,8 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         builder.RegisterModule<BuildModule>();
         builder.RegisterInstance(fileSystem).As<IFileSystem>();
         builder.RegisterInstance(paths);
-        builder.Register(_ => new Serilog.LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
+        builder
+            .Register(_ => new Serilog.LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
             .As<Serilog.ILogger>()
             .SingleInstance();
         return builder.Build();
