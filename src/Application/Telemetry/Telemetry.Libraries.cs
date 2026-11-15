@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Reaparr.Application;
 
 public sealed partial class Telemetry
@@ -333,15 +331,24 @@ public sealed partial class Telemetry
 
     /// <inheritdoc/>
     public Activity? StartMovieComparison(int ownedLibraryId, int remoteLibraryId) =>
-        StartActivityCore(TelemetryActivity.MovieComparison, tags: CreateComparisonTags(ownedLibraryId, remoteLibraryId));
+        StartActivityCore(
+            TelemetryActivity.MovieComparison,
+            tags: CreateComparisonTags(ownedLibraryId, remoteLibraryId)
+        );
 
     /// <inheritdoc/>
     public Activity? StartTvShowComparison(int ownedLibraryId, int remoteLibraryId) =>
-        StartActivityCore(TelemetryActivity.TvShowComparison, tags: CreateComparisonTags(ownedLibraryId, remoteLibraryId));
+        StartActivityCore(
+            TelemetryActivity.TvShowComparison,
+            tags: CreateComparisonTags(ownedLibraryId, remoteLibraryId)
+        );
 
     /// <inheritdoc/>
     public Activity? StartMusicComparison(int ownedLibraryId, int remoteLibraryId) =>
-        StartActivityCore(TelemetryActivity.MusicComparison, tags: CreateComparisonTags(ownedLibraryId, remoteLibraryId));
+        StartActivityCore(
+            TelemetryActivity.MusicComparison,
+            tags: CreateComparisonTags(ownedLibraryId, remoteLibraryId)
+        );
 
     /// <inheritdoc/>
     public Activity? StartComparisonStateApplication(PlexMediaType mediaType, int? libraryId, int itemCount) =>
@@ -366,9 +373,9 @@ public sealed partial class Telemetry
                 .ToArray();
 
     private static KeyValuePair<string, object?>[] CreateComparisonTags(int ownedLibraryId, int remoteLibraryId) =>
-    [
-        new(TelemetryProperty.Libraries.OwnedLibraryId, ownedLibraryId),
-        new(TelemetryProperty.Libraries.RemoteLibraryId, remoteLibraryId),
-        new(TelemetryProperty.Libraries.Pair, $"{ownedLibraryId}:{remoteLibraryId}"),
-    ];
+        [
+            new(TelemetryProperty.Libraries.OwnedLibraryId, ownedLibraryId),
+            new(TelemetryProperty.Libraries.RemoteLibraryId, remoteLibraryId),
+            new(TelemetryProperty.Libraries.Pair, $"{ownedLibraryId}:{remoteLibraryId}"),
+        ];
 }

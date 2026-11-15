@@ -98,7 +98,7 @@ public class UpdateCredentialsEndpoint : Endpoint<UpdateCredentialsEndpointReque
             // Update the username
             var previousUsername = user.UserName;
             user.UserName = newUsername;
-            user.NormalizedUserName = newUsername.ToUpper();
+            user.NormalizedUserName = newUsername.ToUpperInvariant();
 
             var usernameResult = await _userService.UpdateAsync(user);
             if (!usernameResult.Succeeded)

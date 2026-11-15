@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Net;
-using System.Net.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using PostHog;
 

@@ -321,7 +321,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             {
                 PlexLibraryId = library.Id,
                 Status = LibrarySyncJobStatus.Queued,
-                CreatedAt = queueItem.CreatedAt,
+                queueItem.CreatedAt,
                 ErrorMessage = (string?)"Stale queued details",
                 IsServerOffline = true,
             }

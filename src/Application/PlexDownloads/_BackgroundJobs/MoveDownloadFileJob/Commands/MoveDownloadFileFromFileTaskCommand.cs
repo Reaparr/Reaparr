@@ -30,6 +30,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
     private readonly IDirectory _directory;
     private readonly IPath _path;
     private readonly IDownloadManagerSettings _downloadManagerSettings;
+
     public MoveDownloadFileFromFileTaskCommandHandler(
         ILogger log,
         ICommandExecutor commandExecutor,
@@ -159,7 +160,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
             }
             else if (destinationExists)
             {
-                var destinationSizeResult = GetFileLength(destinationPath!);
+                var destinationSizeResult = GetFileLength(destinationPath);
                 if (destinationSizeResult.IsFailed)
                     return await ErrorDownloadTask(key, destinationSizeResult.ToResult());
 
@@ -336,7 +337,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
             {
                 if (destinationAlreadyExists)
                 {
-                    var destinationSizeResult = GetFileLength(destinationPath!);
+                    var destinationSizeResult = GetFileLength(destinationPath);
                     if (destinationSizeResult.IsFailed)
                         return await ErrorDownloadTask(key, destinationSizeResult.ToResult());
 
@@ -581,7 +582,6 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
             }
         }
     }
-
 
     private TelemetryRetentionReason GetRetentionReason(DownloadTaskFileBase downloadTask, bool keepInDownloads)
     {

@@ -88,7 +88,7 @@ internal sealed class OpenApiAddExtraTypes(Func<JsonTypeInfo, string?> createSch
     /// clients to share enum and DTO identities rather than receiving unrelated inline copies of those types.
     /// </remarks>
     public async Task TransformAsync(
-        Microsoft.OpenApi.OpenApiDocument document,
+        OpenApiDocument document,
         OpenApiDocumentTransformerContext context,
         CancellationToken cancellationToken
     )
@@ -124,11 +124,7 @@ internal sealed class OpenApiAddExtraTypes(Func<JsonTypeInfo, string?> createSch
     /// before descending into their children, allowing recursive contracts to refer back to an existing
     /// component instead of repeatedly expanding it. Child schemas are normalized in place.
     /// </remarks>
-    private IOpenApiSchema RegisterSchema(
-        Microsoft.OpenApi.OpenApiDocument document,
-        IOpenApiSchema schema,
-        string? name = null
-    )
+    private IOpenApiSchema RegisterSchema(OpenApiDocument document, IOpenApiSchema schema, string? name = null)
     {
         if (schema is not OpenApiSchema concreteSchema)
             return schema;
@@ -160,7 +156,7 @@ internal sealed class OpenApiAddExtraTypes(Func<JsonTypeInfo, string?> createSch
     /// anyOf, and oneOf composition lists. Each child goes through the same registration rules as a root;
     /// existing references are retained, while unnamed schemas remain inline and have their own children visited.
     /// </remarks>
-    private void RegisterChildSchemas(Microsoft.OpenApi.OpenApiDocument document, OpenApiSchema schema)
+    private void RegisterChildSchemas(OpenApiDocument document, OpenApiSchema schema)
     {
         if (schema.Properties is { } properties)
             foreach (var (key, property) in properties)

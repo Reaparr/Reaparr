@@ -1,7 +1,6 @@
 using BencodeNET.Exceptions;
 using BencodeNET.Parsing;
 using BencodeNET.Torrents;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
 

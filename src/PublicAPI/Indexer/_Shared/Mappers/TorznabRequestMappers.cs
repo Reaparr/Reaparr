@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI;
 
 public static class TorznabRequestMappers

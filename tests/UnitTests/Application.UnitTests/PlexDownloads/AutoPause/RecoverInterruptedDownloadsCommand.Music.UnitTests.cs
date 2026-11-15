@@ -78,7 +78,7 @@ public class RecoverInterruptedDownloadsCommandMusicUnitTests : BaseUnitTest<Rec
                         new
                         {
                             x.Id,
-                            ParentId = ((DownloadTaskMusicTrackFile)x).ParentId,
+                            ((DownloadTaskMusicTrackFile)x).ParentId,
                             DownloadStatus = expectedStatuses[index],
                             DataReceived = 128L,
                             FileDataTransferred = 64L,

@@ -66,7 +66,7 @@ public class GetDownloadPreviewQueryCommandUnitTests : BaseCommandUnitTest<GetDo
         await SetupDatabase(15140);
 
         // Act
-        var result = await new GetDownloadPreviewQueryHandler(Mock.Mock<ICommandExecutor>().Object, Log).ExecuteAsync(
+        var result = await new GetDownloadPreviewQueryHandler(Mock.Mock<ICommandExecutor>().Object).ExecuteAsync(
             new GetDownloadPreviewQuery(new DownloadPreviewRequest { DownloadMedias = [] }),
             CancellationToken
         );

@@ -100,9 +100,9 @@ public static class MediaNavigationIndexBuilder
         var groups =
             sort.Direction == SortDirection.Desc
                 ? rows.GroupBy(bucket.Key)
-                    .Select(group => new { Key = group.Key, FirstRank = group.Max(row => row.SortRank) })
+                    .Select(group => new { group.Key, FirstRank = group.Max(row => row.SortRank) })
                 : rows.GroupBy(bucket.Key)
-                    .Select(group => new { Key = group.Key, FirstRank = group.Min(row => row.SortRank) });
+                    .Select(group => new { group.Key, FirstRank = group.Min(row => row.SortRank) });
 
         var positionedGroups =
             sort.Direction == SortDirection.Desc

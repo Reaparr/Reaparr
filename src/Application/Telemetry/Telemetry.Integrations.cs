@@ -3,12 +3,18 @@ namespace Reaparr.Application;
 public sealed partial class Telemetry
 {
     /// <inheritdoc/>
-    public void IntegrationChanged(SonarrIntegration integration, TelemetryAction action, bool connectionIdentityChanged) =>
-        CaptureIntegrationChanged(CreateIntegrationProperties(integration), action, connectionIdentityChanged);
+    public void IntegrationChanged(
+        SonarrIntegration integration,
+        TelemetryAction action,
+        bool connectionIdentityChanged
+    ) => CaptureIntegrationChanged(CreateIntegrationProperties(integration), action, connectionIdentityChanged);
 
     /// <inheritdoc/>
-    public void IntegrationChanged(RadarrIntegration integration, TelemetryAction action, bool connectionIdentityChanged) =>
-        CaptureIntegrationChanged(CreateIntegrationProperties(integration), action, connectionIdentityChanged);
+    public void IntegrationChanged(
+        RadarrIntegration integration,
+        TelemetryAction action,
+        bool connectionIdentityChanged
+    ) => CaptureIntegrationChanged(CreateIntegrationProperties(integration), action, connectionIdentityChanged);
 
     /// <inheritdoc/>
     public void IntegrationDeleted(
@@ -41,20 +47,12 @@ public sealed partial class Telemetry
         );
 
     /// <inheritdoc/>
-    public void IntegrationSetupFinished<TStage>(
-        SonarrIntegration integration,
-        ResultBase result,
-        TStage stage
-    )
+    public void IntegrationSetupFinished<TStage>(SonarrIntegration integration, ResultBase result, TStage stage)
         where TStage : struct, Enum =>
         CaptureIntegrationSetupFinished(CreateIntegrationProperties(integration), result, stage.ToString());
 
     /// <inheritdoc/>
-    public void IntegrationSetupFinished<TStage>(
-        RadarrIntegration integration,
-        ResultBase result,
-        TStage stage
-    )
+    public void IntegrationSetupFinished<TStage>(RadarrIntegration integration, ResultBase result, TStage stage)
         where TStage : struct, Enum =>
         CaptureIntegrationSetupFinished(CreateIntegrationProperties(integration), result, stage.ToString());
 
@@ -69,19 +67,24 @@ public sealed partial class Telemetry
         var properties = new Dictionary<string, object>
         {
             [TelemetryProperty.Provider] = provider.ToString(),
-            [TelemetryProperty.Mode] = (integrationId.HasValue ? TelemetryMode.Stored : TelemetryMode.Explicit).ToString(),
+            [TelemetryProperty.Mode] = (
+                integrationId.HasValue ? TelemetryMode.Stored : TelemetryMode.Explicit
+            ).ToString(),
             [TelemetryProperty.Outcome] = Outcome(result),
         };
         if (integrationId.HasValue)
             properties[TelemetryProperty.IntegrationId] = integrationId.Value;
         if (result.IsSuccess && report is not null)
         {
-            properties[TelemetryProperty.Outcome] = (report.Status switch
-            {
-                TestConnectionStatus.Success => TelemetryOutcome.Succeeded,
-                TestConnectionStatus.InvalidApiKey or TestConnectionStatus.UrlIsInvalid => TelemetryOutcome.Rejected,
-                _ => TelemetryOutcome.Failed,
-            }).ToString();
+            properties[TelemetryProperty.Outcome] = (
+                report.Status switch
+                {
+                    TestConnectionStatus.Success => TelemetryOutcome.Succeeded,
+                    TestConnectionStatus.InvalidApiKey or TestConnectionStatus.UrlIsInvalid =>
+                        TelemetryOutcome.Rejected,
+                    _ => TelemetryOutcome.Failed,
+                }
+            ).ToString();
             properties[TelemetryProperty.Status] = report.Status.ToString();
             if (report.HttpStatusCode.HasValue)
                 properties[TelemetryProperty.HttpStatusCode] = report.HttpStatusCode.Value;
@@ -161,19 +164,16 @@ public sealed partial class Telemetry
     {
         var creationReport = creationResult?.ValueOrDefault;
         var associatedTaskCount = associationResult?.ValueOrDefault ?? 0;
-        var outcome = creationResult is null
-            ? TelemetryOutcome.Rejected
-            : !creationResult.IsSuccess
-                ? SubmissionOutcome(creationResult)
-                : associationResult?.IsCancelledOrFailed == true
-                    ? creationReport is { Total: > 0 }
-                        ? TelemetryOutcome.Partial
-                        : SubmissionOutcome(associationResult!)
-                    : associatedTaskCount == 0
-                        ? creationReport is { Total: > 0 }
-                            ? TelemetryOutcome.Partial
-                            : TelemetryOutcome.Rejected
-                        : TelemetryOutcome.Succeeded;
+        var outcome =
+            creationResult is null ? TelemetryOutcome.Rejected
+            : !creationResult.IsSuccess ? SubmissionOutcome(creationResult)
+            : associationResult?.IsCancelledOrFailed == true
+                ? creationReport is { Total: > 0 } ? TelemetryOutcome.Partial
+                    : SubmissionOutcome(associationResult)
+            : associatedTaskCount == 0
+                ? creationReport is { Total: > 0 } ? TelemetryOutcome.Partial
+                    : TelemetryOutcome.Rejected
+            : TelemetryOutcome.Succeeded;
         var properties = new Dictionary<string, object>
         {
             [TelemetryProperty.IntegrationId] = integration.Id,
@@ -213,17 +213,12 @@ public sealed partial class Telemetry
     }
 
     private static TelemetryOutcome SubmissionOutcome(ResultBase result) =>
-        result.IsCancelled
-            ? TelemetryOutcome.Cancelled
-            : result.HasError<ExceptionalError>()
-                ? TelemetryOutcome.Failed
-                : TelemetryOutcome.Rejected;
+        result.IsCancelled ? TelemetryOutcome.Cancelled
+        : result.HasError<ExceptionalError>() ? TelemetryOutcome.Failed
+        : TelemetryOutcome.Rejected;
 
     /// <inheritdoc/>
-    public void ExternalDownloadRemovalProcessed(
-        IntegrationIdentity integration,
-        ExternalDownloadRemovalReport report
-    )
+    public void ExternalDownloadRemovalProcessed(IntegrationIdentity integration, ExternalDownloadRemovalReport report)
     {
         _ = Capture(
             TelemetryEvent.ExternalDownloadRemovalProcessed,
@@ -252,10 +247,8 @@ public sealed partial class Telemetry
 
     private static TelemetryOutcome RemovalOutcome(ExternalDownloadRemovalReport report)
     {
-        var hasPrerequisiteFailures =
-            report.StopFailureCount > 0 || report.FileFailureCount > 0;
-        var hasPrerequisiteCancellations =
-            report.StopCancellationCount > 0 || report.FileCancellationCount > 0;
+        var hasPrerequisiteFailures = report.StopFailureCount > 0 || report.FileFailureCount > 0;
+        var hasPrerequisiteCancellations = report.StopCancellationCount > 0 || report.FileCancellationCount > 0;
         if (report.Stage is TelemetryStage.Request or TelemetryStage.Lookup)
             return TelemetryOutcome.NoOp;
         if (report.Stage == TelemetryStage.Prerequisites)
@@ -294,13 +287,11 @@ public sealed partial class Telemetry
         bool forced
     )
     {
-        var remoteCleanupOutcome = remoteCleanupResult.IsCancelled
-            ? TelemetryOutcome.Cancelled
-            : remoteCleanupResult.IsFailed
-                ? TelemetryOutcome.Failed
-                : hasRemoteResources
-                    ? TelemetryOutcome.Succeeded
-                    : TelemetryOutcome.NotRequired;
+        var remoteCleanupOutcome =
+            remoteCleanupResult.IsCancelled ? TelemetryOutcome.Cancelled
+            : remoteCleanupResult.IsFailed ? TelemetryOutcome.Failed
+            : hasRemoteResources ? TelemetryOutcome.Succeeded
+            : TelemetryOutcome.NotRequired;
         var outcome = localRemoved
             ? remoteCleanupOutcome is TelemetryOutcome.Succeeded or TelemetryOutcome.NotRequired
                 ? TelemetryOutcome.Succeeded
@@ -314,15 +305,13 @@ public sealed partial class Telemetry
         _ = Capture(TelemetryEvent.IntegrationChanged, properties);
     }
 
-    private void CaptureIntegrationSetupFinished(
-        Dictionary<string, object> properties,
-        ResultBase result,
-        string stage
-    )
+    private void CaptureIntegrationSetupFinished(Dictionary<string, object> properties, ResultBase result, string stage)
     {
-        properties[TelemetryProperty.Outcome] = (result.IsCancelled
-            ? TelemetryOutcome.Cancelled
-            : result.IsFailed ? TelemetryOutcome.Failed : TelemetryOutcome.Succeeded).ToString();
+        properties[TelemetryProperty.Outcome] = (
+            result.IsCancelled ? TelemetryOutcome.Cancelled
+            : result.IsFailed ? TelemetryOutcome.Failed
+            : TelemetryOutcome.Succeeded
+        ).ToString();
         properties[TelemetryProperty.Stage] = stage;
         _ = Capture(TelemetryEvent.IntegrationSetupFinished, properties);
     }
@@ -340,7 +329,9 @@ public sealed partial class Telemetry
             [TelemetryProperty.Configuration.ProvisioningState] = integration.ProvisioningState.ToString(),
         };
         if (integration.ExternalDownloadClientId.HasValue)
-            properties[TelemetryProperty.Configuration.ExternalDownloadClientId] = integration.ExternalDownloadClientId.Value;
+            properties[TelemetryProperty.Configuration.ExternalDownloadClientId] = integration
+                .ExternalDownloadClientId
+                .Value;
         if (integration.ExternalIndexerId.HasValue)
             properties[TelemetryProperty.Configuration.ExternalIndexerId] = integration.ExternalIndexerId.Value;
         return properties;
@@ -359,7 +350,9 @@ public sealed partial class Telemetry
             [TelemetryProperty.Configuration.ProvisioningState] = integration.ProvisioningState.ToString(),
         };
         if (integration.ExternalDownloadClientId.HasValue)
-            properties[TelemetryProperty.Configuration.ExternalDownloadClientId] = integration.ExternalDownloadClientId.Value;
+            properties[TelemetryProperty.Configuration.ExternalDownloadClientId] = integration
+                .ExternalDownloadClientId
+                .Value;
         if (integration.ExternalIndexerId.HasValue)
             properties[TelemetryProperty.Configuration.ExternalIndexerId] = integration.ExternalIndexerId.Value;
         return properties;

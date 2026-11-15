@@ -314,7 +314,7 @@ public class RestartDownloadTaskCommandHandler : ICommandHandler<RestartDownload
                     DownloadRootPath = downloadTask.DirectoryMeta.DownloadRootPath,
                     DestinationRootPath = downloadTask.DirectoryMeta.DestinationRootPath,
                     MovieFolder = string.Empty,
-                    TvShowFolder = episode!.TvShow!.Title.SanitizeFolderName(),
+                    TvShowFolder = episode.TvShow!.Title.SanitizeFolderName(),
                     SeasonFolder = episode.TvShowSeason!.Title.SanitizeFolderName(),
                     MusicArtistFolder = string.Empty,
                     MusicAlbumFolder = string.Empty,

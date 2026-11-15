@@ -22,12 +22,10 @@ public class GetDownloadPreviewQueryValidator : AbstractValidator<GetDownloadPre
 public class GetDownloadPreviewQueryHandler : ICommandHandler<GetDownloadPreviewQuery, Result<List<DownloadPreview>>>
 {
     private readonly ICommandExecutor _commandExecutor;
-    private readonly ILogger _log;
 
-    public GetDownloadPreviewQueryHandler(ICommandExecutor commandExecutor, ILogger log)
+    public GetDownloadPreviewQueryHandler(ICommandExecutor commandExecutor)
     {
         _commandExecutor = commandExecutor;
-        _log = log.ForContext<GetDownloadPreviewQueryHandler>();
     }
 
     /// <summary>

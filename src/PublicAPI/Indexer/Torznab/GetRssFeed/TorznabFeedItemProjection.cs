@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using Flurl;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
 

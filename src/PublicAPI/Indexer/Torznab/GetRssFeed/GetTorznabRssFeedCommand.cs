@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
 
