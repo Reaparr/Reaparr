@@ -239,6 +239,7 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
                 x.Send(
                     It.Is<QueueLibrarySyncJobCommand>(cmd =>
                         cmd.PlexLibraryIds.OrderBy(id => id).SequenceEqual(expectedLibraryIds.OrderBy(id => id))
+                        && cmd.Trigger == TelemetryTrigger.Scheduled
                     ),
                     It.IsAny<CancellationToken>()
                 )

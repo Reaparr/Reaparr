@@ -33,7 +33,27 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
-        IDbContext.LibrarySyncJobQueues.Single().ForceMediaRefresh.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var queueItem = IDbContext.LibrarySyncJobQueues.Single();
+        queueItem.ForceMediaRefresh.ShouldBeTrue();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncQueued(
+                        It.Is<(int PlexLibraryId, int PlexServerId, DateTime CreatedAt, bool ForceMediaRefresh)>(
+                            admission =>
+                                admission.PlexLibraryId == library.Id
+                                && admission.PlexServerId == library.PlexServerId
+                                && admission.CreatedAt == queueItem.CreatedAt
+                                && admission.ForceMediaRefresh
+                        ),
+                        library.Type,
+                        false,
+                        TelemetryTrigger.Manual
+                    ),
+                Times.Once()
+            );
+
     }
 
     [Test]
@@ -1270,6 +1290,23 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
         queueItem.PlexLibraryId.ShouldBe(library.Id);
         queueItem.PlexServerId.ShouldBe(library.PlexServerId);
         queueItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncQueued(
+                        It.Is<(int PlexLibraryId, int PlexServerId, DateTime CreatedAt, bool ForceMediaRefresh)>(
+                            admission =>
+                                admission.PlexLibraryId == library.Id
+                                && admission.PlexServerId == library.PlexServerId
+                                && admission.CreatedAt == queueItem.CreatedAt
+                                && !admission.ForceMediaRefresh
+                        ),
+                        library.Type,
+                        true,
+                        TelemetryTrigger.Manual
+                    ),
+                Times.Once()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
     }
@@ -1314,6 +1351,23 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
         var queueItem = await IDbContext.LibrarySyncJobQueues.AsNoTracking().SingleAsync(CancellationToken);
         queueItem.PlexLibraryId.ShouldBe(library.Id);
         queueItem.Status.ShouldBe(LibrarySyncJobStatus.Queued);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncQueued(
+                        It.Is<(int PlexLibraryId, int PlexServerId, DateTime CreatedAt, bool ForceMediaRefresh)>(
+                            admission =>
+                                admission.PlexLibraryId == library.Id
+                                && admission.PlexServerId == library.PlexServerId
+                                && admission.CreatedAt == queueItem.CreatedAt
+                                && !admission.ForceMediaRefresh
+                        ),
+                        library.Type,
+                        true,
+                        TelemetryTrigger.Manual
+                    ),
+                Times.Once()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
     }
@@ -1366,6 +1420,57 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
                     ),
                 Times.Once()
             );
+    }
+
+    [Test]
+    public async Task ShouldEmitScheduledTrigger_WhenScheduledQueueCommandAdmitsLibrary()
+    {
+        // Arrange
+        await SetupDatabase(
+            3046,
+            config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexMovieLibraryCount = 1;
+            }
+        );
+        var library = IDbContext.PlexLibraries.Single();
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync(
+            new QueueLibrarySyncJobCommand(
+                [library.Id],
+                ForceLibrarySync: true,
+                Trigger: TelemetryTrigger.Scheduled
+            )
+        );
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var queueItem = await IDbContext.LibrarySyncJobQueues.AsNoTracking().SingleAsync(CancellationToken);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibrarySyncQueued(
+                        It.Is<(int PlexLibraryId, int PlexServerId, DateTime CreatedAt, bool ForceMediaRefresh)>(
+                            admission =>
+                                admission.PlexLibraryId == library.Id
+                                && admission.PlexServerId == library.PlexServerId
+                                && admission.CreatedAt == queueItem.CreatedAt
+                                && !admission.ForceMediaRefresh
+                        ),
+                        library.Type,
+                        true,
+                        TelemetryTrigger.Scheduled
+                    ),
+                Times.Once()
+            );
+        Mock.Mock<ICommandExecutor>().Verify();
     }
 
     [Test]

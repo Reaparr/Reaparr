@@ -42,6 +42,18 @@ public class GetFolderPathDirectoryEndpointUnitTests
                 },
             }))
             .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.FolderDirectoryListed(
+                path,
+                It.Is<Result<FileSystemResult>>(result =>
+                    result.IsSuccess
+                    && result.Errors.Count == 0
+                    && result.Value.Parent == parent
+                    && result.Value.Current != null
+                    && result.Value.Directories.Count == 1
+                    && result.Value.Files.Count == 0)))
+            .Verifiable(Times.Once());
+
 
         // Act
         var outcome = await TestEndpointHandleAsync(new GetFolderPathDirectoryRequest(path), RegisterDirectoryServices);
@@ -65,6 +77,9 @@ public class GetFolderPathDirectoryEndpointUnitTests
             (FileSystemEntityType.Folder, "child", childPath, (DateTime?)childModified, "", 0L, true, false),
         ]);
         disk.Verify();
+
+        Mock.Mock<ITelemetry>().Verify();
+
     }
 
     [Test]
@@ -82,6 +97,18 @@ public class GetFolderPathDirectoryEndpointUnitTests
         disk.Setup(x => x.GetFiles(It.IsAny<string>())).Verifiable(Times.Never());
         disk.Setup(x => x.GetParent(It.IsAny<string>())).Verifiable(Times.Never());
 
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.FolderDirectoryListed(
+                path,
+                It.Is<Result<FileSystemResult>>(result =>
+                    result.IsSuccess
+                    && result.Errors.Count == 0
+                    && result.Value.Parent == ""
+                    && result.Value.Current == null
+                    && result.Value.Directories.Count == 0
+                    && result.Value.Files.Count == 0)))
+            .Verifiable(Times.Once());
+
         // Act
         var outcome = await TestEndpointHandleAsync(new GetFolderPathDirectoryRequest(path), RegisterDirectoryServices);
 
@@ -98,6 +125,9 @@ public class GetFolderPathDirectoryEndpointUnitTests
         value.Directories.ShouldBeEmpty();
         value.Files.ShouldBeEmpty();
         disk.Verify();
+
+        Mock.Mock<ITelemetry>().Verify();
+
     }
 
     [Test]
@@ -118,6 +148,12 @@ public class GetFolderPathDirectoryEndpointUnitTests
         else
             disk.Setup(x => x.GetDirectories(path))
                 .Returns(Result.Fail<List<FileSystemModel>>("listing-unavailable")).Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.FolderDirectoryListed(
+                path,
+                It.Is<Result<FileSystemResult>>(result => result.IsFailed && result.Errors.Count == 1)))
+            .Verifiable(Times.Once());
+
 
         // Act
         var outcome = await TestEndpointHandleAsync(new GetFolderPathDirectoryRequest(path), RegisterDirectoryServices);
@@ -131,6 +167,9 @@ public class GetFolderPathDirectoryEndpointUnitTests
         (result.IsSuccess, result.Errors.Count).ShouldBe((false, 1));
         result.Value.ShouldBeNull();
         disk.Verify();
+
+        Mock.Mock<ITelemetry>().Verify();
+
     }
 
     [Test]
@@ -154,6 +193,9 @@ public class GetFolderPathDirectoryEndpointUnitTests
         outcome.ValidationErrors.Select(x => x.PropertyName).ShouldBe([nameof(GetFolderPathDirectoryRequest.Path)]);
         outcome.Endpoint.HttpContext.Response.Body.Length.ShouldBe(0);
         disk.Verify();
+        Mock.Mock<ITelemetry>().Verify(
+            x => x.FolderDirectoryListed(It.IsAny<string>(), It.IsAny<Result<FileSystemResult>>()),
+            Times.Never());
     }
 
     private void RegisterDirectoryServices(IServiceCollection services)

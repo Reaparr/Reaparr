@@ -113,7 +113,7 @@ public class CheckPlexLibrariesForUpdatesJob : IJob
                     .Information("Queueing {Count} outdated Plex libraries for automatic sync", outdatedLibraryIds.Count);
 
                 var queueResult = await _commandExecutor.Send(
-                    new QueueLibrarySyncJobCommand(outdatedLibraryIds),
+                    new QueueLibrarySyncJobCommand(outdatedLibraryIds, Trigger: TelemetryTrigger.Scheduled),
                     cancellationToken
                 );
 

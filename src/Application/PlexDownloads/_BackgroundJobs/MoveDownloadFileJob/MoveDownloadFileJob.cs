@@ -14,6 +14,7 @@ public class MoveDownloadFileJob : IJob
     private readonly IDownloadTaskUpdateDispatcher _downloadTaskUpdateDispatcher;
     private readonly IMoveDownloadFileQueue _moveDownloadFileQueue;
     private readonly ITelemetry _telemetry;
+
     public MoveDownloadFileJob(
         ILogger log,
         ICommandExecutor commandExecutor,
@@ -37,7 +38,7 @@ public class MoveDownloadFileJob : IJob
     {
         if (
             !context.MergedJobDataMap.TryGetValue(RetryCountKey, out var value)
-            || !int.TryParse(value?.ToString(), out var retryCount)
+            || !int.TryParse(value.ToString(), out var retryCount)
         )
             return 0;
 
@@ -234,5 +235,4 @@ public class MoveDownloadFileJob : IJob
             await QueueNextAsync();
         }
     }
-
 }
