@@ -9,7 +9,6 @@ import { map, tap, switchMap } from 'rxjs/operators';
 import { useGlobalStore } from '@store';
 import { get } from '@vueuse/core';
 import { cloneDeep } from 'lodash-es';
-import type { BrowserTelemetryBootstrapDTO } from '@dto';
 
 interface IAuthenticationStoreState {
 	isLoggedIn: boolean;
@@ -20,7 +19,6 @@ interface IAuthenticationStoreState {
 	password: string;
 	isPasswordValid: boolean;
 	confirmPassword: string;
-	telemetryBootstrap: BrowserTelemetryBootstrapDTO | null;
 }
 
 export const useAuthenticationStore = defineStore(StoreNames.AuthenticationStore, () => {
@@ -33,7 +31,6 @@ export const useAuthenticationStore = defineStore(StoreNames.AuthenticationStore
 		password: '',
 		confirmPassword: '',
 		isPasswordValid: false,
-		telemetryBootstrap: null,
 	};
 
 	const state = reactive<IAuthenticationStoreState>(cloneDeep(defaultState));
@@ -120,11 +117,9 @@ export const useAuthenticationStore = defineStore(StoreNames.AuthenticationStore
 		status: () => authenticationApi.authenticationStatusEndpoint({ timeout: 5000 }).pipe(
 			tap((res) => {
 				const isLoggedIn = res.isSuccess && !!res.value?.isLoggedIn;
-				state.telemetryBootstrap = isLoggedIn ? res.value?.telemetry ?? null : null;
 				state.isLoggedIn = isLoggedIn;
 			}),
 			catchError((err) => {
-				state.telemetryBootstrap = null;
 				state.isLoggedIn = false;
 				return of(err);
 			})),

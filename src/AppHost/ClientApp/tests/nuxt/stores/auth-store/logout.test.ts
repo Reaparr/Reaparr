@@ -4,18 +4,6 @@ import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-tes
 import { AuthenticationPaths } from '@api-urls';
 import { generateFailedResultDTO, generatePlexAccount, generateResultDTO } from '@mock';
 import { useAccountStore, useAuthenticationStore, useGlobalStore, useSignalrStore } from '@store';
-import type { BrowserTelemetryBootstrapDTO } from '@dto';
-
-const bootstrap: BrowserTelemetryBootstrapDTO = {
-	apiHost: 'https://telemetry.example.test',
-	projectToken: 'phc_test',
-	distinctId: '5e2c5c48-aa0f-4f21-8c65-94e72b2bd389',
-	release: '0.41.0-test',
-	environment: 'development',
-	runtimeMode: 'docker',
-	runtimeIdentifier: 'linux-x64',
-	platform: 'Linux',
-};
 
 describe('AuthenticationStore.logout()', () => {
 	let { mock } = baseVars();
@@ -37,7 +25,6 @@ describe('AuthenticationStore.logout()', () => {
 		// Arrange
 		const authenticationStore = useAuthenticationStore();
 		authenticationStore.isLoggedIn = true;
-		authenticationStore.telemetryBootstrap = bootstrap;
 		const globalStore = useGlobalStore();
 		const resetSpy = vi.spyOn(globalStore, 'resetSession');
 
@@ -49,7 +36,6 @@ describe('AuthenticationStore.logout()', () => {
 
 		// Assert
 		expect(authenticationStore.isLoggedIn).toEqual(false);
-		expect(authenticationStore.telemetryBootstrap).toBeNull();
 		expect(resetSpy).toHaveBeenCalledOnce();
 	});
 	test('Should wait for live connection teardown before logout completes', async () => {
@@ -104,7 +90,6 @@ describe('AuthenticationStore.logout()', () => {
 		// Arrange
 		const authenticationStore = useAuthenticationStore();
 		await subscribeSpyTo(authenticationStore.setup()).onComplete();
-		authenticationStore.telemetryBootstrap = bootstrap;
 		authenticationStore.currentUsername = 'signed-in-user';
 		const accountStore = useAccountStore();
 		const accounts = [generatePlexAccount({ id: 1, config: { seed: 100 } })];
@@ -126,7 +111,6 @@ describe('AuthenticationStore.logout()', () => {
 		// Assert: an unconfirmed server logout must not erase the current client session.
 		expect(failed.getLastValue()).toMatchObject({ isSuccess: false, statusCode });
 		expect(authenticationStore.isLoggedIn).toBe(true);
-		expect(authenticationStore.telemetryBootstrap).toEqual(bootstrap);
 		expect(authenticationStore.currentUsername).toBe('signed-in-user');
 		expect(accountStore.accounts).toEqual(accounts);
 		expect(resetSpy).not.toHaveBeenCalled();
@@ -137,7 +121,6 @@ describe('AuthenticationStore.logout()', () => {
 		await retried.onComplete();
 		expect(retried.getLastValue()?.isSuccess).toBe(true);
 		expect(authenticationStore.isLoggedIn).toBe(false);
-		expect(authenticationStore.telemetryBootstrap).toBeNull();
 		expect(authenticationStore.currentUsername).toBe('');
 		expect(accountStore.accounts).toEqual([]);
 		expect(resetSpy).toHaveBeenCalledOnce();

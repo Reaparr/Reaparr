@@ -1,6 +1,7 @@
 import { checkConfig, generateResultDTO, type MockConfig } from '@mock';
 import { type IBasePageSetupResult, BasePageSetupResult, headers } from '@fixtures';
 import { IntegrationPaths } from '@api/generated/Integration';
+import { TelemetryPaths } from '@api-urls';
 
 export function basePageSetup(config: Partial<MockConfig> = {}): Cypress.Chainable<IBasePageSetupResult> {
 	const validConfig = checkConfig(config);
@@ -17,7 +18,11 @@ export function basePageSetup(config: Partial<MockConfig> = {}): Cypress.Chainab
 	) {
 		throw new Error('All override properties must be defined.');
 	}
-
+	cy.intercept('GET', TelemetryPaths.getBrowserTelemetryBootstrapEndpoint(), {
+		statusCode: 200,
+		body: generateResultDTO(null),
+		...headers,
+	});
 	// Authentication call
 	result.setupAuthenticationEndpoints(validConfig);
 

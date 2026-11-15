@@ -1,7 +1,8 @@
 import type { CaptureResult, CapturedNetworkRequest, PostHog } from 'posthog-js';
 import type { Router } from 'vue-router';
-import { get } from '@vueuse/core';
-import { useAuthenticationStore, useGlobalStore } from '@store';
+import { watch } from 'vue';
+import { telemetryApi } from '@api';
+import { useGlobalStore } from '@store';
 import type { BrowserTelemetryBootstrapDTO } from '@dto';
 import { defineNuxtPlugin } from '#app';
 import { createTelemetry } from '@composables/telemetry/createTelemetry';
@@ -10,6 +11,17 @@ const exceptionAutocaptureConfig = {
 	capture_unhandled_errors: true,
 	capture_unhandled_rejections: true,
 	capture_console_errors: false,
+};
+
+const collectorConfig = {
+	autocapture: true,
+	capture_pageview: false,
+	capture_pageleave: true,
+	capture_exceptions: true,
+	disable_session_recording: false,
+	rageclick: true,
+	capture_dead_clicks: true,
+	capture_heatmaps: true,
 };
 
 const replayUrlAttributes: Record<string, true> = {
@@ -158,8 +170,7 @@ function getBackendHostname(baseUrl: string): string | undefined {
 	}
 }
 
-function capturePageview(client: PostHog, routePath: string): void {
-	if (routePath === '/login') return;
+function capturePageview(client: PostHog): void {
 	const properties: Record<string, string> = {
 		$current_url: stripUrlMetadata(window.location.href),
 	};
@@ -175,16 +186,19 @@ export default defineNuxtPlugin({
 		nuxtApp.provide('telemetry', createTelemetry(moduleClient?.__loaded ? moduleClient : undefined));
 		if (!moduleClient?.__loaded) return;
 		const client = moduleClient;
+		// Stored consent from an earlier document must not admit anonymous startup events.
+		client.opt_out_capturing();
 
 		const router = nuxtApp.$router as Router;
-		const authenticationStore = useAuthenticationStore();
 		const globalStore = useGlobalStore();
 		let activeIdentity: string | undefined;
 
-		// The module initializes with automatic capture disabled. Do not reuse persisted consent before authentication.
-		client.opt_out_capturing();
+		// Native collectors remain opt-out until the public startup bootstrap supplies the existing UUID.
+		// Keep captured DOM text/attributes masked while retaining structural interaction metadata.
 		client.set_config({
 			before_send: sanitizeCapture,
+			mask_all_text: true,
+			mask_all_element_attributes: true,
 			session_recording: {
 				maskAllInputs: true,
 				maskCapturedNetworkRequestFn: maskReplayNetworkRequest,
@@ -197,20 +211,8 @@ export default defineNuxtPlugin({
 			},
 		});
 
-		function disableCapture(): void {
-			if (!activeIdentity) return;
-			activeIdentity = undefined;
-			client.stopSessionRecording();
-			client.stopExceptionAutocapture();
-			client.set_config({ tracing_headers: [] });
-			client.opt_out_capturing();
-			client.reset();
-		}
-
 		function enableCapture(bootstrap: BrowserTelemetryBootstrapDTO): void {
-			if (activeIdentity === bootstrap.distinctId) return;
-			if (activeIdentity) disableCapture();
-			else if (client.get_distinct_id() !== bootstrap.distinctId) client.reset();
+			if (client.get_distinct_id() !== bootstrap.distinctId) client.reset();
 			client.register({
 				environment: bootstrap.environment,
 				release: bootstrap.release,
@@ -222,29 +224,34 @@ export default defineNuxtPlugin({
 			});
 			client.opt_in_capturing({ captureEventName: false });
 			client.identify(bootstrap.distinctId);
+			client.set_config(collectorConfig);
 			const backendHostname = getBackendHostname(globalStore.config.baseUrl);
 			client.set_config({ tracing_headers: backendHostname ? [backendHostname] : [] });
 			client.startExceptionAutocapture(exceptionAutocaptureConfig);
 			client.startSessionRecording();
 			activeIdentity = bootstrap.distinctId;
-			capturePageview(client, get(router.currentRoute).path);
+			capturePageview(client);
 		}
 
+		let bootstrapRequestStarted = false;
 		watch(
-			() => [authenticationStore.isLoggedIn, authenticationStore.telemetryBootstrap] as const,
-			([isLoggedIn, bootstrap]) => {
-				if (isLoggedIn && bootstrap) {
-					enableCapture(bootstrap);
-				} else {
-					disableCapture();
-				}
+			() => globalStore.config.baseUrl,
+			(baseUrl) => {
+				if (!baseUrl || bootstrapRequestStarted) return;
+				bootstrapRequestStarted = true;
+				telemetryApi.getBrowserTelemetryBootstrapEndpoint({ handleErrorsLocally: true }).subscribe({
+					next: (result) => {
+						if (result.isSuccess && result.value) enableCapture(result.value);
+					},
+					error: () => undefined,
+				});
 			},
 			{ immediate: true, flush: 'sync' },
 		);
 
 		router.afterEach((to, from, failure) => {
 			if (!activeIdentity || failure || to.path === from.path) return;
-			capturePageview(client, to.path);
+			capturePageview(client);
 		});
 		nuxtApp.hook('vue:error', (error) => {
 			if (activeIdentity) client.captureException(error);

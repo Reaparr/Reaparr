@@ -6,8 +6,10 @@ import type { CaptureResult, CapturedNetworkRequest, PostHogConfig } from 'posth
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 
 import type { BrowserTelemetryBootstrapDTO } from '@dto';
-import { baseSetup, baseVars } from '@services-test-base';
 import { useAuthenticationStore, useGlobalStore } from '@store';
+import { baseSetup, baseVars, getAxiosMock } from '@services-test-base';
+import { generateFailedResultDTO, generateResultDTO } from '@mock';
+import { TelemetryPaths } from '@api-urls';
 import posthogPlugin, {
 	maskReplayAttribute,
 	maskReplayNetworkRequest,
@@ -72,13 +74,14 @@ function runPlugin(router: Router, hooks: Map<string, PluginHook>): void {
 }
 
 describe('PostHog browser plugin', () => {
-	let { appConfig } = baseVars();
+	let { appConfig, mock } = baseVars();
 
 	beforeAll(() => {
 		({ appConfig } = baseSetup());
 	});
 
 	beforeEach(() => {
+		mock = getAxiosMock();
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		posthogMock.client.__loaded = true;
@@ -114,8 +117,12 @@ describe('PostHog browser plugin', () => {
 			event: '$exception',
 			properties: {
 				token: bootstrap.projectToken,
-				$exception_message: 'browser token should remain for diagnosis',
-				$exception_stack_trace: 'Error: browser token\n    at app.ts:1:1',
+				$exception_list: [{
+					type: 'Error',
+					value: 'browser token should remain for diagnosis',
+					stacktrace: { frames: [{ filename: 'app.ts', lineno: 1, colno: 1 }] },
+				}],
+				$exception_level: 'error',
 				request: { body: 'raw API response' },
 				response: { headers: { Authorization: 'Bearer secret' } },
 				$current_url: 'https://user:password@example.test/page?q=secret#fragment',
@@ -128,8 +135,12 @@ describe('PostHog browser plugin', () => {
 		} satisfies CaptureResult);
 		expect(exception.properties).toMatchObject({
 			token: bootstrap.projectToken,
-			$exception_message: 'browser token should remain for diagnosis',
-			$exception_stack_trace: 'Error: browser token\n    at app.ts:1:1',
+			$exception_list: [{
+				type: 'Error',
+				value: 'browser token should remain for diagnosis',
+				stacktrace: { frames: [{ filename: 'app.ts', lineno: 1, colno: 1 }] },
+			}],
+			$exception_level: 'error',
 			$current_url: 'https://example.test/page',
 			$referrer: 'https://example.test/from',
 		});
@@ -162,12 +173,13 @@ describe('PostHog browser plugin', () => {
 		}]);
 	});
 
-	test('Should activate the module client only after authenticated bootstrap and reset on logout', () => {
-		const authenticationStore = useAuthenticationStore();
+	test('Should initialize from public bootstrap before login and continue through logout', async () => {
+		// Arrange
 		const globalStore = useGlobalStore();
 		globalStore.config = appConfig;
-
-		const currentRoute = ref({ path: '/library' });
+		mock.onGet(TelemetryPaths.getBrowserTelemetryBootstrapEndpoint())
+			.reply(200, generateResultDTO(bootstrap));
+		const currentRoute = ref({ path: '/login' });
 		let afterEachHook: ((to: { path: string }, from: { path: string }, failure?: unknown) => void) | undefined;
 		const router = {
 			currentRoute,
@@ -176,89 +188,125 @@ describe('PostHog browser plugin', () => {
 			}),
 		} as unknown as Router;
 		const hooks = new Map<string, PluginHook>();
+
+		// Act
 		runPlugin(router, hooks);
-		expect(posthogMock.client.opt_out_capturing).toHaveBeenCalledTimes(1);
-		expect(posthogMock.client.reset).not.toHaveBeenCalled();
-		hooks.get('vue:error')?.(new Error('unauthenticated browser error'));
-		afterEachHook?.({ path: '/settings' }, { path: '/library' });
+		expect(posthogMock.client.identify).not.toHaveBeenCalled();
 		expect(posthogMock.client.capture).not.toHaveBeenCalled();
-		expect(posthogMock.client.captureException).not.toHaveBeenCalled();
-
-		authenticationStore.telemetryBootstrap = bootstrap;
-		expect(posthogMock.client.opt_in_capturing).not.toHaveBeenCalled();
+		await vi.waitFor(() => expect(posthogMock.client.identify).toHaveBeenCalledExactlyOnceWith(bootstrap.distinctId));
+		const authenticationStore = useAuthenticationStore();
 		authenticationStore.isLoggedIn = true;
-		expect(posthogMock.client.identify).toHaveBeenCalledExactlyOnceWith(bootstrap.distinctId);
-		expect(posthogMock.client.startSessionRecording).toHaveBeenCalledTimes(1);
-		expect(posthogMock.client.reset).not.toHaveBeenCalled();
-		expect(posthogMock.client.capture).toHaveBeenCalledWith('$pageview', expect.objectContaining({
-			$current_url: expect.any(String),
-		}));
-		const initialPageviews = posthogMock.client.capture.mock.calls.length;
-		authenticationStore.telemetryBootstrap = { ...bootstrap };
-		expect(posthogMock.client.identify).toHaveBeenCalledTimes(1);
-		expect(posthogMock.client.capture).toHaveBeenCalledTimes(initialPageviews);
-
-		afterEachHook?.({ path: '/settings' }, { path: '/library' });
-		expect(posthogMock.client.capture).toHaveBeenCalledTimes(initialPageviews + 1);
+		authenticationStore.isLoggedIn = false;
+		// A backend 401 invokes the global session reset; telemetry must stay active.
+		await useGlobalStore().resetSession();
+		const originalError = new Error('browser exception');
+		hooks.get('vue:error')?.(originalError);
+		afterEachHook?.({ path: '/settings' }, { path: '/login' });
 		afterEachHook?.({ path: '/settings' }, { path: '/settings' });
 		afterEachHook?.({ path: '/details' }, { path: '/settings' }, new Error('navigation failed'));
-		afterEachHook?.({ path: '/login' }, { path: '/settings' });
-		expect(posthogMock.client.capture).toHaveBeenCalledTimes(initialPageviews + 1);
-		const originalError = new Error('original browser exception');
-		hooks.get('vue:error')?.(originalError);
-		expect(posthogMock.client.captureException).toHaveBeenCalledWith(originalError);
+		afterEachHook?.({ path: '/login' }, { path: '/details' });
 
-		authenticationStore.isLoggedIn = false;
-		expect(posthogMock.client.stopSessionRecording).toHaveBeenCalledTimes(1);
-		expect(posthogMock.client.stopExceptionAutocapture).toHaveBeenCalledTimes(1);
-		expect(posthogMock.client.opt_out_capturing).toHaveBeenCalledTimes(2);
-		expect(posthogMock.client.reset).toHaveBeenCalledTimes(1);
-		expect(posthogMock.client.set_config).toHaveBeenLastCalledWith({ tracing_headers: [] });
-		hooks.get('vue:error')?.(new Error('logged out browser error'));
-		expect(posthogMock.client.captureException).toHaveBeenCalledTimes(1);
-
-		authenticationStore.telemetryBootstrap = null;
-		authenticationStore.telemetryBootstrap = bootstrap;
-		authenticationStore.isLoggedIn = true;
-		expect(posthogMock.client.reset).toHaveBeenCalledTimes(1);
-		expect(posthogMock.client.identify).toHaveBeenCalledTimes(2);
-		expect(posthogMock.client.opt_in_capturing).toHaveBeenNthCalledWith(1, { captureEventName: false });
-		expect(posthogMock.client.opt_in_capturing).toHaveBeenNthCalledWith(2, { captureEventName: false });
-		expect(posthogMock.client.startSessionRecording).toHaveBeenCalledTimes(2);
-		expect(posthogMock.client.set_config.mock.calls.every(([config]) => !('api_host' in config) && !('token' in config))).toBe(true);
+		// Assert
+		expect(mock.history.get.filter((request) => request.url === TelemetryPaths.getBrowserTelemetryBootstrapEndpoint())).toHaveLength(1);
+		expect(posthogMock.client.opt_out_capturing).toHaveBeenCalledTimes(1);
+		expect(posthogMock.client.opt_in_capturing).toHaveBeenCalledExactlyOnceWith({ captureEventName: false });
+		expect(posthogMock.client.startSessionRecording).toHaveBeenCalledOnce();
+		expect(posthogMock.client.startExceptionAutocapture).toHaveBeenCalledOnce();
+		expect(posthogMock.client.reset).not.toHaveBeenCalled();
+		expect(posthogMock.client.stopSessionRecording).not.toHaveBeenCalled();
+		expect(posthogMock.client.stopExceptionAutocapture).not.toHaveBeenCalled();
+		expect(posthogMock.client.capture).toHaveBeenCalledTimes(3);
+		expect(posthogMock.client.capture.mock.calls.map(([event]) => event)).toEqual(['$pageview', '$pageview', '$pageview']);
+		expect(posthogMock.client.captureException).toHaveBeenCalledExactlyOnceWith(originalError);
+		expect(posthogMock.client.set_config).toHaveBeenCalledWith(expect.objectContaining({
+			autocapture: true,
+			capture_pageview: false,
+			capture_pageleave: true,
+			capture_exceptions: true,
+			disable_session_recording: false,
+			rageclick: true,
+			capture_dead_clicks: true,
+			capture_heatmaps: true,
+		}));
+		expect(posthogMock.client.set_config).toHaveBeenCalledWith({
+			tracing_headers: [new URL(appConfig.baseUrl).hostname],
+		});
 	});
 
-	test('Should reset a different persisted identity only when authenticated capture becomes eligible', () => {
+	test('Should reset a different persisted identity only when the public bootstrap arrives', async () => {
 		// Arrange
 		posthogMock.client.get_distinct_id.mockReturnValue('previous-account');
 		useGlobalStore().config = appConfig;
-		const authenticationStore = useAuthenticationStore();
-		runPlugin({ currentRoute: ref({ path: '/library' }), afterEach: vi.fn() } as unknown as Router, new Map());
-		expect(posthogMock.client.reset).not.toHaveBeenCalled();
+		mock.onGet(TelemetryPaths.getBrowserTelemetryBootstrapEndpoint())
+			.reply(200, generateResultDTO(bootstrap));
 
 		// Act
-		authenticationStore.telemetryBootstrap = bootstrap;
-		authenticationStore.isLoggedIn = true;
+		runPlugin({ currentRoute: ref({ path: '/login' }), afterEach: vi.fn() } as unknown as Router, new Map());
+		expect(posthogMock.client.reset).not.toHaveBeenCalled();
+		await vi.waitFor(() => expect(posthogMock.client.identify).toHaveBeenCalledExactlyOnceWith(bootstrap.distinctId));
 
 		// Assert
-		expect(posthogMock.client.reset).toHaveBeenCalledTimes(1);
-		expect(posthogMock.client.identify).toHaveBeenCalledExactlyOnceWith(bootstrap.distinctId);
+		expect(posthogMock.client.reset).toHaveBeenCalledOnce();
 		expect(posthogMock.client.reset.mock.invocationCallOrder[0])
 			.toBeLessThan(posthogMock.client.opt_in_capturing.mock.invocationCallOrder[0]!);
-		expect(posthogMock.client.capture).toHaveBeenCalledExactlyOnceWith('$pageview', expect.any(Object));
 	});
 
-	test('Should leave an unconfigured module client inactive', () => {
+	test('Should preserve the persisted identity when the plugin reloads', async () => {
+		// Arrange
+		useGlobalStore().config = appConfig;
+		mock.onGet(TelemetryPaths.getBrowserTelemetryBootstrapEndpoint())
+			.reply(200, generateResultDTO(bootstrap));
+
+		// Act
+		runPlugin({ currentRoute: ref({ path: '/login' }), afterEach: vi.fn() } as unknown as Router, new Map());
+		await vi.waitFor(() => expect(posthogMock.client.identify).toHaveBeenCalledExactlyOnceWith(bootstrap.distinctId));
+		vi.clearAllMocks();
+		posthogMock.client.__loaded = true;
+		posthogMock.client.get_distinct_id.mockReturnValue(bootstrap.distinctId);
+		runPlugin({ currentRoute: ref({ path: '/login' }), afterEach: vi.fn() } as unknown as Router, new Map());
+		await vi.waitFor(() => expect(posthogMock.client.identify).toHaveBeenCalledExactlyOnceWith(bootstrap.distinctId));
+
+		// Assert
+		expect(posthogMock.client.reset).not.toHaveBeenCalled();
+		expect(posthogMock.client.startSessionRecording).toHaveBeenCalledOnce();
+	});
+
+	test('Should leave an unconfigured module client inactive without requesting bootstrap', () => {
+		// Arrange
 		posthogMock.client.__loaded = false;
+		useGlobalStore().config = appConfig;
 		const hooks = new Map<string, PluginHook>();
+
+		// Act
 		runPlugin({ currentRoute: ref({ path: '/' }), afterEach: vi.fn() } as unknown as Router, hooks);
-		const authenticationStore = useAuthenticationStore();
-		authenticationStore.telemetryBootstrap = bootstrap;
-		authenticationStore.isLoggedIn = true;
 		const [, telemetry] = posthogMock.provide.mock.calls[0]!;
 		telemetry.generalSettingsChanged();
 		telemetry.diagnosticsRequested();
+
+		// Assert
+		expect(mock.history.get.filter((request) => request.url === TelemetryPaths.getBrowserTelemetryBootstrapEndpoint())).toHaveLength(0);
 		expect(posthogMock.client.capture).not.toHaveBeenCalled();
 		expect(posthogMock.client.opt_in_capturing).not.toHaveBeenCalled();
+		expect(posthogMock.client.set_config).not.toHaveBeenCalled();
+	});
+
+	test('Should keep the application nonbreaking when public bootstrap fails', async () => {
+		// Arrange
+		useGlobalStore().config = appConfig;
+		mock.onGet(TelemetryPaths.getBrowserTelemetryBootstrapEndpoint())
+			.reply(503, generateFailedResultDTO({ statusCode: 503 }));
+
+		// Act
+		runPlugin({ currentRoute: ref({ path: '/login' }), afterEach: vi.fn() } as unknown as Router, new Map());
+		await vi.waitFor(() => expect(mock.history.get.filter((request) => request.url === TelemetryPaths.getBrowserTelemetryBootstrapEndpoint())).toHaveLength(1));
+
+		// Assert
+		expect(posthogMock.client.opt_out_capturing).toHaveBeenCalledOnce();
+		expect(posthogMock.client.identify).not.toHaveBeenCalled();
+		expect(posthogMock.client.opt_in_capturing).not.toHaveBeenCalled();
+		expect(posthogMock.client.startSessionRecording).not.toHaveBeenCalled();
+		expect(posthogMock.client.startExceptionAutocapture).not.toHaveBeenCalled();
+		expect(posthogMock.client.capture).not.toHaveBeenCalled();
+		expect(posthogMock.client.captureException).not.toHaveBeenCalled();
 	});
 });
