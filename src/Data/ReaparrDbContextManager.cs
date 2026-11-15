@@ -135,8 +135,8 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
         try
         {
             // Create the database while applying any pending migrations.
-            var reaparrMigrateResult = ApplyMigrations(_reaparrDbContextDatabase);
-            var authMigrateResult = ApplyMigrations(_authDbContextDatabase);
+            var reaparrMigrateResult = ApplyMigrations(_reaparrDbContextDatabase, out _);
+            var authMigrateResult = ApplyMigrations(_authDbContextDatabase, out _);
 
             if (reaparrMigrateResult.IsFailed || authMigrateResult.IsFailed)
             {
@@ -173,7 +173,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
             if (!_reaparrDbContextDatabase.IsInMemory())
             {
                 _log.Here().Information("Attempting to migrate database, this might take a while");
-                var migrateResult = ApplyMigrations(_reaparrDbContextDatabase);
+                var migrateResult = ApplyMigrations(_reaparrDbContextDatabase, out var pendingReaparrMigrations);
                 if (migrateResult.IsFailed)
                 {
                     _log.Here().Error("Failed to migrate the database");
@@ -184,10 +184,13 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
                 }
                 else
                 {
-                    _log.Here().Information("Database migrations applied; optimizing database...");
-                    var optimize = await _reaparrDbContextDatabase.Optimize(cancellationToken);
-                    optimize.LogIfFailed();
-                    _log.Here().Information("Database optimization finished");
+                    if (pendingReaparrMigrations > 0)
+                    {
+                        _log.Here().Information("Database migrations applied; optimizing database...");
+                        var optimize = await _reaparrDbContextDatabase.Optimize(cancellationToken);
+                        optimize.LogIfFailed();
+                        _log.Here().Information("Database optimization finished");
+                    }
                     _log.Here().Information("Database migration successful!");
                 }
             }
@@ -195,7 +198,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
             if (!_authDbContextDatabase.IsInMemory())
             {
                 _log.Here().Information("Attempting to migrate Authentication tables database");
-                var migrateResult = ApplyMigrations(_authDbContextDatabase);
+                var migrateResult = ApplyMigrations(_authDbContextDatabase, out _);
                 if (migrateResult.IsFailed)
                 {
                     _log.Here().Error("Failed to migrate Authentication tables database");
@@ -221,14 +224,17 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
         }
     }
 
-    private Result ApplyMigrations(IDbContextDatabaseHelpers database)
+    private Result ApplyMigrations(IDbContextDatabaseHelpers database, out int pendingMigrationCount)
     {
         var step = 0;
         var stepStarted = 0L;
         var started = Stopwatch.GetTimestamp();
         var migrationThread = System.Environment.CurrentManagedThreadId;
         var pendingMigrations = database.GetPendingMigrations().ToImmutableList();
-        _log.Here().Information("Applying {MigrationCount} pending database migrations", pendingMigrations.Count);
+        pendingMigrationCount = pendingMigrations.Count;
+        _log.Here().Information("Applying {MigrationCount} pending database migrations", pendingMigrationCount);
+        if (pendingMigrationCount == 0)
+            return Result.Ok();
 
         // Migrate is synchronous. Scope the global EF diagnostics to this migration call's thread.
         using var subscription = DiagnosticListener
