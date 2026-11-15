@@ -45,6 +45,7 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 	const signalRStore = useSignalrStore();
 	const serverStore = useServerStore();
 
+	const telemetry = useTelemetry();
 	// Actions
 	const actions = {
 		setup(): Observable<ISetupResult> {
@@ -97,6 +98,7 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 				} as BaseResultDTO);
 			}
 			const id = downloadTaskId as string;
+			telemetry.downloadCommandRequested(action, plexServerId, downloadTaskIds);
 			switch (action) {
 				case DownloadActions.Pause:
 					return downloadApi.pauseDownloadTaskEndpoint(id);
@@ -164,6 +166,8 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 			}));
 		},
 		downloadMedia(request: CreateDownloadTasksRequest): void {
+			telemetry.downloadRequested(request);
+
 			downloadApi
 				.createDownloadTasksEndpoint(request)
 				.pipe(tap((result) => {

@@ -19,6 +19,7 @@ export const useNotificationsStore = defineStore(StoreNames.NotificationsStore, 
 
 	const state = reactive<INotificationStoreState>(cloneDeep(defaultState));
 
+	const telemetry = useTelemetry();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			return actions.fetchNotifications().pipe(
@@ -43,6 +44,7 @@ export const useNotificationsStore = defineStore(StoreNames.NotificationsStore, 
 			state.notifications.push(notification);
 		},
 		hideNotification(id: number) {
+			telemetry.notificationDismissed(id);
 			return notificationApi.setNotificationVisibilityEndpoint({ id, hidden: true }).pipe(
 				tap(({ isSuccess }) => {
 					if (!isSuccess) return;
@@ -55,6 +57,7 @@ export const useNotificationsStore = defineStore(StoreNames.NotificationsStore, 
 			);
 		},
 		clearAllNotifications() {
+			telemetry.notificationsCleared();
 			const ids = new Set(state.notifications.map((notification) => notification.id));
 			return notificationApi.clearAllNotificationsEndpoint().pipe(
 				tap(({ isSuccess }) => {

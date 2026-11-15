@@ -25,6 +25,7 @@
 						<div class="update-dialog__sidebar-body">
 							<q-tabs
 								v-model="releaseIndex"
+								@update:model-value="onReleaseSelected"
 								vertical
 								active-color="primary"
 								indicator-color="primary"
@@ -128,6 +129,7 @@ import { useI18n } from 'vue-i18n';
 import VueMarkdown from 'vue-markdown-render';
 import QScroll from '@components/Common/QScroll.vue';
 
+const telemetry = useTelemetry();
 const { t } = useI18n();
 
 const globalStore = useGlobalStore();
@@ -146,7 +148,12 @@ const desktopUpdateButtonLabel = computed(() => {
 	return t('components.update-available-dialog.download-update');
 });
 
+function onReleaseSelected(index: number): void {
+	telemetry.updateReleaseSelected(index);
+}
+
 function runDesktopUpdate() {
+	telemetry.updateApplyRequested();
 	useSubscription(updateStore.downloadAndApplyUpdate().subscribe());
 }
 </script>

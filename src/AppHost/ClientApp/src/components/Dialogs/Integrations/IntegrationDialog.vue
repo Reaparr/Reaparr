@@ -222,6 +222,7 @@ import { DialogType } from '@enums';
 import { useDialogStore, useFolderPathStore, useIntegrationStore } from '@store';
 import { formatErrorResponse } from '@composables/common';
 
+const telemetry = useTelemetry();
 const store = useIntegrationStore();
 const dialogStore = useDialogStore();
 const folderPathStore = useFolderPathStore();
@@ -325,6 +326,9 @@ const integrationHelp = computed(() => {
 
 function open(event: unknown): void {
 	const integration = event as IntegrationSummary | null;
+	if (integration) {
+		telemetry.integrationOpened(integration);
+	}
 	set(isSavingForSetup, false);
 	set(isEditMode, Boolean(integration));
 	set(stage, integration ? 2 : 1);
@@ -335,6 +339,9 @@ function open(event: unknown): void {
 }
 
 function deleteIntegration() {
+	const integration = store.detail;
+	if (!integration) return;
+	telemetry.integrationDeleteRequested(integration);
 	useSubscription(store.delete().subscribe((result) => {
 		if (!result?.isSuccess) return;
 		dialogStore.closeDialog(DialogType.IntegrationDeleteConfirmationDialog);
@@ -360,10 +367,14 @@ function formatTestDetails(): string {
 }
 
 function test(): void {
+	if (!store.isDraftValid) return;
+	telemetry.integrationTestRequested(store.draft.type, store.detail);
 	useSubscription(store.test().subscribe());
 }
 
 function save(): void {
+	if (!store.isDraftValid) return;
+	telemetry.integrationSaveRequested(store.draft.type, store.detail);
 	set(isSavingForSetup, false);
 	useSubscription(store.save().subscribe((result) => {
 		if (result?.isSuccess && result.value) dialogStore.closeDialog(DialogType.IntegrationDialog);
@@ -371,6 +382,8 @@ function save(): void {
 }
 
 function setup(): void {
+	if (store.isSetupDisabled) return;
+	telemetry.integrationSetupRequested(store.draft.type, store.detail, store.shouldSaveBeforeSetup);
 	if (store.shouldSaveBeforeSetup) {
 		set(isSavingForSetup, true);
 		useSubscription(store.save().subscribe((result) => {

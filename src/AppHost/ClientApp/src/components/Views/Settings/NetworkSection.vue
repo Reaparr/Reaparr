@@ -8,7 +8,8 @@
 				:text="$t('help.settings.advanced.network-section.reverse-proxy-url.text')">
 				<QInput
 					v-model="settingsStore.networkSettings.reverseProxyUrl"
-					:hint="$t('pages.settings.advanced.network.hints.reverse-proxy-url')" />
+					:hint="$t('pages.settings.advanced.network.hints.reverse-proxy-url')"
+					@change="onNetworkSettingChanged" />
 			</HelpRow>
 			<!-- Base Path -->
 			<HelpRow
@@ -17,7 +18,8 @@
 				:text="$t('help.settings.advanced.network-section.base-path.text')">
 				<QInput
 					v-model="settingsStore.networkSettings.basePath"
-					:hint="$t('pages.settings.advanced.network.hints.base-path')" />
+					:hint="$t('pages.settings.advanced.network.hints.base-path')"
+					@change="onNetworkSettingChanged" />
 			</HelpRow>
 			<!-- Trust Proxy Headers -->
 			<HelpRow
@@ -27,7 +29,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.networkSettings.trustProxyHeaders"
 					size="lg"
-					:hint="$t('pages.settings.advanced.network.hints.trust-proxy-headers')" />
+					:hint="$t('pages.settings.advanced.network.hints.trust-proxy-headers')"
+					@update:model-value="onNetworkSettingChanged" />
 			</HelpRow>
 			<!-- Allowed Proxy IPs -->
 			<HelpRow
@@ -38,7 +41,8 @@
 					v-model="allowedProxyIps"
 					type="textarea"
 					autogrow
-					:hint="$t('pages.settings.advanced.network.hints.allowed-proxy-ips')" />
+					:hint="$t('pages.settings.advanced.network.hints.allowed-proxy-ips')"
+					@change="onNetworkSettingChanged" />
 			</HelpRow>
 			<!-- Forwarded Host Header -->
 			<HelpRow
@@ -47,7 +51,8 @@
 				:text="$t('help.settings.advanced.network-section.forwarded-host-header.text')">
 				<QInput
 					v-model="settingsStore.networkSettings.forwardedHostHeader"
-					:hint="$t('pages.settings.advanced.network.hints.forwarded-host-header')" />
+					:hint="$t('pages.settings.advanced.network.hints.forwarded-host-header')"
+					@change="onNetworkSettingChanged" />
 			</HelpRow>
 			<!-- Forwarded Path Header -->
 			<HelpRow
@@ -56,7 +61,8 @@
 				:text="$t('help.settings.advanced.network-section.forwarded-path-header.text')">
 				<QInput
 					v-model="settingsStore.networkSettings.forwardedPathHeader"
-					:hint="$t('pages.settings.advanced.network.hints.forwarded-path-header')" />
+					:hint="$t('pages.settings.advanced.network.hints.forwarded-path-header')"
+					@change="onNetworkSettingChanged" />
 			</HelpRow>
 		</HelpGroup>
 	</QSection>
@@ -67,7 +73,11 @@ import { computed } from 'vue';
 import { useSettingsStore } from '@store';
 
 const settingsStore = useSettingsStore();
+const telemetry = useTelemetry();
 
+function onNetworkSettingChanged(): void {
+	telemetry.networkSettingsChanged();
+}
 const allowedProxyIps = computed({
 	get: () => settingsStore.networkSettings.allowedProxyIps.join(', '),
 	set: (value: string) => {

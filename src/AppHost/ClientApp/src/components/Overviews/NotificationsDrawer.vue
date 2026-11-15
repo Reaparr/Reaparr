@@ -67,9 +67,10 @@
 
 <script setup lang="ts">
 import { useNotificationsStore } from '@store';
-import { set } from '@vueuse/core';
+import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 
+const telemetry = useTelemetry();
 const notificationsStore = useNotificationsStore();
 const { t } = useI18n();
 
@@ -83,8 +84,16 @@ const drawerWidth = computed(() => {
 });
 
 useEventListener(document, 'keydown', (event) => {
-	if (event.key === 'Escape')
+	if (event.key === 'Escape' && get(showDrawer)) {
+		telemetry.notificationsClosed();
 		set(showDrawer, false);
+	}
+});
+
+watch(showDrawer, (visible) => {
+	if (visible) {
+		telemetry.notificationsOpened();
+	}
 });
 
 function hideNotification(id: number) {

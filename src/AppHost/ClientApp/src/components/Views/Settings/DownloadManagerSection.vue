@@ -17,7 +17,7 @@
 					:max="8"
 					:step="1"
 					class="q-mt-lg"
-					@change="settingsStore.downloadManagerSettings.downloadSegments = $event" />
+					@change="onDownloadSegmentsChanged($event)" />
 			</HelpRow>
 			<!-- Keep completed in download folder -->
 			<HelpRow
@@ -26,7 +26,7 @@
 				:text="$t('help.settings.advanced.download-manager-section.keep-in-downloads.text')">
 				<QToggle
 					:model-value="settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder"
-					@update:model-value="settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder = $event" />
+					@update:model-value="onKeepCompletedChanged($event)" />
 			</HelpRow>
 		</HelpGroup>
 	</QSection>
@@ -35,5 +35,16 @@
 <script setup lang="ts">
 import { useSettingsStore } from '@store';
 
+const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
+
+function onDownloadSegmentsChanged(value: number): void {
+	settingsStore.downloadManagerSettings.downloadSegments = value;
+	telemetry.downloadManagerSettingsChanged();
+}
+
+function onKeepCompletedChanged(value: boolean): void {
+	settingsStore.downloadManagerSettings.keepCompletedInDownloadFolder = value;
+	telemetry.downloadManagerSettingsChanged();
+}
 </script>

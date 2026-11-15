@@ -2,13 +2,13 @@ import Log from 'consola';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
 import type { Observable } from 'rxjs';
-import { catchError, map, of, tap } from 'rxjs';
+import { EMPTY, catchError, concatMap, defer, finalize, from, map, of, tap } from 'rxjs';
 import type { ISetupResult } from '@interfaces';
 import { StoreNames } from '@interfaces';
 import { cloneDeep } from 'lodash-es';
 import { useSignalrStore } from '@store';
 import type { LiveLogEventDTO } from '@dto';
-import { LogSeverity, SortDirection } from '@dto';
+import { LogSeverity, SortDirection, TelemetryDiagnosticOrigin } from '@dto';
 import { debugApi } from '@api';
 
 interface ILogsStoreState {
@@ -16,6 +16,11 @@ interface ILogsStoreState {
 	logs: LiveLogEventDTO[];
 	sortDirection: SortDirection;
 	selectedLevels: LogSeverity[];
+	telemetryDiagnostic: {
+		pending: boolean;
+		backend: boolean | null;
+		frontend: boolean | null;
+	};
 }
 
 export const useLogsStore = defineStore(StoreNames.LogsStore, () => {
@@ -24,6 +29,11 @@ export const useLogsStore = defineStore(StoreNames.LogsStore, () => {
 		sortDirection: SortDirection.Asc,
 		logs: [],
 		selectedLevels: [LogSeverity.Verbose, LogSeverity.Debug, LogSeverity.Information, LogSeverity.Warning, LogSeverity.Error, LogSeverity.Fatal],
+		telemetryDiagnostic: {
+			pending: false,
+			backend: null,
+			frontend: null,
+		},
 	};
 
 	const state = reactive<ILogsStoreState>(cloneDeep(defaultState));
@@ -33,6 +43,7 @@ export const useLogsStore = defineStore(StoreNames.LogsStore, () => {
 		return `live-log-viewer__row--${level.toString().toLowerCase()}`;
 	}
 
+	const telemetry = useTelemetry();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			signalrStore.getLogEvents().pipe(
@@ -56,17 +67,53 @@ export const useLogsStore = defineStore(StoreNames.LogsStore, () => {
 				}),
 			);
 		},
+		sendTelemetryDiagnostics(): Observable<boolean> {
+			return defer(() => {
+				if (state.telemetryDiagnostic.pending) {
+					return EMPTY;
+				}
+
+				state.telemetryDiagnostic = {
+					pending: true,
+					backend: null,
+					frontend: null,
+				};
+
+				return from([TelemetryDiagnosticOrigin.Backend, TelemetryDiagnosticOrigin.Frontend]).pipe(
+					concatMap((origin) => debugApi.sendTelemetryDiagnosticEndpoint({ origin }).pipe(
+						tap((result) => {
+							const status = origin === TelemetryDiagnosticOrigin.Backend ? 'backend' : 'frontend';
+							state.telemetryDiagnostic[status] = result.isSuccess;
+						}),
+						map((result) => result.isSuccess),
+					)),
+					finalize(() => {
+						state.telemetryDiagnostic.pending = false;
+					}),
+				);
+			});
+		},
 		clearLogs(): void {
+			telemetry.logsCleared();
 			state.logs = [];
 		},
 		clearSearch(): void {
+			telemetry.logSearchCleared();
 			state.searchText = '';
 		},
 		setSearch(value: string): void {
 			state.searchText = value;
+			if (value.trim()) {
+				telemetry.logSearchRequested();
+			}
+		},
+		setSelectedLevels(value: LogSeverity[]): void {
+			state.selectedLevels = value;
+			telemetry.logLevelsChanged(value.length);
 		},
 		toggleSortDirection() {
 			state.sortDirection = state.sortDirection === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
+			telemetry.logSortChanged(state.sortDirection);
 		},
 		$reset(): void {
 			Object.assign(state, cloneDeep(defaultState));

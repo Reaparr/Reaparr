@@ -47,7 +47,7 @@
 						data-cy="download-confirmation-retry"
 						:label="t('components.download-confirmation.retry')"
 						outline
-						@click="requestPreview" />
+						@click="requestPreview('retry')" />
 				</template>
 			</q-banner>
 			<TreeTable
@@ -96,7 +96,7 @@
 		<template #actions="{ close }">
 			<CancelButton
 				cy="download-confirmation-cancel"
-				@click="close()" />
+				@click="onDismiss(close)" />
 			<div class="download-confirmation-actions">
 				<div
 					class="download-confirmation-destination"
@@ -187,11 +187,11 @@ import {
 	PlexMediaType,
 } from '@dto';
 import { DialogType } from '@enums';
-import { useI18n } from 'vue-i18n';
 import { useDialogStore, useDownloadStore, useFolderPathStore } from '@store';
 import Convert from '@class/Convert';
 import Log from 'consola';
 
+const telemetry = useTelemetry();
 const { t } = useI18n();
 const downloadStore = useDownloadStore();
 const folderPathStore = useFolderPathStore();
@@ -273,16 +273,18 @@ function openDialog(data: DownloadMediaDTO[]): void {
 	const destinations = get(folderPathDestinations);
 	set(selectedFolderPath, destinations.find((path) => path.isDefault) ?? destinations[0] ?? get(customDirectory));
 	set(downloadMediaCommand, data);
-	requestPreview();
+	requestPreview('open');
 }
 
-function requestPreview(): void {
+function requestPreview(reason: 'open' | 'destination' | 'retry' = 'destination'): void {
 	cancelPreview();
 	reset();
 	set(previewFailed, false);
 	set(noEligibleFiles, false);
 	set(loading, true);
-	previewRequests.next(buildDownloadRequest());
+	const request = buildDownloadRequest();
+	telemetry.downloadPreviewRequested(request, get(mediaType), reason === 'retry');
+	previewRequests.next(request);
 }
 
 function onPreviewError(): void {
@@ -334,6 +336,7 @@ useSubscription(
 		set(loading, false);
 	}),
 );
+
 function onCustomDirectorySelected(path: FolderPathDTO): void {
 	set(customDirectory, path);
 	set(selectedFolderPath, get(customDirectory));
@@ -345,10 +348,15 @@ watch(selectedFolderPath, () => {
 		requestPreview();
 }, { deep: true, flush: 'sync' });
 
-function onDownload(close: () => void) {
+function onDownload(close: () => void): void {
 	if (!get(canDownload))
 		return;
 	emits('download', buildDownloadRequest());
+	close();
+}
+
+function onDismiss(close: () => void): void {
+	telemetry.downloadDismissed(get(downloadMediaCommand), get(mediaType));
 	close();
 }
 

@@ -181,7 +181,7 @@
 		:model-value="photoStore.detailsOpen"
 		position="right"
 		@update:model-value="onDetailsModelValue"
-		@hide="photoStore.closeDetails">
+		@hide="closeDetails">
 		<QCard
 			class="photo-asset-dialog__details dialog-container-background text-white"
 			role="dialog"
@@ -201,7 +201,7 @@
 					icon="mdi-close"
 					:aria-label="t('components.photo-browser.close-details')"
 					data-cy="photo-viewer-details-close"
-					@click="photoStore.closeDetails" />
+					@click="closeDetails" />
 			</QCardSection>
 			<QSeparator />
 			<QCardSection
@@ -391,6 +391,7 @@ import { PhotoAssetKind, PhotoItemKind, type PhotoAssetBrowseDTO, type PhotoAsse
 import type { PhotoOverviewItem, PhotoViewerSlide } from '@/store/photoBrowsingStore';
 import { useMediaStore, usePhotoBrowsingStore } from '@store';
 
+const telemetry = useTelemetry();
 const photoStore = usePhotoBrowsingStore();
 const mediaStore = useMediaStore();
 const { t } = useI18n();
@@ -528,32 +529,43 @@ function onImageLoaded(slide: PhotoViewerSlide, event: Event): void {
 function onCarouselModelValue(value: string | number): void {
 	const slide = photoStore.slides.find((candidate) => slideKey(candidate) === String(value));
 	if (!slide || slide.index === photoStore.index) return;
-	goTo(slide.index);
+	goTo(slide.index, true);
 }
 
-function goTo(index: number): void {
+function goTo(index: number, userInitiated = false): void {
 	if (photoStore.count <= 0) return;
 	const normalized = ((index % photoStore.count) + photoStore.count) % photoStore.count;
+	const asset = get(activeAsset);
+	if (userInitiated && asset) {
+		telemetry.photoNavigated(asset, normalized, index > photoStore.index);
+	}
 	useSubscription(photoStore.showAsset(normalized).subscribe());
 }
 
 function goPrevious(): void {
-	goTo(photoStore.index - 1);
+	goTo(photoStore.index - 1, true);
 }
 
 function goNext(): void {
-	goTo(photoStore.index + 1);
+	goTo(photoStore.index + 1, true);
 }
 
 function downloadCurrentAsset(): void {
 	const asset = get(activeAsset);
-	if (asset) emit('download', { kind: PhotoItemKind.Asset, asset, index: photoStore.index });
+	if (asset) {
+		emit('download', { kind: PhotoItemKind.Asset, asset, index: photoStore.index });
+	}
 }
 
 function toggleZoom(): void {
 	resetPan();
 	set(zoomScale, 1);
-	photoStore.setZoomed(!photoStore.zoomed);
+	const nextZoomed = !photoStore.zoomed;
+	photoStore.setZoomed(nextZoomed);
+	const asset = get(activeAsset);
+	if (asset && photoStore.zoomed === nextZoomed) {
+		telemetry.photoZoomChanged(asset, photoStore.zoomed);
+	}
 }
 
 function onWheel(event: WheelEvent): void {
@@ -567,8 +579,15 @@ function onWheel(event: WheelEvent): void {
 	const nextScale = clamp(currentScale * (event.deltaY < 0 ? 1.2 : 1 / 1.2), fitScale, 4);
 	event.preventDefault();
 	endPointerDrag();
+	const previousZoomed = photoStore.zoomed;
 	set(zoomScale, nextScale);
 	photoStore.setZoomed(nextScale > fitScale);
+	if (photoStore.zoomed !== previousZoomed) {
+		const asset = get(activeAsset);
+		if (asset) {
+			telemetry.photoZoomChanged(asset, photoStore.zoomed);
+		}
+	}
 	setPanPosition(panOffset.x, panOffset.y);
 }
 
@@ -587,6 +606,10 @@ function getFitScale(frame: HTMLElement, dimensions: { width: number; height: nu
 }
 
 function closeViewer(): void {
+	const asset = get(activeAsset);
+	if (photoStore.dialog.open && asset) {
+		telemetry.photoClosed(asset);
+	}
 	endPointerDrag();
 	photoStore.closeAssetDialog();
 }
@@ -596,22 +619,43 @@ function onDialogModelValue(value: boolean): void {
 }
 
 function onDialogHide(): void {
-	if (photoStore.dialog.open) photoStore.closeAssetDialog();
+	if (photoStore.dialog.open) closeViewer();
 }
 
 function openDetails(): void {
+	const asset = get(activeAsset);
+	if (!photoStore.detailsOpen && asset) {
+		telemetry.photoDetailsOpened(asset);
+	}
 	useSubscription(photoStore.openDetails().subscribe());
 }
 
 function onDetailsModelValue(value: boolean): void {
-	if (!value) photoStore.closeDetails();
+	if (!value) closeDetails();
+}
+
+function closeDetails(): void {
+	const asset = get(detailsAsset) ?? get(activeAsset);
+	if (!photoStore.detailsOpen) return;
+	if (asset) {
+		telemetry.photoDetailsClosed(asset);
+	}
+	photoStore.closeDetails();
 }
 
 function retryInspection(): void {
+	const asset = get(detailsAsset) ?? get(activeAsset);
+	if (asset) {
+		telemetry.photoInspectionRetryRequested(asset);
+	}
 	useSubscription(photoStore.retryInspection().subscribe());
 }
 
 function retryImage(): void {
+	const asset = get(activeAsset);
+	if (asset) {
+		telemetry.photoImageRetryRequested(asset);
+	}
 	useSubscription(photoStore.retryImage().subscribe());
 }
 function onImageError(index: number): void {
@@ -698,7 +742,7 @@ function onKeyDown(event: KeyboardEvent): void {
 		if (photoStore.detailsOpen) {
 			event.preventDefault();
 			event.stopPropagation();
-			photoStore.closeDetails();
+			closeDetails();
 		}
 		return;
 	}
@@ -721,11 +765,16 @@ function onZoomKeyDown(event: KeyboardEvent): void {
 		if (asset && !isClipAsset(asset)) {
 			set(zoomScale, 1);
 			photoStore.setZoomed(true);
+			telemetry.photoZoomChanged(asset, photoStore.zoomed);
 			resetPan();
 		}
 	} else if (event.key === '-' || event.key === '0') {
 		event.preventDefault();
+		const asset = get(activeAsset);
 		photoStore.setZoomed(false);
+		if (asset) {
+			telemetry.photoZoomChanged(asset, photoStore.zoomed);
+		}
 		resetPan();
 	}
 }

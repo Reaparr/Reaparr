@@ -19,7 +19,11 @@
 				flat
 				round
 				@click="toggleSort">
-				<q-tooltip>{{ sortAsc ? t('components.download-details-dialog.logs.sort-oldest-first') : t('components.download-details-dialog.logs.sort-newest-first') }}</q-tooltip>
+				<q-tooltip>
+					{{
+						sortAsc ? t('components.download-details-dialog.logs.sort-oldest-first') : t('components.download-details-dialog.logs.sort-newest-first')
+					}}
+				</q-tooltip>
 			</q-btn>
 			<!-- Log Filter -->
 			<q-btn
@@ -156,6 +160,7 @@
 
 <script lang="ts" setup>
 import { get, set, useClipboard } from '@vueuse/core';
+import { useSubscription } from '@vueuse/rxjs';
 import { useVirtualizer, type VirtualItem } from '@tanstack/vue-virtual';
 import { format } from 'date-fns';
 import { downloadApi } from '@api';
@@ -172,6 +177,7 @@ const NEW_LOG_ANIMATION_MS = 2200;
 const { t } = useI18n();
 const { copy } = useClipboard({ legacy: true });
 const dialogStore = useDialogStore();
+const telemetry = useTelemetry();
 
 const props = defineProps<{
 	downloadTaskId: string;
@@ -262,21 +268,26 @@ function measureRow(el: Element | null, _row: VirtualItem) {
 }
 
 function toggleSort() {
-	set(sortAsc, !get(sortAsc));
+	const nextSortAsc = !get(sortAsc);
+	set(sortAsc, nextSortAsc);
+	telemetry.downloadLogSortChanged(props.downloadTaskId, nextSortAsc);
 	// After sort flip, scroll to top so the user sees the reordered list
 	get(scrollEl)?.scrollTo({ top: 0 });
 }
 
 function copyLogs() {
+	const logCount = get(logs).length;
 	const text = get(logs)
 		.map((item) => formatLogCopyText(item))
 		.join('\n');
 	copy(text);
+	telemetry.downloadLogsCopied(props.downloadTaskId, logCount);
 	showSuccessNotification(t('components.download-details-dialog.logs.copied-to-clipboard'));
 }
 
 function copyLogEntry(item: DownloadTaskLogDTO) {
 	copy(formatLogCopyText(item));
+	telemetry.downloadLogCopied(props.downloadTaskId, item.logLevel);
 	showSuccessNotification(t('components.download-details-dialog.logs.entry-copied-to-clipboard'));
 }
 
@@ -296,6 +307,7 @@ function deleteLogs() {
 	set(logsLoading, true);
 	logRefreshTimer.pause();
 	dialogStore.closeDialog(DialogType.DownloadDetailsDeleteLogsConfirmationDialog);
+	telemetry.downloadLogsClearRequested(props.downloadTaskId, get(logs).length);
 
 	useSubscription(
 		downloadApi.deleteAllDownloadTaskLogsByDownloadTaskIdEndpoint(props.downloadTaskId, {
@@ -328,11 +340,13 @@ function deleteLogs() {
 
 function toggleLevel(level: NotificationLevel) {
 	const current = get(activeFilters);
-	if (current.includes(level)) {
-		set(activeFilters, current.filter((l) => l !== level));
-	} else {
+	const enabled = !current.includes(level);
+	if (enabled) {
 		set(activeFilters, [...current, level]);
+	} else {
+		set(activeFilters, current.filter((l) => l !== level));
 	}
+	telemetry.downloadLogLevelChanged(props.downloadTaskId, level, enabled);
 }
 
 function reset() {

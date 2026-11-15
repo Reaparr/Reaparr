@@ -11,8 +11,14 @@
  */
 
 import type { RequestParams } from "./http-client";
+import { ContentType } from "./http-client";
 
-import type { LiveLogEventDTO, PlexMediaType } from "./data-contracts";
+import type {
+  BaseResultDTO,
+  LiveLogEventDTO,
+  PlexMediaType,
+  SendTelemetryDiagnosticRequest,
+} from "./data-contracts";
 
 import { apiCheckPipe, axiosObservable } from "@api/base";
 import queryString from "query-string";
@@ -33,6 +39,27 @@ export class Debug {
       responseType: "json",
       ...params,
     }).pipe(apiCheckPipe<LiveLogEventDTO[]>);
+
+  /**
+   * No description
+   * * @tags Debug
+   * @name SendTelemetryDiagnosticEndpoint
+   * @request POST:/api/Debug/telemetry/diagnostic
+   * @secure
+   */
+  sendTelemetryDiagnosticEndpoint = (
+    data: SendTelemetryDiagnosticRequest,
+    params: RequestParams = {},
+  ) =>
+    axiosObservable<BaseResultDTO>({
+      url: `/api/Debug/telemetry/diagnostic`,
+      method: "POST",
+      data: data,
+      secure: true,
+      type: ContentType.Json,
+      responseType: "json",
+      ...params,
+    }).pipe(apiCheckPipe<BaseResultDTO>);
 
   /**
    * No description
@@ -62,6 +89,9 @@ export class Debug {
 export class DebugPaths {
   static getAllLogsEndpoint = () =>
     queryString.stringifyUrl({ url: `/api/Debug/logs` });
+
+  static sendTelemetryDiagnosticEndpoint = () =>
+    queryString.stringifyUrl({ url: `/api/Debug/telemetry/diagnostic` });
 
   static getAllUniqueMediaTitlesEndpoint = (query: {
     /** @format int32 */

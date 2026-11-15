@@ -223,6 +223,7 @@ import { toDownloadActions, translateDownloadStatus } from '@composables';
 import Convert from '@class/Convert';
 import { useI18n } from '#imports';
 
+const telemetry = useTelemetry();
 const serverStore = useServerStore();
 const downloadStore = useDownloadStore();
 const dialogStore = useDialogStore();
@@ -541,6 +542,7 @@ function onTableAction({ action, data }: { action: DownloadActions; data: IDownl
 	const ids: string[] = [data.id];
 
 	if (action === DownloadActions.Details) {
+		telemetry.downloadDetailsOpened(data, props.plexServer.id);
 		dialogStore.openDownloadTaskDetailsDialog(data.id);
 		return;
 	}

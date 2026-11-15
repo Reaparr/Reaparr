@@ -66,7 +66,7 @@
 							:intervals="timelineStore.timelineIntervals"
 							:selected-row-id="timelineStore.selectedRowId"
 							:zoom-preset="timelineStore.zoomPreset"
-							@select-row="timelineStore.selectRow" />
+							@select-row="selectRow" />
 						<QText
 							v-else
 							align="center"
@@ -96,12 +96,14 @@ const { t } = useI18n();
 const serverStore = useServerStore();
 const libraryStore = useLibraryStore();
 const timelineStore = useLibraryAccessTimelineStore();
+const telemetry = useTelemetry();
 const refreshTimeline$ = new Subject<void>();
 
 const selectedServerId = computed({
 	get: () => timelineStore.filters.plexServerId ?? null,
 	set: (value: number | null) => {
 		timelineStore.setServer(value);
+		telemetry.timelineServerChanged(value);
 		timelineStore.setLibrary(null);
 		refreshTimeline$.next();
 	},
@@ -111,6 +113,7 @@ const selectedLibraryId = computed({
 	get: () => timelineStore.filters.plexLibraryId ?? null,
 	set: (value: number | null) => {
 		timelineStore.setLibrary(value);
+		telemetry.timelineLibraryChanged(value);
 		refreshTimeline$.next();
 	},
 });
@@ -119,6 +122,7 @@ const selectedZoomPreset = computed({
 	get: () => timelineStore.zoomPreset,
 	set: (value: LibraryAccessTimelineZoomPreset) => {
 		timelineStore.setZoomPreset(value);
+		telemetry.timelineZoomChanged(value);
 		applyZoomPreset(value);
 		refreshTimeline$.next();
 	},
@@ -172,6 +176,11 @@ onMounted(() => {
 	refreshTimeline$.next();
 	applyZoomPreset(timelineStore.zoomPreset);
 });
+
+function selectRow(rowId: string): void {
+	telemetry.timelineRowSelected(rowId);
+	timelineStore.selectRow(rowId);
+}
 
 function applyZoomPreset(zoomPreset: LibraryAccessTimelineZoomPreset) {
 	if (zoomPreset === 'All') {

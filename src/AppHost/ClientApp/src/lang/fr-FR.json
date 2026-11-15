@@ -290,7 +290,8 @@
             "ui": "Interface utilisateur",
             "buttons": "Boutons",
             "scratchpad": "Bloc-notes",
-            "integrations": "Intégrations"
+            "integrations": "Intégrations",
+            "telemetry": "Télémétrie"
         },
         "notifications-drawer": {
             "clear-notifications": "Effacer tout les notifications",
@@ -1463,6 +1464,16 @@
                 "media-quality-header": "Affichage de la qualité des médias",
                 "alert-display-header": "En-tête d'affichage d'alerte",
                 "media-comparison-state-header": "États de comparaison des médias"
+            },
+            "telemetry": {
+                "title": "Diagnostic de télémétrie",
+                "description": "Chaque requête passe par le backend Reaparr. Un résultat positif signifie que l’événement de diagnostic a été accepté pour l’envoi, et non que PostHog l’a accepté, ingéré ou distribué.",
+                "send-test-event": "Envoyer un événement de test",
+                "backend": "Backend",
+                "frontend": "Frontend",
+                "not-run": "Pas encore exécuté",
+                "accepted": "Diagnostic event accepted for sending",
+                "failed": "L’événement de diagnostic n’a pas été accepté pour l’envoi"
             }
         },
         "empty": {

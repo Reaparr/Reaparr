@@ -127,6 +127,17 @@ export interface BaseResultDTO {
   successes: IReadOnlyListOfSuccessDTO;
 }
 
+export interface BrowserTelemetryBootstrapDTO {
+  apiHost: string;
+  distinctId: string;
+  environment: string;
+  platform: string;
+  projectToken: string;
+  release: string;
+  runtimeIdentifier: string;
+  runtimeMode: string;
+}
+
 export interface CheckAllConnectionStatusUpdateDTO {
   plexServersWithConnectionIds: DictionaryOfInt32AndListOfInt32;
 }
@@ -2278,6 +2289,10 @@ export interface ResultDTOOfValidatePlexTokenEndpointResponse {
   value?: ValidatePlexTokenEndpointResponse | null;
 }
 
+export interface SendTelemetryDiagnosticRequest {
+  origin: TelemetryDiagnosticOrigin | null;
+}
+
 export interface ServerConnectionCheckStatusProgressDTO {
   completed: boolean;
   connectionSuccessful: boolean;
@@ -2411,6 +2426,11 @@ export interface SyncPlexServerMediaEndpointRequest {
   forceMediaRefresh: boolean;
 }
 
+export enum TelemetryDiagnosticOrigin {
+  Backend = "Backend",
+  Frontend = "Frontend",
+}
+
 export enum TestConnectionStatus {
   Unknown = "Unknown",
   Success = "Success",
@@ -2515,6 +2535,7 @@ export interface UpdateSonarrIntegrationRequest {
 export interface UserClaimsDTO {
   claims: ListOfString;
   isLoggedIn: boolean;
+  telemetry?: BrowserTelemetryBootstrapDTO | null;
   userName: string;
 }
 

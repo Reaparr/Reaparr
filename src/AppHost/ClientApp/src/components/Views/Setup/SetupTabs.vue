@@ -1,6 +1,7 @@
 <template>
 	<q-tabs
 		v-model="model"
+		@update:model-value="onStepSelected"
 		active-color="primary"
 		indicator-color="primary"
 		:vertical="$q.screen.gt.xs">
@@ -34,6 +35,7 @@ const settingsStore = useSettingsStore();
 const authStore = useAuthenticationStore();
 const folderPathStore = useFolderPathStore();
 const accountStore = useAccountStore();
+const telemetry = useTelemetry();
 
 const model = defineModel<number>({
 	default: 1,
@@ -66,5 +68,9 @@ function isTabEnabled(tab: SetupPanelType): boolean {
 	}
 
 	return enabled.includes(tab);
+}
+
+function onStepSelected(step: number): void {
+	telemetry.setupStepSelected(step);
 }
 </script>

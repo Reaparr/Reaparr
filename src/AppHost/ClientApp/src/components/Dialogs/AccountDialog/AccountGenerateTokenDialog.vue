@@ -9,7 +9,9 @@
 			{{ $t('components.account-token-validate-dialog.title') }}
 		</template>
 		<template #top-row>
-			<QSubHeader v-if="accountDialogStore.isValidated">
+			<QSubHeader
+				v-if="accountDialogStore.isValidated"
+				class="ph-no-capture">
 				{{ $t('components.account-token-validate-dialog.sub-header',
 					{ authToken: accountDialogStore.authenticationToken })
 				}}
@@ -51,7 +53,7 @@
 						<IconButton
 							cy="generate-token-dialog-copy-button"
 							icon="mdi-content-copy"
-							@click="copy(generatedToken)" />
+							@click="copyGeneratedToken" />
 					</template>
 				</q-input>
 			</div>
@@ -70,12 +72,13 @@
 </template>
 
 <script setup lang="ts">
-import { set, useClipboard } from '@vueuse/core';
+import { get, set, useClipboard } from '@vueuse/core';
 import { DialogType } from '@enums';
 import { useAccountDialogStore } from '@store';
 import VOtpInput from 'vue3-otp-input';
 import { useSubscription } from '@vueuse/rxjs';
 
+const telemetry = useTelemetry();
 const accountDialogStore = useAccountDialogStore();
 const { copy } = useClipboard({ legacy: true });
 
@@ -93,6 +96,10 @@ function onComplete(verificationCode: string) {
 	requestToken(verificationCode);
 	set(needVerificationToken, false);
 	set(verificationCodeValue, '');
+}
+function copyGeneratedToken() {
+	telemetry.accountTokenCopied(accountDialogStore.id);
+	copy(get(generatedToken));
 }
 
 function requestToken(verificationCode: string = '') {

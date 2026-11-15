@@ -36,14 +36,14 @@
 				class="live-log-viewer__toolbar-action"
 				icon="mdi-delete-sweep"
 				:title="t('pages.settings.logs.clear')"
-				@click="logsStore.clearLogs()" />
+				@click="onClearLogs" />
 
 			<!-- Refresh Logs -->
 			<IconButton
 				class="live-log-viewer__toolbar-action"
 				icon="mdi-refresh"
 				:title="t('pages.settings.logs.refresh')"
-				@click="useSubscription(logsStore.refreshLogs().subscribe())" />
+				@click="onRefreshLogs" />
 		</QToolbar>
 
 		<!-- Search Bar -->
@@ -170,14 +170,14 @@
 										@click.stop="copyLogEntry(item)" />
 								</div>
 							</div>
-							<pre class="live-log-viewer__message"><template
+							<pre class="live-log-viewer__message ph-no-capture"><template
 								v-for="(segment, index) in highlightSegments(item.message)"
 								:key="`message-${item.sequence}-${index}`"><mark
 									v-if="segment.isMatch"
 							class="live-log-viewer__highlight">{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></pre>
 							<pre
 								v-if="item.exception"
-								class="live-log-viewer__exception"><template
+								class="live-log-viewer__exception ph-no-capture"><template
 									v-for="(segment, index) in highlightSegments(item.exception)"
 									:key="`exception-${item.sequence}-${index}`"><mark
 										v-if="segment.isMatch"
@@ -212,6 +212,7 @@ import { useLogsStore } from '@store';
 import type { LiveLogEventDTO } from '@dto';
 import { LogSeverity, SortDirection } from '@dto';
 
+const telemetry = useTelemetry();
 const logsStore = useLogsStore();
 const helpStore = useHelpStore();
 const { copy } = useClipboard({ legacy: true });
@@ -335,6 +336,7 @@ function formatLogEntry(item: LiveLogEventDTO): string {
 }
 
 function copyLogEntry(item: LiveLogEventDTO): void {
+	telemetry.logsCopied(1);
 	copy(formatLogEntry(item));
 	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
 }
@@ -353,19 +355,22 @@ function onEntrySelectionChanged(sequence: number, selected: boolean): void {
 function copySelectedEntries(): void {
 	const sequences = get(selectedEntries);
 	const entries = logsStore.getLogs.filter((x) => sequences.has(x.sequence));
+	telemetry.logsCopied(entries.length);
 	const text = entries.map(formatLogEntry).join('\n');
 	copy(text);
 	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
 }
 
 function copyAllEntries(): void {
-	const text = logsStore.getLogs.map(formatLogEntry).join('\n');
+	const entries = logsStore.getLogs;
+	telemetry.logsCopied(entries.length);
+	const text = entries.map(formatLogEntry).join('\n');
 	copy(text);
 	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
 }
 
 function onSelectedLevelsChanged(value: LogSeverity[] | null): void {
-	logsStore.selectedLevels = value ?? [];
+	logsStore.setSelectedLevels(value ?? []);
 }
 
 function onSortDirectionToggled(): void {
@@ -379,6 +384,7 @@ function onSortDirectionToggled(): void {
 
 function onPauseScrollChanged(value: boolean): void {
 	set(pauseScroll, value);
+	telemetry.logScrollingPaused(value);
 
 	if (!value) {
 		if (logsStore.sortDirection === SortDirection.Asc) {
@@ -387,6 +393,15 @@ function onPauseScrollChanged(value: boolean): void {
 			void scrollToTop();
 		}
 	}
+}
+
+function onClearLogs(): void {
+	logsStore.clearLogs();
+}
+
+function onRefreshLogs(): void {
+	telemetry.logsRefreshRequested();
+	useSubscription(logsStore.refreshLogs().subscribe());
 }
 
 async function scrollToBottom(): Promise<void> {

@@ -130,6 +130,17 @@ describe('Reaparr Server Dialog', () => {
 				cy.get('.navigation-drawer').should('be.visible');
 			}
 			cy.getCy('server-dialog-2').filter(':visible').first().scrollIntoView().click();
+			cy.get('.server-dialog-tabs [role="tab"]').should(($tabs) => {
+				const first = $tabs[0]!.getBoundingClientRect();
+				const second = $tabs[1]!.getBoundingClientRect();
+				if (viewport.width <= 599) {
+					expect(second.top, 'mobile tabs share a row').to.be.closeTo(first.top, 1);
+					expect(second.left, 'mobile tabs run horizontally').to.be.gte(first.right - 1);
+				} else {
+					expect(second.left, 'desktop tabs share a column').to.be.closeTo(first.left, 1);
+					expect(second.top, 'desktop tabs run vertically').to.be.gte(first.bottom - 1);
+				}
+			});
 			cy.getCy('server-dialog-cy').should('be.visible').then(($dialog) => {
 				const dialogRect = $dialog[0]!.getBoundingClientRect();
 				expect(dialogRect.left, 'dialog starts inside viewport').to.be.gte(0);

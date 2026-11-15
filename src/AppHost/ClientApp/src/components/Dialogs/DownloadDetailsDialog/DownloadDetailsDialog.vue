@@ -88,11 +88,13 @@
 
 <script lang="ts" setup>
 import { set, get } from '@vueuse/core';
+import { useSubscription } from '@vueuse/rxjs';
 import type { DownloadTaskDTO, DownloadTaskLogDTO, ErrorDTO } from '@dto';
 import { downloadApi } from '@api';
 import { DialogType } from '@enums';
 import { useDownloadStore } from '@store';
 
+const telemetry = useTelemetry();
 const downloadStore = useDownloadStore();
 
 const tabIndex = ref<string>('overview');
@@ -147,6 +149,11 @@ function onOpen(event: string) {
 }
 
 function onClose() {
+	const task = get(downloadTask);
+	const taskId = get(downloadTaskId);
+	if (taskId) {
+		telemetry.downloadDetailsClosed(taskId, task);
+	}
 	set(downloadTask, null);
 	set(downloadTaskId, '');
 	set(errors, []);

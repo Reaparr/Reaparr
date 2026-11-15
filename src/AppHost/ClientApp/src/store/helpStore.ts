@@ -18,6 +18,7 @@ export const useHelpStore = defineStore(StoreNames.HelpStore, () => {
 
 	const state = reactive<IHelpStoreState>(cloneDeep(defaultState));
 
+	const telemetry = useTelemetry();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			return of({ name: StoreNames.HelpStore, isSuccess: true });
@@ -26,6 +27,7 @@ export const useHelpStore = defineStore(StoreNames.HelpStore, () => {
 			if (!help) {
 				return;
 			}
+			telemetry.helpOpened();
 			state.helpIdDialog = help;
 			state.helpDialogObservable.next(help);
 		},

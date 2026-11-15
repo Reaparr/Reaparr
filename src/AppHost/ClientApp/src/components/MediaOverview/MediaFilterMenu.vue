@@ -163,10 +163,11 @@
 <script setup lang="ts">
 import { get, set } from '@vueuse/core';
 import { PlexMediaComparisonState, PlexMediaType } from '@dto';
-import { useLibraryStore, useMediaOverviewStore, useServerStore } from '@store';
 import { MediaMetaDataTypes } from '@enums';
 import IconButton from '@components/Buttons/IconButton.vue';
+import { useLibraryStore, useMediaOverviewStore, useServerStore } from '@store';
 
+const telemetry = useTelemetry();
 const menuIndex = ref<MediaMetaDataTypes>(MediaMetaDataTypes.None);
 const mediaOverviewStore = useMediaOverviewStore();
 const libraryStore = useLibraryStore();
@@ -283,7 +284,11 @@ function goBackToMainMenu() {
 }
 
 function clearMetadataFilter() {
+	const hadActiveFilter = mediaOverviewStore.hasActiveFilter;
 	mediaOverviewStore.clearMetaDataFilter();
+	if (hadActiveFilter) {
+		telemetry.mediaFiltersCleared(mediaOverviewStore.libraryId, mediaOverviewStore.getMediaType);
+	}
 
 	useSubscription(mediaOverviewStore.refreshMediaData().subscribe());
 }

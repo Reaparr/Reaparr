@@ -78,6 +78,7 @@ const settingsStore = useSettingsStore();
 const serverStore = useServerStore();
 const confirmHideDialog = ref(false);
 const dialogStore = useDialogStore();
+const telemetry = useTelemetry();
 
 const allowStreamDownloader = computed(
 	() => settingsStore.getServerSettings(props.plexServer?.machineIdentifier)?.allowStreamDownloader ?? false,
@@ -90,6 +91,7 @@ function onAllowStreamDownloaderChanged(value: boolean) {
 	}
 
 	settingsStore.updateAllowStreamDownloader(props.plexServer.machineIdentifier, value);
+	telemetry.serverStreamDownloaderChanged(props.plexServer.id);
 }
 
 function onDisableServer() {

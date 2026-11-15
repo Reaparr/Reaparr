@@ -18,7 +18,7 @@
 				<div
 					v-for="error in alert.apiErrors"
 					:key="`${error.method}-${error.url}-${error.statusCode}-${error.code}`"
-					class="q-my-md"
+					class="q-my-md ph-no-capture"
 					data-cy="api-error">
 					<div class="text-weight-bold">
 						{{ `${error.method} — HTTP ${error.statusCode}` }}
@@ -37,7 +37,7 @@
 					{{ $t('components.alert-dialog.next-steps') }}
 				</QText>
 			</div>
-			<div v-else>
+			<div v-else class="ph-no-capture">
 				<pre style="white-space: break-spaces">{{ alert.text }}</pre>
 				<QText>{{ $t('components.alert-dialog.request-data-sent') }}</QText>
 				<pre
@@ -59,6 +59,7 @@
 				@click="close" />
 			<BaseButton
 				v-if="issueUrl"
+				class="ph-no-capture"
 				:href="issueUrl"
 				:label="$t('components.alert-dialog.report-issue')"
 				icon="mdi-open-in-new"

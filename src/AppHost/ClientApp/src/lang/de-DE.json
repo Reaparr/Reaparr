@@ -290,7 +290,8 @@
             "ui": "UI",
             "buttons": "Tasten",
             "scratchpad": "Notizblock",
-            "integrations": "Integrationen"
+            "integrations": "Integrationen",
+            "telemetry": "Telemetrie"
         },
         "notifications-drawer": {
             "clear-notifications": "Alle Benachrichtigungen löschen",
@@ -1463,6 +1464,16 @@
                 "media-quality-header": "Medienqualitätsanzeige",
                 "alert-display-header": "Kopfzeile der Alarmanzeige",
                 "media-comparison-state-header": "Medienvergleich Staaten"
+            },
+            "telemetry": {
+                "title": "Telemetrie-Diagnose",
+                "description": "Jede Anfrage wird über das Reaparr-Backend gesendet. Ein Erfolg bedeutet, dass das Diagnoseereignis zum Senden angenommen wurde – nicht, dass PostHog es akzeptiert, aufgenommen oder zugestellt hat.",
+                "send-test-event": "Testereignis senden",
+                "backend": "Backend",
+                "frontend": "Frontend",
+                "not-run": "Noch nicht ausgeführt",
+                "accepted": "Diagnostic event accepted for sending",
+                "failed": "Diagnoseereignis wurde nicht zum Senden angenommen"
             }
         },
         "empty": {
