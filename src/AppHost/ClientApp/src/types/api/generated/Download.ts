@@ -191,9 +191,9 @@ export class Download {
       /** @format int32 */
       plexServerId: number;
       /** @format int32 */
-      sinceId?: number | null;
+      sinceId?: null | number;
       /** @format int32 */
-      take?: number | null;
+      take?: null | number;
       type: DownloadTaskType;
     },
     params: RequestParams = {},
@@ -356,9 +356,9 @@ export class DownloadPaths {
       /** @format int32 */
       plexServerId: number;
       /** @format int32 */
-      sinceId?: number | null;
+      sinceId?: null | number;
       /** @format int32 */
-      take?: number | null;
+      take?: null | number;
       type: DownloadTaskType;
     },
   ) =>

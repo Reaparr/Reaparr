@@ -164,9 +164,9 @@ export interface CreateDownloadTasksRequest {
   /** @default "" */
   customDestinationFolderPath: string;
   /** @format int32 */
-  destinationFolderPathId?: number | null;
+  destinationFolderPathId?: null | number;
   downloadMedias: ListOfDownloadMediaDTO;
-  integration?: IntegrationIdentity | null;
+  integration?: null | IntegrationIdentity;
 }
 
 export interface CreatePlexAccountEndpointRequest {
@@ -200,14 +200,12 @@ export interface CreatePlexServerConnectionEndpointRequest {
   address: string;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   plexServerId: number;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   port: number;
   /** @minLength 1 */
@@ -223,8 +221,7 @@ export interface CreateRadarrIntegrationRequest {
   category: string;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   downloadFolderId: number;
   /** @minLength 1 */
@@ -240,8 +237,7 @@ export interface CreateSonarrIntegrationRequest {
   category: string;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   downloadFolderId: number;
   /** @minLength 1 */
@@ -293,7 +289,7 @@ export type DictionaryOfStringAndDictionaryOfStringAndNullableOfInt32 = Record<
 
 export type DictionaryOfStringAndNullableOfInt32 = Record<
   string,
-  number | null
+  null | number
 >;
 
 export type DictionaryOfStringAndObject = object;
@@ -336,7 +332,7 @@ export interface DownloadMediaDTO {
   /** @format int32 */
   plexServerId: number;
   qualities: ListOfPlexMediaQualityDTO;
-  selectionKind?: PhotoItemKind | null;
+  selectionKind?: null | PhotoItemKind;
   type: PlexMediaType;
 }
 
@@ -345,18 +341,16 @@ export interface DownloadMediaDTOOp35DFD53C379E {
   mediaIds: ListOfInt32OpC4FD0FCD9F0B;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   plexLibraryId: number;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   plexServerId: number;
   qualities: ListOfPlexMediaQualityDTO;
-  selectionKind?: PhotoItemKind | null;
+  selectionKind?: null | PhotoItemKind;
   type: PlexMediaType;
 }
 
@@ -425,7 +419,7 @@ export interface DownloadPreviewDTO {
 export interface DownloadPreviewRequest {
   customDestinationFolderPath: string;
   /** @format int32 */
-  destinationFolderPathId?: number | null;
+  destinationFolderPathId?: null | number;
   downloadMedias: ListOfDownloadMediaDTOOpDF26594E59F4;
 }
 
@@ -628,7 +622,7 @@ export interface ErrorResponse {
 }
 
 export interface FileSystemDTO {
-  current?: FileSystemModelDTO | null;
+  current?: null | FileSystemModelDTO;
   directories: ListOfFileSystemModelDTO;
   files: ListOfFileSystemModelDTO;
   parent: string;
@@ -646,7 +640,7 @@ export interface FileSystemModelDTO {
   hasReadPermission: boolean;
   hasWritePermission: boolean;
   /** @format date-time */
-  lastModified?: string | null;
+  lastModified?: null | string;
   name: string;
   path: string;
   /** @format int64 */
@@ -696,7 +690,7 @@ export interface GeneratePlexTokenResponse {
 }
 
 export interface IError {
-  message: string | null;
+  message: null | string;
   metadata: DictionaryOfStringAndObject;
   reasons: ListOfIError;
 }
@@ -733,7 +727,7 @@ export enum IntegrationProvisioningState {
 }
 
 export interface IntegrationSetupProgressDTO {
-  error?: string | null;
+  error?: null | string;
   /** @format uuid */
   integrationId: string;
   isRunning: boolean;
@@ -755,17 +749,17 @@ export interface IntegrationSummary {
   /** @format int32 */
   downloadFolderId: number;
   /** @format int32 */
-  externalDownloadClientId?: number | null;
+  externalDownloadClientId?: null | number;
   /** @format int32 */
-  externalIndexerId?: number | null;
+  externalIndexerId?: null | number;
   /** @format uuid */
   id: string;
-  lastConnectionTestErrorMessage?: string | null;
+  lastConnectionTestErrorMessage?: null | string;
   /** @format int32 */
-  lastConnectionTestHttpStatusCode?: number | null;
+  lastConnectionTestHttpStatusCode?: null | number;
   lastConnectionTestStatus: TestConnectionStatus;
   /** @format date-time */
-  lastConnectionTestedAt?: string | null;
+  lastConnectionTestedAt?: null | string;
   name: string;
   provisioningState: IntegrationProvisioningState;
   type: IntegrationType;
@@ -824,10 +818,10 @@ export interface LibraryComparisonCompletedDTO {
 
 export interface LibrarySyncJobQueueDTO {
   /** @format date-time */
-  completedAt?: string | null;
+  completedAt?: null | string;
   /** @format date-time */
   createdAt: string;
-  errorMessage?: string | null;
+  errorMessage?: null | string;
   isServerOffline: boolean;
   /** @format int32 */
   plexLibraryId: number;
@@ -836,7 +830,7 @@ export interface LibrarySyncJobQueueDTO {
   /** @format int32 */
   priority: number;
   /** @format date-time */
-  startedAt?: string | null;
+  startedAt?: null | string;
   status: LibrarySyncJobStatus;
 }
 
@@ -962,12 +956,12 @@ export type ListOfServerDownloadProgressDTO = ServerDownloadProgressDTO[];
 export type ListOfString = string[];
 
 export interface LiveLogEventDTO {
-  exception?: string | null;
+  exception?: null | string;
   level: LogSeverity;
   message: string;
   /** @format int64 */
   sequence: number;
-  sourceContext?: string | null;
+  sourceContext?: null | string;
   /** @format date-time */
   timestamp: string;
 }
@@ -990,27 +984,27 @@ export interface MediaNavigationIndexDTO {
 }
 
 export interface MediaQueryFilterDTO {
-  distinct?: boolean | null;
-  filter?: string | null;
+  distinct?: null | boolean;
+  filter?: null | string;
   /** @default false */
   filterOfflineMedia: boolean;
   /** @default false */
   filterOwnedMedia: boolean;
-  groupBy?: string | null;
-  having?: string | null;
-  includeCount?: boolean | null;
-  includes?: string | null;
+  groupBy?: null | string;
+  having?: null | string;
+  includeCount?: null | boolean;
+  includes?: null | string;
   mediaType: PlexMediaType;
-  mode?: string | null;
+  mode?: null | string;
   /** @format int32 */
-  page?: number | null;
+  page?: null | number;
   /** @format int32 */
-  pageSize?: number | null;
+  pageSize?: null | number;
   /** @format int32 */
   plexLibraryId: number;
-  query?: string | null;
-  select?: string | null;
-  sort?: string | null;
+  query?: null | string;
+  select?: null | string;
+  sort?: null | string;
 }
 
 export enum MessageTypes {
@@ -1126,10 +1120,10 @@ export interface PhotoAssetBrowseDTO {
   assetKind: PhotoAssetKind;
   container: string;
   /** @format int32 */
-  duration?: number | null;
+  duration?: null | number;
   hasThumbnail: boolean;
   /** @format int32 */
-  height?: number | null;
+  height?: null | number;
   /** @format int32 */
   id: number;
   originalFilename: string;
@@ -1143,13 +1137,13 @@ export interface PhotoAssetBrowseDTO {
   /** @format int32 */
   plexServerId: number;
   plexServerName: string;
-  relativeFolderPath?: string | null;
+  relativeFolderPath?: null | string;
   /** @format int64 */
   size: number;
-  sourceRootTitle?: string | null;
+  sourceRootTitle?: null | string;
   title: string;
   /** @format int32 */
-  width?: number | null;
+  width?: null | number;
 }
 
 export interface PhotoAssetInspectionDTO {
@@ -1157,19 +1151,19 @@ export interface PhotoAssetInspectionDTO {
   addedAt: string;
   albums: PhotoAlbumSummaryPageDTO;
   assetKind: PhotoAssetKind;
-  audioCodec?: string | null;
+  audioCodec?: null | string;
   breadcrumbs: ListOfPhotoFolderBreadcrumbDTO;
   container: string;
   /** @format int32 */
-  duration?: number | null;
+  duration?: null | number;
   hasThumbnail: boolean;
   /** @format int32 */
-  height?: number | null;
+  height?: null | number;
   /** @format int32 */
   id: number;
   originalFilename: string;
   /** @format date-time */
-  originallyAvailableAt?: string | null;
+  originallyAvailableAt?: null | string;
   /** @format int32 */
   plexApiMetaDataKey: number;
   /** @format int32 */
@@ -1180,17 +1174,17 @@ export interface PhotoAssetInspectionDTO {
   /** @format int32 */
   plexServerId: number;
   plexServerName: string;
-  relativeFolderPath?: string | null;
+  relativeFolderPath?: null | string;
   /** @format int64 */
   size: number;
-  sourceRootTitle?: string | null;
-  summary?: string | null;
+  sourceRootTitle?: null | string;
+  summary?: null | string;
   title: string;
   /** @format date-time */
-  updatedAt?: string | null;
-  videoCodec?: string | null;
+  updatedAt?: null | string;
+  videoCodec?: null | string;
   /** @format int32 */
-  width?: number | null;
+  width?: null | number;
 }
 
 export enum PhotoAssetKind {
@@ -1220,10 +1214,10 @@ export interface PhotoFolderBreadcrumbDTO {
 export interface PhotoFolderBrowseDTO {
   /** @format int32 */
   id: number;
-  isActive?: boolean | null;
+  isActive?: null | boolean;
   isRoot: boolean;
   /** @format int32 */
-  parentId?: number | null;
+  parentId?: null | number;
   /** @format int32 */
   plexLibraryId: number;
   /** @format int32 */
@@ -1293,7 +1287,7 @@ export interface PlexAccountDTO {
   username: string;
   uuid: string;
   /** @format date-time */
-  validatedAt?: string | null;
+  validatedAt?: null | string;
   verificationCode: string;
 }
 
@@ -1319,8 +1313,8 @@ export interface PlexGenreDTO {
 export interface PlexLibraryAccessCurrentStateDTO {
   libraries: ListOfPlexLibraryAccessCurrentStateLibraryDTO;
   /** @format int32 */
-  plexServerId?: number | null;
-  plexServerName?: string | null;
+  plexServerId?: null | number;
+  plexServerName?: null | string;
 }
 
 export interface PlexLibraryAccessCurrentStateLibraryDTO {
@@ -1332,11 +1326,11 @@ export interface PlexLibraryAccessCurrentStateLibraryDTO {
   plexAccountId: number;
   plexAccountName: string;
   /** @format int32 */
-  plexLibraryId?: number | null;
-  plexLibraryName?: string | null;
+  plexLibraryId?: null | number;
+  plexLibraryName?: null | string;
   /** @format int32 */
-  plexServerId?: number | null;
-  plexServerName?: string | null;
+  plexServerId?: null | number;
+  plexServerName?: null | string;
 }
 
 export interface PlexLibraryAccessRapportDTO {
@@ -1362,11 +1356,11 @@ export interface PlexLibraryAccessTimelineEventDTO {
   plexAccountId: number;
   plexAccountName: string;
   /** @format int32 */
-  plexLibraryId?: number | null;
-  plexLibraryName?: string | null;
+  plexLibraryId?: null | number;
+  plexLibraryName?: null | string;
   /** @format int32 */
-  plexServerId?: number | null;
-  plexServerName?: string | null;
+  plexServerId?: null | number;
+  plexServerName?: null | string;
   /** @format uuid */
   refreshRunId: string;
   state: PlexAccessState;
@@ -1376,8 +1370,8 @@ export interface PlexLibraryDTO {
   /** @format int32 */
   count: number;
   /** @format date-time */
-  createdAt?: string | null;
-  defaultDestination?: FolderPathDTO | null;
+  createdAt?: null | string;
+  defaultDestination?: null | FolderPathDTO;
   /** @format int32 */
   defaultDestinationId: number;
   /** @format int32 */
@@ -1406,15 +1400,15 @@ export interface PlexLibraryDTO {
   /** @format int32 */
   plexServerId: number;
   /** @format date-time */
-  scannedAt?: string | null;
+  scannedAt?: null | string;
   /** @format int32 */
   seasonCount: number;
   /** @format date-time */
-  syncedAt?: string | null;
+  syncedAt?: null | string;
   title: string;
   type: PlexMediaType;
   /** @format date-time */
-  updatedAt?: string | null;
+  updatedAt?: null | string;
   uuid: string;
 }
 
@@ -1430,7 +1424,7 @@ export interface PlexMediaComparisonDetailsRowDTO {
   children: ListOfPlexMediaComparisonDetailsRowDTO;
   ownedAudioQuality: AudioQuality;
   /** @format int32 */
-  ownedPlexMediaDataId?: number | null;
+  ownedPlexMediaDataId?: null | number;
   ownedQuality: VideoQuality;
   /** @format int32 */
   plexLibraryId: number;
@@ -1440,7 +1434,7 @@ export interface PlexMediaComparisonDetailsRowDTO {
   plexServerId: number;
   remoteAudioQuality: AudioQuality;
   /** @format int32 */
-  remotePlexMediaDataId?: number | null;
+  remotePlexMediaDataId?: null | number;
   remoteQuality: VideoQuality;
   state: PlexMediaComparisonState;
   title: string;
@@ -1466,9 +1460,9 @@ export interface PlexMediaDTO {
   children: ListOfPlexMediaDTO;
   /** @format int32 */
   comparisonId: number;
-  contentRating?: string | null;
+  contentRating?: null | string;
   /** @format int32 */
-  discNumber?: number | null;
+  discNumber?: null | number;
   /** @format int32 */
   duration: number;
   genres: ListOfPlexGenreDTO;
@@ -1483,9 +1477,9 @@ export interface PlexMediaDTO {
   /** @format int64 */
   mediaSize: number;
   /** @format date-time */
-  originallyAvailableAt?: string | null;
+  originallyAvailableAt?: null | string;
   /** @format int32 */
-  parentId?: number | null;
+  parentId?: null | number;
   /** @format int32 */
   plexApiMetaDataKey: number;
   /** @format int32 */
@@ -1497,7 +1491,7 @@ export interface PlexMediaDTO {
   qualities: ListOfPlexMediaQualityDTO;
   /** @format double */
   rating: number;
-  recordLabel?: string | null;
+  recordLabel?: null | string;
   searchTitle: string;
   /** @format int32 */
   sortIndex: number;
@@ -1505,14 +1499,14 @@ export interface PlexMediaDTO {
   summary: string;
   title: string;
   /** @format int32 */
-  trackNumber?: number | null;
+  trackNumber?: null | number;
   /** @format int32 */
   tvShowId: number;
   /** @format int32 */
   tvShowSeasonId: number;
   type: PlexMediaType;
   /** @format date-time */
-  updatedAt?: string | null;
+  updatedAt?: null | string;
   /** @format int32 */
   year: number;
 }
@@ -1587,7 +1581,7 @@ export interface PlexMediaSlimDTO {
   /** @format int64 */
   mediaSize: number;
   /** @format int32 */
-  parentId?: number | null;
+  parentId?: null | number;
   /** @format int32 */
   plexApiMetaDataKey: number;
   /** @format int32 */
@@ -1603,7 +1597,7 @@ export interface PlexMediaSlimDTO {
   title: string;
   type: PlexMediaType;
   /** @format date-time */
-  updatedAt?: string | null;
+  updatedAt?: null | string;
   /** @format int32 */
   year: number;
 }
@@ -1695,7 +1689,7 @@ export interface PlexServerConnectionDTO {
   id: number;
   isCustom: boolean;
   isPlexTvConnection: boolean;
-  latestConnectionStatus?: PlexServerStatusDTO | null;
+  latestConnectionStatus?: null | PlexServerStatusDTO;
   local: boolean;
   /** @format int32 */
   plexServerId: number;
@@ -1770,12 +1764,12 @@ export interface RadarrIntegrationDTO {
   downloadFolderId: number;
   /** @format uuid */
   id: string;
-  lastConnectionTestErrorMessage?: string | null;
+  lastConnectionTestErrorMessage?: null | string;
   /** @format int32 */
-  lastConnectionTestHttpStatusCode?: number | null;
+  lastConnectionTestHttpStatusCode?: null | number;
   lastConnectionTestStatus: TestConnectionStatus;
   /** @format date-time */
-  lastConnectionTestedAt?: string | null;
+  lastConnectionTestedAt?: null | string;
   name: string;
   provisioningState: IntegrationProvisioningState;
   url: string;
@@ -1817,7 +1811,7 @@ export interface ResultDTOOfAppCredentialsDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: AppCredentialsDTO | null;
+  value?: null | AppCredentialsDTO;
 }
 
 export interface ResultDTOOfAppUpdateCheckDTO {
@@ -1826,7 +1820,7 @@ export interface ResultDTOOfAppUpdateCheckDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: AppUpdateCheckDTO | null;
+  value?: null | AppUpdateCheckDTO;
 }
 
 export interface ResultDTOOfBoolean {
@@ -1838,13 +1832,22 @@ export interface ResultDTOOfBoolean {
   value: boolean;
 }
 
+export interface ResultDTOOfBrowserTelemetryBootstrapDTO {
+  errors: IReadOnlyListOfErrorDTO;
+  isSuccess: boolean;
+  /** @format int32 */
+  statusCode: number;
+  successes: IReadOnlyListOfSuccessDTO;
+  value?: null | BrowserTelemetryBootstrapDTO;
+}
+
 export interface ResultDTOOfCountResponseDTO {
   errors: IReadOnlyListOfErrorDTO;
   isSuccess: boolean;
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: CountResponseDTO | null;
+  value?: null | CountResponseDTO;
 }
 
 export interface ResultDTOOfDownloadPreviewContainerDTO {
@@ -1853,7 +1856,7 @@ export interface ResultDTOOfDownloadPreviewContainerDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: DownloadPreviewContainerDTO | null;
+  value?: null | DownloadPreviewContainerDTO;
 }
 
 export interface ResultDTOOfDownloadSnapshotDTO {
@@ -1862,7 +1865,7 @@ export interface ResultDTOOfDownloadSnapshotDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: DownloadSnapshotDTO | null;
+  value?: null | DownloadSnapshotDTO;
 }
 
 export interface ResultDTOOfDownloadTaskCreationReportDTO {
@@ -1871,7 +1874,7 @@ export interface ResultDTOOfDownloadTaskCreationReportDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: DownloadTaskCreationReportDTO | null;
+  value?: null | DownloadTaskCreationReportDTO;
 }
 
 export interface ResultDTOOfDownloadTaskDTO {
@@ -1880,7 +1883,7 @@ export interface ResultDTOOfDownloadTaskDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: DownloadTaskDTO | null;
+  value?: null | DownloadTaskDTO;
 }
 
 export interface ResultDTOOfFileSystemDTO {
@@ -1889,7 +1892,7 @@ export interface ResultDTOOfFileSystemDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: FileSystemDTO | null;
+  value?: null | FileSystemDTO;
 }
 
 export interface ResultDTOOfFolderPathDTO {
@@ -1898,7 +1901,7 @@ export interface ResultDTOOfFolderPathDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: FolderPathDTO | null;
+  value?: null | FolderPathDTO;
 }
 
 export interface ResultDTOOfGeneratePlexTokenResponse {
@@ -1907,7 +1910,7 @@ export interface ResultDTOOfGeneratePlexTokenResponse {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: GeneratePlexTokenResponse | null;
+  value?: null | GeneratePlexTokenResponse;
 }
 
 export interface ResultDTOOfInt32 {
@@ -1926,7 +1929,7 @@ export interface ResultDTOOfLibrarySyncJobQueueDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: LibrarySyncJobQueueDTO | null;
+  value?: null | LibrarySyncJobQueueDTO;
 }
 
 export interface ResultDTOOfListOfDownloadTaskLogDTO {
@@ -1935,7 +1938,7 @@ export interface ResultDTOOfListOfDownloadTaskLogDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: DownloadTaskLogDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfFolderPathDTO {
@@ -1944,7 +1947,7 @@ export interface ResultDTOOfListOfFolderPathDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: FolderPathDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfIntegrationSummary {
@@ -1953,7 +1956,7 @@ export interface ResultDTOOfListOfIntegrationSummary {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: IntegrationSummary[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfJobStatusUpdateDTO {
@@ -1962,7 +1965,7 @@ export interface ResultDTOOfListOfJobStatusUpdateDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: JobStatusUpdateDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfLibrarySyncJobQueueDTO {
@@ -1971,7 +1974,7 @@ export interface ResultDTOOfListOfLibrarySyncJobQueueDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: LibrarySyncJobQueueDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfLiveLogEventDTO {
@@ -1980,7 +1983,7 @@ export interface ResultDTOOfListOfLiveLogEventDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: LiveLogEventDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfNotificationDTO {
@@ -1989,7 +1992,7 @@ export interface ResultDTOOfListOfNotificationDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: NotificationDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfPlexAccountDTO {
@@ -1998,7 +2001,7 @@ export interface ResultDTOOfListOfPlexAccountDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexAccountDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfPlexLibraryDTO {
@@ -2007,7 +2010,7 @@ export interface ResultDTOOfListOfPlexLibraryDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexLibraryDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfPlexServerConnectionDTO {
@@ -2016,7 +2019,7 @@ export interface ResultDTOOfListOfPlexServerConnectionDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexServerConnectionDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfPlexServerDTO {
@@ -2025,7 +2028,7 @@ export interface ResultDTOOfListOfPlexServerDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexServerDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfPlexServerStatusDTO {
@@ -2034,7 +2037,7 @@ export interface ResultDTOOfListOfPlexServerStatusDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexServerStatusDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfRefreshPlexAccountAccessRapportDTO {
@@ -2043,7 +2046,7 @@ export interface ResultDTOOfListOfRefreshPlexAccountAccessRapportDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: RefreshPlexAccountAccessRapportDTO[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfListOfString {
@@ -2052,7 +2055,7 @@ export interface ResultDTOOfListOfString {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: string[] | null;
+  value?: null | any[];
 }
 
 export interface ResultDTOOfPhotoAlbumPageDTO {
@@ -2061,7 +2064,7 @@ export interface ResultDTOOfPhotoAlbumPageDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PhotoAlbumPageDTO | null;
+  value?: null | PhotoAlbumPageDTO;
 }
 
 export interface ResultDTOOfPhotoAssetInspectionDTO {
@@ -2070,7 +2073,7 @@ export interface ResultDTOOfPhotoAssetInspectionDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PhotoAssetInspectionDTO | null;
+  value?: null | PhotoAssetInspectionDTO;
 }
 
 export interface ResultDTOOfPhotoAssetPageDTO {
@@ -2079,7 +2082,7 @@ export interface ResultDTOOfPhotoAssetPageDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PhotoAssetPageDTO | null;
+  value?: null | PhotoAssetPageDTO;
 }
 
 export interface ResultDTOOfPhotoFolderChildrenDTO {
@@ -2088,7 +2091,7 @@ export interface ResultDTOOfPhotoFolderChildrenDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PhotoFolderChildrenDTO | null;
+  value?: null | PhotoFolderChildrenDTO;
 }
 
 export interface ResultDTOOfPhotoFolderPageDTO {
@@ -2097,7 +2100,7 @@ export interface ResultDTOOfPhotoFolderPageDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PhotoFolderPageDTO | null;
+  value?: null | PhotoFolderPageDTO;
 }
 
 export interface ResultDTOOfPlexAccountDTO {
@@ -2106,7 +2109,7 @@ export interface ResultDTOOfPlexAccountDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexAccountDTO | null;
+  value?: null | PlexAccountDTO;
 }
 
 export interface ResultDTOOfPlexLibraryAccessTimelineDTO {
@@ -2115,7 +2118,7 @@ export interface ResultDTOOfPlexLibraryAccessTimelineDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexLibraryAccessTimelineDTO | null;
+  value?: null | PlexLibraryAccessTimelineDTO;
 }
 
 export interface ResultDTOOfPlexLibraryDTO {
@@ -2124,7 +2127,7 @@ export interface ResultDTOOfPlexLibraryDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexLibraryDTO | null;
+  value?: null | PlexLibraryDTO;
 }
 
 export interface ResultDTOOfPlexMediaComparisonDetailsDTO {
@@ -2133,7 +2136,7 @@ export interface ResultDTOOfPlexMediaComparisonDetailsDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexMediaComparisonDetailsDTO | null;
+  value?: null | PlexMediaComparisonDetailsDTO;
 }
 
 export interface ResultDTOOfPlexMediaDTO {
@@ -2142,7 +2145,7 @@ export interface ResultDTOOfPlexMediaDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexMediaDTO | null;
+  value?: null | PlexMediaDTO;
 }
 
 export interface ResultDTOOfPlexMediaFilterMetadataDTO {
@@ -2151,7 +2154,7 @@ export interface ResultDTOOfPlexMediaFilterMetadataDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexMediaFilterMetadataDTO | null;
+  value?: null | PlexMediaFilterMetadataDTO;
 }
 
 export interface ResultDTOOfPlexMediaMetadataDTO {
@@ -2160,7 +2163,7 @@ export interface ResultDTOOfPlexMediaMetadataDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexMediaMetadataDTO | null;
+  value?: null | PlexMediaMetadataDTO;
 }
 
 export interface ResultDTOOfPlexMediaStatisticsDTO {
@@ -2169,7 +2172,7 @@ export interface ResultDTOOfPlexMediaStatisticsDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexMediaStatisticsDTO | null;
+  value?: null | PlexMediaStatisticsDTO;
 }
 
 export interface ResultDTOOfPlexServerConnectionDTO {
@@ -2178,7 +2181,7 @@ export interface ResultDTOOfPlexServerConnectionDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexServerConnectionDTO | null;
+  value?: null | PlexServerConnectionDTO;
 }
 
 export interface ResultDTOOfPlexServerDTO {
@@ -2187,7 +2190,7 @@ export interface ResultDTOOfPlexServerDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexServerDTO | null;
+  value?: null | PlexServerDTO;
 }
 
 export interface ResultDTOOfPlexServerStatusDTO {
@@ -2196,7 +2199,7 @@ export interface ResultDTOOfPlexServerStatusDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: PlexServerStatusDTO | null;
+  value?: null | PlexServerStatusDTO;
 }
 
 export interface ResultDTOOfRadarrIntegrationDTO {
@@ -2205,7 +2208,7 @@ export interface ResultDTOOfRadarrIntegrationDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: RadarrIntegrationDTO | null;
+  value?: null | RadarrIntegrationDTO;
 }
 
 export interface ResultDTOOfServerIdentityDTO {
@@ -2214,7 +2217,7 @@ export interface ResultDTOOfServerIdentityDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: ServerIdentityDTO | null;
+  value?: null | ServerIdentityDTO;
 }
 
 export interface ResultDTOOfSettingsModelDTO {
@@ -2223,7 +2226,7 @@ export interface ResultDTOOfSettingsModelDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: SettingsModelDTO | null;
+  value?: null | SettingsModelDTO;
 }
 
 export interface ResultDTOOfSonarrIntegrationDTO {
@@ -2232,7 +2235,7 @@ export interface ResultDTOOfSonarrIntegrationDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: SonarrIntegrationDTO | null;
+  value?: null | SonarrIntegrationDTO;
 }
 
 export interface ResultDTOOfString {
@@ -2241,7 +2244,7 @@ export interface ResultDTOOfString {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: string | null;
+  value?: null | string;
 }
 
 export interface ResultDTOOfTestConnectionToRadarrEndpointResponse {
@@ -2250,7 +2253,7 @@ export interface ResultDTOOfTestConnectionToRadarrEndpointResponse {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: TestConnectionToRadarrEndpointResponse | null;
+  value?: null | TestConnectionToRadarrEndpointResponse;
 }
 
 export interface ResultDTOOfTestConnectionToSonarrEndpointResponse {
@@ -2259,7 +2262,7 @@ export interface ResultDTOOfTestConnectionToSonarrEndpointResponse {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: TestConnectionToSonarrEndpointResponse | null;
+  value?: null | TestConnectionToSonarrEndpointResponse;
 }
 
 export interface ResultDTOOfUserClaimsDTO {
@@ -2268,7 +2271,7 @@ export interface ResultDTOOfUserClaimsDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: UserClaimsDTO | null;
+  value?: null | UserClaimsDTO;
 }
 
 export interface ResultDTOOfValidatePlexCredentialsDTO {
@@ -2277,7 +2280,7 @@ export interface ResultDTOOfValidatePlexCredentialsDTO {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: ValidatePlexCredentialsDTO | null;
+  value?: null | ValidatePlexCredentialsDTO;
 }
 
 export interface ResultDTOOfValidatePlexTokenEndpointResponse {
@@ -2286,11 +2289,11 @@ export interface ResultDTOOfValidatePlexTokenEndpointResponse {
   /** @format int32 */
   statusCode: number;
   successes: IReadOnlyListOfSuccessDTO;
-  value?: ValidatePlexTokenEndpointResponse | null;
+  value?: null | ValidatePlexTokenEndpointResponse;
 }
 
 export interface SendTelemetryDiagnosticRequest {
-  origin: TelemetryDiagnosticOrigin | null;
+  origin: null | TelemetryDiagnosticOrigin;
 }
 
 export interface ServerConnectionCheckStatusProgressDTO {
@@ -2345,8 +2348,7 @@ export interface SetNotificationVisibilityEndpointRequest {
   hidden: boolean;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   id: number;
 }
@@ -2382,12 +2384,12 @@ export interface SonarrIntegrationDTO {
   downloadFolderId: number;
   /** @format uuid */
   id: string;
-  lastConnectionTestErrorMessage?: string | null;
+  lastConnectionTestErrorMessage?: null | string;
   /** @format int32 */
-  lastConnectionTestHttpStatusCode?: number | null;
+  lastConnectionTestHttpStatusCode?: null | number;
   lastConnectionTestStatus: TestConnectionStatus;
   /** @format date-time */
-  lastConnectionTestedAt?: string | null;
+  lastConnectionTestedAt?: null | string;
   name: string;
   provisioningState: IntegrationProvisioningState;
   url: string;
@@ -2440,18 +2442,18 @@ export enum TestConnectionStatus {
 }
 
 export interface TestConnectionToRadarrEndpointResponse {
-  errorMessage?: string | null;
+  errorMessage?: null | string;
   /** @format int32 */
-  httpStatusCode?: number | null;
+  httpStatusCode?: null | number;
   result: TestConnectionStatus;
   /** @format date-time */
   testedAt: string;
 }
 
 export interface TestConnectionToSonarrEndpointResponse {
-  errorMessage?: string | null;
+  errorMessage?: null | string;
   /** @format int32 */
-  httpStatusCode?: number | null;
+  httpStatusCode?: null | number;
   result: TestConnectionStatus;
   /** @format date-time */
   testedAt: string;
@@ -2463,12 +2465,12 @@ export interface UpdateCredentialsEndpointRequest {
    * @minLength 8
    * @example "R€Aℙℙ@rr69"
    */
-  password?: string | null;
+  password?: null | string;
   /**
    * @minLength 8
    * @example "ReaparrRocks"
    */
-  username?: string | null;
+  username?: null | string;
 }
 
 export interface UpdatePlexServerConnectionEndpointRequest {
@@ -2476,20 +2478,17 @@ export interface UpdatePlexServerConnectionEndpointRequest {
   address: string;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   id: number;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   plexServerId: number;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   port: number;
   /** @minLength 1 */
@@ -2505,8 +2504,7 @@ export interface UpdateRadarrIntegrationRequest {
   category: string;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   downloadFolderId: number;
   /** @minLength 1 */
@@ -2522,8 +2520,7 @@ export interface UpdateSonarrIntegrationRequest {
   category: string;
   /**
    * @format int32
-   * @min 0
-   * @exclusiveMin true
+   * @exclusiveMin 0
    */
   downloadFolderId: number;
   /** @minLength 1 */
@@ -2535,7 +2532,6 @@ export interface UpdateSonarrIntegrationRequest {
 export interface UserClaimsDTO {
   claims: ListOfString;
   isLoggedIn: boolean;
-  telemetry?: BrowserTelemetryBootstrapDTO | null;
   userName: string;
 }
 
@@ -2553,7 +2549,7 @@ export interface ValidatePlexCredentialsDTO {
   username: string;
   uuid: string;
   /** @format date-time */
-  validatedAt?: string | null;
+  validatedAt?: null | string;
 }
 
 export interface ValidatePlexCredentialsEndpointRequest {
@@ -2578,7 +2574,6 @@ export interface ValidatePlexTokenEndpointRequest {
   /**
    * @format int32
    * @min 0
-   * @exclusiveMin false
    */
   plexAccountId: number;
 }
@@ -2596,7 +2591,7 @@ export interface ValidatePlexTokenEndpointResponse {
   username: string;
   uuid: string;
   /** @format date-time */
-  validatedAt?: string | null;
+  validatedAt?: null | string;
 }
 
 export enum VideoQuality {

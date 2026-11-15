@@ -11,6 +11,7 @@ import { PlexServerPaths } from '@api/generated/PlexServer';
 import { SettingsPaths } from '@api/generated/Settings';
 import { DebugPaths } from '@api/generated/Debug';
 import { UpdatePaths } from '@api/generated/Update';
+import { TelemetryPaths } from '@api/generated/Telemetry';
 
 export {
 	AuthenticationPaths,
@@ -26,4 +27,5 @@ export {
 	SettingsPaths,
 	DebugPaths,
 	UpdatePaths,
+	TelemetryPaths,
 };

@@ -169,9 +169,9 @@ export class PlexLibrary {
     plexLibraryId: number,
     query: {
       /** @default false */
-      filterOfflineMedia?: boolean | null;
+      filterOfflineMedia?: null | boolean;
       /** @default false */
-      filterOwnedMedia?: boolean | null;
+      filterOwnedMedia?: null | boolean;
       mediaType: PlexMediaType;
       photoView?: PhotoItemKind;
     },
@@ -197,9 +197,9 @@ export class PlexLibrary {
     plexLibraryId: number,
     query: {
       /** @default false */
-      filterOfflineMedia?: boolean | null;
+      filterOfflineMedia?: null | boolean;
       /** @default false */
-      filterOwnedMedia?: boolean | null;
+      filterOwnedMedia?: null | boolean;
       mediaType: PlexMediaType;
     },
     params: RequestParams = {},
@@ -270,9 +270,9 @@ export class PlexLibraryPaths {
     plexLibraryId: number,
     query: {
       /** @default false */
-      filterOfflineMedia?: boolean | null;
+      filterOfflineMedia?: null | boolean;
       /** @default false */
-      filterOwnedMedia?: boolean | null;
+      filterOwnedMedia?: null | boolean;
       mediaType: PlexMediaType;
       photoView?: PhotoItemKind;
     },
@@ -286,9 +286,9 @@ export class PlexLibraryPaths {
     plexLibraryId: number,
     query: {
       /** @default false */
-      filterOfflineMedia?: boolean | null;
+      filterOfflineMedia?: null | boolean;
       /** @default false */
-      filterOwnedMedia?: boolean | null;
+      filterOwnedMedia?: null | boolean;
       mediaType: PlexMediaType;
     },
   ) =>

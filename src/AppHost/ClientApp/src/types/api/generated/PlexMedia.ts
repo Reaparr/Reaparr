@@ -35,26 +35,26 @@ export class PlexMedia {
     query: {
       comparisonState?: PlexMediaComparisonState;
       /** @format int32 */
-      countryId?: number | null;
+      countryId?: null | number;
       /** @default false */
       filterOfflineMedia: boolean;
       /** @default false */
       filterOwnedMedia: boolean;
       /** @format int32 */
-      genreId?: number | null;
+      genreId?: null | number;
       mediaType: PlexMediaType;
       /** @format int32 */
-      page?: number | null;
+      page?: null | number;
       /** @format int32 */
-      plexLibraryId?: number | null;
-      q?: string | null;
+      plexLibraryId?: null | number;
+      q?: null | string;
       /** @format int32 */
-      qualityId?: number | null;
+      qualityId?: null | number;
       /** @format int32 */
-      roleId?: number | null;
+      roleId?: null | number;
       /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
+      size?: null | number;
+      sort?: null | string;
     },
     params: RequestParams = {},
   ) =>
@@ -165,26 +165,26 @@ export class PlexMediaPaths {
   static getAllMediaByTypeEndpoint = (query: {
     comparisonState?: PlexMediaComparisonState;
     /** @format int32 */
-    countryId?: number | null;
+    countryId?: null | number;
     /** @default false */
     filterOfflineMedia: boolean;
     /** @default false */
     filterOwnedMedia: boolean;
     /** @format int32 */
-    genreId?: number | null;
+    genreId?: null | number;
     mediaType: PlexMediaType;
     /** @format int32 */
-    page?: number | null;
+    page?: null | number;
     /** @format int32 */
-    plexLibraryId?: number | null;
-    q?: string | null;
+    plexLibraryId?: null | number;
+    q?: null | string;
     /** @format int32 */
-    qualityId?: number | null;
+    qualityId?: null | number;
     /** @format int32 */
-    roleId?: number | null;
+    roleId?: null | number;
     /** @format int32 */
-    size?: number | null;
-    sort?: string | null;
+    size?: null | number;
+    sort?: null | string;
   }) => queryString.stringifyUrl({ url: `/api/PlexMedia`, query });
 
   static getMediaComparisonDetailsEndpoint = (

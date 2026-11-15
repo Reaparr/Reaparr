@@ -31,7 +31,7 @@ export class FolderPath {
    * @secure
    */
   createFolderPathEndpoint = (
-    data: FolderPathDTO | null,
+    data: null | FolderPathDTO,
     params: RequestParams = {},
   ) =>
     axiosObservable<FolderPathDTO>({
