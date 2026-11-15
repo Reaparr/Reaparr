@@ -174,6 +174,7 @@ export default defineNuxtConfig({
 			? `${(process.env.NUXT_APP_BASE_URL || '/').replace(/\/$/, '')}/e`
 			: `http://localhost:${process.env.NUXT_PUBLIC_API_PORT ?? process.env.API_PORT ?? '5000'}/e`,
 		clientConfig: { // Initial defaults; 2.posthog.client.ts activates collection once the existing account UUID arrives.
+			capture_pageview: false, // The router plugin owns pageviews; prevent opt-in from emitting an SDK startup pageview.
 			ui_host: (process.env.NUXT_PUBLIC_RP_HOST || '').replace('.i.posthog.com', '.posthog.com'), // Use the PostHog UI domain for links, not its ingestion/proxy address.
 			capture_exceptions: false, // Native browser errors start after UUID bootstrap, independently of authentication.
 			capture_performance: { web_vitals: true }, // Native document-lifetime observers must start at init; opt-out gates sends.

@@ -320,7 +320,7 @@ describe('Telemetry diagnostics', () => {
 			authenticated = false;
 			request.reply({ body: generateResultDTO(null) });
 		}).as('nativeLogout');
-		cy.visit(route('/debug-pages/telemetry'));
+		cy.visit(route('/login'));
 		cy.wait('@nativeAuthentication');
 		cy.wait('@nativeBootstrap');
 		cy.url().should('eq', route('/login'));
@@ -335,8 +335,9 @@ describe('Telemetry diagnostics', () => {
 		});
 		cy.wrap(null, { timeout: 15000 }).should(() => {
 			const pageviews = nativeCaptures.filter((event) => event.event === '$pageview');
-			expect(pageviews.some((event) => String(event.properties.$current_url).includes('/login')), 'login pageview').to.equal(true);
-			pageviews.forEach((event) => expect(event.properties.distinct_id, 'public bootstrap identity').to.equal(bootstrap.distinctId));
+			expect(pageviews, 'fresh login startup pageview').to.have.length(1);
+			expect(pageviews[0]?.properties.$current_url, 'login startup pageview').to.contain('/login');
+			expect(pageviews[0]?.properties.distinct_id, 'public bootstrap identity').to.equal(bootstrap.distinctId);
 		});
 		let snapshotsBeforeCredentials = 0;
 		cy.then(() => {
@@ -424,7 +425,9 @@ describe('Telemetry diagnostics', () => {
 		cy.wait('@nativeBootstrap');
 		cy.getCy('account-selector-btn').should('be.visible');
 		cy.wrap(null, { timeout: 15000 }).should(() => {
-			expect(nativeCaptures.filter((event) => event.event === '$pageview')).to.have.length(pageviewsBeforeReload + 1);
+			const pageviews = nativeCaptures.filter((event) => event.event === '$pageview');
+			expect(pageviews).to.have.length(pageviewsBeforeReload + 1);
+			pageviews.forEach((event) => expect(event.properties.distinct_id, 'reload preserves bootstrap identity').to.equal(bootstrap.distinctId));
 			expect(nativeCaptures.some((event) => event.event === '$pageleave')).to.equal(true);
 		});
 		cy.getCy('account-selector-btn').click();
