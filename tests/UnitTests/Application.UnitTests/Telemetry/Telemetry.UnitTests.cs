@@ -402,7 +402,9 @@ public class TelemetryUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldContainIdentityFailure_WhenIdentityLookupFails()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldDisableAllTelemetry_WhenStartupIdentityLookupFailsOrReturnsEmpty(bool returnsEmpty)
     {
         // Arrange
         SetAppBuildInfo(build =>
@@ -410,20 +412,92 @@ public class TelemetryUnitTests : BaseUnitTest
             build.TelemetryHost = Host;
             build.TelemetryProjectToken = "phc_test";
         });
+        const string requestLogMessage = "Request telemetry probe";
+        const string jobLogMessage = "Job telemetry probe";
+        var settings = new UserSettings();
+        var settingsNotification = settings.SettingsUpdated.Take(1).ToTask();
         var user = new Mock<IUserService>(MockBehavior.Strict);
+        if (returnsEmpty)
+            user.Setup(x => x.GetTelemetryId()).ReturnsAsync(string.Empty).Verifiable(Times.Once());
+        else
+            user.Setup(x => x.GetTelemetryId())
+                .ThrowsAsync(new IOException("identity database unavailable"))
+                .Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
+        var started = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = candidate => ReferenceEquals(candidate, source),
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStarted = activity => started.Add(activity),
+        };
+        ActivitySource.AddActivityListener(listener);
+        var logs = new List<LogEvent>();
+        var sink = new Mock<ILogEventSink>(MockBehavior.Strict);
+        sink.Setup(x => x.Emit(It.IsAny<LogEvent>()))
+            .Callback<LogEvent>(logs.Add)
+            .Verifiable(Times.Exactly(2));
+        using var logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .Enrich.FromLogContext()
+            .Filter.ByIncludingOnly(entry =>
+                entry.MessageTemplate.Text == requestLogMessage || entry.MessageTemplate.Text == jobLogMessage)
+            .WriteTo.Sink(sink.Object)
+            .CreateLogger();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, new UserSettings());
-        user.Setup(x => x.GetTelemetryId()).ThrowsAsync(new IOException("identity database unavailable")).Verifiable(Times.Once());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            settings
+        );
+        await telemetry.InitializeAsync();
+        using var request = new Activity(nameof(ShouldDisableAllTelemetry_WhenStartupIdentityLookupFailsOrReturnsEmpty))
+            .SetIdFormat(ActivityIdFormat.W3C)
+            .Start();
 
         // Act
-        await telemetry.InitializeAsync();
+        var diagnostic = telemetry.SendDiagnostic(TelemetryDiagnosticOrigin.Backend);
+        telemetry.NotificationsCleared(3);
+        telemetry.CaptureException(new IOException("native telemetry probe"), TelemetryActivity.Download);
+        telemetry.CaptureErrors(
+            Result.Fail(new ExceptionalError(new InvalidOperationException("nested native telemetry probe"))),
+            TelemetryActivity.Download
+        );
+        using var requestScope = telemetry.BeginRequest("request-session");
+        logger.Information(requestLogMessage);
+        using var jobScope = telemetry.BeginJob(
+            TelemetryActivity.BackgroundJob,
+            (default, "job-session", "job-key", "fire-instance")
+        );
+        logger.Information(jobLogMessage);
+        using var manualSpan = telemetry.StartActivity(TelemetryActivity.Download);
+        settings.LanguageSettings.Language = "fr-FR";
+        await settingsNotification.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
 
         // Assert
+        diagnostic.IsFailed.ShouldBeTrue();
+        diagnostic.Errors.Count.ShouldBe(1);
+        diagnostic.FindStatusCode().ShouldBe(503);
+        diagnostic.Errors.Single().Message.ShouldBe("Telemetry could not accept the event");
         telemetry.GetBrowserBootstrap().ShouldBeNull();
-        user.Verify();
+        requestScope.ShouldBeNull();
+        jobScope.ShouldBeNull();
+        manualSpan.ShouldBeNull();
+        Activity.Current.ShouldBeSameAs(request);
+        request.GetTagItem(TelemetryProtocol.DistinctIdTag).ShouldBeNull();
+        request.GetTagItem(TelemetryProtocol.SessionIdTag).ShouldBeNull();
+        request.Status.ShouldBe(ActivityStatusCode.Unset);
+        started.ShouldBeEmpty();
+        logs.Count.ShouldBe(2);
+        logs.ShouldAllBe(log => !log.Properties.ContainsKey(TelemetryProtocol.DistinctIdTag));
+        logs.ShouldAllBe(log => !log.Properties.ContainsKey(TelemetryProtocol.SessionIdTag));
+        logs.ShouldAllBe(log => !log.Properties.ContainsKey(TelemetryProperty.JobName));
+        logs.ShouldAllBe(log => !log.Properties.ContainsKey(TelemetryProperty.FireInstanceId));
         client.Invocations.ShouldBeEmpty();
+        user.Verify();
+        sink.Verify();
     }
 
     [Test]

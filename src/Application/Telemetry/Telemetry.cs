@@ -21,6 +21,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     private readonly IUserSettings _settings;
     private string _telemetryId = string.Empty;
     private IDisposable? _settingsSubscription;
+    private bool IsAdmitted => _appBuildInfo.HasValidTelemetry && !string.IsNullOrEmpty(_telemetryId);
 
     /// <summary>
     /// Creates the native telemetry facade; identity loading and settings publication wait until initialization.
@@ -42,7 +43,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
 
     /// <summary>
     /// Loads the existing account identity after boot readiness, publishes current settings, and observes later changes.
-    /// Unconfigured builds do no identity or SDK work.
+    /// Unconfigured builds skip identity lookup; unavailable identities skip SDK work.
     /// </summary>
     public async Task InitializeAsync()
     {
@@ -53,6 +54,9 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         {
             // Boot calls this after the existing application account has been created.
             _telemetryId = await _userService.GetTelemetryId();
+            if (!IsAdmitted)
+                return;
+
             PublishSettings(changed: false);
             _settingsSubscription = _settings.SettingsUpdated.Subscribe(_ => PublishSettings(changed: true));
         });
@@ -64,7 +68,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     /// </summary>
     public BrowserTelemetryBootstrapDTO? GetBrowserBootstrap()
     {
-        if (!_appBuildInfo.HasValidTelemetry || string.IsNullOrEmpty(_telemetryId))
+        if (!IsAdmitted)
             return null;
 
         return new BrowserTelemetryBootstrapDTO
@@ -120,6 +124,9 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     /// </summary>
     public void CaptureErrors(ResultBase result, TelemetryActivity operation)
     {
+        if (!IsAdmitted)
+            return;
+
         var cancelled = result.IsCancelled;
         if (result.IsFailed)
             Activity.Current?.SetStatus(cancelled ? ActivityStatusCode.Unset : ActivityStatusCode.Error);
@@ -146,10 +153,10 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     /// <summary>
     /// Enriches the current request activity and scoped logs with the cached identity and optional browser session.
     /// </summary>
-    /// <returns>The log-context scope to dispose in the request owner, or null for an unconfigured build.</returns>
+    /// <returns>The log-context scope to dispose in the request owner, or null when telemetry is not admitted.</returns>
     public IDisposable? BeginRequest(string? sessionId)
     {
-        if (!_appBuildInfo.HasValidTelemetry)
+        if (!IsAdmitted)
             return null;
 
         Activity.Current?.SetTag(TelemetryProtocol.DistinctIdTag, _telemetryId);
@@ -164,13 +171,13 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     /// Starts a consumer span from serialized job context and enriches logs with the session and Quartz execution identity.
     /// Unparented jobs are isolated from the scheduler's ambient activity.
     /// </summary>
-    /// <returns>A scope restoring the previous activity and log context on disposal, or null for an unconfigured build.</returns>
+    /// <returns>A scope restoring the previous activity and log context on disposal, or null when telemetry is not admitted.</returns>
     public IDisposable? BeginJob(
         TelemetryActivity operation,
         (ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId) context
     )
     {
-        if (!_appBuildInfo.HasValidTelemetry)
+        if (!IsAdmitted)
             return null;
 
         // An unparented worker must not inherit the scheduler's ambient activity.
@@ -205,7 +212,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     /// <summary>
     /// Creates a native span with build eligibility, cached identity, and session inheritance from in-process parents.
     /// </summary>
-    /// <returns>The sampled activity, or null when telemetry is unconfigured or no listener creates a span.</returns>
+    /// <returns>The sampled activity, or null when telemetry is not admitted or no listener creates a span.</returns>
     private Activity? StartActivityCore(
         TelemetryActivity operation,
         ActivityContext parentContext = default,
@@ -213,7 +220,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         ActivityKind kind = ActivityKind.Internal
     )
     {
-        if (!_appBuildInfo.HasValidTelemetry)
+        if (!IsAdmitted)
             return null;
 
         var activity = _activitySource.StartActivity(operation.ToString(), kind, parentContext, tags);
@@ -250,7 +257,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     /// Enriches a payload and submits analytics, person properties, or an original exception through the native SDK.
     /// SDK admission failures stay inside this boundary and do not affect business operations.
     /// </summary>
-    /// <returns>Whether the SDK accepted the payload; false also covers unconfigured builds and admission exceptions.</returns>
+    /// <returns>Whether the SDK accepted the payload; false also covers unconfigured builds, unavailable startup identities, and admission exceptions.</returns>
     private bool Capture(
         string eventName,
         Dictionary<string, object> properties,
@@ -258,7 +265,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         Exception? exception = null
     )
     {
-        if (!_appBuildInfo.HasValidTelemetry)
+        if (!IsAdmitted)
             return false;
 
         // Native SDK admission is best effort and must not change the business result.
@@ -307,6 +314,9 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     /// </summary>
     private void PublishSettings(bool changed)
     {
+        if (!IsAdmitted)
+            return;
+
         // Serialization belongs here too: an observer failure must not terminate SettingsUpdated.
         var settingsResult = Result.Try(() =>
         {
