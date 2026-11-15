@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 namespace Reaparr.Data.Contracts;
 
 /// <summary>
@@ -41,17 +43,21 @@ public static class DbSetExtensionsPlexMusicComparison
     /// </summary>
     public static IQueryable<PlexComparisonState> QueryCurrentMusicComparisonScopes(this IReaparrDbContext dbContext)
     {
-        var ownedLibraries = dbContext
-            .PlexLibraries.WhereIsOwned()
-            .Where(x => x.Type == PlexMediaType.MusicArtist && !x.Outdated);
-        var remoteLibraries = dbContext
-            .PlexLibraries.WhereIsNotOwned()
-            .Where(x => x.Type == PlexMediaType.MusicArtist && !x.Outdated);
+        var ownedLibraries =
+            from library in dbContext.PlexLibraries.WhereIsOwned()
+            where library.Type == PlexMediaType.MusicArtist && !library.Outdated
+            select library;
+        var remoteLibraries =
+            from library in dbContext.PlexLibraries.WhereIsNotOwned()
+            where library.Type == PlexMediaType.MusicArtist && !library.Outdated
+            select library;
 
-        return dbContext
-            .PlexComparisonScopes.Where(x => x.MediaType == PlexMediaType.MusicArtist)
-            .Join(ownedLibraries, scope => scope.OwnedPlexLibraryId, library => library.Id, (scope, _) => scope)
-            .Join(remoteLibraries, scope => scope.RemotePlexLibraryId, library => library.Id, (scope, _) => scope);
+        return
+            from scope in dbContext.PlexComparisonScopes
+            where scope.MediaType == PlexMediaType.MusicArtist
+            join ownedLibrary in ownedLibraries on scope.OwnedPlexLibraryId equals ownedLibrary.Id
+            join remoteLibrary in remoteLibraries on scope.RemotePlexLibraryId equals remoteLibrary.Id
+            select scope;
     }
 
     /// <summary>
@@ -67,17 +73,19 @@ public static class DbSetExtensionsPlexMusicComparison
         var partialArtistIds = QueryOwnedArtistsWithPartialChildren(dbContext, currentScopes);
         var higherQualityArtistIds = QueryOwnedArtistsWithHigherQuality(dbContext, currentScopes);
 
-        return source.Select(artist => new MusicArtistComparisonStateRow
-        {
-            ArtistId = artist.Id,
-            ComparisonState = partialArtistIds.Contains(artist.Id)
-                ? higherQualityArtistIds.Contains(artist.Id)
-                    ? PlexMediaComparisonState.PartialAndHigherQuality
-                    : PlexMediaComparisonState.Partial
-                : higherQualityArtistIds.Contains(artist.Id)
-                    ? PlexMediaComparisonState.HigherQuality
-                    : PlexMediaComparisonState.Owned,
-        });
+        return
+            from artist in source
+            select new MusicArtistComparisonStateRow
+            {
+                ArtistId = artist.Id,
+                ComparisonState = partialArtistIds.Contains(artist.Id)
+                    ? higherQualityArtistIds.Contains(artist.Id)
+                        ? PlexMediaComparisonState.PartialAndHigherQuality
+                        : PlexMediaComparisonState.Partial
+                    : higherQualityArtistIds.Contains(artist.Id)
+                        ? PlexMediaComparisonState.HigherQuality
+                        : PlexMediaComparisonState.Owned,
+            };
     }
 
     /// <summary>
@@ -91,57 +99,69 @@ public static class DbSetExtensionsPlexMusicComparison
     )
     {
         var currentScopes = dbContext.QueryCurrentMusicComparisonScopes();
-        var matchedArtistIds = QueryCurrentMusicArtistComparisons(dbContext, currentScopes)
-            .Select(comparison => comparison.RemotePlexMediaId)
-            .Distinct();
+        var matchedArtistIds = (
+            from comparison in QueryCurrentMusicArtistComparisons(dbContext, currentScopes)
+            select comparison.RemotePlexMediaId
+        ).Distinct();
         var partialArtistIds = QueryRemoteArtistsWithPartialChildren(dbContext, currentScopes);
         var higherQualityArtistIds = QueryRemoteArtistsWithHigherQuality(dbContext, currentScopes);
 
-        return source.Select(artist => new MusicArtistComparisonStateRow
-        {
-            ArtistId = artist.Id,
-            ComparisonState =
-                !matchedArtistIds.Contains(artist.Id) ? PlexMediaComparisonState.Missing
-                : partialArtistIds.Contains(artist.Id)
-                    ? higherQualityArtistIds.Contains(artist.Id) ? PlexMediaComparisonState.PartialAndHigherQuality
-                        : PlexMediaComparisonState.Partial
-                : higherQualityArtistIds.Contains(artist.Id) ? PlexMediaComparisonState.HigherQuality
-                : PlexMediaComparisonState.Owned,
-        });
+        return
+            from artist in source
+            select new MusicArtistComparisonStateRow
+            {
+                ArtistId = artist.Id,
+                ComparisonState =
+                    !matchedArtistIds.Contains(artist.Id) ? PlexMediaComparisonState.Missing
+                    : partialArtistIds.Contains(artist.Id)
+                        ? higherQualityArtistIds.Contains(artist.Id) ? PlexMediaComparisonState.PartialAndHigherQuality
+                            : PlexMediaComparisonState.Partial
+                    : higherQualityArtistIds.Contains(artist.Id) ? PlexMediaComparisonState.HigherQuality
+                    : PlexMediaComparisonState.Owned,
+            };
     }
 
     private static IQueryable<PlexMusicArtistComparison> QueryCurrentMusicArtistComparisons(
         IReaparrDbContext dbContext,
         IQueryable<PlexComparisonState> currentScopes
-    ) =>
-        dbContext.PlexMusicArtistComparisons.Where(comparison =>
-            currentScopes.Any(scope =>
+    )
+    {
+        return
+            from comparison in dbContext.PlexMusicArtistComparisons
+            where currentScopes.Any(scope =>
                 scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
                 && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
             )
-        );
+            select comparison;
+    }
 
     private static IQueryable<PlexMusicAlbumComparison> QueryCurrentMusicAlbumComparisons(
         IReaparrDbContext dbContext,
         IQueryable<PlexComparisonState> currentScopes
-    ) =>
-        dbContext.PlexMusicAlbumComparisons.Where(comparison =>
-            currentScopes.Any(scope =>
+    )
+    {
+        return
+            from comparison in dbContext.PlexMusicAlbumComparisons
+            where currentScopes.Any(scope =>
                 scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
                 && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
             )
-        );
+            select comparison;
+    }
 
     private static IQueryable<PlexMusicTrackComparison> QueryCurrentMusicTrackComparisons(
         IReaparrDbContext dbContext,
         IQueryable<PlexComparisonState> currentScopes
-    ) =>
-        dbContext.PlexMusicTrackComparisons.Where(comparison =>
-            currentScopes.Any(scope =>
+    )
+    {
+        return
+            from comparison in dbContext.PlexMusicTrackComparisons
+            where currentScopes.Any(scope =>
                 scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
                 && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
             )
-        );
+            select comparison;
+    }
 
     private static IQueryable<int> QueryOwnedArtistsWithPartialChildren(
         IReaparrDbContext dbContext,
@@ -153,49 +173,55 @@ public static class DbSetExtensionsPlexMusicComparison
         var trackComparisons = QueryCurrentMusicTrackComparisons(dbContext, currentScopes);
 
         return artistComparisons
-            .Where(comparison =>
-                dbContext.PlexMusicArtists.Any(ownedArtist =>
-                    ownedArtist.Id == comparison.OwnedPlexMediaId
-                    && ownedArtist.PlexLibraryId == comparison.OwnedPlexLibraryId
-                )
-                && dbContext.PlexMusicAlbums.Any(remoteAlbum =>
-                    remoteAlbum.PlexArtistId == comparison.RemotePlexMediaId
-                    && (
-                        !albumComparisons.Any(albumComparison =>
-                            albumComparison.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
-                            && albumComparison.RemotePlexLibraryId == comparison.RemotePlexLibraryId
-                            && albumComparison.RemotePlexMediaId == remoteAlbum.Id
-                            && dbContext.PlexMusicAlbums.Any(ownedAlbum =>
-                                ownedAlbum.Id == albumComparison.OwnedPlexMediaId
-                                && ownedAlbum.PlexLibraryId == comparison.OwnedPlexLibraryId
-                                && ownedAlbum.PlexArtistId == comparison.OwnedPlexMediaId
-                            )
+            .Where(HasOwnedArtistWithPartialChildren(dbContext, albumComparisons, trackComparisons))
+            .Select(comparison => comparison.OwnedPlexMediaId)
+            .Distinct();
+    }
+
+    private static Expression<Func<PlexMusicArtistComparison, bool>> HasOwnedArtistWithPartialChildren(
+        IReaparrDbContext dbContext,
+        IQueryable<PlexMusicAlbumComparison> albumComparisons,
+        IQueryable<PlexMusicTrackComparison> trackComparisons
+    ) =>
+        comparison =>
+            dbContext.PlexMusicArtists.Any(ownedArtist =>
+                ownedArtist.Id == comparison.OwnedPlexMediaId
+                && ownedArtist.PlexLibraryId == comparison.OwnedPlexLibraryId
+            )
+            && dbContext.PlexMusicAlbums.Any(remoteAlbum =>
+                remoteAlbum.PlexArtistId == comparison.RemotePlexMediaId
+                && (
+                    !albumComparisons.Any(albumComparison =>
+                        albumComparison.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
+                        && albumComparison.RemotePlexLibraryId == comparison.RemotePlexLibraryId
+                        && albumComparison.RemotePlexMediaId == remoteAlbum.Id
+                        && dbContext.PlexMusicAlbums.Any(ownedAlbum =>
+                            ownedAlbum.Id == albumComparison.OwnedPlexMediaId
+                            && ownedAlbum.PlexLibraryId == comparison.OwnedPlexLibraryId
+                            && ownedAlbum.PlexArtistId == comparison.OwnedPlexMediaId
                         )
-                        || remoteAlbum.Tracks.Any(remoteTrack =>
-                            !trackComparisons.Any(trackComparison =>
-                                trackComparison.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
-                                && trackComparison.RemotePlexLibraryId == comparison.RemotePlexLibraryId
-                                && trackComparison.RemotePlexMediaId == remoteTrack.Id
-                                && dbContext.PlexMusicTracks.Any(ownedTrack =>
-                                    ownedTrack.Id == trackComparison.OwnedPlexMediaId
-                                    && ownedTrack.PlexLibraryId == comparison.OwnedPlexLibraryId
-                                    && ownedTrack.PlexAlbum != null
-                                    && ownedTrack.PlexAlbum.PlexArtistId == comparison.OwnedPlexMediaId
-                                    && albumComparisons.Any(albumComparison =>
-                                        albumComparison.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
-                                        && albumComparison.RemotePlexLibraryId == comparison.RemotePlexLibraryId
-                                        && albumComparison.OwnedPlexMediaId == ownedTrack.PlexAlbumId
-                                        && albumComparison.RemotePlexMediaId == remoteTrack.PlexAlbumId
-                                    )
+                    )
+                    || remoteAlbum.Tracks.Any(remoteTrack =>
+                        !trackComparisons.Any(trackComparison =>
+                            trackComparison.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
+                            && trackComparison.RemotePlexLibraryId == comparison.RemotePlexLibraryId
+                            && trackComparison.RemotePlexMediaId == remoteTrack.Id
+                            && dbContext.PlexMusicTracks.Any(ownedTrack =>
+                                ownedTrack.Id == trackComparison.OwnedPlexMediaId
+                                && ownedTrack.PlexLibraryId == comparison.OwnedPlexLibraryId
+                                && ownedTrack.PlexAlbum != null
+                                && ownedTrack.PlexAlbum.PlexArtistId == comparison.OwnedPlexMediaId
+                                && albumComparisons.Any(albumComparison =>
+                                    albumComparison.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
+                                    && albumComparison.RemotePlexLibraryId == comparison.RemotePlexLibraryId
+                                    && albumComparison.OwnedPlexMediaId == ownedTrack.PlexAlbumId
+                                    && albumComparison.RemotePlexMediaId == remoteTrack.PlexAlbumId
                                 )
                             )
                         )
                     )
                 )
-            )
-            .Select(comparison => comparison.OwnedPlexMediaId)
-            .Distinct();
-    }
+            );
 
     private static IQueryable<int> QueryOwnedArtistsWithHigherQuality(
         IReaparrDbContext dbContext,
@@ -234,35 +260,41 @@ public static class DbSetExtensionsPlexMusicComparison
         var albumComparisons = QueryCurrentMusicAlbumComparisons(dbContext, currentScopes);
         var trackComparisons = QueryCurrentMusicTrackComparisons(dbContext, currentScopes);
 
-        return dbContext
-            .PlexMusicArtists.Where(artist =>
-                artist.Albums.Count()
-                    > albumComparisons
-                        .Where(comparison =>
-                            comparison.RemotePlexLibraryId == artist.PlexLibraryId
-                            && dbContext.PlexMusicAlbums.Any(remoteAlbum =>
-                                remoteAlbum.Id == comparison.RemotePlexMediaId && remoteAlbum.PlexArtistId == artist.Id
-                            )
-                        )
-                        .Select(comparison => comparison.RemotePlexMediaId)
-                        .Distinct()
-                        .Count()
-                || artist.Albums.SelectMany(album => album.Tracks).Count()
-                    > trackComparisons
-                        .Where(comparison =>
-                            comparison.RemotePlexLibraryId == artist.PlexLibraryId
-                            && dbContext.PlexMusicTracks.Any(remoteTrack =>
-                                remoteTrack.Id == comparison.RemotePlexMediaId
-                                && remoteTrack.PlexAlbum != null
-                                && remoteTrack.PlexAlbum.PlexArtistId == artist.Id
-                            )
-                        )
-                        .Select(comparison => comparison.RemotePlexMediaId)
-                        .Distinct()
-                        .Count()
-            )
+        return dbContext.PlexMusicArtists
+            .Where(HasRemoteArtistWithPartialChildren(dbContext, albumComparisons, trackComparisons))
             .Select(artist => artist.Id);
     }
+
+    private static Expression<Func<PlexMusicArtist, bool>> HasRemoteArtistWithPartialChildren(
+        IReaparrDbContext dbContext,
+        IQueryable<PlexMusicAlbumComparison> albumComparisons,
+        IQueryable<PlexMusicTrackComparison> trackComparisons
+    ) =>
+        artist =>
+            artist.Albums.Count()
+                > albumComparisons
+                    .Where(comparison =>
+                        comparison.RemotePlexLibraryId == artist.PlexLibraryId
+                        && dbContext.PlexMusicAlbums.Any(remoteAlbum =>
+                            remoteAlbum.Id == comparison.RemotePlexMediaId && remoteAlbum.PlexArtistId == artist.Id
+                        )
+                    )
+                    .Select(comparison => comparison.RemotePlexMediaId)
+                    .Distinct()
+                    .Count()
+            || artist.Albums.SelectMany(album => album.Tracks).Count()
+                > trackComparisons
+                    .Where(comparison =>
+                        comparison.RemotePlexLibraryId == artist.PlexLibraryId
+                        && dbContext.PlexMusicTracks.Any(remoteTrack =>
+                            remoteTrack.Id == comparison.RemotePlexMediaId
+                            && remoteTrack.PlexAlbum != null
+                            && remoteTrack.PlexAlbum.PlexArtistId == artist.Id
+                        )
+                    )
+                    .Select(comparison => comparison.RemotePlexMediaId)
+                    .Distinct()
+                    .Count();
 
     private static IQueryable<int> QueryRemoteArtistsWithHigherQuality(
         IReaparrDbContext dbContext,
@@ -282,30 +314,35 @@ public static class DbSetExtensionsPlexMusicComparison
     public static IQueryable<MusicArtistComparisonStateRow> ProjectMusicArtistComparisonState(
         this IQueryable<PlexMusicArtist> source,
         PlexMediaComparisonState state
-    ) => source.Select(artist => new MusicArtistComparisonStateRow { ArtistId = artist.Id, ComparisonState = state });
+    )
+    {
+        return
+            from artist in source
+            select new MusicArtistComparisonStateRow { ArtistId = artist.Id, ComparisonState = state };
+    }
 
     public static IQueryable<MusicArtistComparisonCandidateRow> ProjectMusicArtistComparisonCandidates(
         this IQueryable<PlexMusicArtist> artists,
         IQueryable<MusicArtistComparisonStateRow> states
-    ) =>
-        artists.Join(
-            states,
-            artist => artist.Id,
-            state => state.ArtistId,
-            (artist, state) =>
-                new MusicArtistComparisonCandidateRow
-                {
-                    Id = artist.Id,
-                    SearchTitle = artist.SearchTitle,
-                    SortIndex = artist.SortIndex,
-                    Duration = artist.Duration,
-                    MediaSize = artist.MediaSize,
-                    AddedAt = artist.AddedAt,
-                    UpdatedAt = artist.UpdatedAt,
-                    AudioQuality = artist.Qualities.Select(quality => (int?)quality.AudioQuality).Max() ?? 0,
-                    ComparisonId = (int)state.ComparisonState,
-                }
-        );
+    )
+    {
+        return
+            from artist in artists
+            join state in states on artist.Id equals state.ArtistId
+            select new MusicArtistComparisonCandidateRow
+            {
+                Id = artist.Id,
+                SearchTitle = artist.SearchTitle,
+                SortIndex = artist.SortIndex,
+                Duration = artist.Duration,
+                MediaSize = artist.MediaSize,
+                AddedAt = artist.AddedAt,
+                UpdatedAt = artist.UpdatedAt,
+                AudioQuality = artist.Qualities.Select(quality => (int?)quality.AudioQuality).Max() ?? 0,
+                ComparisonId = (int)state.ComparisonState,
+            };
+    }
+
 
     public static IQueryable<MusicArtistComparisonCandidateRow> ProjectMusicArtistComparisonCandidates(
         this IQueryable<PlexMusicArtist> artists,
