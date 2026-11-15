@@ -156,7 +156,10 @@ public class DashPlexDownloadClient : IPlexDownloadClient
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             var stopResult = await StopRunnerAsync();
-            return stopResult.LogIfFailed();
+            if (stopResult.IsFailed)
+                return stopResult.LogIfFailed();
+
+            return ResultExtensions.TaskIsCancelled(nameof(Start));
         }
     }
 
