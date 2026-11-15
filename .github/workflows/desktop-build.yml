@@ -24,6 +24,16 @@ on:
                 required: false
                 type: string
                 default: ''
+            posthog_cli_project_id:
+                description: 'PostHog project ID for private source-map uploads'
+                required: false
+                type: string
+                default: ''
+            posthog_cli_host:
+                description: 'Optional direct PostHog management API host'
+                required: false
+                type: string
+                default: ''
             push:
                 description: 'Upload installers to the GitHub Release'
                 required: false
@@ -40,6 +50,8 @@ on:
                 type: string
         secrets:
             RELEASE_GITHUB_TOKEN:
+                required: false
+            POSTHOG_CLI_API_KEY:
                 required: false
 
 jobs:
@@ -61,6 +73,10 @@ jobs:
                 env:
                     NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
                     NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
+                    POSTHOG_CLI_API_KEY: ${{ (inputs.push || inputs.publish_release) && secrets.POSTHOG_CLI_API_KEY || '' }}
+                    POSTHOG_CLI_PROJECT_ID: ${{ inputs.posthog_cli_project_id }}
+                    POSTHOG_CLI_HOST: ${{ inputs.posthog_cli_host }}
+                    POSTHOG_CLI_RELEASE_VERSION: ${{ inputs.informational_version }}
                 run: bun run generate --fail-on-error
 
             -   name: Upload generated frontend artifact

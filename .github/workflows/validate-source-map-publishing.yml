@@ -1,0 +1,35 @@
+name: Validate Source-Map Publishing
+
+on:
+    workflow_call:
+        inputs:
+            posthog_cli_project_id:
+                description: 'PostHog project ID for private source-map uploads'
+                required: true
+                type: string
+        secrets:
+            POSTHOG_CLI_API_KEY:
+                required: false
+
+permissions:
+    contents: read
+
+jobs:
+    validate-source-map-publishing:
+        name: Validate source-map publishing credentials
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Require PostHog project and personal API key
+                shell: bash
+                env:
+                    POSTHOG_CLI_PROJECT_ID: ${{ inputs.posthog_cli_project_id }}
+                    POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+                run: |
+                    set -euo pipefail
+                    missing=()
+                    [[ -n "$POSTHOG_CLI_PROJECT_ID" ]] || missing+=("POSTHOG_CLI_PROJECT_ID")
+                    [[ -n "$POSTHOG_CLI_API_KEY" ]] || missing+=("POSTHOG_CLI_API_KEY")
+                    if (( ${#missing[@]} > 0 )); then
+                        echo "::error::Release source-map publishing requires ${missing[*]}." >&2
+                        exit 1
+                    fi

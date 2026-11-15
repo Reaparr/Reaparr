@@ -237,7 +237,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             UseShellExecute = false,
         };
         runtime.ArgumentList.Add(Path.GetFileName(assemblyPath));
-        runtime.Environment["TELEMETRY_HOST"] = "runtime-override";
+        runtime.Environment[EnvKeys.TelemetryHost] = "runtime-override";
         runtime.Environment["TELEMETRY_PROJECT_TOKEN"] = "runtime-override";
         runtime.Environment["PostHog__HostUrl"] = "runtime-override";
         runtime.Environment["PostHog__ProjectToken"] = "runtime-override";
