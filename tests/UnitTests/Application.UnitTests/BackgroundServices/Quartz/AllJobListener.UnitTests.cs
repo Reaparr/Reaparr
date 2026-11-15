@@ -4,17 +4,14 @@ namespace Reaparr.Application.UnitTests;
 
 public class AllJobListenerUnitTests : BaseUnitTest<AllJobListener>
 {
-    public AllJobListenerUnitTests()
-    {
-    }
-
     [Test]
     public async Task ShouldCaptureTheOriginalEscapingException_AndPublishFailedStatus_WhenJobThrowsUnexpectedly()
     {
         // Arrange
         var failure = new IOException("Unexpected job transport failure");
         var fireTimeUtc = new DateTimeOffset(2026, 11, 5, 12, 0, 0, TimeSpan.Zero);
-        var jobDetail = JobBuilder.Create<OptimizeDatabaseJob>()
+        var jobDetail = JobBuilder
+            .Create<OptimizeDatabaseJob>()
             .WithIdentity(nameof(OptimizeDatabaseJob), nameof(JobTypes.OptimizeDatabaseJob))
             .Build();
         var dataMap = new JobDataMap();
@@ -30,10 +27,10 @@ public class AllJobListenerUnitTests : BaseUnitTest<AllJobListener>
                 x.SendJobStatusUpdateAsync(
                     It.Is<JobStatusUpdate<string>>(value =>
                         value.Status == JobStatus.Failed
-                            && value.JobType == JobTypes.OptimizeDatabaseJob
-                            && value.Id == nameof(OptimizeDatabaseJob)
-                            && value.JobStartTime == fireTimeUtc.UtcDateTime
-                            && value.Data == "{}"
+                        && value.JobType == JobTypes.OptimizeDatabaseJob
+                        && value.Id == nameof(OptimizeDatabaseJob)
+                        && value.JobStartTime == fireTimeUtc.UtcDateTime
+                        && value.Data == "{}"
                     )
                 )
             )
@@ -68,7 +65,8 @@ public class AllJobListenerUnitTests : BaseUnitTest<AllJobListener>
         // Arrange
         var failure = new OperationCanceledException("transport cancelled");
         var fireTimeUtc = new DateTimeOffset(2026, 11, 5, 12, 0, 0, TimeSpan.Zero);
-        var jobDetail = JobBuilder.Create<OptimizeDatabaseJob>()
+        var jobDetail = JobBuilder
+            .Create<OptimizeDatabaseJob>()
             .WithIdentity(nameof(OptimizeDatabaseJob), nameof(JobTypes.OptimizeDatabaseJob))
             .Build();
         var dataMap = new JobDataMap();
@@ -84,10 +82,10 @@ public class AllJobListenerUnitTests : BaseUnitTest<AllJobListener>
                 x.SendJobStatusUpdateAsync(
                     It.Is<JobStatusUpdate<string>>(value =>
                         value.Status == JobStatus.Cancelled
-                            && value.JobType == JobTypes.OptimizeDatabaseJob
-                            && value.Id == nameof(OptimizeDatabaseJob)
-                            && value.JobStartTime == fireTimeUtc.UtcDateTime
-                            && value.Data == "{}"
+                        && value.JobType == JobTypes.OptimizeDatabaseJob
+                        && value.Id == nameof(OptimizeDatabaseJob)
+                        && value.JobStartTime == fireTimeUtc.UtcDateTime
+                        && value.Data == "{}"
                     )
                 )
             )
@@ -105,10 +103,11 @@ public class AllJobListenerUnitTests : BaseUnitTest<AllJobListener>
         update.Id.ShouldBe(nameof(OptimizeDatabaseJob));
         update.JobStartTime.ShouldBe(fireTimeUtc.UtcDateTime);
         update.Data.ShouldBe("{}");
-        Mock.Mock<ITelemetry>().Verify(
-            x => x.CaptureException(failure, TelemetryActivity.BackgroundJob),
-            requestedCancellation ? Times.Never() : Times.Once()
-        );
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.CaptureException(failure, TelemetryActivity.BackgroundJob),
+                requestedCancellation ? Times.Never() : Times.Once()
+            );
         Mock.Mock<IProgressHubService>().Verify();
     }
 
@@ -117,7 +116,8 @@ public class AllJobListenerUnitTests : BaseUnitTest<AllJobListener>
     {
         // Arrange
         var fireTimeUtc = new DateTimeOffset(2026, 11, 5, 12, 0, 0, TimeSpan.Zero);
-        var jobDetail = JobBuilder.Create<OptimizeDatabaseJob>()
+        var jobDetail = JobBuilder
+            .Create<OptimizeDatabaseJob>()
             .WithIdentity(nameof(OptimizeDatabaseJob), nameof(JobTypes.OptimizeDatabaseJob))
             .Build();
         var dataMap = new JobDataMap();
@@ -135,10 +135,10 @@ public class AllJobListenerUnitTests : BaseUnitTest<AllJobListener>
                 x.SendJobStatusUpdateAsync(
                     It.Is<JobStatusUpdate<string>>(value =>
                         value.Status == JobStatus.Failed
-                            && value.JobType == JobTypes.OptimizeDatabaseJob
-                            && value.Id == nameof(OptimizeDatabaseJob)
-                            && value.JobStartTime == fireTimeUtc.UtcDateTime
-                            && value.Data == "{}"
+                        && value.JobType == JobTypes.OptimizeDatabaseJob
+                        && value.Id == nameof(OptimizeDatabaseJob)
+                        && value.JobStartTime == fireTimeUtc.UtcDateTime
+                        && value.Data == "{}"
                     )
                 )
             )
@@ -156,7 +156,8 @@ public class AllJobListenerUnitTests : BaseUnitTest<AllJobListener>
         update.Id.ShouldBe(nameof(OptimizeDatabaseJob));
         update.JobStartTime.ShouldBe(fireTimeUtc.UtcDateTime);
         update.Data.ShouldBe("{}");
-        Mock.Mock<ITelemetry>().Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<TelemetryActivity>()), Times.Never());
+        Mock.Mock<ITelemetry>()
+            .Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<TelemetryActivity>()), Times.Never());
         Mock.Mock<IProgressHubService>().Verify();
     }
 }

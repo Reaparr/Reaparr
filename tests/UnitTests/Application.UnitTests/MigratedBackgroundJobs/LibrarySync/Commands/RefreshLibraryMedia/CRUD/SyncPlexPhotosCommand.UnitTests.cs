@@ -113,7 +113,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
 
         result.IsSuccess.ShouldBeTrue(result.ToString());
         var retainedRoot = await IDbContext.PlexPhotoFolders.SingleAsync(x => x.Id == rootId, CancellationToken);
-        retainedRoot.IsActive.ShouldBe((bool?)false);
+        retainedRoot.IsActive.ShouldBe(false);
         (await IDbContext.PlexPhotoFolders.CountAsync(x => x.ParentId != null, CancellationToken)).ShouldBe(0);
         (await IDbContext.PlexPhotoMediaData.SingleAsync(CancellationToken)).PlexPhotoFolderId.ShouldBeNull();
     }
@@ -300,8 +300,8 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             .ExecuteUpdateAsync(
                 setters =>
                     setters
-                        .SetProperty(x => x.SyncedAt, (DateTime?)originalSyncedAt)
-                        .SetProperty(x => x.SyncedContentChangedAt, (long?)originalSyncedContentChangedAt)
+                        .SetProperty(x => x.SyncedAt, originalSyncedAt)
+                        .SetProperty(x => x.SyncedContentChangedAt, originalSyncedContentChangedAt)
                         .SetProperty(x => x.Outdated, true),
                 CancellationToken
             );
@@ -468,8 +468,8 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             .ExecuteUpdateAsync(
                 setters =>
                     setters
-                        .SetProperty(x => x.SyncedAt, (DateTime?)originalSyncedAt)
-                        .SetProperty(x => x.SyncedContentChangedAt, (long?)originalSyncedContentChangedAt)
+                        .SetProperty(x => x.SyncedAt, originalSyncedAt)
+                        .SetProperty(x => x.SyncedContentChangedAt, originalSyncedContentChangedAt)
                         .SetProperty(x => x.Outdated, true),
                 CancellationToken
             );

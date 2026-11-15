@@ -2,8 +2,6 @@ namespace Reaparr.Domain.UnitTests;
 
 public class FolderPathUnitTests : BaseUnitTest
 {
-    public FolderPathUnitTests() { }
-
     [Test]
     public void ShouldMatchConfiguration_WhenIdentityAndNavigationInstancesDiffer()
     {
@@ -27,7 +25,9 @@ public class FolderPathUnitTests : BaseUnitTest
         // Assert
         equal.ShouldBeTrue();
         folder.HasSameRole(other).ShouldBeTrue();
-        new HashSet<FolderPath> { folder }.Contains(other).ShouldBeTrue();
+        new HashSet<FolderPath> { folder }
+            .Contains(other)
+            .ShouldBeTrue();
     }
 
     [Test]
@@ -50,8 +50,10 @@ public class FolderPathUnitTests : BaseUnitTest
         {
             Id = folder.Id,
             DisplayName = changedProperty == nameof(FolderPath.DisplayName) ? "Renamed movies" : folder.DisplayName,
-            DirectoryPath = changedProperty == nameof(FolderPath.DirectoryPath) ? "/other-movies" : folder.DirectoryPath,
-            FolderType = changedProperty == nameof(FolderPath.FolderType) ? FolderType.DownloadFolder : folder.FolderType,
+            DirectoryPath =
+                changedProperty == nameof(FolderPath.DirectoryPath) ? "/other-movies" : folder.DirectoryPath,
+            FolderType =
+                changedProperty == nameof(FolderPath.FolderType) ? FolderType.DownloadFolder : folder.FolderType,
             MediaType = changedProperty == nameof(FolderPath.MediaType) ? PlexMediaType.TvShow : folder.MediaType,
         };
 

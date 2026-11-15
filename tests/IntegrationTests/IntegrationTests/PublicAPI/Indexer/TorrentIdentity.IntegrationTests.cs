@@ -93,8 +93,8 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
                     source.PlexApiPartId,
                     source.PlexLibraryId,
                     source.PlexServerId,
-                    mediaType == PlexMediaType.Episode ? (Guid?)integration.Id : null,
-                    mediaType == PlexMediaType.Movie ? (Guid?)integration.Id : null,
+                    mediaType == PlexMediaType.Episode ? integration.Id : null,
+                    mediaType == PlexMediaType.Movie ? integration.Id : null,
                     (string?)hash
                 ),
             ]);

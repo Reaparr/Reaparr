@@ -79,11 +79,7 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
             PhotoItemKind.Folder => media.PlexPhotoFolderId!.Value,
             _ => media.Id,
         };
-        var selection = CreatePhotoSelection(
-            selectionKind,
-            (media.PlexServerId, media.PlexLibraryId),
-            [selectedId]
-        );
+        var selection = CreatePhotoSelection(selectionKind, (media.PlexServerId, media.PlexLibraryId), [selectedId]);
         var creator = Mock.Create<GenerateDownloadTaskPhotoImagesCommandHandler>();
         var command = new GenerateDownloadTaskPhotoImagesCommand([selection]);
         var created = await creator.ExecuteAsync(command, CancellationToken);
@@ -593,7 +589,7 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
             .ShouldBe(
                 new[]
                 {
-                    ("", (string?)null),
+                    ("", null),
                     ($"root-{originalRoot.Id}", ""),
                     ($"root-{secondRoot.Id}", ""),
                     ($"root-{secondRoot.Id}/Trips", $"root-{secondRoot.Id}"),
@@ -705,9 +701,11 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
         root.Title.ShouldBe("Home Plex - Renamed library");
         root.Size.ShouldBe(media.Sum(x => x.Size) + collision.Size + invalid.Size);
         root.ChildCount.ShouldBe(5);
-        root.Children.OrderBy(x => x.Id).Select(x => (x.Id, x.Title, x.Size, x.MediaType))
+        root.Children.OrderBy(x => x.Id)
+            .Select(x => (x.Id, x.Title, x.Size, x.MediaType))
             .ShouldBe(
-                media.Concat([collision, invalid])
+                media
+                    .Concat([collision, invalid])
                     .OrderBy(x => x.Id)
                     .Select(x => (x.Id, x.OriginalFilename, x.Size, PlexMediaType.PhotoImage))
             );

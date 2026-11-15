@@ -2,8 +2,6 @@ namespace Reaparr.Domain.UnitTests;
 
 public class PlexServerConnectionUnitTests : BaseUnitTest
 {
-    public PlexServerConnectionUnitTests() { }
-
     [Test]
     [Arguments(true, true)]
     [Arguments(false, false)]

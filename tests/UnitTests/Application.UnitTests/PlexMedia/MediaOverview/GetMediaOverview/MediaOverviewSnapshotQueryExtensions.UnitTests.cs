@@ -101,9 +101,9 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         projectedRows
             .Select(x => (x.SearchTitle, x.Year, x.QualityValue))
             .ShouldBe([
-                (SearchTitle: "A", Year: (int?)2000, QualityValue: (int?)480),
-                (SearchTitle: "B", Year: (int?)2001, QualityValue: (int?)720),
-                (SearchTitle: "C", Year: (int?)2002, QualityValue: (int?)2160),
+                (SearchTitle: "A", Year: 2000, QualityValue: 480),
+                (SearchTitle: "B", Year: 2001, QualityValue: 720),
+                (SearchTitle: "C", Year: 2002, QualityValue: 2160),
             ]);
         projectedRows
             .Select(x => x.SortRank)
@@ -245,9 +245,9 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
         projectedRows
             .Select(x => (x.SearchTitle, x.Year, x.QualityValue))
             .ShouldBe([
-                (SearchTitle: "A", Year: (int?)null, QualityValue: (int?)null),
-                (SearchTitle: "B", Year: (int?)null, QualityValue: (int?)null),
-                (SearchTitle: "C", Year: (int?)null, QualityValue: (int?)null),
+                (SearchTitle: "A", Year: null, QualityValue: null),
+                (SearchTitle: "B", Year: null, QualityValue: null),
+                (SearchTitle: "C", Year: null, QualityValue: null),
             ]);
         projectedRows
             .Select(x => x.SortRank)

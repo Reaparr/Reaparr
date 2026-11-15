@@ -562,7 +562,11 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
             else if (change == "failure")
                 throw new InvalidOperationException("Injected write failure");
         };
-        var handler = new CompareMusicPlexLibraryCommandHandler(writerContext, Mock.Container.Resolve<ILogger>(), Mock.Mock<ITelemetry>().Object);
+        var handler = new CompareMusicPlexLibraryCommandHandler(
+            writerContext,
+            Mock.Container.Resolve<ILogger>(),
+            Mock.Mock<ITelemetry>().Object
+        );
 
         // Act
         var result = await handler.ExecuteAsync(
@@ -1283,7 +1287,7 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
                 x.SetProperty(y => y.IsEnabled, true)
                     .SetProperty(y => y.Outdated, false)
                     .SetProperty(y => y.ContentChangedAt, 1)
-                    .SetProperty(y => y.SyncedContentChangedAt, (long?)1)
+                    .SetProperty(y => y.SyncedContentChangedAt, 1)
                     .SetProperty(y => y.SyncedAt, DateTime.UtcNow),
             CancellationToken
         );

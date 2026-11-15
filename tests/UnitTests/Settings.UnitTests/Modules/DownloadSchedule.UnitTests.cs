@@ -100,7 +100,7 @@ public class DownloadScheduleUnitTests : BaseUnitTest
 
         // Act
         var equal = left == right;
-        var equalToNull = left.Equals((DownloadSchedule?)null);
+        var equalToNull = left.Equals(null);
 
         // Assert
         equal.ShouldBeTrue();

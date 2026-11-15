@@ -122,7 +122,9 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
         await SeedMusicComparisonRowsAsync(dbContext, fixture.Remote, fixture.Target, fixture.Control);
         var targetBefore = await CaptureMusicComparisonSnapshotAsync(dbContext, fixture.Target.Id);
         var controlBefore = await CaptureMusicComparisonSnapshotAsync(dbContext, fixture.Control.Id);
-        var firstLibrary = await dbContext.PlexLibraries.AsNoTracking().SingleAsync(x => x.Id == fixture.Target.Id, CancellationToken);
+        var firstLibrary = await dbContext
+            .PlexLibraries.AsNoTracking()
+            .SingleAsync(x => x.Id == fixture.Target.Id, CancellationToken);
         var firstResponse = await CreateRefreshResponseAsync(dbContext, firstLibrary);
         var changedArtist = firstResponse.PlexLibrary.Music.Single();
         var changedArtistUpdatedAt = changedArtist.UpdatedAt.GetValueOrDefault().AddSeconds(1);
@@ -141,8 +143,11 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
                     CancellationToken
                 )
             )
-            .Returns((ICommand<Result<LibraryMetadata>> command, CancellationToken _) =>
-                Task.FromResult(Result.Ok(new LibraryMetadata(((GetLibraryMediaFromPlexApiCommand)command).PlexLibrary)))
+            .Returns(
+                (ICommand<Result<LibraryMetadata>> command, CancellationToken _) =>
+                    Task.FromResult(
+                        Result.Ok(new LibraryMetadata(((GetLibraryMediaFromPlexApiCommand)command).PlexLibrary))
+                    )
             )
             .Verifiable(Times.Exactly(2));
         executor
@@ -153,9 +158,7 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
                 )
             )
             .Returns(() =>
-                Task.FromResult<Result<InsertMediaMetaDataCommandResponse>>(
-                    Result.Ok(refreshResponses.Dequeue())
-                )
+                Task.FromResult<Result<InsertMediaMetaDataCommandResponse>>(Result.Ok(refreshResponses.Dequeue()))
             )
             .Verifiable(Times.Exactly(2));
         executor
@@ -167,8 +170,11 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
                     CancellationToken
                 )
             )
-            .Returns((ICommand<Result<LibraryMetadata>> command, CancellationToken _) =>
-                Task.FromResult(Result.Ok(new LibraryMetadata(((GetLibraryMediaFromPlexApiCommand)command).PlexLibrary)))
+            .Returns(
+                (ICommand<Result<LibraryMetadata>> command, CancellationToken _) =>
+                    Task.FromResult(
+                        Result.Ok(new LibraryMetadata(((GetLibraryMediaFromPlexApiCommand)command).PlexLibrary))
+                    )
             )
             .Verifiable(Times.Exactly(2));
         var syncValidator = new SyncPlexMusicCommandValidator();
@@ -184,22 +190,19 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
                 {
                     var sync = (SyncPlexMusicCommand)command;
                     var syncHandler = Mock.Create<SyncPlexMusicCommandHandler>();
-                    return new ValidationPipeline<SyncPlexMusicCommand, Result<CrudMusicReport>>([syncValidator]).ExecuteAsync(
-                        sync,
-                        () => syncHandler.ExecuteAsync(sync, ct),
-                        ct
-                    );
+                    return new ValidationPipeline<SyncPlexMusicCommand, Result<CrudMusicReport>>([
+                        syncValidator,
+                    ]).ExecuteAsync(sync, () => syncHandler.ExecuteAsync(sync, ct), ct);
                 }
             )
             .Verifiable(Times.Exactly(2));
 
         var optimizationChangeCounts = new List<int>();
         executor
-            .Setup(x =>
-                x.Send(It.IsAny<ScheduleOptimizeDatabaseJobCommand>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(x => x.Send(It.IsAny<ScheduleOptimizeDatabaseJobCommand>(), It.IsAny<CancellationToken>()))
             .Callback<ICommand<Result>, CancellationToken>(
-                (command, _) => optimizationChangeCounts.Add(((ScheduleOptimizeDatabaseJobCommand)command).ChangedItemCount)
+                (command, _) =>
+                    optimizationChangeCounts.Add(((ScheduleOptimizeDatabaseJobCommand)command).ChangedItemCount)
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(2));
@@ -215,9 +218,7 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
 
         var progressStore = Mock.Mock<ILibrarySyncProgressStore>();
         progressStore
-            .Setup(x =>
-                x.UpdateErrorAsync(fixture.Target.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1))
-            )
+            .Setup(x => x.UpdateErrorAsync(fixture.Target.Id, It.Is<Result>(r => r.IsFailed && r.Errors.Count == 1)))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
         progressStore
@@ -232,20 +233,13 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
 
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
-            .SetupSequence(
-                x =>
-                    x.GetJobKeys(
-                        GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibraryComparisonJob)),
-                        CancellationToken
-                    )
+            .SetupSequence(x =>
+                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibraryComparisonJob)), CancellationToken)
             )
             .ThrowsAsync(new InvalidOperationException("comparison scheduler unavailable"))
             .ReturnsAsync([])
             .ReturnsAsync([]);
-        scheduler
-            .Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken))
-            .ReturnsAsync([])
-            .Verifiable(Times.Once());
+        scheduler.Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]).Verifiable(Times.Once());
         executor
             .Setup(x =>
                 x.Send(
@@ -266,9 +260,7 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
             .Verifiable(Times.Exactly(2));
 
         // Act
-        var firstResult = await TestHandlerExecuteAsync<PlexLibrary>(
-            new RefreshPlexMusicLibraryCommand(firstResponse)
-        );
+        var firstResult = await TestHandlerExecuteAsync<PlexLibrary>(new RefreshPlexMusicLibraryCommand(firstResponse));
 
         // Assert
         firstResult.IsFailed.ShouldBeTrue();
@@ -283,13 +275,18 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
         );
         var libraryAfterFailure = await dbContext
             .PlexLibraries.Where(x => x.Id == fixture.Target.Id)
-            .Select(x => new { x.Outdated, x.ContentChangedAt, x.SyncedContentChangedAt })
+            .Select(x => new
+            {
+                x.Outdated,
+                x.ContentChangedAt,
+                x.SyncedContentChangedAt,
+            })
             .SingleAsync(CancellationToken);
         (
             libraryAfterFailure.Outdated,
             libraryAfterFailure.ContentChangedAt,
             libraryAfterFailure.SyncedContentChangedAt
-        ).ShouldBe((true, 1, (long?)1));
+        ).ShouldBe((true, 1, 1));
         var targetAfterFailure = await CaptureMusicComparisonSnapshotAsync(dbContext, fixture.Target.Id);
         targetAfterFailure.Artists.ShouldBe(targetBefore.Artists);
         targetAfterFailure.Albums.ShouldBe(targetBefore.Albums);
@@ -301,7 +298,9 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
         controlAfterFailure.Tracks.ShouldBe(controlBefore.Tracks);
         controlAfterFailure.Scopes.ShouldBe(controlBefore.Scopes);
 
-        var retryLibrary = await dbContext.PlexLibraries.AsNoTracking().SingleAsync(x => x.Id == fixture.Target.Id, CancellationToken);
+        var retryLibrary = await dbContext
+            .PlexLibraries.AsNoTracking()
+            .SingleAsync(x => x.Id == fixture.Target.Id, CancellationToken);
         var retryResponse = await CreateRefreshResponseAsync(dbContext, retryLibrary);
         refreshResponses.Enqueue(retryResponse);
 
@@ -345,10 +344,8 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-        var scheduleResult = await Mock.Create<ScheduleAffectedLibraryComparisonJobsCommandHandler>().ExecuteAsync(
-            new ScheduleAffectedLibraryComparisonJobsCommand(fixture.Target.Id),
-            CancellationToken
-        );
+        var scheduleResult = await Mock.Create<ScheduleAffectedLibraryComparisonJobsCommandHandler>()
+            .ExecuteAsync(new ScheduleAffectedLibraryComparisonJobsCommand(fixture.Target.Id), CancellationToken);
 
         scheduleResult.IsSuccess.ShouldBeTrue();
         scheduleResult.Errors.Count.ShouldBe(0);
@@ -506,7 +503,7 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
                 x.SetProperty(y => y.Outdated, false)
                     .SetProperty(y => y.IsEnabled, true)
                     .SetProperty(y => y.ContentChangedAt, 1)
-                    .SetProperty(y => y.SyncedContentChangedAt, (long?)1)
+                    .SetProperty(y => y.SyncedContentChangedAt, 1)
                     .SetProperty(y => y.SyncedAt, DateTime.UtcNow),
             CancellationToken
         );

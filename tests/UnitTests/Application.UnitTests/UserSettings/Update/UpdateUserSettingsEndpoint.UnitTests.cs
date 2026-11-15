@@ -270,7 +270,7 @@ public class UpdateUserSettingsEndpointUnitTests
                         CancellationToken.None
                     )
                 )
-                .ReturnsAsync((DateTimeOffset?)DateTimeOffset.UnixEpoch)
+                .ReturnsAsync(DateTimeOffset.UnixEpoch)
                 .Verifiable(Times.Once());
         scheduler
             .Setup(x => x.TriggerJob(jobKey, CancellationToken.None))
@@ -421,15 +421,26 @@ public class UpdateUserSettingsEndpointUnitTests
     [Arguments(100, 300, false, 300)]
     [Arguments(100, 0, true, 500)]
     public async Task ShouldRedistributeEffectiveShares_WhenManualCapChanges(
-        int oldCap, int newCap, bool removeSetting, int expectedFirstKb)
+        int oldCap,
+        int newCap,
+        bool removeSetting,
+        int expectedFirstKb
+    )
     {
         // Arrange
         var machines = await SetupDownloadingServersAsync();
         var dbContext = IDbContext;
-        (await dbContext.DownloadTaskMovieFile.Select(x => x.PlexServer!.MachineIdentifier).Distinct().OrderBy(x => x)
-            .ToArrayAsync(CancellationToken)).ShouldBe(machines.Order().ToArray());
-        var beforeFiles = await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.DownloadStatus }).ToArrayAsync(CancellationToken);
+        (
+            await dbContext
+                .DownloadTaskMovieFile.Select(x => x.PlexServer!.MachineIdentifier)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToArrayAsync(CancellationToken)
+        ).ShouldBe(machines.Order().ToArray());
+        var beforeFiles = await dbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.DownloadStatus })
+            .ToArrayAsync(CancellationToken);
         var settings = new UserSettings();
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
@@ -440,7 +451,12 @@ public class UpdateUserSettingsEndpointUnitTests
             settings.ServerSettings.SetDownloadSpeedLimit(machines[0], oldCap);
         using var limits = new DownloadSpeedLimitProvider(settings);
         var allocator = new UpdateScheduledDownloadLimitsCommandHandler(
-            Mock.Container.Resolve<ILogger>(), settings, Mock.Container.Resolve<IReaparrDbContextFactory>(), limits, TimeProvider.System);
+            Mock.Container.Resolve<ILogger>(),
+            settings,
+            Mock.Container.Resolve<IReaparrDbContextFactory>(),
+            limits,
+            TimeProvider.System
+        );
         var command = new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.Parse("2026-10-05T12:00:00Z"));
         var initial = await allocator.ExecuteAsync(command, CancellationToken);
         initial.IsSuccess.ShouldBeTrue();
@@ -451,13 +467,25 @@ public class UpdateUserSettingsEndpointUnitTests
             DownloadManagerSettings = settings.DownloadManagerSettings,
             ServerSettings = new PlexServerSettingsModule
             {
-                Data = removeSetting ? [] : [PlexServerSettingItemModule.Create("First server", machines[0]) with { DownloadSpeedLimit = newCap }],
+                Data = removeSetting
+                    ? []
+                    :
+                    [
+                        PlexServerSettingItemModule.Create("First server", machines[0]) with
+                        {
+                            DownloadSpeedLimit = newCap,
+                        },
+                    ],
             },
         }.ToDTO();
         Result? allocationResult = null;
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
-        scheduler.Setup(x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None))
-            .Returns(async () => { allocationResult = await allocator.ExecuteAsync(command, CancellationToken.None); })
+        scheduler
+            .Setup(x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None))
+            .Returns(async () =>
+            {
+                allocationResult = await allocator.ExecuteAsync(command, CancellationToken.None);
+            })
             .Verifiable(Times.Once());
 
         // Act
@@ -467,7 +495,8 @@ public class UpdateUserSettingsEndpointUnitTests
             {
                 services.AddSingleton<IUserSettings>(settings);
                 services.AddSingleton(scheduler.Object);
-            });
+            }
+        );
 
         // Assert
         endpoint.IsValid.ShouldBeTrue();
@@ -476,10 +505,17 @@ public class UpdateUserSettingsEndpointUnitTests
         allocationResult.Errors.Count.ShouldBe(0);
         limits.GetEffectiveDownloadSpeedLimit(machines[0]).ShouldBe(expectedFirstKb * 1024L);
         limits.GetEffectiveDownloadSpeedLimit(machines[1]).ShouldBe((1000 - expectedFirstKb) * 1024L);
-        (await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.DownloadStatus }).ToArrayAsync(CancellationToken)).ShouldBe(beforeFiles);
+        (
+            await dbContext
+                .DownloadTaskMovieFile.OrderBy(x => x.Id)
+                .Select(x => new { x.Id, x.DownloadStatus })
+                .ToArrayAsync(CancellationToken)
+        ).ShouldBe(beforeFiles);
         scheduler.Verify();
-        scheduler.Verify(x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(
+            x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
     }
 
     [Test]
@@ -493,30 +529,44 @@ public class UpdateUserSettingsEndpointUnitTests
         {
             ServerSettings = new PlexServerSettingsModule
             {
-                Data = [settings.ServerSettings.Data[1] with { PlexServerName = "Renamed" },
-                    settings.ServerSettings.Data[0] with { AllowStreamDownloader = true },
-                    PlexServerSettingItemModule.Create("New default", "new-unlimited")],
+                Data =
+                [
+                    settings.ServerSettings.Data[1] with
+                    {
+                        PlexServerName = "Renamed",
+                    },
+                    settings.ServerSettings.Data[0] with
+                    {
+                        AllowStreamDownloader = true,
+                    },
+                    PlexServerSettingItemModule.Create("New default", "new-unlimited"),
+                ],
             },
         }.ToDTO();
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
 
         // Act
-        var endpoint = await TestEndpointHandleAsync(new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
+        var endpoint = await TestEndpointHandleAsync(
+            new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
             services =>
             {
                 services.AddSingleton<IUserSettings>(settings);
                 services.AddSingleton(scheduler.Object);
-            });
+            }
+        );
 
         // Assert
         endpoint.IsValid.ShouldBeTrue();
         endpoint.StatusCode.ShouldBe(200);
-        settings.ServerSettings.Data.Select(x => (x.MachineIdentifier, x.DownloadSpeedLimit))
+        settings
+            .ServerSettings.Data.Select(x => (x.MachineIdentifier, x.DownloadSpeedLimit))
             .ShouldBe([("unlimited", 0), ("limited", 100), ("new-unlimited", 0)]);
         scheduler.Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
-        scheduler.Verify(x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(
+            x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
     }
-
 
     [Test]
     public async Task ShouldKeepAppliedSettings_WhenTheResponseWriteFails()
@@ -532,10 +582,7 @@ public class UpdateUserSettingsEndpointUnitTests
 
         // Act
         var exception = await Should.ThrowAsync<IOException>(() =>
-            endpoint.HandleAsync(
-                new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
-                CancellationToken
-            )
+            endpoint.HandleAsync(new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto }, CancellationToken)
         );
 
         // Assert
@@ -545,14 +592,21 @@ public class UpdateUserSettingsEndpointUnitTests
 
     private async Task<string[]> SetupDownloadingServersAsync()
     {
-        await SetupDatabase(71997, config =>
-        {
-            config.PlexServerCount = 2;
-            config.PlexMovieLibraryCount = 1;
-            config.MovieDownloadTasksCount = 0;
-        });
+        await SetupDatabase(
+            71997,
+            config =>
+            {
+                config.PlexServerCount = 2;
+                config.PlexMovieLibraryCount = 1;
+                config.MovieDownloadTasksCount = 0;
+            }
+        );
         var dbContext = IDbContext;
-        foreach (var library in await dbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.Movie).ToListAsync(CancellationToken))
+        foreach (
+            var library in await dbContext
+                .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
+                .ToListAsync(CancellationToken)
+        )
         {
             var task = FakeData.GetMovieDownloadTask(new Seed(71997 + library.Id)).Generate();
             new[] { task }.SetRelationshipIds(library.PlexServerId, library.Id);
@@ -560,8 +614,13 @@ public class UpdateUserSettingsEndpointUnitTests
         }
         await dbContext.SaveChangesAsync(CancellationToken);
         await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
-            x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading), CancellationToken);
-        return await dbContext.PlexServers.OrderBy(x => x.Id).Select(x => x.MachineIdentifier).ToArrayAsync(CancellationToken);
+            x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading),
+            CancellationToken
+        );
+        return await dbContext
+            .PlexServers.OrderBy(x => x.Id)
+            .Select(x => x.MachineIdentifier)
+            .ToArrayAsync(CancellationToken);
     }
 
     [Test]

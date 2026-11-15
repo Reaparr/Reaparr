@@ -174,10 +174,7 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
                             .SetProperty(x => x.Title, $"Asset {index}")
                             .SetProperty(x => x.Size, sizes[index])
                             .SetProperty(x => x.AddedAt, new DateTime(2026, 1, addedDays[index]))
-                            .SetProperty(
-                                x => x.UpdatedAt,
-                                index == 0 ? (DateTime?)null : new DateTime(2026, 2, 4 - index)
-                            )
+                            .SetProperty(x => x.UpdatedAt, index == 0 ? null : new DateTime(2026, 2, 4 - index))
                             .SetProperty(x => x.Duration, durations[index]),
                     CancellationToken
                 );

@@ -12,8 +12,6 @@ public class RefreshPlexAccountAccessEndpointUnitTests
         ResultDTO<List<RefreshPlexAccountAccessRapportDTO>>
     >
 {
-    public RefreshPlexAccountAccessEndpointUnitTests() { }
-
     [Test]
     [Arguments(0, TelemetryOutcome.Succeeded)]
     [Arguments(7, TelemetryOutcome.Succeeded)]
@@ -34,16 +32,17 @@ public class RefreshPlexAccountAccessEndpointUnitTests
         });
         const string identity = "581b32aa-0e38-49bd-b9ce-f5c639130bd5";
         var failure = new InvalidOperationException("Access refresh failed");
-        var reports = new List<RefreshPlexAccountAccessRapportDTO>
-        {
-            new(7, "Target account") { Access = [] },
-        };
+        var reports = new List<RefreshPlexAccountAccessRapportDTO> { new(7, "Target account") { Access = [] } };
         var commandResult = outcome switch
         {
-            TelemetryOutcome.Failed => Result.Fail<List<RefreshPlexAccountAccessRapportDTO>>(new ExceptionalError(failure)),
-            TelemetryOutcome.Rejected => ResultExtensions.Create400BadRequestResult("Refresh rejected")
+            TelemetryOutcome.Failed => Result.Fail<List<RefreshPlexAccountAccessRapportDTO>>(
+                new ExceptionalError(failure)
+            ),
+            TelemetryOutcome.Rejected => ResultExtensions
+                .Create400BadRequestResult("Refresh rejected")
                 .ToResult<List<RefreshPlexAccountAccessRapportDTO>>(),
-            TelemetryOutcome.Cancelled => ResultExtensions.TaskIsCancelled("Access refresh")
+            TelemetryOutcome.Cancelled => ResultExtensions
+                .TaskIsCancelled("Access refresh")
                 .ToResult<List<RefreshPlexAccountAccessRapportDTO>>(),
             _ => Result.Ok(reports),
         };
@@ -64,33 +63,70 @@ public class RefreshPlexAccountAccessEndpointUnitTests
         var user = new Mock<IUserService>(MockBehavior.Strict);
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        using var telemetry = new Telemetry(client.Object, Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object, source, new UserSettings());
+        using var telemetry = new Telemetry(
+            client.Object,
+            Mock.Container.Resolve<IAppBuildInfo>(),
+            user.Object,
+            source,
+            new UserSettings()
+        );
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
-        client.Setup(x => x.Capture(identity, TelemetryProtocol.ProfileEvent,
-                It.IsAny<Dictionary<string, object>>(), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        client.Setup(x => x.Capture(identity, nameof(TelemetryEvent.PlexAccessRefreshRequested),
-                It.Is<Dictionary<string, object>>(properties =>
-                    (string)properties[TelemetryProperty.Scope] == nameof(TelemetryScope.Account)
-                    && (string)properties[TelemetryProperty.Trigger] == nameof(TelemetryTrigger.Manual)
-                    && (string)properties[TelemetryProperty.Outcome] == expectedEventOutcome.ToString()
-                    && (int?)properties[TelemetryProperty.AccountId] == expectedAccountId
-                    && properties[TelemetryProperty.ServerId] == null), null, null, null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    nameof(TelemetryEvent.PlexAccessRefreshRequested),
+                    It.Is<Dictionary<string, object>>(properties =>
+                        (string)properties[TelemetryProperty.Scope] == nameof(TelemetryScope.Account)
+                        && (string)properties[TelemetryProperty.Trigger] == nameof(TelemetryTrigger.Manual)
+                        && (string)properties[TelemetryProperty.Outcome] == expectedEventOutcome.ToString()
+                        && (int?)properties[TelemetryProperty.AccountId] == expectedAccountId
+                        && properties[TelemetryProperty.ServerId] == null
+                    ),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        client.Setup(x => x.CaptureException(failure, identity,
-                It.Is<Dictionary<string, object>>(properties =>
-                    (string)properties[TelemetryProperty.Stage] == nameof(TelemetryActivity.PlexAccessRefresh)),
-                null, null, null))
+        client
+            .Setup(x =>
+                x.CaptureException(
+                    failure,
+                    identity,
+                    It.Is<Dictionary<string, object>>(properties =>
+                        (string)properties[TelemetryProperty.Stage] == nameof(TelemetryActivity.PlexAccessRefresh)
+                    ),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Exactly(expectedIssues));
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<RefreshPlexAccountAccessCommand>(command =>
-                    command.PlexAccountId == accountId && command.Trigger == TelemetryTrigger.Manual),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshPlexAccountAccessCommand>(command =>
+                        command.PlexAccountId == accountId && command.Trigger == TelemetryTrigger.Manual
+                    ),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(commandResult)
             .Verifiable(Times.Once());
         await telemetry.InitializeAsync();
@@ -98,7 +134,8 @@ public class RefreshPlexAccountAccessEndpointUnitTests
         // Act
         var response = await TestEndpointHandleAsync(
             new RefreshPlexAccountAccessEndpointRequest(accountId),
-            extraServices => extraServices.AddSingleton<ITelemetry>(telemetry));
+            extraServices => extraServices.AddSingleton<ITelemetry>(telemetry)
+        );
 
         // Assert
         response.ValidationResult!.IsValid.ShouldBeTrue();
@@ -114,8 +151,18 @@ public class RefreshPlexAccountAccessEndpointUnitTests
             response.Response.Value.ShouldBeNull();
             response.Response.Errors.Single().Message.ShouldBe(commandResult.Errors.Single().Message);
         }
-        client.Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(), null, null, null), Times.Exactly(expectedIssues));
+        client.Verify(
+            x =>
+                x.CaptureException(
+                    It.IsAny<Exception>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                ),
+            Times.Exactly(expectedIssues)
+        );
         Mock.Mock<ICommandExecutor>().Verify();
         user.Verify();
         client.Verify();
@@ -134,12 +181,24 @@ public class RefreshPlexAccountAccessEndpointUnitTests
         response.ValidationResult!.IsValid.ShouldBeFalse();
         response.ValidationErrors.Single().PropertyName.ShouldBe(nameof(request.PlexAccountId));
         response.Response.ShouldBeNull();
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(
-            It.IsAny<RefreshPlexAccountAccessCommand>(), It.IsAny<CancellationToken>()), Times.Never());
-        Mock.Mock<ITelemetry>().Verify(x => x.CaptureErrors(
-            It.IsAny<ResultBase>(), It.IsAny<TelemetryActivity>()), Times.Never());
-        Mock.Mock<ITelemetry>().Verify(x => x.PlexAccessRefreshRequested(
-            It.IsAny<TelemetryScope>(), It.IsAny<Result<List<RefreshPlexAccountAccessRapportDTO>>>(),
-            It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<int>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<RefreshPlexAccountAccessCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<ITelemetry>()
+            .Verify(x => x.CaptureErrors(It.IsAny<ResultBase>(), It.IsAny<TelemetryActivity>()), Times.Never());
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexAccessRefreshRequested(
+                        It.IsAny<TelemetryScope>(),
+                        It.IsAny<Result<List<RefreshPlexAccountAccessRapportDTO>>>(),
+                        It.IsAny<int?>(),
+                        It.IsAny<int?>(),
+                        It.IsAny<int>()
+                    ),
+                Times.Never()
+            );
     }
 }

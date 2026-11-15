@@ -8,8 +8,6 @@ namespace Reaparr.IntegrationTests;
 
 public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTests
 {
-    public RefreshPlexPhotoLibraryCommandIntegrationTests() { }
-
     [Test]
     public async Task ShouldPersistMergedPhotoFilesAndMemberships_ThenPreserveOtherLibrariesAcrossRefreshDisableReenable()
     {

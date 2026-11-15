@@ -27,13 +27,13 @@ namespace Reaparr.AppHost.UnitTests;
 [NotInParallel(nameof(TelemetryLogConfigUnitTests))]
 public class TelemetryLogConfigUnitTests : BaseUnitTest
 {
-    private const string Identity = "0e3a7eb1-2e25-4b37-af7f-e58263f1742c";
-    private const string Session = "0197af2c-8533-71b3-a351-80da30db084a";
-    private const string ProjectToken = "phc_loopback_test";
-    private const string ProbePath = "/telemetry-native-probe";
-    private const string LogSecret = "intentional-operational-log-secret";
-    private const string FailurePath = "/telemetry-native-failure";
-    private const string ExceptionSecret = "accepted-original-exception-text";
+    private const string IDENTITY = "0e3a7eb1-2e25-4b37-af7f-e58263f1742c";
+    private const string SESSION = "0197af2c-8533-71b3-a351-80da30db084a";
+    private const string PROJECT_TOKEN = "phc_loopback_test";
+    private const string PROBE_PATH = "/telemetry-native-probe";
+    private const string LOG_SECRET = "intentional-operational-log-secret";
+    private const string FAILURE_PATH = "/telemetry-native-failure";
+    private const string EXCEPTION_SECRET = "accepted-original-exception-text";
 
     [Test]
     public void ShouldResolveOneDisabledPostHogClient_WhenAutofacBuildsApplicationContainer()
@@ -56,7 +56,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         // Act
         var client = container.Resolve<IPostHogClient>();
         var secondClient = container.Resolve<IPostHogClient>();
-        var accepted = client.Capture(Identity, nameof(TelemetryEvent.NotificationsCleared), null, null, null);
+        var accepted = client.Capture(IDENTITY, nameof(TelemetryEvent.NotificationsCleared), null, null, null);
 
         // Assert
         client.ShouldBeOfType<PostHogClient>();
@@ -107,7 +107,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         var build = new Mock<IAppBuildInfo>();
         build.SetupGet(x => x.HasValidTelemetry).Returns(true);
         build.SetupGet(x => x.TelemetryHost).Returns(ingestionHost);
-        build.SetupGet(x => x.TelemetryProjectToken).Returns(ProjectToken);
+        build.SetupGet(x => x.TelemetryProjectToken).Returns(PROJECT_TOKEN);
         build.SetupGet(x => x.InformationalVersion).Returns("1.0.0-test");
         build.SetupGet(x => x.RuntimeMode).Returns("docker");
         build.SetupGet(x => x.RuntimeIdentifier).Returns("linux-x64");
@@ -124,7 +124,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         var logConfig = new SignalRLogConfig(runtime, paths.Object, buffer, build.Object);
         using var logger = logConfig.GetLogger(LogEventLevel.Debug);
         var user = new Mock<IUserService>();
-        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(Identity);
+        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY);
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Configuration.AddInMemoryCollection(
@@ -163,7 +163,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         ActivityTraceId operationTrace = default;
         ActivitySpanId operationSpan = default;
         app.MapGet(
-            ProbePath,
+            PROBE_PATH,
             (ITelemetry telemetry) =>
             {
                 using var operation = telemetry.StartActivity(TelemetryActivity.LibrarySync);
@@ -171,15 +171,15 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 operationTrace = operation.TraceId;
                 operationSpan = operation.SpanId;
                 logger.Verbose("Below the configured log threshold");
-                logger.Information("Native telemetry operation {ApiKey}", LogSecret);
+                logger.Information("Native telemetry operation {ApiKey}", LOG_SECRET);
                 telemetry.NotificationsCleared(17);
                 return Results.Accepted();
             }
         );
         app.MapGet(
-            FailurePath,
+            FAILURE_PATH,
             (HttpContext _) =>
-                Task.FromException(new InvalidOperationException($"Native failure token={ExceptionSecret}"))
+                Task.FromException(new InvalidOperationException($"Native failure token={EXCEPTION_SECRET}"))
         );
         await app.StartAsync();
         await app.Services.GetRequiredService<ITelemetry>().InitializeAsync();
@@ -194,12 +194,12 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 .Start();
             initiatingActivity.ActivityTraceFlags = ActivityTraceFlags.Recorded;
             using var http = new HttpClient();
-            using var request = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + ProbePath);
-            request.Headers.Add(TelemetryProtocol.SessionIdHeader, Session);
+            using var request = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + PROBE_PATH);
+            request.Headers.Add(TelemetryProtocol.SessionIdHeader, SESSION);
             using var response = await http.SendAsync(request, CancellationToken);
             response.StatusCode.ShouldBe(System.Net.HttpStatusCode.Accepted);
-            using var failedRequest = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + FailurePath);
-            failedRequest.Headers.Add(TelemetryProtocol.SessionIdHeader, Session);
+            using var failedRequest = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + FAILURE_PATH);
+            failedRequest.Headers.Add(TelemetryProtocol.SessionIdHeader, SESSION);
             using var failedResponse = await http.SendAsync(failedRequest, CancellationToken);
             failedResponse.StatusCode.ShouldBe(System.Net.HttpStatusCode.InternalServerError);
             await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
@@ -224,20 +224,20 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 .GetProperty("properties");
             properties.GetProperty(TelemetryProtocol.TraceId).GetString().ShouldBe(operationTrace.ToHexString());
             properties.GetProperty(TelemetryProtocol.SpanId).GetString().ShouldBe(operationSpan.ToHexString());
-            properties.GetProperty(TelemetryProtocol.SessionId).GetString().ShouldBe(Session);
-            properties.GetProperty(TelemetryProtocol.DistinctId).GetString().ShouldBe(Identity);
+            properties.GetProperty(TelemetryProtocol.SessionId).GetString().ShouldBe(SESSION);
+            properties.GetProperty(TelemetryProtocol.DistinctId).GetString().ShouldBe(IDENTITY);
             properties.GetProperty(TelemetryProperty.DeletedCount).GetInt32().ShouldBe(17);
             properties.GetProperty(TelemetryProperty.Outcome).GetString().ShouldBe(nameof(TelemetryOutcome.Succeeded));
             var nativeError = sdkEvents
                 .Single(item => item.GetProperty("event").GetString() == TelemetryProtocol.ExceptionEvent)
                 .GetProperty("properties");
             nativeError.GetProperty(TelemetryProtocol.TraceId).GetString().ShouldBe(operationTrace.ToHexString());
-            nativeError.GetProperty(TelemetryProtocol.SessionId).GetString().ShouldBe(Session);
-            nativeError.GetProperty(TelemetryProperty.HttpRoute).GetString().ShouldBe(FailurePath);
+            nativeError.GetProperty(TelemetryProtocol.SessionId).GetString().ShouldBe(SESSION);
+            nativeError.GetProperty(TelemetryProperty.HttpRoute).GetString().ShouldBe(FAILURE_PATH);
             nativeError.GetRawText().ShouldContain(typeof(InvalidOperationException).FullName!);
-            nativeError.GetRawText().ShouldContain(ExceptionSecret);
+            nativeError.GetRawText().ShouldContain(EXCEPTION_SECRET);
             foreach (var traceExport in received.Where(item => item.Path == TelemetryProtocol.TracesPath))
-                Encoding.UTF8.GetString(traceExport.Body).ShouldNotContain(ExceptionSecret);
+                Encoding.UTF8.GetString(traceExport.Body).ShouldNotContain(EXCEPTION_SECRET);
 
             foreach (var endpoint in new[] { TelemetryProtocol.TracesPath, TelemetryProtocol.LogsPath })
             {
@@ -245,7 +245,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 var correlated = exports.Single(item =>
                     item.Body.AsSpan().IndexOf(Convert.FromHexString(operationSpan.ToHexString())) >= 0
                 );
-                correlated.Authorization.ShouldBe($"{TelemetryProtocol.BearerScheme} {ProjectToken}");
+                correlated.Authorization.ShouldBe($"{TelemetryProtocol.BearerScheme} {PROJECT_TOKEN}");
                 correlated.ContentType.ShouldBe("application/x-protobuf");
                 correlated
                     .Body.AsSpan()
@@ -253,15 +253,15 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                     .ShouldBeGreaterThanOrEqualTo(0);
                 var attributes = Encoding.UTF8.GetString(correlated.Body);
                 attributes.ShouldContain(TelemetryProtocol.SessionIdTag);
-                attributes.ShouldContain(Session);
+                attributes.ShouldContain(SESSION);
                 attributes.ShouldContain(TelemetryProtocol.DistinctIdTag);
-                attributes.ShouldContain(Identity);
+                attributes.ShouldContain(IDENTITY);
                 attributes.ShouldContain(TelemetryProtocol.ServiceName);
                 attributes.ShouldContain(TelemetryProtocol.Service);
                 attributes.ShouldContain("1.0.0-test");
                 if (endpoint == TelemetryProtocol.LogsPath)
                 {
-                    attributes.Contains(LogSecret, StringComparison.Ordinal).ShouldBe(unmasked);
+                    attributes.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
                     attributes.ShouldNotContain("Below the configured log threshold");
                 }
             }
@@ -270,9 +270,9 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 Directory.GetFiles(directory.FullName, "log*.txt").Single(),
                 CancellationToken
             );
-            localLog.Contains(LogSecret, StringComparison.Ordinal).ShouldBe(unmasked);
+            localLog.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
             localLog.ShouldNotContain("Below the configured log threshold");
-            buffer.GetAll().Single().Message.Contains(LogSecret, StringComparison.Ordinal).ShouldBe(unmasked);
+            buffer.GetAll().Single().Message.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
         }
         finally
         {
@@ -314,7 +314,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
             new Dictionary<string, string?>
             {
                 ["PostHog:HostUrl"] = receiver.Urls.Single(),
-                ["PostHog:ProjectToken"] = ProjectToken,
+                ["PostHog:ProjectToken"] = PROJECT_TOKEN,
                 ["PostHog:Disabled"] = bool.FalseString,
             }
         );
@@ -330,7 +330,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         app.UseRouting();
         app.UseMiddleware<TelemetryContextMiddleware>();
         app.MapGet(
-            ProbePath,
+            PROBE_PATH,
             (ITelemetry telemetry) =>
             {
                 using var operation = telemetry.StartActivity(TelemetryActivity.LibrarySync);
@@ -349,7 +349,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         try
         {
             using var http = new HttpClient();
-            using var response = await http.GetAsync(app.Urls.Single() + ProbePath, CancellationToken);
+            using var response = await http.GetAsync(app.Urls.Single() + PROBE_PATH, CancellationToken);
             response.StatusCode.ShouldBe(System.Net.HttpStatusCode.NoContent);
             await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
             app.Services.GetService<TracerProvider>().ShouldBeNull();

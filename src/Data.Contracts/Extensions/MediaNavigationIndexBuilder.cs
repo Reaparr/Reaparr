@@ -57,9 +57,7 @@ public static class MediaNavigationIndexBuilder
                     sort.Field == SortType.AddedAt
                         ? row => row.AddedAt.Year * 100 + row.AddedAt.Month
                         : row =>
-                            row.UpdatedAt.HasValue
-                                ? row.UpdatedAt.Value.Year * 100 + row.UpdatedAt.Value.Month
-                                : (int?)null,
+                            row.UpdatedAt.HasValue ? row.UpdatedAt.Value.Year * 100 + row.UpdatedAt.Value.Month : null,
                     bucket =>
                     {
                         if (bucket is null)

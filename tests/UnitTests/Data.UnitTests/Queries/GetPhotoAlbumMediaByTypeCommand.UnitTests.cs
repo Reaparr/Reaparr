@@ -88,9 +88,7 @@ public class GetPhotoAlbumMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetP
             await dbContext
                 .PlexPhotoMediaData.Where(x => fileIds.Contains(x.Id))
                 .ExecuteUpdateAsync(
-                    x =>
-                        x.SetProperty(y => y.Size, (index + 1) * 100L)
-                            .SetProperty(y => y.Duration, (int?)((index + 1) * 100)),
+                    x => x.SetProperty(y => y.Size, (index + 1) * 100L).SetProperty(y => y.Duration, (index + 1) * 100),
                     CancellationToken
                 );
         }

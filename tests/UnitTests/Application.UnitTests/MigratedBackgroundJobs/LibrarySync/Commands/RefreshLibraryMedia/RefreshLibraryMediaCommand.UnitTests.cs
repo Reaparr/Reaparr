@@ -256,8 +256,8 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
                         .SetProperty(x => x.PhotoImageCount, 1)
                         .SetProperty(x => x.PhotoClipCount, 0)
                         .SetProperty(x => x.MediaSize, 20L)
-                        .SetProperty(x => x.SyncedAt, (DateTime?)persistedSyncedAt)
-                        .SetProperty(x => x.SyncedContentChangedAt, (long?)persistedSyncedContentChangedAt)
+                        .SetProperty(x => x.SyncedAt, persistedSyncedAt)
+                        .SetProperty(x => x.SyncedContentChangedAt, persistedSyncedContentChangedAt)
                         .SetProperty(x => x.Outdated, false),
                 CancellationToken
             );
