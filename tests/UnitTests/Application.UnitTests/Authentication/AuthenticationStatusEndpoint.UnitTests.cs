@@ -9,16 +9,17 @@ public class AuthenticationStatusEndpointUnitTests
     public async Task ShouldReturnAuthenticatedStatusWithTelemetryBootstrap_WhenTelemetryIsAvailable()
     {
         // Arrange
-        var bootstrap = new BrowserTelemetryBootstrapDTO(
-            "https://telemetry.example.test",
-            "phc_test",
-            "5e2c5c48-aa0f-4f21-8c65-94e72b2bd389",
-            "0.40.0-dev.1",
-            TelemetryProtocol.DevelopmentEnvironment,
-            "desktop",
-            "linux-x64",
-            nameof(OperatingSystemPlatform.Linux)
-        );
+        var bootstrap = new BrowserTelemetryBootstrapDTO
+        {
+            ApiHost = "https://telemetry.example.test",
+            ProjectToken = "phc_test",
+            DistinctId = "5e2c5c48-aa0f-4f21-8c65-94e72b2bd389",
+            Release = "0.40.0-dev.1",
+            Environment = TelemetryProtocol.DevelopmentEnvironment,
+            RuntimeMode = "desktop",
+            RuntimeIdentifier = "linux-x64",
+            Platform = nameof(OperatingSystemPlatform.Linux),
+        };
         Mock.Mock<ITelemetry>()
             .Setup(x => x.GetBrowserBootstrap())
             .Returns(bootstrap)

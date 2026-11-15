@@ -13,6 +13,8 @@ FROM --platform=$BUILDPLATFORM oven/bun:1.4.0-alpine AS client-build
 
 ARG PORT
 ARG VERSION
+ARG TELEMETRY_HOST
+ARG TELEMETRY_PROJECT_TOKEN
 
 ENV NUXT_HOST=0.0.0.0
 ENV NUXT_PORT=${PORT}
@@ -20,6 +22,8 @@ ENV NUXT_PUBLIC_API_PORT=${PORT}
 ENV NUXT_PUBLIC_VERSION=${VERSION}
 # Required during static Nuxt generate so runtimeConfig.public.platform is baked as 'docker' in the client bundle.
 ENV NUXT_PUBLIC_PLATFORM=docker
+ENV NUXT_PUBLIC_RP_HOST=${TELEMETRY_HOST}
+ENV NUXT_PUBLIC_RP_KEY=${TELEMETRY_PROJECT_TOKEN}
 
 WORKDIR /tmp/ClientApp
 

@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using FastEndpoints;
 using FluentValidation;
 using Reaparr.Logging;
+using Reaparr.Environment;
 
 namespace Reaparr.Build;
 
@@ -60,41 +61,37 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
         if (!settings.DryRun)
             await _commandRunner.RequireCommandAsync("dotnet");
 
-        if (!settings.SkipFrontend)
+        if (!settings.SkipFrontend && string.IsNullOrWhiteSpace(settings.FrontendPublicDirectory))
         {
-            var sourceDirectory = GetFrontendPublicDirectory(settings);
-            if (!_fileSystem.Directory.Exists(sourceDirectory))
+            if (!settings.DryRun)
+                await _commandRunner.RequireCommandAsync("bun");
+
+            if (ShouldInstallFrontendDependencies(_paths.ClientAppDirectory))
             {
-                if (!settings.DryRun)
-                    await _commandRunner.RequireCommandAsync("bun");
-
-                if (ShouldInstallFrontendDependencies(_paths.ClientAppDirectory))
-                {
-                    _log.Here()
-                        .Information(
-                            "Installing frontend dependencies in {ClientAppDirectory}",
-                            _paths.ClientAppDirectory
-                        );
-                    if (!settings.DryRun)
-                        await _commandRunner.RunCommandAsync(
-                            "bun",
-                            ["install", "--frozen-lockfile"],
-                            _paths.ClientAppDirectory
-                        );
-                }
-
+                _log.Here()
+                    .Information(
+                        "Installing frontend dependencies in {ClientAppDirectory}",
+                        _paths.ClientAppDirectory
+                    );
                 if (!settings.DryRun)
                     await _commandRunner.RunCommandAsync(
                         "bun",
-                        ["run", "generate", "--fail-on-error"],
+                        ["install", "--frozen-lockfile"],
                         _paths.ClientAppDirectory
                     );
             }
-            else
-            {
-                _log.Here()
-                    .Information("Reusing existing frontend output from {FrontendPublicDirectory}", sourceDirectory);
-            }
+
+            if (!settings.DryRun)
+                await _commandRunner.RunCommandAsync(
+                    "bun",
+                    ["run", "generate", "--fail-on-error"],
+                    _paths.ClientAppDirectory,
+                    new Dictionary<string, string?>
+                    {
+                        [EnvKeys.NuxtPublicRpHost] = settings.TelemetryHost ?? string.Empty,
+                        [EnvKeys.NuxtPublicRpKey] = settings.TelemetryProjectToken ?? string.Empty,
+                    }
+                );
         }
 
         if (!settings.SkipRestore && !settings.DryRun)

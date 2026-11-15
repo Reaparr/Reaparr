@@ -60,6 +60,29 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
     }
 
     /// <summary>
+    /// Returns the browser bootstrap when telemetry is configured and startup identity loading succeeded.
+    /// </summary>
+    public BrowserTelemetryBootstrapDTO? GetBrowserBootstrap()
+    {
+        if (!_appBuildInfo.HasValidTelemetry || string.IsNullOrEmpty(_telemetryId))
+            return null;
+
+        return new BrowserTelemetryBootstrapDTO
+        {
+            ApiHost = _appBuildInfo.TelemetryHost,
+            ProjectToken = _appBuildInfo.TelemetryProjectToken,
+            DistinctId = _telemetryId,
+            Release = _appBuildInfo.InformationalVersion,
+            Environment = _appBuildInfo.IsDevRelease
+                ? TelemetryProtocol.DevelopmentEnvironment
+                : TelemetryProtocol.StableEnvironment,
+            RuntimeMode = _appBuildInfo.RuntimeMode,
+            RuntimeIdentifier = _appBuildInfo.RuntimeIdentifier,
+            Platform = _appBuildInfo.CurrentOS.ToString(),
+        };
+    }
+
+    /// <summary>
     /// Submits a diagnostic with its backend or frontend origin and reports SDK admission, not remote delivery.
     /// </summary>
     public Result SendDiagnostic(TelemetryDiagnosticOrigin origin)

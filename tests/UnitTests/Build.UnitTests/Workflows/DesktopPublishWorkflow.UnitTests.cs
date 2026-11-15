@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Xml.Linq;
 using Reaparr.Domain;
+using Reaparr.Environment;
 using System.IO.Abstractions.TestingHelpers;
 using Autofac;
 
@@ -37,7 +38,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
         Mock.Mock<IDesktopCommandRunner>()
-            .Setup(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
+            .Setup(x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
 
@@ -52,7 +53,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     }
 
     [Test]
-    public async Task ShouldReuseExistingFrontendOutput_WhenFrontendPublicDirectoryAlreadyExists()
+    public async Task ShouldReuseExplicitPrebuiltFrontendOutput()
     {
         // Arrange
         SetupFileSystem(system =>
@@ -70,6 +71,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             TelemetryProjectToken = "phc_public-token_123",
             DryRun = false,
             SkipRestore = true,
+            FrontendPublicDirectory = "/repo/src/AppHost/ClientApp/.output/public",
         };
 
         SetupDependencies(builder => builder.Register(_ => "/repo").As<string>().SingleInstance());
@@ -97,11 +99,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             .Verifiable(Times.Once());
         Mock.Mock<IDesktopCommandRunner>()
             .Setup(x =>
-                x.RunCommandAsync(
-                    "dotnet",
-                    It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(publishArguments)),
-                    null
-                )
+                x.RunCommandAsync("dotnet", It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(publishArguments)), null, null)
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
@@ -109,7 +107,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             .Setup(x => x.RequireCommandAsync("bun"))
             .Verifiable(Times.Never());
         Mock.Mock<IDesktopCommandRunner>()
-            .Setup(x => x.RunCommandAsync("bun", It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()))
+            .Setup(x => x.RunCommandAsync("bun", It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null))
             .Verifiable(Times.Never());
 
         // Act
@@ -123,13 +121,81 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         fileSystem.File.ReadAllText("/repo/src/AppHost/ClientApp/.output/public/index.html").ShouldBe("frontend");
         Mock.Mock<IDesktopCommandRunner>()
             .Verify(
-                x => x.RunCommandAsync(
-                    "dotnet",
-                    It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "restore"),
-                    It.IsAny<string?>()
-                ),
+                x => x.RunCommandAsync("dotnet", It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "restore"), It.IsAny<string?>(), null),
                 Times.Never()
             );
+        Mock.Mock<IDesktopCommandRunner>().Verify();
+    }
+
+    [Test]
+    [Arguments("https://current.example.test", "phc_current")]
+    [Arguments("", "")]
+    public async Task ShouldRegenerateDefaultFrontend_WhenExistingOutputMayHaveDifferentTelemetry(
+        string host,
+        string token
+    )
+    {
+        // Arrange
+        SetupFileSystem(system =>
+        {
+            system.AddFile("/repo/src/AppHost/ClientApp/.output/public/index.html", new MockFileData("stale-frontend"));
+        });
+        SetupDependencies(builder => builder.Register(_ => "/repo").As<string>().SingleInstance());
+        var settings = new DesktopCommandSettings
+        {
+            RuntimeIdentifier = "linux-x64",
+            Version = "1.2.3",
+            InformationalVersion = "1.2.3-dev.1",
+            TelemetryHost = host,
+            TelemetryProjectToken = token,
+            SkipRestore = true,
+        };
+        var executionOrder = new List<string>();
+        Mock.Mock<IDesktopCommandRunner>()
+            .Setup(x => x.RequireCommandAsync("dotnet"))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        Mock.Mock<IDesktopCommandRunner>()
+            .Setup(x => x.RequireCommandAsync("bun"))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        Mock.Mock<IDesktopCommandRunner>()
+            .Setup(x => x.RunCommandAsync(
+                "bun",
+                It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(new[] { "run", "generate", "--fail-on-error" })),
+                "/repo/src/AppHost/ClientApp",
+                It.Is<IReadOnlyDictionary<string, string?>?>(environment =>
+                    environment != null
+                    && environment.Count == 2
+                    && environment[EnvKeys.NuxtPublicRpHost] == host
+                    && environment[EnvKeys.NuxtPublicRpKey] == token)))
+            .Callback(() => executionOrder.Add("generate"))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        Mock.Mock<IDesktopCommandRunner>()
+            .Setup(x => x.RunCommandAsync(
+                "dotnet",
+                It.Is<IReadOnlyList<string>>(arguments =>
+                    arguments[0] == "publish"
+                    && arguments.Contains($"-p:ReaparrTelemetryHost={host}")
+                    && arguments.Contains($"-p:ReaparrTelemetryProjectToken={token}")),
+                null,
+                null))
+            .Callback(() => executionOrder.Add("publish"))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        Mock.Mock<IDesktopCommandRunner>()
+            .Setup(x => x.RunCommandAsync("bun", It.Is<IReadOnlyList<string>>(arguments => arguments[0] == "install"), It.IsAny<string?>(), null))
+            .Verifiable(Times.Never());
+
+        // Act
+        var result = await Sut.ExecuteAsync(new DesktopPublishBuildCommand(settings), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.ShouldBe(0);
+        executionOrder.ShouldBe(["generate", "publish"]);
         Mock.Mock<IDesktopCommandRunner>().Verify();
     }
 
@@ -498,9 +564,82 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         ).ShouldBeFalse();
         runner.Verify(x => x.RequireCommandAsync(It.IsAny<string>()), Times.Never);
         runner.Verify(
-            x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>()),
+            x => x.RunCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null),
             Times.Never
         );
+    }
+
+    [Test]
+    public async Task ShouldApplyFrontendEnvironmentOnlyToTheChildBuildProcess()
+    {
+        // Arrange
+        using var container = CreateSdkFixture();
+        var paths = container.Resolve<BuildPaths>();
+        var outputPath = Path.Combine(paths.RootDirectory, "frontend-telemetry.txt");
+        var project = XDocument.Load(paths.AppHostProject);
+        project.Root!.Add(
+            new XElement(
+                "Target",
+                new XAttribute("Name", "ExportTelemetryEnvironment"),
+                new XElement(
+                    "WriteLinesToFile",
+                    new XAttribute("File", outputPath),
+                    new XAttribute("Lines", $"$({EnvKeys.NuxtPublicRpHost})|$({EnvKeys.NuxtPublicRpKey})"),
+                    new XAttribute("Overwrite", "true")
+                )
+            )
+        );
+        project.Save(paths.AppHostProject);
+        var parentHost = System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost);
+        var parentKey = System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey);
+
+        try
+        {
+            System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpHost, "inherited-stale-host");
+            System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpKey, "inherited-stale-key");
+
+            // Act
+            await container.Resolve<IDesktopCommandRunner>().RunCommandAsync(
+                "dotnet",
+                ["msbuild", paths.AppHostProject, "-target:ExportTelemetryEnvironment", "-verbosity:quiet", "-nologo"],
+                paths.RootDirectory,
+                new Dictionary<string, string?>
+                {
+                    [EnvKeys.NuxtPublicRpHost] = "https://frontend.example.test",
+                    [EnvKeys.NuxtPublicRpKey] = "phc_frontend",
+                }
+            );
+
+            // Assert
+            File.ReadAllLines(outputPath).ShouldBe(["https://frontend.example.test|phc_frontend"]);
+            System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe("inherited-stale-host");
+            System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe("inherited-stale-key");
+
+            // Act
+            await container.Resolve<IDesktopCommandRunner>().RunCommandAsync(
+                "dotnet",
+                ["msbuild", paths.AppHostProject, "-target:ExportTelemetryEnvironment", "-verbosity:quiet", "-nologo"],
+                paths.RootDirectory,
+                new Dictionary<string, string?>
+                {
+                    [EnvKeys.NuxtPublicRpHost] = string.Empty,
+                    [EnvKeys.NuxtPublicRpKey] = string.Empty,
+                }
+            );
+
+            // Assert
+            File.ReadAllLines(outputPath).ShouldBe(["|"]);
+            System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe("inherited-stale-host");
+            System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe("inherited-stale-key");
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpHost, parentHost);
+            System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpKey, parentKey);
+        }
+
+        System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe(parentHost);
+        System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe(parentKey);
     }
 
     private static IReadOnlyDictionary<string, string?> ReadAssemblyMetadata(string assemblyPath)

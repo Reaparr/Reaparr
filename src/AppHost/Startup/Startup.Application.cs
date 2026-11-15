@@ -27,6 +27,8 @@ public static partial class Startup
 
         // This has to always be first
         app.UseCors(CorsConfiguration);
+        app.MapTelemetryProxy();
+
 
         app.Use(
             async (ctx, next) =>
@@ -119,5 +121,21 @@ public static partial class Startup
                 return result.LogError();
             };
         });
+    }
+
+    /// <summary>
+    /// Maps native browser telemetry outside the authenticated business request pipeline.
+    /// Call after CORS and before authentication, SPA hosting and request telemetry so startup
+    /// configuration and unload delivery can be forwarded without recording the proxy itself.
+    /// </summary>
+    internal static void MapTelemetryProxy(this IApplicationBuilder app)
+    {
+        app.Map(
+            TelemetryProtocol.ProxyPath,
+            static branch =>
+                branch.Run(static context =>
+                    context.RequestServices.GetRequiredService<TelemetryProxy>().InvokeAsync(context)
+                )
+        );
     }
 }

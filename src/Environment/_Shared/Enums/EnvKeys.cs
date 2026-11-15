@@ -26,4 +26,6 @@ public static class EnvKeys
     public const string DisableAuthentication = "I_AM_DUMB_SO_DISABLE_AUTHENTICATION";
     public const string AppImage = "APPIMAGE";
     public const string DesktopEmbeddedDisabled = "REAPARR_DESKTOP_EMBEDDED_DISABLED";
+    public const string NuxtPublicRpHost = "NUXT_PUBLIC_RP_HOST";
+    public const string NuxtPublicRpKey = "NUXT_PUBLIC_RP_KEY";
 }
