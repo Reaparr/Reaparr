@@ -1477,6 +1477,11 @@
           "TestableIO.System.IO.Abstractions.Wrappers": "22.1.1"
         }
       },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA=="
+      },
       "System.Management": {
         "type": "Transitive",
         "resolved": "6.0.1",
@@ -1584,6 +1589,14 @@
           "xunit.v3.common": "[4.0.0]"
         }
       },
+      "Yarp.ReverseProxy": {
+        "type": "Transitive",
+        "resolved": "2.3.0",
+        "contentHash": "gxtkN3a+9biu9V9Zd5NaTO6VZWXAnS2mhQ0R/VXmSPoTuiQNZsakKikrKpDtKxrL5nUYzbRsHtl40WNq+ZBKKg==",
+        "dependencies": {
+          "System.IO.Hashing": "8.0.0"
+        }
+      },
       "Reaparr.AppHost": {
         "type": "Project",
         "dependencies": {
@@ -1611,7 +1624,8 @@
           "Serilog.AspNetCore": "[10.0.0, )",
           "Serilog.Sinks.AspNetCore.App.SignalR": "[1.2.2, )",
           "Swashbuckle.AspNetCore.SwaggerUI": "[10.3.1, )",
-          "Velopack": "[0.0.1298, )"
+          "Velopack": "[0.0.1298, )",
+          "Yarp.ReverseProxy": "[2.3.0, )"
         }
       },
       "Reaparr.Application": {
@@ -1871,10 +1885,7 @@
         }
       },
       "Reaparr.PublicAPI.Contracts": {
-        "type": "Project",
-        "dependencies": {
-          "Reaparr.Domain": "[1.0.0, )"
-        }
+        "type": "Project"
       },
       "Reaparr.Settings": {
         "type": "Project",

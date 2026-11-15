@@ -156,6 +156,15 @@
           "NuGet.Versioning": "6.14.0"
         }
       },
+      "Yarp.ReverseProxy": {
+        "type": "Direct",
+        "requested": "[2.3.0, )",
+        "resolved": "2.3.0",
+        "contentHash": "gxtkN3a+9biu9V9Zd5NaTO6VZWXAnS2mhQ0R/VXmSPoTuiQNZsakKikrKpDtKxrL5nUYzbRsHtl40WNq+ZBKKg==",
+        "dependencies": {
+          "System.IO.Hashing": "8.0.0"
+        }
+      },
       "AppAny.Quartz.EntityFrameworkCore.Migrations": {
         "type": "Transitive",
         "resolved": "0.6.0",
@@ -817,6 +826,11 @@
           "TestableIO.System.IO.Abstractions.Wrappers": "22.1.1"
         }
       },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA=="
+      },
       "System.Reactive": {
         "type": "Transitive",
         "resolved": "6.1.0",
@@ -1053,10 +1067,7 @@
         }
       },
       "Reaparr.PublicAPI.Contracts": {
-        "type": "Project",
-        "dependencies": {
-          "Reaparr.Domain": "[1.0.0, )"
-        }
+        "type": "Project"
       },
       "Reaparr.Settings": {
         "type": "Project",
