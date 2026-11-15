@@ -1,5 +1,3 @@
-using Reaparr.PlexApi.Contracts;
-
 namespace Reaparr.Application;
 
 public sealed partial class Telemetry
@@ -26,11 +24,7 @@ public sealed partial class Telemetry
         PlexAuthenticationTelemetryDTO? authentication = null
     )
     {
-        var outcome = AuthenticationOutcome(
-            TelemetryAuthenticationMethod.Token,
-            authentication,
-            result
-        );
+        var outcome = AuthenticationOutcome(TelemetryAuthenticationMethod.Token, authentication, result);
         CapturePlexAuthenticationProcessed(TelemetryAuthenticationMethod.Token, accountId, outcome);
     }
 
@@ -68,7 +62,9 @@ public sealed partial class Telemetry
             return TelemetryOutcome.Rejected;
 
         return result.IsSuccess
-            ? authentication is { IsValidated: false } ? TelemetryOutcome.Rejected : TelemetryOutcome.Succeeded
+            ? authentication is { IsValidated: false }
+                ? TelemetryOutcome.Rejected
+                : TelemetryOutcome.Succeeded
             : TelemetryOutcome.Failed;
     }
 
@@ -97,13 +93,7 @@ public sealed partial class Telemetry
         int accountCount = 0
     )
     {
-        var outcome = AccessRefreshRequestedOutcome(
-            scope,
-            result,
-            serverId,
-            accountCount,
-            result.ValueOrDefault
-        );
+        var outcome = AccessRefreshRequestedOutcome(scope, result, serverId, accountCount, result.ValueOrDefault);
         CapturePlexAccessRefreshRequested(scope, accountId, serverId, accountCount, outcome);
     }
 
@@ -145,8 +135,9 @@ public sealed partial class Telemetry
                 : TelemetryOutcome.Failed;
         }
 
-        return scope == TelemetryScope.Server && accountCount == 0
-                || scope == TelemetryScope.Account && serverId is null && reports is { Count: 0 }
+        return
+            scope == TelemetryScope.Server && accountCount == 0
+            || scope == TelemetryScope.Account && serverId is null && reports is { Count: 0 }
             ? TelemetryOutcome.NoOp
             : TelemetryOutcome.Accepted;
     }
@@ -174,13 +165,13 @@ public sealed partial class Telemetry
         Capture(TelemetryEvent.PlexAccessRefreshRequested, properties);
     }
 
-
     /// <inheritdoc/>
     public void PlexAccessRefreshValidationFinished(int accountId, TelemetryTrigger trigger, ResultBase result)
     {
-        var outcome = result.IsCancelled
-            ? TelemetryOutcome.Cancelled
-            : result.IsFailed ? TelemetryOutcome.Failed : TelemetryOutcome.Succeeded;
+        var outcome =
+            result.IsCancelled ? TelemetryOutcome.Cancelled
+            : result.IsFailed ? TelemetryOutcome.Failed
+            : TelemetryOutcome.Succeeded;
         CapturePlexAccessRefreshFinished(accountId, trigger, outcome, null);
     }
 
@@ -192,11 +183,11 @@ public sealed partial class Telemetry
         RefreshPlexAccountAccessRapportDTO? rapport = null
     )
     {
-        var outcome = result.IsCancelled
-            ? TelemetryOutcome.Cancelled
-            : result.IsFailed
-                ? TelemetryOutcome.Partial
-                : result.Value.OfflineServers.Count > 0 ? TelemetryOutcome.Partial : TelemetryOutcome.Succeeded;
+        var outcome =
+            result.IsCancelled ? TelemetryOutcome.Cancelled
+            : result.IsFailed ? TelemetryOutcome.Partial
+            : result.Value.OfflineServers.Count > 0 ? TelemetryOutcome.Partial
+            : TelemetryOutcome.Succeeded;
         CapturePlexAccessRefreshFinished(accountId, trigger, outcome, rapport);
     }
 
@@ -208,9 +199,10 @@ public sealed partial class Telemetry
         RefreshPlexAccountAccessRapportDTO? rapport = null
     )
     {
-        var outcome = result.IsCancelled
-            ? TelemetryOutcome.Cancelled
-            : result.IsFailed ? TelemetryOutcome.Partial : TelemetryOutcome.Succeeded;
+        var outcome =
+            result.IsCancelled ? TelemetryOutcome.Cancelled
+            : result.IsFailed ? TelemetryOutcome.Partial
+            : TelemetryOutcome.Succeeded;
         CapturePlexAccessRefreshFinished(accountId, trigger, outcome, rapport);
     }
 
@@ -282,9 +274,11 @@ public sealed partial class Telemetry
             new Dictionary<string, object>
             {
                 [TelemetryProperty.ServerId] = serverId,
-                [TelemetryProperty.Outcome] = (result.IsCancelled
-                    ? TelemetryOutcome.Cancelled
-                    : result.IsFailed ? TelemetryOutcome.Rejected : TelemetryOutcome.Accepted).ToString(),
+                [TelemetryProperty.Outcome] = (
+                    result.IsCancelled ? TelemetryOutcome.Cancelled
+                    : result.IsFailed ? TelemetryOutcome.Rejected
+                    : TelemetryOutcome.Accepted
+                ).ToString(),
             }
         );
 
@@ -306,9 +300,11 @@ public sealed partial class Telemetry
             new Dictionary<string, object>
             {
                 [TelemetryProperty.ServerId] = serverId,
-                [TelemetryProperty.Outcome] = (result.IsCancelled
-                    ? TelemetryOutcome.Cancelled
-                    : result.IsFailed ? TelemetryOutcome.Failed : TelemetryOutcome.Succeeded).ToString(),
+                [TelemetryProperty.Outcome] = (
+                    result.IsCancelled ? TelemetryOutcome.Cancelled
+                    : result.IsFailed ? TelemetryOutcome.Failed
+                    : TelemetryOutcome.Succeeded
+                ).ToString(),
             }
         );
 
@@ -348,11 +344,14 @@ public sealed partial class Telemetry
     public void ConnectionCheckFinished(int connectionId, Result<PlexServerStatus> result)
     {
         var status = result.ValueOrDefault;
-        var outcome = result.IsCancelled
-            ? TelemetryOutcome.Cancelled
-            : result.IsFailed ? TelemetryOutcome.Failed : TelemetryOutcome.Succeeded;
+        var outcome =
+            result.IsCancelled ? TelemetryOutcome.Cancelled
+            : result.IsFailed ? TelemetryOutcome.Failed
+            : TelemetryOutcome.Succeeded;
         var health = result.IsSuccess
-            ? result.Value.IsSuccessful ? TelemetryHealth.Healthy : TelemetryHealth.Unhealthy
+            ? result.Value.IsSuccessful
+                ? TelemetryHealth.Healthy
+                : TelemetryHealth.Unhealthy
             : TelemetryHealth.Unknown;
 
         Capture(
@@ -373,20 +372,17 @@ public sealed partial class Telemetry
         var statuses = result.ValueOrDefault;
         var hasStatuses = statuses is { Count: > 0 };
         var allUnhealthy = hasStatuses && statuses!.All(status => !status.IsSuccessful);
-        var outcome = result.IsCancelled
-            ? TelemetryOutcome.Cancelled
-            : allUnhealthy
-                ? TelemetryOutcome.Succeeded
-                : result.IsFailed
-                    ? result.HasError<ExceptionalError>()
-                        ? TelemetryOutcome.Failed
-                        : TelemetryOutcome.Rejected
-                    : TelemetryOutcome.Succeeded;
-        var health = !hasStatuses
-            ? TelemetryHealth.Unknown
-            : statuses!.Any(status => status.IsSuccessful)
-                ? TelemetryHealth.Healthy
-                : TelemetryHealth.Unhealthy;
+        var outcome =
+            result.IsCancelled ? TelemetryOutcome.Cancelled
+            : allUnhealthy ? TelemetryOutcome.Succeeded
+            : result.IsFailed
+                ? result.HasError<ExceptionalError>() ? TelemetryOutcome.Failed
+                    : TelemetryOutcome.Rejected
+            : TelemetryOutcome.Succeeded;
+        var health =
+            !hasStatuses ? TelemetryHealth.Unknown
+            : statuses!.Any(status => status.IsSuccessful) ? TelemetryHealth.Healthy
+            : TelemetryHealth.Unhealthy;
 
         Capture(
             TelemetryEvent.PlexConnectionCheckFinished,
@@ -406,9 +402,9 @@ public sealed partial class Telemetry
             new Dictionary<string, object>
             {
                 [TelemetryProperty.Outcome] = Outcome(result),
-                [TelemetryProperty.Health] = (result.IsSuccess
-                    ? TelemetryHealth.Healthy
-                    : TelemetryHealth.Unknown).ToString(),
+                [TelemetryProperty.Health] = (
+                    result.IsSuccess ? TelemetryHealth.Healthy : TelemetryHealth.Unknown
+                ).ToString(),
             }
         );
 

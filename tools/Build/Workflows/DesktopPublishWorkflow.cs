@@ -90,6 +90,7 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
                     {
                         [EnvKeys.NuxtPublicRpHost] = settings.TelemetryHost ?? string.Empty,
                         [EnvKeys.NuxtPublicRpKey] = settings.TelemetryProjectToken ?? string.Empty,
+                        [EnvKeys.PostHogCliReleaseVersion] = settings.InformationalVersion,
                     }
                 );
         }

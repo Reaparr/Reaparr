@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Reaparr.Application;
 
 public sealed partial class Telemetry
@@ -7,9 +5,10 @@ public sealed partial class Telemetry
     /// <inheritdoc/>
     public void AuthenticationProcessed(TelemetryAction action, ResultBase result, bool? rememberMe = null)
     {
-        var outcome = result.IsSuccess
-            ? TelemetryOutcome.Succeeded
-            : result.HasStatusCode(StatusCodes.Status403Forbidden) ? TelemetryOutcome.LockedOut : TelemetryOutcome.Rejected;
+        var outcome =
+            result.IsSuccess ? TelemetryOutcome.Succeeded
+            : result.HasStatusCode(StatusCodes.Status403Forbidden) ? TelemetryOutcome.LockedOut
+            : TelemetryOutcome.Rejected;
         var properties = new Dictionary<string, object>
         {
             [TelemetryProperty.Action] = action.ToString(),
@@ -25,8 +24,12 @@ public sealed partial class Telemetry
     public void CredentialsUpdateProcessed(ResultBase result, bool usernameChanged, bool passwordChanged)
     {
         var outcome = result.IsFailed
-            ? usernameChanged ? TelemetryOutcome.Partial : TelemetryOutcome.Failed
-            : usernameChanged || passwordChanged ? TelemetryOutcome.Succeeded : TelemetryOutcome.NoOp;
+            ? usernameChanged
+                ? TelemetryOutcome.Partial
+                : TelemetryOutcome.Failed
+            : usernameChanged || passwordChanged
+                ? TelemetryOutcome.Succeeded
+                : TelemetryOutcome.NoOp;
         Capture(
             TelemetryEvent.CredentialsUpdateProcessed,
             new Dictionary<string, object>
@@ -82,7 +85,9 @@ public sealed partial class Telemetry
             new Dictionary<string, object>
             {
                 [TelemetryProperty.Action] = TelemetryAction.Delete.ToString(),
-                [TelemetryProperty.Outcome] = (deletedCount == 0 ? TelemetryOutcome.NoOp : TelemetryOutcome.Succeeded).ToString(),
+                [TelemetryProperty.Outcome] = (
+                    deletedCount == 0 ? TelemetryOutcome.NoOp : TelemetryOutcome.Succeeded
+                ).ToString(),
                 [TelemetryProperty.FolderId] = folderPathId,
                 [TelemetryProperty.DeletedCount] = deletedCount,
             }
@@ -96,7 +101,9 @@ public sealed partial class Telemetry
             TelemetryEvent.NotificationVisibilityProcessed,
             new Dictionary<string, object>
             {
-                [TelemetryProperty.Outcome] = (affectedCount == 0 ? TelemetryOutcome.Rejected : TelemetryOutcome.Succeeded).ToString(),
+                [TelemetryProperty.Outcome] = (
+                    affectedCount == 0 ? TelemetryOutcome.Rejected : TelemetryOutcome.Succeeded
+                ).ToString(),
                 [TelemetryProperty.Actions.NotificationId] = notificationId,
                 [TelemetryProperty.Actions.Hidden] = hidden,
                 [TelemetryProperty.MatchedCount] = affectedCount,
@@ -111,24 +118,21 @@ public sealed partial class Telemetry
             TelemetryEvent.NotificationsCleared,
             new Dictionary<string, object>
             {
-                [TelemetryProperty.Outcome] = (deletedCount == 0 ? TelemetryOutcome.NoOp : TelemetryOutcome.Succeeded).ToString(),
+                [TelemetryProperty.Outcome] = (
+                    deletedCount == 0 ? TelemetryOutcome.NoOp : TelemetryOutcome.Succeeded
+                ).ToString(),
                 [TelemetryProperty.DeletedCount] = deletedCount,
             }
         );
     }
 
     /// <inheritdoc/>
-    public void UpdateDownloadFinished(
-        ResultBase result,
-        string? targetVersion = null,
-        bool? pendingRestart = null
-    )
+    public void UpdateDownloadFinished(ResultBase result, string? targetVersion = null, bool? pendingRestart = null)
     {
-        var outcome = !_appBuildInfo.IsDesktopMode
-            ? TelemetryOutcome.Unsupported.ToString()
-            : result.IsSuccess && targetVersion is null
-                ? TelemetryOutcome.NoUpdate.ToString()
-                : Outcome(result);
+        var outcome =
+            !_appBuildInfo.IsDesktopMode ? TelemetryOutcome.Unsupported.ToString()
+            : result.IsSuccess && targetVersion is null ? TelemetryOutcome.NoUpdate.ToString()
+            : Outcome(result);
         var properties = new Dictionary<string, object> { [TelemetryProperty.Outcome] = outcome };
         if (targetVersion is not null)
             properties[TelemetryProperty.Version] = targetVersion;

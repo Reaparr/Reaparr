@@ -267,46 +267,47 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
             CancellationToken
         );
 
-        (await ReadGenreRowsAsync(connection, "PlexGenres", CancellationToken)).ShouldBe(
-            [
-                (movieGenreId, movieGenreName, movieGenreKey, dramaType),
-                (tvGenreId, tvGenreName, tvGenreKey, comedyType),
-                (unreferencedGenreId, unreferencedGenreName, unreferencedGenreKey, unknownType),
-            ]
-        );
-        (await ReadFolderRowsAsync(connection, "FolderPaths", CancellationToken)).ShouldBe(
-            [
-                (musicFolderId, "Legacy Music", folderType, musicMediaType, musicPath),
-                (photosFolderId, "Legacy Photos", folderType, photosMediaType, photosPath),
-                (controlFolderId, "Legacy Movie", folderType, controlMediaType, controlPath),
-            ]
-        );
-        (await ReadLibraryGenreRowsAsync(connection, "PlexLibraryGenres", CancellationToken)).ShouldBe(
-            [(movieLibraryId, movieGenreId), (tvLibraryId, tvGenreId)]
-        );
-        (await ReadMediaGenreRowsAsync(connection, "PlexMovieGenres", "PlexMovieId", CancellationToken)).ShouldBe(
-            [(movieGenreId, movieLibraryId, movieId)]
-        );
-        (await ReadMediaGenreRowsAsync(connection, "PlexTvShowGenres", "PlexTvShowId", CancellationToken)).ShouldBe(
-            [(tvGenreId, tvLibraryId, tvShowId)]
-        );
+        (await ReadGenreRowsAsync(connection, "PlexGenres", CancellationToken)).ShouldBe([
+            (movieGenreId, movieGenreName, movieGenreKey, dramaType),
+            (tvGenreId, tvGenreName, tvGenreKey, comedyType),
+            (unreferencedGenreId, unreferencedGenreName, unreferencedGenreKey, unknownType),
+        ]);
+        (await ReadFolderRowsAsync(connection, "FolderPaths", CancellationToken)).ShouldBe([
+            (musicFolderId, "Legacy Music", folderType, musicMediaType, musicPath),
+            (photosFolderId, "Legacy Photos", folderType, photosMediaType, photosPath),
+            (controlFolderId, "Legacy Movie", folderType, controlMediaType, controlPath),
+        ]);
+        (await ReadLibraryGenreRowsAsync(connection, "PlexLibraryGenres", CancellationToken)).ShouldBe([
+            (movieLibraryId, movieGenreId),
+            (tvLibraryId, tvGenreId),
+        ]);
+        (await ReadMediaGenreRowsAsync(connection, "PlexMovieGenres", "PlexMovieId", CancellationToken)).ShouldBe([
+            (movieGenreId, movieLibraryId, movieId),
+        ]);
+        (await ReadMediaGenreRowsAsync(connection, "PlexTvShowGenres", "PlexTvShowId", CancellationToken)).ShouldBe([
+            (tvGenreId, tvLibraryId, tvShowId),
+        ]);
 
-        (await ReadScalarStringAsync(
-            connection,
-            $"SELECT \"Type\" FROM \"PlexLibraries\" WHERE \"Id\" = {musicLibraryId};",
-            CancellationToken
-        )).ShouldBe("Music");
-        (await ReadScalarStringAsync(
-            connection,
-            $"SELECT \"Type\" FROM \"PlexLibraries\" WHERE \"Id\" = {photosLibraryId};",
-            CancellationToken
-        )).ShouldBe("Photos");
         (
-            await ReadQualityRowsAsync(connection, "PlexMovie", "Quality", CancellationToken)
-        ).ShouldBe([(movieId, movieParentQuality)]);
+            await ReadScalarStringAsync(
+                connection,
+                $"SELECT \"Type\" FROM \"PlexLibraries\" WHERE \"Id\" = {musicLibraryId};",
+                CancellationToken
+            )
+        ).ShouldBe("Music");
         (
-            await ReadQualityRowsAsync(connection, "PlexTvShows", "Quality", CancellationToken)
-        ).ShouldBe([(tvShowId, tvParentQuality)]);
+            await ReadScalarStringAsync(
+                connection,
+                $"SELECT \"Type\" FROM \"PlexLibraries\" WHERE \"Id\" = {photosLibraryId};",
+                CancellationToken
+            )
+        ).ShouldBe("Photos");
+        (await ReadQualityRowsAsync(connection, "PlexMovie", "Quality", CancellationToken)).ShouldBe([
+            (movieId, movieParentQuality),
+        ]);
+        (await ReadQualityRowsAsync(connection, "PlexTvShows", "Quality", CancellationToken)).ShouldBe([
+            (tvShowId, tvParentQuality),
+        ]);
 
         var movieMediaRowsBefore = await ReadMediaQualityRowsAsync(
             connection,
@@ -319,12 +320,10 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         movieMediaRowsBefore.Select(x => x.Quality).ShouldBe([movieVideoResolution, movieSecondaryVideoResolution]);
         (
             await ReadMediaQualityRowsAsync(connection, "PlexMovieData", "PlexMovieId", "Quality", CancellationToken)
-        ).ShouldBe(
-            [
-                (movieMediaRowsBefore[0].Id, movieId, movieLegacyQuality),
-                (movieMediaRowsBefore[1].Id, movieId, movieSecondaryQuality),
-            ]
-        );
+        ).ShouldBe([
+            (movieMediaRowsBefore[0].Id, movieId, movieLegacyQuality),
+            (movieMediaRowsBefore[1].Id, movieId, movieSecondaryQuality),
+        ]);
 
         var tvMediaRowsBefore = await ReadMediaQualityRowsAsync(
             connection,
@@ -343,12 +342,10 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "Quality",
                 CancellationToken
             )
-        ).ShouldBe(
-            [
-                (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvLegacyQuality),
-                (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryQuality),
-            ]
-        );
+        ).ShouldBe([
+            (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvLegacyQuality),
+            (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryQuality),
+        ]);
 
         var movieDownloadFileRowsBefore = await ReadDownloadFileQualityRowsAsync(
             connection,
@@ -370,16 +367,20 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         await migrator.MigrateAsync(targetMigration, CancellationToken);
 
         // Assert
-        (await ReadScalarIntAsync(
-            connection,
-            "SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = 'table' AND \"name\" = 'PlexGenresVideo';",
-            CancellationToken
-        )).ShouldBe(1);
-        (await ReadScalarIntAsync(
-            connection,
-            "SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = 'table' AND \"name\" = 'PlexGenres';",
-            CancellationToken
-        )).ShouldBe(0);
+        (
+            await ReadScalarIntAsync(
+                connection,
+                "SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = 'table' AND \"name\" = 'PlexGenresVideo';",
+                CancellationToken
+            )
+        ).ShouldBe(1);
+        (
+            await ReadScalarIntAsync(
+                connection,
+                "SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = 'table' AND \"name\" = 'PlexGenres';",
+                CancellationToken
+            )
+        ).ShouldBe(0);
 
         await database.ExecuteSqlInterpolatedAsync(
             $"""
@@ -402,46 +403,39 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                         x.Type,
                     })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [
-                    new
-                    {
-                        Id = movieGenreId,
-                        Name = movieGenreName,
-                        Key = movieGenreKey,
-                        Type = PlexGenreType.Drama,
-                    },
-                    new
-                    {
-                        Id = tvGenreId,
-                        Name = tvGenreName,
-                        Key = tvGenreKey,
-                        Type = PlexGenreType.Comedy,
-                    },
-                    new
-                    {
-                        Id = unreferencedGenreId,
-                        Name = unreferencedGenreName,
-                        Key = unreferencedGenreKey,
-                        Type = PlexGenreType.Unknown,
-                    },
-                ]
-            );
+            ).ShouldBe([
+                new
+                {
+                    Id = movieGenreId,
+                    Name = movieGenreName,
+                    Key = movieGenreKey,
+                    Type = PlexGenreType.Drama,
+                },
+                new
+                {
+                    Id = tvGenreId,
+                    Name = tvGenreName,
+                    Key = tvGenreKey,
+                    Type = PlexGenreType.Comedy,
+                },
+                new
+                {
+                    Id = unreferencedGenreId,
+                    Name = unreferencedGenreName,
+                    Key = unreferencedGenreKey,
+                    Type = PlexGenreType.Unknown,
+                },
+            ]);
             (
                 await upgradedContext
-                    .PlexLibraryGenresVideo.OrderBy(x => x.PlexGenreId).ThenBy(x => x.PlexLibraryId)
-                    .Select(x => new
-                    {
-                        x.PlexLibraryId,
-                        x.PlexGenreId,
-                    })
+                    .PlexLibraryGenresVideo.OrderBy(x => x.PlexGenreId)
+                    .ThenBy(x => x.PlexLibraryId)
+                    .Select(x => new { x.PlexLibraryId, x.PlexGenreId })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [
-                    new { PlexLibraryId = movieLibraryId, PlexGenreId = movieGenreId },
-                    new { PlexLibraryId = tvLibraryId, PlexGenreId = tvGenreId },
-                ]
-            );
+            ).ShouldBe([
+                new { PlexLibraryId = movieLibraryId, PlexGenreId = movieGenreId },
+                new { PlexLibraryId = tvLibraryId, PlexGenreId = tvGenreId },
+            ]);
             (
                 await upgradedContext
                     .PlexMovieGenres.OrderBy(x => x.GenresId)
@@ -452,9 +446,14 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                         x.PlexMovieId,
                     })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [new { GenresId = movieGenreId, PlexLibraryId = movieLibraryId, PlexMovieId = movieId }]
-            );
+            ).ShouldBe([
+                new
+                {
+                    GenresId = movieGenreId,
+                    PlexLibraryId = movieLibraryId,
+                    PlexMovieId = movieId,
+                },
+            ]);
             (
                 await upgradedContext
                     .PlexTvShowGenres.OrderBy(x => x.GenresId)
@@ -465,9 +464,14 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                         x.PlexTvShowId,
                     })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [new { GenresId = tvGenreId, PlexLibraryId = tvLibraryId, PlexTvShowId = tvShowId }]
-            );
+            ).ShouldBe([
+                new
+                {
+                    GenresId = tvGenreId,
+                    PlexLibraryId = tvLibraryId,
+                    PlexTvShowId = tvShowId,
+                },
+            ]);
             (
                 await upgradedContext
                     .PlexLibraries.Where(x => x.Id == musicLibraryId || x.Id == photosLibraryId)
@@ -481,26 +485,24 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                         x.MediaCount,
                     })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [
-                    new
-                    {
-                        Id = musicLibraryId,
-                        Type = PlexMediaType.MusicArtist,
-                        MusicArtistCount = musicCount,
-                        PhotoAlbumCount = 0,
-                        MediaCount = musicCount,
-                    },
-                    new
-                    {
-                        Id = photosLibraryId,
-                        Type = PlexMediaType.PhotoAlbum,
-                        MusicArtistCount = 0,
-                        PhotoAlbumCount = photoCount,
-                        MediaCount = photoCount,
-                    },
-                ]
-            );
+            ).ShouldBe([
+                new
+                {
+                    Id = musicLibraryId,
+                    Type = PlexMediaType.MusicArtist,
+                    MusicArtistCount = musicCount,
+                    PhotoAlbumCount = 0,
+                    MediaCount = musicCount,
+                },
+                new
+                {
+                    Id = photosLibraryId,
+                    Type = PlexMediaType.PhotoAlbum,
+                    MusicArtistCount = 0,
+                    PhotoAlbumCount = photoCount,
+                    MediaCount = photoCount,
+                },
+            ]);
             (
                 await upgradedContext
                     .PlexMovies.Where(x => x.Id == movieId)
@@ -517,59 +519,64 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 await upgradedContext
                     .PlexMovieData.Where(x => x.PlexMovieId == movieId)
                     .OrderBy(x => x.Id)
-                    .Select(x => new { x.Id, x.PlexMovieId, x.VideoQuality })
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.PlexMovieId,
+                        x.VideoQuality,
+                    })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [
-                    new
-                    {
-                        Id = movieMediaRowsBefore[0].Id,
-                        PlexMovieId = movieId,
-                        VideoQuality = (VideoQuality)movieVideoResolution,
-                    },
-                    new
-                    {
-                        Id = movieMediaRowsBefore[1].Id,
-                        PlexMovieId = movieId,
-                        VideoQuality = (VideoQuality)movieSecondaryVideoResolution,
-                    },
-                ]
-            );
+            ).ShouldBe([
+                new
+                {
+                    movieMediaRowsBefore[0].Id,
+                    PlexMovieId = movieId,
+                    VideoQuality = (VideoQuality)movieVideoResolution,
+                },
+                new
+                {
+                    movieMediaRowsBefore[1].Id,
+                    PlexMovieId = movieId,
+                    VideoQuality = (VideoQuality)movieSecondaryVideoResolution,
+                },
+            ]);
             (
                 await upgradedContext
                     .PlexTvShowEpisodeData.Where(x => x.PlexTvShowEpisodeId == tvShowEpisodeId)
                     .OrderBy(x => x.Id)
-                    .Select(x => new { x.Id, x.PlexTvShowEpisodeId, x.VideoQuality })
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.PlexTvShowEpisodeId,
+                        x.VideoQuality,
+                    })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [
-                    new
-                    {
-                        Id = tvMediaRowsBefore[0].Id,
-                        PlexTvShowEpisodeId = tvShowEpisodeId,
-                        VideoQuality = (VideoQuality)tvVideoResolution,
-                    },
-                    new
-                    {
-                        Id = tvMediaRowsBefore[1].Id,
-                        PlexTvShowEpisodeId = tvShowEpisodeId,
-                        VideoQuality = (VideoQuality)tvSecondaryVideoResolution,
-                    },
-                ]
-            );
+            ).ShouldBe([
+                new
+                {
+                    tvMediaRowsBefore[0].Id,
+                    PlexTvShowEpisodeId = tvShowEpisodeId,
+                    VideoQuality = (VideoQuality)tvVideoResolution,
+                },
+                new
+                {
+                    tvMediaRowsBefore[1].Id,
+                    PlexTvShowEpisodeId = tvShowEpisodeId,
+                    VideoQuality = (VideoQuality)tvSecondaryVideoResolution,
+                },
+            ]);
             (
                 await upgradedContext
-                    .DownloadTaskMovieFile.Select(x => new { x.Id, x.VideoQuality }).ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [new { Id = movieDownloadFileRowsBefore[0].Id, VideoQuality = (VideoQuality)movieDownloadFileQuality }]
-            );
+                    .DownloadTaskMovieFile.Select(x => new { x.Id, x.VideoQuality })
+                    .ToListAsync(CancellationToken)
+            ).ShouldBe([
+                new { movieDownloadFileRowsBefore[0].Id, VideoQuality = (VideoQuality)movieDownloadFileQuality },
+            ]);
             (
                 await upgradedContext
                     .DownloadTaskTvShowEpisodeFile.Select(x => new { x.Id, x.VideoQuality })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [new { Id = tvDownloadFileRowsBefore[0].Id, VideoQuality = (VideoQuality)tvDownloadFileQuality }]
-            );
+            ).ShouldBe([new { tvDownloadFileRowsBefore[0].Id, VideoQuality = (VideoQuality)tvDownloadFileQuality }]);
             (
                 await upgradedContext
                     .FolderPaths.Where(x => x.Id == musicFolderId || x.Id == photosFolderId || x.Id == controlFolderId)
@@ -583,34 +590,32 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                         x.DirectoryPath,
                     })
                     .ToListAsync(CancellationToken)
-            ).ShouldBe(
-                [
-                    new
-                    {
-                        Id = musicFolderId,
-                        DisplayName = "Legacy Music",
-                        FolderType = FolderType.DownloadFolder,
-                        MediaType = PlexMediaType.MusicArtist,
-                        DirectoryPath = musicPath,
-                    },
-                    new
-                    {
-                        Id = photosFolderId,
-                        DisplayName = "Legacy Photos",
-                        FolderType = FolderType.DownloadFolder,
-                        MediaType = PlexMediaType.PhotoAlbum,
-                        DirectoryPath = photosPath,
-                    },
-                    new
-                    {
-                        Id = controlFolderId,
-                        DisplayName = "Legacy Movie",
-                        FolderType = FolderType.DownloadFolder,
-                        MediaType = PlexMediaType.Movie,
-                        DirectoryPath = controlPath,
-                    },
-                ]
-            );
+            ).ShouldBe([
+                new
+                {
+                    Id = musicFolderId,
+                    DisplayName = "Legacy Music",
+                    FolderType = FolderType.DownloadFolder,
+                    MediaType = PlexMediaType.MusicArtist,
+                    DirectoryPath = musicPath,
+                },
+                new
+                {
+                    Id = photosFolderId,
+                    DisplayName = "Legacy Photos",
+                    FolderType = FolderType.DownloadFolder,
+                    MediaType = PlexMediaType.PhotoAlbum,
+                    DirectoryPath = photosPath,
+                },
+                new
+                {
+                    Id = controlFolderId,
+                    DisplayName = "Legacy Movie",
+                    FolderType = FolderType.DownloadFolder,
+                    MediaType = PlexMediaType.Movie,
+                    DirectoryPath = controlPath,
+                },
+            ]);
 
             // Normal current-model reads must resolve both legacy media joins after the upgrade.
             (
@@ -637,31 +642,21 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                     Type = PlexGenreType.Western,
                 }
             );
-            upgradedContext.PlexLibraryGenresVideo.Add(
-                new PlexLibraryGenresVideo(movieLibraryId, postUpgradeGenreId)
-            );
+            upgradedContext.PlexLibraryGenresVideo.Add(new PlexLibraryGenresVideo(movieLibraryId, postUpgradeGenreId));
             await upgradedContext.SaveChangesAsync(CancellationToken);
         }
 
-        (
-            await ReadGenreRowsAsync(connection, "PlexGenresVideo", CancellationToken)
-        ).ShouldBe(
-            [
-                (movieGenreId, movieGenreName, movieGenreKey, dramaType),
-                (tvGenreId, tvGenreName, tvGenreKey, comedyType),
-                (unreferencedGenreId, unreferencedGenreName, unreferencedGenreKey, unknownType),
-                (postUpgradeGenreId, postUpgradeGenreName, postUpgradeGenreKey, westernType),
-            ]
-        );
-        (
-            await ReadLibraryGenreRowsAsync(connection, "PlexLibraryGenresVideo", CancellationToken)
-        ).ShouldBe(
-            [
-                (movieLibraryId, movieGenreId),
-                (tvLibraryId, tvGenreId),
-                (movieLibraryId, postUpgradeGenreId),
-            ]
-        );
+        (await ReadGenreRowsAsync(connection, "PlexGenresVideo", CancellationToken)).ShouldBe([
+            (movieGenreId, movieGenreName, movieGenreKey, dramaType),
+            (tvGenreId, tvGenreName, tvGenreKey, comedyType),
+            (unreferencedGenreId, unreferencedGenreName, unreferencedGenreKey, unknownType),
+            (postUpgradeGenreId, postUpgradeGenreName, postUpgradeGenreKey, westernType),
+        ]);
+        (await ReadLibraryGenreRowsAsync(connection, "PlexLibraryGenresVideo", CancellationToken)).ShouldBe([
+            (movieLibraryId, movieGenreId),
+            (tvLibraryId, tvGenreId),
+            (movieLibraryId, postUpgradeGenreId),
+        ]);
         (await ReadForeignKeyViolationCountAsync(connection, CancellationToken)).ShouldBe(0);
         (await ReadScalarIntAsync(connection, "PRAGMA foreign_keys;", CancellationToken)).ShouldBe(1);
 
@@ -688,43 +683,58 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         // The shared database also contains Identity and pre-existing legacy tables.
         // Compare the full current model, and prove unrelated tables remain unchanged.
         var modelTables = ensureCreatedSchema.Schema.Tables.ToHashSet(StringComparer.Ordinal);
-        var unrelatedTables = precedingSchema.Tables
-            .Except(modelTables)
+        var unrelatedTables = precedingSchema
+            .Tables.Except(modelTables)
             .Except(["PlexGenres", "PlexLibraryGenres"])
             .ToHashSet(StringComparer.Ordinal);
         migratedSchema.Tables.Where(modelTables.Contains).ShouldBe(ensureCreatedSchema.Schema.Tables);
-        migratedSchema.Tables.Where(x => !modelTables.Contains(x))
+        migratedSchema
+            .Tables.Where(x => !modelTables.Contains(x))
             .ShouldBe(unrelatedTables.Order(StringComparer.Ordinal));
         // An earlier migration left DEFAULT 0 on ForceMediaRefresh; the current
         // model has no default. Preserve and explicitly bound that existing drift.
         var legacyDefault = precedingSchema.Columns.Single(x =>
-            x.Table == "BackgroundJobLibrarySyncJobQueues" && x.Name == "ForceMediaRefresh");
+            x.Table == "BackgroundJobLibrarySyncJobQueues" && x.Name == "ForceMediaRefresh"
+        );
         legacyDefault.DefaultValue.ShouldBe("0");
-        migratedSchema.Columns.Single(x => x.Table == legacyDefault.Table && x.Name == legacyDefault.Name)
+        migratedSchema
+            .Columns.Single(x => x.Table == legacyDefault.Table && x.Name == legacyDefault.Name)
             .ShouldBe(legacyDefault);
-        var expectedColumns = ensureCreatedSchema.Schema.Columns.Select(x =>
-        {
-            if (x.Table == legacyDefault.Table && x.Name == legacyDefault.Name)
-                x.DefaultValue = legacyDefault.DefaultValue;
-            return x;
-        }).ToList();
-        migratedSchema.Columns.Where(x => modelTables.Contains(x.Table))
-            .Except(expectedColumns).ShouldBeEmpty("Unexpected migrated column definitions");
-        expectedColumns.Except(migratedSchema.Columns)
-            .ShouldBeEmpty("Missing current-model column definitions");
-        migratedSchema.Indexes.Where(x => modelTables.Contains(x.Table))
-            .Except(ensureCreatedSchema.Schema.Indexes).ShouldBeEmpty("Unexpected migrated index definitions");
-        ensureCreatedSchema.Schema.Indexes.Except(migratedSchema.Indexes)
+        var expectedColumns = ensureCreatedSchema
+            .Schema.Columns.Select(x =>
+            {
+                if (x.Table == legacyDefault.Table && x.Name == legacyDefault.Name)
+                    x.DefaultValue = legacyDefault.DefaultValue;
+                return x;
+            })
+            .ToList();
+        migratedSchema
+            .Columns.Where(x => modelTables.Contains(x.Table))
+            .Except(expectedColumns)
+            .ShouldBeEmpty("Unexpected migrated column definitions");
+        expectedColumns.Except(migratedSchema.Columns).ShouldBeEmpty("Missing current-model column definitions");
+        migratedSchema
+            .Indexes.Where(x => modelTables.Contains(x.Table))
+            .Except(ensureCreatedSchema.Schema.Indexes)
+            .ShouldBeEmpty("Unexpected migrated index definitions");
+        ensureCreatedSchema
+            .Schema.Indexes.Except(migratedSchema.Indexes)
             .ShouldBeEmpty("Missing current-model index definitions");
-        migratedSchema.ForeignKeys.Where(x => modelTables.Contains(x.Table))
-            .Except(ensureCreatedSchema.Schema.ForeignKeys).ShouldBeEmpty("Unexpected migrated foreign keys");
-        ensureCreatedSchema.Schema.ForeignKeys.Except(migratedSchema.ForeignKeys)
+        migratedSchema
+            .ForeignKeys.Where(x => modelTables.Contains(x.Table))
+            .Except(ensureCreatedSchema.Schema.ForeignKeys)
+            .ShouldBeEmpty("Unexpected migrated foreign keys");
+        ensureCreatedSchema
+            .Schema.ForeignKeys.Except(migratedSchema.ForeignKeys)
             .ShouldBeEmpty("Missing current-model foreign keys");
-        migratedSchema.Columns.Where(x => unrelatedTables.Contains(x.Table))
+        migratedSchema
+            .Columns.Where(x => unrelatedTables.Contains(x.Table))
             .ShouldBe(precedingSchema.Columns.Where(x => unrelatedTables.Contains(x.Table)));
-        migratedSchema.Indexes.Where(x => unrelatedTables.Contains(x.Table))
+        migratedSchema
+            .Indexes.Where(x => unrelatedTables.Contains(x.Table))
             .ShouldBe(precedingSchema.Indexes.Where(x => unrelatedTables.Contains(x.Table)));
-        migratedSchema.ForeignKeys.Where(x => unrelatedTables.Contains(x.Table))
+        migratedSchema
+            .ForeignKeys.Where(x => unrelatedTables.Contains(x.Table))
             .ShouldBe(precedingSchema.ForeignKeys.Where(x => unrelatedTables.Contains(x.Table)));
         migratedSchema.ComputedColumns.ShouldBe(ensureCreatedSchema.Schema.ComputedColumns);
 
@@ -732,67 +742,63 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         await migrator.MigrateAsync(precedingMigration, CancellationToken);
 
         // Assert
-        (await ReadScalarIntAsync(
-            connection,
-            "SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = 'table' AND \"name\" = 'PlexGenres';",
-            CancellationToken
-        )).ShouldBe(1);
-        (await ReadScalarIntAsync(
-            connection,
-            "SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = 'table' AND \"name\" = 'PlexGenresVideo';",
-            CancellationToken
-        )).ShouldBe(0);
-        (await ReadGenreRowsAsync(connection, "PlexGenres", CancellationToken)).ShouldBe(
-            [
-                (movieGenreId, movieGenreName, movieGenreKey, dramaType),
-                (tvGenreId, tvGenreName, tvGenreKey, comedyType),
-                (unreferencedGenreId, unreferencedGenreName, unreferencedGenreKey, unknownType),
-                (postUpgradeGenreId, postUpgradeGenreName, postUpgradeGenreKey, westernType),
-            ]
-        );
-        (await ReadLibraryGenreRowsAsync(connection, "PlexLibraryGenres", CancellationToken)).ShouldBe(
-            [
-                (movieLibraryId, movieGenreId),
-                (tvLibraryId, tvGenreId),
-                (movieLibraryId, postUpgradeGenreId),
-            ]
-        );
-        (await ReadMediaGenreRowsAsync(connection, "PlexMovieGenres", "PlexMovieId", CancellationToken)).ShouldBe(
-            [(movieGenreId, movieLibraryId, movieId)]
-        );
-        (await ReadMediaGenreRowsAsync(connection, "PlexTvShowGenres", "PlexTvShowId", CancellationToken)).ShouldBe(
-            [(tvGenreId, tvLibraryId, tvShowId)]
-        );
-        (await ReadScalarStringAsync(
-            connection,
-            $"SELECT \"Type\" FROM \"PlexLibraries\" WHERE \"Id\" = {musicLibraryId};",
-            CancellationToken
-        )).ShouldBe("Music");
-        (await ReadScalarStringAsync(
-            connection,
-            $"SELECT \"Type\" FROM \"PlexLibraries\" WHERE \"Id\" = {photosLibraryId};",
-            CancellationToken
-        )).ShouldBe("Photos");
         (
-            await ReadQualityRowsAsync(connection, "PlexMovie", "Quality", CancellationToken)
-        ).ShouldBe([(movieId, movieParentQuality)]);
-        (
-            await ReadQualityRowsAsync(connection, "PlexTvShows", "Quality", CancellationToken)
-        ).ShouldBe([(tvShowId, tvParentQuality)]);
-        (
-            await ReadMediaQualityRowsAsync(
+            await ReadScalarIntAsync(
                 connection,
-                "PlexMovieData",
-                "PlexMovieId",
-                "Quality",
+                "SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = 'table' AND \"name\" = 'PlexGenres';",
                 CancellationToken
             )
-        ).ShouldBe(
-            [
-                (movieMediaRowsBefore[0].Id, movieId, movieLegacyQuality),
-                (movieMediaRowsBefore[1].Id, movieId, movieSecondaryQuality),
-            ]
-        );
+        ).ShouldBe(1);
+        (
+            await ReadScalarIntAsync(
+                connection,
+                "SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = 'table' AND \"name\" = 'PlexGenresVideo';",
+                CancellationToken
+            )
+        ).ShouldBe(0);
+        (await ReadGenreRowsAsync(connection, "PlexGenres", CancellationToken)).ShouldBe([
+            (movieGenreId, movieGenreName, movieGenreKey, dramaType),
+            (tvGenreId, tvGenreName, tvGenreKey, comedyType),
+            (unreferencedGenreId, unreferencedGenreName, unreferencedGenreKey, unknownType),
+            (postUpgradeGenreId, postUpgradeGenreName, postUpgradeGenreKey, westernType),
+        ]);
+        (await ReadLibraryGenreRowsAsync(connection, "PlexLibraryGenres", CancellationToken)).ShouldBe([
+            (movieLibraryId, movieGenreId),
+            (tvLibraryId, tvGenreId),
+            (movieLibraryId, postUpgradeGenreId),
+        ]);
+        (await ReadMediaGenreRowsAsync(connection, "PlexMovieGenres", "PlexMovieId", CancellationToken)).ShouldBe([
+            (movieGenreId, movieLibraryId, movieId),
+        ]);
+        (await ReadMediaGenreRowsAsync(connection, "PlexTvShowGenres", "PlexTvShowId", CancellationToken)).ShouldBe([
+            (tvGenreId, tvLibraryId, tvShowId),
+        ]);
+        (
+            await ReadScalarStringAsync(
+                connection,
+                $"SELECT \"Type\" FROM \"PlexLibraries\" WHERE \"Id\" = {musicLibraryId};",
+                CancellationToken
+            )
+        ).ShouldBe("Music");
+        (
+            await ReadScalarStringAsync(
+                connection,
+                $"SELECT \"Type\" FROM \"PlexLibraries\" WHERE \"Id\" = {photosLibraryId};",
+                CancellationToken
+            )
+        ).ShouldBe("Photos");
+        (await ReadQualityRowsAsync(connection, "PlexMovie", "Quality", CancellationToken)).ShouldBe([
+            (movieId, movieParentQuality),
+        ]);
+        (await ReadQualityRowsAsync(connection, "PlexTvShows", "Quality", CancellationToken)).ShouldBe([
+            (tvShowId, tvParentQuality),
+        ]);
+        (
+            await ReadMediaQualityRowsAsync(connection, "PlexMovieData", "PlexMovieId", "Quality", CancellationToken)
+        ).ShouldBe([
+            (movieMediaRowsBefore[0].Id, movieId, movieLegacyQuality),
+            (movieMediaRowsBefore[1].Id, movieId, movieSecondaryQuality),
+        ]);
         (
             await ReadMediaQualityRowsAsync(
                 connection,
@@ -801,12 +807,10 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "Quality",
                 CancellationToken
             )
-        ).ShouldBe(
-            [
-                (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvLegacyQuality),
-                (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryQuality),
-            ]
-        );
+        ).ShouldBe([
+            (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvLegacyQuality),
+            (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryQuality),
+        ]);
         (
             await ReadMediaQualityRowsAsync(
                 connection,
@@ -815,12 +819,10 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "VideoResolution",
                 CancellationToken
             )
-        ).ShouldBe(
-            [
-                (movieMediaRowsBefore[0].Id, movieId, movieVideoResolution),
-                (movieMediaRowsBefore[1].Id, movieId, movieSecondaryVideoResolution),
-            ]
-        );
+        ).ShouldBe([
+            (movieMediaRowsBefore[0].Id, movieId, movieVideoResolution),
+            (movieMediaRowsBefore[1].Id, movieId, movieSecondaryVideoResolution),
+        ]);
         (
             await ReadMediaQualityRowsAsync(
                 connection,
@@ -829,25 +831,21 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 "VideoResolution",
                 CancellationToken
             )
-        ).ShouldBe(
-            [
-                (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvVideoResolution),
-                (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryVideoResolution),
-            ]
-        );
-        (
-            await ReadDownloadFileQualityRowsAsync(connection, "DownloadTaskMovieFile", CancellationToken)
-        ).ShouldBe([(movieDownloadFileRowsBefore[0].Id, movieDownloadFileQuality)]);
+        ).ShouldBe([
+            (tvMediaRowsBefore[0].Id, tvShowEpisodeId, tvVideoResolution),
+            (tvMediaRowsBefore[1].Id, tvShowEpisodeId, tvSecondaryVideoResolution),
+        ]);
+        (await ReadDownloadFileQualityRowsAsync(connection, "DownloadTaskMovieFile", CancellationToken)).ShouldBe([
+            (movieDownloadFileRowsBefore[0].Id, movieDownloadFileQuality),
+        ]);
         (
             await ReadDownloadFileQualityRowsAsync(connection, "DownloadTaskTvShowEpisodeFile", CancellationToken)
         ).ShouldBe([(tvDownloadFileRowsBefore[0].Id, tvDownloadFileQuality)]);
-        (await ReadFolderRowsAsync(connection, "FolderPaths", CancellationToken)).ShouldBe(
-            [
-                (musicFolderId, "Legacy Music", folderType, musicMediaType, musicPath),
-                (photosFolderId, "Legacy Photos", folderType, photosMediaType, photosPath),
-                (controlFolderId, "Legacy Movie", folderType, controlMediaType, controlPath),
-            ]
-        );
+        (await ReadFolderRowsAsync(connection, "FolderPaths", CancellationToken)).ShouldBe([
+            (musicFolderId, "Legacy Music", folderType, musicMediaType, musicPath),
+            (photosFolderId, "Legacy Photos", folderType, photosMediaType, photosPath),
+            (controlFolderId, "Legacy Movie", folderType, controlMediaType, controlPath),
+        ]);
         (await ReadForeignKeyViolationCountAsync(connection, CancellationToken)).ShouldBe(0);
         (await ReadScalarIntAsync(connection, "PRAGMA foreign_keys;", CancellationToken)).ShouldBe(1);
     }
@@ -865,9 +863,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
 
         var options = new DbContextOptionsBuilder<ReaparrDbContext>();
         options.ConfigureSqlite(databaseName, SqliteOpenMode.Memory);
-        new SqliteDbContextOptionsBuilder(options).MigrationsAssembly(
-            typeof(ReaparrDbContext).Assembly.FullName
-        );
+        new SqliteDbContextOptionsBuilder(options).MigrationsAssembly(typeof(ReaparrDbContext).Assembly.FullName);
         await using var dbContext = new ReaparrDbContext(
             options.Options,
             Mock.Container.Resolve<ILogger>(),
@@ -907,7 +903,13 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         (
             await dbContext
                 .PlexGenresVideo.Where(x => x.Id == 5901)
-                .Select(x => new { x.Id, x.Name, x.Key, x.Type })
+                .Select(x => new
+                {
+                    x.Id,
+                    x.Name,
+                    x.Key,
+                    x.Type,
+                })
                 .SingleAsync(CancellationToken)
         ).ShouldBe(
             new
@@ -921,7 +923,14 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         (
             await dbContext
                 .FolderPaths.Where(x => x.Id == 5902)
-                .Select(x => new { x.Id, x.DisplayName, x.FolderType, x.MediaType, x.DirectoryPath })
+                .Select(x => new
+                {
+                    x.Id,
+                    x.DisplayName,
+                    x.FolderType,
+                    x.MediaType,
+                    x.DirectoryPath,
+                })
                 .SingleAsync(CancellationToken)
         ).ShouldBe(
             new
@@ -968,8 +977,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
     )
     {
         await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"SELECT \"Id\", \"{qualityColumn}\" FROM \"{tableName}\" ORDER BY \"Id\";";
+        command.CommandText = $"SELECT \"Id\", \"{qualityColumn}\" FROM \"{tableName}\" ORDER BY \"Id\";";
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var rows = new List<(int Id, int Quality)>();
         while (await reader.ReadAsync(cancellationToken))
@@ -1012,20 +1020,26 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
 
     private sealed record SchemaSnapshot(
         List<string> Tables,
-        List<(string Table, string Name, string Type, int NotNull, string? DefaultValue, int PrimaryKey, int Hidden)> Columns,
+        List<(
+            string Table,
+            string Name,
+            string Type,
+            int NotNull,
+            string? DefaultValue,
+            int PrimaryKey,
+            int Hidden
+        )> Columns,
         List<(string Table, string Name, int Unique, string Columns, string Filter)> Indexes,
-        List<
-            (
-                string Table,
-                int Sequence,
-                string PrincipalTable,
-                string From,
-                string To,
-                string OnUpdate,
-                string OnDelete,
-                string Match
-            )
-        > ForeignKeys,
+        List<(
+            string Table,
+            int Sequence,
+            string PrincipalTable,
+            string From,
+            string To,
+            string OnUpdate,
+            string OnDelete,
+            string Match
+        )> ForeignKeys,
         List<(string Table, string Column, string Expression)> ComputedColumns
     );
 
@@ -1034,9 +1048,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         List<(string Table, string Column, string Expression)> ComputedColumns
     );
 
-    private async Task<EnsureCreatedSchemaResult> CreateEnsureCreatedSchemaAsync(
-        CancellationToken cancellationToken
-    )
+    private async Task<EnsureCreatedSchemaResult> CreateEnsureCreatedSchemaAsync(CancellationToken cancellationToken)
     {
         var databaseName = MockDatabase.GetMemoryDatabaseName();
         await using var keepAlive = new SqliteConnection(
@@ -1088,8 +1100,8 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
 
                 var normalizedSql = NormalizeSql(computedSql);
                 if (
-                    computedColumns.Any(
-                        x => x.Table == tableName && x.Column == columnName && x.Expression == normalizedSql
+                    computedColumns.Any(x =>
+                        x.Table == tableName && x.Column == columnName && x.Expression == normalizedSql
                     )
                 )
                     continue;
@@ -1119,8 +1131,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         var tables = new List<string>();
         await using (var tableCommand = connection.CreateCommand())
         {
-            tableCommand.CommandText =
-                """
+            tableCommand.CommandText = """
                 SELECT "name"
                 FROM "sqlite_master"
                 WHERE "type" = 'table'
@@ -1133,12 +1144,19 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 tables.Add(tableReader.GetString(0));
         }
 
-        var columns = new List<
-            (string Table, string Name, string Type, int NotNull, string? DefaultValue, int PrimaryKey, int Hidden)
-        >();
+        var columns =
+            new List<(
+                string Table,
+                string Name,
+                string Type,
+                int NotNull,
+                string? DefaultValue,
+                int PrimaryKey,
+                int Hidden
+            )>();
         var indexes = new List<(string Table, string Name, int Unique, string Columns, string Filter)>();
-        var foreignKeys = new List<
-            (
+        var foreignKeys =
+            new List<(
                 string Table,
                 int Sequence,
                 string PrincipalTable,
@@ -1147,8 +1165,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 string OnUpdate,
                 string OnDelete,
                 string Match
-            )
-        >();
+            )>();
 
         foreach (var table in tables)
         {
@@ -1194,11 +1211,14 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                     while (await indexInfoReader.ReadAsync(cancellationToken))
                     {
                         if (indexInfoReader.GetInt32(5) == 1)
-                            indexColumns.Add($"{indexInfoReader.GetString(2)}:{indexInfoReader.GetInt32(3)}:{indexInfoReader.GetString(4)}");
+                            indexColumns.Add(
+                                $"{indexInfoReader.GetString(2)}:{indexInfoReader.GetInt32(3)}:{indexInfoReader.GetString(4)}"
+                            );
                     }
                 }
                 await using var indexSqlCommand = connection.CreateCommand();
-                indexSqlCommand.CommandText = "SELECT \"sql\" FROM \"sqlite_master\" WHERE \"type\" = 'index' AND \"name\" = $name;";
+                indexSqlCommand.CommandText =
+                    "SELECT \"sql\" FROM \"sqlite_master\" WHERE \"type\" = 'index' AND \"name\" = $name;";
                 var indexNameParameter = indexSqlCommand.CreateParameter();
                 indexNameParameter.ParameterName = "$name";
                 indexNameParameter.Value = indexName;
@@ -1239,7 +1259,9 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                 (
                     definition.Table,
                     definition.Column,
-                    tableSql.Contains(definition.Expression, StringComparison.Ordinal) ? definition.Expression : string.Empty
+                    tableSql.Contains(definition.Expression, StringComparison.Ordinal)
+                        ? definition.Expression
+                        : string.Empty
                 )
             );
         }
@@ -1301,8 +1323,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
     )
     {
         await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"SELECT \"Id\", \"Name\", \"Key\", \"Type\" FROM \"{tableName}\" ORDER BY \"Id\";";
+        command.CommandText = $"SELECT \"Id\", \"Name\", \"Key\", \"Type\" FROM \"{tableName}\" ORDER BY \"Id\";";
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var rows = new List<(int Id, string Name, string Key, string Type)>();
         while (await reader.ReadAsync(cancellationToken))
@@ -1310,11 +1331,9 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         return rows;
     }
 
-    private static async Task<List<(int Id, string DisplayName, string FolderType, string MediaType, string DirectoryPath)>> ReadFolderRowsAsync(
-        DbConnection connection,
-        string tableName,
-        CancellationToken cancellationToken
-    )
+    private static async Task<
+        List<(int Id, string DisplayName, string FolderType, string MediaType, string DirectoryPath)>
+    > ReadFolderRowsAsync(DbConnection connection, string tableName, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
         command.CommandText =
@@ -1323,13 +1342,7 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         var rows = new List<(int Id, string DisplayName, string FolderType, string MediaType, string DirectoryPath)>();
         while (await reader.ReadAsync(cancellationToken))
             rows.Add(
-                (
-                    reader.GetInt32(0),
-                    reader.GetString(1),
-                    reader.GetString(2),
-                    reader.GetString(3),
-                    reader.GetString(4)
-                )
+                (reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4))
             );
         return rows;
     }

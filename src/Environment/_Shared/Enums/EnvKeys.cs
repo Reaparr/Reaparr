@@ -28,4 +28,5 @@ public static class EnvKeys
     public const string DesktopEmbeddedDisabled = "REAPARR_DESKTOP_EMBEDDED_DISABLED";
     public const string NuxtPublicRpHost = "NUXT_PUBLIC_RP_HOST";
     public const string NuxtPublicRpKey = "NUXT_PUBLIC_RP_KEY";
+    public const string PostHogCliReleaseVersion = "POSTHOG_CLI_RELEASE_VERSION";
 }

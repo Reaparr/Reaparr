@@ -15,6 +15,9 @@ ARG PORT
 ARG VERSION
 ARG TELEMETRY_HOST
 ARG TELEMETRY_PROJECT_TOKEN
+ARG INFORMATIONAL_VERSION
+ARG POSTHOG_CLI_PROJECT_ID=""
+ARG POSTHOG_CLI_HOST=""
 
 ENV NUXT_HOST=0.0.0.0
 ENV NUXT_PORT=${PORT}
@@ -29,7 +32,12 @@ WORKDIR /tmp/ClientApp
 
 ## Copy the project files and install the dependencies
 COPY ./src/AppHost/ClientApp/ ./
-RUN bun install --frozen-lockfile && bun run generate --fail-on-error
+RUN bun install --frozen-lockfile
+RUN --mount=type=secret,id=POSTHOG_CLI_API_KEY,env=POSTHOG_CLI_API_KEY \
+    POSTHOG_CLI_PROJECT_ID="${POSTHOG_CLI_PROJECT_ID}" \
+    POSTHOG_CLI_HOST="${POSTHOG_CLI_HOST}" \
+    POSTHOG_CLI_RELEASE_VERSION="${INFORMATIONAL_VERSION}" \
+    bun run generate --fail-on-error
 
 # Stage 2 - Build the .NET back-end
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS back-end
