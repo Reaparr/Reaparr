@@ -63,9 +63,10 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             CancellationToken
         );
         var (media, selection) = await CreateRecursiveFolderSelectionAsync(context, library);
+        await PauseServerAsync(container, library.PlexServerId);
         using var client = await CreateSignedInClientAsync(container);
         var destination = container.PathProvider.DefaultPhotosDestinationFolder;
-
+ 
         // Act
         var preview = await client.POSTAsync<
             GetDownloadPreviewEndpoint,
@@ -344,6 +345,17 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         var client = container.GetApiClient();
         await client.SignIn();
         return client;
+    }
+ 
+    private async Task PauseServerAsync(BaseContainer container, int serverId)
+    {
+        using var context = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
+        await context.PlexServers
+            .Where(x => x.Id == serverId)
+            .ExecuteUpdateAsync(
+                update => update.SetProperty(x => x.IsDownloadsPausedByUser, true),
+                CancellationToken
+            );
     }
 
     private Task<BaseContainer> CreatePhotoContainerAsync(

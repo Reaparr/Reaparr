@@ -396,6 +396,15 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         UpdateManager updateManager
     )
     {
+        var telemetryHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        telemetryHandler.SetupAnyRequest().ReturnsResponse(HttpStatusCode.OK);
+        var telemetryClient = new HttpClient(telemetryHandler.Object, disposeHandler: false)
+        {
+            BaseAddress = new Uri("https://telemetry.example.test/"),
+        };
+        Mock.Get(githubClientFactory)
+            .Setup(x => x.CreateClient("PostHogClient"))
+            .Returns(telemetryClient);
         builder.RegisterInstance(githubClientFactory).As<IHttpClientFactory>().SingleInstance();
         builder.RegisterInstance(updateManager).As<UpdateManager>().SingleInstance();
         builder.RegisterType<MockNotificationHubService>().As<INotificationHubService>().AsSelf().SingleInstance();

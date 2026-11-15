@@ -49,6 +49,9 @@ public class BaseContainer : IDisposable
         bool useTestAuthentication = true
     )
     {
+        // Program.Main owns the process runtime outside DI, so integration startup must set this before it can exit the test process.
+        System.Environment.SetEnvironmentVariable(EnvKeys.IntegrationTestMode, bool.TrueString);
+
         var config = UnitTestDataConfig.FromOptions(options);
         var memoryDbName = MockDatabase.GetMemoryDatabaseName();
         var mockAppRuntimeInfo = ResolveRuntimeInfo(config);
