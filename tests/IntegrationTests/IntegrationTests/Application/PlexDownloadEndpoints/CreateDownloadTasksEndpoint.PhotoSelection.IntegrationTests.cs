@@ -180,16 +180,26 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             && x.DownloadRootPath == expectedDownloadRoot
             && x.DestinationRootPath == destination
         );
+        var taskNodes = (
+            await finalContext.GetAllDownloadTasksByServerAsync(
+                library.PlexServerId,
+                cancellationToken: CancellationToken
+            )
+        )
+            .Where(x => x.PlexLibraryId == library.Id && x.DownloadTaskType == DownloadTaskType.PhotoFolder)
+            .Flatten(x => x.Children)
+            .ToDictionary(x => x.Id);
+
         var rootFolder = folders.Single(x => x.ParentId is null);
-        (rootFolder.RelativePath, rootFolder.Title, rootFolder.DataTotal).ShouldBe(
+        (rootFolder.RelativePath, rootFolder.Title, taskNodes[rootFolder.Id].DataTotal).ShouldBe(
             (string.Empty, expectedRootName, media.Sum(x => x.Size))
         );
         var tripsFolder = folders.Single(x => x.RelativePath == "Trips");
-        (tripsFolder.ParentId, tripsFolder.Title, tripsFolder.DataTotal).ShouldBe(
+        (tripsFolder.ParentId, tripsFolder.Title, taskNodes[tripsFolder.Id].DataTotal).ShouldBe(
             (rootFolder.Id, "Trips", media.Sum(x => x.Size))
         );
         var dayFolder = folders.Single(x => x.RelativePath == "Trips/Day 1");
-        (dayFolder.ParentId, dayFolder.Title, dayFolder.DataTotal).ShouldBe(
+        (dayFolder.ParentId, dayFolder.Title, taskNodes[dayFolder.Id].DataTotal).ShouldBe(
             (tripsFolder.Id, "Day 1", media[1].Size)
         );
         var files = await finalContext

@@ -322,6 +322,8 @@ public class BaseContainer : IDisposable
         {
             _log.Here().Error("Error during async operations wait: {Error}", ex.Message);
         }
+        _log.Here().Information("Disposing factory for container {DatabaseName}", dbName);
+        _factory.Dispose();
 
         try
         {
@@ -361,9 +363,6 @@ public class BaseContainer : IDisposable
             _log.Here().Error("Failed to delete test filesystem sandbox for container {DatabaseName}", dbName);
             cleanupResult.LogError();
         }
-
-        _log.Here().Information("Disposing factory for container {DatabaseName}", dbName);
-        _factory.Dispose();
 
         // Dispose of the lifetime scope as the last step
         _log.Here().Information("Disposing lifetime scope for container {DatabaseName}", dbName);

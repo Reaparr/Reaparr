@@ -33,7 +33,7 @@ public sealed class MusicArtistComparisonCandidateRow
     public int ComparisonId { get; init; }
 }
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsPlexMusicComparison
 {
     /// <summary>
     /// Returns completed, current music comparison scopes. A scope is current only when

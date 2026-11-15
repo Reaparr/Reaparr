@@ -1,7 +1,7 @@
 namespace Reaparr.Data.Contracts;
 
 // TODO split into multiple partical classes for each download task type to avoid this file being too large
-public static partial class DbSetExtensions
+public static class DbSetExtensionsDownloadTasks
 {
     public static IQueryable<DownloadTaskMovie> IncludeAll(this IQueryable<DownloadTaskMovie> downloadTasks) =>
         downloadTasks

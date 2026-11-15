@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Reaparr.Data.Contracts;
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsCommon
 {
     public static async Task<TEntity?> GetAsync<TEntity>(
         this DbSet<TEntity> dbSet,

@@ -1,6 +1,6 @@
 namespace Reaparr.Data.Contracts;
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsLibrarySyncJobQueue
 {
     /// <summary>
     /// Resets completed, failed, or cancelled library sync jobs to queued for the specified library IDs.

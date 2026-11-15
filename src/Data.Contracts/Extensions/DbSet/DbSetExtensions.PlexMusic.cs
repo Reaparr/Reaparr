@@ -4,7 +4,7 @@ using FlexQuery.NET.Models;
 
 namespace Reaparr.Data.Contracts;
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsPlexMusic
 {
     public static IQueryable<PlexMusicArtist> IncludeAll(this IQueryable<PlexMusicArtist> artists) =>
         artists

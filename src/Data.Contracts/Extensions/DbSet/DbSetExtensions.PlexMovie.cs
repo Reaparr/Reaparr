@@ -1,6 +1,6 @@
 namespace Reaparr.Data.Contracts;
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsPlexMovie
 {
     public static IQueryable<PlexMovie> IncludeAll(this IQueryable<PlexMovie> plexMovies) =>
         plexMovies.IncludePlexServer().IncludePlexLibrary().IncludeMediaData();
