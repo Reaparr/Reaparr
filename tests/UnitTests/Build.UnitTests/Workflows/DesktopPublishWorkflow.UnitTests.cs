@@ -166,10 +166,9 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 "/repo/src/AppHost/ClientApp",
                 It.Is<IReadOnlyDictionary<string, string?>?>(environment =>
                     environment != null
-                    && environment.Count == 3
+                    && environment.Count == 2
                     && environment[EnvKeys.NuxtPublicRpHost] == host
-                    && environment[EnvKeys.NuxtPublicRpKey] == token
-                    && environment[EnvKeys.PostHogCliReleaseVersion] == settings.InformationalVersion)))
+                    && environment[EnvKeys.NuxtPublicRpKey] == token)))
             .Callback(() => executionOrder.Add("generate"))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
@@ -585,7 +584,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 new XElement(
                     "WriteLinesToFile",
                     new XAttribute("File", outputPath),
-                    new XAttribute("Lines", $"$({EnvKeys.NuxtPublicRpHost})|$({EnvKeys.NuxtPublicRpKey})|$({EnvKeys.PostHogCliReleaseVersion})"),
+                    new XAttribute("Lines", $"$({EnvKeys.NuxtPublicRpHost})|$({EnvKeys.NuxtPublicRpKey})"),
                     new XAttribute("Overwrite", "true")
                 )
             )
@@ -593,13 +592,11 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         project.Save(paths.AppHostProject);
         var parentHost = System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost);
         var parentKey = System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey);
-        var parentReleaseVersion = System.Environment.GetEnvironmentVariable(EnvKeys.PostHogCliReleaseVersion);
 
         try
         {
             System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpHost, "inherited-stale-host");
             System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpKey, "inherited-stale-key");
-            System.Environment.SetEnvironmentVariable(EnvKeys.PostHogCliReleaseVersion, "inherited-stale-release");
 
             // Act
             await container.Resolve<IDesktopCommandRunner>().RunCommandAsync(
@@ -610,15 +607,13 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 {
                     [EnvKeys.NuxtPublicRpHost] = "https://frontend.example.test",
                     [EnvKeys.NuxtPublicRpKey] = "phc_frontend",
-                    [EnvKeys.PostHogCliReleaseVersion] = "1.2.3-dev.1",
                 }
             );
 
             // Assert
-            File.ReadAllLines(outputPath).ShouldBe(["https://frontend.example.test|phc_frontend|1.2.3-dev.1"]);
+            File.ReadAllLines(outputPath).ShouldBe(["https://frontend.example.test|phc_frontend"]);
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe("inherited-stale-host");
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe("inherited-stale-key");
-            System.Environment.GetEnvironmentVariable(EnvKeys.PostHogCliReleaseVersion).ShouldBe("inherited-stale-release");
 
             // Act
             await container.Resolve<IDesktopCommandRunner>().RunCommandAsync(
@@ -629,26 +624,22 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 {
                     [EnvKeys.NuxtPublicRpHost] = string.Empty,
                     [EnvKeys.NuxtPublicRpKey] = string.Empty,
-                    [EnvKeys.PostHogCliReleaseVersion] = string.Empty,
                 }
             );
 
             // Assert
-            File.ReadAllLines(outputPath).ShouldBe(["||"]);
+            File.ReadAllLines(outputPath).ShouldBe(["|"]);
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe("inherited-stale-host");
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe("inherited-stale-key");
-            System.Environment.GetEnvironmentVariable(EnvKeys.PostHogCliReleaseVersion).ShouldBe("inherited-stale-release");
         }
         finally
         {
             System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpHost, parentHost);
             System.Environment.SetEnvironmentVariable(EnvKeys.NuxtPublicRpKey, parentKey);
-            System.Environment.SetEnvironmentVariable(EnvKeys.PostHogCliReleaseVersion, parentReleaseVersion);
         }
 
         System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe(parentHost);
         System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe(parentKey);
-        System.Environment.GetEnvironmentVariable(EnvKeys.PostHogCliReleaseVersion).ShouldBe(parentReleaseVersion);
     }
 
     private static IReadOnlyDictionary<string, string?> ReadAssemblyMetadata(string assemblyPath)

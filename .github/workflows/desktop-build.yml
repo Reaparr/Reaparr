@@ -73,11 +73,19 @@ jobs:
                 env:
                     NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
                     NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
-                    POSTHOG_CLI_API_KEY: ${{ (inputs.push || inputs.publish_release) && secrets.POSTHOG_CLI_API_KEY || '' }}
-                    POSTHOG_CLI_PROJECT_ID: ${{ inputs.posthog_cli_project_id }}
-                    POSTHOG_CLI_HOST: ${{ inputs.posthog_cli_host }}
-                    POSTHOG_CLI_RELEASE_VERSION: ${{ inputs.informational_version }}
+                    NUXT_SOURCEMAP_CLIENT: ${{ (inputs.push || inputs.publish_release) && 'hidden' || '' }}
                 run: bun run generate --fail-on-error
+
+            -   name: Upload private source maps
+                if: inputs.push || inputs.publish_release
+                uses: ./.github/actions/posthog-source-maps/
+                with:
+                    directory: .output/public
+                    project-id: ${{ inputs.posthog_cli_project_id }}
+                    api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+                    host: ${{ inputs.posthog_cli_host }}
+                    ingestion-host: ${{ inputs.telemetry_host }}
+                    release-version: ${{ inputs.informational_version }}
 
             -   name: Upload generated frontend artifact
                 uses: actions/upload-artifact@v7

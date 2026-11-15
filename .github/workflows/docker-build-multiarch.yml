@@ -53,9 +53,51 @@ on:
                 required: false
 
 jobs:
+    prepare-frontend:
+        name: Prepare Docker frontend assets
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Client App Install
+              uses: ./.github/actions/client-app-install/
+
+            - name: Generate frontend
+              working-directory: src/AppHost/ClientApp/
+              env:
+                  NUXT_PUBLIC_PLATFORM: docker
+                  NUXT_PUBLIC_API_PORT: '7000'
+                  NUXT_PUBLIC_VERSION: ${{ inputs.version }}
+                  NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
+                  NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
+                  NUXT_SOURCEMAP_CLIENT: ${{ inputs.push && 'hidden' || '' }}
+              run: bun run generate --fail-on-error
+
+            - name: Upload private source maps
+              if: inputs.push
+              uses: ./.github/actions/posthog-source-maps/
+              with:
+                  directory: .output/public
+                  project-id: ${{ inputs.posthog_cli_project_id }}
+                  api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+                  host: ${{ inputs.posthog_cli_host }}
+                  ingestion-host: ${{ inputs.telemetry_host }}
+                  release-version: ${{ inputs.informational_version }}
+
+            - name: Upload processed frontend artifact
+              uses: actions/upload-artifact@v7
+              with:
+                  name: frontend-public-docker
+                  path: src/AppHost/ClientApp/.output/public
+                  retention-days: 1
+
     # Build both architectures natively in parallel
     build-images:
         name: Build ${{ matrix.arch }} Image
+        needs: [prepare-frontend]
         strategy:
             matrix:
                 include:
@@ -72,15 +114,11 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Require private source-map credentials for publishing
-              if: inputs.push
-              env:
-                  POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
-                  POSTHOG_CLI_PROJECT_ID: ${{ inputs.posthog_cli_project_id }}
-              run: |
-                  set -euo pipefail
-                  test -n "$POSTHOG_CLI_API_KEY" || { echo "::error::POSTHOG_CLI_API_KEY is required for publishing"; exit 1; }
-                  test -n "$POSTHOG_CLI_PROJECT_ID" || { echo "::error::POSTHOG_CLI_PROJECT_ID is required for publishing"; exit 1; }
+            - name: Download processed frontend artifact
+              uses: actions/download-artifact@v8
+              with:
+                  name: frontend-public-docker
+                  path: .tmp/frontend-public-docker
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
@@ -104,8 +142,6 @@ jobs:
             - name: Build ${{ matrix.arch }} image
               id: build
               uses: docker/build-push-action@v7
-              env:
-                  POSTHOG_CLI_API_KEY: ${{ inputs.push && secrets.POSTHOG_CLI_API_KEY || '' }}
               with:
                   context: .
                   file: docker/Dockerfile
@@ -113,16 +149,15 @@ jobs:
                   push: ${{ inputs.push }}
                   tags: reaparr/reaparr:${{ inputs.version }}-${{ matrix.arch }}
                   labels: ${{ steps.metadata.outputs.labels }}
+                  build-contexts: |
+                      frontend-public=./.tmp/frontend-public-docker
                   build-args: |
                       VERSION=${{ inputs.version }}
                       INFORMATIONAL_VERSION=${{ inputs.informational_version }}
                       TELEMETRY_HOST=${{ inputs.telemetry_host }}
                       TELEMETRY_PROJECT_TOKEN=${{ inputs.telemetry_project_token }}
-                      POSTHOG_CLI_PROJECT_ID=${{ inputs.posthog_cli_project_id }}
-                      POSTHOG_CLI_HOST=${{ inputs.posthog_cli_host }}
                       BUILDPLATFORM=linux/${{ matrix.arch }}
                       TARGETPLATFORM=linux/${{ matrix.arch }}
-                  secret-envs: ${{ inputs.push && 'POSTHOG_CLI_API_KEY=POSTHOG_CLI_API_KEY' || '' }}
                   cache-from: |
                       type=gha,scope=reaparr-${{ matrix.arch }}
                       type=registry,ref=reaparr/reaparr:buildcache-${{ matrix.arch }}

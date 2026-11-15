@@ -141,8 +141,4 @@ public static class EnvKeys
     /// </summary>
     public const string TelemetryHost = "TELEMETRY_HOST";
 
-    /// <summary>
-    /// Supplies the application release version to Nuxt's PostHog uploader so injected errors and uploaded maps identify the same build.
-    /// </summary>
-    public const string PostHogCliReleaseVersion = "POSTHOG_CLI_RELEASE_VERSION";
 }
