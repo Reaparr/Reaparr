@@ -2,13 +2,6 @@ namespace Reaparr.Application;
 
 public class AuthenticationStatusEndpoint : EndpointWithoutRequest<UserClaimsDTO>
 {
-    private readonly ITelemetry _telemetry;
-
-    public AuthenticationStatusEndpoint(ITelemetry telemetry)
-    {
-        _telemetry = telemetry;
-    }
-
     public override void Configure()
     {
         Get(ApiRoutes.AuthenticatedController + "/status");
@@ -32,7 +25,6 @@ public class AuthenticationStatusEndpoint : EndpointWithoutRequest<UserClaimsDTO
                     IsLoggedIn = true,
                     UserName = User.Identity.Name ?? "UNKNOWN USERNAME",
                     Claims = User.Claims.Select(c => c.Type).ToList(),
-                    Telemetry = _telemetry.GetBrowserBootstrap(),
                 }
             );
             await Send.FluentResult(result, x => x, ct);

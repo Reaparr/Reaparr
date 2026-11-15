@@ -6,64 +6,9 @@ public class AuthenticationStatusEndpointUnitTests
     : BaseEndpointWithoutRequestUnitTest<AuthenticationStatusEndpoint, UserClaimsDTO>
 {
     [Test]
-    public async Task ShouldReturnAuthenticatedStatusWithTelemetryBootstrap_WhenTelemetryIsAvailable()
+    public async Task ShouldReturnAuthenticatedStatus_WhenUserIsAuthenticated()
     {
         // Arrange
-        var bootstrap = new BrowserTelemetryBootstrapDTO
-        {
-            ApiHost = "https://telemetry.example.test",
-            ProjectToken = "phc_test",
-            DistinctId = "5e2c5c48-aa0f-4f21-8c65-94e72b2bd389",
-            Release = "0.40.0-dev.1",
-            Environment = TelemetryProtocol.DevelopmentEnvironment,
-            RuntimeMode = "desktop",
-            RuntimeIdentifier = "linux-x64",
-            Platform = nameof(OperatingSystemPlatform.Linux),
-        };
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.GetBrowserBootstrap())
-            .Returns(bootstrap)
-            .Verifiable(Times.Once());
-        var endpoint = SetupEndpointUnitTest<AuthenticationStatusEndpoint>();
-        endpoint.HttpContext.Response.Body = new MemoryStream();
-        endpoint.HttpContext.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-                [new Claim(ClaimTypes.Name, "jason"), new Claim(ClaimTypes.Role, "Admin")],
-                "TestAuth"
-            )
-        );
-
-        // Act
-        await endpoint.HandleAsync(CancellationToken);
-
-        // Assert
-        endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
-        endpoint.HttpContext.Response.Body.Position = 0;
-        var response = (
-            await JsonSerializer.DeserializeAsync<ResultDTO<UserClaimsDTO>>(
-                endpoint.HttpContext.Response.Body,
-                DefaultJsonSerializerOptions.ConfigStandard,
-                CancellationToken
-            )
-        ).ShouldNotBeNull();
-        response.IsSuccess.ShouldBeTrue();
-        response.Errors.Count.ShouldBe(0);
-        var value = response.Value.ShouldNotBeNull();
-        value.IsLoggedIn.ShouldBeTrue();
-        value.UserName.ShouldBe("jason");
-        value.Claims.ShouldBe([ClaimTypes.Name, ClaimTypes.Role]);
-        value.Telemetry.ShouldBe(bootstrap);
-        Mock.Mock<ITelemetry>().Verify();
-    }
-
-    [Test]
-    public async Task ShouldReturnAuthenticatedStatusWithoutTelemetry_WhenTelemetryIsUnavailable()
-    {
-        // Arrange
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.GetBrowserBootstrap())
-            .Returns((BrowserTelemetryBootstrapDTO?)null)
-            .Verifiable(Times.Once());
         var endpoint = SetupEndpointUnitTest<AuthenticationStatusEndpoint>();
         endpoint.HttpContext.Response.Body = new MemoryStream();
         endpoint.HttpContext.User = new ClaimsPrincipal(
@@ -85,12 +30,14 @@ public class AuthenticationStatusEndpointUnitTests
         ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
-        response.Value.ShouldNotBeNull().Telemetry.ShouldBeNull();
-        Mock.Mock<ITelemetry>().Verify();
+        var value = response.Value.ShouldNotBeNull();
+        value.IsLoggedIn.ShouldBeTrue();
+        value.UserName.ShouldBe("jason");
+        value.Claims.ShouldBe([ClaimTypes.Name]);
     }
 
     [Test]
-    public async Task ShouldReturnUnauthorizedWithoutQueryingTelemetry_WhenUserIsAnonymous()
+    public async Task ShouldReturnUnauthorized_WhenUserIsAnonymous()
     {
         // Arrange
         var endpoint = SetupEndpointUnitTest<AuthenticationStatusEndpoint>();
@@ -112,6 +59,5 @@ public class AuthenticationStatusEndpointUnitTests
         ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeFalse();
         response.Errors.Count.ShouldBe(1);
-        Mock.Mock<ITelemetry>().Verify(x => x.GetBrowserBootstrap(), Times.Never());
     }
 }

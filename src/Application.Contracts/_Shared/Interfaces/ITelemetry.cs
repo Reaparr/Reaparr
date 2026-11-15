@@ -10,7 +10,7 @@ public partial interface ITelemetry
     Task InitializeAsync();
 
     /// <summary>
-    /// Returns the authenticated browser telemetry bootstrap from embedded build metadata and the cached startup identity.
+    /// Returns the browser telemetry bootstrap from embedded build metadata and the cached startup identity.
     /// </summary>
     BrowserTelemetryBootstrapDTO? GetBrowserBootstrap();
 

@@ -133,7 +133,6 @@ public static partial class Startup
 
                 o.ConfigureOpenApi = options =>
                 {
-                    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
                     options.ShouldInclude = description => description.GroupName == "Internal API";
                     var extraTypes = new OpenApiAddExtraTypes(options.CreateSchemaReferenceId);
                     options.AddSchemaTransformer(extraTypes);
@@ -181,7 +180,6 @@ public static partial class Startup
 
                 o.ConfigureOpenApi = options =>
                 {
-                    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
                     options.ShouldInclude = description => description.GroupName == "Public API";
                     var enumNames = new OpenApiEnumNamesSchemaTransformer(options.CreateSchemaReferenceId);
                     options.AddSchemaTransformer(enumNames);
@@ -238,7 +236,6 @@ public static partial class Startup
                 c.Cookie.Name = DefaultUserAppCredentials.DefaultCookieName;
                 c.LoginPath = ApiRoutes.LoginEndpoint;
                 c.LogoutPath = ApiRoutes.LogOutEndpoint;
-                c.SlidingExpiration = true;
                 c.AccessDeniedPath = "/api/access-denied";
 
                 c.Events.OnRedirectToLogin = ctx =>
@@ -259,3 +256,4 @@ public static partial class Startup
         );
     }
 }
+

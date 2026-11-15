@@ -28,6 +28,10 @@ public static class TelemetryProtocol
     public const string FrontendOrigin = "frontend";
     public const string DevelopmentEnvironment = "dev";
     public const string StableEnvironment = "stable";
+    public const string EuIngestionHost = "eu.i.posthog.com";
+    public const string EuAssetHost = "eu-assets.i.posthog.com";
+    public const string UsIngestionHost = "us.i.posthog.com";
+    public const string UsAssetHost = "us-assets.i.posthog.com";
     public const string ProxyPath = "/e";
     public const string LogsPath = "/i/v1/logs";
     public const string TracesPath = "/i/v1/traces";

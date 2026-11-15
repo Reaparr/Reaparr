@@ -8,6 +8,8 @@ public static class ApiRoutes
 
     public static string DebugController => Base + "/" + "Debug";
 
+    public static string TelemetryController => Base + "/" + "Telemetry";
+
     public static string PlexAccountController => Base + "/" + "PlexAccount";
 
     public static string PlexController => Base + "/" + "Plex";
