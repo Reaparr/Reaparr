@@ -30,8 +30,7 @@ public sealed class GetOtherVideoMediaByTypeCommandValidator : AbstractValidator
                 filter
                     .RuleFor(x => x.Parameters.Sort)
                     .Must((value, sort) => sort.IsSupportedSort(value.MediaType))
-                    .WithMessage("Sort contains an unsupported field.")
-                    .When(x => x.Parameters is not null);
+                    .WithMessage("Sort contains an unsupported field.");
             });
     }
 }

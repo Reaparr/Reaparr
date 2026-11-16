@@ -46,7 +46,7 @@ public sealed class RebuildMediaOverviewCommandHandler : ICommandHandler<Rebuild
             results.Add(result);
         }
 
-        return Result.Merge(results.ToArray());
+        return results.Merge();
     }
 
     private async Task<Result> RebuildRootAsync(PlexMediaType mediaType, CancellationToken cancellationToken)

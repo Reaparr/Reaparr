@@ -4,13 +4,11 @@ namespace Reaparr.Application;
 
 public class LibrarySyncProgressStore : ILibrarySyncProgressStore
 {
-    private readonly ILogger _log;
     private readonly IProgressHubService _progressHubService;
     private readonly ConcurrentDictionary<int, LibraryProgress> _store = new();
 
-    public LibrarySyncProgressStore(ILogger logger, IProgressHubService progressHubService)
+    public LibrarySyncProgressStore(IProgressHubService progressHubService)
     {
-        _log = logger.ForContext<LibrarySyncProgressStore>();
         _progressHubService = progressHubService;
     }
 
@@ -95,22 +93,6 @@ public class LibrarySyncProgressStore : ILibrarySyncProgressStore
         await SendProgressUpdateAsync(updated);
 
         _store.TryRemove(plexLibraryId, out _);
-    }
-
-    private async Task SendProgressUpdateAsync(int plexLibraryId)
-    {
-        if (!_store.TryGetValue(plexLibraryId, out var progress))
-        {
-            _log.Here()
-                .Warning(
-                    "Attempted to send progress update for unknown library with ID {PlexLibraryId}",
-                    plexLibraryId
-                );
-
-            return;
-        }
-
-        await SendProgressUpdateAsync(progress);
     }
 
     private async Task SendProgressUpdateAsync(LibraryProgress progress)

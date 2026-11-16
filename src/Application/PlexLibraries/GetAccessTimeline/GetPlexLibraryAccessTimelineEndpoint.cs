@@ -16,9 +16,9 @@ public class GetPlexLibraryAccessTimelineEndpoint : EndpointWithoutRequest<PlexL
         Get(ApiRoutes.PlexLibraryController + "/access-timeline");
 
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<PlexLibraryAccessTimelineDTO>))
-                .Produces(StatusCodes.Status400BadRequest, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
+            x.Produces<ResultDTO<PlexLibraryAccessTimelineDTO>>()
+                .Produces<BaseResultDTO>(StatusCodes.Status400BadRequest)
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError)
         );
     }
 

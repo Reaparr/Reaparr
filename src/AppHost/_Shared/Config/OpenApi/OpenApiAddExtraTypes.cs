@@ -22,7 +22,7 @@ internal sealed class OpenApiAddExtraTypes(Func<JsonTypeInfo, string?> createSch
 {
     private readonly ConditionalWeakTable<OpenApiSchema, JsonTypeInfo> _schemaTypes = new();
 
-    private static readonly Type[] ExtraTypes =
+    private static readonly Type[] _extraTypes =
     [
         typeof(MessageTypes),
         typeof(JobTypes),
@@ -96,7 +96,7 @@ internal sealed class OpenApiAddExtraTypes(Func<JsonTypeInfo, string?> createSch
         document.Components ??= new OpenApiComponents();
         document.Components.Schemas ??= new Dictionary<string, IOpenApiSchema>();
 
-        foreach (var type in ExtraTypes)
+        foreach (var type in _extraTypes)
         {
             if (document.Components.Schemas.ContainsKey(type.Name))
                 continue;

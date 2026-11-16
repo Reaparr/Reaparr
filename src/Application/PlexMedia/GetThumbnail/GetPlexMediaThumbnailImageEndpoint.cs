@@ -89,21 +89,21 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
 
         Description(x =>
         {
-            x.Produces(StatusCodes.Status200OK, typeof(byte[]), MediaTypeNames.Image.Jpeg)
+            x.Produces<byte[]>(StatusCodes.Status200OK, MediaTypeNames.Image.Jpeg)
                 .Produces(StatusCodes.Status304NotModified)
-                .Produces(HttpCodes.Status601PlexAuthenticationFailed, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status502BadGateway, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO));
+                .Produces<BaseResultDTO>(HttpCodes.Status601PlexAuthenticationFailed)
+                .Produces<BaseResultDTO>(StatusCodes.Status404NotFound)
+                .Produces<BaseResultDTO>(StatusCodes.Status502BadGateway)
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError);
         });
     }
 
     public override async Task HandleAsync(GetPlexMediaThumbnailImageEndpointRequest req, CancellationToken ct)
     {
 #pragma warning disable ASP0015
-        HttpContext.Response.Headers["Access-Control-Allow-Origin"] = "*";
-        HttpContext.Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
-        HttpContext.Response.Headers["Access-Control-Allow-Headers"] = "*";
+        HttpContext.Response.Headers.AccessControlAllowOrigin = "*";
+        HttpContext.Response.Headers.AccessControlAllowMethods = "GET, OPTIONS";
+        HttpContext.Response.Headers.AccessControlAllowHeaders = "*";
 #pragma warning restore ASP0015
 
         // Generate ETag based on the unique thumbnail parameters
@@ -234,9 +234,7 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
         catch (HttpRequestException ex)
         {
             // Check if this is a connection refused error (server offline) - use Warning instead of Error
-            var isConnectionRefused =
-                ex.InnerException is SocketException socketEx
-                && (socketEx.ErrorCode == 111 || socketEx.ErrorCode == 10061);
+            var isConnectionRefused = ex.InnerException is SocketException { ErrorCode: 111 or 10061 };
 
             var plexServerName = await _dbContext.GetPlexServerNameById(plexServerId);
             if (isConnectionRefused)
@@ -285,11 +283,11 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
             // SSL handshake failures and other I/O errors - typically due to unreachable/misconfigured servers
             _log.Here()
                 .Warning(
-                    "I/O error while fetching Plex thumbnail for server {PlexServerName} ({PlexServerId}) (key {PlexKey}). {ErrorMessage}",
+                    ex,
+                    "I/O error while fetching Plex thumbnail for server {PlexServerName} ({PlexServerId}) (key {PlexKey})",
                     plexServerName,
                     plexServerId,
-                    req.PlexKey,
-                    ex.Message
+                    req.PlexKey
                 );
             await Send.FluentResult(Result.Fail("Network error while fetching image").Add502BadGatewayError(), ct);
         }
@@ -329,9 +327,9 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
         var response = await client.GetAsync(transcodeUrl, HttpCompletionOption.ResponseHeadersRead, ct);
         if (
             response.IsSuccessStatusCode
-            || response.StatusCode == HttpStatusCode.NoContent
-            || response.StatusCode == HttpStatusCode.Unauthorized
-            || response.StatusCode == HttpStatusCode.Forbidden
+            || response.StatusCode is HttpStatusCode.NoContent
+            || response.StatusCode is HttpStatusCode.Unauthorized
+            || response.StatusCode is HttpStatusCode.Forbidden
         )
             return response;
 
@@ -373,10 +371,7 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
     /// </summary>
     private string SanitizeUrl(string url)
     {
-        if (_appRuntimeInfo.IsUnmasked)
-            return url;
-
-        if (string.IsNullOrEmpty(url))
+        if (_appRuntimeInfo.IsUnmasked || string.IsNullOrEmpty(url))
             return url;
 
         var questionMarkIndex = url.IndexOf('?');

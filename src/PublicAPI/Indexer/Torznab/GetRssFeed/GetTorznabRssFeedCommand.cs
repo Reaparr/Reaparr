@@ -34,7 +34,7 @@ public class GetTorznabRssFeedCommandValidator : AbstractValidator<GetTorznabRss
 public class GetTorznabRssFeedCommandHandler
     : ICommandHandler<GetTorznabRssFeedCommand, Result<TorznabMediaSearchResponseDTO>>
 {
-    private const int MinimumParentBatchSize = 256;
+    private const int MINIMUM_PARENT_BATCH_SIZE = 256;
 
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
@@ -144,7 +144,7 @@ public class GetTorznabRssFeedCommandHandler
             LogFallbackCategoryCountTiming(PlexMediaType.Movie, fallbackCountStartedAt, total);
         }
 
-        var parentBatchSize = Math.Max(fetchLimit, MinimumParentBatchSize);
+        var parentBatchSize = Math.Max(fetchLimit, MINIMUM_PARENT_BATCH_SIZE);
         TorznabFeedParent? cursor = null;
         var parentScanElapsed = TimeSpan.Zero;
         var projectionElapsed = TimeSpan.Zero;
@@ -219,7 +219,7 @@ public class GetTorznabRssFeedCommandHandler
             LogFallbackCategoryCountTiming(PlexMediaType.Episode, fallbackCountStartedAt, total);
         }
 
-        var parentBatchSize = Math.Max(fetchLimit, MinimumParentBatchSize);
+        var parentBatchSize = Math.Max(fetchLimit, MINIMUM_PARENT_BATCH_SIZE);
         TorznabFeedParent? cursor = null;
         var parentScanElapsed = TimeSpan.Zero;
         var projectionElapsed = TimeSpan.Zero;

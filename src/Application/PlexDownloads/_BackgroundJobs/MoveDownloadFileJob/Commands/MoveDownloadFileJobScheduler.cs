@@ -40,7 +40,7 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
         var schedulingResult = await _scheduler.ExecuteJob<MoveDownloadFileJob, MoveDownloadFileJobPayload>(
             jobKey,
             new MoveDownloadFileJobPayload(downloadTaskKey),
-            cancellationToken
+            cancellationToken: cancellationToken
         );
         schedulingResult.LogIfFailed();
         return schedulingResult.ToResult();
@@ -62,14 +62,11 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
             );
 
         var jobKey = MoveDownloadFileJob.GetJobKey(downloadTaskKey.Id);
-        var cancelResult = await _scheduler.CancelJob(jobKey, cancellationToken);
+        var cancelResult = await _scheduler.CancelJob(jobKey, cancellationToken: cancellationToken);
         if (cancelResult.IsCancelled)
             return ResultExtensions.TaskIsCancelled(nameof(StopMoveDownloadFileJob)).LogWarning();
 
-        if (cancelResult.IsFailed)
-            return cancelResult.LogIfFailed();
-
-        return Result.Ok();
+        return cancelResult.IsCancelledOrFailed ? cancelResult.LogIfFailed() : Result.Ok();
     }
 
     public async Task<bool> IsDownloadFileMoving(
@@ -120,8 +117,8 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
         if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
             return null;
 
-        return (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))?.JobDataMap
-            .GetPayload<MoveDownloadFileJobPayload>()
+        return (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))
+            ?.JobDataMap.GetPayload<MoveDownloadFileJobPayload>()
             ?.DownloadTaskKey;
     }
 }

@@ -13,7 +13,7 @@ public record UpdatePlexServerConnectionEndpointRequest
     public required int Port { get; init; }
 
     public required int PlexServerId { get; set; }
-};
+}
 
 public class UpdatePlexServerConnectionEndpointRequestValidator : Validator<UpdatePlexServerConnectionEndpointRequest>
 {
@@ -49,10 +49,10 @@ public class UpdatePlexServerConnectionEndpoint
         Patch(ApiRoutes.PlexServerConnectionController);
 
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<PlexServerConnectionDTO>))
-                .Produces(StatusCodes.Status400BadRequest, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
+            x.Produces<ResultDTO<PlexServerConnectionDTO>>()
+                .Produces<BaseResultDTO>(StatusCodes.Status400BadRequest)
+                .Produces<BaseResultDTO>(StatusCodes.Status404NotFound)
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError)
         );
     }
 

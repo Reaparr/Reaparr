@@ -52,10 +52,10 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
 
-    private const int ResponseCacheDurationSeconds = 259200;
+    private const int RESPONSE_CACHE_DURATION_SECONDS = 259200;
     private static readonly TimeSpan _connectionCacheDuration = TimeSpan.FromMinutes(5);
     private static readonly string _responseCacheControl = FormattableString.Invariant(
-        $"private,max-age={ResponseCacheDurationSeconds}"
+        $"private,max-age={RESPONSE_CACHE_DURATION_SECONDS}"
     );
 
     public GetPhotoAssetImageEndpoint(
@@ -75,7 +75,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
     {
         Get(ApiRoutes.PlexPhotoController + "/libraries/{PlexLibraryId}/assets/{AssetId}/image");
         ResponseCache(
-            ResponseCacheDurationSeconds,
+            RESPONSE_CACHE_DURATION_SECONDS,
             ResponseCacheLocation.Client,
             varyByHeader: HeaderNames.Cookie,
             varyByQueryKeys: ["representation", "width", "height"]
@@ -92,13 +92,13 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             };
         });
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(byte[]), MediaTypeNames.Image.Jpeg)
-                .Produces(StatusCodes.Status200OK, typeof(byte[]), MediaTypeNames.Image.Png)
+            x.Produces<byte[]>(StatusCodes.Status200OK, MediaTypeNames.Image.Jpeg)
+                .Produces<byte[]>(StatusCodes.Status200OK, MediaTypeNames.Image.Png)
                 .Produces(StatusCodes.Status304NotModified)
-                .Produces(StatusCodes.Status400BadRequest, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status502BadGateway, typeof(BaseResultDTO))
-                .Produces(HttpCodes.Status601PlexAuthenticationFailed, typeof(BaseResultDTO))
+                .Produces<BaseResultDTO>(StatusCodes.Status400BadRequest)
+                .Produces<BaseResultDTO>(StatusCodes.Status404NotFound)
+                .Produces<BaseResultDTO>(StatusCodes.Status502BadGateway)
+                .Produces<BaseResultDTO>(HttpCodes.Status601PlexAuthenticationFailed)
         );
     }
 
@@ -118,13 +118,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
                 x.Id == req.AssetId && x.PlexLibraryId == req.PlexLibraryId && x.AssetKind == PhotoAssetKind.Image
             )
             .FirstOrDefaultAsync(ct);
-        if (asset is null)
-        {
-            await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexPhotoMediaData), req.AssetId), ct);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(asset.Key))
+        if (asset is null || string.IsNullOrWhiteSpace(asset.Key))
         {
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexPhotoMediaData), req.AssetId), ct);
             return;
@@ -138,7 +132,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         if (tokenResult.IsCancelledOrFailed)
         {
             await Send.FluentResult(
-                Result.Fail("Photo server authentication is unavailable.").AddPlex401UnauthorizedError(),
+                Result.Fail("Photo server authentication is unavailable").AddPlex401UnauthorizedError(),
                 ct
             );
             return;
@@ -312,12 +306,12 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         var result = statusCode switch
         {
             HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => Result
-                .Fail("Plex rejected photo access.")
+                .Fail("Plex rejected photo access")
                 .AddPlex401UnauthorizedError(),
             HttpStatusCode.NotFound or HttpStatusCode.NoContent => Result
-                .Fail("Plex could not return the photo image.")
+                .Fail("Plex could not return the photo image")
                 .Add502BadGatewayError(),
-            _ => Result.Fail("Plex failed to return the photo image.").Add502BadGatewayError(),
+            _ => Result.Fail("Plex failed to return the photo image").Add502BadGatewayError(),
         };
         await Send.FluentResult(result, ct);
     }
@@ -339,7 +333,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
         _log.Here().Warning(exception, "{Message}", message);
         HttpContext.Response.Headers.CacheControl = "no-store";
         HttpContext.Response.Headers.Remove(HeaderNames.ETag);
-        await Send.FluentResult(Result.Fail(message).Add502BadGatewayError(), ct);
+        await Send.FluentResult(Result.Fail(new Error(message)).Add502BadGatewayError(), ct);
     }
 
     private static string? ResolveImageContentType(string? upstreamContentType, string? container)

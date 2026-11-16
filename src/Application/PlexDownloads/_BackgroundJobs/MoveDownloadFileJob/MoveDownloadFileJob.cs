@@ -64,6 +64,8 @@ public class MoveDownloadFileJob : IJob
         var ct = context.CancellationToken;
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
         _telemetry.SetMoveDownloadJobContext(downloadTaskKey, GetRetryCount(context));
+        var captureTerminalException = true;
+
         async Task QueueNextAsync()
         {
             // An individual job cancellation must not cancel continuation of unrelated waiting moves.
@@ -72,8 +74,6 @@ public class MoveDownloadFileJob : IJob
             var queueResult = await Result.Try(() => _moveDownloadFileQueue.CheckMoveDownloadFileJobQueue(queueToken));
             queueResult.LogIfFailed();
         }
-        var captureTerminalException = true;
-
         var executionResult = await Result.Try(async Task<Result> () =>
         {
             _log.Here()

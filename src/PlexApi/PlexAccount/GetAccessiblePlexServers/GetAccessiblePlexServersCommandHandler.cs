@@ -83,11 +83,12 @@ public class GetAccessiblePlexServersCommandHandler
                     PlexAccountServers = [],
                     PlexLibraries = [],
                     ServerStatus = [],
-                    PlexServerConnections = x
-                        .Connections.Select(y => new PlexServerConnection
+                    PlexServerConnections =
+                    [
+                        .. x.Connections.Select(y => new PlexServerConnection
                         {
                             Id = 0,
-                            Protocol = y.Protocol.ToString().ToLower(),
+                            Protocol = y.Protocol.ToString().ToLowerInvariant(),
                             Address = y.Address,
                             Port = y.Port,
                             Local = y.Local,
@@ -99,8 +100,8 @@ public class GetAccessiblePlexServersCommandHandler
                             PlexServerId = 0,
                             LatestConnectionStatus = null,
                             IsCustom = false,
-                        })
-                        .ToList(),
+                        }),
+                    ],
                 },
             })
             .ToList();
@@ -124,7 +125,7 @@ public class GetAccessiblePlexServersCommandHandler
                 .ToResponse(cancellationToken),
             plexTvClient
                 .Plex.GetServerResourcesAsync(
-                    new GetServerResourcesRequest()
+                    new GetServerResourcesRequest
                     {
                         ClientIdentifier = clientId,
                         IncludeHttps = IncludeHttps.True,
@@ -162,13 +163,11 @@ public class GetAccessiblePlexServersCommandHandler
 
             device1.Connections.Clear();
 
-            foreach (var connection in serverConnections)
+            serverConnections.ForEach(connection =>
             {
                 if (uniqueConnections.Add(connection.Uri))
-                {
                     device1.Connections.Add(connection);
-                }
-            }
+            });
         }
 
         return Result.Ok(deviceList1);

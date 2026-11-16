@@ -65,7 +65,7 @@ public class UpdateScheduledDownloadLimitsCommandHandler : ICommandHandler<Updat
     {
         var schedule = _userSettings.DownloadManagerSettings.DownloadSchedule;
         if (!DownloadSchedule.IsValidDays(schedule.Days))
-            return Result.Fail("The saved download schedule contains invalid change points or limits.").LogError();
+            return Result.Fail("The saved download schedule contains invalid change points or limits").LogError();
 
         var localTime =
             command.LocalTime
