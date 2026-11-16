@@ -9,13 +9,13 @@ namespace Reaparr.PublicAPI.UnitTests;
 public class TorrentsInfoEndpointHashFilterUnitTests
     : BaseEndpointUnitTest<TorrentsInfoEndpoint, TorrentsInfoEndpointRequest, List<QBittorrentTorrentInfo>>
 {
-    private const int EligibleFileCount = 20;
-    private const int ControlFileCount = 2;
-    private const string Category = "torrent-contract";
-    private const string MovieSavePath = "/contract-downloads/Movies/movie-batch";
-    private const string EpisodeSavePath = "/contract-downloads/TvShows/show-batch/season-01";
-    private const string MovieTableName = "DownloadTaskMovieFile";
-    private const string EpisodeTableName = "DownloadTaskTvShowEpisodeFile";
+    private const int ELIGIBLE_FILE_COUNT = 20;
+    private const int CONTROL_FILE_COUNT = 2;
+    private const string CATEGORY = "torrent-contract";
+    private const string MOVIE_SAVE_PATH = "/contract-downloads/Movies/movie-batch";
+    private const string EPISODE_SAVE_PATH = "/contract-downloads/TvShows/show-batch/season-01";
+    private const string MOVIE_TABLE_NAME = "DownloadTaskMovieFile";
+    private const string EPISODE_TABLE_NAME = "DownloadTaskTvShowEpisodeFile";
 
     [Test]
     [Arguments(HashFilterScenario.SingleMovie)]
@@ -29,19 +29,20 @@ public class TorrentsInfoEndpointHashFilterUnitTests
         // Arrange
         var fixture = await SetupFixtureAsync();
         var expected = GetScenarioExpectation(scenario);
-        fixture.MovieFileCount.ShouldBe(EligibleFileCount + ControlFileCount);
-        fixture.EpisodeFileCount.ShouldBe(EligibleFileCount + ControlFileCount);
+        fixture.MovieFileCount.ShouldBe(ELIGIBLE_FILE_COUNT + CONTROL_FILE_COUNT);
+        fixture.EpisodeFileCount.ShouldBe(ELIGIBLE_FILE_COUNT + CONTROL_FILE_COUNT);
 
         var connectionString = ((DbContext)IDbContext).Database.GetConnectionString();
         var movieReads = new ConcurrentQueue<int>();
         var episodeReads = new ConcurrentQueue<int>();
         using var querySubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var subscriptions = querySubscriptions;
         using var listeners = DiagnosticListener.AllListeners.Subscribe(listener =>
         {
             if (listener.Name != "Microsoft.EntityFrameworkCore")
                 return;
 
-            querySubscriptions.Add(
+            subscriptions.Add(
                 listener.Subscribe(eventData =>
                 {
                     if (
@@ -53,8 +54,8 @@ public class TorrentsInfoEndpointHashFilterUnitTests
                     // Table names only identify the endpoint's two ToListAsync readers; ReadCount is the proof.
                     var commandText = reader.Command.CommandText;
                     var target =
-                        commandText.Contains(MovieTableName, StringComparison.Ordinal) ? movieReads
-                        : commandText.Contains(EpisodeTableName, StringComparison.Ordinal) ? episodeReads
+                        commandText.Contains(MOVIE_TABLE_NAME, StringComparison.Ordinal) ? movieReads
+                        : commandText.Contains(EPISODE_TABLE_NAME, StringComparison.Ordinal) ? episodeReads
                         : null;
                     if (target is null)
                         return;
@@ -69,7 +70,7 @@ public class TorrentsInfoEndpointHashFilterUnitTests
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new TorrentsInfoEndpointRequest { Hashes = expected.Hashes, Category = Category.ToUpperInvariant() },
+            new TorrentsInfoEndpointRequest { Hashes = expected.Hashes, Category = CATEGORY.ToUpperInvariant() },
             integrationIdentity: fixture.OwnerIdentity
         );
 
@@ -80,14 +81,16 @@ public class TorrentsInfoEndpointHashFilterUnitTests
         endpointResult.Response.ShouldNotBeNull();
         var actual = endpointResult
             .Response!.Select(x => (x.Hash, x.State, x.Category, x.SavePath, x.ContentPath))
-            .OrderBy(x => x.Hash)
+            .OrderBy(x => x.Hash, StringComparer.Ordinal)
             .ToList();
-        var expectedRows = expected
-            .Episodes.Concat(expected.Movies)
-            .Select(x => (x.Hash, x.State, x.Category, x.SavePath, x.ContentPath))
-            .OrderBy(x => x.Hash)
-            .ToList();
-        actual.ShouldBe(expectedRows);
+        actual.ShouldBe(
+            [
+                .. expected
+                    .Episodes.Concat(expected.Movies)
+                    .Select(x => (x.Hash, x.State, x.Category, x.SavePath, x.ContentPath))
+                    .OrderBy(x => x.Hash, StringComparer.Ordinal),
+            ]
+        );
         movieReads.Count.ShouldBe(1);
         episodeReads.Count.ShouldBe(1);
         movieReads.Single().ShouldBe(expected.MovieReaderRows);
@@ -101,10 +104,10 @@ public class TorrentsInfoEndpointHashFilterUnitTests
             config =>
             {
                 config.PlexServerCount = 2;
-                config.MovieDownloadTasksCount = EligibleFileCount + ControlFileCount;
+                config.MovieDownloadTasksCount = ELIGIBLE_FILE_COUNT + CONTROL_FILE_COUNT;
                 config.TvShowDownloadTasksCount = 1;
                 config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = EligibleFileCount + ControlFileCount;
+                config.TvShowEpisodeDownloadTasksCount = ELIGIBLE_FILE_COUNT + CONTROL_FILE_COUNT;
                 config.RadarrIntegrationCount = 2;
             }
         );
@@ -137,7 +140,7 @@ public class TorrentsInfoEndpointHashFilterUnitTests
             );
         await dbContext
             .RadarrIntegrations.Where(x => x.Id == ownerIntegration.Id)
-            .ExecuteUpdateAsync(x => x.SetProperty(p => p.Category, Category), CancellationToken);
+            .ExecuteUpdateAsync(x => x.SetProperty(p => p.Category, CATEGORY), CancellationToken);
         await dbContext
             .RadarrIntegrations.Where(x => x.Id == foreignIntegration.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(p => p.Category, "foreign-category"), CancellationToken);
@@ -169,8 +172,8 @@ public class TorrentsInfoEndpointHashFilterUnitTests
     )
     {
         var isEpisode = file.MediaType == PlexMediaType.Episode;
-        var isForeignOwnerControl = index == EligibleFileCount;
-        var isOwnedServerControl = index == EligibleFileCount + 1;
+        var isForeignOwnerControl = index == ELIGIBLE_FILE_COUNT;
+        var isOwnedServerControl = index == ELIGIBLE_FILE_COUNT + 1;
         file.PlexServerId = isOwnedServerControl ? ownership.OwnedServer : ownership.NonOwnedServer;
         file.RadarrIntegrationId = isForeignOwnerControl ? ownership.Foreign : ownership.Owner;
         file.FileName = isEpisode ? $"episode-{index:00}.mkv" : $"movie-{index:00}.mkv";
@@ -191,16 +194,16 @@ public class TorrentsInfoEndpointHashFilterUnitTests
 
         return scenario switch
         {
-            HashFilterScenario.SingleMovie => new(movie.Hash.ToUpperInvariant(), [movie], [], 1, 0),
-            HashFilterScenario.SingleEpisode => new(episode.Hash.ToUpperInvariant(), [], [episode], 0, 1),
-            HashFilterScenario.MixedCasePipeList => new(
+            HashFilterScenario.SingleMovie => new ScenarioExpectation(movie.Hash.ToUpperInvariant(), [movie], [], 1, 0),
+            HashFilterScenario.SingleEpisode => new ScenarioExpectation(episode.Hash.ToUpperInvariant(), [], [episode], 0, 1),
+            HashFilterScenario.MixedCasePipeList => new ScenarioExpectation(
                 $" {movie.Hash.ToUpperInvariant()} | {episode.Hash} ",
                 [movie],
                 [episode],
                 1,
                 1
             ),
-            HashFilterScenario.NoMatch => new(HashFor(0xFFFF).ToUpperInvariant(), [], [], 0, 0),
+            HashFilterScenario.NoMatch => new ScenarioExpectation(HashFor(0xFFFF).ToUpperInvariant(), [], [], 0, 0),
             _ => GetUnfilteredExpectation(scenario),
         };
     }
@@ -210,23 +213,23 @@ public class TorrentsInfoEndpointHashFilterUnitTests
         if (scenario is not (HashFilterScenario.All or HashFilterScenario.Omitted))
             throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null);
 
-        return new(
+        return new ScenarioExpectation(
             scenario == HashFilterScenario.All ? "all" : null,
-            Enumerable.Range(0, EligibleFileCount).Select(index => ExpectedTorrent(false, index)).ToList(),
-            Enumerable.Range(0, EligibleFileCount).Select(index => ExpectedTorrent(true, index)).ToList(),
-            EligibleFileCount,
-            EligibleFileCount
+            [.. Enumerable.Range(0, ELIGIBLE_FILE_COUNT).Select(index => ExpectedTorrent(false, index))],
+            [.. Enumerable.Range(0, ELIGIBLE_FILE_COUNT).Select(index => ExpectedTorrent(true, index))],
+            ELIGIBLE_FILE_COUNT,
+            ELIGIBLE_FILE_COUNT
         );
     }
 
     private static TorrentExpectation ExpectedTorrent(bool isEpisode, int index)
     {
-        var savePath = isEpisode ? EpisodeSavePath : MovieSavePath;
+        var savePath = isEpisode ? EPISODE_SAVE_PATH : MOVIE_SAVE_PATH;
         var fileName = isEpisode ? $"episode-{index:00}.mkv" : $"movie-{index:00}.mkv";
-        return new(
+        return new TorrentExpectation(
             GetStoredHash(isEpisode, index),
             isEpisode && index == 0 ? "downloading" : "pausedUP",
-            Category,
+            CATEGORY,
             savePath,
             Path.Combine(savePath, fileName)
         );

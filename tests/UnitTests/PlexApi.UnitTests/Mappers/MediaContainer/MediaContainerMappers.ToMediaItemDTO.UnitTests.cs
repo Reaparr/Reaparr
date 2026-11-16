@@ -6,8 +6,7 @@ using Part = LukeHagar.PlexAPI.SDK.Models.Components.Part;
 using Stream = LukeHagar.PlexAPI.SDK.Models.Components.Stream;
 using Tag = LukeHagar.PlexAPI.SDK.Models.Components.Tag;
 
-namespace Reaparr.PlexApi.UnitTests
-{
+namespace Reaparr.PlexApi.UnitTests;
     public class MediaContainerMappersUnitTests : BaseUnitTest
     {
         [Test]
@@ -133,7 +132,7 @@ namespace Reaparr.PlexApi.UnitTests
             result.UpdatedAt.ShouldBe(DateTimeExtensions.FromUnixTime(sourceData.UpdatedAt ?? 0));
 
             result.OriginallyAvailableAt.ShouldNotBeNull();
-            result.OriginallyAvailableAt.ShouldBe(sourceData.OriginallyAvailableAt.ToString());
+            result.OriginallyAvailableAt.ShouldBe(sourceData.OriginallyAvailableAt);
 
             result.GrandparentTitle.ShouldBe(sourceData.GrandparentTitle);
             result.ParentTitle.ShouldBe(sourceData.ParentTitle);
@@ -298,7 +297,7 @@ namespace Reaparr.PlexApi.UnitTests
             result.UpdatedAt.ShouldBe(DateTimeExtensions.FromUnixTime(sourceData.UpdatedAt ?? 0));
 
             result.OriginallyAvailableAt.ShouldNotBeNull();
-            result.OriginallyAvailableAt.ShouldBe(sourceData.OriginallyAvailableAt.ToString());
+            result.OriginallyAvailableAt.ShouldBe(sourceData.OriginallyAvailableAt);
 
             result.AudienceRating.ShouldBe(sourceData.AudienceRating ?? 0f);
             result.Rating.ShouldBe(sourceData.Rating ?? 0f);
@@ -554,4 +553,3 @@ namespace Reaparr.PlexApi.UnitTests
                 ],
             };
     }
-}
