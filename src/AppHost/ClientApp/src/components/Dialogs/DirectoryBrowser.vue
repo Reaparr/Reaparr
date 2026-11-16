@@ -149,7 +149,9 @@
 				:disabled="saving || !isCurrentWritable"
 				:loading="saving"
 				:tooltip-text="!saving && !isCurrentWritable ? $t('components.directory-browser.current-folder-has-no-write-permission') : ''"
-				@click="confirm()" />
+				@click="confirm()"
+				@keydown.enter.stop="confirm()"
+				@keydown.space.stop.prevent="confirm()" />
 		</template>
 	</QCardDialog>
 </template>
