@@ -1,5 +1,4 @@
 ﻿using Autofac;
-using Reaparr.Identity.Services;
 
 namespace Reaparr.Identity;
 

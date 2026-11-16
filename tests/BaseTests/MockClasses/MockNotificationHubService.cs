@@ -25,7 +25,7 @@ public class MockNotificationHubService : INotificationHubService
     public Task SendRefreshNotificationAsync(RefreshDataType dataType)
     {
         RefreshNotificationList.Add(dataType);
-        _log.Here().Verbose("{ClassName} => {@DataType}", nameof(MockNotificationHubService), dataType);
+        _log.Here().Verbose("{ClassName} => {DataType}", nameof(MockNotificationHubService), dataType);
 
         return Task.CompletedTask;
     }

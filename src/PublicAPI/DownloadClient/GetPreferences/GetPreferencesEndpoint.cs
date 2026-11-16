@@ -1,4 +1,4 @@
-namespace Reaparr.PublicAPI.GetPreferences;
+namespace Reaparr.PublicAPI;
 
 public class GetPreferencesEndpoint : EndpointWithoutRequest<object>
 {

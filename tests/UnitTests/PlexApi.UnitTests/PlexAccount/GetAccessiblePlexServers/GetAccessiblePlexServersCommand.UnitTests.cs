@@ -5,7 +5,6 @@ using LukeHagar.PlexAPI.SDK.Models.Errors;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
 using Newtonsoft.Json;
 using Reaparr.PlexApi.Contracts;
-using Reaparr.PlexApi.GetAccessiblePlexServers;
 
 namespace Reaparr.PlexApi.UnitTests;
 

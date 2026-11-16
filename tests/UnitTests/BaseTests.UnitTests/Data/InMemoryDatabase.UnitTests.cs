@@ -1,4 +1,4 @@
-namespace Reaparr.BaseTests.UnitTests.Data;
+namespace Reaparr.BaseTests.UnitTests;
 
 public class InMemoryDatabaseUnitTests : BaseUnitTest
 {

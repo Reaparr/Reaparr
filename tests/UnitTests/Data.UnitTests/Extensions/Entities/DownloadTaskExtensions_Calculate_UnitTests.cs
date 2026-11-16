@@ -1,4 +1,4 @@
-namespace Reaparr.Data.UnitTests.Entities;
+namespace Reaparr.Data.UnitTests;
 
 public class DownloadTaskExtensionsCalculateUnitTests : BaseUnitTest
 {

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Reaparr.Application.Contracts.Validators;
 
 namespace Reaparr.Application.UnitTests;
 

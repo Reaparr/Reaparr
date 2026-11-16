@@ -1,7 +1,7 @@
 ﻿using Serilog.Events;
 using Serilog.Sinks.TestCorrelator;
 
-namespace Reaparr.FluentResultExtension.UnitTests.Logging;
+namespace Reaparr.FluentResultExtension.UnitTests;
 
 public class ResultExtensionsLoggingTests : BaseUnitTest
 {

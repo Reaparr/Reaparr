@@ -113,6 +113,6 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
             .Resolve<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        return options.TicketDataFormat!.Unprotect(cookieValue).ShouldNotBeNull();
+        return options.TicketDataFormat.Unprotect(cookieValue).ShouldNotBeNull();
     }
 }

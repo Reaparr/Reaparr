@@ -1,4 +1,4 @@
-namespace Reaparr.PublicAPI.CreateCategory;
+namespace Reaparr.PublicAPI;
 
 public record CreateCategoryRequest
 {

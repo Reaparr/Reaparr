@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore.Metadata;
 
-namespace Reaparr.Data.UnitTests.Configurations;
+namespace Reaparr.Data.UnitTests;
 
 public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
 {

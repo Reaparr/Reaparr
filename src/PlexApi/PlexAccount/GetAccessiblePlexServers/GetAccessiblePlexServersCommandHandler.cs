@@ -1,7 +1,7 @@
 using LukeHagar.PlexAPI.SDK.Models.Components;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
 
-namespace Reaparr.PlexApi.GetAccessiblePlexServers;
+namespace Reaparr.PlexApi;
 
 public class GetAccessiblePlexServersCommandHandler
     : ICommandHandler<GetAccessiblePlexServersCommand, Result<List<PlexServerAccessDTO>>>

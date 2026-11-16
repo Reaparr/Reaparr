@@ -1,4 +1,4 @@
-namespace Reaparr.PublicAPI.GetAllCategories;
+namespace Reaparr.PublicAPI;
 
 public class GetAllCategoriesEndpoint : EndpointWithoutRequest<object>
 {

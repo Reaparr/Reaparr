@@ -1,7 +1,7 @@
 ﻿using Reaparr.Settings;
 using Reaparr.Settings.Contracts;
 
-namespace Reaparr.IntegrationTests.SettingsController;
+namespace Reaparr.IntegrationTests;
 
 public class SettingsControllerGetSettingsIntegrationTests : BaseIntegrationTests
 {

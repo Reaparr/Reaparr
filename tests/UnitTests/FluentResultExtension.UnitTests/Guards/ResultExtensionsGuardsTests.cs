@@ -1,4 +1,4 @@
-﻿namespace Reaparr.FluentResultExtension.UnitTests.Guards;
+﻿namespace Reaparr.FluentResultExtension.UnitTests;
 
 public class ResultExtensionsGuardsTests
 {

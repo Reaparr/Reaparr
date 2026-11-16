@@ -1,4 +1,4 @@
-namespace Reaparr.PublicAPI.UnitTests.Config;
+namespace Reaparr.PublicAPI.UnitTests;
 
 public class ScopedIntegrationAuthenticationUnitTests : BaseUnitTest
 {

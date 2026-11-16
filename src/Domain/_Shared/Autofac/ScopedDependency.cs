@@ -1,4 +1,4 @@
-﻿namespace Reaparr.Domain.Autofac;
+﻿namespace Reaparr.Domain;
 
 public class ScopedDependency : IScopedDependency
 {

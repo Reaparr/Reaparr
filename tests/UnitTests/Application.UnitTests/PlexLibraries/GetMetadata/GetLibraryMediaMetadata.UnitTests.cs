@@ -1,4 +1,4 @@
-namespace Reaparr.Application.UnitTests.GetMetadata;
+namespace Reaparr.Application.UnitTests;
 
 public class GetLibraryMediaMetadataUnitTests
     : BaseEndpointUnitTest<GetLibraryMediaMetadata, GetLibraryMediaMetadataRequest, PlexMediaMetadataDTO>

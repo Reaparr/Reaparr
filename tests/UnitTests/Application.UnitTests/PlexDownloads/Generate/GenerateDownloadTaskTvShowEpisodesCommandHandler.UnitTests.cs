@@ -1,6 +1,4 @@
-﻿using Reaparr.Domain.Validators;
-
-namespace Reaparr.Application.UnitTests;
+﻿namespace Reaparr.Application.UnitTests;
 
 public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     : BaseCommandUnitTest<GenerateDownloadTaskTvShowEpisodesCommand>

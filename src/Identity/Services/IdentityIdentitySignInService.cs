@@ -3,7 +3,7 @@ using FastEndpoints.Security;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 
-namespace Reaparr.Identity.Services;
+namespace Reaparr.Identity;
 
 /// <summary>
 /// Identity-based implementation of ISignInService
