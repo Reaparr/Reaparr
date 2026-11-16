@@ -34,7 +34,7 @@ jobs:
         permissions:
             actions: write
         steps:
-            -   name: Cancel the workflow after 15 minutes
+            -   name: Cancel unfinished tests after 15 minutes
                 uses: actions/github-script@v8
                 with:
                     script: |
@@ -47,14 +47,17 @@ jobs:
                                 filter: 'latest',
                                 per_page: 100,
                             });
-                            const others = jobs.filter(job => job.name !== 'Pipeline deadline');
-                            if (others.length > 0 && others.every(job => job.status === 'completed')) {
-                                core.info('All pipeline jobs finished before the deadline.');
+                            const testJobs = jobs.filter(job =>
+                                job.name !== 'Pipeline deadline'
+                                && !job.name.startsWith('Test-Docker-Build / ')
+                                && !job.name.startsWith('Test-Desktop-Build / '));
+                            if (testJobs.length > 0 && testJobs.every(job => job.status === 'completed')) {
+                                core.info('All test/check jobs finished before the deadline; packaging may continue.');
                                 return;
                             }
                             const remaining = deadline - Date.now();
                             if (remaining <= 0) {
-                                core.warning('Cancelling the workflow: 15-minute deadline exceeded.');
+                                core.warning('Cancelling the workflow: test/check jobs exceeded the 15-minute deadline.');
                                 await github.rest.actions.cancelWorkflowRun(run);
                                 return;
                             }
