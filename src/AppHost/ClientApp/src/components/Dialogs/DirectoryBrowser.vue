@@ -84,7 +84,9 @@
 								:label="returnRow.name"
 								:aria-label="t('general.commands.back')"
 								:disable="saving || !returnRow.hasReadPermission"
-								@click.stop="directoryNavigate(returnRow)" />
+								@click.stop="directoryNavigate(returnRow)"
+								@keydown.enter.stop="directoryNavigate(returnRow)"
+								@keydown.space.stop.prevent="directoryNavigate(returnRow)" />
 						</td>
 					</tr>
 				</tbody>
@@ -132,7 +134,9 @@
 								:data-cy="`directory-browser-navigate-${index}`"
 								:label="row.name"
 								:disable="saving || !row.hasReadPermission"
-								@click.stop="directoryNavigate(row)" />
+								@click.stop="directoryNavigate(row)"
+								@keydown.enter.stop="directoryNavigate(row)"
+								@keydown.space.stop.prevent="directoryNavigate(row)" />
 						</td>
 					</tr>
 				</tbody>
