@@ -43,6 +43,7 @@ public class ResetFailedLibrarySyncJobsCommandHandler : ICommandHandler<ResetFai
                 x.PlexServerId == command.PlexServerId
                 && x.Status == LibrarySyncJobStatus.Failed
                 && x.PlexLibrary!.IsEnabled
+                && _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId)
             )
             .ResetJobsToQueuedAsync(cancellationToken);
 
@@ -50,7 +51,8 @@ public class ResetFailedLibrarySyncJobsCommandHandler : ICommandHandler<ResetFai
             x =>
                 x.PlexServerId == command.PlexServerId
                 && x.Status == LibrarySyncJobStatus.Queued
-                && x.PlexLibrary!.IsEnabled,
+                && x.PlexLibrary!.IsEnabled
+                && _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId),
             cancellationToken
         );
         if (resetCount > 0)

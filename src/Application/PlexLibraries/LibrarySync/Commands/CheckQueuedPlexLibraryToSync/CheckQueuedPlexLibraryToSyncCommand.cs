@@ -30,7 +30,11 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
     {
         // Group queued libraries by server
         var librariesByServer = await _dbContext
-            .LibrarySyncJobQueues.Where(x => x.Status == LibrarySyncJobStatus.Queued && x.PlexLibrary!.IsEnabled)
+            .LibrarySyncJobQueues.Where(x =>
+                x.Status == LibrarySyncJobStatus.Queued
+                && x.PlexLibrary!.IsEnabled
+                && _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId)
+            )
             .GroupBy(x => x.PlexServerId)
             .ToListAsync(cancellationToken: cancellationToken);
 
@@ -68,17 +72,18 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
                         x.PlexServerId == serverId
                         && x.Status == LibrarySyncJobStatus.Queued
                         && x.PlexLibrary!.IsEnabled
+                        && _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId)
                     )
                     .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsServerOffline, true), cancellationToken);
 
                 continue;
             }
-
             var hasProcessingLibrary = await _dbContext.LibrarySyncJobQueues.AnyAsync(
                 x =>
                     x.PlexServerId == serverId
                     && x.Status == LibrarySyncJobStatus.Processing
-                    && x.PlexLibrary!.IsEnabled,
+                    && x.PlexLibrary!.IsEnabled
+                    && _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId),
                 cancellationToken
             );
 
@@ -91,13 +96,13 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
                     );
                 continue;
             }
-
             await _dbContext
                 .LibrarySyncJobQueues.Where(x =>
                     x.PlexServerId == serverId
                     && x.Status == LibrarySyncJobStatus.Queued
                     && x.IsServerOffline
                     && x.PlexLibrary!.IsEnabled
+                    && _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId)
                 )
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsServerOffline, false), cancellationToken);
 
@@ -144,10 +149,12 @@ public class CheckQueuedPlexLibraryToSyncCommandHandler : ICommandHandler<CheckQ
                 && x.PlexLibraryId == libraryId
                 && x.Status == LibrarySyncJobStatus.Queued
                 && x.PlexLibrary!.IsEnabled
+                && _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId)
                 && !_dbContext.LibrarySyncJobQueues.Any(other =>
                     other.PlexServerId == x.PlexServerId
                     && other.Status == LibrarySyncJobStatus.Processing
                     && other.PlexLibrary!.IsEnabled
+                    && _dbContext.PlexServers.Any(server => server.Id == other.PlexServerId)
                 )
             )
             .ExecuteUpdateAsync(

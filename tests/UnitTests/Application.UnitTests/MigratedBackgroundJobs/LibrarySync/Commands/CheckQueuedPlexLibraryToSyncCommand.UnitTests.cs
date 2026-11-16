@@ -803,4 +803,66 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
         after[1].StartedAt.ShouldBe(startedAt);
         Mock.Mock<IScheduler>().Verify();
     }
+    [Test]
+    public async Task ShouldNotAdmitDisabledParentServer_WhenEnabledServerIsQueued()
+    {
+        // Arrange
+        await SetupDatabase(55210, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
+        var dbContext = IDbContext;
+        var servers = await dbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
+        await dbContext.PlexServers
+            .Where(x => x.Id == servers[0].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        dbContext.LibrarySyncJobQueues.AddRange(
+            libraries.Select(library => new LibrarySyncJobQueue
+            {
+                PlexServerId = library.PlexServerId,
+                PlexLibraryId = library.Id,
+                Priority = 1,
+                Status = LibrarySyncJobStatus.Queued,
+                CreatedAt = DateTime.UtcNow,
+            })
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.IsSuccessful, true),
+            CancellationToken
+        );
+        var enabledLibrary = libraries.Single(x => x.PlexServerId == servers[1].Id);
+        var enabledKey = LibrarySyncJob.GetJobKey(enabledLibrary.PlexServerId, enabledLibrary.Id);
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.CheckExists(enabledKey, CancellationToken))
+            .ReturnsAsync(false)
+            .Verifiable(Times.Exactly(2));
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.ScheduleJob(
+                It.Is<IJobDetail>(job => job.Key.Equals(enabledKey)),
+                It.Is<ITrigger>(trigger => trigger.JobKey.Equals(enabledKey)),
+                CancellationToken))
+            .ReturnsAsync(DateTimeOffset.UtcNow)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync(new CheckQueuedPlexLibraryToSyncCommand());
+        var after = await dbContext.LibrarySyncJobQueues
+            .IgnoreQueryFilters()
+            .OrderBy(x => x.PlexServerId)
+            .Select(x => new { x.PlexServerId, x.Status, x.StartedAt })
+            .ToListAsync(CancellationToken);
+        after.Select(x => new { x.PlexServerId, x.Status }).ShouldBe([
+            new { PlexServerId = libraries[0].PlexServerId, Status = LibrarySyncJobStatus.Queued },
+            new { PlexServerId = libraries[1].PlexServerId, Status = LibrarySyncJobStatus.Processing },
+        ]);
+        after[0].StartedAt.ShouldBeNull();
+        after[1].StartedAt.ShouldNotBeNull();
+        Mock.Mock<IScheduler>().Verify();
+        Mock.Mock<IScheduler>().Verify(
+            x => x.CheckExists(LibrarySyncJob.GetJobKey(libraries[0].PlexServerId, libraries[0].Id), It.IsAny<CancellationToken>()),
+            Times.Never());
+    }
 }

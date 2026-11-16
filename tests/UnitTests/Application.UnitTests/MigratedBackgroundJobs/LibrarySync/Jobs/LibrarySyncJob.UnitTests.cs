@@ -836,4 +836,104 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         );
         Mock.Mock<ITelemetry>().Verify();
     }
+    [Test]
+    public async Task ShouldRequeueWithoutSyncing_WhenParentServerIsDisabledBeforeExecution()
+    {
+        // Arrange
+        await SetupDatabase(55110, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
+        var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var startedAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
+        dbContext.LibrarySyncJobQueues.Add(new LibrarySyncJobQueue
+        {
+            PlexServerId = library.PlexServerId,
+            PlexLibraryId = library.Id,
+            Priority = 1,
+            Status = LibrarySyncJobStatus.Processing,
+            CreatedAt = startedAt,
+            StartedAt = startedAt,
+        });
+        await dbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.PlexServers
+            .Where(x => x.Id == library.PlexServerId)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        var context = SetupJobContext(library.PlexServerId, library.Id);
+        SetupBeginJob();
+
+        // Act
+        await Sut.Execute(context.Object);
+
+        // Assert
+        var after = await dbContext.LibrarySyncJobQueues.IgnoreQueryFilters().SingleAsync(CancellationToken);
+        after.Status.ShouldBe(LibrarySyncJobStatus.Queued);
+        after.StartedAt.ShouldBeNull();
+        context.Object.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<RefreshLibraryMediaCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never());
+        Mock.Mock<IMediaOverviewRebuildCoordinator>().Verify(
+            x => x.AcquireLibrarySyncLeaseAsync(It.IsAny<CancellationToken>()), Times.Never);
+        Mock.Mock<ITelemetry>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldRequeueWithoutSyncing_WhenParentServerIsDisabledWhileWaitingForLease()
+    {
+        // Arrange
+        var coordinator = new MediaOverviewRebuildCoordinator();
+        using var rebuildLease = await coordinator.AcquireRebuildLeaseAsync(CancellationToken);
+        await SetupDatabase(55111, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
+        var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var startedAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
+        dbContext.LibrarySyncJobQueues.Add(new LibrarySyncJobQueue
+        {
+            PlexServerId = library.PlexServerId,
+            PlexLibraryId = library.Id,
+            Priority = 1,
+            Status = LibrarySyncJobStatus.Processing,
+            CreatedAt = startedAt,
+            StartedAt = startedAt,
+        });
+        await dbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.PlexServerStatuses.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsSuccessful, true), CancellationToken);
+        var leaseRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var context = SetupJobContext(library.PlexServerId, library.Id);
+        Mock.Mock<IMediaOverviewRebuildCoordinator>()
+            .Setup(x => x.AcquireLibrarySyncLeaseAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken token) =>
+            {
+                leaseRequested.SetResult();
+                return coordinator.AcquireLibrarySyncLeaseAsync(token);
+            })
+            .Verifiable(Times.Once());
+        SetupBeginJob();
+
+        // Act
+        var execution = Sut.Execute(context.Object);
+        await dbContext.PlexServers
+            .Where(x => x.Id == library.PlexServerId)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        rebuildLease.Dispose();
+        await execution;
+
+        // Assert
+        var after = await dbContext.LibrarySyncJobQueues.IgnoreQueryFilters().SingleAsync(CancellationToken);
+        after.Status.ShouldBe(LibrarySyncJobStatus.Queued);
+        after.StartedAt.ShouldBeNull();
+        context.Object.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<RefreshLibraryMediaCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never());
+        Mock.Mock<IMediaOverviewRebuildCoordinator>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+    }
 }
