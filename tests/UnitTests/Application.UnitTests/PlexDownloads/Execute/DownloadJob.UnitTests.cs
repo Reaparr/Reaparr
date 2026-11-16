@@ -630,7 +630,10 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
     }
 
     [Test]
-    public async Task ShouldSetDownloadClientErrorStatus_WhenClientStartFailsWithoutSpecificError()
+    [Arguments("generic", DownloadStatus.DownloadClientError)]
+    [Arguments("http", DownloadStatus.DownloadClientError)]
+    [Arguments("disk", DownloadStatus.StorageError)]
+    public async Task ShouldSetExpectedStatus_WhenClientStartFails(string failureKind, DownloadStatus expectedStatus)
     {
         // Arrange
         await SetupDatabase(39397, config =>
@@ -650,7 +653,16 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
-        var startResult = Result.Fail("Client failed to start");
+        var startResult = failureKind switch
+        {
+            "http" => Result.Fail(
+                new ExceptionalError(
+                    new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!)
+                )
+            ),
+            "disk" => Result.Fail(new ExceptionalError(new IOException("Disk write failed."))),
+            _ => Result.Fail("Client failed to start"),
+        };
         var downloadClientMock = new Mock<IPlexDownloadClient>();
         downloadClientMock
             .Setup(x => x.Start(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()))
@@ -685,13 +697,15 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
             .Verify(
                 x =>
                     x.OnStatusChangedAsync(
-                        It.IsAny<DownloadTaskKey>(),
-                        DownloadStatus.DownloadClientError,
-                        It.IsAny<Result>(),
-                        It.IsAny<CancellationToken>()
+                        It.Is<DownloadTaskKey>(key => key.Id == testDownloadTask.Id),
+                        expectedStatus,
+                        It.Is<Result>(result => ReferenceEquals(result, startResult)),
+                        CancellationToken.None
                     ),
                 Times.Once()
             );
+        Mock.Mock<IDownloadTaskUpdateDispatcher>().Verify();
+        context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
         Mock.Mock<ICommandExecutor>()
             .Verify(
                 x => x.Send(It.IsAny<DeterminePlexDownloadClientCommand>(), It.IsAny<CancellationToken>()),

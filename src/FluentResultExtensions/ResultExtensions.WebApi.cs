@@ -560,7 +560,7 @@ public static partial class ResultExtensions
             error.Message.Contains(NOT_ENOUGH_SPACE_TOKEN, StringComparison.OrdinalIgnoreCase)
             || error.Message.Contains(DISK_FULL_TOKEN, StringComparison.OrdinalIgnoreCase)
         )
-        || result.HasException<IOException>()
+        || result.HasException<IOException>(exception => exception is not HttpIOException)
         || result.HasException<UnauthorizedAccessException>();
 
     public static bool HasStorageError<T>(this Result<T> result) => result.ToResult().HasStorageError();
