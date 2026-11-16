@@ -47,7 +47,6 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         activeFileServers.Count.ShouldBeGreaterThan(3);
 
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
@@ -55,14 +54,15 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         };
         settings.ServerSettings.SetDownloadSpeedLimit(servers[0].MachineIdentifier, 100);
         settings.ServerSettings.SetDownloadSpeedLimit(servers[3].MachineIdentifier, 200);
-        speedLimits.SetScheduledDownloadSpeedLimits(
-            new Dictionary<string, long> { [servers[3].MachineIdentifier] = 1 }
-        );
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(
+            new Dictionary<string, long> { [servers[3].MachineIdentifier] = 1 }
+        );
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -171,12 +171,12 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
                 },
             },
         };
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -225,7 +225,6 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             .ToList();
         servers.Count.ShouldBe(3);
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
@@ -234,8 +233,9 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -256,15 +256,15 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     {
         // Arrange
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule { Enabled = enabled };
         settings.ServerSettings.SetDownloadSpeedLimit("capped", 100);
-        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["capped"] = 1, ["uncapped"] = 2 });
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["capped"] = 1, ["uncapped"] = 2 });
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -286,18 +286,18 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     {
         // Arrange
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
             Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = invalidLimit } },
         };
-        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -346,7 +346,6 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             CancellationToken
         );
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
@@ -357,8 +356,9 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -394,21 +394,21 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             .DownloadTaskMovieFile.Select(x => x.PlexServer!.MachineIdentifier)
             .FirstAsync(CancellationToken);
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
             Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
         };
         settings.ServerSettings.SetDownloadSpeedLimit(machineIdentifier, 100);
-        speedLimits.SetScheduledDownloadSpeedLimits(
-            new Dictionary<string, long> { [machineIdentifier] = 1, ["inactive"] = 2 }
-        );
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(
+            new Dictionary<string, long> { [machineIdentifier] = 1, ["inactive"] = 2 }
+        );
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -470,15 +470,15 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
                 },
             },
         };
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
-        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { [machineIdentifier] = 12345 });
         var clock = new Mock<TimeProvider>(MockBehavior.Strict);
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
             builder.RegisterInstance(clock.Object).As<TimeProvider>();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { [machineIdentifier] = 12345 });
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -527,15 +527,15 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
                 },
             },
         };
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         var clock = new Mock<TimeProvider>(MockBehavior.Strict);
         clock.Setup(x => x.GetUtcNow()).Returns(DateTimeOffset.Parse(utc)).Verifiable(Times.Once());
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
             builder.RegisterInstance(clock.Object).As<TimeProvider>();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
 
         // Act
         var result = await TestHandlerExecuteAsync(new UpdateScheduledDownloadLimitsCommand());
@@ -553,15 +553,15 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     {
         // Arrange
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
-        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
         var clock = new Mock<TimeProvider>(MockBehavior.Strict);
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
             builder.RegisterInstance(clock.Object).As<TimeProvider>();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
 
         // Act
         var result = await TestHandlerExecuteAsync(new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.MinValue));

@@ -96,7 +96,7 @@ public static class FastEndpointsExtensions
     /// <param name="result">The result to convert and send.</param>
     /// <param name="ct">Token to observe while sending the response.</param>
     public static Task FluentResult(this IResponseSender sender, Result result, CancellationToken ct = default) =>
-        sender.SendFluentResultDTOAsync(result.ToResultDTO(), ct: ct);
+        SendFluentResultDTOAsync(sender, result.ToResultDTO(), ct: ct);
 
     /// <summary>
     /// Sends a FluentResults <see cref="Result{T}"/> response using the project-standard <see cref="ResultDTO{T}"/> envelope.
@@ -106,7 +106,7 @@ public static class FastEndpointsExtensions
     /// <param name="result">The result to convert and send.</param>
     /// <param name="ct">Token to observe while sending the response.</param>
     public static Task FluentResult<T>(this IResponseSender sender, Result<T> result, CancellationToken ct = default) =>
-        sender.SendFluentResultDTOAsync(result.ToResultDTO(), ct: ct);
+        SendFluentResultDTOAsync(sender, result.ToResultDTO(), ct: ct);
 
     /// <summary>
     /// Sends a FluentResults <see cref="Result{T}"/> response after mapping the value into the response DTO type.
@@ -125,14 +125,14 @@ public static class FastEndpointsExtensions
     )
     {
         var resultDTO = result.ToResultDTO(mapper);
-        await sender.SendFluentResultDTOAsync(resultDTO, ct: ct);
+        await SendFluentResultDTOAsync(sender, resultDTO, ct: ct);
     }
 
-    private static Task SendFluentResultDTOAsync<TResponse>(
-        this IResponseSender ep,
+    private static Task<FastEndpoints.Void> SendFluentResultDTOAsync<TResponse>(
+        IResponseSender sender,
         TResponse resultDTO,
         CancellationToken ct = default
     )
         where TResponse : BaseResultDTO =>
-        ep.HttpContext.Response.SendAsync(resultDTO, resultDTO.StatusCode, cancellation: ct);
+        sender.HttpContext.Response.SendAsync(resultDTO, resultDTO.StatusCode, cancellation: ct);
 }
