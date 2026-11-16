@@ -934,29 +934,41 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
                 _ => new[] { PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack },
             };
             Mock.Mock<ICommandExecutor>()
-                .Setup(x => x.Send(
-                    It.Is<ApplyComparisonStateCommand>(command =>
-                        command.MediaType == type
-                        && command.PlexLibraryId == fixture.LibraryId
-                        && command.Items.Select(item => item.Id).SequenceEqual(expectedIds)
-                        && command.Items.Select(item => item.Type).SequenceEqual(expectedTypes)),
-                    CancellationToken))
-                .Returns<ICommand<Result>, CancellationToken>((command, ct) =>
-                {
-                    var items = ((ApplyComparisonStateCommand)command).Items;
-                    var scheduler = Mock.Mock<Quartz.IScheduler>().Object;
-                    return type switch
+                .Setup(x =>
+                    x.Send(
+                        It.Is<ApplyComparisonStateCommand>(command =>
+                            command.MediaType == type
+                            && command.PlexLibraryId == fixture.LibraryId
+                            && command.Items.Select(item => item.Id).SequenceEqual(expectedIds)
+                            && command.Items.Select(item => item.Type).SequenceEqual(expectedTypes)
+                        ),
+                        CancellationToken
+                    )
+                )
+                .Returns<ICommand<Result>, CancellationToken>(
+                    (command, ct) =>
                     {
-                        PlexMediaType.Movie => new ApplyOwnedMovieComparisonStateCommandHandler(
-                            dbContext, Mock.Container.Resolve<ILogger>(), scheduler)
-                            .ExecuteAsync(new ApplyOwnedMovieComparisonStateCommand(items, fixture.LibraryId), ct),
-                        PlexMediaType.TvShow => new ApplyOwnedTvShowComparisonStateCommandHandler(
-                            dbContext, Mock.Container.Resolve<ILogger>(), scheduler)
-                            .ExecuteAsync(new ApplyOwnedTvShowComparisonStateCommand(items, fixture.LibraryId), ct),
-                        _ => new ApplyOwnedMusicComparisonStateCommandHandler(dbContext, scheduler)
-                            .ExecuteAsync(new ApplyOwnedMusicComparisonStateCommand(items, fixture.LibraryId), ct),
-                    };
-                })
+                        var items = ((ApplyComparisonStateCommand)command).Items;
+                        var scheduler = Mock.Mock<Quartz.IScheduler>().Object;
+                        return type switch
+                        {
+                            PlexMediaType.Movie => new ApplyOwnedMovieComparisonStateCommandHandler(
+                                dbContext,
+                                Mock.Container.Resolve<ILogger>(),
+                                scheduler
+                            ).ExecuteAsync(new ApplyOwnedMovieComparisonStateCommand(items, fixture.LibraryId), ct),
+                            PlexMediaType.TvShow => new ApplyOwnedTvShowComparisonStateCommandHandler(
+                                dbContext,
+                                Mock.Container.Resolve<ILogger>(),
+                                scheduler
+                            ).ExecuteAsync(new ApplyOwnedTvShowComparisonStateCommand(items, fixture.LibraryId), ct),
+                            _ => new ApplyOwnedMusicComparisonStateCommandHandler(dbContext, scheduler).ExecuteAsync(
+                                new ApplyOwnedMusicComparisonStateCommand(items, fixture.LibraryId),
+                                ct
+                            ),
+                        };
+                    }
+                )
                 .Verifiable(Times.Once());
         }
 
@@ -988,9 +1000,13 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
         commands.ShouldAllBe(sql => !sql.Contains("\"PlexServerStatuses\""));
         commands.ShouldAllBe(sql => !sql.Contains("\"AuthToken\""));
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
-            type is PlexMediaType.Movie or PlexMediaType.TvShow or PlexMediaType.MusicArtist ? Times.Once() : Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+                type is PlexMediaType.Movie or PlexMediaType.TvShow or PlexMediaType.MusicArtist
+                    ? Times.Once()
+                    : Times.Never()
+            );
     }
 
     [Test]
@@ -1070,20 +1086,39 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
     private async Task<DetailFixture> LoadMovieFixtureAsync(IReaparrDbContext dbContext)
     {
         var movie = await dbContext.PlexMovies.IncludeAll().SingleAsync(CancellationToken);
-        return new DetailFixture(movie.Id, movie.PlexLibraryId, movie.PlexServerId, movie.Title, movie.MediaSize,
-            [], [], movie.MediaDataList.Select(x => x.Id).ToArray(), nameof(PlexMovie));
+        return new DetailFixture(
+            movie.Id,
+            movie.PlexLibraryId,
+            movie.PlexServerId,
+            movie.Title,
+            movie.MediaSize,
+            [],
+            [],
+            movie.MediaDataList.Select(x => x.Id).ToArray(),
+            nameof(PlexMovie)
+        );
     }
 
     private async Task<DetailFixture> LoadTvShowFixtureAsync(IReaparrDbContext dbContext)
     {
-        var show = await dbContext.PlexTvShows
-            .Include(x => x.Seasons).ThenInclude(x => x.Episodes).ThenInclude(x => x.MediaDataList)
+        var show = await dbContext
+            .PlexTvShows.Include(x => x.Seasons)
+                .ThenInclude(x => x.Episodes)
+                    .ThenInclude(x => x.MediaDataList)
             .SingleAsync(CancellationToken);
         var season = show.Seasons.ShouldHaveSingleItem();
         var episode = season.Episodes.ShouldHaveSingleItem();
-        return new DetailFixture(show.Id, show.PlexLibraryId, show.PlexServerId, show.Title, show.MediaSize,
-            [season.Id], [episode.Id], episode.MediaDataList.Select(x => x.Id).ToArray(),
-            nameof(IReaparrDbContext.PlexTvShows));
+        return new DetailFixture(
+            show.Id,
+            show.PlexLibraryId,
+            show.PlexServerId,
+            show.Title,
+            show.MediaSize,
+            [season.Id],
+            [episode.Id],
+            episode.MediaDataList.Select(x => x.Id).ToArray(),
+            nameof(IReaparrDbContext.PlexTvShows)
+        );
     }
 
     private async Task<DetailFixture> LoadMusicFixtureAsync(IReaparrDbContext dbContext)

@@ -434,20 +434,14 @@ public class UpdatePlexServerConnectionEndpointUnitTests
     [Arguments(true, true)]
     [Arguments(false, true)]
     [Arguments(true, false)]
-    public async Task ShouldKeepOnlyStatusForUnchangedUrls_WhenUpdatingCustomConnection(
-        bool changeUrl,
-        bool hasStatus
-    )
+    public async Task ShouldKeepOnlyStatusForUnchangedUrls_WhenUpdatingCustomConnection(bool changeUrl, bool hasStatus)
     {
         // Arrange
-        await SetupDatabase(
-            44805,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 2;
-            }
-        );
+        await SetupDatabase(44805, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
         var dbContext = IDbContext;
         var connections = await dbContext.PlexServerConnections.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var target = connections[0];
@@ -459,7 +453,8 @@ public class UpdatePlexServerConnectionEndpointUnitTests
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == target.PlexServerId)
             .ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.IsEnabled, true).SetProperty(x => x.PreferredConnectionId, target.Id),
+                setters =>
+                    setters.SetProperty(x => x.IsEnabled, true).SetProperty(x => x.PreferredConnectionId, target.Id),
                 CancellationToken
             );
         await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
@@ -536,9 +531,7 @@ public class UpdatePlexServerConnectionEndpointUnitTests
             })
             .ToListAsync(CancellationToken);
         statusesAfter.ShouldBe(
-            changeUrl
-                ? statusesBefore.Where(x => x.PlexServerConnectionId != target.Id).ToList()
-                : statusesBefore
+            changeUrl ? statusesBefore.Where(x => x.PlexServerConnectionId != target.Id).ToList() : statusesBefore
         );
         var persistedConnections = await verificationContext
             .PlexServerConnections.Include(x => x.LatestConnectionStatus)

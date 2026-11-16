@@ -39,7 +39,12 @@ public class TorznabRequestUnitTests
     public void ShouldSelectRssOnlyWhenSeasonIsOmitted(int? season, TorznabRequestMode expectedMode)
     {
         // Arrange
-        var endpointRequest = new TorznabEndpointRequest { Type = "tvsearch", ApiKey = "key", Season = season };
+        var endpointRequest = new TorznabEndpointRequest
+        {
+            Type = "tvsearch",
+            ApiKey = "key",
+            Season = season,
+        };
 
         // Act
         var request = endpointRequest.ToTorznabRequest(new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty));

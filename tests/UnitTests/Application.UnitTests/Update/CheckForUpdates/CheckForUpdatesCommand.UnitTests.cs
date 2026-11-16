@@ -60,6 +60,7 @@ public class CheckForUpdatesCommandUnitTests : BaseUnitTest<CheckForUpdatesComma
         mockManager.Verify();
         mockSource.VerifyNoOtherCalls();
     }
+
     [Test]
     public async Task ShouldFilterDesktopReleaseNotesToVelopackTargetVersion()
     {

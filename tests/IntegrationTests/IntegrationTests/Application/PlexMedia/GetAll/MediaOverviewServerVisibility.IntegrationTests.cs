@@ -12,34 +12,31 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
     {
         // Arrange
         var seed = new Seed(11042 + (int)mediaType);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+            config.DatabaseOptions = database =>
             {
-                config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexAccountCount = 1;
-                    database.PlexServerCount = 2;
-                    database.PlexServerConnectionPerServerCount = 1;
-                    database.PlexMovieLibraryCount = 1;
-                    database.PlexTvShowLibraryCount = 1;
-                    database.PlexMusicLibraryCount = 1;
-                    database.PlexPhotoLibraryCount = 1;
-                    database.PlexOtherVideoLibraryCount = 1;
-                    database.MovieCount = 2;
-                    database.TvShowCount = 2;
-                    database.TvShowSeasonCount = 1;
-                    database.TvShowEpisodeCount = 1;
-                    database.MusicArtistCount = 2;
-                    database.MusicAlbumCount = 1;
-                    database.MusicTrackCount = 1;
-                    database.PhotoAlbumCount = 2;
-                    database.PhotoCount = 1;
-                    database.OtherVideoCount = 2;
-                };
-            }
-        );
+                database.PlexAccountCount = 1;
+                database.PlexServerCount = 2;
+                database.PlexServerConnectionPerServerCount = 1;
+                database.PlexMovieLibraryCount = 1;
+                database.PlexTvShowLibraryCount = 1;
+                database.PlexMusicLibraryCount = 1;
+                database.PlexPhotoLibraryCount = 1;
+                database.PlexOtherVideoLibraryCount = 1;
+                database.MovieCount = 2;
+                database.TvShowCount = 2;
+                database.TvShowSeasonCount = 1;
+                database.TvShowEpisodeCount = 1;
+                database.MusicArtistCount = 2;
+                database.MusicAlbumCount = 1;
+                database.MusicTrackCount = 1;
+                database.PhotoAlbumCount = 2;
+                database.PhotoCount = 1;
+                database.OtherVideoCount = 2;
+            };
+        });
         var dbFactory = container.Resolve<IReaparrDbContextFactory>();
         using var beforeContext = await dbFactory.CreateAsync();
         var libraries = await beforeContext
@@ -47,27 +44,25 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
             .Where(x => x.Type == mediaType)
             .OrderBy(x => x.PlexServerId)
             .ThenBy(x => x.Id)
-            .Select(x =>
-                new
-                {
-                    x.Id,
-                    x.PlexServerId,
-                    x.Type,
-                    x.IsEnabled,
-                    x.MediaSize,
-                    x.MovieCount,
-                    x.TvShowCount,
-                    x.SeasonCount,
-                    x.EpisodeCount,
-                    x.MusicArtistCount,
-                    x.MusicAlbumCount,
-                    x.MusicTrackCount,
-                    x.PhotoAlbumCount,
-                    x.PhotoImageCount,
-                    x.PhotoClipCount,
-                    x.OtherVideoCount,
-                }
-            )
+            .Select(x => new
+            {
+                x.Id,
+                x.PlexServerId,
+                x.Type,
+                x.IsEnabled,
+                x.MediaSize,
+                x.MovieCount,
+                x.TvShowCount,
+                x.SeasonCount,
+                x.EpisodeCount,
+                x.MusicArtistCount,
+                x.MusicAlbumCount,
+                x.MusicTrackCount,
+                x.PhotoAlbumCount,
+                x.PhotoImageCount,
+                x.PhotoClipCount,
+                x.OtherVideoCount,
+            })
             .ToArrayAsync(CancellationToken);
         libraries.Length.ShouldBe(2);
         libraries.ShouldAllBe(x => x.IsEnabled);
@@ -129,45 +124,66 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
         expectedServerStatuses.ShouldAllBe(x => x.IsSuccessful);
         var media = mediaType switch
         {
-            PlexMediaType.Movie => (await beforeContext
+            PlexMediaType.Movie => (
+                await beforeContext
                     .PlexMovies.OrderBy(x => x.Id)
-                    .Select(x => new { x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize })
-                    .ToArrayAsync(CancellationToken))
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
-                .ToArray(),
-            PlexMediaType.TvShow => (await beforeContext
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        x.PlexServerId,
+                        x.MediaSize,
+                    })
+                    .ToArrayAsync(CancellationToken)
+            ).Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize)).ToArray(),
+            PlexMediaType.TvShow => (
+                await beforeContext
                     .PlexTvShows.OrderBy(x => x.Id)
-                    .Select(x => new { x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize })
-                    .ToArrayAsync(CancellationToken))
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
-                .ToArray(),
-            PlexMediaType.MusicArtist => (await beforeContext
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        x.PlexServerId,
+                        x.MediaSize,
+                    })
+                    .ToArrayAsync(CancellationToken)
+            ).Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize)).ToArray(),
+            PlexMediaType.MusicArtist => (
+                await beforeContext
                     .PlexMusicArtists.OrderBy(x => x.Id)
-                    .Select(x => new { x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize })
-                    .ToArrayAsync(CancellationToken))
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
-                .ToArray(),
-            PlexMediaType.PhotoAlbum => (await beforeContext
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        x.PlexServerId,
+                        x.MediaSize,
+                    })
+                    .ToArrayAsync(CancellationToken)
+            ).Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize)).ToArray(),
+            PlexMediaType.PhotoAlbum => (
+                await beforeContext
                     .PlexPhotoAlbums.OrderBy(x => x.Id)
-                    .Select(
-                        x =>
-                            new
-                            {
-                                x.Id,
-                                x.PlexLibraryId,
-                                x.PlexServerId,
-                                MediaSize = x.Memberships.Sum(membership => membership.PlexPhotoMediaData!.Size),
-                            }
-                    )
-                    .ToArrayAsync(CancellationToken))
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
-                .ToArray(),
-            PlexMediaType.OtherVideos => (await beforeContext
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        x.PlexServerId,
+                        MediaSize = x.Memberships.Sum(membership => membership.PlexPhotoMediaData!.Size),
+                    })
+                    .ToArrayAsync(CancellationToken)
+            ).Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize)).ToArray(),
+            PlexMediaType.OtherVideos => (
+                await beforeContext
                     .PlexOtherVideos.OrderBy(x => x.Id)
-                    .Select(x => new { x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize })
-                    .ToArrayAsync(CancellationToken))
-                .Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize))
-                .ToArray(),
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.PlexLibraryId,
+                        x.PlexServerId,
+                        x.MediaSize,
+                    })
+                    .ToArrayAsync(CancellationToken)
+            ).Select(x => (Id: x.Id, LibraryId: x.PlexLibraryId, ServerId: x.PlexServerId, MediaSize: x.MediaSize)).ToArray(),
             _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
         };
         media.Length.ShouldBe(4);
@@ -182,36 +198,35 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
             await beforeContext
                 .PlexAccountLibraries.Where(x => libraryIds.Contains(x.PlexLibraryId))
                 .OrderBy(x => x.PlexLibraryId)
-                .Select(x => new { x.PlexAccountId, x.PlexLibraryId, x.PlexServerId, x.IsLibraryOwned })
-                .ToArrayAsync(CancellationToken)
-        )
-            .Select(x =>
-                (
+                .Select(x => new
+                {
                     x.PlexAccountId,
                     x.PlexLibraryId,
                     x.PlexServerId,
-                    x.IsLibraryOwned
-                )
-            )
-            .ToArray();
+                    x.IsLibraryOwned,
+                })
+                .ToArrayAsync(CancellationToken)
+        ).Select(x => (x.PlexAccountId, x.PlexLibraryId, x.PlexServerId, x.IsLibraryOwned)).ToArray();
         expectedAccountLibraries.Length.ShouldBe(2);
         expectedAccountLibraries.ShouldAllBe(x => x.IsLibraryOwned);
         var expectedAccountServers = (
             await beforeContext
                 .PlexAccountServers.Where(x => serverIds.Contains(x.PlexServerId))
                 .OrderBy(x => x.PlexServerId)
-                .Select(x => new { x.PlexAccountId, x.PlexServerId, x.IsServerOwned })
+                .Select(x => new
+                {
+                    x.PlexAccountId,
+                    x.PlexServerId,
+                    x.IsServerOwned,
+                })
                 .ToArrayAsync(CancellationToken)
-        )
-            .Select(x => (x.PlexAccountId, x.PlexServerId, x.IsServerOwned))
-            .ToArray();
+        ).Select(x => (x.PlexAccountId, x.PlexServerId, x.IsServerOwned)).ToArray();
         expectedAccountServers.Length.ShouldBe(2);
         expectedAccountServers.ShouldAllBe(x => x.IsServerOwned);
 
-        var rebuild = await container.Resolve<ICommandExecutor>().Send(
-            new RebuildMediaOverviewCommand([mediaType]),
-            CancellationToken
-        );
+        var rebuild = await container
+            .Resolve<ICommandExecutor>()
+            .Send(new RebuildMediaOverviewCommand([mediaType]), CancellationToken);
         rebuild.IsSuccess.ShouldBeTrue();
         rebuild.Errors.Count.ShouldBe(0);
 
@@ -224,39 +239,49 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
         {
             var snapshotRows = mediaType switch
             {
-                PlexMediaType.Movie => (await snapshotContext.MediaOverviewMovieSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.Movie => (
+                    await snapshotContext
+                        .MediaOverviewMovieSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexMovieId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexMovieId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
-                PlexMediaType.TvShow => (await snapshotContext.MediaOverviewTvShowSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.TvShow => (
+                    await snapshotContext
+                        .MediaOverviewTvShowSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexTvShowId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexTvShowId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
-                PlexMediaType.MusicArtist => (await snapshotContext.MediaOverviewMusicArtistSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.MusicArtist => (
+                    await snapshotContext
+                        .MediaOverviewMusicArtistSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexArtistId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexArtistId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
-                PlexMediaType.PhotoAlbum => (await snapshotContext.MediaOverviewPhotoAlbumSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.PhotoAlbum => (
+                    await snapshotContext
+                        .MediaOverviewPhotoAlbumSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexPhotoAlbumId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexPhotoAlbumId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
-                PlexMediaType.OtherVideos => (await snapshotContext.MediaOverviewOtherVideoSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.OtherVideos => (
+                    await snapshotContext
+                        .MediaOverviewOtherVideoSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexOtherVideoId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexOtherVideoId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
                 _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
@@ -267,21 +292,20 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
         using var client = container.GetApiClient();
         await client.SignIn();
         var expectedEnabledMediaSize = enabledMedia.Sum(x => x.MediaSize);
-        var expectedEnabledStats =
-            (
-                TotalCount: enabledMedia.Length,
-                MediaCount: enabledMedia.Length,
-                MovieCount: mediaType == PlexMediaType.Movie ? enabledMedia.Length : 0,
-                TvShowCount: mediaType == PlexMediaType.TvShow ? enabledMedia.Length : 0,
-                SeasonCount: mediaType == PlexMediaType.TvShow ? enabledLibrary.SeasonCount : 0,
-                EpisodeCount: mediaType == PlexMediaType.TvShow ? enabledLibrary.EpisodeCount : 0,
-                TotalMovieCount: mediaType == PlexMediaType.Movie ? enabledMedia.Length : enabledLibrary.MovieCount,
-                TotalTvShowCount: mediaType == PlexMediaType.TvShow ? enabledMedia.Length : enabledLibrary.TvShowCount,
-                TotalSeasonCount: enabledLibrary.SeasonCount,
-                TotalEpisodeCount: enabledLibrary.EpisodeCount,
-                MediaSize: expectedEnabledMediaSize,
-                TotalMediaSize: expectedEnabledMediaSize
-            );
+        var expectedEnabledStats = (
+            TotalCount: enabledMedia.Length,
+            MediaCount: enabledMedia.Length,
+            MovieCount: mediaType == PlexMediaType.Movie ? enabledMedia.Length : 0,
+            TvShowCount: mediaType == PlexMediaType.TvShow ? enabledMedia.Length : 0,
+            SeasonCount: mediaType == PlexMediaType.TvShow ? enabledLibrary.SeasonCount : 0,
+            EpisodeCount: mediaType == PlexMediaType.TvShow ? enabledLibrary.EpisodeCount : 0,
+            TotalMovieCount: mediaType == PlexMediaType.Movie ? enabledMedia.Length : enabledLibrary.MovieCount,
+            TotalTvShowCount: mediaType == PlexMediaType.TvShow ? enabledMedia.Length : enabledLibrary.TvShowCount,
+            TotalSeasonCount: enabledLibrary.SeasonCount,
+            TotalEpisodeCount: enabledLibrary.EpisodeCount,
+            MediaSize: expectedEnabledMediaSize,
+            TotalMediaSize: expectedEnabledMediaSize
+        );
 
         // Act and assert both overview paths before the parent is disabled.
         foreach (var sort in new[] { "title:asc", "title:asc,addedAt:asc" })
@@ -318,14 +342,10 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                     value.MediaSize,
                     value.TotalMediaSize
                 ).ShouldBe((1, 10, expected.Length, expected.Length, expectedMediaSize, expectedMediaSize));
-                value.MediaList
-                    .OrderBy(x => x.Id)
+                value
+                    .MediaList.OrderBy(x => x.Id)
                     .Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.Type))
-                    .ShouldBe(
-                        expected
-                            .OrderBy(x => x.Id)
-                            .Select(x => (x.Id, x.LibraryId, x.ServerId, mediaType))
-                    );
+                    .ShouldBe(expected.OrderBy(x => x.Id).Select(x => (x.Id, x.LibraryId, x.ServerId, mediaType)));
             }
         }
 
@@ -364,32 +384,8 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                     .Where(x => libraryIds.Contains(x.Id))
                     .OrderBy(x => x.PlexServerId)
                     .ThenBy(x => x.Id)
-                    .Select(
-                        x =>
-                            new
-                            {
-                                x.Id,
-                                x.PlexServerId,
-                                x.Type,
-                                x.IsEnabled,
-                                x.MediaSize,
-                                x.MovieCount,
-                                x.TvShowCount,
-                                x.SeasonCount,
-                                x.EpisodeCount,
-                                x.MusicArtistCount,
-                                x.MusicAlbumCount,
-                                x.MusicTrackCount,
-                                x.PhotoAlbumCount,
-                                x.PhotoImageCount,
-                                x.PhotoClipCount,
-                                x.OtherVideoCount,
-                            }
-                    )
-                    .ToArrayAsync(CancellationToken)
-            )
-                .Select(x =>
-                    (
+                    .Select(x => new
+                    {
                         x.Id,
                         x.PlexServerId,
                         x.Type,
@@ -405,54 +401,75 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                         x.PhotoAlbumCount,
                         x.PhotoImageCount,
                         x.PhotoClipCount,
-                        x.OtherVideoCount
-                    )
-                )
-                .ToArray();
+                        x.OtherVideoCount,
+                    })
+                    .ToArrayAsync(CancellationToken)
+            ).Select(x => (x.Id, x.PlexServerId, x.Type, x.IsEnabled, x.MediaSize, x.MovieCount, x.TvShowCount, x.SeasonCount, x.EpisodeCount, x.MusicArtistCount, x.MusicAlbumCount, x.MusicTrackCount, x.PhotoAlbumCount, x.PhotoImageCount, x.PhotoClipCount, x.OtherVideoCount)).ToArray();
             afterLibraries.ShouldBe(expectedLibraries);
             afterLibraries.ShouldAllBe(x => x.IsEnabled);
 
             var afterMedia = mediaType switch
             {
-                PlexMediaType.Movie => (await afterDisableContext
+                PlexMediaType.Movie => (
+                    await afterDisableContext
                         .PlexMovies.OrderBy(x => x.Id)
-                        .Select(x => new { x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize })
-                        .ToArrayAsync(CancellationToken))
-                    .Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize))
-                    .ToArray(),
-                PlexMediaType.TvShow => (await afterDisableContext
+                        .Select(x => new
+                        {
+                            x.Id,
+                            x.PlexLibraryId,
+                            x.PlexServerId,
+                            x.MediaSize,
+                        })
+                        .ToArrayAsync(CancellationToken)
+                ).Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize)).ToArray(),
+                PlexMediaType.TvShow => (
+                    await afterDisableContext
                         .PlexTvShows.OrderBy(x => x.Id)
-                        .Select(x => new { x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize })
-                        .ToArrayAsync(CancellationToken))
-                    .Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize))
-                    .ToArray(),
-                PlexMediaType.MusicArtist => (await afterDisableContext
+                        .Select(x => new
+                        {
+                            x.Id,
+                            x.PlexLibraryId,
+                            x.PlexServerId,
+                            x.MediaSize,
+                        })
+                        .ToArrayAsync(CancellationToken)
+                ).Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize)).ToArray(),
+                PlexMediaType.MusicArtist => (
+                    await afterDisableContext
                         .PlexMusicArtists.OrderBy(x => x.Id)
-                        .Select(x => new { x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize })
-                        .ToArrayAsync(CancellationToken))
-                    .Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize))
-                    .ToArray(),
-                PlexMediaType.PhotoAlbum => (await afterDisableContext
+                        .Select(x => new
+                        {
+                            x.Id,
+                            x.PlexLibraryId,
+                            x.PlexServerId,
+                            x.MediaSize,
+                        })
+                        .ToArrayAsync(CancellationToken)
+                ).Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize)).ToArray(),
+                PlexMediaType.PhotoAlbum => (
+                    await afterDisableContext
                         .PlexPhotoAlbums.OrderBy(x => x.Id)
-                        .Select(
-                            x =>
-                                new
-                                {
-                                    x.Id,
-                                    x.PlexLibraryId,
-                                    x.PlexServerId,
-                                    MediaSize = x.Memberships.Sum(membership => membership.PlexPhotoMediaData!.Size),
-                                }
-                        )
-                        .ToArrayAsync(CancellationToken))
-                    .Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize))
-                    .ToArray(),
-                PlexMediaType.OtherVideos => (await afterDisableContext
+                        .Select(x => new
+                        {
+                            x.Id,
+                            x.PlexLibraryId,
+                            x.PlexServerId,
+                            MediaSize = x.Memberships.Sum(membership => membership.PlexPhotoMediaData!.Size),
+                        })
+                        .ToArrayAsync(CancellationToken)
+                ).Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize)).ToArray(),
+                PlexMediaType.OtherVideos => (
+                    await afterDisableContext
                         .PlexOtherVideos.OrderBy(x => x.Id)
-                        .Select(x => new { x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize })
-                        .ToArrayAsync(CancellationToken))
-                    .Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize))
-                    .ToArray(),
+                        .Select(x => new
+                        {
+                            x.Id,
+                            x.PlexLibraryId,
+                            x.PlexServerId,
+                            x.MediaSize,
+                        })
+                        .ToArrayAsync(CancellationToken)
+                ).Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.MediaSize)).ToArray(),
                 _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
             };
             afterMedia.ShouldBe(expectedMedia);
@@ -461,21 +478,28 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                 await afterDisableContext
                     .PlexAccountLibraries.Where(x => libraryIds.Contains(x.PlexLibraryId))
                     .OrderBy(x => x.PlexLibraryId)
-                    .Select(x => new { x.PlexAccountId, x.PlexLibraryId, x.PlexServerId, x.IsLibraryOwned })
+                    .Select(x => new
+                    {
+                        x.PlexAccountId,
+                        x.PlexLibraryId,
+                        x.PlexServerId,
+                        x.IsLibraryOwned,
+                    })
                     .ToArrayAsync(CancellationToken)
-            )
-                .Select(x => (x.PlexAccountId, x.PlexLibraryId, x.PlexServerId, x.IsLibraryOwned))
-                .ToArray();
+            ).Select(x => (x.PlexAccountId, x.PlexLibraryId, x.PlexServerId, x.IsLibraryOwned)).ToArray();
             afterAccountLibraries.ShouldBe(expectedAccountLibraries);
             var afterAccountServers = (
                 await afterDisableContext
                     .PlexAccountServers.Where(x => serverIds.Contains(x.PlexServerId))
                     .OrderBy(x => x.PlexServerId)
-                    .Select(x => new { x.PlexAccountId, x.PlexServerId, x.IsServerOwned })
+                    .Select(x => new
+                    {
+                        x.PlexAccountId,
+                        x.PlexServerId,
+                        x.IsServerOwned,
+                    })
                     .ToArrayAsync(CancellationToken)
-            )
-                .Select(x => (x.PlexAccountId, x.PlexServerId, x.IsServerOwned))
-                .ToArray();
+            ).Select(x => (x.PlexAccountId, x.PlexServerId, x.IsServerOwned)).ToArray();
             afterAccountServers.ShouldBe(expectedAccountServers);
             var afterServerStatuses = await afterDisableContext
                 .PlexServerStatuses.Where(x => serverIds.Contains(x.PlexServerId))
@@ -495,10 +519,9 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
         }
 
         // Rebuild the real snapshots after disabling the parent and repeat both query paths.
-        var rebuiltAfterDisable = await container.Resolve<ICommandExecutor>().Send(
-            new RebuildMediaOverviewCommand([mediaType]),
-            CancellationToken
-        );
+        var rebuiltAfterDisable = await container
+            .Resolve<ICommandExecutor>()
+            .Send(new RebuildMediaOverviewCommand([mediaType]), CancellationToken);
         rebuiltAfterDisable.IsSuccess.ShouldBeTrue();
         rebuiltAfterDisable.Errors.Count.ShouldBe(0);
 
@@ -506,39 +529,49 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
         {
             var snapshotRows = mediaType switch
             {
-                PlexMediaType.Movie => (await rebuiltContext.MediaOverviewMovieSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.Movie => (
+                    await rebuiltContext
+                        .MediaOverviewMovieSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexMovieId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexMovieId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
-                PlexMediaType.TvShow => (await rebuiltContext.MediaOverviewTvShowSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.TvShow => (
+                    await rebuiltContext
+                        .MediaOverviewTvShowSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexTvShowId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexTvShowId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
-                PlexMediaType.MusicArtist => (await rebuiltContext.MediaOverviewMusicArtistSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.MusicArtist => (
+                    await rebuiltContext
+                        .MediaOverviewMusicArtistSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexArtistId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexArtistId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
-                PlexMediaType.PhotoAlbum => (await rebuiltContext.MediaOverviewPhotoAlbumSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.PhotoAlbum => (
+                    await rebuiltContext
+                        .MediaOverviewPhotoAlbumSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexPhotoAlbumId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexPhotoAlbumId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
-                PlexMediaType.OtherVideos => (await rebuiltContext.MediaOverviewOtherVideoSnapshots
-                        .OrderBy(x => x.PlexLibraryId)
+                PlexMediaType.OtherVideos => (
+                    await rebuiltContext
+                        .MediaOverviewOtherVideoSnapshots.OrderBy(x => x.PlexLibraryId)
                         .ThenBy(x => x.PlexOtherVideoId)
                         .Select(x => new { x.PlexLibraryId, MediaId = x.PlexOtherVideoId })
-                        .ToArrayAsync(CancellationToken))
+                        .ToArrayAsync(CancellationToken)
+                )
                     .Select(x => (LibraryId: x.PlexLibraryId, x.MediaId))
                     .ToArray(),
                 _ => throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, null),
@@ -632,13 +665,11 @@ public class MediaOverviewServerVisibilityIntegrationTests : BaseIntegrationTest
                             expectedEnabledStats.TotalMediaSize
                         )
                     );
-                    value.MediaList
-                        .OrderBy(x => x.Id)
+                    value
+                        .MediaList.OrderBy(x => x.Id)
                         .Select(x => (x.Id, x.PlexLibraryId, x.PlexServerId, x.Type))
                         .ShouldBe(
-                            enabledMedia
-                                .OrderBy(x => x.Id)
-                                .Select(x => (x.Id, x.LibraryId, x.ServerId, mediaType))
+                            enabledMedia.OrderBy(x => x.Id).Select(x => (x.Id, x.LibraryId, x.ServerId, mediaType))
                         );
                 }
             }

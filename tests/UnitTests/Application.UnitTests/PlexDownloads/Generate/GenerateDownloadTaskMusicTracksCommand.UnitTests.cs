@@ -300,16 +300,13 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
     public async Task ShouldPreservePerTrackPlacementAndFirstQuality_WhenDirectSelectionsOverlapByTrack()
     {
         // Arrange
-        await SetupDatabase(
-            62617,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 2;
-            }
-        );
+        await SetupDatabase(62617, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 2;
+        });
         var dbContext = IDbContext;
         var tracks = await dbContext
             .PlexMusicTracks.Include(x => x.MediaDataList)
@@ -404,7 +401,15 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
             .OrderBy(x => x.PlexApiRatingKey)
             .ThenBy(x => x.PlexApiPartId)
             .ToListAsync(CancellationToken);
-        files.Select(x => (x.Parent!.PlexApiRatingKey, x.PlexApiMediaId, x.PlexApiPartId, x.DirectoryMeta.KeepCompletedInDownloadFolder))
+        files
+            .Select(x =>
+                (
+                    x.Parent!.PlexApiRatingKey,
+                    x.PlexApiMediaId,
+                    x.PlexApiPartId,
+                    x.DirectoryMeta.KeepCompletedInDownloadFolder
+                )
+            )
             .ShouldBe(
                 new[]
                 {
@@ -414,13 +419,10 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
                         target.MediaDataList.Single().PlexApiPartId,
                         false
                     ),
-                    (
-                        sibling.PlexApiRatingKey,
-                        siblingAlternate.PlexApiMediaId,
-                        siblingAlternate.PlexApiPartId,
-                        true
-                    ),
-                }.OrderBy(x => x.Item1).ThenBy(x => x.Item3)
+                    (sibling.PlexApiRatingKey, siblingAlternate.PlexApiMediaId, siblingAlternate.PlexApiPartId, true),
+                }
+                    .OrderBy(x => x.Item1)
+                    .ThenBy(x => x.Item3)
             );
         files.Count.ShouldBe(2);
         (await dbContext.DownloadTaskTrackFileLogs.CountAsync(CancellationToken)).ShouldBe(2);

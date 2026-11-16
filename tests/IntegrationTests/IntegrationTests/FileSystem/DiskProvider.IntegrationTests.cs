@@ -58,7 +58,8 @@ public class DiskProviderIntegrationTests : BaseIntegrationTests
         Directory.GetLastWriteTimeUtc(excludedPath).ShouldBe(modifiedUtc);
         Directory.GetFileSystemEntries(excludedPath).ShouldBe([retainedFile]);
         File.ReadAllText(retainedFile).ShouldBe("preserved");
-        Directory.GetDirectories(rootPath)
+        Directory
+            .GetDirectories(rootPath)
             .Select(Path.GetFileName)
             .Order(StringComparer.Ordinal)
             .ShouldBe(["CaChE", "CacheMedia", "Zebra"]);

@@ -354,7 +354,8 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
     public async Task ShouldReturnLaterStableRelease_WhenDockerFallbackFirstPageContainsOnlyDevReleases()
     {
         // Arrange
-        var firstPage = Enumerable.Range(1, 100)
+        var firstPage = Enumerable
+            .Range(1, 100)
             .Select(index => new GitHubReleaseDTO { TagName = $"v0.39.0-dev.{index}", Prerelease = true })
             .ToArray();
         var firstPayload = JsonSerializer.Serialize(firstPage);
@@ -388,22 +389,19 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
             new Mock<IVelopackLocator>(MockBehavior.Loose).Object
         );
         manager.Setup(x => x.CheckForUpdatesAsync()).ReturnsAsync((UpdateInfo?)null).Verifiable(Times.Once());
-        using var container = await CreateContainer(
-            new Seed(11007),
-            config =>
+        using var container = await CreateContainer(new Seed(11007), config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "docker",
-                    Version = "0.38.0",
-                    InformationalVersion = "0.38.0",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                    RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
-            }
-        );
+                RuntimeMode = "docker",
+                Version = "0.38.0",
+                InformationalVersion = "0.38.0",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+                RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
+        });
         var notifications = container.Resolve<MockNotificationHubService>();
         using var client = container.GetApiClient();
 
@@ -419,9 +417,9 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         dto.CurrentVersion.ShouldBe("0.38.0");
         dto.NewestVersion.ShouldBe("0.39.0");
         dto.ReleaseNotes.Select(x => (x.Version, x.Notes, x.ReleaseDate, x.IsDevRelease))
-            .ShouldBe(
-                [("v0.39.0", "Stable release notes", new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), false)]
-            );
+            .ShouldBe([
+                ("v0.39.0", "Stable release notes", new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), false),
+            ]);
         notifications.RefreshNotificationList.ShouldNotContain(RefreshDataType.UpdateAvailable);
         githubHandler.Verify();
         githubClientFactory.Verify();
@@ -441,9 +439,7 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         var githubHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         githubHandler
             .SetupRequest(HttpMethod.Get, "https://api.github.com/repos/Reaparr/Reaparr/releases?per_page=100&page=1")
-            .ReturnsAsync(
-                (HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, "[]")
-            )
+            .ReturnsAsync((HttpRequestMessage request, CancellationToken _) => CreateGitHubResponse(request, "[]"))
             .Verifiable(Times.Never());
         var githubClientFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
         githubClientFactory
@@ -473,22 +469,19 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
                 .Setup(x => x.CheckForUpdatesAsync())
                 .ReturnsAsync((UpdateInfo?)null)
                 .Verifiable(installed ? Times.Once() : Times.Never());
-        using var container = await CreateContainer(
-            new Seed(11008),
-            config =>
+        using var container = await CreateContainer(new Seed(11008), config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "desktop",
-                    Version = "0.38.0",
-                    InformationalVersion = "0.38.0",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                    RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
-            }
-        );
+                RuntimeMode = "desktop",
+                Version = "0.38.0",
+                InformationalVersion = "0.38.0",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+                RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
+        });
         var notifications = container.Resolve<MockNotificationHubService>();
         using var client = container.GetApiClient();
 
@@ -529,7 +522,8 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
     public async Task ShouldReturnDesktopUpdate_WhenFetchingPagedReleaseNotesOrNotesFail(bool failNotes)
     {
         // Arrange
-        var firstPage = Enumerable.Range(1, 100)
+        var firstPage = Enumerable
+            .Range(1, 100)
             .Select(index => new GitHubReleaseDTO { TagName = $"v0.39.0-dev.{index}", Prerelease = true })
             .ToArray();
         var firstPayload = JsonSerializer.Serialize(firstPage);
@@ -576,22 +570,19 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
                 }
             )
             .Verifiable(Times.Once());
-        using var container = await CreateContainer(
-            new Seed(11009),
-            config =>
+        using var container = await CreateContainer(new Seed(11009), config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "desktop",
-                    Version = "0.38.0",
-                    InformationalVersion = "0.38.0",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                    RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
-            }
-        );
+                RuntimeMode = "desktop",
+                Version = "0.38.0",
+                InformationalVersion = "0.38.0",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+                RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
+        });
         var notifications = container.Resolve<MockNotificationHubService>();
         using var client = container.GetApiClient();
 
@@ -610,9 +601,9 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
             dto.ReleaseNotes.ShouldBeEmpty();
         else
             dto.ReleaseNotes.Select(x => (x.Version, x.Notes, x.ReleaseDate, x.IsDevRelease))
-                .ShouldBe(
-                    [("v0.39.0", "Stable release notes", new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), false)]
-                );
+                .ShouldBe([
+                    ("v0.39.0", "Stable release notes", new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), false),
+                ]);
         notifications.RefreshNotificationList.ShouldNotContain(RefreshDataType.UpdateAvailable);
         githubHandler.Verify();
         githubClientFactory.Verify();

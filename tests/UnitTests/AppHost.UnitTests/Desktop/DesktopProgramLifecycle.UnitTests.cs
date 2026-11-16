@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Reaparr.Environment;
 using Reaparr.Data.Contracts;
+using Reaparr.Environment;
 using Reaparr.Settings.Contracts;
 
 namespace Reaparr.AppHost.UnitTests;
@@ -16,24 +16,39 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
     [Test]
     [Arguments(true)]
     [Arguments(false)]
-    public async Task ShouldSignalPrimaryWithoutInitializingState_WhenDesktopProcessIsSecondaryInstance(bool signalSucceeds)
+    public async Task ShouldSignalPrimaryWithoutInitializingState_WhenDesktopProcessIsSecondaryInstance(
+        bool signalSucceeds
+    )
     {
         // Arrange
         var hostProbe = new HostProbe();
         var coordinator = new Mock<IDesktopSingleInstanceCoordinator>(MockBehavior.Strict);
         var configManager = new Mock<IConfigManager>(MockBehavior.Strict);
         var databaseManager = new Mock<IReaparrDbContextManager>(MockBehavior.Strict);
-        await using var app = CreateStartupApp(hostProbe, coordinator.Object, configManager.Object, databaseManager.Object);
+        await using var app = CreateStartupApp(
+            hostProbe,
+            coordinator.Object,
+            configManager.Object,
+            databaseManager.Object
+        );
         var signalResult = signalSucceeds ? Result.Ok() : Result.Fail("primary unavailable");
         coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(false).Verifiable(Times.Once());
-        coordinator.Setup(x => x.SignalPrimaryInstanceAsync(CancellationToken))
-            .ReturnsAsync(signalResult).Verifiable(Times.Once());
+        coordinator
+            .Setup(x => x.SignalPrimaryInstanceAsync(CancellationToken))
+            .ReturnsAsync(signalResult)
+            .Verifiable(Times.Once());
         configManager.Setup(x => x.Setup()).Throws(new InvalidOperationException("configuration must not initialize"));
-        databaseManager.Setup(x => x.SetupAsync()).Throws(new InvalidOperationException("database must not initialize"));
+        databaseManager
+            .Setup(x => x.SetupAsync())
+            .Throws(new InvalidOperationException("database must not initialize"));
 
         // Act
         var result = await Program.RunApplicationAsync(
-            app, new MockAppBuildInfo { RuntimeMode = "desktop" }, new MockAppRuntimeInfo(), CancellationToken);
+            app,
+            new MockAppBuildInfo { RuntimeMode = "desktop" },
+            new MockAppRuntimeInfo(),
+            CancellationToken
+        );
 
         // Assert
         result.IsSuccess.ShouldBe(signalSucceeds);
@@ -51,19 +66,29 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
     [Arguments("docker", false, true)]
     [Arguments("desktop", true, true)]
     public async Task ShouldPreserveInitializationOrderAndStopBeforeHost_WhenStartupInitializationFails(
-        string runtimeMode, bool integrationTestMode, bool configFails)
+        string runtimeMode,
+        bool integrationTestMode,
+        bool configFails
+    )
     {
         // Arrange
         var hostProbe = new HostProbe();
         var coordinator = new Mock<IDesktopSingleInstanceCoordinator>(MockBehavior.Strict);
         var configManager = new Mock<IConfigManager>(MockBehavior.Strict);
         var databaseManager = new Mock<IReaparrDbContextManager>(MockBehavior.Strict);
-        await using var app = CreateStartupApp(hostProbe, coordinator.Object, configManager.Object, databaseManager.Object);
+        await using var app = CreateStartupApp(
+            hostProbe,
+            coordinator.Object,
+            configManager.Object,
+            databaseManager.Object
+        );
         var failure = new Error(configFails ? "configuration failed" : "database failed");
         var sequence = new MockSequence();
         if (runtimeMode == "desktop" && !integrationTestMode)
             coordinator.InSequence(sequence).Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true);
-        configManager.InSequence(sequence).Setup(x => x.Setup())
+        configManager
+            .InSequence(sequence)
+            .Setup(x => x.Setup())
             .Returns(configFails ? Result.Fail(failure) : Result.Ok());
         if (!configFails)
             databaseManager.InSequence(sequence).Setup(x => x.SetupAsync()).ReturnsAsync(Result.Fail(failure));
@@ -73,15 +98,18 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             app,
             new MockAppBuildInfo { RuntimeMode = runtimeMode },
             new MockAppRuntimeInfo { IsIntegrationTestMode = integrationTestMode },
-            CancellationToken);
+            CancellationToken
+        );
 
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.ShouldBe([failure]);
         configManager.Verify(x => x.Setup(), Times.Once);
         databaseManager.Verify(x => x.SetupAsync(), configFails ? Times.Never() : Times.Once());
-        coordinator.Verify(x => x.TryAcquirePrimaryOwnership(),
-            runtimeMode == "desktop" && !integrationTestMode ? Times.Once() : Times.Never());
+        coordinator.Verify(
+            x => x.TryAcquirePrimaryOwnership(),
+            runtimeMode == "desktop" && !integrationTestMode ? Times.Once() : Times.Never()
+        );
         coordinator.Verify(x => x.SignalPrimaryInstanceAsync(It.IsAny<CancellationToken>()), Times.Never);
         hostProbe.StartCalls.ShouldBe(0);
         hostProbe.StopCalls.ShouldBe(0);
@@ -196,10 +224,16 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         var secondaryConfig = new Mock<IConfigManager>(MockBehavior.Strict);
         var secondaryDatabase = new Mock<IReaparrDbContextManager>(MockBehavior.Strict);
         await using var secondaryApp = CreateStartupApp(
-            secondaryProbe, secondaryCoordinator.Object, secondaryConfig.Object, secondaryDatabase.Object);
+            secondaryProbe,
+            secondaryCoordinator.Object,
+            secondaryConfig.Object,
+            secondaryDatabase.Object
+        );
         secondaryCoordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(false).Verifiable(Times.Once());
-        secondaryCoordinator.Setup(x => x.SignalPrimaryInstanceAsync(cancellationToken))
-            .Returns(() => pipe.SignalPrimaryInstanceAsync(cancellationToken)).Verifiable(Times.Once());
+        secondaryCoordinator
+            .Setup(x => x.SignalPrimaryInstanceAsync(cancellationToken))
+            .Returns(() => pipe.SignalPrimaryInstanceAsync(cancellationToken))
+            .Verifiable(Times.Once());
 
         // Act
         var lifecycle = Program.RunDesktopLifecycleAsync(
@@ -221,7 +255,11 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             browserRequests.ToArray().ShouldBe([expectedUri]);
             nextOpen.Task.IsCompleted.ShouldBeFalse();
             var signalResult = await Program.RunApplicationAsync(
-                secondaryApp, new MockAppBuildInfo { RuntimeMode = "desktop" }, new MockAppRuntimeInfo(), cancellationToken);
+                secondaryApp,
+                new MockAppBuildInfo { RuntimeMode = "desktop" },
+                new MockAppRuntimeInfo(),
+                cancellationToken
+            );
             var reopenedUri = await nextOpen.Task.WaitAsync(deadline, cancellationToken);
 
             // Assert
@@ -407,7 +445,8 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         HostProbe hostProbe,
         IDesktopSingleInstanceCoordinator coordinator,
         IConfigManager configManager,
-        IReaparrDbContextManager databaseManager)
+        IReaparrDbContextManager databaseManager
+    )
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());

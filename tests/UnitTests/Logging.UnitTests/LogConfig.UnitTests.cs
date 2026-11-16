@@ -22,7 +22,11 @@ public class LogConfigUnitTests : BaseUnitTest
         const string marker = "I108-file-without-telemetry";
 
         // Act
-        await using (var logger = new ProductionLogConfig(runtimeInfo, pathProvider.Object, buildInfo).GetLogger(LogEventLevel.Warning))
+        await using (
+            var logger = new ProductionLogConfig(runtimeInfo, pathProvider.Object, buildInfo).GetLogger(
+                LogEventLevel.Warning
+            )
+        )
         {
             logger.Information("Filtered-out I108 event");
             logger.Warning("Persisted {Marker}", marker);
@@ -59,12 +63,20 @@ public class LogConfigUnitTests : BaseUnitTest
             );
         });
         await receiver.StartAsync(CancellationToken);
-        var runtimeInfo = new MockAppRuntimeInfo { SEQ_Url = receiver.Urls.Single(), SEQ_ApiKey = "local-seq-test-key" };
+        var runtimeInfo = new MockAppRuntimeInfo
+        {
+            SEQ_Url = receiver.Urls.Single(),
+            SEQ_ApiKey = "local-seq-test-key",
+        };
         var buildInfo = new MockAppBuildInfo { TelemetryHost = string.Empty, TelemetryProjectToken = string.Empty };
         const string marker = "I108-seq-and-file-without-telemetry";
 
         // Act
-        await using (var logger = new ProductionLogConfig(runtimeInfo, pathProvider.Object, buildInfo).GetLogger(LogEventLevel.Warning))
+        await using (
+            var logger = new ProductionLogConfig(runtimeInfo, pathProvider.Object, buildInfo).GetLogger(
+                LogEventLevel.Warning
+            )
+        )
         {
             logger.Information("Filtered-out I108 event");
             logger.Warning("Persisted {Marker}", marker);

@@ -17,23 +17,20 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(29104);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+            config.DatabaseOptions = data =>
             {
-                config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
-                config.DatabaseOptions = data =>
-                {
-                    data.PlexAccountCount = 1;
-                    data.PlexServerCount = 1;
-                    data.PlexMovieLibraryCount = 2;
-                    data.MovieCount = 4;
-                };
-            }
-        );
+                data.PlexAccountCount = 1;
+                data.PlexServerCount = 1;
+                data.PlexMovieLibraryCount = 2;
+                data.MovieCount = 4;
+            };
+        });
         using var context = container.DbContext;
-        var libraryIds = await context.PlexLibraries
-            .Where(x => x.Type == PlexMediaType.Movie)
+        var libraryIds = await context
+            .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
             .OrderBy(x => x.Id)
             .Select(x => x.Id)
             .ToArrayAsync(CancellationToken);
@@ -50,38 +47,44 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
                 var movieId = libraryMovies[index].Id;
                 var title = titles[index];
                 var searchTitle = title.ToSearchTitle();
-                await context.PlexMovies.Where(x => x.Id == movieId).ExecuteUpdateAsync(
-                    update => update.SetProperty(x => x.Title, title).SetProperty(x => x.SearchTitle, searchTitle),
-                    CancellationToken
-                );
+                await context
+                    .PlexMovies.Where(x => x.Id == movieId)
+                    .ExecuteUpdateAsync(
+                        update => update.SetProperty(x => x.Title, title).SetProperty(x => x.SearchTitle, searchTitle),
+                        CancellationToken
+                    );
             }
         }
         movies = await context.PlexMovies.AsNoTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
         foreach (var libraryId in libraryIds)
             movies.Where(x => x.PlexLibraryId == libraryId).Select(x => x.SearchTitle).ShouldBe(normalizedTitles);
-        var before = movies.Select(x => new
-        {
-            x.Id,
-            x.Title,
-            x.SearchTitle,
-            x.PlexLibraryId,
-            x.PlexServerId,
-        }).ToArray();
+        var before = movies
+            .Select(x => new
+            {
+                x.Id,
+                x.Title,
+                x.SearchTitle,
+                x.PlexLibraryId,
+                x.PlexServerId,
+            })
+            .ToArray();
         var libraryMoviesToSearch = movies.Where(x => x.PlexLibraryId == libraryIds[0]).ToArray();
         var expectedMovies = expectedIndexes.Select(index => libraryMoviesToSearch[index]).OrderBy(x => x.Id).ToArray();
         if (useSnapshot)
         {
-            var rebuilt = await container.Resolve<ICommandExecutor>().Send(
-                new RebuildMediaOverviewCommand([PlexMediaType.Movie]),
-                CancellationToken
-            );
+            var rebuilt = await container
+                .Resolve<ICommandExecutor>()
+                .Send(new RebuildMediaOverviewCommand([PlexMediaType.Movie]), CancellationToken);
             rebuilt.IsSuccess.ShouldBeTrue();
             rebuilt.Errors.Count.ShouldBe(0);
         }
         int[] expectedSnapshotIds = useSnapshot ? movies.Select(x => x.Id).ToArray() : [];
-        (await context.MediaOverviewMovieSnapshots.OrderBy(x => x.PlexMovieId)
-            .Select(x => x.PlexMovieId).ToArrayAsync(CancellationToken))
-            .ShouldBe(expectedSnapshotIds);
+        (
+            await context
+                .MediaOverviewMovieSnapshots.OrderBy(x => x.PlexMovieId)
+                .Select(x => x.PlexMovieId)
+                .ToArrayAsync(CancellationToken)
+        ).ShouldBe(expectedSnapshotIds);
         using var client = container.GetApiClient();
         await client.SignIn();
 
@@ -107,24 +110,37 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
         response.Result.IsSuccess.ShouldBeTrue();
         response.Result.Errors.Count.ShouldBe(0);
         var value = response.Result.Value.ShouldNotBeNull();
-        (value.Page, value.PageSize, value.TotalCount, value.MediaSize)
-            .ShouldBe((1, 10, expectedMovies.Length, expectedMovies.Sum(x => x.MediaSize)));
-        value.MediaList.OrderBy(x => x.Id)
+        (value.Page, value.PageSize, value.TotalCount, value.MediaSize).ShouldBe(
+            (1, 10, expectedMovies.Length, expectedMovies.Sum(x => x.MediaSize))
+        );
+        value
+            .MediaList.OrderBy(x => x.Id)
             .Select(x => (x.Id, x.Title, x.SearchTitle, x.PlexLibraryId, x.PlexServerId, x.Type))
-            .ShouldBe(expectedMovies.Select(x =>
-                (x.Id, x.Title, x.SearchTitle, x.PlexLibraryId, x.PlexServerId, PlexMediaType.Movie)));
+            .ShouldBe(
+                expectedMovies.Select(x =>
+                    (x.Id, x.Title, x.SearchTitle, x.PlexLibraryId, x.PlexServerId, PlexMediaType.Movie)
+                )
+            );
         using var afterContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
-        (await afterContext.PlexMovies.OrderBy(x => x.Id).Select(x => new
-        {
-            x.Id,
-            x.Title,
-            x.SearchTitle,
-            x.PlexLibraryId,
-            x.PlexServerId,
-        }).ToArrayAsync(CancellationToken)).ShouldBe(before);
-        (await afterContext.MediaOverviewMovieSnapshots.OrderBy(x => x.PlexMovieId)
-            .Select(x => x.PlexMovieId).ToArrayAsync(CancellationToken))
-            .ShouldBe(expectedSnapshotIds);
+        (
+            await afterContext
+                .PlexMovies.OrderBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.Title,
+                    x.SearchTitle,
+                    x.PlexLibraryId,
+                    x.PlexServerId,
+                })
+                .ToArrayAsync(CancellationToken)
+        ).ShouldBe(before);
+        (
+            await afterContext
+                .MediaOverviewMovieSnapshots.OrderBy(x => x.PlexMovieId)
+                .Select(x => x.PlexMovieId)
+                .ToArrayAsync(CancellationToken)
+        ).ShouldBe(expectedSnapshotIds);
     }
 
     [Test]
@@ -139,20 +155,17 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
         string[] titles = ["The Léon: Professional", "Leon Amateur", "Professional Practice", "Arrival"];
         string[] normalizedTitles = ["leon professional", "leon amateur", "professional practice", "arrival"];
 
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+            config.DatabaseOptions = data =>
             {
-                config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
-                config.DatabaseOptions = data =>
-                {
-                    data.PlexAccountCount = 1;
-                    data.PlexServerCount = 2;
-                    data.PlexMovieLibraryCount = 1;
-                    data.MovieCount = movieCount;
-                };
-            }
-        );
+                data.PlexAccountCount = 1;
+                data.PlexServerCount = 2;
+                data.PlexMovieLibraryCount = 1;
+                data.MovieCount = movieCount;
+            };
+        });
         using var context = container.DbContext;
 
         var servers = await context
@@ -193,10 +206,15 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
             {
                 var movieId = libraryMovies[index].Id;
                 var title = titles[index];
-                await context.PlexMovies.Where(x => x.Id == movieId).ExecuteUpdateAsync(
-                    update => update.SetProperty(x => x.Title, title).SetProperty(x => x.SearchTitle, title.ToSearchTitle()),
-                    CancellationToken
-                );
+                await context
+                    .PlexMovies.Where(x => x.Id == movieId)
+                    .ExecuteUpdateAsync(
+                        update =>
+                            update
+                                .SetProperty(x => x.Title, title)
+                                .SetProperty(x => x.SearchTitle, title.ToSearchTitle()),
+                        CancellationToken
+                    );
             }
         }
 
@@ -301,18 +319,17 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
             })
             .ToArrayAsync(CancellationToken);
 
-        var rebuilt = await container.Resolve<ICommandExecutor>().Send(
-            new RebuildMediaOverviewCommand([PlexMediaType.Movie]),
-            CancellationToken
-        );
+        var rebuilt = await container
+            .Resolve<ICommandExecutor>()
+            .Send(new RebuildMediaOverviewCommand([PlexMediaType.Movie]), CancellationToken);
         rebuilt.IsSuccess.ShouldBeTrue();
         rebuilt.Errors.Count.ShouldBe(0);
         var expectedSnapshotIds = allMovieState.Select(x => x.Id).OrderBy(x => x).ToArray();
         using (var snapshotContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync())
         {
             (
-                await snapshotContext.MediaOverviewMovieSnapshots
-                    .OrderBy(x => x.PlexMovieId)
+                await snapshotContext
+                    .MediaOverviewMovieSnapshots.OrderBy(x => x.PlexMovieId)
                     .Select(x => x.PlexMovieId)
                     .ToArrayAsync(CancellationToken)
             ).ShouldBe(expectedSnapshotIds);
@@ -343,10 +360,14 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
         targetBeforeDisable.Response.StatusCode.ShouldBe(HttpStatusCode.OK);
         targetBeforeDisable.Result.IsSuccess.ShouldBeTrue();
         targetBeforeDisable.Result.Errors.Count.ShouldBe(0);
-        (targetBeforeValue.Page, targetBeforeValue.PageSize, targetBeforeValue.TotalCount, targetBeforeValue.MediaSize).ShouldBe(
-            (1, 10, expectedTargetSearch.Length, targetSearchMovies.Sum(x => x.MediaSize))
-        );
-        targetBeforeValue.MediaList.OrderBy(x => x.Id)
+        (
+            targetBeforeValue.Page,
+            targetBeforeValue.PageSize,
+            targetBeforeValue.TotalCount,
+            targetBeforeValue.MediaSize
+        ).ShouldBe((1, 10, expectedTargetSearch.Length, targetSearchMovies.Sum(x => x.MediaSize)));
+        targetBeforeValue
+            .MediaList.OrderBy(x => x.Id)
             .Select(x => (x.Id, x.Title, x.SearchTitle, x.PlexLibraryId, x.PlexServerId, x.Type))
             .ShouldBe(expectedTargetSearch);
 
@@ -376,15 +397,9 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
             enabledControlBeforeValue.PageSize,
             enabledControlBeforeValue.TotalCount,
             enabledControlBeforeValue.MediaSize
-        ).ShouldBe(
-            (
-                1,
-                10,
-                expectedEnabledControlSearch.Length,
-                enabledControlSearchMovies.Sum(x => x.MediaSize)
-            )
-        );
-        enabledControlBeforeValue.MediaList.OrderBy(x => x.Id)
+        ).ShouldBe((1, 10, expectedEnabledControlSearch.Length, enabledControlSearchMovies.Sum(x => x.MediaSize)));
+        enabledControlBeforeValue
+            .MediaList.OrderBy(x => x.Id)
             .Select(x => (x.Id, x.Title, x.SearchTitle, x.PlexLibraryId, x.PlexServerId, x.Type))
             .ShouldBe(expectedEnabledControlSearch);
 
@@ -430,13 +445,7 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
                 .Select(x => new { x.Id, x.IsEnabled })
                 .ToArrayAsync(CancellationToken)
         ).ShouldBe(
-            servers
-                .Select(x => new
-                {
-                    x.Id,
-                    IsEnabled = x.Id == targetServerId ? false : x.IsEnabled,
-                })
-                .ToArray()
+            servers.Select(x => new { x.Id, IsEnabled = x.Id == targetServerId ? false : x.IsEnabled }).ToArray()
         );
         (
             await afterContext
@@ -507,8 +516,8 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
                 .ToArrayAsync(CancellationToken)
         ).ShouldBe(allMovieState);
         (
-            await afterContext.MediaOverviewMovieSnapshots
-                .OrderBy(x => x.PlexMovieId)
+            await afterContext
+                .MediaOverviewMovieSnapshots.OrderBy(x => x.PlexMovieId)
                 .Select(x => x.PlexMovieId)
                 .ToArrayAsync(CancellationToken)
         ).ShouldBe(expectedSnapshotIds);
@@ -582,15 +591,9 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
             enabledControlOptimizedValue.PageSize,
             enabledControlOptimizedValue.TotalCount,
             enabledControlOptimizedValue.MediaSize
-        ).ShouldBe(
-            (
-                1,
-                10,
-                expectedEnabledControlSearch.Length,
-                enabledControlSearchMovies.Sum(x => x.MediaSize)
-            )
-        );
-        enabledControlOptimizedValue.MediaList.OrderBy(x => x.Id)
+        ).ShouldBe((1, 10, expectedEnabledControlSearch.Length, enabledControlSearchMovies.Sum(x => x.MediaSize)));
+        enabledControlOptimizedValue
+            .MediaList.OrderBy(x => x.Id)
             .Select(x => (x.Id, x.Title, x.SearchTitle, x.PlexLibraryId, x.PlexServerId, x.Type))
             .ShouldBe(expectedEnabledControlSearch);
 
@@ -663,15 +666,9 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
             enabledControlCanonicalValue.PageSize,
             enabledControlCanonicalValue.TotalCount,
             enabledControlCanonicalValue.MediaSize
-        ).ShouldBe(
-            (
-                1,
-                10,
-                expectedEnabledControlSearch.Length,
-                enabledControlSearchMovies.Sum(x => x.MediaSize)
-            )
-        );
-        enabledControlCanonicalValue.MediaList.OrderBy(x => x.Id)
+        ).ShouldBe((1, 10, expectedEnabledControlSearch.Length, enabledControlSearchMovies.Sum(x => x.MediaSize)));
+        enabledControlCanonicalValue
+            .MediaList.OrderBy(x => x.Id)
             .Select(x => (x.Id, x.Title, x.SearchTitle, x.PlexLibraryId, x.PlexServerId, x.Type))
             .ShouldBe(expectedEnabledControlSearch);
     }

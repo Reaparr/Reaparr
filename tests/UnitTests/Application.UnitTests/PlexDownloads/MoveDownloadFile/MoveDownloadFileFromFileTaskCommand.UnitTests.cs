@@ -358,20 +358,18 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
     }
+
     [Test]
     public async Task ShouldMoveOnlyDirectlyUnkeptTrackToDestination_WhenAlbumGenerationPreservesPerTrackKeepFlags()
     {
         // Arrange
-        await SetupDatabase(
-            52232,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 2;
-            }
-        );
+        await SetupDatabase(52232, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 2;
+        });
         var dbContext = IDbContext;
         var album = await dbContext
             .PlexMusicAlbums.Include(x => x.PlexArtist)
@@ -441,10 +439,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
             Serilog.Log.Logger,
             dbContext,
             executor.Object
-        ).ExecuteAsync(
-            new GenerateDownloadTaskMusicAlbumsCommand(request),
-            CancellationToken
-        );
+        ).ExecuteAsync(new GenerateDownloadTaskMusicAlbumsCommand(request), CancellationToken);
         generation.IsSuccess.ShouldBeTrue();
         generation.Errors.Count.ShouldBe(0);
         generation.Value.ShouldBe(new DownloadTaskCreationReport { MusicAlbums = 1, MusicTracks = 2 });
@@ -589,7 +584,6 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
     }
-
 
     [Test]
     [Arguments(PlexMediaType.Movie)]

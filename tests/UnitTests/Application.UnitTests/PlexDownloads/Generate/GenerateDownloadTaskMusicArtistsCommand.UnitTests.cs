@@ -94,16 +94,13 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
     public async Task ShouldPreserveDirectTrackPlacement_WhenArtistForwardingUsesRealAlbumAndTrackHandlers()
     {
         // Arrange
-        await SetupDatabase(
-            62621,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 2;
-            }
-        );
+        await SetupDatabase(62621, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 2;
+        });
         var dbContext = IDbContext;
         var artist = await dbContext
             .PlexMusicArtists.Include(x => x.Albums)
@@ -221,7 +218,15 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
             .OrderBy(x => x.PlexApiRatingKey)
             .ThenBy(x => x.PlexApiPartId)
             .ToListAsync(CancellationToken);
-        files.Select(x => (x.Parent!.PlexApiRatingKey, x.PlexApiMediaId, x.PlexApiPartId, x.DirectoryMeta.KeepCompletedInDownloadFolder))
+        files
+            .Select(x =>
+                (
+                    x.Parent!.PlexApiRatingKey,
+                    x.PlexApiMediaId,
+                    x.PlexApiPartId,
+                    x.DirectoryMeta.KeepCompletedInDownloadFolder
+                )
+            )
             .ShouldBe(
                 new[]
                 {
@@ -237,7 +242,9 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
                         sibling.MediaDataList.Single().PlexApiPartId,
                         true
                     ),
-                }.OrderBy(x => x.Item1).ThenBy(x => x.Item3)
+                }
+                    .OrderBy(x => x.Item1)
+                    .ThenBy(x => x.Item3)
             );
         files.Count.ShouldBe(2);
         (await dbContext.DownloadTaskTrackFileLogs.CountAsync(CancellationToken)).ShouldBe(2);
