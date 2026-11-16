@@ -163,10 +163,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             .Verifiable(dryRun ? Times.Never() : Times.Once());
         runner
             .Setup(x =>
-                x.LogCommand(
-                    "vpk",
-                    It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(packArguments))
-                )
+                x.LogCommand("vpk", It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(packArguments)))
             )
             .Verifiable(dryRun ? Times.Once() : Times.Never());
         await using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
@@ -247,7 +244,9 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
     [Arguments(true, false)]
     [Arguments(false, true)]
     public async Task ShouldLogRedactedCommandPlanWithoutSideEffects_WhenPackagingDryRun(
-        bool skipFrontend, bool skipRestore)
+        bool skipFrontend,
+        bool skipRestore
+    )
     {
         // Arrange
         const string root = "/repo with spaces";
@@ -273,7 +272,8 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         using var logger = new LoggerConfiguration().WriteTo.TestCorrelator().CreateLogger();
         var concreteRunner = new DesktopCommandRunner(paths, fileSystem, logger);
         var runner = new Mock<IDesktopCommandRunner>(MockBehavior.Strict);
-        runner.Setup(x => x.LogCommand(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>()))
+        runner
+            .Setup(x => x.LogCommand(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>()))
             .Callback<string, IReadOnlyList<string>>(concreteRunner.LogCommand);
         var builder = new ContainerBuilder();
         builder.RegisterModule<BuildModule>();
@@ -282,10 +282,15 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         builder.RegisterInstance(runner.Object).As<IDesktopCommandRunner>();
         builder.RegisterInstance(logger).As<ILogger>();
         using var container = builder.Build();
-        var beforeFiles = fileSystem.Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal).Select(file => (file, fileSystem.File.ReadAllText(file))).ToArray();
-        var beforeDirectories = fileSystem.Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal).ToArray();
+        var beforeFiles = fileSystem
+            .Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .Select(file => (file, fileSystem.File.ReadAllText(file)))
+            .ToArray();
+        var beforeDirectories = fileSystem
+            .Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
         var publish = paths.PublishDirectory("linux-x64");
         var expectedCommands = new List<string>();
         if (!skipFrontend)
@@ -293,35 +298,52 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         if (!skipRestore)
             expectedCommands.Add($"dotnet restore \"{paths.AppHostProject}\" --runtime linux-x64");
         expectedCommands.Add(
-            $"dotnet publish \"{paths.AppHostProject}\" --no-restore -p:PublishProfile=Desktop-linux-x64 " +
-            "-p:Version=1.2.3 -p:InformationalVersion=1.2.3-dev.1 " +
-            "-p:ReaparrTelemetryHost=https://telemetry.example.test -p:ReaparrTelemetryProjectToken=[REDACTED] " +
-            $"\"-p:PublishDir={publish}{fileSystem.Path.DirectorySeparatorChar}\" -p:CSharpier_Bypass=true");
+            $"dotnet publish \"{paths.AppHostProject}\" --no-restore -p:PublishProfile=Desktop-linux-x64 "
+                + "-p:Version=1.2.3 -p:InformationalVersion=1.2.3-dev.1 "
+                + "-p:ReaparrTelemetryHost=https://telemetry.example.test -p:ReaparrTelemetryProjectToken=[REDACTED] "
+                + $"\"-p:PublishDir={publish}{fileSystem.Path.DirectorySeparatorChar}\""
+        );
         expectedCommands.Add(
-            $"vpk pack --packId Reaparr --packTitle Reaparr --packVersion 1.2.3 --packDir \"{publish}\" " +
-            "--mainExe Reaparr.AppHost --runtime linux-x64 --channel linux-x64-dev " +
-            $"--outputDir \"{paths.ArtifactDirectory("linux-x64")}\"");
+            $"vpk pack --packId Reaparr --packTitle Reaparr --packVersion 1.2.3 --packDir \"{publish}\" "
+                + "--mainExe Reaparr.AppHost --runtime linux-x64 --channel linux-x64-dev "
+                + $"--outputDir \"{paths.ArtifactDirectory("linux-x64")}\""
+        );
 
         // Act
-        var result = await container.Resolve<ICommandExecutor>().Send(new DesktopPackageBuildCommand(settings), CancellationToken);
+        var result = await container
+            .Resolve<ICommandExecutor>()
+            .Send(new DesktopPackageBuildCommand(settings), CancellationToken);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Value.ShouldBe(0);
         var events = TestCorrelator.GetLogEventsFromCurrentContext();
-        events.Where(e => e.MessageTemplate.Text == "> {Command}")
+        events
+            .Where(e => e.MessageTemplate.Text == "> {Command}")
             .Select(e => e.Properties["Command"].ShouldBeOfType<ScalarValue>().Value)
             .ShouldBe(expectedCommands);
-        events.ShouldContain(e => e.MessageTemplate.Text == "Planned {RuntimeIdentifier} desktop publish to {PublishDirectory}");
-        events.ShouldContain(e => e.MessageTemplate.Text ==
-            "Planned {RuntimeIdentifier} desktop packaging for Velopack channel {Channel} to {ArtifactDirectory}");
-        events.ShouldNotContain(e => e.MessageTemplate.Text.StartsWith("Published") ||
-            e.MessageTemplate.Text.StartsWith("Packaged") || e.MessageTemplate.Text.StartsWith("Installing"));
+        events.ShouldContain(e =>
+            e.MessageTemplate.Text == "Planned {RuntimeIdentifier} desktop publish to {PublishDirectory}"
+        );
+        events.ShouldContain(e =>
+            e.MessageTemplate.Text
+            == "Planned {RuntimeIdentifier} desktop packaging for Velopack channel {Channel} to {ArtifactDirectory}"
+        );
+        events.ShouldNotContain(e =>
+            e.MessageTemplate.Text.StartsWith("Published")
+            || e.MessageTemplate.Text.StartsWith("Packaged")
+            || e.MessageTemplate.Text.StartsWith("Installing")
+        );
         events.ShouldNotContain(e => e.RenderMessage().Contains(settings.TelemetryProjectToken));
-        fileSystem.Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal).Select(file => (file, fileSystem.File.ReadAllText(file))).ShouldBe(beforeFiles);
-        fileSystem.Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal).ShouldBe(beforeDirectories);
+        fileSystem
+            .Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .Select(file => (file, fileSystem.File.ReadAllText(file)))
+            .ShouldBe(beforeFiles);
+        fileSystem
+            .Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(beforeDirectories);
     }
 
     private static IContainer CreateBuildContainer(

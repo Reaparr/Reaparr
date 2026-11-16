@@ -93,7 +93,6 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             "-p:ReaparrTelemetryHost=https://telemetry.example.test",
             "-p:ReaparrTelemetryProjectToken=phc_public-token_123",
             $"-p:PublishDir={publishDirectory}{fileSystem.Path.DirectorySeparatorChar}",
-            "-p:CSharpier_Bypass=true",
         ];
 
         Mock.Mock<IDesktopCommandRunner>()

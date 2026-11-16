@@ -63,7 +63,9 @@ public class GetMediaDetailByIdEndpoint : Endpoint<GetMediaDetailByIdEndpointReq
         if (req.Type == PlexMediaType.Movie)
         {
             var plexMovie = await _dbContext
-                .PlexMovies.Include(x => x.PlexServer).IncludePlexLibrary().IncludeMediaData()
+                .PlexMovies.Include(x => x.PlexServer)
+                .IncludePlexLibrary()
+                .IncludeMediaData()
                 .FirstOrDefaultAsync(x => x.Id == req.PlexMediaId, ct);
             if (plexMovie is null)
             {

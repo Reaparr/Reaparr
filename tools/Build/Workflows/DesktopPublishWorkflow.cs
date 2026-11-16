@@ -85,7 +85,6 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
             $"-p:ReaparrTelemetryHost={(settings.TelemetryHost?.EndsWith("/", StringComparison.Ordinal) == true ? settings.TelemetryHost[..^1] : settings.TelemetryHost ?? string.Empty)}",
             $"-p:ReaparrTelemetryProjectToken={settings.TelemetryProjectToken ?? string.Empty}",
             $"-p:PublishDir={publishDirectory}{_fileSystem.Path.DirectorySeparatorChar}",
-            "-p:CSharpier_Bypass=true",
         ];
         if (settings.DryRun)
         {

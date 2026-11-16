@@ -22,6 +22,7 @@ public class CheckForUpdatesCommandHandler : ICommandHandler<CheckForUpdatesComm
             CurrentVersion = _appBuildInfo.InformationalVersion,
             ReleaseNotes = [],
         };
+
     private static IReadOnlyList<ReleaseNote> FilterReleaseNotes(
         IReadOnlyList<ReleaseNote> releaseNotes,
         string targetVersion

@@ -130,8 +130,7 @@ public class SearchTvShowCommandHandler : ICommandHandler<SearchTvShowCommand, R
     {
         if (request.AirDate is { } airDate)
             return episodes.Where(x =>
-                x.OriginallyAvailableAt.HasValue
-                && DateOnly.FromDateTime(x.OriginallyAvailableAt.Value) == airDate
+                x.OriginallyAvailableAt.HasValue && DateOnly.FromDateTime(x.OriginallyAvailableAt.Value) == airDate
             );
 
         if (request.Season is { } season)

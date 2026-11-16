@@ -14,7 +14,9 @@ public class TorznabEndpointRequestValidator : Validator<TorznabEndpointRequest>
             .WithMessage($"The combined offset and limit must not exceed {TorznabSearchHelpers.MaxPaginationWindow}.");
         RuleFor(x => x.Season).GreaterThanOrEqualTo(0).When(x => x.Season.HasValue);
         RuleFor(x => x.Episode)
-            .Must((request, value) => TorznabRequestMappers.TryParseEpisodeSelector(request.Season, value, out _, out _))
+            .Must(
+                (request, value) => TorznabRequestMappers.TryParseEpisodeSelector(request.Season, value, out _, out _)
+            )
             .WithMessage("Episode must be a non-negative number or MM/dd with a valid season year.");
         RuleFor(x => x.TvdbId).GreaterThanOrEqualTo(0).When(x => x.TvdbId.HasValue);
         RuleFor(x => x.TmdbId).GreaterThanOrEqualTo(0).When(x => x.TmdbId.HasValue);

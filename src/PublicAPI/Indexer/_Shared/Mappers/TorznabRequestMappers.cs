@@ -1,15 +1,12 @@
 using System.Globalization;
-using Reaparr.Application.Contracts;
+
 namespace Reaparr.PublicAPI;
 
 public static class TorznabRequestMappers
 {
     private static readonly ILogger _log = LogFactory.Create(typeof(TorznabRequestMappers));
 
-    public static TorznabRequest ToTorznabRequest(
-        this TorznabEndpointRequest request,
-        IntegrationIdentity integration
-    )
+    public static TorznabRequest ToTorznabRequest(this TorznabEndpointRequest request, IntegrationIdentity integration)
     {
         TryParseEpisodeSelector(request.Season, request.Episode, out var episode, out var airDate);
         return new TorznabRequest
@@ -35,12 +32,7 @@ public static class TorznabRequestMappers
         };
     }
 
-    public static bool TryParseEpisodeSelector(
-        int? season,
-        string? value,
-        out int episode,
-        out DateOnly? airDate
-    )
+    public static bool TryParseEpisodeSelector(int? season, string? value, out int episode, out DateOnly? airDate)
     {
         episode = 0;
         airDate = null;
@@ -55,7 +47,15 @@ public static class TorznabRequestMappers
         season.Value.TryFormat(dateText[..4], out _, "D4", CultureInfo.InvariantCulture);
         dateText[4] = '/';
         value.AsSpan().CopyTo(dateText[5..]);
-        if (!DateOnly.TryParseExact(dateText, "yyyy/MM/dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        if (
+            !DateOnly.TryParseExact(
+                dateText,
+                "yyyy/MM/dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var date
+            )
+        )
             return false;
 
         airDate = date;
