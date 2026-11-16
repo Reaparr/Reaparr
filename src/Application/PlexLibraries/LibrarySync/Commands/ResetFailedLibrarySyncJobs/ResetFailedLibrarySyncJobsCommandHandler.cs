@@ -40,15 +40,19 @@ public class ResetFailedLibrarySyncJobsCommandHandler : ICommandHandler<ResetFai
         // Reset failed library sync jobs for this server to queue
         var resetCount = await _dbContext
             .LibrarySyncJobQueues.Where(x =>
-                x.PlexServerId == command.PlexServerId && x.Status == LibrarySyncJobStatus.Failed
+                x.PlexServerId == command.PlexServerId
+                && x.Status == LibrarySyncJobStatus.Failed
+                && x.PlexLibrary!.IsEnabled
             )
             .ResetJobsToQueuedAsync(cancellationToken);
 
         var hasQueuedJobs = await _dbContext.LibrarySyncJobQueues.AnyAsync(
-            x => x.PlexServerId == command.PlexServerId && x.Status == LibrarySyncJobStatus.Queued,
+            x =>
+                x.PlexServerId == command.PlexServerId
+                && x.Status == LibrarySyncJobStatus.Queued
+                && x.PlexLibrary!.IsEnabled,
             cancellationToken
         );
-
         if (resetCount > 0)
         {
             _log.Here()
