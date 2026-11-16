@@ -79,7 +79,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
             var mediaType = command.MediaType ?? library.Type;
             if (command.MediaType is null && mediaType == PlexMediaType.PhotoAlbum)
             {
-                var clientResult = await _plexApiClientFactory.CreateClientAsync(library.PlexServerId, 30, 3, null);
+                var clientResult = await _plexApiClientFactory.CreateClientAsync(library.PlexServerId, 30, 3);
                 if (clientResult.IsFailed)
                     return clientResult.ToResult().LogIfFailed();
 
@@ -216,7 +216,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
 
         var duplicatePart = state.Assets.Values.GroupBy(x => x.Entity.PlexApiPartId).FirstOrDefault(x => x.Count() > 1);
         if (duplicatePart is not null)
-            return Result.Fail($"Plex returned duplicate photo part identity {duplicatePart.Key}").LogError();
+            return Result.Fail("Plex returned duplicate photo part identity {PlexApiPartId}", duplicatePart.Key).LogError();
 
         foreach (var asset in state.Assets.Values)
         {
@@ -383,7 +383,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         else if (!AreEquivalentPhotoAssets(state.Entity, item))
         {
             return Result
-                .Fail($"Plex returned conflicting single-file representations for photo asset {ratingKey}")
+                .Fail("Plex returned conflicting single-file representations for photo asset {PlexApiRatingKey}", ratingKey)
                 .LogError();
         }
 
@@ -707,7 +707,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         || name.Equals("token", StringComparison.OrdinalIgnoreCase)
         || name.Equals("authToken", StringComparison.OrdinalIgnoreCase);
 
-    private const string PhotoRootParentToken = "<root>";
+    private const string PHOTO_ROOT_PARENT_TOKEN = "<root>";
 
     private sealed record PhotoFolderNavigation(
         string? Parent,
@@ -727,7 +727,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         public Dictionary<int, PlexPhotoAlbum> Albums { get; } = [];
         public Dictionary<int, PhotoAssetState> Assets { get; } = [];
         public Dictionary<string, PhotoFolderNavigation> PendingFolderParents { get; } =
-            new() { [PhotoRootParentToken] = new(null, [], PhotoRootParentToken) };
+            new() { [PHOTO_ROOT_PARENT_TOKEN] = new(null, [], PHOTO_ROOT_PARENT_TOKEN) };
         public HashSet<string> AlbumNavigationKeys { get; } = [];
         public HashSet<string> ActiveFolderParents { get; } = [];
         public HashSet<string> CompletedFolderParents { get; } = [];

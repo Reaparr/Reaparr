@@ -25,7 +25,7 @@ public static partial class TelemetryProperty
         public const string Alias = "alias";
         public const string IsPreferred = "is_preferred";
         public const string Id = "id";
-        public const string DisplayName = "displayName";
+        public const string AccountDisplayName = "account_display_name";
         public const string Username = "username";
         public const string PlexId = "plexId";
         public const string Uuid = "uuid";

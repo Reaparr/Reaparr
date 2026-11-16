@@ -120,7 +120,7 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
 
         var sut = CreateSut(dashWrapperMock);
         var startTask = sut.Start(downloadTask.ToKey(), CancellationToken);
-        Task<Result>? stopTask = null;
+        Task<Result> stopTask;
         try
         {
             await startTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);

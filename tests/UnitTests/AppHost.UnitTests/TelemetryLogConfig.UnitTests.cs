@@ -122,7 +122,9 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         paths.SetupGet(x => x.LogsDirectory).Returns(directory.FullName);
         var buffer = new LogBufferService();
         var logConfig = new SignalRLogConfig(runtime, paths.Object, buffer, build.Object);
-        using var logger = logConfig.GetLogger(LogEventLevel.Debug);
+        var logger = logConfig.GetLogger();
+        try
+        {
         var user = new Mock<IUserService>();
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY);
         var builder = WebApplication.CreateBuilder();
@@ -139,16 +141,14 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         builder.Services.AddSingleton(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName));
         builder.Services.AddSingleton<IUserSettings>(new UserSettings());
         builder.Services.AddSingleton<ITelemetry, Telemetry>();
+        builder.Services.AddSingleton<Serilog.ILogger>(logger);
         // Observe real SDK logging through the application logger without including unrelated host logs.
-        builder.Services.AddLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
-            logging.AddSerilog(logger);
-            logging.AddFilter<Serilog.Extensions.Logging.SerilogLoggerProvider>(
-                (category, _) => category is not null && category.StartsWith("PostHog", StringComparison.Ordinal)
-            );
-        });
+        builder.Logging.ClearProviders();
+        builder.Logging.SetMinimumLevel(LogLevel.Debug);
+        builder.Logging.AddSerilog(logger);
+        builder.Logging.AddFilter<Serilog.Extensions.Logging.SerilogLoggerProvider>(
+            (category, _) => category is not null && category.StartsWith("PostHog", StringComparison.Ordinal)
+        );
         builder.Services.ConfigureTelemetry(build.Object, runtime);
         builder.Services.PostConfigure<PostHogOptions>(options => options.EnableCompression = false);
         using var postHogContainer = BuildPostHogContainer(builder.Services);
@@ -164,21 +164,21 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         ActivitySpanId operationSpan = default;
         app.MapGet(
             PROBE_PATH,
-            (ITelemetry telemetry) =>
+            (ITelemetry telemetry, Serilog.ILogger operationLogger) =>
             {
                 using var operation = telemetry.StartActivity(TelemetryActivity.LibrarySync);
                 operation.ShouldNotBeNull();
                 operationTrace = operation.TraceId;
                 operationSpan = operation.SpanId;
-                logger.Verbose("Below the configured log threshold");
-                logger.Information("Native telemetry operation {ApiKey}", LOG_SECRET);
+                operationLogger.Verbose("Below the configured log threshold");
+                operationLogger.Information("Native telemetry operation {ApiKey}", LOG_SECRET);
                 telemetry.NotificationsCleared(17);
                 return Results.Accepted();
             }
         );
         app.MapGet(
             FAILURE_PATH,
-            (HttpContext _) =>
+            _ =>
                 Task.FromException(new InvalidOperationException($"Native failure token={EXCEPTION_SECRET}"))
         );
         await app.StartAsync();
@@ -193,7 +193,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 .SetIdFormat(ActivityIdFormat.W3C)
                 .Start();
             initiatingActivity.ActivityTraceFlags = ActivityTraceFlags.Recorded;
-            using var http = new HttpClient();
+            using var http = app.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
             using var request = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + PROBE_PATH);
             request.Headers.Add(TelemetryProtocol.SessionIdHeader, SESSION);
             using var response = await http.SendAsync(request, CancellationToken);
@@ -279,6 +279,11 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
             await app.StopAsync();
             await receiver.StopAsync();
         }
+        }
+        finally
+        {
+            logger.Dispose();
+        }
     }
 
     [Test]
@@ -304,9 +309,11 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         var paths = new Mock<IPathProvider>();
         paths.SetupGet(x => x.LogsDirectory).Returns(directory.FullName);
         var buffer = new LogBufferService();
-        using var logger = new SignalRLogConfig(runtime, paths.Object, buffer, build.Object).GetLogger(
+        var logger = new SignalRLogConfig(runtime, paths.Object, buffer, build.Object).GetLogger(
             LogEventLevel.Information
         );
+        try
+        {
         var user = new Mock<IUserService>(MockBehavior.Strict);
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -323,6 +330,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         builder.Services.AddSingleton(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName));
         builder.Services.AddSingleton<IUserSettings>(new UserSettings());
         builder.Services.AddSingleton<ITelemetry, Telemetry>();
+        builder.Services.AddSingleton<Serilog.ILogger>(logger);
         builder.Services.ConfigureTelemetry(build.Object, runtime);
         using var postHogContainer = BuildPostHogContainer(builder.Services);
         builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
@@ -331,7 +339,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         app.UseMiddleware<TelemetryContextMiddleware>();
         app.MapGet(
             PROBE_PATH,
-            (ITelemetry telemetry) =>
+            (ITelemetry telemetry, Serilog.ILogger operationLogger) =>
             {
                 using var operation = telemetry.StartActivity(TelemetryActivity.LibrarySync);
                 operation.ShouldBeNull();
@@ -340,7 +348,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                     new IOException("Unavailable optional service"),
                     TelemetryActivity.LibrarySync
                 );
-                logger.Information("Business operation completed without telemetry configuration");
+                operationLogger.Information("Business operation completed without telemetry configuration");
                 return Results.NoContent();
             }
         );
@@ -348,7 +356,7 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         await app.Services.GetRequiredService<ITelemetry>().InitializeAsync();
         try
         {
-            using var http = new HttpClient();
+            using var http = app.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
             using var response = await http.GetAsync(app.Urls.Single() + PROBE_PATH, CancellationToken);
             response.StatusCode.ShouldBe(System.Net.HttpStatusCode.NoContent);
             await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
@@ -368,6 +376,11 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         {
             await app.StopAsync();
             await receiver.StopAsync();
+        }
+        }
+        finally
+        {
+            logger.Dispose();
         }
     }
 

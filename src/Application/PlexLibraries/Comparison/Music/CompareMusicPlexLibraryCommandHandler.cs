@@ -72,9 +72,10 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
                 var lastArtistId = 0;
                 while (true)
                 {
+                    var lastArtistIdForBatch = lastArtistId;
                     var remoteArtists = await ctx
                         .PlexMusicArtists.Where(x =>
-                            x.PlexLibraryId == command.RemotePlexLibraryId && x.Id > lastArtistId
+                            x.PlexLibraryId == command.RemotePlexLibraryId && x.Id > lastArtistIdForBatch
                         )
                         .OrderBy(x => x.Id)
                         .Take(BATCH_SIZE)
@@ -177,18 +178,22 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         var artistPairs = new List<(PlexMusicArtist Remote, PlexMusicArtist Owned)>();
         foreach (var remote in remoteArtists)
         {
-            var native = remote.PlexApiIdentityId is { } nativeId ? byNativeId[nativeId] : [];
-            var exact = remote.MusicBrainzArtistId is { } artistId ? byId[artistId] : [];
             IEnumerable<PlexMusicArtist> matches;
             PlexMediaComparisonMatchType matchType;
-            if (native.Any())
+            if (
+                remote.PlexApiIdentityId is { } nativeId
+                && byNativeId.Contains(nativeId)
+            )
             {
-                matches = native;
+                matches = byNativeId[nativeId];
                 matchType = PlexMediaComparisonMatchType.PlexArtistGuid;
             }
-            else if (exact.Any())
+            else if (
+                remote.MusicBrainzArtistId is { } artistId
+                && byId.Contains(artistId)
+            )
             {
-                matches = exact;
+                matches = byId[artistId];
                 matchType = PlexMediaComparisonMatchType.MusicBrainzArtistId;
             }
             else
@@ -280,27 +285,31 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         foreach (var (remoteArtist, ownedArtist) in artistPairs)
         {
             ct.ThrowIfCancellationRequested();
-            var remoteEditions = remoteAlbumsByArtist[remoteArtist.Id];
-            var ownedEditions = ownedAlbumsByArtist[ownedArtist.Id];
-            var nativeAlbums = ownedEditions
+            var nativeAlbums = ownedAlbumsByArtist[ownedArtist.Id]
                 .Where(x => x.PlexApiIdentityId is not null)
                 .ToLookup(x => x.PlexApiIdentityId!, StringComparer.Ordinal);
-            var releases = ownedEditions
+            var releases = ownedAlbumsByArtist[ownedArtist.Id]
                 .Where(x => x.MusicBrainzReleaseId is not null)
                 .ToLookup(x => x.MusicBrainzReleaseId!, StringComparer.Ordinal);
-            var editionTitles = ownedEditions.ToLookup(x => x.SearchTitle, StringComparer.OrdinalIgnoreCase);
-            var remoteEditionTitles = remoteEditions.ToLookup(x => x.SearchTitle, StringComparer.OrdinalIgnoreCase);
-            foreach (var remote in remoteEditions)
+            var editionTitles = ownedAlbumsByArtist[ownedArtist.Id].ToLookup(
+                x => x.SearchTitle,
+                StringComparer.OrdinalIgnoreCase
+            );
+            var remoteEditionTitles = remoteAlbumsByArtist[remoteArtist.Id].ToLookup(
+                x => x.SearchTitle,
+                StringComparer.OrdinalIgnoreCase
+            );
+            foreach (var remote in remoteAlbumsByArtist[remoteArtist.Id])
             {
                 ct.ThrowIfCancellationRequested();
-                IEnumerable<PlexMusicAlbum> native = remote.PlexApiIdentityId is { } nativeId
-                    ? nativeAlbums[nativeId]
-                    : [];
                 IEnumerable<PlexMusicAlbum> matches;
                 PlexMediaComparisonMatchType matchType;
-                if (native.Any())
+                if (
+                    remote.PlexApiIdentityId is { } nativeId
+                    && nativeAlbums.Contains(nativeId)
+                )
                 {
-                    matches = native;
+                    matches = nativeAlbums[nativeId];
                     matchType = PlexMediaComparisonMatchType.PlexAlbumGuid;
                 }
                 else
@@ -406,12 +415,14 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         var singleDisc = SingleDisc(remoteTracks, ownedTracks);
         foreach (var remote in remoteTracks.Tracks)
         {
-            var native = remote.PlexApiIdentityId is { } nativeId ? ownedTracks.NativeIds[nativeId] : [];
             IEnumerable<PlexMusicTrack> matches;
             PlexMediaComparisonMatchType matchType;
-            if (native.Any())
+            if (
+                remote.PlexApiIdentityId is { } nativeId
+                && ownedTracks.NativeIds.Contains(nativeId)
+            )
             {
-                matches = native;
+                matches = ownedTracks.NativeIds[nativeId];
                 matchType = PlexMediaComparisonMatchType.PlexTrackGuid;
             }
             else

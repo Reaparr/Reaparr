@@ -501,7 +501,7 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
             .Resolve<Mock<HttpMessageHandler>>()
             .SetupRequest(request => request.RequestUri!.AbsolutePath.StartsWith("/library/parts/"))
             .ReturnsAsync(
-                (HttpRequestMessage request, CancellationToken _) =>
+                (HttpRequestMessage _, CancellationToken _) =>
                     new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(expectedContent) }
             );
         var selection = CreatePhotoSelection(
@@ -634,11 +634,13 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using (var arrangeContext = await factory.CreateAsync())
         {
+            var photoLibraryId = await arrangeContext.PlexLibraries
+                .Where(x => x.Type == PlexMediaType.PhotoAlbum)
+                .Select(x => x.Id)
+                .SingleAsync(CancellationToken);
             var files = await arrangeContext
                 .PlexPhotoMediaData.AsTracking()
-                .Where(x =>
-                    x.PlexLibraryId == arrangeContext.PlexLibraries.Single(x => x.Type == PlexMediaType.PhotoAlbum).Id
-                )
+                .Where(x => x.PlexLibraryId == photoLibraryId)
                 .OrderBy(x => x.Id)
                 .ToListAsync(CancellationToken);
             files.Count.ShouldBe(2);
@@ -808,7 +810,9 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
             .Order()
             .ShouldBe(new[] { alternateDestination, container.PathProvider.DefaultPhotosDestinationFolder }.Order());
         folders.ShouldAllBe(folder =>
-            folder.Files.All(file => file.DirectoryMeta.PhotoFolder.StartsWith(folder.Title, StringComparison.Ordinal))
+            folder.Files.All(folderFile =>
+                folderFile.DirectoryMeta.PhotoFolder.StartsWith(folder.Title, StringComparison.Ordinal)
+            )
         );
     }
 

@@ -412,7 +412,7 @@ public sealed partial class Telemetry
         new()
         {
             [TelemetryProperty.Accounts.Id] = account.Id,
-            [TelemetryProperty.Accounts.DisplayName] = account.DisplayName,
+            [TelemetryProperty.Accounts.AccountDisplayName] = account.DisplayName,
             [TelemetryProperty.Accounts.Username] = account.Username,
             [TelemetryProperty.Accounts.PlexId] = account.PlexId,
             [TelemetryProperty.Accounts.Uuid] = account.Uuid,
