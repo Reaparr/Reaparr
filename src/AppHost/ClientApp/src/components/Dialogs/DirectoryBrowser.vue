@@ -332,7 +332,7 @@ function requestDirectories(newPath?: string, restoreFocus = false): void {
 						const input = (root?.tagName === 'INPUT'
 							? root as HTMLInputElement
 							: root?.querySelector<HTMLInputElement>('input'))
-							?? document.querySelector<HTMLInputElement>('[data-cy="directory-browser-path-field"] input');
+						?? document.querySelector<HTMLInputElement>('[data-cy="directory-browser-path-field"] input');
 						input?.focus();
 					}
 				}
