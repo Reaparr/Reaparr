@@ -194,7 +194,6 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     [Arguments(false)]
     [Arguments(true)]
     public async Task ShouldSearchDailyEpisodesByPersistedAirDate(bool searchByTitle)
-
     {
         // Arrange
         using var container = await CreateContainer(new Seed(8677), config =>
