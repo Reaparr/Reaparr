@@ -18,6 +18,17 @@ Find ten worthwhile improvements, ranked **bugs first, performance second, gener
 - Use the host's todo tool for execution status, not as a substitute for consent. Keep blocked or unverified changes uncommitted. The stop conditions below govern interruptions.
 - Ten is a discovery target, not a quota for findings or implementation. Present fewer when fewer survive scrutiny; a clear no-findings result is valid.
 
+## Changed-file budget — every fix round
+
+Keep the cumulative branch diff within the user's **150-file maximum for CodeRabbit review**. A new round of fixes does not reset this budget.
+
+- **Base:** use the current PR's actual base branch; if there is no PR, use the repository's documented integration target (`dev` for Reaparr). Record the base ref and comparison revision. If the base cannot be resolved, report the count as unknown and resolve it before implementation; never report zero or silently compare with another branch.
+- **Count:** count changed-file entries in the full merge-base-to-HEAD diff, equivalent to `git diff --name-status --find-renames <base-ref>...HEAD`. Include additions, modifications, deletions, tests, documentation and generated files; count a detected rename once. This is a file count, not changed lines, commits, only this round's files, or the sum of per-commit counts. State when the comparison uses an unrefreshed local base ref.
+- **Pending work:** separately calculate the projected total including staged, unstaged and untracked files intended for the PR, comparing their resulting state with the same merge base. Deduplicate overlapping paths instead of adding the working-tree count to the committed count. List intentional exclusions such as temporary workflow plans or unrelated changes kept out of the PR; never exclude a file already in the committed branch diff.
+- **Report every round:** recompute and show `Changes vs <base>: N / 150 files; R remaining` at the start of every requested or resumed fix round, before its Fix choices, before each local commit, and in its completion or blocker report. Show the projected total separately when pending or selected work would change it. Record these values in the existing working record; do not rely on a count from an earlier round.
+- **Preflight the selection:** before source edits, check the selected fixes' combined projected file footprint against the remaining capacity. Label estimates as estimates and refresh the actual count as files change.
+- **Enforce the cap:** if the current or projected total exceeds 150, pause implementation and commits and use the question tool to resolve a smaller selection or separately reviewed branch/PR. Exactly 150 is allowed, including further fixes confined to already-counted files. Read-only investigation may continue, but approval of fixes does not waive the limit or authorize branch changes, history rewriting, dropping user work, pushing or opening PRs.
+
 ## 1. Scope and maintain one working record
 
 Read the provided project instructions and applicable Reaparr skills. Establish the requested directories, exclusions, intended behavior, canonical patterns, and maintained build/test/runtime routes. A whole-codebase audit is not a branch-only review; recent changes are leads, not its boundary.
@@ -86,7 +97,7 @@ Assign stable IDs after the highest known ID from this run or available prior re
 
 ### Proposal template
 
-Before the cards, show **Checked / Not checked / Good next areas**, then a compact ranked table: ID, title, class, impact, change risk and relative effort. Put technical detail in question previews rather than repeating it throughout chat.
+Before the cards, report the current changed-file budget, show **Checked / Not checked / Good next areas**, then a compact ranked table: ID, title, class, impact, change risk and relative effort. Put technical detail in question previews rather than repeating it throughout chat.
 
 Each card contains:
 
@@ -127,7 +138,7 @@ A material remedy/dependency/verification change needs fresh approval for the ad
 
 ## 5. Implement, verify, review and commit one ID
 
-Add a todo for every approved ID in execution order, approved prerequisites first. Keep only the current fix active through its commit. Read current implementation, relevant callers, canonical tests, and actual model/harness contracts before editing; check mutability, identities, response types and fixture APIs instead of guessing them.
+Check the selected round's projected changed-file budget before editing. Add a todo for every approved ID in execution order, approved prerequisites first. Keep only the current fix active through its commit. Read current implementation, relevant callers, canonical tests, and actual model/harness contracts before editing; check mutability, identities, response types and fixture APIs instead of guessing them.
 
 Implement only the selected remedy and necessary callers/contracts/regressions. Preserve unrelated changes. A bug test must distinguish the demonstrated wrong outcome from the correct one at a consumer-visible seam; mock echoes, wiring-only assertions, source-text checks, bare not-throw and arbitrary test-count targets are not proof.
 
@@ -149,7 +160,7 @@ Address relevant review findings and rerun only affected checks before committin
 
 ### Commit and advance
 
-When verified, technically reviewed and commit-authorized, follow `reaparr-git-commit`. Stage only the current ID's implementation and regression coverage. Keep generated workflow plans, unrelated work and denial records out of staging and commits. Create its own local commit, record the **observed hash** in the host working record, mark its todo done, then start the next ID. No combined-ID commits, speculative later-fix edits, automatic pushes or history rewriting.
+When verified, technically reviewed and commit-authorized, refresh and report the changed-file budget, then follow `reaparr-git-commit`. Stage only the current ID's implementation and regression coverage. Keep generated workflow plans, unrelated work and denial records out of staging and commits. Create its own local commit, record the **observed hash** in the host working record, mark its todo done, then start the next ID. No combined-ID commits, speculative later-fix edits, automatic pushes or history rewriting.
 
 ## Stop conditions and execution status
 
@@ -169,6 +180,7 @@ After all selected fixes are verified, reviewed, committed and their todos done,
 
 Report briefly:
 
+- Current changed-file budget against the identified base branch, including remaining capacity and any pending projected total.
 - Actual **Checked / Not checked / Good next areas**, whether ten supported proposals were found, and corrections to earlier claims.
 - Per selected ID: behavior changed, affected paths, exact observed proof and limits, review outcome and commit hash (or explicit uncommitted/blocking status).
 - Deferred issue URLs, recorded denials or persistence blockers, and pending decisions. Deferred/unselected work is not unfinished authorized implementation.
