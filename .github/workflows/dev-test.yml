@@ -3,7 +3,6 @@ name: Execute Tests
 on:
     workflow_dispatch:
     pull_request:
-        branches: [ dev ]
         types: [ opened, ready_for_review, reopened, synchronize ]
         paths-ignore:
             - '.ai/**'
