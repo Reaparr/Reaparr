@@ -73,11 +73,22 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         new[] { LibrarySyncJobStatus.Queued, LibrarySyncJobStatus.Processing }.ShouldContain(result.Value.Status);
         testResult.Response.IsSuccessStatusCode.ShouldBeTrue();
 
-        // Wait for the scheduler to finish the library sync job
-        await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
+        // AwaitScheduler can observe an idle scheduler before the queued library job starts.
+        await WaitForDatabaseConditionAsync(
+            async () =>
+            {
+                using var context = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
+                return await context.PlexLibraries.AnyAsync(
+                    x => x.Id == plexLibrary.Id && x.SyncedAt != null && x.MovieCount == movieCount,
+                    CancellationToken
+                );
+            },
+            maxRetries: 60,
+            delayMs: 200
+        );
 
         // Verify the library was refreshed
-        var dbContext = container.DbContext;
+        using var dbContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
         var refreshedLibrary = await dbContext
             .PlexLibraries.Include(x => x.Movies)
             .FirstOrDefaultAsync(x => x.Id == plexLibrary.Id, CancellationToken);
@@ -183,11 +194,26 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         new[] { LibrarySyncJobStatus.Queued, LibrarySyncJobStatus.Processing }.ShouldContain(result.Value.Status);
         testResult.Response.IsSuccessStatusCode.ShouldBeTrue();
 
-        // Wait for the scheduler to finish the library sync job
-        await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
+        // AwaitScheduler can observe an idle scheduler before the queued library job starts.
+        await WaitForDatabaseConditionAsync(
+            async () =>
+            {
+                using var context = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
+                return await context.PlexLibraries.AnyAsync(
+                    x =>
+                        x.Id == plexLibrary.Id
+                        && x.SyncedAt != null
+                        && x.TvShowCount == tvShowCount
+                        && x.EpisodeCount == totalEpisodeCount,
+                    CancellationToken
+                );
+            },
+            maxRetries: 60,
+            delayMs: 200
+        );
 
         // Verify the library was refreshed
-        var dbContext = container.DbContext;
+        using var dbContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
         var refreshedLibrary = await dbContext
             .PlexLibraries.Include(x => x.TvShows)
                 .ThenInclude(x => x.Seasons)
