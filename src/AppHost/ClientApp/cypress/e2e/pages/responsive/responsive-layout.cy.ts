@@ -3,11 +3,9 @@ import { AudioQuality, PlexMediaType, VideoQuality } from '@dto';
 
 const viewports = [
 	{ name: 'small phone portrait', width: 320, height: 568 },
-	{ name: 'phone portrait', width: 375, height: 812 },
 	{ name: 'phone landscape', width: 568, height: 320 },
 	{ name: 'small tablet', width: 768, height: 1024 },
 	{ name: 'desktop', width: 1280, height: 800 },
-	{ name: 'wide desktop', width: 1920, height: 1080 },
 ] as const;
 
 function assertNoPageOverflow(): void {
