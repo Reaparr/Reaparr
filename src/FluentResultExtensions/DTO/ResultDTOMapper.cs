@@ -83,6 +83,10 @@ public static class ResultDTOMapper
         if (result.Has404NotFoundError())
             return StatusCodes.Status404NotFound;
 
+        // Status Code 409 Conflict
+        if (result.HasStatusCode(StatusCodes.Status409Conflict))
+            return StatusCodes.Status409Conflict;
+
         // Status Code 502 Bad Gateway
         if (result.Has502BadGatewayError())
             return StatusCodes.Status502BadGateway;

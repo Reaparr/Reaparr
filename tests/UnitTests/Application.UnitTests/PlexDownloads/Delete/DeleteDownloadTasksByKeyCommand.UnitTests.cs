@@ -6,15 +6,12 @@ public class DeleteDownloadTasksByKeyCommandUnitTests : BaseUnitTest<DeleteDownl
     public async Task ShouldDeleteMovieTask_WhenMovieKeyIsGiven()
     {
         // Arrange
-        await SetupDatabase(
-            86001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(86001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieKey = await dbContext.DownloadTaskMovie.ProjectToKey().FirstAsync(CancellationToken);
 
@@ -42,15 +39,12 @@ public class DeleteDownloadTasksByKeyCommandUnitTests : BaseUnitTest<DeleteDownl
     public async Task ShouldDeleteMovieFileTask_WhenMovieFileKeyIsGiven()
     {
         // Arrange
-        await SetupDatabase(
-            86002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(86002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFileKey = await dbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
 
@@ -79,17 +73,14 @@ public class DeleteDownloadTasksByKeyCommandUnitTests : BaseUnitTest<DeleteDownl
     public async Task ShouldRemoveOrphanedParents_WhenLastEpisodeFileKeyIsGiven()
     {
         // Arrange
-        await SetupDatabase(
-            86003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(86003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var episodeFileKey = await dbContext
             .DownloadTaskTvShowEpisodeFile.ProjectToKey()
@@ -121,17 +112,14 @@ public class DeleteDownloadTasksByKeyCommandUnitTests : BaseUnitTest<DeleteDownl
     public async Task ShouldNotRemoveRemainingEpisodes_WhenOnlyOneOfTwoIsDeleted()
     {
         // Arrange — one season with two episodes; deleting one file should not orphan the season.
-        await SetupDatabase(
-            86004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(86004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var episodeFileKeys = await dbContext
             .DownloadTaskTvShowEpisodeFile.ProjectToKey()
@@ -168,15 +156,12 @@ public class DeleteDownloadTasksByKeyCommandUnitTests : BaseUnitTest<DeleteDownl
     public async Task ShouldDeleteMultipleKeysAtOnce()
     {
         // Arrange
-        await SetupDatabase(
-            86005,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 3;
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(86005, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 3;
+            config.MovieDownloadTasksCount = 3;
+        });
         var dbContext = IDbContext;
         var allMovieKeys = await dbContext.DownloadTaskMovie.ProjectToKey().ToListAsync(CancellationToken);
         allMovieKeys.Count.ShouldBe(3);
@@ -207,15 +192,12 @@ public class DeleteDownloadTasksByKeyCommandUnitTests : BaseUnitTest<DeleteDownl
     public async Task ShouldSucceed_WhenNoneOfTheKeysExistInDatabase()
     {
         // Arrange — keys that do not exist; no error, no rows deleted.
-        await SetupDatabase(
-            86006,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(86006, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var nonExistentKey = new DownloadTaskKey
         {

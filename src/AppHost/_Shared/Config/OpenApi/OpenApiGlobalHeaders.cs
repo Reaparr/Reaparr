@@ -67,7 +67,7 @@ internal sealed class OpenApiGlobalHeaders(IAppBuildInfo appBuildInfo) : IOpenAp
     /// </remarks>
     private static OpenApiHeader CreateHeader(string example, string description)
     {
-        var exampleNode = JsonValue.Create(example)!;
+        var exampleNode = JsonValue.Create(example);
         return new OpenApiHeader
         {
             Example = exampleNode,

@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using BencodeNET.Objects;
@@ -94,8 +93,8 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
                     source.PlexApiPartId,
                     source.PlexLibraryId,
                     source.PlexServerId,
-                    mediaType == PlexMediaType.Episode ? (Guid?)integration.Id : null,
-                    mediaType == PlexMediaType.Movie ? (Guid?)integration.Id : null,
+                    mediaType == PlexMediaType.Episode ? integration.Id : null,
+                    mediaType == PlexMediaType.Movie ? integration.Id : null,
                     (string?)hash
                 ),
             ]);
@@ -193,23 +192,19 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
 
     private async Task<BaseContainer> CreatePausedContainer(int movieCount, int existingTasks)
     {
-        var container = await CreateContainer(
-            new Seed(8682),
-            config =>
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexServerCount = 1;
-                    database.PlexMovieLibraryCount = 1;
-                    database.PlexTvShowLibraryCount = 1;
-                    database.MovieCount = movieCount;
-                    database.MovieDownloadTasksCount = existingTasks;
-                    database.TvShowCount = 1;
-                    database.TvShowSeasonCount = 1;
-                    database.TvShowEpisodeCount = 1;
-                    database.RadarrIntegrationCount = 1;
-                    database.SonarrIntegrationCount = 1;
-                }
-        );
+        var container = await CreateContainer(new Seed(8682), config => config.DatabaseOptions = database =>
+            {
+                database.PlexServerCount = 1;
+                database.PlexMovieLibraryCount = 1;
+                database.PlexTvShowLibraryCount = 1;
+                database.MovieCount = movieCount;
+                database.MovieDownloadTasksCount = existingTasks;
+                database.TvShowCount = 1;
+                database.TvShowSeasonCount = 1;
+                database.TvShowEpisodeCount = 1;
+                database.RadarrIntegrationCount = 1;
+                database.SonarrIntegrationCount = 1;
+            });
         await container.DbContext.PlexServers.ExecuteUpdateAsync(
             update =>
                 update
@@ -255,16 +250,27 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
         return await context.DownloadTaskTvShowEpisodeFile.OrderBy(x => x.Id).ToArrayAsync(CancellationToken);
     }
 
-    private static FileState ToFileState(DownloadTaskFileBase file) =>
-        new(
+    private static (
+        Guid Id,
+        Guid ParentId,
+        string? HashId,
+        int RatingKey,
+        int MediaId,
+        int PartId,
+        int LibraryId,
+        int ServerId,
+        Guid? SonarrIntegrationId,
+        Guid? RadarrIntegrationId
+    ) ToFileState(DownloadTaskFileBase file) =>
+        (
             file.Id,
-            GetParentId(file),
+            ParentId: GetParentId(file),
             file.HashId,
-            file.PlexApiRatingKey,
-            file.PlexApiMediaId,
-            file.PlexApiPartId,
-            file.PlexLibraryId,
-            file.PlexServerId,
+            RatingKey: file.PlexApiRatingKey,
+            MediaId: file.PlexApiMediaId,
+            PartId: file.PlexApiPartId,
+            LibraryId: file.PlexLibraryId,
+            ServerId: file.PlexServerId,
             file.SonarrIntegrationId,
             file.RadarrIntegrationId
         );
@@ -277,16 +283,24 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
             _ => throw new ArgumentOutOfRangeException(nameof(file)),
         };
 
-    private async Task<ParentState[]> ReadMovieParents(IReaparrDbContext context) =>
-        (await context.DownloadTaskMovie.OrderBy(x => x.Id).ToArrayAsync(CancellationToken))
-            .Select(x => new ParentState(
-                x.Id,
-                x.PlexApiRatingKey,
-                x.PlexLibraryId,
-                x.PlexServerId,
-                x.RadarrIntegrationId
-            ))
-            .ToArray();
+    private async Task<(
+        Guid Id,
+        int RatingKey,
+        int LibraryId,
+        int ServerId,
+        Guid? RadarrIntegrationId
+    )[]> ReadMovieParents(IReaparrDbContext context) =>
+        [
+            .. (await context.DownloadTaskMovie.OrderBy(x => x.Id).ToArrayAsync(CancellationToken)).Select(x =>
+                (
+                    x.Id,
+                    RatingKey: x.PlexApiRatingKey,
+                    LibraryId: x.PlexLibraryId,
+                    ServerId: x.PlexServerId,
+                    x.RadarrIntegrationId
+                )
+            ),
+        ];
 
     private static string BuildDownloadUrl(Guid integrationId, string apiKey, TorrentMetadataDTO metadata)
     {
@@ -314,19 +328,4 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
             ExtraFields = fields,
         }.EncodeAsBytes();
     }
-
-    private sealed record FileState(
-        Guid Id,
-        Guid ParentId,
-        string? HashId,
-        int RatingKey,
-        int MediaId,
-        int PartId,
-        int LibraryId,
-        int ServerId,
-        Guid? SonarrIntegrationId,
-        Guid? RadarrIntegrationId
-    );
-
-    private sealed record ParentState(Guid Id, int RatingKey, int LibraryId, int ServerId, Guid? RadarrIntegrationId);
 }

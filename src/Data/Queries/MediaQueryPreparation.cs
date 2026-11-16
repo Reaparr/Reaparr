@@ -1,4 +1,3 @@
-using FlexQuery.NET;
 using FlexQuery.NET.Constants;
 using FlexQuery.NET.Models;
 using FlexQuery.NET.Parsers;

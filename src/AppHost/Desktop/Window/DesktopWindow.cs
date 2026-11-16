@@ -46,9 +46,10 @@ public class DesktopWindow : IDesktopWindow
         _window?.RegisterWebMessageReceivedHandler(
             (_, message) =>
             {
-                var msg =
-                    JsonSerializer.Deserialize<DesktopMessageDTO>(message, DefaultJsonSerializerOptions.ConfigStandard)
-                    ?? new DesktopMessageDTO { Type = DesktopMessageType.None, Value = "" };
+                var msg = JsonSerializer.Deserialize<DesktopMessageDTO>(
+                    message,
+                    DefaultJsonSerializerOptions.ConfigStandard
+                ) ?? new DesktopMessageDTO { Type = DesktopMessageType.None, Value = "" };
                 handler(msg);
             }
         );

@@ -17,20 +17,17 @@ public class RestartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<Rest
     )
     {
         // Arrange
-        await SetupDatabase(
-            88290,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistCount = 1;
-                c.MusicAlbumCount = 1;
-                c.MusicTrackCount = 1;
-                c.MusicArtistDownloadTasksCount = 2;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88290, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistCount = 1;
+            c.MusicAlbumCount = 1;
+            c.MusicTrackCount = 1;
+            c.MusicArtistDownloadTasksCount = 2;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -134,7 +131,7 @@ public class RestartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<Rest
         after.ToParentKey().ShouldBe(before.ToParentKey());
         if (!sourceMissing)
         {
-            var track = ((PlexMusicTrackMediaData)source).PlexTrack!;
+            var track = source.PlexTrack!;
             after.DirectoryMeta.MusicArtistFolder.ShouldBe(track.PlexAlbum!.PlexArtist!.Title.SanitizeFolderName());
             after.DirectoryMeta.MusicAlbumFolder.ShouldBe(track.PlexAlbum.Title.SanitizeFolderName());
         }
@@ -163,17 +160,14 @@ public class RestartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<Rest
     public async Task ShouldPreserveMusicProgressAndPropagateCancellation_WhenRestartStopIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            88350,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 1;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88350, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 1;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         file.DataReceived = 128;

@@ -17,13 +17,15 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
     private readonly IScheduler _scheduler;
     private readonly INotificationHubService _notificationHubService;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
     public CancelLibrarySyncJobCommandHandler(
         ILogger log,
         IReaparrDbContext dbContext,
         IScheduler scheduler,
         INotificationHubService notificationHubService,
-        ICommandExecutor commandExecutor
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<CancelLibrarySyncJobCommandHandler>();
@@ -31,6 +33,7 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
         _scheduler = scheduler;
         _notificationHubService = notificationHubService;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(CancelLibrarySyncJobCommand command, CancellationToken cancellationToken)
@@ -48,6 +51,7 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
                     "No library sync queue item found for library {PlexLibraryId}, nothing to cancel",
                     plexLibraryId
                 );
+            _telemetry.LibrarySyncCancellationProcessed(plexLibraryId, Result.Ok(), false, noOp: true);
             return Result.Ok();
         }
 
@@ -59,6 +63,7 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
                     plexLibraryId,
                     queueItem.Status
                 );
+            _telemetry.LibrarySyncCancellationProcessed(queueItem, Result.Ok(), false, queueItem.Status, noOp: true);
             return Result.Ok();
         }
 
@@ -87,8 +92,10 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
 
         var completionResult = await _scheduler.AwaitJobCompletion(jobKey, cancellationToken);
         if (completionResult.IsCancelledOrFailed)
+        {
+            _telemetry.LibrarySyncCancellationProcessed(queueItem, completionResult, wasInterrupted);
             return completionResult.LogIfFailed();
-
+        }
         // CreatedAt identifies this queue admission; do not cancel a newer request.
         // Only reconcile processing work that was already observed or successfully interrupted.
         // Cancellation has already been accepted; persist and inspect its outcome independently of the request token.
@@ -122,14 +129,29 @@ public class CancelLibrarySyncJobCommandHandler : ICommandHandler<CancelLibraryS
                         plexLibraryId,
                         currentStatus
                     );
+                _telemetry.LibrarySyncCancellationProcessed(
+                    queueItem,
+                    Result.Ok(),
+                    wasInterrupted,
+                    currentStatus,
+                    noOp: true
+                );
                 return Result.Ok();
             }
 
-            return Result
+            var failure = Result
                 .Fail("Library sync job for library {PlexLibraryId} changed state while cancelling", plexLibraryId)
                 .LogError();
+            _telemetry.LibrarySyncCancellationProcessed(queueItem, failure, wasInterrupted, currentStatus);
+            return failure;
         }
 
+        _telemetry.LibrarySyncCancellationProcessed(
+            queueItem,
+            Result.Ok(),
+            wasInterrupted,
+            LibrarySyncJobStatus.Cancelled
+        );
         _log.Here()
             .Information(
                 "Cancelled library sync job for server {ServerId}, library {PlexLibraryId}",

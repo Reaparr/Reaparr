@@ -179,6 +179,67 @@ public class SetLibraryEnabledEndpointUnitTests
         Mock.Mock<INotificationHubService>().Verify();
     }
 
+    [Test]
+    public async Task ShouldPreserveAlreadyEnabledLibrarySideEffectsWithoutChangeEvent()
+    {
+        await SetupDatabase(73303, x =>
+        {
+            x.PlexServerCount = 1;
+            x.PlexMovieLibraryCount = 1;
+        });
+        var library = IDbContext.PlexLibraries.Single();
+        library.IsEnabled.ShouldBeTrue();
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x =>
+                x.Send(
+                    It.Is<QueueLibrarySyncJobCommand>(c =>
+                        c.PlexLibraryIds.SequenceEqual(new[] { library.Id })
+                        && !c.ForceLibrarySync
+                        && !c.ForceMediaRefresh
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand(PlexMediaType.Movie))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        Mock.Mock<INotificationHubService>()
+            .Setup(x =>
+                x.SendRefreshNotificationAsync(
+                    It.Is<List<RefreshDataType>>(types =>
+                        types.SequenceEqual(
+                            new[] { RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus }
+                        )
+                    )
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+
+        var endpointResult = await TestEndpointHandleAsync(
+            new SetLibraryEnabledRequest { PlexLibraryId = library.Id, IsEnabled = true }
+        );
+
+        endpointResult.IsValid.ShouldBeTrue();
+        endpointResult.Response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexLibraryChanged(
+                        It.IsAny<PlexLibrary>(),
+                        It.IsAny<TelemetryAction>(),
+                        It.IsAny<bool>(),
+                        It.IsAny<int?>()
+                    ),
+                Times.Never()
+            );
+    }
+
     private static PlexPhotoFolder CreateRoot(PlexLibrary library, int serverId, string path, bool active) =>
         new()
         {

@@ -6,16 +6,13 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
     public async Task ShouldReturnMetadataAndMembershipsWithoutSensitiveSourceFields()
     {
         // Arrange
-        await SetupDatabase(
-            71006,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 2;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71006, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 2;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         await dbContext
@@ -30,7 +27,7 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetInspectionDTO>(
-            new GetPhotoAssetInspectionQuery(asset.PlexLibraryId, asset.Id, 1, 100)
+            new GetPhotoAssetInspectionQuery(asset.PlexLibraryId, asset.Id)
         );
 
         // Assert
@@ -47,7 +44,7 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
         result.Value.Breadcrumbs.ShouldBeEmpty();
         result.Value.RelativeFolderPath.ShouldBeNull();
         result.Value.SourceRootTitle.ShouldBeNull();
-        var serialized = System.Text.Json.JsonSerializer.Serialize(result.Value);
+        var serialized = JsonSerializer.Serialize(result.Value);
         asset.SourcePath.ShouldNotBeNull();
         serialized.ShouldNotContain(asset.SourcePath);
         serialized.ShouldNotContain(asset.Key);
@@ -85,16 +82,13 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
 
     private async Task<DeepInspectionFixture> ArrangeDeepInspectionFixtureAsync()
     {
-        await SetupDatabase(
-            71014,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 3;
-                config.PhotoCount = 1;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71014, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 3;
+            config.PhotoCount = 1;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -164,15 +158,12 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
     public async Task ShouldPreserveLocationMetadata_WhenSourceRootIsInactive()
     {
         // Arrange
-        await SetupDatabase(
-            71016,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(71016, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.FirstAsync(CancellationToken);
         var inactiveRoot = new PlexPhotoFolder

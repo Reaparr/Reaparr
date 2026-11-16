@@ -16,6 +16,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
     private readonly IDownloadHubService _downloadHubService;
     private readonly ICommandExecutor _commandExecutor;
     private readonly IDownloadTaskScheduler _downloadTaskScheduler;
+    private readonly ITelemetry _telemetry;
     private readonly Channel<ImmediatePatchRequest> _statusChannel;
     private readonly ConcurrentDictionary<Guid, BufferedProgressUpdate> _progressByNodeId;
     private readonly ConcurrentDictionary<int, long> _sequenceByServer;
@@ -38,7 +39,8 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         IReaparrDbContextFactory dbContextFactory,
         IDownloadHubService downloadHubService,
         ICommandExecutor commandExecutor,
-        IDownloadTaskScheduler downloadTaskScheduler
+        IDownloadTaskScheduler downloadTaskScheduler,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<DownloadTaskUpdateDispatcher>();
@@ -46,7 +48,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         _downloadHubService = downloadHubService;
         _commandExecutor = commandExecutor;
         _downloadTaskScheduler = downloadTaskScheduler;
-
+        _telemetry = telemetry;
         _statusChannel = Channel.CreateUnbounded<ImmediatePatchRequest>(
             new UnboundedChannelOptions { SingleReader = true, SingleWriter = false }
         );
@@ -74,9 +76,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
             // publication gate as patch reads/sends. This makes the returned watermark cover
             // every emitted patch that could otherwise race with the snapshot.
             using var dbContext = await _dbContextFactory.CreateAsync();
-            var downloadTasks = await dbContext.GetAllDownloadTasksByServerAsync(
-                cancellationToken: cancellationToken
-            );
+            var downloadTasks = await dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: cancellationToken);
 
             return new DownloadSnapshotDTO
             {
@@ -153,14 +153,20 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 );
                 refresh.LogIfFailed();
             }
-            var changedParentKeys = await dbContext.DetermineDownloadStatus(key, cancellationToken);
+            var changedParentStatuses = await dbContext.DetermineDownloadStatus(key, cancellationToken);
             var rootKey = await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: cancellationToken);
             if (rootKey is null)
                 return;
 
-            var changedNodeIds = changedParentKeys.Select(x => x.Id).Append(key.Id).Distinct().ToList();
-            if (hasStatusChanged || changedParentKeys.Count > 0)
+            var changedNodeIds = changedParentStatuses.Select(x => x.Key.Id).Append(key.Id).Distinct().ToList();
+            if (hasStatusChanged || changedParentStatuses.Count > 0)
             {
+                var rootStatus = changedParentStatuses.FirstOrDefault(x => x.Key == rootKey);
+                if (rootStatus.Key is null && hasStatusChanged && key == rootKey)
+                    rootStatus = (rootKey, newStatus);
+
+                if (rootStatus.Key is not null)
+                    _telemetry.DownloadLifecycleChanged(rootStatus.Key, rootStatus.Status);
                 await _statusChannel.Writer.WriteAsync(
                     new ImmediatePatchRequest(ProgressScopeKey.From(rootKey), changedNodeIds),
                     cancellationToken

@@ -13,30 +13,27 @@ public class ReaparrDbContextExtensionsGetDownloadProgressTasksByServerAsyncUnit
     )
     {
         // Arrange
-        await SetupDatabase(
-            129887,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoFolderDownloadTasksCount = 1;
-                config.PhotoImageDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 1;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(129887, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoFolderDownloadTasksCount = 1;
+            config.PhotoImageDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         Guid? additionalPhotoRootId = null;
         if (includeAdditionalPhotoRoot)
@@ -86,7 +83,7 @@ public class ReaparrDbContextExtensionsGetDownloadProgressTasksByServerAsyncUnit
         ];
         var expectedRootTypes = includeAdditionalPhotoRoot ? rootTypes.Append(DownloadTaskType.PhotoFolder) : rootTypes;
         allTasks.Select(x => x.DownloadTaskType).Order().ShouldBe(expectedRootTypes.Order());
-        if (additionalPhotoRootId is Guid rootId)
+        if (additionalPhotoRootId is { } rootId)
         {
             var additionalRoot = allTasks.Single(x => x.Id == rootId);
             additionalRoot.ParentId.ShouldBe(Guid.Empty);

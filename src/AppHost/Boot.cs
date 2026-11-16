@@ -18,6 +18,7 @@ public class Boot : IHostedService
     private readonly IBackgroundJobsSetup _backgroundJobsSetup;
     private readonly IDownloadQueue _downloadQueue;
     private readonly IMoveDownloadFileQueue _moveDownloadFileQueue;
+    private readonly ITelemetry _telemetry;
 
     #endregion
 
@@ -34,7 +35,8 @@ public class Boot : IHostedService
         IScheduler scheduler,
         IBackgroundJobsSetup backgroundJobsSetup,
         IDownloadQueue downloadQueue,
-        IMoveDownloadFileQueue moveDownloadFileQueue
+        IMoveDownloadFileQueue moveDownloadFileQueue,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<Boot>();
@@ -45,6 +47,7 @@ public class Boot : IHostedService
         _backgroundJobsSetup = backgroundJobsSetup;
         _downloadQueue = downloadQueue;
         _moveDownloadFileQueue = moveDownloadFileQueue;
+        _telemetry = telemetry;
         appLifetime.ApplicationStarted.Register(OnStarted);
         appLifetime.ApplicationStopping.Register(OnStopping);
         appLifetime.ApplicationStopped.Register(OnStopped);
@@ -72,6 +75,8 @@ public class Boot : IHostedService
             TerminateApplication();
             return;
         }
+
+        await _telemetry.InitializeAsync();
 
         var downloadQueueSetup = _downloadQueue.Setup(_appLifetime.ApplicationStopping);
         downloadQueueSetup.LogIfFailed();

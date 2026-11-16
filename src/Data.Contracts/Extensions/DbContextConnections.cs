@@ -67,9 +67,8 @@ public static class DbContextConnections
         command.CommandText = _connectionPragmas;
         command.ExecuteNonQuery();
 
-        sqliteConnection.CreateCollation(
-            OrderByNaturalExtensions.CollationName,
-            (x, y) => _naturalSortComparer.Compare(x, y)
+        sqliteConnection.CreateCollation(OrderByNaturalExtensions.CollationName, (x, y) =>
+            _naturalSortComparer.Compare(x, y)
         );
     }
 

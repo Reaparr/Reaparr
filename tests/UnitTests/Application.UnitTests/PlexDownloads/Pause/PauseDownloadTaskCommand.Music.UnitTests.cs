@@ -19,17 +19,14 @@ public class PauseDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<PauseD
     )
     {
         // Arrange
-        await SetupDatabase(
-            88210,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 1;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88210, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 1;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var target = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -105,17 +102,14 @@ public class PauseDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<PauseD
     public async Task ShouldPropagateRejectedMoveStop_WhenPausingMusic()
     {
         // Arrange
-        await SetupDatabase(
-            88320,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 1;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88320, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 1;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         file.DownloadStatus = DownloadStatus.Moving;

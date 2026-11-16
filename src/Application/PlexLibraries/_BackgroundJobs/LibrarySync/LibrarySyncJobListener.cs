@@ -50,8 +50,7 @@ public sealed class LibrarySyncJobListener : IJobListener
                     new CheckQueuedPlexLibraryToSyncCommand(),
                     queueTokenSource.Token
                 );
-                if (queueResult.IsFailed)
-                    queueResult.LogWarning();
+                queueResult.LogIfFailed();
             }
 
             using var dbContext = await _dbContextFactory.CreateAsync();
@@ -67,8 +66,7 @@ public sealed class LibrarySyncJobListener : IJobListener
                     new ScheduleAffectedLibraryComparisonJobsCommand(libraryId),
                     cancellationToken
                 );
-                if (comparisonQueueResult.IsFailed)
-                    _log.Here().Warning("Failed to queue comparison jobs for library {LibraryId}", libraryId);
+                comparisonQueueResult.LogIfFailed();
             }
         }
         catch (Exception exception)

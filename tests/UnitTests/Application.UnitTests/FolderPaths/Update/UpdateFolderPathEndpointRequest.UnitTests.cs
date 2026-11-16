@@ -19,10 +19,13 @@ public class UpdateFolderPathEndpointRequestUnitTests
         // Assert
         outcome.IsValid.ShouldBeFalse();
         outcome.Response.ShouldBeNull();
-        outcome.ValidationResult.ShouldNotBeNull().Errors.Select(x => x.PropertyName)
+        outcome
+            .ValidationResult.ShouldNotBeNull()
+            .Errors.Select(x => x.PropertyName)
             .ShouldBe([nameof(UpdateFolderPathEndpointRequest.FolderPathDTO)]);
         (after.Id, after.DisplayName, after.DirectoryPath, after.FolderType, after.MediaType).ShouldBe(
-            (before.Id, before.DisplayName, before.DirectoryPath, before.FolderType, before.MediaType));
+            (before.Id, before.DisplayName, before.DirectoryPath, before.FolderType, before.MediaType)
+        );
     }
 
     [Test]
@@ -30,7 +33,10 @@ public class UpdateFolderPathEndpointRequestUnitTests
     [Arguments(1, FolderType.DownloadFolder, PlexMediaType.None)]
     [Arguments(10, FolderType.MovieFolder, PlexMediaType.Movie)]
     public async Task ShouldPersistAllowedFolderEdits_WhenRequestIsValid(
-        int folderId, FolderType folderType, PlexMediaType mediaType)
+        int folderId,
+        FolderType folderType,
+        PlexMediaType mediaType
+    )
     {
         // Arrange
         await SetupDatabase(45811);
@@ -41,8 +47,13 @@ public class UpdateFolderPathEndpointRequestUnitTests
         {
             FolderPathDTO = new FolderPathDTO
             {
-                Id = before.Id, DisplayName = "Allowed edit", Directory = "/tmp/allowed-folder-edit",
-                FolderType = folderType, MediaType = mediaType, IsDefault = false, IsValid = true,
+                Id = before.Id,
+                DisplayName = "Allowed edit",
+                Directory = "/tmp/allowed-folder-edit",
+                FolderType = folderType,
+                MediaType = mediaType,
+                IsDefault = false,
+                IsValid = true,
             },
         };
 
@@ -58,12 +69,19 @@ public class UpdateFolderPathEndpointRequestUnitTests
         (result.IsSuccess, result.Errors.Count).ShouldBe((true, 0));
         var value = result.Value.ShouldNotBeNull();
         (value.Id, value.DisplayName, value.Directory, value.FolderType, value.MediaType).ShouldBe(
-            (folderId, "Allowed edit", "/tmp/allowed-folder-edit", folderType, mediaType));
+            (folderId, "Allowed edit", "/tmp/allowed-folder-edit", folderType, mediaType)
+        );
         value.IsDefault.ShouldBeTrue();
         (after.Id, after.DisplayName, after.DirectoryPath, after.FolderType, after.MediaType).ShouldBe(
-            (folderId, "Allowed edit", "/tmp/allowed-folder-edit", folderType, mediaType));
-        (afterControl.Id, afterControl.DisplayName, afterControl.DirectoryPath, afterControl.FolderType, afterControl.MediaType).ShouldBe(
-            (control.Id, control.DisplayName, control.DirectoryPath, control.FolderType, control.MediaType));
+            (folderId, "Allowed edit", "/tmp/allowed-folder-edit", folderType, mediaType)
+        );
+        (
+            afterControl.Id,
+            afterControl.DisplayName,
+            afterControl.DirectoryPath,
+            afterControl.FolderType,
+            afterControl.MediaType
+        ).ShouldBe((control.Id, control.DisplayName, control.DirectoryPath, control.FolderType, control.MediaType));
     }
 
     [Test]
@@ -72,7 +90,10 @@ public class UpdateFolderPathEndpointRequestUnitTests
     [Arguments(FolderType.None, PlexMediaType.Movie, "FolderPathDTO.FolderType")]
     [Arguments(FolderType.Unknown, PlexMediaType.Movie, "FolderPathDTO.FolderType")]
     public async Task ShouldRejectInvalidRoleWithoutMutation_WhenUpdatingFolderPath(
-        FolderType folderType, PlexMediaType mediaType, string errorProperty)
+        FolderType folderType,
+        PlexMediaType mediaType,
+        string errorProperty
+    )
     {
         // Arrange
         await SetupDatabase(45812);
@@ -82,8 +103,13 @@ public class UpdateFolderPathEndpointRequestUnitTests
         {
             FolderPathDTO = new FolderPathDTO
             {
-                Id = before.Id, DisplayName = "Rejected edit", Directory = "/tmp/rejected-folder-edit",
-                FolderType = folderType, MediaType = mediaType, IsDefault = false, IsValid = true,
+                Id = before.Id,
+                DisplayName = "Rejected edit",
+                Directory = "/tmp/rejected-folder-edit",
+                FolderType = folderType,
+                MediaType = mediaType,
+                IsDefault = false,
+                IsValid = true,
             },
         };
 
@@ -96,6 +122,7 @@ public class UpdateFolderPathEndpointRequestUnitTests
         outcome.Response.ShouldBeNull();
         outcome.ValidationResult.ShouldNotBeNull().Errors.Select(x => x.PropertyName).ShouldBe([errorProperty]);
         (after.Id, after.DisplayName, after.DirectoryPath, after.FolderType, after.MediaType).ShouldBe(
-            (before.Id, before.DisplayName, before.DirectoryPath, before.FolderType, before.MediaType));
+            (before.Id, before.DisplayName, before.DirectoryPath, before.FolderType, before.MediaType)
+        );
     }
 }

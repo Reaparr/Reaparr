@@ -44,15 +44,12 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
     public async Task ShouldReturnFailedResult_WhenDownloadRootHasNotBeenResolved()
     {
         // Arrange
-        await SetupDatabase(
-            61002,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(61002, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         file.DirectoryMeta.DownloadRootPath = string.Empty;
@@ -76,15 +73,12 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
     public async Task ShouldReturnFailedResult_WhenFilePathResolutionThrows()
     {
         // Arrange
-        await SetupDatabase(
-            61003,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(61003, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         file.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
@@ -111,15 +105,12 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
     public async Task ShouldReturnFailedResult_WhenFilePathResolutionReturnsEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            61004,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(61004, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         file.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
@@ -145,15 +136,12 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
     public async Task ShouldReturnFailedResult_WhenDownloadDirectoryEntriesCannotBeRead()
     {
         // Arrange
-        await SetupDatabase(
-            61005,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(61005, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         file.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
@@ -185,15 +173,12 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
     public async Task ShouldReturnFailedResult_WhenDownloadDirectoryCannotBeDeleted()
     {
         // Arrange
-        await SetupDatabase(
-            61006,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(61006, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         file.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
@@ -229,15 +214,12 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
     public async Task ShouldReturnSuccessWithoutDeleting_WhenDownloadDirectoryDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            61007,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(61007, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         file.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
@@ -265,15 +247,12 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
     public async Task ShouldPreserveNonEmptyDownloadDirectory_WhenDirectoryContainsEntries()
     {
         // Arrange
-        await SetupDatabase(
-            61008,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(61008, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().SingleAsync(CancellationToken);
         file.DirectoryMeta.DownloadRootPath = Mock.Container.Resolve<IPathProvider>().DefaultDownloadsDestinationFolder;
@@ -300,24 +279,21 @@ public class CleanUpDownloadTaskFoldersCommonUnitTests : BaseCommandUnitTest<Cle
     public async Task ShouldKeepEveryDownloadCategoryRoot_WhenFileIsDirectlyInRoot()
     {
         // Arrange
-        await SetupDatabase(
-            61009,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PhotoFolderDownloadTasksCount = 1;
-                config.PhotoImageDownloadTasksCount = 1;
-                config.OtherVideoDownloadTasksCount = 1;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(61009, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PhotoFolderDownloadTasksCount = 1;
+            config.PhotoImageDownloadTasksCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var files = new DownloadTaskFileBase[]
         {

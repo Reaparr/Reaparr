@@ -22,12 +22,19 @@ public class SetServerAlias : Endpoint<SetServerAliasRequest, BaseResultDTO>
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly IServerSettingsModule _serverSettingsModule;
+    private readonly ITelemetry _telemetry;
 
-    public SetServerAlias(ILogger log, IReaparrDbContext dbContext, IServerSettingsModule serverSettingsModule)
+    public SetServerAlias(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        IServerSettingsModule serverSettingsModule,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<SetServerAlias>();
         _dbContext = dbContext;
         _serverSettingsModule = serverSettingsModule;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -51,8 +58,11 @@ public class SetServerAlias : Endpoint<SetServerAliasRequest, BaseResultDTO>
             return;
         }
 
+        var previousAlias = _serverSettingsModule.GetServerNameAlias(machineIdentifier);
         _serverSettingsModule.SetServerName(machineIdentifier, req.ServerAlias);
-
+        var alias = _serverSettingsModule.GetServerNameAlias(machineIdentifier);
+        if (!string.Equals(previousAlias, alias, StringComparison.Ordinal))
+            _telemetry.PlexServerAliasChanged(req.PlexServerId, machineIdentifier, alias);
         await Send.FluentResult(Result.Ok(), ct);
     }
 }

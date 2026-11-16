@@ -29,8 +29,13 @@ public class CreateSonarrIntegrationRequestValidator : Validator<CreateSonarrInt
 public class CreateSonarrIntegrationEndpoint : Endpoint<CreateSonarrIntegrationRequest, ResultDTO<SonarrIntegrationDTO>>
 {
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public CreateSonarrIntegrationEndpoint(IReaparrDbContext dbContext) => _dbContext = dbContext;
+    public CreateSonarrIntegrationEndpoint(IReaparrDbContext dbContext, ITelemetry telemetry)
+    {
+        _dbContext = dbContext;
+        _telemetry = telemetry;
+    }
 
     public override void Configure()
     {
@@ -92,6 +97,8 @@ public class CreateSonarrIntegrationEndpoint : Endpoint<CreateSonarrIntegrationR
         };
         _dbContext.SonarrIntegrations.Add(integration);
         await _dbContext.SaveChangesAsync(ct);
+
+        _telemetry.IntegrationChanged(integration, TelemetryAction.Create, connectionIdentityChanged: false);
 
         var result = Result.Ok(integration).Add201CreatedRequestSuccess("Sonarr integration created successfully.");
         await Send.FluentResult(result, model => model.ToDTO(), ct);

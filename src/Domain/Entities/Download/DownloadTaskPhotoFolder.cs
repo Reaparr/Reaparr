@@ -75,7 +75,7 @@ public class DownloadTaskPhotoFolder : DownloadTaskParentBase
     /// Creates the containing folder's queue key, or returns null for a root folder.
     /// </summary>
     public override DownloadTaskKey? ToParentKey() =>
-        ParentId is not Guid parentId
+        ParentId is not { } parentId
             ? null
             : new()
             {

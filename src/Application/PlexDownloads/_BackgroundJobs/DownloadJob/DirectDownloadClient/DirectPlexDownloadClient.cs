@@ -18,14 +18,14 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
     private readonly IDownloadSpeedLimitProvider _speedLimits;
     private readonly IFile _file;
     private readonly IFileInfoFactory _fileInfoFactory;
-
+    private readonly ITelemetry _telemetry;
     private DownloadTaskKey? _downloadTaskKey;
     private string _filename = string.Empty;
 
     private readonly IDownloadService _downloader;
 
     private readonly DownloadConfiguration _configuration = new();
-
+    private readonly int _configuredDownloadSegments;
     private readonly CompositeDisposable _subscriptions = new();
     private readonly Subject<Unit> _destroy = new();
     private readonly object _disposeLock = new();
@@ -43,7 +43,8 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         IDownloadSpeedLimitProvider speedLimits,
         IFile file,
         IFileInfoFactory fileInfoFactory,
-        Func<DownloadConfiguration, IDownloadService> downloadServiceFactory
+        Func<DownloadConfiguration, IDownloadService> downloadServiceFactory,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<DirectPlexDownloadClient>();
@@ -54,8 +55,10 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         _speedLimits = speedLimits;
         _file = file;
         _fileInfoFactory = fileInfoFactory;
+        _telemetry = telemetry;
 
-        var downloadSegments = Math.Max(1, downloadManagerSettings.DownloadSegments);
+        _configuredDownloadSegments = downloadManagerSettings.DownloadSegments;
+        var downloadSegments = Math.Max(1, _configuredDownloadSegments);
 
         // Number of file parts, default is 1
         _configuration.ChunkCount = downloadSegments;
@@ -85,6 +88,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         }
 
         _filename = downloadTask.FileName;
+        using var clientActivity = _telemetry.StartDirectDownload(downloadTask, _configuration.ChunkCount);
 
         var directUrlStopwatch = Stopwatch.StartNew();
         var downloadUrlResult = await _commandExecutor.Send(
@@ -172,6 +176,13 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                 async token =>
                 {
                     var attempt = retryAttempt++;
+                    using var attemptActivity = _telemetry.StartDirectDownloadAttempt(
+                        downloadTask,
+                        attempt + 1,
+                        _configuredDownloadSegments,
+                        _configuration.ChunkCount,
+                        _configuration.MaximumBytesPerSecond
+                    );
                     if (attempt > 0)
                         await _downloader.Clear();
 

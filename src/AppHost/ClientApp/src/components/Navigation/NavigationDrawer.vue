@@ -107,6 +107,11 @@ const getNavItems = computed((): QExpansionListProps[] => {
 					icon: 'mdi-button-pointer',
 					link: '/debug-pages/buttons',
 				},
+				{
+					title: t('components.navigation-drawer.telemetry'),
+					icon: 'mdi-chart-timeline-variant',
+					link: '/debug-pages/telemetry',
+				},
 			],
 		});
 	}

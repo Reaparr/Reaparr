@@ -142,6 +142,11 @@ Prefer Reaparr-specific skills over generic skills when both apply.
 - Reaparr has no project-local `BaseEndpoint<,>` requirement; do not introduce a wrapper just to satisfy guidance.
 - Endpoint behavior should usually dispatch through `ICommandExecutor` rather than embedding orchestration logic.
 
+### Constructors
+
+- Always declare explicit constructors for backend classes and structs, including parameterless constructors when no dependencies are required.
+- Use traditional constructor declarations inside the type body rather than primary constructors. Assign injected dependencies to explicit fields or properties in the constructor body.
+
 ### Dependency Injection
 
 - Autofac modules use `*Module : Module`.
@@ -178,7 +183,7 @@ Prefer Reaparr-specific skills over generic skills when both apply.
 - Quartz jobs use `IJob` and should be marked `[DisallowConcurrentExecution]` when concurrent execution is unsafe.
 - Pass parameters through `JobDataMap`.
 - Dispatch real work through `ICommandExecutor`.
-- Jobs must catch, log, and swallow exceptions; do not let exceptions escape `Execute`.
+- Jobs must contain failures, record their Quartz outcome, and consume failed results with `LogIfFailed()`; follow **Result Handling** below rather than adding manual exception scaffolding.
 
 ### Realtime
 
@@ -209,31 +214,35 @@ _log.Error(ex, "Failed to queue library sync job");
 
 Reaparr uses `FluentResults` as the normal error boundary for commands, jobs, services, and other fallible backend operations. Preserve the distinction between success, cancellation, expected domain failures, and unexpected failures.
 
-### Prefer `Result.Try` over `try/catch`
+### Mandatory result-first flow
 
-Use `Result.Try` before reaching for a manual `try/catch`. It is the standard project mechanism for converting thrown exceptions and cancelled operations into `Result` values.
+This is the required backend standard, not a preference:
 
-Use the existing error boundary. Do not wrap every internal helper in another `Result.Try` when the caller already owns exception-to-Result conversion. Result handling is not a reason to add validation, fallback, retry, or transaction machinery.
+1. Call result-returning operations directly and propagate their original result. `ICommandExecutor.Send` already converts command exceptions into failed results; do not wrap it in another `Result.Try`.
+2. Stop unsuccessful work with one `IsCancelledOrFailed` guard. Convert with `.ToResult()` only when the enclosing return type requires it:
 
 ```csharp
-var result = await Result.Try(async Task () =>
-{
-    await DoWorkAsync(cancellationToken);
-});
+var accountsResult = await dbContext.GetPlexAccountsWithAccessAsync(serverId, cancellationToken);
+if (accountsResult.IsCancelledOrFailed)
+    return accountsResult.ToResult();
 ```
 
-Use a manual `try/catch` only when `Result.Try` cannot express the required behavior, such as:
-- translating a specific external exception into a specific HTTP or domain error;
-- guaranteeing cleanup in `finally`;
-- containing exceptions at framework boundaries such as Quartz listeners/jobs or `async void` lifetime callbacks;
-- distinguishing caller cancellation from a timeout with an exception filter;
-- performing bounded best-effort cleanup after the original operation was cancelled.
+3. Use `LogIfFailed()` where the failure is consumed or owned, not repeatedly at every forwarding layer. Preserve original errors, exceptions, metadata, and successful payloads; do not manufacture replacement results for telemetry.
+4. Use `Result.Try` only at a necessary exception-to-result boundary around work that can actually throw and is not already contained. Keep that boundary at its existing owner; an outer boundary already covers its internal calls.
 
-Never add a broad `catch (Exception)` merely to return `Result.Fail`; use `Result.Try`. If a framework boundary must catch broadly, log the exception and ensure it cannot escape that boundary.
+```csharp
+var persistenceResult = await Result.Try(() => UpdateQueueItemAsync(status));
+persistenceResult.LogIfFailed();
+```
+
+5. Manual `try/catch`, catch/rethrow, and outer exception-holder variables are prohibited in new or rewritten result-based backend flow. Use the native `Result.Try` exception handler when specific exception translation is necessary, retaining the original exception as `ExceptionalError` or an error cause. If existing result facilities cannot preserve required framework exception propagation, explain the concrete limitation and obtain explicit approval before introducing a manual catch.
+6. Keep code flat and minimal. Do not replace catches with redundant `Result.Try` wrappers, new orchestration/callback APIs, classifier helpers, or bookkeeping state. Use `using`/`await using` for resource lifetimes.
+
+Preserve caller cancellation versus unexpected timeout/failure semantics, persisted outcomes, and cleanup ordering. Distinct branches are justified when they perform different business actions—not merely to repeat the same failure guard. Result handling does not authorize additional validation, fallbacks, retries, or transactions.
 
 ### Handle cancelled and failed results together
 
-Always use `IsCancelledOrFailed` with `LogIfFailed()` when a cancelled or failed result must stop the current operation:
+Use `IsCancelledOrFailed` with `LogIfFailed()` when this layer owns or consumes the failure:
 
 ```csharp
 if (insertResult.IsCancelledOrFailed)
@@ -253,14 +262,10 @@ Read `.Value` only after the guard establishes success. Propagate handled cancel
 
 ### Result composition and propagation
 
-- Return the original failed or cancelled result when signatures are compatible; this preserves error types and metadata.
-- Use `ToResult()` only when converting `Result<T>` to non-generic `Result` is required.
 - Use `Result.Merge(...)` for independent result-producing operations, then apply the same `IsCancelledOrFailed`/`LogIfFailed()` guard to the merged result.
-- Never read `.Value` until success is established.
 - Do not replace structured errors with only `error.Message`; retain `ExceptionalError`, HTTP/status metadata, and domain error types.
 - Use existing `ResultExtensions` helpers for validation, not-found, conflict, timeout, and other expected failures so API metadata remains intact.
 - For best-effort work that intentionally continues after failure or cancellation, call `result.LogIfFailed()` without introducing an early return.
-- Avoid duplicate logging at every stack frame. Log at the boundary that handles or returns the result, and always log results consumed locally rather than propagated.
 - When using `Result.Try`, inspect its returned result. Do not assume wrapping an operation is sufficient by itself.
 
 ### Cancellation-token use with Results

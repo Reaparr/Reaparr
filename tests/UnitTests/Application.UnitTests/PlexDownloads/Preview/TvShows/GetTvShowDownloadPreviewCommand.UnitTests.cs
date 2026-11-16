@@ -6,16 +6,13 @@ public class GetTvShowDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetT
     public async Task ShouldNotDuplicateEpisodes_WhenSameEpisodeIsRequestedTwice()
     {
         // Arrange
-        await SetupDatabase(
-            66778,
-            config =>
-            {
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(66778, config =>
+        {
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
         var episode = (await IDbContext.PlexTvShowEpisodes.ToListAsync(CancellationToken)).First();
         var query = new GetTvShowDownloadPreviewCommand([
             new DownloadMediaDTO
@@ -61,16 +58,13 @@ public class GetTvShowDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetT
     )
     {
         // Arrange
-        await SetupDatabase(
-            66779,
-            config =>
-            {
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(66779, config =>
+        {
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 2;
+        });
         var dbContext = IDbContext;
         var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
         var seasons = await dbContext.PlexTvShowSeason.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -103,10 +97,11 @@ public class GetTvShowDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetT
         created.Value.Episodes.ShouldBe(1);
 
         var queuedRoot = await dbContext
-            .DownloadTaskTvShow.IncludeAll().AsTracking()
+            .DownloadTaskTvShow.IncludeAll()
+            .AsTracking()
             .SingleAsync(x => x.PlexApiRatingKey == tvShow.PlexApiRatingKey, CancellationToken);
-        var queuedEpisode = queuedRoot.Children
-            .SelectMany(x => x.Children)
+        var queuedEpisode = queuedRoot
+            .Children.SelectMany(x => x.Children)
             .Single(x => x.PlexApiRatingKey == targetEpisode.PlexApiRatingKey);
         queuedEpisode.Children.Count.ShouldBe(1);
         queuedEpisode.Children.Single().DownloadStatus.ShouldBe(DownloadStatus.Queued);
@@ -118,8 +113,8 @@ public class GetTvShowDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetT
             .DownloadTaskTvShow.IncludeAll()
             .SingleAsync(x => x.PlexApiRatingKey == tvShow.PlexApiRatingKey, CancellationToken);
         persistedRoot.DownloadStatus.ShouldBe(status);
-        persistedRoot.Children
-            .SelectMany(x => x.Children)
+        persistedRoot
+            .Children.SelectMany(x => x.Children)
             .Single(x => x.PlexApiRatingKey == targetEpisode.PlexApiRatingKey)
             .Children.Single()
             .DownloadStatus.ShouldBe(status);
@@ -214,11 +209,12 @@ public class GetTvShowDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetT
             foreach (var expectedEpisode in expectedSeasonEpisodes)
             {
                 var episodePreview = actualEpisodes.Single(x => x.Id == expectedEpisode.Id);
-                episodePreview.Qualities.OrderBy(x => x.DataId)
+                episodePreview
+                    .Qualities.OrderBy(x => x.DataId)
                     .Select(x => (x.DataId, x.MediaId, x.VideoQuality, x.MediaDataType))
                     .ShouldBe(
-                        expectedEpisode.MediaDataList
-                            .OrderBy(x => x.Id)
+                        expectedEpisode
+                            .MediaDataList.OrderBy(x => x.Id)
                             .Select(x => (x.Id, expectedEpisode.Id, x.VideoQuality, x.Type))
                             .ToList()
                     );

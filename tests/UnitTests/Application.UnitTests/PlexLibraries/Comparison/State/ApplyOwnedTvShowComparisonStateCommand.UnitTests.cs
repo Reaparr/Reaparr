@@ -11,18 +11,15 @@ public class ApplyOwnedTvShowComparisonStateCommandUnitTests
     public async Task ShouldMarkPartial_WhenOwnedTvShowHasMatchedRemoteShowWithMoreEpisodes()
     {
         // Arrange
-        await SetupDatabase(
-            63,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(63, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -83,18 +80,15 @@ public class ApplyOwnedTvShowComparisonStateCommandUnitTests
     public async Task ShouldMarkHigherQuality_WhenOwnedTvShowHasShowUpgradeAndAllEpisodesMatched()
     {
         // Arrange
-        await SetupDatabase(
-            68,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(68, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -155,18 +149,15 @@ public class ApplyOwnedTvShowComparisonStateCommandUnitTests
     public async Task ShouldUseStoredRemoteEpisodeCount_WhenEpisodeTableContainsAdditionalRows()
     {
         // Arrange
-        await SetupDatabase(
-            70,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(70, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -224,16 +215,13 @@ public class ApplyOwnedTvShowComparisonStateCommandUnitTests
     public async Task ShouldMarkPending_WhenNoCurrentTvScopeAndComparisonIsProcessing()
     {
         // Arrange
-        await SetupDatabase(
-            69,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        await SetupDatabase(69, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);

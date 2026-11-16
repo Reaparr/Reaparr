@@ -1,6 +1,4 @@
-﻿using Reaparr.Domain.Validators;
-
-namespace Reaparr.Application.UnitTests;
+﻿namespace Reaparr.Application.UnitTests;
 
 public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     : BaseCommandUnitTest<GenerateDownloadTaskTvShowEpisodesCommand>
@@ -13,15 +11,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldQueueEverySelectedPartWithDistinctPaths_WhenEpisodeHasMultipleParts(bool generatedNames)
     {
         // Arrange
-        var seed = await SetupDatabase(
-            91335,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        var seed = await SetupDatabase(91335, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+        });
         var dbContext = IDbContext;
         var episodes = await dbContext
             .PlexTvShowEpisodes.AsTracking()
@@ -199,17 +194,14 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldAddOnlyMissingOwnedParts_WhenRequestsOverlapAndAnotherQualityIsSelected(bool differentOwner)
     {
         // Arrange
-        var seed = await SetupDatabase(
-            91336,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.SonarrIntegrationCount = 2;
-            }
-        );
+        var seed = await SetupDatabase(91336, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.SonarrIntegrationCount = 2;
+        });
         var dbContext = IDbContext;
         var owners = await dbContext.SonarrIntegrations.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         owners.Count.ShouldBe(2);
@@ -420,15 +412,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldGenerateValidTvShowDownloadTaskWithEpisodeDownloadTask_WhenNoDownloadTasksExist()
     {
         // Arrange
-        await SetupDatabase(
-            47893,
-            config =>
-            {
-                config.TvShowCount = 5;
-                config.TvShowSeasonCount = 5;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        await SetupDatabase(47893, config =>
+        {
+            config.TvShowCount = 5;
+            config.TvShowSeasonCount = 5;
+            config.TvShowEpisodeCount = 5;
+        });
 
         var plexTvShows = await IDbContext
             .PlexTvShows.Include(x => x.Seasons)
@@ -494,15 +483,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldGenerateValidEpisodeDownloadTask_WhenTvShowParentDownloadTaskAlreadyExist()
     {
         // Arrange
-        await SetupDatabase(
-            52051,
-            config =>
-            {
-                config.TvShowCount = 5;
-                config.TvShowSeasonCount = 5;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        await SetupDatabase(52051, config =>
+        {
+            config.TvShowCount = 5;
+            config.TvShowSeasonCount = 5;
+            config.TvShowEpisodeCount = 5;
+        });
         var dbContext = IDbContext;
         var plexTvShows = await dbContext.PlexTvShows.IncludeAll().ToListAsync(CancellationToken);
         var plexEpisodes = plexTvShows.SelectMany(x => x.Seasons).SelectMany(x => x.Episodes).ToList();
@@ -550,15 +536,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldIgnoreNonExistentEpisodeIds_WhenProcessingValidEpisodes()
     {
         // Arrange
-        await SetupDatabase(
-            34567,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(34567, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var plexTvShows = await IDbContext
             .PlexTvShows.Include(x => x.Seasons)
@@ -599,15 +582,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldHandleDuplicateEpisodeIds_WithoutCreatingDuplicateDownloadTasks()
     {
         // Arrange
-        await SetupDatabase(
-            45678,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(45678, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var plexTvShows = await IDbContext
             .PlexTvShows.Include(x => x.Seasons)
@@ -648,18 +628,15 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldCreateNewDownloadTasks_WhenSomeEpisodesAlreadyHaveDownloadTasks()
     {
         // Arrange
-        await SetupDatabase(
-            56789,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 3;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(56789, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 3;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexTvShow = await dbContext.PlexTvShows.IncludeAll().FirstOrDefaultAsync(CancellationToken);
@@ -729,15 +706,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldGenerateDownloadTasksForMultipleTvShows_WhenEpisodesFromDifferentShowsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            67890,
-            config =>
-            {
-                config.TvShowCount = 3;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(67890, config =>
+        {
+            config.TvShowCount = 3;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var plexTvShows = await IDbContext
             .PlexTvShows.Include(x => x.Seasons)
@@ -796,16 +770,13 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldIgnoreNonEpisodeMediaTypes_WhenMixedMediaTypesProvided()
     {
         // Arrange
-        await SetupDatabase(
-            78901,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(78901, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+            config.MovieCount = 2;
+        });
 
         var plexTvShows = await IDbContext
             .PlexTvShows.Include(x => x.Seasons)
@@ -862,15 +833,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldSetCorrectDestinationFolderPathId_WhenCustomDestinationFolderProvided()
     {
         // Arrange
-        await SetupDatabase(
-            89012,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(89012, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var plexTvShows = await IDbContext
             .PlexTvShows.Include(x => x.Seasons)
@@ -915,15 +883,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldSetCustomDestinationFolderPath_WhenRequestContainsCustomDestinationFolderPath()
     {
         // Arrange
-        await SetupDatabase(
-            89013,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(89013, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
 
@@ -997,15 +962,12 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandlerUnitTests
     public async Task ShouldCalculateDownloadTaskPropertiesCorrectly_WhenDownloadTasksGenerated()
     {
         // Arrange
-        await SetupDatabase(
-            91234,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(91234, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var plexTvShows = await IDbContext
             .PlexTvShows.Include(x => x.Seasons)

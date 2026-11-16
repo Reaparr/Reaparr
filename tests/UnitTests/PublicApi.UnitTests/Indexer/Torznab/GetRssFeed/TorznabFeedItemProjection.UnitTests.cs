@@ -1,5 +1,4 @@
 using System.Globalization;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 
@@ -83,10 +82,7 @@ public class TorznabFeedItemProjectionUnitTests
     public void ShouldEmitNumericParentAndSubcategoryAttributes()
     {
         // Arrange
-        var projection = CreateProjection() with
-        {
-            GenreTypes = [PlexGenreType.Foreign],
-        };
+        var projection = CreateProjection() with { GenreTypes = [PlexGenreType.Foreign] };
 
         // Act
         var item = projection.ToTorznabItem(
@@ -177,10 +173,7 @@ public class TorznabFeedItemProjectionUnitTests
     public void ShouldSerializeReleaseSourceUsingWireMemberNames(ReleaseSource source, string expected)
     {
         // Arrange
-        var projection = CreateProjection() with
-        {
-            Source = source,
-        };
+        var projection = CreateProjection() with { Source = source };
 
         // Act
         var item = projection.ToTorznabItem(
@@ -209,11 +202,7 @@ public class TorznabFeedItemProjectionUnitTests
     )
     {
         // Arrange
-        var projection = CreateProjection() with
-        {
-            VideoResolution = resolution,
-            Source = source,
-        };
+        var projection = CreateProjection() with { VideoResolution = resolution, Source = source };
 
         // Act
         var item = projection.ToTorznabItem(
@@ -291,11 +280,7 @@ public class TorznabFeedItemProjectionUnitTests
     )
     {
         // Arrange
-        var projection = CreateProjection() with
-        {
-            MediaType = mediaType,
-            ImdbId = storedId,
-        };
+        var projection = CreateProjection() with { MediaType = mediaType, ImdbId = storedId };
         var identity = new IntegrationIdentity(
             mediaType == PlexMediaType.Movie ? IntegrationType.Radarr : IntegrationType.Sonarr,
             Guid.NewGuid()

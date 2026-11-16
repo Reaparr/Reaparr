@@ -20,10 +20,12 @@ public class StopDownloadTaskEndpointRequestValidator : Validator<StopDownloadTa
 public class StopDownloadTaskEndpoint : Endpoint<StopDownloadTaskEndpointRequest, BaseResultDTO>
 {
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public StopDownloadTaskEndpoint(ICommandExecutor commandExecutor)
+    public StopDownloadTaskEndpoint(ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -40,6 +42,8 @@ public class StopDownloadTaskEndpoint : Endpoint<StopDownloadTaskEndpointRequest
     public override async Task HandleAsync(StopDownloadTaskEndpointRequest req, CancellationToken ct)
     {
         var stopResult = await _commandExecutor.Send(new StopDownloadTaskCommand(req.DownloadTaskGuid), ct);
+
+        _telemetry.DownloadControlProcessed(TelemetryAction.Stop, req.DownloadTaskGuid, stopResult, deleteFiles: true);
 
         await Send.FluentResult(stopResult, ct);
     }

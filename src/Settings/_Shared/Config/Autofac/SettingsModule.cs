@@ -1,7 +1,7 @@
 using Autofac;
 using Module = Autofac.Module;
 
-namespace Reaparr.Settings.Config;
+namespace Reaparr.Settings;
 
 public class SettingsModule : Module
 {

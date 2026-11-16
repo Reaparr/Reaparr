@@ -4,9 +4,9 @@
     "net10.0": {
       "CSharpier.MsBuild": {
         "type": "Direct",
-        "requested": "[1.3.0, )",
-        "resolved": "1.3.0",
-        "contentHash": "jzzLpmz7F6LyBh5FTZy8/4dEYVcAG9VjBPKryZ82LIoUuupcBkCSXzaeS/4oYcp/rBC8yVLcDstJ8CIv9n2IFw=="
+        "requested": "[1.4.0, )",
+        "resolved": "1.4.0",
+        "contentHash": "2pR0Bp8MyoXmakDJgJDGbXGl0553Qd/p9xIl4odOoET2jxSGgvJ+ffw49sAmr6FuUbmvixgjQSIOE5i/GRs4jA=="
       }
     }
   }

@@ -167,8 +167,8 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
                         .SetProperty(x => x.PhotoImageCount, 1)
                         .SetProperty(x => x.PhotoClipCount, 0)
                         .SetProperty(x => x.MediaSize, 20L)
-                        .SetProperty(x => x.SyncedAt, (DateTime?)persistedSyncedAt)
-                        .SetProperty(x => x.SyncedContentChangedAt, (long?)persistedSyncedContentChangedAt)
+                        .SetProperty(x => x.SyncedAt, persistedSyncedAt)
+                        .SetProperty(x => x.SyncedContentChangedAt, persistedSyncedContentChangedAt)
                         .SetProperty(x => x.Outdated, false),
                 CancellationToken
             );
@@ -178,7 +178,7 @@ public class RefreshPlexPhotoLibraryCommandUnitTests : BaseCommandUnitTest<Refre
             staleLibrary.PhotoClipCount,
             staleLibrary.SyncedAt,
             staleLibrary.SyncedContentChangedAt
-        ).ShouldNotBe((1, 1, 0, persistedSyncedAt, (long?)persistedSyncedContentChangedAt));
+        ).ShouldNotBe((1, 1, 0, persistedSyncedAt, persistedSyncedContentChangedAt));
 
         SetupDependencies(builder =>
             builder.RegisterInstance(trackedContext).As<IReaparrDbContext>().ExternallyOwned()

@@ -151,11 +151,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
 
         Mock.Mock<IScheduler>()
             .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-                interrupted
-                    ? throw new OperationCanceledException()
-                    : (IReadOnlyCollection<IJobExecutionContext>)[context.Object]
-            );
+            .ReturnsAsync(() => interrupted ? throw new OperationCanceledException() : [context.Object]);
         Mock.Mock<IScheduler>().Setup(x => x.CheckExists(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         Mock.Mock<IScheduler>()
             .Setup(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))

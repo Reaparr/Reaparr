@@ -1,5 +1,4 @@
 using System.Xml.Serialization;
-using Reaparr.PublicAPI.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 

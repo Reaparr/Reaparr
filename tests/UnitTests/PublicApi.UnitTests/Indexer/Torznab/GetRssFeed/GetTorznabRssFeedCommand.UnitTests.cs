@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-using Reaparr.PublicAPI.Contracts;
 using Reaparr.Settings.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
@@ -15,17 +13,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldPageMoviesByCanonicalOrder_WhenCatalogIsUnchanged()
     {
         // Arrange
-        await SetupDatabase(
-            7631,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 5;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7631, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 5;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var expected = await IDbContext
             .PlexMovieData.OrderByDescending(x => x.PlexMovie!.AddedAt)
@@ -63,17 +58,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnFinalAvailableMovie_WhenPageBeginsAtFinalItem()
     {
         // Arrange
-        await SetupDatabase(
-            7654,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 4;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7654, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 4;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var expected = await dbContext
             .PlexMovieData.OrderByDescending(x => x.PlexMovie!.AddedAt)
@@ -111,19 +103,16 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnSameGuidAndPublicationDate_WhenFeedIsReadAgain()
     {
         // Arrange
-        await SetupDatabase(
-            7632,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7632, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+            config.SonarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.SonarrIntegrations.SingleAsync(CancellationToken)).Id.ToSonarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -157,19 +146,16 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldPageEpisodesGlobally_WhenMultipleLibrariesAreAccessible()
     {
         // Arrange
-        await SetupDatabase(
-            7652,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexTvShowLibraryCount = 2;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7652, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexTvShowLibraryCount = 2;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+            config.SonarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var episodeIds = await dbContext
             .PlexTvShowEpisodes.OrderBy(x => x.PlexLibraryId)
@@ -182,9 +168,10 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         var baseAddedAt = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
         for (var i = 0; i < episodeIds.Count; i++)
         {
+            var episodeId = episodeIds[i];
             var addedAt = baseAddedAt.AddMinutes(i);
             await dbContext
-                .PlexTvShowEpisodes.Where(x => x.Id == episodeIds[i])
+                .PlexTvShowEpisodes.Where(x => x.Id == episodeId)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.AddedAt, addedAt), CancellationToken);
         }
 
@@ -226,17 +213,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldContinueFromKeysetCursor_WhenFirstParentBatchHasNoMatchingMedia()
     {
         // Arrange
-        await SetupDatabase(
-            7653,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 257;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7653, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 257;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
 
         // With 257 parents, the oldest movie is excluded from the first 256-row parent batch.
@@ -296,17 +280,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnEmptyFeed_WhenOnlyUnknownCategoriesAreRequested()
     {
         // Arrange
-        await SetupDatabase(
-            7633,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7633, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -334,21 +315,18 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldGloballyPageMoviesAndEpisodes_WhenAddedAtTies()
     {
         // Arrange
-        await SetupDatabase(
-            7634,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7634, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+            config.RadarrIntegrationCount = 1;
+        });
         var tiedAddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         await IDbContext.PlexMovies.ExecuteUpdateAsync(
             setters => setters.SetProperty(x => x.AddedAt, tiedAddedAt),
@@ -494,17 +472,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldUseKnownCategory_WhenKnownAndUnknownCategoriesAreRequested()
     {
         // Arrange
-        await SetupDatabase(
-            7635,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7635, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var category = GetMovieQualityCategory(await IDbContext.PlexMovieData.FirstAsync(CancellationToken));
         var command = new GetTorznabRssFeedCommand
@@ -535,17 +510,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldNotDuplicateItems_WhenParentAndChildCategoriesAreRequested()
     {
         // Arrange
-        await SetupDatabase(
-            7636,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7636, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var totalParts = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
         var command = new GetTorznabRssFeedCommand
@@ -574,17 +546,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnEmpty_WhenMovieSearchUsesOnlyTvCategories()
     {
         // Arrange
-        await SetupDatabase(
-            7637,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7637, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -612,17 +581,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnExactTotal_WhenMoreFilteredItemsExist()
     {
         // Arrange
-        await SetupDatabase(
-            7638,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 4;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7638, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 4;
+            config.RadarrIntegrationCount = 1;
+        });
         var expectedTotal = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var command = new GetTorznabRssFeedCommand
@@ -652,17 +618,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnEmptyPage_WhenOffsetExceedsFilteredTotal()
     {
         // Arrange
-        await SetupDatabase(
-            7640,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 4;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7640, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 4;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var category = GetMovieQualityCategory(await IDbContext.PlexMovieData.FirstAsync(CancellationToken));
         var expectedTotal = (await IDbContext.PlexMovieData.ToListAsync(CancellationToken)).Count(x =>
@@ -694,19 +657,16 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnEmpty_WhenTvSearchUsesOnlyMovieCategories()
     {
         // Arrange
-        await SetupDatabase(
-            7639,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7639, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+            config.SonarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.SonarrIntegrations.SingleAsync(CancellationToken)).Id.ToSonarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -734,17 +694,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnOnlyRequestedAttributes_WhenExtendedIsDisabled()
     {
         // Arrange
-        await SetupDatabase(
-            7640,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7640, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -778,17 +735,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldReturnAllAttributes_WhenExtendedIsEnabled()
     {
         // Arrange
-        await SetupDatabase(
-            7641,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7641, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
         var command = new GetTorznabRssFeedCommand
         {
@@ -959,19 +913,16 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     )
     {
         // Arrange
-        await SetupDatabase(
-            7647,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7647, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.SonarrIntegrationCount = 1;
+        });
         using (var dbContext = IDbContext)
         {
             var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
@@ -1016,19 +967,16 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldNotEmitSpecificTvGenreCategory_WhenGenreTypeIsGroup()
     {
         // Arrange
-        await SetupDatabase(
-            7648,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7648, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.SonarrIntegrationCount = 1;
+        });
         using (var dbContext = IDbContext)
         {
             var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
@@ -1070,21 +1018,18 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldKeepMovieAndEpisodeGenresSeparate_WhenMediaIdsOverlap()
     {
         // Arrange
-        await SetupDatabase(
-            7649,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7649, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         using (var dbContext = IDbContext)
         {
             var movie = await dbContext.PlexMovies.SingleAsync(CancellationToken);
@@ -1195,17 +1140,14 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
     public async Task ShouldDenyAccess_WhenServerAndLibraryAccessBelongToDifferentAccounts()
     {
         // Arrange
-        await SetupDatabase(
-            7651,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(7651, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         using (var dbContext = IDbContext)
         {
             var accounts = await dbContext

@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -28,22 +27,19 @@ public class TorrentStatesIntegrationTests : BaseIntegrationTests
             (DownloadStatus.Unknown, "stalledDL"),
         ];
         var isMovie = type == IntegrationType.Radarr;
-        using var container = await CreateContainer(
-            new Seed(8638),
-            config =>
+        using var container = await CreateContainer(new Seed(8638), config =>
+        {
+            config.DatabaseOptions = database =>
             {
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexServerCount = 1;
-                    database.MovieDownloadTasksCount = isMovie ? states.Length + 1 : 0;
-                    database.TvShowDownloadTasksCount = isMovie ? 0 : states.Length + 1;
-                    database.TvShowSeasonDownloadTasksCount = isMovie ? 0 : 1;
-                    database.TvShowEpisodeDownloadTasksCount = isMovie ? 0 : 1;
-                    database.RadarrIntegrationCount = isMovie ? 2 : 0;
-                    database.SonarrIntegrationCount = isMovie ? 0 : 2;
-                };
-            }
-        );
+                database.PlexServerCount = 1;
+                database.MovieDownloadTasksCount = isMovie ? states.Length + 1 : 0;
+                database.TvShowDownloadTasksCount = isMovie ? 0 : states.Length + 1;
+                database.TvShowSeasonDownloadTasksCount = isMovie ? 0 : 1;
+                database.TvShowEpisodeDownloadTasksCount = isMovie ? 0 : 1;
+                database.RadarrIntegrationCount = isMovie ? 2 : 0;
+                database.SonarrIntegrationCount = isMovie ? 0 : 2;
+            };
+        });
         var dbContext = container.DbContext;
         var ownerIds = isMovie
             ? await dbContext.RadarrIntegrations.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken)
@@ -167,13 +163,9 @@ public class TorrentStatesIntegrationTests : BaseIntegrationTests
                 .ToArray()
         );
         using var afterContext = container.DbContext;
-        var afterFiles = isMovie
-            ? (
-                await afterContext.DownloadTaskMovieFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)
-            ).Cast<DownloadTaskFileBase>()
-            : (
-                await afterContext.DownloadTaskTvShowEpisodeFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)
-            ).Cast<DownloadTaskFileBase>();
+        IEnumerable<DownloadTaskFileBase> afterFiles = isMovie
+            ? await afterContext.DownloadTaskMovieFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)
+            : await afterContext.DownloadTaskTvShowEpisodeFile.OrderBy(file => file.Id).ToListAsync(CancellationToken);
         afterFiles
             .Select(file =>
                 (

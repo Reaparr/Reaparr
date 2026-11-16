@@ -85,15 +85,12 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
     public async Task ShouldDispatchPausedStatus_AndReturnSuccess_WhenDownloadClientIsStopped()
     {
         // Arrange
-        await SetupDatabase(
-            82345,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(82345, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -172,15 +169,12 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
     public async Task ShouldDispatchPausedStatus_WhenDownloadIsCancelledByStop()
     {
         // Arrange
-        await SetupDatabase(
-            11110,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(11110, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -257,15 +251,12 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
     public async Task ShouldReturnSuccessResult_WhenStopAsyncIsCalledTwice()
     {
         // Arrange
-        await SetupDatabase(
-            22220,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(22220, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -345,15 +336,12 @@ public class DirectPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DirectPle
     public async Task ShouldCallCancelTaskAsync_WhenStopAsyncIsCalled()
     {
         // Arrange
-        await SetupDatabase(
-            33330,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(33330, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);

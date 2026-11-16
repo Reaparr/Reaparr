@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI;
 
 public static class TorznabRequestMappers
@@ -24,11 +22,42 @@ public static class TorznabRequestMappers
             Offset = request.Offset ?? 0,
             Categories = request.Categories ?? Array.Empty<int>(),
             Extended = request.Extended,
-            Attributes =
-                request.Attributes?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                ?? [],
+            Attributes = request.Attributes?.Split(
+                ',',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+            ) ?? [],
             Integration = integration,
         };
+
+    public static ExternalIndexerQueryReport ToTelemetryReport(
+        this TorznabRequest request,
+        Result<TorznabMediaSearchResponseDTO> result
+    )
+    {
+        var response = result.IsSuccess ? result.Value : null;
+        return new ExternalIndexerQueryReport
+        {
+            Integration = request.Integration,
+            Type = request.Type switch
+            {
+                TorznabQueryType.Caps => ExternalIndexerQueryType.Caps,
+                TorznabQueryType.Search => ExternalIndexerQueryType.Search,
+                TorznabQueryType.TvSearch => ExternalIndexerQueryType.TvSearch,
+                TorznabQueryType.Movie => ExternalIndexerQueryType.Movie,
+                _ => ExternalIndexerQueryType.Unknown,
+            },
+            Mode = request.Mode == TorznabRequestMode.Rss ? TelemetryMode.Rss : TelemetryMode.Search,
+            Query = request.Query,
+            ImdbId = request.ImdbId,
+            TmdbId = request.TmdbId,
+            TvdbId = request.TvdbId,
+            Season = request.Season,
+            Episode = request.Episode,
+            Categories = request.Categories,
+            ReturnedItemCount = response?.Channel.Items.Count ?? 0,
+            TotalCount = response?.Channel.Response.Total ?? 0,
+        };
+    }
 
     public static TorznabQueryType ParseType(string? value)
     {

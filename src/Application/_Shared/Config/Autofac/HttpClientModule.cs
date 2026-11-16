@@ -31,14 +31,11 @@ public static class HttpClientModule
     public static void RegisterPlexThumbnailHttpClient(this IServiceCollection services)
     {
         services
-            .AddHttpClient(
-                PlexThumbnailClientName,
-                client =>
-                {
-                    client.Timeout = TimeSpan.FromSeconds(45);
-                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("image/jpeg"));
-                }
-            )
+            .AddHttpClient(PlexThumbnailClientName, client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(45);
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("image/jpeg"));
+            })
             .AddHttpMessageHandler<DefaultHttpClientRetryHandler>()
             .ConfigurePrimaryHttpMessageHandler(() =>
                 new SocketsHttpHandler
@@ -60,24 +57,21 @@ public static class HttpClientModule
     public static void RegisterGitHubHttpClient(this IServiceCollection services, IAppRuntimeInfo appRuntimeInfo)
     {
         services
-            .AddHttpClient(
-                GitHubClientName,
-                client =>
-                {
-                    client.BaseAddress = new Uri("https://api.github.com/");
-                    client.Timeout = TimeSpan.FromSeconds(15);
-                    client.DefaultRequestHeaders.Accept.Add(
-                        new MediaTypeWithQualityHeaderValue("application/vnd.github+json")
-                    );
-                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Reaparr");
+            .AddHttpClient(GitHubClientName, client =>
+            {
+                client.BaseAddress = new Uri("https://api.github.com/");
+                client.Timeout = TimeSpan.FromSeconds(15);
+                client.DefaultRequestHeaders.Accept.Add(
+                    new MediaTypeWithQualityHeaderValue("application/vnd.github+json")
+                );
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Reaparr");
 
-                    if (!string.IsNullOrWhiteSpace(appRuntimeInfo.GitHubToken))
-                        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-                            "Bearer",
-                            appRuntimeInfo.GitHubToken
-                        );
-                }
-            )
+                if (!string.IsNullOrWhiteSpace(appRuntimeInfo.GitHubToken))
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                        "Bearer",
+                        appRuntimeInfo.GitHubToken
+                    );
+            })
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
     }
 

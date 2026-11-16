@@ -141,15 +141,14 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
                 SyncTvShowCountries(changedShows, countryDict, plexLibraryId, plexLibraryName, CancellationToken.None),
                 SyncTvShowActors(changedShows, actorDict, plexLibraryId, plexLibraryName, CancellationToken.None)
             );
-            var mergeResult = Result.Merge(results);
+            var mergeResult = results.Merge();
             if (mergeResult.IsFailed)
                 return mergeResult.LogError();
         }
 
         stopWatch.StopAndLog($"Finished media syncing plexLibrary: {plexLibraryName} with id: {plexLibraryId}");
 
-        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        _log.Here().Debug(bulkInsertRapport.ToString());
+        _log.Here().Debug("Bulk insert report: {@BulkInsertRapport}", bulkInsertRapport);
 
         return Result.Ok(bulkInsertRapport);
     }
@@ -262,11 +261,10 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
 
             changedShows.AddRange(createdShows.Concat(updatedShows));
             foreach (var show in createdShows.Concat(updatedShows))
-                show.VideoQuality =
-                    show.Seasons.SelectMany(x => x.Episodes)
-                        .SelectMany(x => x.MediaDataList)
-                        .Select(x => (VideoQuality?)x.VideoQuality)
-                        .Max()
+                show.VideoQuality = show.Seasons.SelectMany(x => x.Episodes)
+                    .SelectMany(x => x.MediaDataList)
+                    .Select(x => (VideoQuality?)x.VideoQuality)
+                    .Max()
                     ?? VideoQuality.Unknown;
 
             report.CreatedTvShows = createdShows.Count;

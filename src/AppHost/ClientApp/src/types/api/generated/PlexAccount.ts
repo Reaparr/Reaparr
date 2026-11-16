@@ -80,7 +80,7 @@ export class PlexAccount {
    * @secure
    */
   updatePlexAccountByIdEndpoint = (
-    data: PlexAccountDTO | null,
+    data: null | PlexAccountDTO,
     params: RequestParams = {},
   ) =>
     axiosObservable<PlexAccountDTO>({

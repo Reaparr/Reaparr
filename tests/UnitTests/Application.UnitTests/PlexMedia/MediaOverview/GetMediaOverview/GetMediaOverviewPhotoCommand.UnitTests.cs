@@ -35,16 +35,13 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
 
     private async Task<PhotoOverviewFixture> ArrangePhotoPageAsync()
     {
-        await SetupDatabase(
-            84202,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 4;
-                config.PhotoCount = 2;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(84202, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 4;
+            config.PhotoCount = 2;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var libraryIds = await dbContext
             .PlexLibraries.OrderBy(x => x.Id)
@@ -187,15 +184,12 @@ public class GetMediaOverviewPhotoCommandUnitTests : BaseCommandUnitTest<GetMedi
         var libraryId = 0;
         if (snapshotMissing)
         {
-            await SetupDatabase(
-                84209,
-                config =>
-                {
-                    config.PlexServerCount = 1;
-                    config.PlexPhotoLibraryCount = 1;
-                    config.PhotoAlbumCount = 1;
-                }
-            );
+            await SetupDatabase(84209, config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+            });
             var dbContext = IDbContext;
             libraryId = await dbContext.PlexPhotoAlbums.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
             (await dbContext.MediaOverviewPhotoAlbumSnapshots.CountAsync(CancellationToken)).ShouldBe(0);

@@ -21,6 +21,8 @@ public static partial class QuartzExtensions
         foreach (var property in document.RootElement.EnumerateObject())
             map[property.Name] = property.Value.GetRawText();
 
+        map.SetTelemetryContext();
+
         return map;
     }
 
@@ -33,7 +35,10 @@ public static partial class QuartzExtensions
     public static TPayload? GetPayload<TPayload>(this JobDataMap jobDataMap)
     {
         var payloadJson = jobDataMap
-            .Where(x => !x.Key.Contains("QRTZ_"))
+            .Where(x =>
+                !x.Key.Contains("QRTZ_")
+                && !x.Key.StartsWith(TelemetryProtocol.MetadataPrefix, StringComparison.Ordinal)
+            )
             .ToDictionary(
                 x => x.Key,
                 x =>
@@ -57,5 +62,20 @@ public static partial class QuartzExtensions
             JsonSerializer.Serialize(payloadJson, DefaultJsonSerializerOptions.ConfigStandard),
             DefaultJsonSerializerOptions.ConfigStandard
         );
+    }
+
+    private static void SetTelemetryContext(this JobDataMap jobDataMap)
+    {
+        if (
+            jobDataMap.ContainsKey(TelemetryProtocol.TraceParentMetadata)
+            || Activity.Current is not { IdFormat: ActivityIdFormat.W3C } activity
+        )
+            return;
+
+        jobDataMap[TelemetryProtocol.TraceParentMetadata] = activity.Id!;
+        if (activity.TraceStateString is { Length: > 0 } traceState)
+            jobDataMap[TelemetryProtocol.TraceStateMetadata] = traceState;
+        if (Telemetry.GetActivityTag(activity, TelemetryProtocol.SessionIdTag) is { } sessionId)
+            jobDataMap[TelemetryProtocol.SessionIdMetadata] = sessionId;
     }
 }

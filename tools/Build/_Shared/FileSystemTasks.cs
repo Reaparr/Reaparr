@@ -21,7 +21,9 @@ internal sealed class FileSystemTasks
             CopyDirectory(
                 new BuildDirectoryPath(_fileSystem, directory),
                 new BuildDirectoryPath(
-                    _fileSystem, _fileSystem.Path.Combine(target.Value, _fileSystem.Path.GetFileName(directory)))
+                    _fileSystem,
+                    _fileSystem.Path.Combine(target.Value, _fileSystem.Path.GetFileName(directory))
+                )
             );
         }
 
@@ -82,7 +84,9 @@ internal sealed class FileSystemTasks
     {
         if (source.IsParentOf(target, _fileSystem.Path.DirectorySeparatorChar))
         {
-            throw new InvalidOperationException($"Refusing to copy '{source.Value}' into nested target '{target.Value}'.");
+            throw new InvalidOperationException(
+                $"Refusing to copy '{source.Value}' into nested target '{target.Value}'."
+            );
         }
     }
 
@@ -94,7 +98,9 @@ internal sealed class FileSystemTasks
         }
 
         var defaultArtifactsRoot = new BuildDirectoryPath(
-            _fileSystem, _fileSystem.Path.Combine(repositoryRoot.Value, ".artifacts"));
+            _fileSystem,
+            _fileSystem.Path.Combine(repositoryRoot.Value, ".artifacts")
+        );
         if (!defaultArtifactsRoot.IsParentOf(artifactDirectory, _fileSystem.Path.DirectorySeparatorChar))
         {
             throw new InvalidOperationException(

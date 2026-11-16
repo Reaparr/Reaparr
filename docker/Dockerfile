@@ -2,6 +2,8 @@
 
 ARG VERSION=0.0.0
 ARG INFORMATIONAL_VERSION=0.0.0
+ARG TELEMETRY_HOST=""
+ARG TELEMETRY_PROJECT_TOKEN=""
 ARG PORT=7000
 ARG TARGETPLATFORM=linux/amd64
 ARG BUILDPLATFORM=linux/amd64
@@ -11,6 +13,8 @@ FROM --platform=$BUILDPLATFORM oven/bun:1.4.0-alpine AS client-build
 
 ARG PORT
 ARG VERSION
+ARG TELEMETRY_HOST
+ARG TELEMETRY_PROJECT_TOKEN
 
 ENV NUXT_HOST=0.0.0.0
 ENV NUXT_PORT=${PORT}
@@ -18,6 +22,8 @@ ENV NUXT_PUBLIC_API_PORT=${PORT}
 ENV NUXT_PUBLIC_VERSION=${VERSION}
 # Required during static Nuxt generate so runtimeConfig.public.platform is baked as 'docker' in the client bundle.
 ENV NUXT_PUBLIC_PLATFORM=docker
+ENV NUXT_PUBLIC_RP_HOST=${TELEMETRY_HOST}
+ENV NUXT_PUBLIC_RP_KEY=${TELEMETRY_PROJECT_TOKEN}
 
 WORKDIR /tmp/ClientApp
 
@@ -25,11 +31,17 @@ WORKDIR /tmp/ClientApp
 COPY ./src/AppHost/ClientApp/ ./
 RUN bun install --frozen-lockfile && bun run generate --fail-on-error
 
+# CI overrides this named stage with the already processed frontend artifact.
+FROM scratch AS frontend-public
+COPY --from=client-build /tmp/ClientApp/.output/public /
+
 # Stage 2 - Build the .NET back-end
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS back-end
 
 ARG VERSION
 ARG INFORMATIONAL_VERSION
+ARG TELEMETRY_HOST
+ARG TELEMETRY_PROJECT_TOKEN
 ARG TARGETPLATFORM
 
 WORKDIR /src
@@ -56,10 +68,12 @@ RUN case "${TARGETPLATFORM}" in \
     esac && \
     dotnet publish "AppHost.csproj" -c Release -o /app/publish \
     --no-restore \
-    /p:Version=${VERSION} \
-    /p:InformationalVersion=${INFORMATIONAL_VERSION} \
+    /p:Version="${VERSION}" \
+    /p:InformationalVersion="${INFORMATIONAL_VERSION}" \
+    /p:ReaparrTelemetryHost="${TELEMETRY_HOST}" \
+    /p:ReaparrTelemetryProjectToken="${TELEMETRY_PROJECT_TOKEN}" \
     /p:ReaparrRuntimeMode=docker \
-    /p:ReaparrRuntimeIdentifier=${REAPARR_RUNTIME_IDENTIFIER} \
+    /p:ReaparrRuntimeIdentifier="${REAPARR_RUNTIME_IDENTIFIER}" \
     -p:UseAppHost=false \
     -p:CSharpier_Bypass=true
 
@@ -149,7 +163,7 @@ COPY --from=gpac-builder /src/gpac/bin/gcc/MP4Box /usr/local/bin/MP4Box
 ## Copy to final image
 WORKDIR /app
 COPY --from=back-end /app/publish .
-COPY --from=client-build /tmp/ClientApp/.output/public /app/wwwroot
+COPY --from=frontend-public / /app/wwwroot
 ## Static assets are served by the non-root abc user; normalize restrictive source modes.
 RUN chmod -R u=rwX,go=rX /app/wwwroot
 

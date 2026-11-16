@@ -19,12 +19,19 @@ public class DeleteDownloadTaskEndpoint : Endpoint<DeleteDownloadTaskEndpointReq
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public DeleteDownloadTaskEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public DeleteDownloadTaskEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<DeleteDownloadTaskEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -46,7 +53,9 @@ public class DeleteDownloadTaskEndpoint : Endpoint<DeleteDownloadTaskEndpointReq
         var keys = await _dbContext.GetDownloadTaskKeysAsync(req.DownloadTaskIds, ct);
         if (keys.Count == 0)
         {
-            await Send.FluentResult(Result.Ok(), ct);
+            var noOpResult = Result.Ok();
+            _telemetry.DownloadDeletionProcessed(req.DownloadTaskIds, keys, noOpResult);
+            await Send.FluentResult(noOpResult, ct);
             return;
         }
 
@@ -55,6 +64,7 @@ public class DeleteDownloadTaskEndpoint : Endpoint<DeleteDownloadTaskEndpointReq
             var stopResult = await _commandExecutor.Send(new StopDownloadTaskCommand(key.Id), ct);
             if (stopResult.IsFailed)
             {
+                _telemetry.DownloadDeletionProcessed(req.DownloadTaskIds, keys, stopResult);
                 await Send.FluentResult(stopResult, ct);
                 return;
             }
@@ -62,6 +72,7 @@ public class DeleteDownloadTaskEndpoint : Endpoint<DeleteDownloadTaskEndpointReq
 
         var deleteResult = await _commandExecutor.Send(new DeleteDownloadTasksByKeyCommand(keys), ct);
 
+        _telemetry.DownloadDeletionProcessed(req.DownloadTaskIds, keys, deleteResult);
         await Send.FluentResult(deleteResult, ct);
     }
 }

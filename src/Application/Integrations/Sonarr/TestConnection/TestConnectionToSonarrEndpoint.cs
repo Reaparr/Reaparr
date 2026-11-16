@@ -25,11 +25,13 @@ public class TestConnectionToSonarrEndpoint
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public TestConnectionToSonarrEndpoint(ILogger log, ICommandExecutor commandExecutor)
+    public TestConnectionToSonarrEndpoint(ILogger log, ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _log = log.ForContext<TestConnectionToSonarrEndpoint>();
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -50,6 +52,18 @@ public class TestConnectionToSonarrEndpoint
             new TestConnectionToSonarrCommand(req.IntegrationId, req.Url, req.ApiKey),
             ct
         );
+        _telemetry.IntegrationConnectionTestFinished(
+            IntegrationType.Sonarr,
+            req.IntegrationId,
+            result.IsSuccess
+                ? new ConnectionTestTelemetryDTO
+                {
+                    Status = result.Value.Status,
+                    HttpStatusCode = result.Value.HttpStatusCode,
+                }
+                : null,
+            result
+        );
         if (result.IsCancelled)
         {
             await Send.FluentResult(result.ToResult<TestConnectionToSonarrEndpointResponse>().LogWarning(), ct);
@@ -57,6 +71,7 @@ public class TestConnectionToSonarrEndpoint
         }
         if (result.IsFailed)
         {
+            _telemetry.CaptureErrors(result, TelemetryActivity.ConnectionCheck);
             await Send.FluentResult(result.ToResult<TestConnectionToSonarrEndpointResponse>().LogError(), ct);
             return;
         }

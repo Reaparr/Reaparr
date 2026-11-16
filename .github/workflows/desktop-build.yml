@@ -14,6 +14,26 @@ on:
                 description: 'Informational version (e.g. 1.2.3-dev.1)'
                 required: true
                 type: string
+            telemetry_host:
+                description: 'Telemetry HTTPS ingestion origin for release builds'
+                required: false
+                type: string
+                default: ''
+            telemetry_project_token:
+                description: 'Telemetry public project ingestion token for release builds'
+                required: false
+                type: string
+                default: ''
+            posthog_cli_project_id:
+                description: 'PostHog project ID for private source-map uploads'
+                required: false
+                type: string
+                default: ''
+            posthog_cli_host:
+                description: 'Optional direct PostHog management API host'
+                required: false
+                type: string
+                default: ''
             push:
                 description: 'Upload installers to the GitHub Release'
                 required: false
@@ -30,6 +50,8 @@ on:
                 type: string
         secrets:
             RELEASE_GITHUB_TOKEN:
+                required: false
+            POSTHOG_CLI_API_KEY:
                 required: false
 
 jobs:
@@ -48,7 +70,22 @@ jobs:
             -   name: Generate frontend
                 shell: bash
                 working-directory: src/AppHost/ClientApp/
+                env:
+                    NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
+                    NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
+                    NUXT_SOURCEMAP_CLIENT: ${{ (inputs.push || inputs.publish_release) && 'hidden' || '' }}
                 run: bun run generate --fail-on-error
+
+            -   name: Upload private source maps
+                if: inputs.push || inputs.publish_release
+                uses: ./.github/actions/posthog-source-maps/
+                with:
+                    directory: .output/public
+                    project-id: ${{ inputs.posthog_cli_project_id }}
+                    api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+                    host: ${{ inputs.posthog_cli_host }}
+                    ingestion-host: ${{ inputs.telemetry_host }}
+                    release-version: ${{ inputs.informational_version }}
 
             -   name: Upload generated frontend artifact
                 uses: actions/upload-artifact@v7
@@ -143,6 +180,8 @@ jobs:
                 shell: bash
                 env:
                     INFORMATIONAL_VERSION: ${{ inputs.informational_version }}
+                    TELEMETRY_HOST: ${{ inputs.telemetry_host }}
+                    TELEMETRY_PROJECT_TOKEN: ${{ inputs.telemetry_project_token }}
                     RID: ${{ matrix.rid }}
                     VERSION: ${{ inputs.version }}
                 run: |
@@ -150,6 +189,8 @@ jobs:
                         --rid "$RID" \
                         --version "$VERSION" \
                         --informational-version "$INFORMATIONAL_VERSION" \
+                        --telemetry-host "$TELEMETRY_HOST" \
+                        --telemetry-project-token "$TELEMETRY_PROJECT_TOKEN" \
                         --channel "$VELOPACK_CHANNEL" \
                         --frontend-public-dir .tmp/frontend-public \
                         --artifact-dir Releases \

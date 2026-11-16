@@ -25,16 +25,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     [Test]
     public async Task ShouldHaveNoStartCommands_WhenServerIsAlreadyDownloading()
     {
-        await SetupDatabase(
-            78970,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(78970, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         // Arrange
         // Set up a task that's actually downloading in the database
@@ -72,16 +69,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     public async Task ShouldNotStartNextDownloadTask_WhenJobIsStillRunningBeforeDatabaseStatusIsDownloading()
     {
         // Arrange
-        await SetupDatabase(
-            78971,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(78971, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken);
         var activeTask = downloadTasks[0].Children[0];
@@ -111,16 +105,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     public async Task ShouldStartDownloadTask_WhenAnotherServerHasActiveDownloadJob()
     {
         // Arrange
-        await SetupDatabase(
-            78972,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(78972, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.MovieDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var otherLibrary = await dbContext
             .PlexLibraries.OrderByDescending(x => x.PlexServerId)
@@ -177,16 +168,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     public async Task ShouldNotStartDownloads_WhenServerIsPausedByUser()
     {
         // Arrange
-        await SetupDatabase(
-            70112,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(70112, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.MovieDownloadTasksCount = 2;
+        });
 
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.AsTracking().FirstAsync(CancellationToken);
@@ -214,16 +202,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     public async Task ShouldSkipDownloadQueue_WhenServerIsDisabled()
     {
         // Arrange
-        await SetupDatabase(
-            70113,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(70113, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.MovieDownloadTasksCount = 2;
+        });
 
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
@@ -256,14 +241,11 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     public async Task ShouldHaveOneDownloadTaskStarted_WhenGivenMovieDownloadTasks()
     {
         // Arrange
-        await SetupDatabase(
-            5000,
-            config =>
-            {
-                config.MovieCount = 2;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(5000, config =>
+        {
+            config.MovieCount = 2;
+            config.MovieDownloadTasksCount = 2;
+        });
 
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken);
         Mock.Mock<IDownloadTaskScheduler>()
@@ -286,16 +268,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     public async Task ShouldHaveNextQueuedDownloadTask_WhenGivenAMovieDownloadTasksWithCompleted()
     {
         // Arrange
-        await SetupDatabase(
-            45430,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 10;
-                config.MovieDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(45430, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 10;
+            config.MovieDownloadTasksCount = 5;
+        });
 
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(
             asTracking: true,
@@ -324,18 +303,15 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     public async Task ShouldHaveNextQueuedDownloadTask_WhenGivenATvShowsDownloadTasksWithCompleted()
     {
         // Arrange
-        await SetupDatabase(
-            25225,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.TvShowCount = 10;
-                config.TvShowDownloadTasksCount = 2;
-                config.TvShowSeasonDownloadTasksCount = 2;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(25225, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.TvShowCount = 10;
+            config.TvShowDownloadTasksCount = 2;
+            config.TvShowSeasonDownloadTasksCount = 2;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(
             asTracking: true,
             cancellationToken: CancellationToken
@@ -365,16 +341,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
         // This test simulates the race condition where a download job has finished and updated
         // the database status to DownloadFinished, but the Quartz job is still in the process
         // of cleaning up and hasn't been removed from the scheduler yet.
-        await SetupDatabase(
-            88234,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(88234, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.MovieDownloadTasksCount = 3;
+        });
 
         var dbContext = IDbContext;
         var downloadTasks = await dbContext
@@ -425,16 +398,13 @@ public class DownloadQueueCheckDownloadQueueUnitTests : BaseUnitTest<DownloadQue
     {
         // Arrange
         // This test verifies that we still block when a task is actively downloading
-        await SetupDatabase(
-            66451,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(66451, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.MovieDownloadTasksCount = 3;
+        });
 
         var dbContext = IDbContext;
         var downloadTasks = await dbContext

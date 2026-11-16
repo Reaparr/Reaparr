@@ -16,18 +16,21 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
     private readonly IReaparrDbContext _dbContext;
     private readonly INotificationHubService _notificationHubService;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
     public DeletePlexAccountByIdEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,
         INotificationHubService notificationHubService,
-        ICommandExecutor commandExecutor
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<DeletePlexAccountByIdEndpoint>();
         _dbContext = dbContext;
         _notificationHubService = notificationHubService;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -45,6 +48,7 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
     public override async Task HandleAsync(DeletePlexAccountByIdRequest req, CancellationToken ct)
     {
         _log.Here().DebugApiCall(HttpContext, req);
+        var accountBefore = await _dbContext.PlexAccounts.FirstOrDefaultAsync(x => x.Id == req.PlexAccountId, ct);
         var deletedPlexAccountsCount = await _dbContext
             .PlexAccounts.Where(x => x.Id == req.PlexAccountId)
             .ExecuteDeleteAsync(ct);
@@ -108,6 +112,7 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
                 deletedLibrariesCount
             );
 
+        _telemetry.PlexAccountChanged(TelemetryAction.Delete, req.PlexAccountId, accountBefore);
         await _notificationHubService.SendRefreshNotificationAsync([
             RefreshDataType.PlexAccount,
             RefreshDataType.PlexServer,

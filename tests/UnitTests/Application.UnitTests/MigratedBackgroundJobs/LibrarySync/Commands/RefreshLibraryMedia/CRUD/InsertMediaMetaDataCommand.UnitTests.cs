@@ -6,14 +6,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldSyncAllActorsGenresCountries_WhenNoneExist()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -61,14 +58,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldPersistGenreType_WhenGenreIsInserted()
     {
         // Arrange
-        await SetupDatabase(
-            1224,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1224, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var plexLibrary = await IDbContext.PlexLibraries.FirstAsync(CancellationToken);
         var genre = new PlexGenreVideo
         {
@@ -90,15 +84,12 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldKeepAudioAndVideoGenresSeparate_WhenKeysAndNamesOverlap()
     {
         // Arrange
-        await SetupDatabase(
-            1225,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexMusicLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1225, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexMusicLibraryCount = 1;
+        });
         var plexLibrary = await IDbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
             .SingleAsync(CancellationToken);
@@ -134,14 +125,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldUpdateExistingActorsGenresCountries_WhenSomeExist()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -212,14 +200,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandleEmptyLists_WhenNoDataProvided()
     {
         // Arrange
-        await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -245,14 +230,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandleDuplicatePlexKeys_WhenDataContainsDuplicates()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -281,14 +263,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandleConcurrentSyncs_WhenMultipleOperationsRun()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -319,14 +298,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandleLargeDataSet_WhenManyItemsProvided()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -365,14 +341,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldPreserveDataIntegrity_WhenUpdatingExistingItems()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -422,14 +395,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandleNullLibraryMetadata_WhenProvided()
     {
         // Arrange
-        await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -447,14 +417,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldFilterOutActorsWithEmptyKey_WhenActorsHaveEmptyKeys()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -488,14 +455,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandlePartiallyEmptyMetadata_WhenOnlySomeListsAreEmpty()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -529,14 +493,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldReturnCorrectDictionaryMappings_WhenDataIsInserted()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -583,14 +544,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandleSpecialCharactersInNames_WhenDataContainsUnicodeCharacters()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -638,14 +596,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldMaintainConsistency_WhenSameDataInsertedMultipleTimes()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -689,14 +644,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldCorrectlyMapLibraryReference_WhenLibraryIsProvided()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -720,14 +672,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandleVeryLongNames_WhenDataContainsLongStrings()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -755,14 +704,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldReturnEmptyDictionaries_WhenAllListsAreEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -783,14 +729,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldHandleZeroKeys_WhenDataContainsZeroValues()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -841,14 +784,11 @@ public class InsertMediaMetaDataCommandUnitTests : BaseCommandUnitTest<InsertMed
     public async Task ShouldReturnValidDatabaseIds_WhenEntitiesAreInserted()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1223, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();

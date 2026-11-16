@@ -239,8 +239,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
                 .ToListAsync(CancellationToken);
 
             var pauseLog = logs.LastOrDefault(x => x.Status == DownloadStatus.Paused);
-            return pauseLog is not null
-                && logs.Where(x => x.Id > pauseLog.Id && x.Status == DownloadStatus.Downloading).Count() == 0;
+            return pauseLog is not null && !logs.Any(x => x.Id > pauseLog.Id && x.Status == DownloadStatus.Downloading);
         });
         await sut.StopAsync(CancellationToken.None);
 
@@ -301,7 +300,8 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
             delayedDbContextFactory.Object,
             downloadHubService.Object,
             Mock.Mock<ICommandExecutor>().Object,
-            Mock.Mock<IDownloadTaskScheduler>().Object
+            Mock.Mock<IDownloadTaskScheduler>().Object,
+            Mock.Mock<ITelemetry>().Object
         );
 
         sut.OnProgressUpdated(movieFile.ToKey(), initialProgress);

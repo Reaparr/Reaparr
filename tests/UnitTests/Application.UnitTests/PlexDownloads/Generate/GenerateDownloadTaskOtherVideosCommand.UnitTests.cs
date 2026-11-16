@@ -14,14 +14,11 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            62539,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 2;
-            }
-        );
+        await SetupDatabase(62539, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 2;
+        });
         var dbContext = IDbContext;
         var sources = await dbContext
             .PlexOtherVideos.Include(x => x.MediaDataList)
@@ -50,7 +47,7 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         {
             DestinationFolderPathId = folder.Id,
         };
-        var downloadRoot = (await dbContext.GetDownloadFolder(null)).DirectoryPath;
+        var downloadRoot = (await dbContext.GetDownloadFolder()).DirectoryPath;
 
         // Act
         var result = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(
@@ -122,14 +119,11 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     public async Task ShouldPersistAllPartsOfRequestedOrAutomaticOriginal_WhenMultipleVersionsExist(int selector)
     {
         // Arrange
-        await SetupDatabase(
-            62540,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62540, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
         var original = source.MediaDataList.Single();
@@ -221,14 +215,11 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     public async Task ShouldSkipExistingRootWithoutAddingFilesOrLogs_WhenDestinationChanges()
     {
         // Arrange
-        await SetupDatabase(
-            62545,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62545, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext.PlexOtherVideos.SingleAsync(CancellationToken);
         var existing = source.MapToDownloadTask(null);
@@ -278,16 +269,13 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            62542,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexOtherVideoLibraryCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62542, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexOtherVideoLibraryCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext
             .PlexOtherVideos.Include(x => x.MediaDataList)
@@ -319,14 +307,18 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         {
             Type = PlexMediaType.OtherVideos,
             SelectionKind = null,
-            PlexServerId =
-                mismatch == 0 ? foreignServerId
-                : mismatch == 2 ? movieLibrary.PlexServerId
-                : source.PlexServerId,
-            PlexLibraryId =
-                mismatch == 1 ? otherLibrary.Id
-                : mismatch == 2 ? movieLibrary.Id
-                : source.PlexLibraryId,
+            PlexServerId = mismatch switch
+            {
+                0 => foreignServerId,
+                2 => movieLibrary.PlexServerId,
+                _ => source.PlexServerId,
+            },
+            PlexLibraryId = mismatch switch
+            {
+                1 => otherLibrary.Id,
+                2 => movieLibrary.Id,
+                _ => source.PlexLibraryId,
+            },
             MediaIds = [source.Id],
             Qualities = [],
         };
@@ -356,14 +348,11 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            62538,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62538, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext.PlexOtherVideos.SingleAsync(CancellationToken);
         var request = new CreateDownloadTasksRequest(
@@ -400,14 +389,11 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     public async Task ShouldReturnEmptyFailureWithoutTasks_WhenNoOtherVideoSelectionRequested()
     {
         // Arrange
-        await SetupDatabase(
-            62543,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62543, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext.PlexOtherVideos.SingleAsync(CancellationToken);
         var selection = new DownloadMediaDTO
@@ -438,14 +424,11 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     public async Task ShouldReturnZeroReportWithoutTasks_WhenSelectedVideoHasNoMediaData()
     {
         // Arrange
-        await SetupDatabase(
-            62546,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62546, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext.PlexOtherVideos.SingleAsync(CancellationToken);
         await dbContext
@@ -480,14 +463,11 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     public async Task ShouldCancelWithoutPersisting_WhenTokenAlreadyCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            62547,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62547, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext.PlexOtherVideos.SingleAsync(CancellationToken);
         var command = new GenerateDownloadTaskOtherVideosCommand([
@@ -526,16 +506,13 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
     public async Task ShouldIgnoreMovieSelection_WhenRequestIncludesOtherFamilies()
     {
         // Arrange
-        await SetupDatabase(
-            62544,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(62544, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
         var movie = await dbContext.PlexMovies.OrderBy(x => x.Id).FirstAsync(CancellationToken);

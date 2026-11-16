@@ -11,12 +11,13 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
     [Test]
     public async Task ShouldReturnFailure_WhenDockerMode()
     {
-        // Arrange
         var mockSource = new Mock<IUpdateSource>();
         var mockLocator = new Mock<IVelopackLocator>();
         var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
         SetAppBuildInfo(x => x.RuntimeMode = "docker");
-
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsFailed), null, null))
+            .Verifiable(Times.Once());
         // Act
         var endpointResult = await TestEndpointHandleAsync(extraServices: s => s.AddSingleton(_ => mockManager.Object));
         var result = endpointResult.Response;
@@ -34,6 +35,7 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         );
         Mock.Mock<IProgressHubService>()
             .Verify(x => x.SendAppUpdateDownloadProgressAsync(It.IsAny<AppUpdateDownloadProgressDTO>()), Times.Never);
+        Mock.Mock<ITelemetry>().Verify();
         mockSource.VerifyNoOtherCalls();
     }
 
@@ -48,6 +50,9 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         var mockLocator = new Mock<IVelopackLocator>();
         var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
         SetAppBuildInfo(x => x.RuntimeMode = "desktop");
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsSuccess), "9.9.9", false))
+            .Verifiable(Times.Once());
         mockManager.Setup(m => m.CheckForUpdatesAsync()).ReturnsAsync(updateInfo).Verifiable(Times.Once());
         mockManager
             .Setup(m =>
@@ -71,6 +76,117 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         );
         Mock.Mock<IProgressHubService>()
             .Verify(x => x.SendAppUpdateDownloadProgressAsync(It.IsAny<AppUpdateDownloadProgressDTO>()), Times.Never);
+        Mock.Mock<ITelemetry>().Verify();
+        mockSource.VerifyNoOtherCalls();
+    }
+
+    [Test]
+    public async Task ShouldReturnSuccessWithoutDownload_WhenNoUpdateIsAvailable()
+    {
+        // Arrange
+        var mockSource = new Mock<IUpdateSource>();
+        var mockLocator = new Mock<IVelopackLocator>();
+        var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
+        SetAppBuildInfo(x => x.RuntimeMode = "desktop");
+        mockManager.Setup(m => m.CheckForUpdatesAsync()).ReturnsAsync((UpdateInfo?)null).Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsSuccess), null, null))
+            .Verifiable(Times.Once());
+
+        // Act
+        var endpointResult = await TestEndpointHandleAsync(extraServices: s => s.AddSingleton(_ => mockManager.Object));
+
+        // Assert
+        endpointResult.Response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        mockManager.Verify(m => m.CheckForUpdatesAsync(), Times.Once);
+        mockManager.Verify(
+            m =>
+                m.DownloadUpdatesAsync(It.IsAny<UpdateInfo>(), It.IsAny<Action<int>?>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+        Mock.Mock<ITelemetry>().Verify();
+        mockSource.VerifyNoOtherCalls();
+    }
+
+    [Test]
+    public async Task ShouldReportFailure_WhenUpdateDownloadThrows()
+    {
+        // Arrange
+        var asset = new VelopackAsset { PackageId = "Reaparr", Version = new SemanticVersion(9, 9, 9) };
+        var updateInfo = new UpdateInfo(asset, false);
+        var downloadException = new InvalidOperationException("download failed");
+        var mockSource = new Mock<IUpdateSource>();
+        var mockLocator = new Mock<IVelopackLocator>();
+        var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
+        SetAppBuildInfo(x => x.RuntimeMode = "desktop");
+        mockManager.Setup(m => m.CheckForUpdatesAsync()).ReturnsAsync(updateInfo).Verifiable(Times.Once());
+        mockManager
+            .Setup(m =>
+                m.DownloadUpdatesAsync(It.IsAny<UpdateInfo>(), It.IsAny<Action<int>?>(), It.IsAny<CancellationToken>())
+            )
+            .ThrowsAsync(downloadException)
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsFailed), "9.9.9", null))
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.UpdateLauncher))
+            .Verifiable(Times.Once());
+
+        // Act
+        var outcome = await TestEndpointHandleAsync(extraServices: s => s.AddSingleton(_ => mockManager.Object));
+
+        // Assert
+        outcome.Response.ShouldNotBeNull().IsSuccess.ShouldBeFalse();
+        mockManager.Verify(m => m.CheckForUpdatesAsync(), Times.Once);
+        mockManager.Verify(
+            m => m.DownloadUpdatesAsync(updateInfo, It.IsAny<Action<int>?>(), It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+        Mock.Mock<ITelemetry>().Verify();
+        mockSource.VerifyNoOtherCalls();
+    }
+
+    [Test]
+    public async Task ShouldReportCancellation_WhenUpdateDownloadIsCancelled()
+    {
+        // Arrange
+        var asset = new VelopackAsset { PackageId = "Reaparr", Version = new SemanticVersion(9, 9, 9) };
+        var updateInfo = new UpdateInfo(asset, false);
+        var mockSource = new Mock<IUpdateSource>();
+        var mockLocator = new Mock<IVelopackLocator>();
+        var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
+        SetAppBuildInfo(x => x.RuntimeMode = "desktop");
+        mockManager.Setup(m => m.CheckForUpdatesAsync()).ReturnsAsync(updateInfo).Verifiable(Times.Once());
+        mockManager
+            .Setup(m =>
+                m.DownloadUpdatesAsync(It.IsAny<UpdateInfo>(), It.IsAny<Action<int>?>(), It.IsAny<CancellationToken>())
+            )
+            .ThrowsAsync(new OperationCanceledException())
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.UpdateDownloadFinished(
+                    It.Is<ResultBase>(r =>
+                        r.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException)
+                    ),
+                    "9.9.9",
+                    null
+                )
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        var outcome = await TestEndpointHandleAsync(extraServices: s => s.AddSingleton(_ => mockManager.Object));
+
+        // Assert
+        outcome.Response.ShouldNotBeNull().IsSuccess.ShouldBeFalse();
+        mockManager.Verify(m => m.CheckForUpdatesAsync(), Times.Once);
+        mockManager.Verify(
+            m => m.DownloadUpdatesAsync(updateInfo, It.IsAny<Action<int>?>(), It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+        Mock.Mock<ITelemetry>().Verify();
         mockSource.VerifyNoOtherCalls();
     }
 
@@ -87,6 +203,9 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         var mockLocator = new Mock<IVelopackLocator>();
         var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
         SetAppBuildInfo(x => x.RuntimeMode = "desktop");
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsSuccess), "9.9.9", false))
+            .Verifiable(Times.Once());
         mockManager.Setup(m => m.CheckForUpdatesAsync()).ReturnsAsync(updateInfo).Verifiable(Times.Once());
         mockManager
             .Setup(m =>
@@ -132,6 +251,7 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
             Times.Once
         );
         Mock.Mock<IProgressHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
         mockSource.VerifyNoOtherCalls();
     }
 }

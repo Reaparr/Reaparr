@@ -47,6 +47,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 	const serverConnectionStore = useServerConnectionStore();
 	const backgroundJobsStore = useBackgroundJobsStore();
 
+	const telemetry = useTelemetry();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			// Listen for refresh notifications
@@ -119,6 +120,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
      * @param forceMediaRefresh Whether to replace all stored media entries before rebuilding the library.
      */
 		reSyncLibrary(libraryId: number, forceMediaRefresh = false): Observable<LibrarySyncJobQueueDTO | null> {
+			telemetry.libraryRefreshRequested(libraryId, forceMediaRefresh);
 			return plexLibraryApi.refreshLibraryMediaEndpoint(libraryId, {
 				forceLibrarySync: true,
 				forceMediaRefresh,
@@ -132,6 +134,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			);
 		},
 		cancelLibrarySync(libraryId: number) {
+			telemetry.librarySyncCancelRequested(libraryId);
 			return plexLibraryApi.cancelLibrarySyncEndpoint(libraryId).pipe(
 				switchMap((response) =>
 					response.isSuccess
@@ -141,6 +144,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			);
 		},
 		updateDefaultDestination(libraryId: number, folderPathId: number): void {
+			telemetry.libraryDestinationChanged(libraryId, folderPathId);
 			plexLibraryApi.setPlexLibraryDefaultDestinationByIdEndpoint(libraryId, folderPathId).subscribe((result) => {
 				if (result.isSuccess) {
 					const index = state.libraries.findIndex((x) => x.id === libraryId);
@@ -154,6 +158,7 @@ export const useLibraryStore = defineStore(StoreNames.LibraryStore, () => {
 			});
 		},
 		setLibraryEnabled(libraryId: number, isEnabled: boolean): Observable<PlexLibraryDTO | null> {
+			telemetry.libraryEnabledChanged(libraryId, isEnabled);
 			return plexLibraryApi.setLibraryEnabledEndpoint(libraryId, { isEnabled }).pipe(
 				switchMap((response) => {
 					if (response.isSuccess && response.value) {

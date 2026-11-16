@@ -8,9 +8,10 @@ internal readonly record struct BuildDirectoryPath
     {
         var fullPath = fileSystem.Path.GetFullPath(path);
         var root = fileSystem.Path.GetPathRoot(fullPath)!;
-        Value = fullPath.Length == root.Length
-            ? fullPath
-            : fullPath.TrimEnd(fileSystem.Path.DirectorySeparatorChar, fileSystem.Path.AltDirectorySeparatorChar);
+        Value =
+            fullPath.Length == root.Length
+                ? fullPath
+                : fullPath.TrimEnd(fileSystem.Path.DirectorySeparatorChar, fileSystem.Path.AltDirectorySeparatorChar);
     }
 
     public string Value { get; }

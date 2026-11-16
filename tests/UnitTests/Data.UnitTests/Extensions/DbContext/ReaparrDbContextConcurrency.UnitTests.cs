@@ -27,14 +27,11 @@ public class ReaparrDbContextConcurrencyUnitTests : BaseUnitTest
     public async Task ShouldCompleteBulkAndBatchWrites_WhenContendingThroughSqlite()
     {
         // Arrange
-        await SetupDatabase(
-            91234,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(91234, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+        });
 
         using var setupContext = IDbContext;
         var libraryId = await setupContext.PlexLibraries.Select(x => x.Id).FirstAsync(CancellationToken);

@@ -7,15 +7,12 @@ public class DeletePlexServerEndpointUnitTests
     public async Task ShouldDeleteServerAndDirectRelatedData_WhenServerExists()
     {
         // Arrange
-        await SetupDatabase(
-            91301,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91301, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var servers = await dbContext
@@ -230,15 +227,12 @@ public class DeletePlexServerEndpointUnitTests
     public async Task ShouldInvalidateServerLibraries_WhenServerIsDeleted()
     {
         // Arrange
-        await SetupDatabase(
-            91304,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-                config.PlexTvShowLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91304, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var server = await dbContext

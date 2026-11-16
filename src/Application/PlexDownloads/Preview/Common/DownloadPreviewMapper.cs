@@ -280,7 +280,7 @@ public static class DownloadPreviewMapper
                 .OrderBy(group => group.Key)
                 .Select(group =>
                 {
-                    var (representative, quality) = group.PickAudioQuality(selectedDataId);
+                    var (representative, quality) = group.ToArray().PickAudioQuality(selectedDataId);
                     return new PlexMediaQuality
                     {
                         VideoQuality = VideoQuality.None,

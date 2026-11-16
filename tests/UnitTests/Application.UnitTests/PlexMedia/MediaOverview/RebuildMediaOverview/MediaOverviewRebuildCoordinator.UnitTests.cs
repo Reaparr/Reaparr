@@ -295,8 +295,8 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         followUpScope.ShouldNotBeNull();
         followUpScope.RebuildAll.ShouldBe(rebuildAll);
         var expectedTypes = rebuildAll
-            ? MediaOverviewRebuildCoordinator.AllMediaTypes.OrderBy(x => x)
-            : new[] { PlexMediaType.Movie, PlexMediaType.TvShow }.OrderBy(x => x);
+            ? MediaOverviewRebuildCoordinator.AllMediaTypes.OrderBy(x => x).ToArray()
+            : new[] { PlexMediaType.Movie, PlexMediaType.TvShow }.OrderBy(x => x).ToArray();
         followUpScope.MediaTypes.OrderBy(x => x).ShouldBe(expectedTypes);
         dispatchedScope.ShouldNotBeNull();
         dispatchedScope.RebuildAll.ShouldBe(rebuildAll);

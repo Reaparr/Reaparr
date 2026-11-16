@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-using Reaparr.PublicAPI.Contracts;
 using Reaparr.Settings.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
@@ -10,17 +8,14 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnPagedMovies_WhenNoFiltersProvided()
     {
         // Arrange
-        await SetupDatabase(
-            4001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 5;
-                config.IncludeMultiPartMovies = false;
-            }
-        );
+        await SetupDatabase(4001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 5;
+            config.IncludeMultiPartMovies = false;
+        });
 
         var offset = 1;
         var limit = 3;
@@ -99,16 +94,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldNotReturnMovies_WhenPlexServerAccessWasRevoked()
     {
         // Arrange
-        await SetupDatabase(
-            4610,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(4610, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
 
         var dbContext = IDbContext;
         var revokedServerId = await dbContext
@@ -145,16 +137,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldNotReturnMovies_WhenPlexLibraryAccessWasRevoked()
     {
         // Arrange
-        await SetupDatabase(
-            4611,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(4611, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+            config.MovieCount = 2;
+        });
 
         var dbContext = IDbContext;
         var revokedLibraryId = await dbContext
@@ -192,15 +181,12 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnEmpty_WhenNoPlexAccountsExist()
     {
         // Arrange
-        await SetupDatabase(
-            4614,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(4614, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
 
         var command = CreateCommand();
 
@@ -216,16 +202,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnSpecificMovie_WhenFilteredByImdbId()
     {
         // Arrange
-        await SetupDatabase(
-            4102,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(4102, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
 
         var dbContext = IDbContext;
         var movie = await dbContext
@@ -261,16 +244,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnSpecificMovie_WhenFilteredByTmdbId()
     {
         // Arrange
-        await SetupDatabase(
-            4203,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(4203, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
 
         var movie = await IDbContext
             .PlexMovies.Include(m => m.MediaDataList)
@@ -296,16 +276,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnEmpty_WhenNoMoviesExist()
     {
         // Arrange
-        await SetupDatabase(
-            4304,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 0;
-            }
-        );
+        await SetupDatabase(4304, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 0;
+        });
 
         var cmd = CreateCommand(limit: 50);
 
@@ -321,17 +298,14 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldCreateMultipleItemsPerMovie_WhenMultiPartMoviesEnabled()
     {
         // Arrange
-        await SetupDatabase(
-            4405,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.IncludeMultiPartMovies = true;
-            }
-        );
+        await SetupDatabase(4405, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.IncludeMultiPartMovies = true;
+        });
 
         var offset = 0;
         var limit = 2;
@@ -355,16 +329,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnEmpty_WhenQueryNormalizesToEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            4506,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(4506, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
 
         var cmd = CreateCommand(query: "!!!", limit: 10);
 
@@ -380,17 +351,14 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnExactMovie_WhenNormalizedTitlePrefixMatches()
     {
         // Arrange
-        await SetupDatabase(
-            4510,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = false;
-            }
-        );
+        await SetupDatabase(4510, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = false;
+        });
         var dbContext = IDbContext;
         var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await dbContext
@@ -434,17 +402,14 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     )
     {
         // Arrange
-        await SetupDatabase(
-            4511 + secondCategory + (int)firstCategory,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = false;
-            }
-        );
+        await SetupDatabase(4511 + secondCategory + (int)firstCategory, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = false;
+        });
         var dbContext = IDbContext;
         var rows = await dbContext.PlexMovieData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await dbContext
@@ -487,16 +452,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnSpecificMovie_WhenImdbIdAlreadyHasPrefix()
     {
         // Arrange
-        await SetupDatabase(
-            4507,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(4507, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
 
         var movie = await IDbContext
             .PlexMovies.OrderBy(x => x.Id)
@@ -519,16 +481,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnEmpty_WhenImdbIdIsMalformed()
     {
         // Arrange
-        await SetupDatabase(
-            4508,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(4508, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var command = CreateCommand(imdbId: "imdb://tt123");
 
         // Act
@@ -545,16 +504,13 @@ public class SearchMovieCommandUnitTests : BaseCommandUnitTest<SearchMovieComman
     public async Task ShouldReturnEmpty_WhenMovieExternalIdsConflict()
     {
         // Arrange
-        await SetupDatabase(
-            4509,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(4509, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
 
         var movies = await IDbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await IDbContext

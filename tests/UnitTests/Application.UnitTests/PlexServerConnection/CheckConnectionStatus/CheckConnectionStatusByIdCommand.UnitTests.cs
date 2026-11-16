@@ -6,14 +6,11 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
     public async Task ShouldUpdateExistingStatus_WhenConnectionAlreadyHasStatus()
     {
         // Arrange
-        await SetupDatabase(
-            57231,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 1;
-            }
-        );
+        await SetupDatabase(57231, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServerConnection = await dbContext.PlexServerConnections.SingleAsync(CancellationToken);
@@ -43,6 +40,7 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var statuses = await IDbContext.PlexServerStatuses.ToListAsync(CancellationToken);
         statuses.Count.ShouldBe(statusCount);
 
@@ -54,20 +52,23 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
         updatedStatus.PlexServerId.ShouldBe(plexServerConnection.PlexServerId);
         updatedStatus.PlexServerConnectionId.ShouldBe(plexServerConnection.Id);
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.ConnectionCheckFinished(It.IsAny<int>(), It.IsAny<Result<PlexServerStatus>>()),
+                Times.Never()
+            );
+        Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
     }
 
     [Test]
     public async Task ShouldInsertStatus_WhenConnectionDoesNotHaveStatus()
     {
         // Arrange
-        await SetupDatabase(
-            57232,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 1;
-            }
-        );
+        await SetupDatabase(57232, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServerConnection = await dbContext.PlexServerConnections.SingleAsync(CancellationToken);
@@ -96,6 +97,7 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var insertedStatus = await IDbContext.PlexServerStatuses.SingleAsync(CancellationToken);
         insertedStatus.IsSuccessful.ShouldBeTrue();
         insertedStatus.StatusCode.ShouldBe(200);
@@ -103,5 +105,11 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
         insertedStatus.PlexServerId.ShouldBe(plexServerConnection.PlexServerId);
         insertedStatus.PlexServerConnectionId.ShouldBe(plexServerConnection.Id);
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.ConnectionCheckFinished(It.IsAny<int>(), It.IsAny<Result<PlexServerStatus>>()),
+                Times.Never()
+            );
+        Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
     }
 }

@@ -75,6 +75,8 @@ public static partial class QuartzExtensions
             if (await scheduler.CheckExists(key, cancellationToken))
                 continue;
 
+            dataMap.SetTelemetryContext();
+
             var detail = JobBuilder
                 .Create<TJob>()
                 .WithIdentity(key)

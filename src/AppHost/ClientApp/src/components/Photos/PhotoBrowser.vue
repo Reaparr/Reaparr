@@ -25,7 +25,7 @@
 				@photo-search="changeSearch"
 				@photo-sort="changeSort"
 				@photo-download="downloadSelection"
-				@photo-clear-selection="photoStore.clearSelection"
+				@photo-clear-selection="clearSelection"
 				@photo-family-change="changeFamily" />
 			<MediaOverviewRefresh
 				v-if="isQueued"
@@ -161,6 +161,7 @@ import { createDefaultMediaOverviewSort, parseFlexSortDsl, serializeFlexSortDsl 
 import type { IPhotoBrowseActivation, IPhotoSelector, PhotoBrowseView, PhotoOverviewItem } from '@/store/photoBrowsingStore';
 import { useDialogStore, useDownloadStore, useGlobalStore, useLibraryStore, usePhotoBrowsingStore, useSettingsStore } from '@store';
 
+const telemetry = useTelemetry();
 const props = withDefaults(defineProps<{
 	libraryId?: number;
 	albumId?: number;
@@ -317,15 +318,20 @@ function changeSearch(value: string): void {
 	const query = value.trim();
 	const context = get(parsedRoute);
 	const resetSort = !query && context?.view === 'folders' && context.sort.field !== SortType.Title;
+	telemetry.photoSearchChanged(query, props.libraryId);
 	updateQuery({ q: query || null, ...(resetSort ? { sort: null } : {}) }, true);
 }
 
 function changeSort(sort: IMediaOverviewSort): void {
 	const defaultSort = createDefaultMediaOverviewSort();
-	updateQuery({ sort: sort.field === defaultSort.field && sort.sort === defaultSort.sort ? null : serializeFlexSortDsl(sort) });
+	const isDefault = sort.field === defaultSort.field && sort.sort === defaultSort.sort;
+	telemetry.photoSortChanged(sort, props.libraryId, isDefault);
+	updateQuery({ sort: isDefault ? null : serializeFlexSortDsl(sort) });
 }
 
 function openFolder(folderId: number): void {
+	const library = libraryStore.getLibrary(props.libraryId);
+	telemetry.photoFolderOpened(folderId, props.libraryId, library?.plexServerId);
 	void router.push(folderLocation(folderId)).catch(() => undefined);
 }
 
@@ -336,7 +342,8 @@ function folderLocation(folderId: number | null) {
 	};
 }
 
-function openAlbum(album: { plexLibraryId: number; id: number }): void {
+function openAlbum(album: { plexLibraryId: number; plexServerId: number; id: number }): void {
+	telemetry.photoAlbumOpened(album);
 	void router.push(`/photos/${album.plexLibraryId}/details/${album.id}`);
 }
 
@@ -375,6 +382,8 @@ function selectOverviewItem(payload: { item: PhotoOverviewItem; selected: boolea
 	if (payload.item.kind === PhotoItemKind.Album) photoStore.toggleAlbum(payload.item.album, payload.selected);
 	else if (payload.item.kind === PhotoItemKind.Folder) photoStore.toggleFolder(payload.item.folder, payload.selected);
 	else photoStore.toggleAsset(payload.item.asset, payload.selected);
+	const source = overviewSource(payload.item);
+	telemetry.photoSelectionChanged(source, { kind: payload.item.kind, selected: payload.selected, count: photoStore.selectedCount });
 }
 
 function openOverviewItem(payload: { item: PhotoOverviewItem; event: Event }): void {
@@ -386,6 +395,7 @@ function openOverviewItem(payload: { item: PhotoOverviewItem; event: Event }): v
 		openAlbum(payload.item.album);
 		return;
 	}
+	telemetry.photoAssetOpened(payload.item.asset);
 	useSubscription(photoStore.openAsset(payload.item.asset, payload.item.index).subscribe());
 }
 
@@ -421,7 +431,14 @@ function confirmDownload(command: DownloadMediaDTO[]): void {
 }
 
 function selectAll(selected: boolean): void {
+	telemetry.photosSelectAllRequested(selected, photoStore.overviewCount, props.libraryId);
 	useSubscription(photoStore.selectAll(selected).subscribe());
+}
+
+function clearSelection(): void {
+	if (photoStore.selectedCount <= 0) return;
+	telemetry.photoSelectionCleared(photoStore.selectedCount, props.libraryId);
+	photoStore.clearSelection();
 }
 
 function handleOverviewAction(action: IMediaOverviewBarActions): void {
@@ -440,6 +457,7 @@ function refreshLibrary(forceMediaRefresh: boolean): void {
 }
 
 function retry(): void {
+	telemetry.photoOverviewRetryRequested(photoStore.view, props.libraryId);
 	useSubscription(photoStore.loadCurrent(true).subscribe());
 }
 

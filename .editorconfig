@@ -15,6 +15,50 @@ csharp_preferred_modifier_order = public, private, protected, internal, new, sta
 csharp_style_var_elsewhere = true:suggestion
 csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
+
+# Keep optional single-statement if bodies brace-free.
+resharper_csharp_braces_for_ifelse = not_required
+# Rider formatting and syntax properties
+resharper_csharp_blank_lines_after_block_statements = 1
+resharper_csharp_blank_lines_after_control_transfer_statements = 1
+resharper_csharp_blank_lines_before_block_statements = 0
+resharper_csharp_blank_lines_before_control_transfer_statements = 0
+resharper_csharp_empty_block_style = together_same_line
+resharper_csharp_keep_blank_lines_in_code = 1
+resharper_csharp_keep_blank_lines_in_declarations = 1
+csharp_space_after_cast = false
+resharper_csharp_prefer_explicit_discard_declaration = true
+
+# Rider inspection severities
+resharper_enforce_if_statement_braces_highlighting = suggestion
+resharper_invocation_is_culture_sensitive_highlighting = none
+resharper_stylecop_sa1101_highlighting = none
+resharper_stylecop_sa1642_highlighting = none
+resharper_suggest_var_or_type_built_in_types_highlighting = suggestion
+resharper_suggest_var_or_type_elsewhere_highlighting = suggestion
+resharper_suggest_var_or_type_simple_types_highlighting = suggestion
+
+# Keep traditional extension methods instead of C# 14 extension blocks.
+resharper_convert_to_extension_block_highlighting = none
+resharper_move_to_extension_block_highlighting = none
+
+# Do not suggest converting existing code to collection expressions.
+resharper_use_collection_expression_highlighting = none
+dotnet_style_prefer_collection_expression = never
+
+# Prefer Any()/!Any() for existence checks, not Count() comparisons.
+resharper_use_method_any_0_highlighting = warning
+resharper_use_method_any_1_highlighting = warning
+resharper_use_method_any_2_highlighting = warning
+resharper_use_method_any_3_highlighting = warning
+resharper_use_method_any_4_highlighting = warning
+
+# CA1827: Do not use Count()/LongCount() when Any() can be used
+dotnet_diagnostic.CA1827.severity = warning
+
+# Do not suggest replacing Any() with a Count/Length/IsEmpty property.
+dotnet_diagnostic.CA1860.severity = none
+
 dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary:none
 dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:none
 dotnet_style_parentheses_in_relational_binary_operators = never_if_unnecessary:none
@@ -50,3 +94,10 @@ dotnet_naming_style.camel_with_underscore.required_suffix =
 
 
 
+# TUnit test methods must be instance methods (TUnit0048).
+# Keep CA1822 active for private/internal helpers, not framework-invoked public tests.
+[tests/UnitTests/**/*Tests.cs]
+dotnet_code_quality.CA1822.api_surface = private, internal
+
+[tests/IntegrationTests/**/*Tests.cs]
+dotnet_code_quality.CA1822.api_surface = private, internal

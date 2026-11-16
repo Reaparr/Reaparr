@@ -1,4 +1,4 @@
-namespace Reaparr.Domain.Validators;
+namespace Reaparr.Domain;
 
 public class DownloadTaskMovieValidator : AbstractValidator<DownloadTaskMovie>
 {

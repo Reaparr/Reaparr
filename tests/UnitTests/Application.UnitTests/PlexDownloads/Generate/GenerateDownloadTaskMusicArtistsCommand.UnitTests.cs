@@ -7,16 +7,13 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
     public async Task ShouldCreateArtistAndForwardAlbumsWithDescendantChoices_WhenArtistIsSelected()
     {
         // Arrange
-        await SetupDatabase(
-            62601,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(62601, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var artist = await IDbContext
             .PlexMusicArtists.Include(x => x.Albums)
                 .ThenInclude(x => x.Tracks)
@@ -97,14 +94,11 @@ public class GenerateDownloadTaskMusicArtistsCommandUnitTests
     public async Task ShouldRejectArtistFromAnotherLibraryWithoutDispatching_WhenOwnershipMismatches()
     {
         // Arrange
-        await SetupDatabase(
-            62602,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 2;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(62602, config =>
+        {
+            config.PlexMusicLibraryCount = 2;
+            config.MusicArtistCount = 1;
+        });
         var artists = await IDbContext.PlexMusicArtists.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var selection = new DownloadMediaDTO
         {

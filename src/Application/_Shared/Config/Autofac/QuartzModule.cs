@@ -3,7 +3,6 @@ using System.Reflection;
 using Autofac.Extras.Quartz;
 using Microsoft.Data.Sqlite;
 using Quartz.Impl.AdoJobStore;
-using Reaparr.Domain.Autofac;
 using Module = Autofac.Module;
 
 namespace Reaparr.Application;

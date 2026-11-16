@@ -10,39 +10,34 @@ public class CreatePlexAccountEndpointIntegrationTests : BaseIntegrationTests
         var serverCount = 1;
         var libraryCount = 3;
 
-        using var container = await CreateContainer(
-            seed.Next(),
-            config =>
+        using var container = await CreateContainer(seed.Next(), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    // Start from an empty database
-                    x.PlexServerCount = 0;
-                    x.PlexMovieLibraryCount = 0;
-                    x.PlexAccountCount = 0;
-                    x.PlexServerConnectionPerServerCount = 1;
-                };
+                // Start from an empty database
+                x.PlexServerCount = 0;
+                x.PlexMovieLibraryCount = 0;
+                x.PlexAccountCount = 0;
+                x.PlexServerConnectionPerServerCount = 1;
+            };
 
-                config.BaseMockHttpClientOptions = x =>
-                {
-                    x.PlexServerAccessCount = serverCount;
-                    x.MovieLibraryCount = libraryCount;
-                    x.MoviesPerLibraryCount = 25;
-                };
+            config.BaseMockHttpClientOptions = x =>
+            {
+                x.PlexServerAccessCount = serverCount;
+                x.MovieLibraryCount = libraryCount;
+                x.MoviesPerLibraryCount = 25;
+            };
 
-                config.OverrideServices = builder =>
-                    builder
-                        .Register(_ =>
-                            new FakeCommandExecutor()
-                                .Intercept<QueueLibrarySyncJobCommand, Result>((_, _) => Task.FromResult(Result.Ok()))
-                                .Intercept<QueueMediaOverviewRebuildCommand, Result>(
-                                    (_, _) => Task.FromResult(Result.Ok())
-                                )
-                        )
-                        .As<ICommandExecutor>()
-                        .InstancePerDependency();
-            }
-        );
+            config.OverrideServices = builder =>
+                builder
+                    .Register(_ =>
+                        new FakeCommandExecutor()
+                            .Intercept<QueueLibrarySyncJobCommand, Result>((_, _) => Task.FromResult(Result.Ok()))
+                            .Intercept<QueueMediaOverviewRebuildCommand, Result>((_, _) => Task.FromResult(Result.Ok()))
+                    )
+                    .As<ICommandExecutor>()
+                    .InstancePerDependency();
+        });
 
         var plexAccount = FakeData.GetPlexAccount(4347564).Generate();
         var request = new CreatePlexAccountEndpointRequest
@@ -158,17 +153,14 @@ public class CreatePlexAccountEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(78901);
-        using var container = await CreateContainer(
-            seed.Next(),
-            config =>
+        using var container = await CreateContainer(seed.Next(), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 1;
-                    x.PlexAccountCount = 1; // Pre-create one account
-                };
-            }
-        );
+                x.PlexServerCount = 1;
+                x.PlexAccountCount = 1; // Pre-create one account
+            };
+        });
 
         // Get the existing account from the database
         var existingAccount = await container.DbContext.PlexAccounts.FirstAsync(CancellationToken);
@@ -219,17 +211,14 @@ public class CreatePlexAccountEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(45678);
-        using var container = await CreateContainer(
-            seed.Next(),
-            config =>
+        using var container = await CreateContainer(seed.Next(), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 1;
-                    x.PlexAccountCount = 1; // Pre-create one account
-                };
-            }
-        );
+                x.PlexServerCount = 1;
+                x.PlexAccountCount = 1; // Pre-create one account
+            };
+        });
 
         // Get the existing account from the database
         var existingAccount = await container.DbContext.PlexAccounts.FirstAsync(CancellationToken);
@@ -331,22 +320,19 @@ public class CreatePlexAccountEndpointIntegrationTests : BaseIntegrationTests
         // Arrange
         var seed = new Seed(55555);
         var expectedClientId = Guid.NewGuid().ToString();
-        using var container = await CreateContainer(
-            seed.Next(),
-            config =>
+        using var container = await CreateContainer(seed.Next(), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 0;
-                    x.PlexAccountCount = 0;
-                };
+                x.PlexServerCount = 0;
+                x.PlexAccountCount = 0;
+            };
 
-                config.BaseMockHttpClientOptions = x =>
-                {
-                    x.PlexServerAccessCount = 0; // No servers to inspect
-                };
-            }
-        );
+            config.BaseMockHttpClientOptions = x =>
+            {
+                x.PlexServerAccessCount = 0; // No servers to inspect
+            };
+        });
 
         var plexAccount = FakeData.GetPlexAccount(seed.Next()).Generate();
         var request = new CreatePlexAccountEndpointRequest
@@ -393,22 +379,19 @@ public class CreatePlexAccountEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(99999);
-        using var container = await CreateContainer(
-            seed.Next(),
-            config =>
+        using var container = await CreateContainer(seed.Next(), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 0;
-                    x.PlexAccountCount = 0;
-                };
+                x.PlexServerCount = 0;
+                x.PlexAccountCount = 0;
+            };
 
-                config.BaseMockHttpClientOptions = x =>
-                {
-                    x.PlexServerAccessCount = 0;
-                };
-            }
-        );
+            config.BaseMockHttpClientOptions = x =>
+            {
+                x.PlexServerAccessCount = 0;
+            };
+        });
 
         var plexAccount = FakeData.GetPlexAccount(seed.Next()).Generate();
         var request = new CreatePlexAccountEndpointRequest
@@ -457,22 +440,19 @@ public class CreatePlexAccountEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(33333);
-        using var container = await CreateContainer(
-            seed.Next(),
-            config =>
+        using var container = await CreateContainer(seed.Next(), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 0;
-                    x.PlexAccountCount = 0;
-                };
+                x.PlexServerCount = 0;
+                x.PlexAccountCount = 0;
+            };
 
-                config.BaseMockHttpClientOptions = x =>
-                {
-                    x.PlexServerAccessCount = 0;
-                };
-            }
-        );
+            config.BaseMockHttpClientOptions = x =>
+            {
+                x.PlexServerAccessCount = 0;
+            };
+        });
 
         var plexAccount = FakeData.GetPlexAccount(seed.Next()).Generate();
         var request = new CreatePlexAccountEndpointRequest

@@ -12,36 +12,33 @@ public class RefreshPlexAccountAccessEndpointIntegrationTestsIntegrationTests : 
         var plexServerCount = 5;
         var plexLibraryCount = 5;
         var seed = new Seed(22453);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = plexAccountCount;
-                    x.PlexServerCount = plexServerCount;
-                    x.PlexMovieLibraryCount = plexLibraryCount;
-                };
-                config.BaseMockHttpClientOptions = x =>
-                {
-                    x.PlexServerAccessCount = plexServerCount;
-                    x.MovieLibraryCount = plexLibraryCount;
-                    x.MoviesPerLibraryCount = 25;
-                    x.SetServerResourcesResponse = HttpStatusCode.Unauthorized;
-                };
-                config.HttpClientOptions = (handler, _) =>
-                {
-                    handler
-                        .SetupRequest(HttpMethod.Get, "https://plex.tv/api/v2/user")
-                        .ReturnsAsync(
-                            (HttpRequestMessage req, CancellationToken _) =>
-                                FakePlexApiData
-                                    .GetPlexUnauthorizedResponseMessage(req)
-                                    .ToJsonHttpResponse(req, HttpStatusCode.Unauthorized)
-                        );
-                };
-            }
-        );
+                x.PlexAccountCount = plexAccountCount;
+                x.PlexServerCount = plexServerCount;
+                x.PlexMovieLibraryCount = plexLibraryCount;
+            };
+            config.BaseMockHttpClientOptions = x =>
+            {
+                x.PlexServerAccessCount = plexServerCount;
+                x.MovieLibraryCount = plexLibraryCount;
+                x.MoviesPerLibraryCount = 25;
+                x.SetServerResourcesResponse = HttpStatusCode.Unauthorized;
+            };
+            config.HttpClientOptions = (handler, _) =>
+            {
+                handler
+                    .SetupRequest(HttpMethod.Get, "https://plex.tv/api/v2/user")
+                    .ReturnsAsync(
+                        (HttpRequestMessage req, CancellationToken _) =>
+                            FakePlexApiData
+                                .GetPlexUnauthorizedResponseMessage(req)
+                                .ToJsonHttpResponse(req, HttpStatusCode.Unauthorized)
+                    );
+            };
+        });
 
         // Act
         var client = container.GetApiClient();

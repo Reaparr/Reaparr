@@ -27,30 +27,31 @@ public static partial class Startup
     /// <param name="appRuntimeInfo">
     /// Runtime settings controlling integration-test exclusions and the trusted-proxy authentication header name.
     /// </param>
+    /// <param name="appBuildInfo">Immutable build metadata selecting whether native telemetry is registered.</param>
     public static void ConfigureServices(
         this IServiceCollection services,
         IWebHostEnvironment env,
-        IAppRuntimeInfo appRuntimeInfo
+        IAppRuntimeInfo appRuntimeInfo,
+        IAppBuildInfo appBuildInfo
     )
     {
         // This has to always be first
         services.AddCors(options =>
         {
-            options.AddPolicy(
-                CorsConfiguration,
-                builder =>
-                {
-                    builder
-                        .SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials()
-                        .WithExposedHeaders(ReaparrHeaders.Version, ReaparrHeaders.Platform);
-                }
-            );
+            options.AddPolicy(CorsConfiguration, builder =>
+            {
+                builder
+                    .SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials()
+                    .WithExposedHeaders(ReaparrHeaders.Version, ReaparrHeaders.Platform);
+            });
         });
 
         services.AddOptions();
+        services.ConfigureTelemetry(appBuildInfo, appRuntimeInfo);
+        services.AddHttpForwarder();
 
         services.ConfigureHttpJsonOptions(options => options.SerializerOptions.ApplyStandardConfiguration());
 
@@ -129,7 +130,6 @@ public static partial class Startup
 
                 o.ConfigureOpenApi = options =>
                 {
-                    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
                     options.ShouldInclude = description => description.GroupName == "Internal API";
                     var extraTypes = new OpenApiAddExtraTypes(options.CreateSchemaReferenceId);
                     options.AddSchemaTransformer(extraTypes);
@@ -177,7 +177,6 @@ public static partial class Startup
 
                 o.ConfigureOpenApi = options =>
                 {
-                    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
                     options.ShouldInclude = description => description.GroupName == "Public API";
                     var enumNames = new OpenApiEnumNamesSchemaTransformer(options.CreateSchemaReferenceId);
                     options.AddSchemaTransformer(enumNames);
@@ -227,31 +226,27 @@ public static partial class Startup
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AuthDbContext>();
 
-        services.AddAuthenticationCookie(
-            validFor: TimeSpan.FromHours(6),
-            c =>
+        services.AddAuthenticationCookie(validFor: TimeSpan.FromHours(6), c =>
+        {
+            c.Cookie.Name = DefaultUserAppCredentials.DefaultCookieName;
+            c.LoginPath = ApiRoutes.LoginEndpoint;
+            c.LogoutPath = ApiRoutes.LogOutEndpoint;
+            c.AccessDeniedPath = "/api/access-denied";
+
+            c.Events.OnRedirectToLogin = ctx =>
             {
-                c.Cookie.Name = DefaultUserAppCredentials.DefaultCookieName;
-                c.LoginPath = ApiRoutes.LoginEndpoint;
-                c.LogoutPath = ApiRoutes.LogOutEndpoint;
-                c.SlidingExpiration = true;
-                c.AccessDeniedPath = "/api/access-denied";
+                if (ctx.Request.Path.StartsWithSegments("/api") && ctx.Response.StatusCode == 200)
+                    ctx.Response.StatusCode = 401;
 
-                c.Events.OnRedirectToLogin = ctx =>
-                {
-                    if (ctx.Request.Path.StartsWithSegments("/api") && ctx.Response.StatusCode == 200)
-                        ctx.Response.StatusCode = 401;
+                return Task.CompletedTask;
+            };
+            c.Events.OnRedirectToAccessDenied = ctx =>
+            {
+                if (ctx.Request.Path.StartsWithSegments("/api") && ctx.Response.StatusCode == 200)
+                    ctx.Response.StatusCode = 403;
 
-                    return Task.CompletedTask;
-                };
-                c.Events.OnRedirectToAccessDenied = ctx =>
-                {
-                    if (ctx.Request.Path.StartsWithSegments("/api") && ctx.Response.StatusCode == 200)
-                        ctx.Response.StatusCode = 403;
-
-                    return Task.CompletedTask;
-                };
-            }
-        );
+                return Task.CompletedTask;
+            };
+        });
     }
 }

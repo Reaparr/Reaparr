@@ -23,11 +23,13 @@ public class SetPreferredPlexServerConnectionEndpoint
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public SetPreferredPlexServerConnectionEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public SetPreferredPlexServerConnectionEndpoint(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<SetPreferredPlexServerConnectionEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -83,9 +85,13 @@ public class SetPreferredPlexServerConnectionEndpoint
             return;
         }
 
+        var preferredConnection = plexServer.PlexServerConnections.First(x => x.Id == plexServerConnectionId);
+
         plexServer.PreferredConnectionId = plexServerConnectionId;
 
         await _dbContext.SaveChangesAsync(ct);
+
+        _telemetry.PlexConnectionChanged(TelemetryAction.Preferred, preferredConnection, plexServerConnectionId);
 
         await Send.FluentResult(Result.Ok(), ct);
     }

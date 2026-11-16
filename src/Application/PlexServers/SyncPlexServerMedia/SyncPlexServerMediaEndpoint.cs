@@ -1,8 +1,5 @@
 namespace Reaparr.Application;
 
-/// <summary>
-/// Sync all media from a Plex server by queuing sync jobs for all its libraries.
-/// </summary>
 public record SyncPlexServerMediaEndpointRequest
 {
     [RouteParam]
@@ -13,6 +10,9 @@ public record SyncPlexServerMediaEndpointRequest
     public bool ForceMediaRefresh { get; init; }
 }
 
+/// <summary>
+/// Sync all media from a Plex server by queuing sync jobs for all its libraries.
+/// </summary>
 public class SyncPlexServerMediaEndpointRequestValidator : Validator<SyncPlexServerMediaEndpointRequest>
 {
     public SyncPlexServerMediaEndpointRequestValidator()
@@ -26,12 +26,19 @@ public class SyncPlexServerMediaEndpoint : Endpoint<SyncPlexServerMediaEndpointR
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public SyncPlexServerMediaEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public SyncPlexServerMediaEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<SyncPlexServerMediaEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -55,8 +62,10 @@ public class SyncPlexServerMediaEndpoint : Endpoint<SyncPlexServerMediaEndpointR
         {
             var serverName = await _dbContext.GetPlexServerNameById(req.PlexServerId);
             var warnResult = _log.Here()
-                .WarningResult("Plex server {Name} is disabled and cannot be synced", serverName);
-            await Send.FluentResult(warnResult.Add400BadRequestError(), ct);
+                .WarningResult("Plex server {Name} is disabled and cannot be synced", serverName)
+                .Add400BadRequestError();
+            _telemetry.ServerMediaSyncRequested(ToTelemetryDTO(req), warnResult);
+            await Send.FluentResult(warnResult, ct);
             return;
         }
 
@@ -68,8 +77,11 @@ public class SyncPlexServerMediaEndpoint : Endpoint<SyncPlexServerMediaEndpointR
         if (!libraryIds.Any())
         {
             var name = await _dbContext.GetPlexServerNameById(req.PlexServerId);
-            var warnResult = _log.Here().WarningResult("Plex server {Name} has no libraries available to sync", name);
-            await Send.FluentResult(warnResult.Add400BadRequestError(), ct);
+            var warnResult = _log.Here()
+                .WarningResult("Plex server {Name} has no libraries available to sync", name)
+                .Add400BadRequestError();
+            _telemetry.ServerMediaSyncRequested(ToTelemetryDTO(req), warnResult);
+            await Send.FluentResult(warnResult, ct);
             return;
         }
 
@@ -77,6 +89,15 @@ public class SyncPlexServerMediaEndpoint : Endpoint<SyncPlexServerMediaEndpointR
             new QueueLibrarySyncJobCommand(libraryIds, req.ForceLibrarySync, req.ForceMediaRefresh),
             ct
         );
+        _telemetry.ServerMediaSyncRequested(ToTelemetryDTO(req), result);
         await Send.FluentResult(result, ct);
     }
+
+    private static ServerMediaSyncTelemetryDTO ToTelemetryDTO(SyncPlexServerMediaEndpointRequest request) =>
+        new()
+        {
+            PlexServerId = request.PlexServerId,
+            ForceLibrarySync = request.ForceLibrarySync,
+            ForceMediaRefresh = request.ForceMediaRefresh,
+        };
 }

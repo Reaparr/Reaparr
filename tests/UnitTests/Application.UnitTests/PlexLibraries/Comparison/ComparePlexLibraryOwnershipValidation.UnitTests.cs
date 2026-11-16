@@ -6,15 +6,12 @@ public class CompareMoviePlexLibraryCommandOwnershipUnitTests : BaseCommandUnitT
     public async Task ShouldTreatOwnedOverrideFalseAsRemote_WhenAccountLibraryStillOwned()
     {
         // Arrange
-        await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -46,16 +43,13 @@ public class CompareMoviePlexLibraryCommandOwnershipUnitTests : BaseCommandUnitT
     public async Task ShouldCreateHitRowsForEveryOwnedMovieWithSameTmdbGuid_WhenMultipleCandidatesExist()
     {
         // Arrange
-        await SetupDatabase(
-            36,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(36, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 2;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -125,16 +119,13 @@ public class CompareMoviePlexLibraryCommandOwnershipUnitTests : BaseCommandUnitT
     public async Task ShouldPreferTmdbGuidOverImdbAndTitleFallback_WhenMultipleMatchLayersExist()
     {
         // Arrange
-        await SetupDatabase(
-            37,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(37, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 2;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -193,16 +184,13 @@ public class CompareMoviePlexLibraryCommandOwnershipUnitTests : BaseCommandUnitT
     public async Task ShouldPreferTitleYearDurationOverTitleYear_WhenDurationMatchExists()
     {
         // Arrange
-        await SetupDatabase(
-            38,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(38, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 2;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -238,16 +226,13 @@ public class CompareMoviePlexLibraryCommandOwnershipUnitTests : BaseCommandUnitT
     public async Task ShouldFallbackToTitleYear_WhenRemoteDurationIsZero()
     {
         // Arrange
-        await SetupDatabase(
-            39,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(39, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -282,16 +267,13 @@ public class CompareMoviePlexLibraryCommandOwnershipUnitTests : BaseCommandUnitT
     public async Task ShouldCreateHitRowsForEveryOwnedMovieWithSameTitleYearDuration_WhenMultipleCandidatesExist()
     {
         // Arrange
-        await SetupDatabase(
-            88,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(88, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 2;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -340,16 +322,13 @@ public class CompareMoviePlexLibraryCommandOwnershipUnitTests : BaseCommandUnitT
     public async Task ShouldDeleteOldMovieHits_WhenRerunFindsNoMatches()
     {
         // Arrange
-        await SetupDatabase(
-            40,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(40, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -400,15 +379,12 @@ public class CompareMoviePlexLibraryCommandOwnershipUnitTests : BaseCommandUnitT
     public async Task ShouldUpdateExistingComparisonScopeSnapshots_WhenScopeAlreadyExists()
     {
         // Arrange
-        await SetupDatabase(
-            33,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(33, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -488,15 +464,12 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldTreatOwnedOverrideFalseAsRemote_WhenAccountLibraryStillOwned()
     {
         // Arrange
-        await SetupDatabase(
-            35,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(35, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -528,18 +501,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldCreateOneHitRowForTheFirstOwnedTvShow_WhenMultipleTmdbCandidatesExist()
     {
         // Arrange
-        await SetupDatabase(
-            86,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(86, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -645,18 +615,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     )
     {
         // Arrange
-        await SetupDatabase(
-            41,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(41, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -739,18 +706,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldCreateSeasonAndEpisodeRows_WhenShowSeasonAndEpisodeNumbersMatch()
     {
         // Arrange
-        await SetupDatabase(
-            42,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(42, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -826,18 +790,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldCreateOneHitRowForTheFirstOwnedTvShow_WhenMultipleCandidatesExist()
     {
         // Arrange
-        await SetupDatabase(
-            87,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(87, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -886,18 +847,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldNotCreateSeasonOrEpisodeRows_WhenShowMatchesButSeasonNumbersDoNot()
     {
         // Arrange
-        await SetupDatabase(
-            43,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(43, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -948,18 +906,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldDeleteOldTvHits_WhenRerunFindsNoShowMatches()
     {
         // Arrange
-        await SetupDatabase(
-            44,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(44, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -1024,15 +979,12 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldAdvanceExistingComparisonScope_WhenComparisonCompletes()
     {
         // Arrange
-        await SetupDatabase(
-            34,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(34, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1070,18 +1022,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldPersistComparisonRowsAcrossBatchBoundary()
     {
         // Arrange
-        await SetupDatabase(
-            62701,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 101;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62701, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 101;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -1221,18 +1170,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     )
     {
         // Arrange
-        await SetupDatabase(
-            62702,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62702, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1279,18 +1225,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldNotMatchCrossedTitlesAndYears_WhenGuidsAreMissingOrEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            62703,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62703, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1347,18 +1290,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     )
     {
         // Arrange
-        await SetupDatabase(
-            62704,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62704, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1391,18 +1331,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldNotUseChildrenOfUnselectedDuplicate_WhenSelectedShowHasNoMatchingSeason()
     {
         // Arrange
-        await SetupDatabase(
-            62705,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62705, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1452,18 +1389,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldContinueAfterUnmatchedBatch_WhenLaterShowMatches()
     {
         // Arrange
-        await SetupDatabase(
-            62706,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 101;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62706, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 101;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1527,18 +1461,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldPersistExactlyOneHitPerRemoteAtEveryLevel_WhenLaterBatchRetries(int showCount)
     {
         // Arrange
-        await SetupDatabase(
-            62707,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = showCount;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62707, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = showCount;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1635,18 +1566,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldPreservePreviousRowsAndScope_WhenPersistenceIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            62708,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62708, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1730,18 +1658,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldNotMatchEpisodeNumbersAcrossDifferentSeasons()
     {
         // Arrange
-        await SetupDatabase(
-            62709,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62709, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -1794,18 +1719,15 @@ public class CompareTvShowPlexLibraryCommandOwnershipUnitTests : BaseCommandUnit
     public async Task ShouldPreserveOtherLibraryPairRowsAndScope_WhenRerunRemovesCurrentHits()
     {
         // Arrange
-        await SetupDatabase(
-            62710,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(62710, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];

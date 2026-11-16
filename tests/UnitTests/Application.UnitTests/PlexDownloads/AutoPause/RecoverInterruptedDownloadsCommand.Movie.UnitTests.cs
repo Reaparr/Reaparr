@@ -6,16 +6,13 @@ public class RecoverInterruptedDownloadsCommandMovieUnitTests : BaseUnitTest<Rec
     public async Task ShouldRecoverInterruptedMovieFiles_WhenActiveStatusesExist()
     {
         // Arrange
-        await SetupDatabase(
-            68111,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 4;
-            }
-        );
+        await SetupDatabase(68111, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 4;
+        });
         var files = await IDbContext.DownloadTaskMovieFile.OrderBy(x => x.Id).Take(4).ToListAsync(CancellationToken);
         var statuses = new[]
         {
@@ -90,16 +87,13 @@ public class RecoverInterruptedDownloadsCommandMovieUnitTests : BaseUnitTest<Rec
     public async Task ShouldNotDispatchStatusChanges_WhenMovieFilesAreAlreadyIdle()
     {
         // Arrange
-        await SetupDatabase(
-            68114,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(68114, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 2;
+        });
         var files = await IDbContext.DownloadTaskMovieFile.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await IDbContext
             .DownloadTaskMovieFile.Where(x => x.Id == files[0].Id)

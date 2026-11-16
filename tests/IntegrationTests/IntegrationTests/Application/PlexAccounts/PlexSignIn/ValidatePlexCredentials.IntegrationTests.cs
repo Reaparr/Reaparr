@@ -9,22 +9,17 @@ public class ValidateCredentialsIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(22453);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) =>
             {
-                config.HttpClientOptions = (x, _) =>
-                {
-                    x.SetupRequest(HttpMethod.Post, "https://plex.tv/api/v2/users/signin")
-                        .ReturnsAsync(
-                            (HttpRequestMessage req, CancellationToken _) =>
-                                FakePlexApiData
-                                    .PostUsersSignInDataResponse(HttpStatusCode.Created, seed, req)
-                                    .RawResponse
-                        );
-                };
-            }
-        );
+                x.SetupRequest(HttpMethod.Post, "https://plex.tv/api/v2/users/signin")
+                    .ReturnsAsync(
+                        (HttpRequestMessage req, CancellationToken _) =>
+                            FakePlexApiData.PostUsersSignInDataResponse(HttpStatusCode.Created, seed, req).RawResponse
+                    );
+            };
+        });
 
         var plexAccount = FakeData.GetPlexAccount(26346).Generate();
         var plexAccountDTO = plexAccount.ToDTO();
@@ -59,20 +54,16 @@ public class ValidateCredentialsIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(4347564);
-        using var container = await CreateContainer(
-            seed,
-            config =>
-                config.HttpClientOptions = (x, _) =>
-                {
-                    x.SetupRequest(HttpMethod.Post, "https://plex.tv/api/v2/users/signin")
-                        .ReturnsAsync(
-                            (HttpRequestMessage req, CancellationToken _) =>
-                                FakePlexApiData
-                                    .PostUsersSignInDataResponse(HttpStatusCode.Unauthorized, seed, req)
-                                    .RawResponse
-                        );
-                }
-        );
+        using var container = await CreateContainer(seed, config => config.HttpClientOptions = (x, _) =>
+            {
+                x.SetupRequest(HttpMethod.Post, "https://plex.tv/api/v2/users/signin")
+                    .ReturnsAsync(
+                        (HttpRequestMessage req, CancellationToken _) =>
+                            FakePlexApiData
+                                .PostUsersSignInDataResponse(HttpStatusCode.Unauthorized, seed, req)
+                                .RawResponse
+                    );
+            });
 
         var plexAccount = FakeData.GetPlexAccount(4347564).Generate();
         var plexAccountDTO = plexAccount.ToDTO();

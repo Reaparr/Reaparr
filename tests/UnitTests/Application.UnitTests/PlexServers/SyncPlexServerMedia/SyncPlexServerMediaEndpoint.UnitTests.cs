@@ -7,14 +7,11 @@ public class SyncPlexServerMediaEndpointUnitTests
     public async Task ShouldReturnBadRequestAndSkipQueue_WhenServerIsDisabled()
     {
         // Arrange
-        await SetupDatabase(
-            91104,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(91104, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServer = await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
@@ -49,14 +46,11 @@ public class SyncPlexServerMediaEndpointUnitTests
     public async Task ShouldQueueLibrarySyncJob_WhenServerIsEnabledAndLibrariesExist()
     {
         // Arrange
-        await SetupDatabase(
-            91106,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91106, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var plexServerId = (await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken)).Id;
@@ -65,10 +59,27 @@ public class SyncPlexServerMediaEndpointUnitTests
             .Setup(x => x.Send(It.IsAny<QueueLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        ServerMediaSyncTelemetryDTO? telemetryRequest = null;
+        ResultBase? telemetryResult = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.ServerMediaSyncRequested(It.IsAny<ServerMediaSyncTelemetryDTO>(), It.IsAny<ResultBase>()))
+            .Callback<ServerMediaSyncTelemetryDTO, ResultBase>(
+                (request, result) =>
+                {
+                    telemetryRequest = request;
+                    telemetryResult = result;
+                }
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
-            new SyncPlexServerMediaEndpointRequest { PlexServerId = plexServerId }
+            new SyncPlexServerMediaEndpointRequest
+            {
+                PlexServerId = plexServerId,
+                ForceLibrarySync = true,
+                ForceMediaRefresh = true,
+            }
         );
 
         // Assert
@@ -84,20 +95,23 @@ public class SyncPlexServerMediaEndpointUnitTests
                     ),
                 Times.Once()
             );
+        telemetryRequest.ShouldNotBeNull();
+        telemetryRequest.PlexServerId.ShouldBe(plexServerId);
+        telemetryRequest.ForceLibrarySync.ShouldBeTrue();
+        telemetryRequest.ForceMediaRefresh.ShouldBeTrue();
+        telemetryResult.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
     public async Task ShouldReturnBadRequestAndSkipQueue_WhenEnabledServerHasNoLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            91107,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 0;
-            }
-        );
+        await SetupDatabase(91107, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 0;
+        });
 
         var dbContext = IDbContext;
         var plexServerId = (await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken)).Id;
@@ -127,14 +141,11 @@ public class SyncPlexServerMediaEndpointUnitTests
     public async Task ShouldNotQueueLibrariesFromDifferentServer_WhenSyncingSingleServer()
     {
         // Arrange
-        await SetupDatabase(
-            91116,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91116, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         var db = IDbContext;
         var servers = await db.PlexServers.IgnoreIsEnabledFilter().OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -198,14 +209,11 @@ public class SyncPlexServerMediaEndpointUnitTests
     public async Task ShouldStillFailWhenServerDisabledEvenIfLibrariesExist()
     {
         // Arrange
-        await SetupDatabase(
-            91118,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91118, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         var db = IDbContext;
         var serverId = (await db.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken)).Id;
@@ -239,14 +247,11 @@ public class SyncPlexServerMediaEndpointUnitTests
     public async Task ShouldAllowSyncForEnabledServer_WhenAnotherServerIsDisabled()
     {
         // Arrange
-        await SetupDatabase(
-            91119,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(91119, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var db = IDbContext;
         var servers = await db.PlexServers.IgnoreIsEnabledFilter().OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -293,14 +298,11 @@ public class SyncPlexServerMediaEndpointUnitTests
     public async Task ShouldQueueSingleLibrary_WhenServerHasExactlyOneLibrary()
     {
         // Arrange
-        await SetupDatabase(
-            91120,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(91120, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var db = IDbContext;
         var serverId = (await db.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken)).Id;

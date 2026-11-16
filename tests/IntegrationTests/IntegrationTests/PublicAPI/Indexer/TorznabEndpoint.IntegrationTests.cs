@@ -9,21 +9,18 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     public async Task ShouldReturnPagedStableRssXml_WhenRadarrPollsQuerylessSearch()
     {
         // Arrange
-        using var container = await CreateContainer(
-            new Seed(8663),
-            config =>
+        using var container = await CreateContainer(new Seed(8663), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 1;
-                    x.PlexAccountCount = 1;
-                    x.PlexMovieLibraryCount = 1;
-                    x.MovieCount = 4;
-                    x.IncludeMultiPartMovies = true;
-                    x.RadarrIntegrationCount = 1;
-                };
-            }
-        );
+                x.PlexServerCount = 1;
+                x.PlexAccountCount = 1;
+                x.PlexMovieLibraryCount = 1;
+                x.MovieCount = 4;
+                x.IncludeMultiPartMovies = true;
+                x.RadarrIntegrationCount = 1;
+            };
+        });
         var integration = await container.DbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var route = $"/api/public/integrations/{integration.Id}/indexer/api";
         var url = $"{route}?t=search&cat=2000&limit=3&offset=1&apikey={integration.TorznabApiKey}";
@@ -96,22 +93,19 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     public async Task ShouldReturnExactPagedRssTotal_WhenSonarrPollsQuerylessTvSearch()
     {
         // Arrange
-        using var container = await CreateContainer(
-            new Seed(8675),
-            config =>
+        using var container = await CreateContainer(new Seed(8675), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 1;
-                    x.PlexAccountCount = 1;
-                    x.PlexTvShowLibraryCount = 1;
-                    x.TvShowCount = 1;
-                    x.TvShowSeasonCount = 1;
-                    x.TvShowEpisodeCount = 5;
-                    x.SonarrIntegrationCount = 1;
-                };
-            }
-        );
+                x.PlexServerCount = 1;
+                x.PlexAccountCount = 1;
+                x.PlexTvShowLibraryCount = 1;
+                x.TvShowCount = 1;
+                x.TvShowSeasonCount = 1;
+                x.TvShowEpisodeCount = 5;
+                x.SonarrIntegrationCount = 1;
+            };
+        });
         var integration = await container.DbContext.SonarrIntegrations.SingleAsync(CancellationToken);
         var route = $"/api/public/integrations/{integration.Id}/indexer/api";
         var url = $"{route}?t=tvsearch&cat=5000&limit=2&offset=1&apikey={integration.TorznabApiKey}";
@@ -135,20 +129,17 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     public async Task ShouldRemoveMovieFromRss_WhenSynchronizationDeletesIt()
     {
         // Arrange
-        using var container = await CreateContainer(
-            new Seed(8669),
-            config =>
+        using var container = await CreateContainer(new Seed(8669), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 1;
-                    x.PlexAccountCount = 1;
-                    x.PlexMovieLibraryCount = 1;
-                    x.MovieCount = 2;
-                    x.RadarrIntegrationCount = 1;
-                };
-            }
-        );
+                x.PlexServerCount = 1;
+                x.PlexAccountCount = 1;
+                x.PlexMovieLibraryCount = 1;
+                x.MovieCount = 2;
+                x.RadarrIntegrationCount = 1;
+            };
+        });
         var integration = await container.DbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var route = $"/api/public/integrations/{integration.Id}/indexer/api";
         var url = $"{route}?t=search&cat=2000&limit=50&offset=0&apikey={integration.TorznabApiKey}";
@@ -171,20 +162,17 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     public async Task ShouldCreateIntegrationOwnedDownloadTask_WhenRssTorrentIsSubmitted()
     {
         // Arrange
-        using var container = await CreateContainer(
-            new Seed(8674),
-            config =>
+        using var container = await CreateContainer(new Seed(8674), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 1;
-                    x.PlexAccountCount = 1;
-                    x.PlexMovieLibraryCount = 1;
-                    x.MovieCount = 1;
-                    x.RadarrIntegrationCount = 1;
-                };
-            }
-        );
+                x.PlexServerCount = 1;
+                x.PlexAccountCount = 1;
+                x.PlexMovieLibraryCount = 1;
+                x.MovieCount = 1;
+                x.RadarrIntegrationCount = 1;
+            };
+        });
         var integration = await container.DbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var route = $"/api/public/integrations/{integration.Id}";
         var rssUrl = $"{route}/indexer/api?t=search&cat=2000&limit=1&offset=0&apikey={integration.TorznabApiKey}";
@@ -265,9 +253,8 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
     private async Task AssertInvalidRequest(string invalidQuery, int seedValue)
     {
         // Arrange
-        using var container = await CreateContainer(
-            new Seed(seedValue),
-            config => config.DatabaseOptions = x => x.RadarrIntegrationCount = 1
+        using var container = await CreateContainer(new Seed(seedValue), config =>
+            config.DatabaseOptions = x => x.RadarrIntegrationCount = 1
         );
         var integration = await container.DbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var route = $"/api/public/integrations/{integration.Id}/indexer/api";

@@ -113,6 +113,7 @@ public class PlexServerConnection : BaseEntity
         && Url == other.Url
         && Local == other.Local
         && Relay == other.Relay
+        && IPv4 == other.IPv4
         && IPv6 == other.IPv6;
 
     #endregion

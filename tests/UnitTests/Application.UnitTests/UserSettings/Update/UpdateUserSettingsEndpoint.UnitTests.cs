@@ -30,15 +30,23 @@ public class UpdateUserSettingsEndpointUnitTests
     public async Task ShouldRetainCurrentPolicy_WhenAChangePointLimitIsNonPositive(int invalidLimit)
     {
         // Arrange
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 100 } },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 100 } },
+                },
+            },
         };
         settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
         var dto = settings.ToDTO();
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new() { ["Monday"] = new() { ["09:30"] = invalidLimit } };
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
+        {
+            ["Monday"] = new() { ["00:00"] = invalidLimit },
+        };
 
         // Act
         var result = await TestEndpointHandleAsync(
@@ -71,7 +79,10 @@ public class UpdateUserSettingsEndpointUnitTests
         var settings = new UserSettings();
         var dto = settings.ToDTO();
         dto.DownloadManagerSettings.DownloadSchedule.Enabled = true;
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new() { [day] = new() { [time] = 100 } };
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
+        {
+            [day] = new() { [time] = 100 },
+        };
 
         // Act
         var result = await TestEndpointHandleAsync(
@@ -120,7 +131,7 @@ public class UpdateUserSettingsEndpointUnitTests
         var dto = settings.ToDTO();
         dto.DateTimeSettings.TimeZone = "Asia/Kathmandu";
         dto.DownloadManagerSettings.DownloadSchedule.Enabled = true;
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new()
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
         {
             ["Tuesday"] = new() { ["09:30"] = 123, ["17:00"] = null },
         };
@@ -143,7 +154,46 @@ public class UpdateUserSettingsEndpointUnitTests
             .ShouldBe(new Dictionary<string, int?> { ["09:30"] = 123, ["17:00"] = null }, ignoreOrder: true);
         settings.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
         settings.AuthenticationSettings.HeaderAuthentication.Enabled.ShouldBeTrue();
-        settings.AuthenticationSettings.HeaderAuthentication.TrustedProxies.ShouldBe(new[] { "10.100.0.4" });
+        settings.AuthenticationSettings.HeaderAuthentication.TrustedProxies.ShouldBe(["10.100.0.4"]);
+    }
+
+    [Test]
+    public async Task ShouldKeepAppliedSettings_WhenSchedulerRefreshFails()
+    {
+        // Arrange
+        var settings = new UserSettings { DateTimeSettings = { TimeZone = "UTC" } };
+        var dto = settings.ToDTO();
+        dto.DateTimeSettings.TimeZone = "Asia/Kathmandu";
+        dto.DownloadManagerSettings.DownloadSchedule.Enabled = true;
+        var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
+        scheduler
+            .Setup(x =>
+                x.RescheduleJob(
+                    UpdateScheduledDownloadLimitsJob.GetTriggerKey(),
+                    It.IsAny<ITrigger>(),
+                    CancellationToken.None
+                )
+            )
+            .ThrowsAsync(new SchedulerException("scheduler unavailable"))
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
+            services =>
+            {
+                services.AddSingleton<IUserSettings>(settings);
+                services.AddSingleton(scheduler.Object);
+            }
+        );
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        settings.DateTimeSettings.TimeZone.ShouldBe("Asia/Kathmandu");
+        result.ValidationErrors.Count.ShouldBe(0);
+        result.StatusCode.ShouldBe(200);
+        settings.DownloadManagerSettings.DownloadSchedule.Enabled.ShouldBeTrue();
+        scheduler.Verify();
     }
 
     [Test]
@@ -152,11 +202,16 @@ public class UpdateUserSettingsEndpointUnitTests
     public async Task ShouldRetainTheCurrentBudget_WhenScheduleDataIsMissing(bool missingSchedule)
     {
         // Arrange
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 100 } },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 100 } },
+                },
+            },
         };
         var dto = settings.ToDTO();
         if (missingSchedule)
@@ -188,11 +243,17 @@ public class UpdateUserSettingsEndpointUnitTests
     public async Task ShouldRefreshDownloadScheduling_WhenRelevantSettingsChange(string change)
     {
         // Arrange
-        var settings = new UserSettings { DateTimeSettings = { TimeZone = "UTC" } };
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["09:30"] = 100 } },
+            DateTimeSettings = { TimeZone = "UTC" },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["09:30"] = 100 } },
+                },
+            },
         };
         var dto = settings.ToDTO();
         switch (change)
@@ -201,13 +262,16 @@ public class UpdateUserSettingsEndpointUnitTests
                 dto.DateTimeSettings.TimeZone = "Asia/Kathmandu";
                 break;
             case "limit":
-                dto.DownloadManagerSettings.DownloadSchedule.Days = new() { ["Monday"] = new() { ["09:30"] = 200 } };
+                dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
+                {
+                    ["Monday"] = new() { ["09:30"] = 200 },
+                };
                 break;
             case "enabled":
                 dto.DownloadManagerSettings.DownloadSchedule.Enabled = false;
                 break;
             case "removed-day":
-                dto.DownloadManagerSettings.DownloadSchedule.Days = new();
+                dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>();
                 break;
         }
 
@@ -231,7 +295,7 @@ public class UpdateUserSettingsEndpointUnitTests
                         CancellationToken.None
                     )
                 )
-                .ReturnsAsync((DateTimeOffset?)DateTimeOffset.UnixEpoch)
+                .ReturnsAsync(DateTimeOffset.UnixEpoch)
                 .Verifiable(Times.Once());
         scheduler
             .Setup(x => x.TriggerJob(jobKey, CancellationToken.None))
@@ -275,19 +339,24 @@ public class UpdateUserSettingsEndpointUnitTests
     public async Task ShouldLeaveQuartzUnchanged_WhenOnlyUnrelatedSettingsAndPointOrderChange()
     {
         // Arrange
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new()
+            DownloadManagerSettings =
             {
-                ["Monday"] = new() { ["09:00"] = 100, ["17:00"] = null },
-                ["Tuesday"] = new() { ["12:00"] = 200 },
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["09:00"] = 100, ["17:00"] = null },
+                        ["Tuesday"] = new() { ["12:00"] = 200 },
+                    },
+                },
             },
         };
         var dto = settings.ToDTO();
         dto.GeneralSettings.DisableAnimatedBackground = !settings.GeneralSettings.DisableAnimatedBackground;
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new()
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
         {
             ["Tuesday"] = new() { ["12:00"] = 200 },
             ["Monday"] = new() { ["17:00"] = null, ["09:00"] = 100 },
@@ -382,26 +451,47 @@ public class UpdateUserSettingsEndpointUnitTests
     [Arguments(100, 300, false, 300)]
     [Arguments(100, 0, true, 500)]
     public async Task ShouldRedistributeEffectiveShares_WhenManualCapChanges(
-        int oldCap, int newCap, bool removeSetting, int expectedFirstKb)
+        int oldCap,
+        int newCap,
+        bool removeSetting,
+        int expectedFirstKb
+    )
     {
         // Arrange
         var machines = await SetupDownloadingServersAsync();
         var dbContext = IDbContext;
-        (await dbContext.DownloadTaskMovieFile.Select(x => x.PlexServer!.MachineIdentifier).Distinct().OrderBy(x => x)
-            .ToArrayAsync(CancellationToken)).ShouldBe(machines.Order().ToArray());
-        var beforeFiles = await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.DownloadStatus }).ToArrayAsync(CancellationToken);
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        (
+            await dbContext
+                .DownloadTaskMovieFile.Select(x => x.PlexServer!.MachineIdentifier)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToArrayAsync(CancellationToken)
+        ).ShouldBe([.. machines.Order()]);
+        var beforeFiles = await dbContext
+            .DownloadTaskMovieFile.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.DownloadStatus })
+            .ToArrayAsync(CancellationToken);
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
+                },
+            },
         };
         if (oldCap > 0)
             settings.ServerSettings.SetDownloadSpeedLimit(machines[0], oldCap);
         using var limits = new DownloadSpeedLimitProvider(settings);
         var allocator = new UpdateScheduledDownloadLimitsCommandHandler(
-            Mock.Container.Resolve<ILogger>(), settings, Mock.Container.Resolve<IReaparrDbContextFactory>(), limits, TimeProvider.System);
+            Mock.Container.Resolve<ILogger>(),
+            settings,
+            Mock.Container.Resolve<IReaparrDbContextFactory>(),
+            limits,
+            TimeProvider.System
+        );
         var command = new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.Parse("2026-10-05T12:00:00Z"));
         var initial = await allocator.ExecuteAsync(command, CancellationToken);
         initial.IsSuccess.ShouldBeTrue();
@@ -412,13 +502,25 @@ public class UpdateUserSettingsEndpointUnitTests
             DownloadManagerSettings = settings.DownloadManagerSettings,
             ServerSettings = new PlexServerSettingsModule
             {
-                Data = removeSetting ? [] : [PlexServerSettingItemModule.Create("First server", machines[0]) with { DownloadSpeedLimit = newCap }],
+                Data = removeSetting
+                    ? []
+                    :
+                    [
+                        PlexServerSettingItemModule.Create("First server", machines[0]) with
+                        {
+                            DownloadSpeedLimit = newCap,
+                        },
+                    ],
             },
         }.ToDTO();
         Result? allocationResult = null;
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
-        scheduler.Setup(x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None))
-            .Returns(async () => { allocationResult = await allocator.ExecuteAsync(command, CancellationToken.None); })
+        scheduler
+            .Setup(x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None))
+            .Returns(async () =>
+            {
+                allocationResult = await allocator.ExecuteAsync(command, CancellationToken.None);
+            })
             .Verifiable(Times.Once());
 
         // Act
@@ -428,7 +530,8 @@ public class UpdateUserSettingsEndpointUnitTests
             {
                 services.AddSingleton<IUserSettings>(settings);
                 services.AddSingleton(scheduler.Object);
-            });
+            }
+        );
 
         // Assert
         endpoint.IsValid.ShouldBeTrue();
@@ -437,10 +540,17 @@ public class UpdateUserSettingsEndpointUnitTests
         allocationResult.Errors.Count.ShouldBe(0);
         limits.GetEffectiveDownloadSpeedLimit(machines[0]).ShouldBe(expectedFirstKb * 1024L);
         limits.GetEffectiveDownloadSpeedLimit(machines[1]).ShouldBe((1000 - expectedFirstKb) * 1024L);
-        (await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.DownloadStatus }).ToArrayAsync(CancellationToken)).ShouldBe(beforeFiles);
+        (
+            await dbContext
+                .DownloadTaskMovieFile.OrderBy(x => x.Id)
+                .Select(x => new { x.Id, x.DownloadStatus })
+                .ToArrayAsync(CancellationToken)
+        ).ShouldBe(beforeFiles);
         scheduler.Verify();
-        scheduler.Verify(x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(
+            x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
     }
 
     [Test]
@@ -449,33 +559,70 @@ public class UpdateUserSettingsEndpointUnitTests
         // Arrange
         var settings = new UserSettings();
         settings.ServerSettings.SetDownloadSpeedLimit("limited", 100);
-        settings.ServerSettings.SetDownloadSpeedLimit("unlimited", 0);
+        settings.ServerSettings.SetDownloadSpeedLimit("unlimited");
         var dto = new UserSettings
         {
             ServerSettings = new PlexServerSettingsModule
             {
-                Data = [settings.ServerSettings.Data[1] with { PlexServerName = "Renamed" },
-                    settings.ServerSettings.Data[0] with { AllowStreamDownloader = true },
-                    PlexServerSettingItemModule.Create("New default", "new-unlimited")],
+                Data =
+                [
+                    settings.ServerSettings.Data[1] with
+                    {
+                        PlexServerName = "Renamed",
+                    },
+                    settings.ServerSettings.Data[0] with
+                    {
+                        AllowStreamDownloader = true,
+                    },
+                    PlexServerSettingItemModule.Create("New default", "new-unlimited"),
+                ],
             },
         }.ToDTO();
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
 
         // Act
-        var endpoint = await TestEndpointHandleAsync(new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
+        var endpoint = await TestEndpointHandleAsync(
+            new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto },
             services =>
             {
                 services.AddSingleton<IUserSettings>(settings);
                 services.AddSingleton(scheduler.Object);
-            });
+            }
+        );
 
         // Assert
         endpoint.IsValid.ShouldBeTrue();
         endpoint.StatusCode.ShouldBe(200);
-        settings.ServerSettings.Data.Select(x => (x.MachineIdentifier, x.DownloadSpeedLimit))
+        settings
+            .ServerSettings.Data.Select(x => (x.MachineIdentifier, x.DownloadSpeedLimit))
             .ShouldBe([("unlimited", 0), ("limited", 100), ("new-unlimited", 0)]);
         scheduler.Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
-        scheduler.Verify(x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(
+            x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+    }
+
+    [Test]
+    public async Task ShouldKeepAppliedSettings_WhenTheResponseWriteFails()
+    {
+        // Arrange
+        var settings = new UserSettings();
+        var dto = settings.ToDTO();
+        dto.GeneralSettings.DisableAnimatedBackground = true;
+        var endpoint = SetupEndpointUnitTest<UpdateUserSettingsEndpoint>(services =>
+            services.AddSingleton<IUserSettings>(settings)
+        );
+        endpoint.HttpContext.Response.Body = new ThrowingResponseStream();
+
+        // Act
+        var exception = await Should.ThrowAsync<IOException>(() =>
+            endpoint.HandleAsync(new UpdateUserSettingsEndpointRequest { SettingsModelDto = dto }, CancellationToken)
+        );
+
+        // Assert
+        exception.Message.ShouldBe("response failed");
+        settings.GeneralSettings.DisableAnimatedBackground.ShouldBeTrue();
     }
 
     private async Task<string[]> SetupDownloadingServersAsync()
@@ -487,7 +634,11 @@ public class UpdateUserSettingsEndpointUnitTests
             config.MovieDownloadTasksCount = 0;
         });
         var dbContext = IDbContext;
-        foreach (var library in await dbContext.PlexLibraries.Where(x => x.Type == PlexMediaType.Movie).ToListAsync(CancellationToken))
+        foreach (
+            var library in await dbContext
+                .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
+                .ToListAsync(CancellationToken)
+        )
         {
             var task = FakeData.GetMovieDownloadTask(new Seed(71997 + library.Id)).Generate();
             new[] { task }.SetRelationshipIds(library.PlexServerId, library.Id);
@@ -495,8 +646,13 @@ public class UpdateUserSettingsEndpointUnitTests
         }
         await dbContext.SaveChangesAsync(CancellationToken);
         await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
-            x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading), CancellationToken);
-        return await dbContext.PlexServers.OrderBy(x => x.Id).Select(x => x.MachineIdentifier).ToArrayAsync(CancellationToken);
+            x => x.SetProperty(y => y.DownloadStatus, DownloadStatus.Downloading),
+            CancellationToken
+        );
+        return await dbContext
+            .PlexServers.OrderBy(x => x.Id)
+            .Select(x => x.MachineIdentifier)
+            .ToArrayAsync(CancellationToken);
     }
 
     [Test]
@@ -584,15 +740,12 @@ public class UpdateUserSettingsEndpointUnitTests
             (await second).ValidationErrors.Count.ShouldBe(0);
             (await second).StatusCode.ShouldBe(200);
             settings.DateTimeSettings.TimeZone.ShouldBe("America/New_York");
-            calls.ShouldBe(
-                new[]
-                {
-                    "reschedule Asia/Kathmandu",
-                    "trigger Asia/Kathmandu",
-                    "reschedule America/New_York",
-                    "trigger America/New_York",
-                }
-            );
+            calls.ShouldBe([
+                "reschedule Asia/Kathmandu",
+                "trigger Asia/Kathmandu",
+                "reschedule America/New_York",
+                "trigger America/New_York",
+            ]);
             scheduler.Verify();
         }
         finally
@@ -600,5 +753,18 @@ public class UpdateUserSettingsEndpointUnitTests
             firstRescheduled.TrySetResult(DateTimeOffset.UnixEpoch);
             await first;
         }
+    }
+
+    private sealed class ThrowingResponseStream : MemoryStream
+    {
+        public override void Write(byte[] buffer, int offset, int count) => throw new IOException("response failed");
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            Task.FromException(new IOException("response failed"));
+
+        public override ValueTask WriteAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default
+        ) => ValueTask.FromException(new IOException("response failed"));
     }
 }

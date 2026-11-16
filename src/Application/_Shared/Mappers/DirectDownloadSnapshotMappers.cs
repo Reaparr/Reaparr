@@ -13,18 +13,17 @@ public static class DirectDownloadSnapshotMapper
             TotalFileSize = package.TotalFileSize,
             FileName = package.FileName ?? string.Empty,
             DownloadingFileExtension = package.DownloadingFileExtension,
-            Chunks =
-                package
-                    .Chunks?.Select(x => new DirectDownloadSnapshotChunk
-                    {
-                        Id = x.Id,
-                        Start = x.Start,
-                        End = x.End,
-                        Position = x.Position,
-                        MaxTryAgainOnFailure = x.MaxTryAgainOnFailure,
-                        Timeout = x.Timeout,
-                    })
-                    .ToList()
+            Chunks = package
+                .Chunks?.Select(x => new DirectDownloadSnapshotChunk
+                {
+                    Id = x.Id,
+                    Start = x.Start,
+                    End = x.End,
+                    Position = x.Position,
+                    MaxTryAgainOnFailure = x.MaxTryAgainOnFailure,
+                    Timeout = x.Timeout,
+                })
+                .ToList()
                 ?? [],
             IsSupportDownloadInRange = package.IsSupportDownloadInRange,
         };

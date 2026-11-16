@@ -20,33 +20,29 @@ public sealed class PlexPhotoFolderConfiguration : IEntityTypeConfiguration<Plex
         });
         builder.HasAlternateKey(x => new { x.PlexLibraryId, x.Id });
 
-        builder.ToTable(
-            "PlexPhotoFolders",
-            tableBuilder =>
-                tableBuilder.HasCheckConstraint(
-                    "CK_PlexPhotoFolders_RootShape",
-                    """
-                    (
-                        "ParentId" IS NULL
-                        AND "RelativePath" = ''
-                        AND "RootIdentityKey" IS NOT NULL
-                        AND "RootIdentityKey" <> ''
-                        AND "SourceRootPath" IS NOT NULL
-                        AND "SourceRootPath" <> ''
-                        AND "IsActive" IS NOT NULL
-                    )
-                    OR
-                    (
-                        "ParentId" IS NOT NULL
-                        AND "RelativePath" <> ''
-                        AND "RootIdentityKey" IS NULL
-                        AND "SourceRootPath" IS NULL
-                        AND "PlexApiLocationId" IS NULL
-                        AND "IsActive" IS NULL
-                    )
-                    """
+        builder.ToTable("PlexPhotoFolders", tableBuilder => tableBuilder.HasCheckConstraint(
+                "CK_PlexPhotoFolders_RootShape",
+                """
+                (
+                    "ParentId" IS NULL
+                    AND "RelativePath" = ''
+                    AND "RootIdentityKey" IS NOT NULL
+                    AND "RootIdentityKey" <> ''
+                    AND "SourceRootPath" IS NOT NULL
+                    AND "SourceRootPath" <> ''
+                    AND "IsActive" IS NOT NULL
                 )
-        );
+                OR
+                (
+                    "ParentId" IS NOT NULL
+                    AND "RelativePath" <> ''
+                    AND "RootIdentityKey" IS NULL
+                    AND "SourceRootPath" IS NULL
+                    AND "PlexApiLocationId" IS NULL
+                    AND "IsActive" IS NULL
+                )
+                """
+            ));
 
         builder
             .HasOne(x => x.PlexLibrary)

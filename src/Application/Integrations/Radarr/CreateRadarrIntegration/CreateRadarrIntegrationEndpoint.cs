@@ -29,8 +29,13 @@ public class CreateRadarrIntegrationRequestValidator : Validator<CreateRadarrInt
 public class CreateRadarrIntegrationEndpoint : Endpoint<CreateRadarrIntegrationRequest, ResultDTO<RadarrIntegrationDTO>>
 {
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public CreateRadarrIntegrationEndpoint(IReaparrDbContext dbContext) => _dbContext = dbContext;
+    public CreateRadarrIntegrationEndpoint(IReaparrDbContext dbContext, ITelemetry telemetry)
+    {
+        _dbContext = dbContext;
+        _telemetry = telemetry;
+    }
 
     public override void Configure()
     {
@@ -92,6 +97,8 @@ public class CreateRadarrIntegrationEndpoint : Endpoint<CreateRadarrIntegrationR
         };
         _dbContext.RadarrIntegrations.Add(integration);
         await _dbContext.SaveChangesAsync(ct);
+
+        _telemetry.IntegrationChanged(integration, TelemetryAction.Create, connectionIdentityChanged: false);
 
         var result = Result.Ok(integration).Add201CreatedRequestSuccess("Radarr integration created successfully.");
         await Send.FluentResult(result, model => model.ToDTO(), ct);

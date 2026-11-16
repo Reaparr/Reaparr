@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -9,16 +8,13 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
     public async Task ShouldRunMusicWriterAndPublishScope_WhenEligibleMusicPairExecutes()
     {
         // Arrange
-        await SetupDatabase(
-            963520,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 0;
-            }
-        );
+        await SetupDatabase(963520, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 0;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];
@@ -47,6 +43,15 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
         context
             .SetupGet(x => x.MergedJobDataMap)
             .Returns(new PlexLibraryComparisonJobPayload(owned.Id, remote.Id).ToJobDataMap());
+        context
+            .SetupGet(x => x.JobDetail)
+            .Returns(
+                JobBuilder
+                    .Create<PlexLibraryComparisonJob>()
+                    .WithIdentity(PlexLibraryComparisonJob.GetJobKey(owned.Id, remote.Id))
+                    .Build()
+            );
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -58,10 +63,11 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
             )
             .Returns<ICommand<Result>, CancellationToken>(
                 (cmd, ct) =>
-                    new CompareMusicPlexLibraryCommandHandler(IDbContext, Log).ExecuteAsync(
-                        (CompareMusicPlexLibraryCommand)cmd,
-                        ct
-                    )
+                    new CompareMusicPlexLibraryCommandHandler(
+                        IDbContext,
+                        Log,
+                        Mock.Mock<ITelemetry>().Object
+                    ).ExecuteAsync((CompareMusicPlexLibraryCommand)cmd, ct)
             )
             .Verifiable(Times.Once());
 
@@ -99,14 +105,11 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
     )
     {
         // Arrange
-        await SetupDatabase(
-            963521,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(963521, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -124,6 +127,15 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
         context
             .SetupGet(x => x.MergedJobDataMap)
             .Returns(new PlexLibraryComparisonJobPayload(libraries[1].Id, libraries[0].Id).ToJobDataMap());
+        context
+            .SetupGet(x => x.JobDetail)
+            .Returns(
+                JobBuilder
+                    .Create<PlexLibraryComparisonJob>()
+                    .WithIdentity(PlexLibraryComparisonJob.GetJobKey(libraries[1].Id, libraries[0].Id))
+                    .Build()
+            );
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
 
         // Act
         await Sut.Execute(context.Object);
@@ -160,16 +172,13 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
     )
     {
         // Arrange
-        await SetupDatabase(
-            963522,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = mediaType == PlexMediaType.Movie ? 1 : 0;
-                config.PlexTvShowLibraryCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
-                config.PlexMusicLibraryCount = mediaType == PlexMediaType.MusicArtist ? 1 : 0;
-            }
-        );
+        await SetupDatabase(963522, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = mediaType == PlexMediaType.Movie ? 1 : 0;
+            config.PlexTvShowLibraryCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
+            config.PlexMusicLibraryCount = mediaType == PlexMediaType.MusicArtist ? 1 : 0;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];
         var owned = libraries[1];
@@ -189,7 +198,7 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
                     .WithIdentity(PlexLibraryComparisonJob.GetJobKey(owned.Id, remote.Id))
                     .Build()
             );
-        context.SetupGet(x => x.FireTimeUtc).Returns(new DateTimeOffset(2026, 10, 19, 0, 0, 0, TimeSpan.Zero));
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         var executionData = new Dictionary<object, object>();
         context
             .Setup(x => x.Put(It.IsAny<object>(), It.IsAny<object>()))

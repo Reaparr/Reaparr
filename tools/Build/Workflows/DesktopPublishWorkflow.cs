@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using FastEndpoints;
 using FluentValidation;
+using Reaparr.Environment;
 using Reaparr.Logging;
 
 namespace Reaparr.Build;
@@ -50,44 +51,44 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
         if (string.IsNullOrWhiteSpace(settings.InformationalVersion))
             return Result.Fail<int>("An informational version is required. Pass --informational-version <VERSION>.");
 
+        var telemetryValidationError = DesktopCommandSettings.GetTelemetryValidationError(
+            settings.TelemetryHost,
+            settings.TelemetryProjectToken
+        );
+        if (telemetryValidationError is not null)
+            return Result.Fail<int>(telemetryValidationError);
+
         if (!settings.DryRun)
             await _commandRunner.RequireCommandAsync("dotnet");
 
-        if (!settings.SkipFrontend)
+        if (!settings.SkipFrontend && string.IsNullOrWhiteSpace(settings.FrontendPublicDirectory))
         {
-            var sourceDirectory = GetFrontendPublicDirectory(settings);
-            if (!_fileSystem.Directory.Exists(sourceDirectory))
+            if (!settings.DryRun)
+                await _commandRunner.RequireCommandAsync("bun");
+
+            if (ShouldInstallFrontendDependencies(_paths.ClientAppDirectory))
             {
-                if (!settings.DryRun)
-                    await _commandRunner.RequireCommandAsync("bun");
-
-                if (ShouldInstallFrontendDependencies(_paths.ClientAppDirectory))
-                {
-                    _log.Here()
-                        .Information(
-                            "Installing frontend dependencies in {ClientAppDirectory}",
-                            _paths.ClientAppDirectory
-                        );
-                    if (!settings.DryRun)
-                        await _commandRunner.RunCommandAsync(
-                            "bun",
-                            ["install", "--frozen-lockfile"],
-                            _paths.ClientAppDirectory
-                        );
-                }
-
+                _log.Here()
+                    .Information("Installing frontend dependencies in {ClientAppDirectory}", _paths.ClientAppDirectory);
                 if (!settings.DryRun)
                     await _commandRunner.RunCommandAsync(
                         "bun",
-                        ["run", "generate", "--fail-on-error"],
+                        ["install", "--frozen-lockfile"],
                         _paths.ClientAppDirectory
                     );
             }
-            else
-            {
-                _log.Here()
-                    .Information("Reusing existing frontend output from {FrontendPublicDirectory}", sourceDirectory);
-            }
+
+            if (!settings.DryRun)
+                await _commandRunner.RunCommandAsync(
+                    "bun",
+                    ["run", "generate", "--fail-on-error"],
+                    _paths.ClientAppDirectory,
+                    new Dictionary<string, string?>
+                    {
+                        [EnvKeys.NuxtPublicRpHost] = settings.TelemetryHost ?? string.Empty,
+                        [EnvKeys.NuxtPublicRpKey] = settings.TelemetryProjectToken ?? string.Empty,
+                    }
+                );
         }
 
         if (!settings.SkipRestore && !settings.DryRun)
@@ -110,6 +111,8 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
                     $"-p:PublishProfile={runtime.PublishProfile}",
                     $"-p:Version={settings.Version}",
                     $"-p:InformationalVersion={settings.InformationalVersion}",
+                    $"-p:ReaparrTelemetryHost={(settings.TelemetryHost?.EndsWith("/", StringComparison.Ordinal) == true ? settings.TelemetryHost[..^1] : settings.TelemetryHost ?? string.Empty)}",
+                    $"-p:ReaparrTelemetryProjectToken={settings.TelemetryProjectToken ?? string.Empty}",
                     $"-p:PublishDir={publishDirectory}{_fileSystem.Path.DirectorySeparatorChar}",
                     "-p:CSharpier_Bypass=true",
                 ]
@@ -134,8 +137,7 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
     private void CopyFrontendOutput(string sourceDirectory, string publishDirectory)
     {
         var frontendPath = new BuildDirectoryPath(_fileSystem, sourceDirectory);
-        var wwwrootPath = new BuildDirectoryPath(
-            _fileSystem, _fileSystem.Path.Combine(publishDirectory, "wwwroot"));
+        var wwwrootPath = new BuildDirectoryPath(_fileSystem, _fileSystem.Path.Combine(publishDirectory, "wwwroot"));
         _fileSystemTasks.ClearArtifactDirectory(new BuildDirectoryPath(_fileSystem, _paths.RootDirectory), wwwrootPath);
         _fileSystemTasks.CopyDirectory(frontendPath, wwwrootPath);
     }

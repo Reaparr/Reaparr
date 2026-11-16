@@ -294,7 +294,8 @@
             "ui": "UI",
             "buttons": "Buttons",
             "scratchpad": "Scratchpad",
-            "integrations": "Integrations"
+            "integrations": "Integrations",
+            "telemetry": "Telemetry"
         },
         "notifications-drawer": {
             "clear-notifications": "Clear All Notifications",
@@ -1467,6 +1468,16 @@
                 "media-quality-header": "Media Quality Display",
                 "alert-display-header": "Alert Display Header",
                 "media-comparison-state-header": "Media Comparison States"
+            },
+            "telemetry": {
+                "title": "Telemetry diagnostics",
+                "description": "Each request goes through the Reaparr backend. A successful result means the diagnostic event was accepted for sending, not that PostHog accepted, ingested, or delivered it.",
+                "send-test-event": "Send test event",
+                "backend": "Backend",
+                "frontend": "Frontend",
+                "not-run": "Not run yet",
+                "accepted": "Diagnostic event accepted for sending",
+                "failed": "Diagnostic event was not accepted for sending"
             }
         },
         "empty": {

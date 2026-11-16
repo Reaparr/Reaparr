@@ -43,14 +43,11 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
     public async Task ShouldReturnFailedResult_WhenDecisionResponseIsMissingMediaContainer()
     {
         // Arrange
-        await SetupDatabase(
-            4102,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4102, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         var plexServer = await dbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);
@@ -90,14 +87,11 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
     public async Task ShouldReturnMappedDecisionSummary_WhenDecisionContainsVideoAndAudioStreams()
     {
         // Arrange
-        await SetupDatabase(
-            4103,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4103, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         var plexServer = await dbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);
@@ -139,14 +133,11 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
     public async Task ShouldResolveQualityFromWidth_WhenStreamTitleDoesNotContainAResolution()
     {
         // Arrange
-        await SetupDatabase(
-            4104,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4104, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         var plexServer = await dbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);
@@ -287,14 +278,11 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
     )
     {
         // Arrange
-        await SetupDatabase(
-            4105,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4105, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         var plexServer = await dbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);
@@ -335,14 +323,11 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
     public async Task ShouldChooseHighestAvailableQuality_WhenDecisionContainsMultipleVideoVariants()
     {
         // Arrange
-        await SetupDatabase(
-            4106,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4106, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         var plexServer = await dbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);
@@ -414,14 +399,11 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
     public async Task ShouldSuggestDirectClient_WhenPlexDecidesDirectPlay()
     {
         // Arrange
-        await SetupDatabase(
-            4108,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4108, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         var plexServer = await dbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);
@@ -466,14 +448,11 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
     public async Task ShouldResolveQualityFromFactoryData_WhenDisplayTitleDoesNotMatchDimensions()
     {
         // Arrange
-        await SetupDatabase(
-            4107,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4107, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         var plexServer = await dbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);

@@ -111,8 +111,7 @@ public static partial class FakeData
             var id = guidType switch
             {
                 "imdb" => "tt" + f.Random.Int(10000, 99999),
-                "tmdb" => f.Random.Int(10000, 99999).ToString(),
-                "tvdb" => f.Random.Int(10000, 99999).ToString(),
+                "tmdb" or "tvdb" => f.Random.Int(10000, 99999).ToString(),
                 "plex" => $"plex://{f.PlexMedia().Guid(PlexMediaType.Movie)}",
                 _ => f.Random.Guid().ToString(),
             };
@@ -202,7 +201,7 @@ public static partial class FakeData
             .RuleFor(x => x.Codec, f => GetCodecForStreamType(f, streamType))
             .RuleFor(
                 x => x.Format,
-                (_, x) =>
+                (_, _) =>
                     streamType switch
                     {
                         StreamType.Subtitle => "srt",
@@ -376,9 +375,11 @@ public static partial class FakeData
                 x => x.Stream,
                 f =>
                 {
-                    var streams = new List<LibraryMediaItemStreamDTO>();
-                    streams.Add(GetLibraryMediaItemStreamDTO(seed, StreamType.Video).Generate());
-                    streams.Add(GetLibraryMediaItemStreamDTO(seed, StreamType.Audio).Generate());
+                    var streams = new List<LibraryMediaItemStreamDTO>
+                    {
+                        GetLibraryMediaItemStreamDTO(seed, StreamType.Video).Generate(),
+                        GetLibraryMediaItemStreamDTO(seed, StreamType.Audio).Generate(),
+                    };
                     if (f.Random.Bool())
                     {
                         streams.Add(GetLibraryMediaItemStreamDTO(seed, StreamType.Subtitle).Generate());

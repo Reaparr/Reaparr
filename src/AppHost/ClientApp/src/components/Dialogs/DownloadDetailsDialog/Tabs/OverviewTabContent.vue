@@ -19,13 +19,15 @@
 			</tr>
 			<tr>
 				<td>{{ t('components.download-details-dialog.overview.download-path') }}</td>
-				<td data-cy="download-details-dialog-download-path">
+				<td
+					data-cy="download-details-dialog-download-path">
 					{{ downloadTask.downloadDirectory }}
 				</td>
 			</tr>
 			<tr>
 				<td>{{ t('components.download-details-dialog.overview.destination-path') }}</td>
-				<td data-cy="download-details-dialog-destination-path">
+				<td
+					data-cy="download-details-dialog-destination-path">
 					{{ downloadTask.destinationDirectory }}
 				</td>
 			</tr>

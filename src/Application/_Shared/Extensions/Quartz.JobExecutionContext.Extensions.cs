@@ -2,6 +2,17 @@ namespace Reaparr.Application;
 
 public static partial class QuartzExtensions
 {
+    public static (ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId) GetTelemetryContext(
+        this IJobExecutionContext context
+    )
+    {
+        context.MergedJobDataMap.TryGetValue(TelemetryProtocol.TraceParentMetadata, out var traceParent);
+        context.MergedJobDataMap.TryGetValue(TelemetryProtocol.TraceStateMetadata, out var traceState);
+        ActivityContext.TryParse(traceParent as string, traceState as string, isRemote: true, out var parent);
+        context.MergedJobDataMap.TryGetValue(TelemetryProtocol.SessionIdMetadata, out var sessionId);
+        return (parent, sessionId as string, context.JobDetail.Key.ToString(), context.FireInstanceId);
+    }
+
     public static void SetResult(this IJobExecutionContext context, JobStatus status, ResultBase result) =>
         context.SetResult(status, result.Errors.FirstOrDefault()?.Message);
 

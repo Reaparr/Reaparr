@@ -6,15 +6,12 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
     public async Task ShouldRemoveServerAndLibraryAccess_WhenNoAccessiblePlexServersAreReturned()
     {
         // Arrange
-        await SetupDatabase(
-            66197,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(66197, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
@@ -62,16 +59,13 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
     public async Task ShouldRemoveOnlyTargetAccountAccess_WhenAllAccessibleServersAreRevoked()
     {
         // Arrange
-        await SetupDatabase(
-            66198,
-            config =>
-            {
-                config.PlexAccountCount = 2;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-                config.PlexTvShowLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(66198, config =>
+        {
+            config.PlexAccountCount = 2;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var plexAccounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -125,16 +119,13 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
     public async Task ShouldRemoveServerAndLibraryAccess_WhenPlexReturnsUnauthorized()
     {
         // Arrange
-        await SetupDatabase(
-            66199,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-                config.PlexTvShowLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(66199, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
@@ -177,13 +168,10 @@ public class RefreshPlexServerAccessCommandUnitTests : BaseCommandUnitTest<Refre
     public async Task ShouldReturnOkResult_WhenThereAreAccessiblePlexServers()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            65148,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(65148, config =>
+        {
+            config.PlexAccountCount = 1;
+        });
 
         var plexAccount = await IDbContext.PlexAccounts.FirstOrDefaultAsync(CancellationToken);
         plexAccount.ShouldNotBeNull();

@@ -39,12 +39,19 @@ public class GeneratePlexTokenEndpoint
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public GeneratePlexTokenEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public GeneratePlexTokenEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<GeneratePlexTokenEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -94,6 +101,12 @@ public class GeneratePlexTokenEndpoint
                 NeedsVerificationCode = false,
                 PlexAuthToken = validateResult.Value.AuthenticationToken,
             };
+            _telemetry.PlexAuthenticationProcessed(
+                TelemetryAuthenticationMethod.GenerateToken,
+                req.PlexAccountId,
+                validateResult,
+                new PlexAuthenticationTelemetryDTO { IsValidated = validateResult.Value.IsValidated }
+            );
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
@@ -106,6 +119,11 @@ public class GeneratePlexTokenEndpoint
                 NeedsVerificationCode = true,
                 PlexAuthToken = "",
             };
+            _telemetry.PlexAuthenticationProcessed(
+                TelemetryAuthenticationMethod.GenerateToken,
+                req.PlexAccountId,
+                validateResult
+            );
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
@@ -118,10 +136,20 @@ public class GeneratePlexTokenEndpoint
                 NeedsVerificationCode = false,
                 PlexAuthToken = "",
             };
+            _telemetry.PlexAuthenticationProcessed(
+                TelemetryAuthenticationMethod.GenerateToken,
+                req.PlexAccountId,
+                validateResult
+            );
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
 
+        _telemetry.PlexAuthenticationProcessed(
+            TelemetryAuthenticationMethod.GenerateToken,
+            req.PlexAccountId,
+            validateResult
+        );
         await Send.FluentResult(validateResult.ToResult(), ct);
     }
 }

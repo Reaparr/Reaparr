@@ -6,13 +6,14 @@
     <ItemGroup>
         <PackageReference Include="Autofac" Version="9.1.0" />
         <PackageReference Include="BencodeNET" Version="5.0.0" />
-        <PackageReference Include="CSharpier.MsBuild" Version="1.3.0">
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="FastEndpoints" Version="8.3.0" />
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\Application.Contracts\Application.Contracts.csproj" />
         <ProjectReference Include="..\Data.Contracts\Data.Contracts.csproj" />
         <ProjectReference Include="..\Identity.Contracts\Identity.Contracts.csproj" />
         <ProjectReference Include="..\Domain\Domain.csproj" />
@@ -27,6 +28,7 @@
         <Using Include="FluentValidation" />
         <Using Include="Microsoft.AspNetCore.Http" />
         <Using Include="Microsoft.EntityFrameworkCore" />
+        <Using Include="Reaparr.Application.Contracts" />
         <Using Include="Reaparr.Data.Contracts" />
         <Using Include="Reaparr.Domain" />
         <Using Include="Reaparr.FluentResultExtensions" />

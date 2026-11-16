@@ -1,10 +1,10 @@
 using System.Net;
-using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog.Sinks.TestCorrelator;
+using MediaTypeHeaderValue = System.Net.Http.Headers.MediaTypeHeaderValue;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -15,17 +15,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldStreamOriginalPartWithoutExposingSourcePath()
     {
         // Arrange
-        await SetupDatabase(
-            84001,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84001, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         const string sourcePath = "/private/plex/photos/secret/original.jpg";
@@ -36,7 +33,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         handler.Responses[0].Content.Headers.ContentLength = payload.Length + 100;
         var clientFactory = CreateClientFactory(handler);
 
@@ -48,7 +45,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -74,17 +71,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldConvertFromOriginalPartWithRequestedDimensionsAndTransparentFormat()
     {
         // Arrange
-        await SetupDatabase(
-            84002,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84002, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         const string sourcePath = "/private/plex/photos/secret/transparent.png";
@@ -105,7 +99,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/png");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         var clientFactory = CreateClientFactory(handler);
 
         // Act
@@ -118,7 +112,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 Width = 320,
                 Height = 240,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -148,17 +142,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldConvertWithRequestedDimensions_WhenSourceDimensionsAreAbsent()
     {
         // Arrange
-        await SetupDatabase(
-            84003,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84003, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         const string sourcePath = "/private/plex/photos/secret/unknown-dimensions.jpg";
@@ -179,7 +170,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
 
         // Act
@@ -192,7 +183,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 Width = 320,
                 Height = 240,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -217,18 +208,15 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldRejectWrongKindAndForeignScopeBeforeRequestingPlex()
     {
         // Arrange
-        await SetupDatabase(
-            84004,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(84004, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -253,7 +241,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = clip.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         var foreignScope = await TestEndpointHandleAsync(
             new GetPhotoAssetImageRequest
@@ -262,7 +250,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = foreignAsset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -278,17 +266,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldRejectDisabledLibraryBeforeRequestingPlex()
     {
         // Arrange
-        await SetupDatabase(
-            84005,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84005, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         await dbContext
@@ -307,7 +292,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -325,17 +310,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldNotExposeCredentialsOrPaths_WhenPlexFails(HttpStatusCode upstreamStatus, int expectedStatus)
     {
         // Arrange
-        await SetupDatabase(
-            84006,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84006, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         const string sourcePath = "/private/plex/photos/secret/failure.jpg";
@@ -356,7 +338,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -385,10 +367,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services =>
-                services.AddMemoryCache().AddSingleton<IHttpClientFactory>(Mock.Mock<IHttpClientFactory>().Object)
+        var result = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton(Mock.Mock<IHttpClientFactory>().Object)
         );
 
         // Assert
@@ -418,9 +398,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var result = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -438,22 +417,19 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldReturnNotModifiedWithoutRequestingPlex_WhenETagMatches(string etagPrefix)
     {
         // Arrange
-        await SetupDatabase(
-            84007,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84007, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         var request = new GetPhotoAssetImageRequest
         {
@@ -461,9 +437,8 @@ public class GetPhotoAssetImageEndpointUnitTests
             AssetId = asset.Id,
             Representation = PhotoImageRepresentation.Original,
         };
-        var initial = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var initial = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var etag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
@@ -476,7 +451,7 @@ public class GetPhotoAssetImageEndpointUnitTests
 
         // Assert
         endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status304NotModified);
-        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe(Array.Empty<byte>());
+        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe([]);
         endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBe(etag);
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.Private.ShouldBeTrue();
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.MaxAge.ShouldBe(TimeSpan.FromDays(3));
@@ -491,16 +466,13 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldReturnNewImage_WhenMetadataOrRepresentationChanges(bool changeRepresentation)
     {
         // Arrange
-        await SetupDatabase(
-            84008,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84008, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         await dbContext
@@ -514,7 +486,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([3, 4]) }
         );
         foreach (var response in handler.Responses)
-            response.Content.Headers.ContentType = new("image/jpeg");
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler, expectedCalls: 2);
         var request = new GetPhotoAssetImageRequest
         {
@@ -522,19 +494,13 @@ public class GetPhotoAssetImageEndpointUnitTests
             AssetId = asset.Id,
             Representation = PhotoImageRepresentation.Original,
         };
-        var initial = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var initial = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var originalETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
         if (changeRepresentation)
-            request = request with
-            {
-                Representation = PhotoImageRepresentation.Converted,
-                Width = 320,
-                Height = 240,
-            };
+            request = request with { Representation = PhotoImageRepresentation.Converted, Width = 320, Height = 240 };
         else
         {
             var updatedAt = (asset.UpdatedAt ?? asset.AddedAt).AddSeconds(1);
@@ -563,22 +529,19 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldReturnNotModifiedWithoutRequestingPlex_WhenConvertedETagMatches()
     {
         // Arrange
-        await SetupDatabase(
-            84014,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84014, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         var request = new GetPhotoAssetImageRequest
         {
@@ -588,9 +551,8 @@ public class GetPhotoAssetImageEndpointUnitTests
             Width = 320,
             Height = 240,
         };
-        var initial = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var initial = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var etag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
@@ -603,7 +565,7 @@ public class GetPhotoAssetImageEndpointUnitTests
 
         // Assert
         endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status304NotModified);
-        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe(Array.Empty<byte>());
+        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe([]);
         endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBe(etag);
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.Private.ShouldBeTrue();
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.MaxAge.ShouldBe(TimeSpan.FromDays(3));
@@ -615,16 +577,13 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldFetchNewConvertedImage_WhenConditionalETagHasDifferentTargetDimensions()
     {
         // Arrange
-        await SetupDatabase(
-            84015,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84015, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var handler = new StubHttpMessageHandler(
@@ -632,7 +591,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([3, 4]) }
         );
         foreach (var response in handler.Responses)
-            response.Content.Headers.ContentType = new("image/jpeg");
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler, expectedCalls: 2);
         var request = new GetPhotoAssetImageRequest
         {
@@ -642,20 +601,15 @@ public class GetPhotoAssetImageEndpointUnitTests
             Width = 320,
             Height = 240,
         };
-        var initial = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var initial = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var firstETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
         firstETag.ShouldContain("320x240");
         var endpoint = initial.Endpoint;
         endpoint.HttpContext.Response.Clear();
-        request = request with
-        {
-            Width = 640,
-            Height = 480,
-        };
+        request = request with { Width = 640, Height = 480 };
         endpoint.HttpContext.Request.Headers.IfNoneMatch = firstETag;
 
         // Act
@@ -680,22 +634,19 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldRejectConditionalRequest_WhenAssetIsDeletedOrLibraryIsDisabled(bool disableLibrary)
     {
         // Arrange
-        await SetupDatabase(
-            84009,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84009, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2]) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         var request = new GetPhotoAssetImageRequest
         {
@@ -703,9 +654,8 @@ public class GetPhotoAssetImageEndpointUnitTests
             AssetId = asset.Id,
             Representation = PhotoImageRepresentation.Original,
         };
-        var initial = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var initial = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var etag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
@@ -737,16 +687,13 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldReuseSuccessfulConnectionUntilCacheEntryIsEvicted()
     {
         // Arrange
-        await SetupDatabase(
-            84010,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84010, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var originalConnection = (
@@ -760,7 +707,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([3]) }
         );
         foreach (var response in handler.Responses)
-            response.Content.Headers.ContentType = new("image/jpeg");
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler, expectedCalls: 3);
         var request = new GetPhotoAssetImageRequest
         {
@@ -768,10 +715,8 @@ public class GetPhotoAssetImageEndpointUnitTests
             AssetId = asset.Id,
             Representation = PhotoImageRepresentation.Original,
         };
-        var initial = await TestEndpointHandleAsync(
-            request,
-            services =>
-                services.AddSingleton<IMemoryCache>(cache).AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var initial = await TestEndpointHandleAsync(request, services =>
+            services.AddSingleton<IMemoryCache>(cache).AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         await dbContext
@@ -807,16 +752,13 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldRetryConnectionSelection_WhenAnUncachedFailureBecomesAvailable()
     {
         // Arrange
-        await SetupDatabase(
-            84011,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84011, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         await dbContext
@@ -825,7 +767,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([7, 8]) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         var request = new GetPhotoAssetImageRequest
         {
@@ -833,9 +775,8 @@ public class GetPhotoAssetImageEndpointUnitTests
             AssetId = asset.Id,
             Representation = PhotoImageRepresentation.Original,
         };
-        var unavailable = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var unavailable = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         unavailable.StatusCode.ShouldBe(StatusCodes.Status504GatewayTimeout);
         unavailable.Endpoint.HttpContext.Response.Headers.CacheControl.ToString().ShouldBe("no-store");
@@ -861,23 +802,20 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldRemoveSuccessfulCacheHeaders_WhenReadingTheUpstreamImageFails()
     {
         // Arrange
-        await SetupDatabase(
-            84012,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84012, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var failure = new IOException("The upstream image stream failed.");
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnreadableImageContent(failure) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         using var logContext = TestCorrelator.CreateContext();
 
@@ -889,7 +827,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object).AddSingleton<ILogger>(Serilog.Log.Logger)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object).AddSingleton(Serilog.Log.Logger)
         );
 
         // Assert
@@ -898,7 +836,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         result.Endpoint.HttpContext.Response.Headers.CacheControl.ToString().ShouldBe("no-store");
         result.Endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBeEmpty();
         handler.RequestUris.Count.ShouldBe(1);
-        var warnings = TestCorrelator.GetLogEventsFromCurrentContext()
+        var warnings = TestCorrelator
+            .GetLogEventsFromCurrentContext()
             .Where(x => x.MessageTemplate.Text == "{Message}" && x.Exception is not null)
             .ToList();
         warnings.Count.ShouldBe(1);
@@ -910,32 +849,30 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldAbortPartialImageAndPreserveFailure_WhenUpstreamStreamFailsAfterWritingBytes()
     {
         // Arrange
-        await SetupDatabase(
-            84013,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84013, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         byte[] payload = [1, 2, 3];
         var failure = new IOException("The upstream connection ended during the image.");
         var handler = new StubHttpMessageHandler(
-            new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new FailingImageStream(payload, failure)) }
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new FailingImageStream(payload, failure)),
+            }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         using var body = new MemoryStream();
         var lifetime = new Mock<IHttpRequestLifetimeFeature>(MockBehavior.Strict);
         lifetime.Setup(x => x.Abort()).Verifiable(Times.Once());
         var endpoint = SetupEndpointUnitTest<GetPhotoAssetImageEndpoint>(services =>
-            services.AddMemoryCache()
-                .AddSingleton<IHttpClientFactory>(clientFactory.Object)
-                .AddSingleton<ILogger>(Serilog.Log.Logger)
+            services.AddMemoryCache().AddSingleton(clientFactory.Object).AddSingleton(Serilog.Log.Logger)
         );
         endpoint.HttpContext.Features.Set<IHttpResponseFeature>(new StreamingResponseFeature(body));
         endpoint.HttpContext.Response.Body = body;
@@ -961,7 +898,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
         endpoint.HttpContext.Response.ContentType.ShouldBe("image/jpeg");
         handler.RequestUris.Select(x => x.AbsolutePath).ShouldBe([asset.Key]);
-        var warnings = TestCorrelator.GetLogEventsFromCurrentContext()
+        var warnings = TestCorrelator
+            .GetLogEventsFromCurrentContext()
             .Where(x => x.MessageTemplate.Text == "Photo image transport failed after response started: {Message}")
             .ToList();
         warnings.Count.ShouldBe(1);
@@ -998,9 +936,13 @@ public class GetPhotoAssetImageEndpointUnitTests
         }
 
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
         public override void Flush() => throw new NotSupportedException();
+
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
         public override void SetLength(long value) => throw new NotSupportedException();
+
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
@@ -1032,7 +974,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         private readonly Queue<HttpResponseMessage> _responses = new(responses);
 
         public List<Uri> RequestUris { get; } = [];
-        public IReadOnlyList<HttpResponseMessage> Responses { get; } = responses;
+        public HttpResponseMessage[] Responses { get; } = responses;
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,

@@ -8,14 +8,11 @@ public class NotifyArrAppsOnStartupCommandUnitTests : BaseCommandUnitTest<Notify
     public async Task ShouldTestConfiguredIntegrationsConcurrentlyAndSkipTestAllWhenConnectionsFail()
     {
         // Arrange
-        await SetupDatabase(
-            90001,
-            config =>
-            {
-                config.RadarrIntegrationCount = 2;
-                config.SonarrIntegrationCount = 2;
-            }
-        );
+        await SetupDatabase(90001, config =>
+        {
+            config.RadarrIntegrationCount = 2;
+            config.SonarrIntegrationCount = 2;
+        });
         var dbContext = IDbContext;
         var radarrIds = await dbContext
             .RadarrIntegrations.OrderBy(x => x.Id)
@@ -106,14 +103,11 @@ public class NotifyArrAppsOnStartupCommandUnitTests : BaseCommandUnitTest<Notify
     public async Task ShouldCallAppSpecificTestAllAfterSuccessfulConnectionTests()
     {
         // Arrange
-        await SetupDatabase(
-            90002,
-            config =>
-            {
-                config.RadarrIntegrationCount = 1;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(90002, config =>
+        {
+            config.RadarrIntegrationCount = 1;
+            config.SonarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var radarrId = await dbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
         var sonarrId = await dbContext.SonarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);

@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
-using Moq;
 using Quartz.Impl.Matchers;
 
 namespace Reaparr.IntegrationTests;
@@ -13,42 +12,39 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
         // Arrange
         // Keep the generated Plex hierarchy and file payloads; control only external identity/layout metadata.
         var fixture = new MusicResponseFixture();
-        using var container = await CreateContainer(
-            10623,
-            config =>
+        using var container = await CreateContainer(10623, config =>
+        {
+            config.DatabaseOptions = database =>
             {
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexAccountCount = 1;
-                    database.PlexServerCount = 2;
-                    database.PlexMusicLibraryCount = 1;
-                    database.PlexMovieLibraryCount = 1;
-                    database.PlexTvShowLibraryCount = 1;
-                    database.MovieCount = 1;
-                    database.TvShowCount = 1;
-                    database.TvShowSeasonCount = 1;
-                    database.TvShowEpisodeCount = 1;
-                };
-                config.BaseMockHttpClientOptions = plex =>
-                {
-                    plex.GenerateFromDatabase = true;
-                    plex.PlexServerAccessCount = 0;
-                    plex.MusicLibraryCount = 1;
-                    plex.ArtistsPerLibraryCount = 3;
-                    plex.AlbumsPerArtistCount = 1;
-                    plex.TracksPerAlbumCount = 2;
-                };
-                config.OverrideServices = builder =>
-                {
-                    builder
-                        .Register(context => new HttpClient(
-                            new MusicFixtureHandler(context.Resolve<Mock<HttpMessageHandler>>().Object, fixture)
-                        ))
-                        .As<HttpClient>()
-                        .InstancePerDependency();
-                };
-            }
-        );
+                database.PlexAccountCount = 1;
+                database.PlexServerCount = 2;
+                database.PlexMusicLibraryCount = 1;
+                database.PlexMovieLibraryCount = 1;
+                database.PlexTvShowLibraryCount = 1;
+                database.MovieCount = 1;
+                database.TvShowCount = 1;
+                database.TvShowSeasonCount = 1;
+                database.TvShowEpisodeCount = 1;
+            };
+            config.BaseMockHttpClientOptions = plex =>
+            {
+                plex.GenerateFromDatabase = true;
+                plex.PlexServerAccessCount = 0;
+                plex.MusicLibraryCount = 1;
+                plex.ArtistsPerLibraryCount = 3;
+                plex.AlbumsPerArtistCount = 1;
+                plex.TracksPerAlbumCount = 2;
+            };
+            config.OverrideServices = builder =>
+            {
+                builder
+                    .Register(context => new HttpClient(
+                        new MusicFixtureHandler(context.Resolve<Mock<HttpMessageHandler>>().Object, fixture)
+                    ))
+                    .As<HttpClient>()
+                    .InstancePerDependency();
+            };
+        });
         var dbFactory = container.Resolve<IReaparrDbContextFactory>();
         var scheduler = container.BackgroundJobScheduler;
         var client = container.GetApiClient();
@@ -292,7 +288,7 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
 
         // Assert
         observer.Started.ToArray().ShouldBe([new PlexLibraryComparisonJobPayload(owned.Id, remote.Id)]);
-        observer.Completed.ToArray().ShouldBe([(JobStatus.Completed, (string?)null)]);
+        observer.Completed.ToArray().ShouldBe([(JobStatus.Completed, null)]);
         using var compared = await dbFactory.CreateAsync();
         var synced = await compared
             .PlexLibraries.Where(x => x.Type == PlexMediaType.MusicArtist)
@@ -331,7 +327,7 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
             .Select(x => (x.DiscNumber, x.TrackNumber, x.Title, x.MusicBrainzReleaseTrackId))
             .Distinct()
             .OrderBy(x => x.TrackNumber)
-            .ShouldBe([((int?)1, (int?)1, "Track 1", (string?)null), ((int?)1, (int?)2, "Track 2", (string?)null)]);
+            .ShouldBe([(1, 1, "Track 1", null), ((int?)1, (int?)2, "Track 2", (string?)null)]);
         var remoteArtists = artists.Where(x => x.PlexLibraryId == remote.Id).ToDictionary(x => x.Title);
         var ownedArtists = artists.Where(x => x.PlexLibraryId == owned.Id).ToDictionary(x => x.Title);
         var matchedTitles = new[] { "Alpha Complete", "B Partial" };
@@ -441,7 +437,7 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
             PlexMediaComparisonState.Partial,
             PlexMediaComparisonState.Missing,
         };
-        foreach (var sort in new[] { (string?)null, "title:asc" })
+        foreach (var sort in new[] { null, "title:asc" })
         {
             for (var page = 1; page <= 3; page++)
             {
@@ -755,9 +751,7 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
             )
         ).ShouldNotBeNull();
         await WaitForDatabaseConditionAsync(() => observer.Completed.Count == 2, 60, 100);
-        observer
-            .Completed.ToArray()
-            .ShouldBe([(JobStatus.Completed, (string?)null), (JobStatus.Completed, (string?)null)]);
+        observer.Completed.ToArray().ShouldBe([(JobStatus.Completed, null), (JobStatus.Completed, null)]);
         observer
             .Started.ToArray()
             .ShouldBe([

@@ -9,15 +9,12 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
     public async Task ShouldReturnBoundedOrderedTvShowPage_WithNestedQualitiesAndMetadata()
     {
         // Arrange
-        await SetupDatabase(
-            84101,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 3;
-            }
-        );
+        await SetupDatabase(84101, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 3;
+        });
         var dbContext = IDbContext;
         var tvShows = await dbContext
             .PlexTvShows.Include(x => x.Qualities)
@@ -67,15 +64,12 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
     public async Task ShouldBuildNavigationIndexesFromFullOrderedSnapshot_WhenFirstPageIsBounded()
     {
         // Arrange
-        await SetupDatabase(
-            84103,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 3;
-            }
-        );
+        await SetupDatabase(84103, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 3;
+        });
         var dbContext = IDbContext;
         var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = tvShows[0].PlexLibraryId;
@@ -112,15 +106,12 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
     public async Task ShouldReturnNavigationIndexes_WhenRequestingLaterPage()
     {
         // Arrange
-        await SetupDatabase(
-            84105,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 3;
-            }
-        );
+        await SetupDatabase(84105, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 3;
+        });
         var dbContext = IDbContext;
         var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = tvShows[0].PlexLibraryId;
@@ -163,15 +154,12 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
     public async Task ShouldReturnNavigationIndexes_ForEverySupportedSort(string sort)
     {
         // Arrange
-        await SetupDatabase(
-            84104,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 3;
-            }
-        );
+        await SetupDatabase(84104, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 3;
+        });
         var dbContext = IDbContext;
         var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = tvShows[0].PlexLibraryId;
@@ -215,15 +203,12 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
     public async Task ShouldFallbackOnce_WhenSnapshotIsMissing()
     {
         // Arrange
-        await SetupDatabase(
-            84102,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        await SetupDatabase(84102, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+        });
         var libraryId = await IDbContext.PlexTvShows.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
         var filter = CreateFilter(libraryId);
         var expected = new PagedMediaQueryResult
@@ -253,10 +238,7 @@ public class GetTvShowMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMed
     public async Task ShouldFallbackOnce_WhenComparisonFilterRequested()
     {
         // Arrange
-        var filter = CreateFilter(0) with
-        {
-            ComparisonState = PlexMediaComparisonState.Missing,
-        };
+        var filter = CreateFilter(0) with { ComparisonState = PlexMediaComparisonState.Missing };
         var expected = new PagedMediaQueryResult
         {
             QueryHash = filter.QueryHash,

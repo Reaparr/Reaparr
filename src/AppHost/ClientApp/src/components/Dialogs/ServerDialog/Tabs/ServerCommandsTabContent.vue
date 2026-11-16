@@ -61,6 +61,7 @@ import { ref, onUnmounted } from '#imports';
 
 const dialogStore = useDialogStore();
 const serverStore = useServerStore();
+const telemetry = useTelemetry();
 
 const props = defineProps<{
 	plexServerId: number;
@@ -73,6 +74,7 @@ const deleteLoading = ref(false);
 
 function syncServerLibraries(forceMediaRefresh: boolean): void {
 	const plexServerId = props.plexServerId;
+	telemetry.serverRefreshRequested(plexServerId, forceMediaRefresh);
 	set(syncLoading, true);
 	useSubscription(
 		plexServerApi
@@ -98,6 +100,7 @@ function syncServerLibraries(forceMediaRefresh: boolean): void {
 
 function inspectServer(): void {
 	set(inspectLoading, true);
+	telemetry.serverInspectionRequested(props.plexServerId);
 	useSubscription(
 		plexServerApi.queueInspectPlexServerJobEndpoint(props.plexServerId).subscribe({
 			next: () => {

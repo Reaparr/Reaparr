@@ -111,38 +111,26 @@ public static class MediaSpecMapper
 
     public static string MapToFormattedChannels(this int channels)
     {
-        switch (channels)
+        if (channels is < 0 or > 12)
+            _log.Here().Warning("Unrecognized audio channel count: {Channels}", channels);
+
+        return channels switch
         {
-            case 0:
-                return "";
-            case 1:
-                return "1.0";
-            case 2:
-                return "2.0";
-            case 3:
-                return "2.1";
-            case 4:
-                return "4.0";
-            case 5:
-                return "5.0";
-            case 6:
-                return "5.1";
-            case 7:
-                return "6.1";
-            case 8:
-                return "7.1";
-            case 9:
-                return "9.1";
-            case 10:
-                return "9.1";
-            case 11:
-                return "11.1";
-            case 12:
-                return "11.1";
-            default:
-                _log.Here().Warning("Unrecognized audio channel count: {Channels}", channels);
-                return $"{channels}.0";
-        }
+            0 => "",
+            1 => "1.0",
+            2 => "2.0",
+            3 => "2.1",
+            4 => "4.0",
+            5 => "5.0",
+            6 => "5.1",
+            7 => "6.1",
+            8 => "7.1",
+            9 => "9.1",
+            10 => "9.1",
+            11 => "11.1",
+            12 => "11.1",
+            _ => $"{channels}.0",
+        };
     }
 
     /// <summary>

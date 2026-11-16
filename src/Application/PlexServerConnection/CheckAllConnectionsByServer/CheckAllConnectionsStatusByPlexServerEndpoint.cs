@@ -15,10 +15,12 @@ public class CheckAllConnectionsStatusByPlexServerEndpoint
     : Endpoint<CheckAllConnectionsStatusByPlexServerRequest, List<PlexServerStatusDTO>>
 {
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public CheckAllConnectionsStatusByPlexServerEndpoint(ICommandExecutor commandExecutor)
+    public CheckAllConnectionsStatusByPlexServerEndpoint(ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -39,6 +41,7 @@ public class CheckAllConnectionsStatusByPlexServerEndpoint
             new CheckAllConnectionsStatusByPlexServerCommand(req.PlexServerId),
             ct
         );
+        _telemetry.ConnectionCheckFinished(req.PlexServerId, result);
         if (result.IsFailed)
             await Send.FluentResult(result.ToResult(), ct);
         else

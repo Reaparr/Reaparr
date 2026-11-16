@@ -87,7 +87,7 @@ public static class AudioQualityExtensions
         return false;
     }
 
-    public static PlexMusicTrackMediaData? GetBestAudioFile(this IEnumerable<PlexMusicTrackMediaData> files)
+    public static PlexMusicTrackMediaData? GetBestAudioFile(this ICollection<PlexMusicTrackMediaData> files)
     {
         PlexMusicTrackMediaData? best = null;
         foreach (var candidate in files)

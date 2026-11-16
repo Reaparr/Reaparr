@@ -7,40 +7,37 @@ public class PauseDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(21345);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.DownloadSpeedLimitInKib = 500;
+            config.DatabaseOptions = x =>
             {
-                config.DownloadSpeedLimitInKib = 500;
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexMovieLibraryCount = 1;
-                    x.MovieCount = 1;
-                    x.MovieDownloadTasksCount = 1;
-                    x.DownloadFileSizeInMb = 50;
-                };
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexMovieLibraryCount = 1;
+                x.MovieCount = 1;
+                x.MovieDownloadTasksCount = 1;
+                x.DownloadFileSizeInMb = 50;
+            };
 
-                config.HttpClientOptions = (x, _) =>
-                {
-                    x.SetupIdentityRequest(seed);
-                };
+            config.HttpClientOptions = (x, _) =>
+            {
+                x.SetupIdentityRequest(seed);
+            };
 
-                config.MockDownloadServiceFactory = MockDownloadService.PausableFactory;
+            config.MockDownloadServiceFactory = MockDownloadService.PausableFactory;
 
-                config.FileSystemOptions = (system, dbContext) =>
-                {
-                    var downloadTask = dbContext.DownloadTaskMovieFile.First();
-                    downloadTask.DownloadFilePath.ShouldNotBeNullOrEmpty();
+            config.FileSystemOptions = (system, dbContext) =>
+            {
+                var downloadTask = dbContext.DownloadTaskMovieFile.First();
+                downloadTask.DownloadFilePath.ShouldNotBeNullOrEmpty();
 
-                    var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
-                    directoryPath.ShouldNotBeNullOrEmpty();
-                    system.Directory.CreateDirectory(directoryPath);
-                    system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(50.0 / 4.0));
-                };
-            }
-        );
+                var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
+                directoryPath.ShouldNotBeNullOrEmpty();
+                system.Directory.CreateDirectory(directoryPath);
+                system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(50.0 / 4.0));
+            };
+        });
 
         var downloadTasks = await container.DbContext.GetAllDownloadTasksByServerAsync(
             cancellationToken: CancellationToken

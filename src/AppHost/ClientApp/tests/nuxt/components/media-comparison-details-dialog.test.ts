@@ -14,7 +14,14 @@ import {
 import MediaComparisonDetailsDialog from '@/components/Dialogs/MediaComparisonDetailsDialog.vue';
 import MediaVideoQuality from '@/components/MediaOverview/MediaVideoQuality.vue';
 import MediaAudioQuality from '@/components/MediaOverview/MediaAudioQuality.vue';
+import { FrontendTelemetryAction } from '@composables/telemetry/events';
 import messages from '@/lang/en-US.json';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 const CardDialog = defineComponent({
 	name: 'QCardDialog',
@@ -109,6 +116,7 @@ describe('MediaComparisonDetailsDialog - missing Music leaves and request lifeti
 	beforeEach(() => {
 		pinia = createPinia();
 		setActivePinia(pinia);
+		capture.mockClear();
 	});
 	afterEach(() => {
 		mounted.forEach((wrapper) => wrapper.unmount());
@@ -180,6 +188,7 @@ describe('MediaComparisonDetailsDialog - missing Music leaves and request lifeti
 		expect(wrapper.findAll('thead th')).toHaveLength(5);
 		expect(wrapper.findAll('.mdi-music-note-off-outline')).toHaveLength(4);
 		expect(wrapper.find('.mdi-video-off-outline').exists()).toBe(false);
+		expect(capture.mock.calls.some(([, payload]) => payload.action === FrontendTelemetryAction.Download)).toBe(false);
 	});
 
 	test('Should deduplicate ancestor/descendant selections while preserving equal IDs at different locations', async () => {

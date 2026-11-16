@@ -6,15 +6,12 @@ public class CompareMoviePlexLibraryCommandValidationUnitTests : BaseCommandUnit
     public async Task ShouldReturnFailure_WhenRemoteLibraryDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            76,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(76, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var ownedLibrary = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         await SetOwnedOverrideAsync(ownedLibrary.PlexServerId, true);
@@ -34,15 +31,12 @@ public class CompareMoviePlexLibraryCommandValidationUnitTests : BaseCommandUnit
     public async Task ShouldReturnFailure_WhenOwnedLibraryDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            77,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(77, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var remoteLibrary = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         await SetOwnedOverrideAsync(remoteLibrary.PlexServerId, false);
@@ -62,15 +56,12 @@ public class CompareMoviePlexLibraryCommandValidationUnitTests : BaseCommandUnit
     public async Task ShouldReturnFailure_WhenRemoteLibraryIsOwned()
     {
         // Arrange
-        await SetupDatabase(
-            78,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(78, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -95,15 +86,12 @@ public class CompareMoviePlexLibraryCommandValidationUnitTests : BaseCommandUnit
     public async Task ShouldReturnFailure_WhenOwnedLibraryIsRemote()
     {
         // Arrange
-        await SetupDatabase(
-            79,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(79, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -128,16 +116,13 @@ public class CompareMoviePlexLibraryCommandValidationUnitTests : BaseCommandUnit
     public async Task ShouldReturnFailure_WhenLibrariesAreNotBothMovieLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            80,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(80, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var remoteMovieLibrary = await IDbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
@@ -172,15 +157,12 @@ public class CompareTvShowPlexLibraryCommandValidationUnitTests : BaseCommandUni
     public async Task ShouldReturnFailure_WhenRemoteLibraryDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            81,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(81, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var ownedLibrary = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         await SetOwnedOverrideAsync(ownedLibrary.PlexServerId, true);
@@ -200,15 +182,12 @@ public class CompareTvShowPlexLibraryCommandValidationUnitTests : BaseCommandUni
     public async Task ShouldReturnFailure_WhenOwnedLibraryDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            82,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(82, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var remoteLibrary = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         await SetOwnedOverrideAsync(remoteLibrary.PlexServerId, false);
@@ -228,15 +207,12 @@ public class CompareTvShowPlexLibraryCommandValidationUnitTests : BaseCommandUni
     public async Task ShouldReturnFailure_WhenRemoteLibraryIsOwned()
     {
         // Arrange
-        await SetupDatabase(
-            83,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(83, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -261,15 +237,12 @@ public class CompareTvShowPlexLibraryCommandValidationUnitTests : BaseCommandUni
     public async Task ShouldReturnFailure_WhenOwnedLibraryIsRemote()
     {
         // Arrange
-        await SetupDatabase(
-            84,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(84, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -294,16 +267,13 @@ public class CompareTvShowPlexLibraryCommandValidationUnitTests : BaseCommandUni
     public async Task ShouldReturnFailure_WhenLibrariesAreNotBothTvShowLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            85,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(85, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var remoteTvLibrary = await IDbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.TvShow)

@@ -32,10 +32,12 @@ public class UpdatePlexAccountByIdEndpointRequestValidator : Validator<UpdatePle
 public class UpdatePlexAccountByIdEndpoint : Endpoint<UpdatePlexAccountByIdEndpointRequest, PlexAccountDTO>
 {
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public UpdatePlexAccountByIdEndpoint(IReaparrDbContext dbContext)
+    public UpdatePlexAccountByIdEndpoint(IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -62,11 +64,12 @@ public class UpdatePlexAccountByIdEndpoint : Endpoint<UpdatePlexAccountByIdEndpo
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexAccount), plexAccountDTO.Id), ct);
             return;
         }
-
         var updatedPlexAccount = plexAccountDTO.ToModel();
 
         _dbContext.Entry(accountInDb).CurrentValues.SetValues(updatedPlexAccount);
         await _dbContext.SaveChangesAsync(ct);
+
+        _telemetry.PlexAccountChanged(TelemetryAction.Update, accountInDb.Id, accountInDb);
 
         await Send.FluentResult(Result.Ok(accountInDb), x => x.ToDTO(), ct);
     }

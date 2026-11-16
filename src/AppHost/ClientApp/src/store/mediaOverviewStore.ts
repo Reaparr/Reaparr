@@ -18,6 +18,7 @@ import {
 import type { IMediaOverviewSort } from '@composables/event-bus';
 import { type IMetaDataMediaFilter, type ISelection, type ISortOption, StoreNames } from '@interfaces';
 import { plexLibraryApi, plexMediaApi } from '@api';
+
 import { defaultIfEmpty, filter, map, shareReplay, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { BehaviorSubject, defer, finalize, forkJoin, type Observable, of, Subject } from 'rxjs';
 import { useLibraryStore, useSettingsStore } from '@store';
@@ -149,6 +150,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 	// Media requests can be replaced by search/filter refreshes without interrupting
 	// the library lookup and metadata required by the active initialization.
 
+	const telemetry = useTelemetry();
 	const actions = {
 		cancelPendingRequests() {
 			Log.debug('Cancelling pending media requests');
@@ -454,6 +456,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				tap((value) => {
 					state.metadata.countryId = value;
 					set(countryIdQuery, value > 0 ? value : undefined);
+					telemetry.mediaCountryFilterChanged(value, state.libraryId, get(getters.getMediaType));
 				}),
 				switchMap(() => actions.refreshMediaData()),
 			);
@@ -465,6 +468,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				tap((value) => {
 					state.metadata.roleId = value;
 					set(roleIdQuery, value > 0 ? value : undefined);
+					telemetry.mediaRoleFilterChanged(value, state.libraryId, get(getters.getMediaType));
 				}),
 				switchMap(() => actions.refreshMediaData()),
 			);
@@ -476,6 +480,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				tap((value) => {
 					state.metadata.genreId = value;
 					set(genreIdQuery, value > 0 ? value : undefined);
+					telemetry.mediaGenreFilterChanged(value, state.libraryId, get(getters.getMediaType));
 				}),
 				switchMap(() => actions.refreshMediaData()),
 			);
@@ -487,20 +492,24 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 				tap((value) => {
 					state.metadata.qualityId = value;
 					set(qualityIdQuery, value > 0 ? value : undefined);
+					telemetry.mediaQualityFilterChanged(value, state.libraryId, get(getters.getMediaType));
 				}),
 				switchMap(() => actions.refreshMediaData()),
 			);
 		},
+
 		setComparisonStateFilter(comparisonState?: PlexMediaComparisonState | null): Observable<PlexMediaStatisticsDTO | null> {
 			return of(comparisonState).pipe(
 				map(normalizeComparisonState),
 				tap((value) => {
 					state.metadata.comparisonState = value;
 					set(comparisonStateQuery, value ?? undefined);
+					telemetry.mediaComparisonFilterChanged(value, state.libraryId, get(getters.getMediaType));
 				}),
 				switchMap(() => actions.refreshMediaData()),
 			);
 		},
+
 		resetMetaDataFilterState() {
 			state.metadata = {
 				countryId: 0,
@@ -589,26 +598,32 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		},
 		setSelection(selection: ISelection) {
 			state.selection = selection;
+			telemetry.mediaSelectionChanged(selection, state.libraryId, get(getters.getMediaType));
 		},
 		setSelectionRange(min: number, max: number) {
-			actions.setSelection({
+			const keys = get(getters.getMediaItems)
+				.filter((x) => x && x.sortIndex >= min && x.sortIndex <= max)
+				.map((x) => x.id);
+			state.selection = {
 				indexKey: state.selection.indexKey,
-				keys: get(getters.getMediaItems)
-					.filter((x) => x && x.sortIndex >= min && x.sortIndex <= max)
-					.map((x) => x.id),
+				keys,
 				allSelected: false,
-			} as ISelection);
+			} as ISelection;
+			telemetry.mediaRangeSelected({ min, max, count: keys.length }, state.libraryId, get(getters.getMediaType));
 		},
 		setRootSelected(value: boolean) {
-			actions.setSelection({
+			const keys = value ? get(getters.getMediaItems).map((x) => x.id) : [];
+			state.selection = {
 				indexKey: state.selection?.indexKey ?? 0,
-				keys: value ? get(getters.getMediaItems).map((x) => x.id) : [],
+				keys,
 				allSelected: value,
-			} as ISelection);
+			} as ISelection;
+			telemetry.mediaRootSelectionChanged(state.selection, state.libraryId, get(getters.getMediaType));
 		},
 		clearSort() {
 			state.sortedState = createDefaultMediaOverviewSort();
 			set(sortQuery, undefined);
+			telemetry.mediaSortReset(state.libraryId, get(getters.getMediaType));
 			return actions.refreshMediaData();
 		},
 		setCurrentScrollIndex(scrollIndex: number) {
@@ -631,6 +646,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 		setFilterQuery(query: string): Observable<PlexMediaStatisticsDTO | null> {
 			state.filterQuery = query;
 			set(searchQuery, query);
+			telemetry.mediaSearchChanged(query, state.libraryId, get(getters.getMediaType));
 			return actions.refreshMediaData();
 		},
 		clearFilter(): Observable<PlexMediaStatisticsDTO | null> {
@@ -646,6 +662,7 @@ export const useMediaOverviewStore = defineStore(StoreNames.MediaOverviewStore, 
 			// If default sort then undefined
 			const sort = get(getters.getSortDSL);
 			set(sortQuery, sort !== serializeFlexSortDsl(createDefaultMediaOverviewSort()) ? sort : undefined);
+			telemetry.mediaSortChanged(state.sortedState, state.libraryId, get(getters.getMediaType));
 			useSubscription(actions.refreshMediaData().subscribe());
 		},
 		$reset() {

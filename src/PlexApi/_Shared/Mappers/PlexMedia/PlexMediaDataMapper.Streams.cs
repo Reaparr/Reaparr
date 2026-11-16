@@ -85,7 +85,7 @@ public static partial class PlexMediaDataMapper
         if (!string.IsNullOrEmpty(sourceFormat))
             return sourceFormat;
 
-        return stream.Codec?.Trim().ToLowerInvariant() switch
+        return stream.Codec.Trim().ToLowerInvariant() switch
         {
             "srt" => "srt",
             "lrc" => "lrc",

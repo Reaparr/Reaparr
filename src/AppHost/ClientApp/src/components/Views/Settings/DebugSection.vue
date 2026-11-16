@@ -12,7 +12,8 @@
 				:text="$t('help.settings.advanced.debug-section.debug-mode.text')">
 				<q-toggle
 					v-model:model-value="settingsStore.debugSettings.debugModeEnabled"
-					size="lg" />
+					size="lg"
+					@update:model-value="onDebugSettingChanged" />
 			</HelpRow>
 		</HelpGroup>
 	</QSection>
@@ -21,6 +22,11 @@
 <script setup lang="ts">
 import { useSettingsStore } from '@store';
 
+const telemetry = useTelemetry();
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
+
+function onDebugSettingChanged(): void {
+	telemetry.debugSettingsChanged();
+}
 </script>

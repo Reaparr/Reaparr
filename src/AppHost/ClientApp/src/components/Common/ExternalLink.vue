@@ -15,6 +15,7 @@ import { sendDesktopMessage } from '@composables';
 import { useGlobalStore } from '@store';
 import { DesktopMessageType } from '@dto';
 
+const telemetry = useTelemetry();
 const props = defineProps<{
 	href?: string;
 	cy?: string;
@@ -23,8 +24,9 @@ const props = defineProps<{
 const globalStore = useGlobalStore();
 
 function onClick(): void {
+	telemetry.externalLinkOpened(props.href);
 	if (globalStore.isDesktopMode) {
-		Log.debug('Desktop ExternalLink Click', props.href);
+		Log.debug('Desktop ExternalLink Click');
 		sendDesktopMessage({
 			type: DesktopMessageType.ExternalLink,
 			value: props.href ?? 'unknown-link',

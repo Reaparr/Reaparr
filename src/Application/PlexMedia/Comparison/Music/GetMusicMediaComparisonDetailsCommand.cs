@@ -213,10 +213,10 @@ public class GetMusicMediaComparisonDetailsCommandHandler
                 var ownedTrack = hit is null ? null : ownedTracks.GetValueOrDefault(hit.OwnedPlexMediaId);
                 var remoteRepresentative = GetBestAudioFile(track);
                 var ownedRepresentative = ownedTrack is null ? null : GetBestAudioFile(ownedTrack);
-                var remoteFile = hit?.RemotePlexMediaDataId is int remoteDataId
+                var remoteFile = hit?.RemotePlexMediaDataId is { } remoteDataId
                     ? track.MediaDataList.SingleOrDefault(x => x.Id == remoteDataId) ?? remoteRepresentative
                     : remoteRepresentative;
-                var ownedFile = hit?.OwnedPlexMediaDataId is int ownedDataId
+                var ownedFile = hit?.OwnedPlexMediaDataId is { } ownedDataId
                     ? ownedTrack?.MediaDataList.SingleOrDefault(x => x.Id == ownedDataId) ?? ownedRepresentative
                     : ownedRepresentative;
                 var trackState =
@@ -247,8 +247,7 @@ public class GetMusicMediaComparisonDetailsCommandHandler
                         RemotePlexMediaDataId = remoteFile?.Id ?? hit?.RemotePlexMediaDataId,
                         OwnedPlexMediaDataId = ownedFile?.Id ?? hit?.OwnedPlexMediaDataId,
                         RemoteLocation = remoteFile?.GetFileName ?? GetFirstFileName(track),
-                        OwnedLocation =
-                            ownedFile?.GetFileName
+                        OwnedLocation = ownedFile?.GetFileName
                             ?? (ownedTrack is null ? string.Empty : GetFirstFileName(ownedTrack)),
                         RemotePlexLibraryId = track.PlexLibraryId,
                         RemotePlexServerId = track.PlexServerId,

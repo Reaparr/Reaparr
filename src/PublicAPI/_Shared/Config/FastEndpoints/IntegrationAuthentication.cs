@@ -2,7 +2,6 @@ using System.Linq.Expressions;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
 

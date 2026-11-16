@@ -13,6 +13,7 @@ public class DownloadJob : IJob
     private readonly IDownloadTaskUpdateDispatcher _downloadTaskUpdateDispatcher;
     private readonly IEventPublisher _eventPublisher;
     private readonly IIndex<PlexDownloadClientType, IPlexDownloadClient> _plexDownloadClientFactory;
+    private readonly ITelemetry _telemetry;
 
     public DownloadJob(
         ILogger log,
@@ -20,7 +21,8 @@ public class DownloadJob : IJob
         IReaparrDbContext dbContext,
         IDownloadTaskUpdateDispatcher downloadTaskUpdateDispatcher,
         IEventPublisher eventPublisher,
-        IIndex<PlexDownloadClientType, IPlexDownloadClient> plexDownloadClientFactory
+        IIndex<PlexDownloadClientType, IPlexDownloadClient> plexDownloadClientFactory,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<DownloadJob>();
@@ -29,12 +31,14 @@ public class DownloadJob : IJob
         _downloadTaskUpdateDispatcher = downloadTaskUpdateDispatcher;
         _eventPublisher = eventPublisher;
         _plexDownloadClientFactory = plexDownloadClientFactory;
+        _telemetry = telemetry;
     }
 
     public static JobKey GetJobKey(Guid id) => new($"{nameof(DownloadJob)}_{id}", nameof(DownloadJob));
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.Download, context.GetTelemetryContext());
         var payloadResult = context.GetRequiredPayload<DownloadJobPayload>();
         if (payloadResult.IsFailed)
         {
@@ -77,17 +81,8 @@ public class DownloadJob : IJob
             }
 
             var result = await SetDownloadAndDestination(downloadTask, token);
-            if (result.IsCancelled)
-            {
-                result.LogWarning();
-                return result.ToResult();
-            }
-
-            if (result.IsFailed)
-            {
-                result.LogError();
-                return result.ToResult();
-            }
+            if (result.IsCancelledOrFailed)
+                return result.LogIfFailed().ToResult();
 
             downloadTask = result.Value;
 
@@ -118,6 +113,7 @@ public class DownloadJob : IJob
             }
 
             var clientType = clientTypeResult.Value;
+            _telemetry.SetDownloadJobContext(downloadTask, clientType);
             _log.Here()
                 .Information(
                     "Creating {ClientType} download client for {DownloadTaskFullTitle}",
@@ -138,7 +134,6 @@ public class DownloadJob : IJob
             }
 
             await using var plexDownloadClient = _plexDownloadClientFactory[clientType];
-
             var startResult = await plexDownloadClient.Start(downloadTask.ToKey(), token);
 
             if (startResult.IsCancelled)
@@ -187,15 +182,13 @@ public class DownloadJob : IJob
             return startResult;
         });
 
-        if (executionResult.IsCancelled)
+        _telemetry.CompleteDownloadJob(Activity.Current, executionResult);
+
+        if (executionResult.IsCancelledOrFailed)
         {
-            context.SetResult(JobStatus.Cancelled, executionResult);
-            executionResult.LogWarning();
-        }
-        else if (executionResult.IsFailed)
-        {
-            context.SetResult(JobStatus.Failed, executionResult);
-            executionResult.LogError();
+            context.SetResult(executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, executionResult);
+            executionResult.LogIfFailed();
+            _telemetry.CaptureErrors(executionResult, TelemetryActivity.Download);
         }
 
         _log.Here()

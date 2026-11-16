@@ -21,12 +21,19 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public SetServerEnabledEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public SetServerEnabledEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<SetServerEnabledEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -50,6 +57,11 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexServer), req.PlexServerId), ct);
             return;
         }
+        var previousIsEnabled = await _dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
+            .Where(x => x.Id == req.PlexServerId)
+            .Select(x => (bool?)x.IsEnabled)
+            .FirstOrDefaultAsync(ct);
 
         var updateCount = await _dbContext
             .PlexServers.IgnoreIsEnabledFilter()
@@ -80,6 +92,14 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
             return;
         }
 
+        if (updateCount > 0 && previousIsEnabled != req.IsEnabled)
+        {
+            _telemetry.PlexServerChanged(
+                req.IsEnabled ? TelemetryAction.Enabled : TelemetryAction.Disabled,
+                plexServer.Id,
+                plexServer
+            );
+        }
         var rebuildResult = await _commandExecutor.Send(new QueueMediaOverviewRebuildCommand(), ct);
         rebuildResult.LogIfFailed();
         if (rebuildResult.IsFailed)

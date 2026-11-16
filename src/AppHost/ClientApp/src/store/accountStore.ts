@@ -32,6 +32,7 @@ export const useAccountStore = defineStore(StoreNames.AccountStore, () => {
 	const libraryStore = useLibraryStore();
 	const signalRStore = useSignalrStore();
 
+	const telemetry = useTelemetry();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			// Listen for refresh notifications
@@ -54,6 +55,7 @@ export const useAccountStore = defineStore(StoreNames.AccountStore, () => {
 			);
 		},
 		reSyncServer(serverId: number) {
+			telemetry.serverAccountsRefreshRequested(serverId);
 			state.refreshingServerIds.add(serverId);
 			return plexServerApi.refreshPlexServerAccountsAccessEndpoint(serverId).pipe(
 				switchMap((result) => {
@@ -71,6 +73,7 @@ export const useAccountStore = defineStore(StoreNames.AccountStore, () => {
 			);
 		},
 		reSyncAccount(accountId: number) {
+			telemetry.accountRefreshRequested(accountId);
 			state.accessSyncLoading = true;
 			state.accessSyncLoadingAccountId = accountId;
 			return plexAccountApi.refreshPlexAccountAccessEndpoint(accountId).pipe(

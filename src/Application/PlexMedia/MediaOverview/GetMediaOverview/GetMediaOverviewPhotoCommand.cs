@@ -107,9 +107,10 @@ public sealed class GetMediaOverviewPhotoCommandHandler
         stopwatch.Restart();
         var totalCount = await snapshots.CountAsync(cancellationToken);
         // Assets may belong to several matching albums; count each physical asset only once.
+        var memberships = context.PlexPhotoAlbumMemberships;
         var mediaSize = await context
             .PlexPhotoMediaData.Where(asset =>
-                context.PlexPhotoAlbumMemberships.Any(membership =>
+                memberships.Any(membership =>
                     membership.PlexPhotoMediaDataId == asset.Id
                     && snapshots.Any(snapshot => snapshot.PlexPhotoAlbumId == membership.PlexPhotoAlbumId)
                 )

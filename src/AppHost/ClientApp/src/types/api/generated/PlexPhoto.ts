@@ -35,12 +35,12 @@ export class PlexPhoto {
   getPhotoAlbumsEndpoint = (
     query?: {
       /** @format int32 */
-      page?: number | null;
+      page?: null | number;
       /** @format int32 */
-      plexLibraryId?: number | null;
+      plexLibraryId?: null | number;
       /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
+      size?: null | number;
+      sort?: null | string;
     },
     params: RequestParams = {},
   ) =>
@@ -63,13 +63,13 @@ export class PlexPhoto {
   getPhotoAssetsEndpoint = (
     query?: {
       /** @format int32 */
-      page?: number | null;
+      page?: null | number;
       /** @format int32 */
-      plexLibraryId?: number | null;
+      plexLibraryId?: null | number;
       /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
-      unmappedOnly?: boolean | null;
+      size?: null | number;
+      sort?: null | string;
+      unmappedOnly?: null | boolean;
     },
     params: RequestParams = {},
   ) =>
@@ -92,11 +92,11 @@ export class PlexPhoto {
   searchPhotoAssetsEndpoint = (
     query?: {
       /** @format int32 */
-      page?: number | null;
-      q?: string | null;
+      page?: null | number;
+      q?: null | string;
       /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
+      size?: null | number;
+      sort?: null | string;
     },
     params: RequestParams = {},
   ) =>
@@ -121,10 +121,10 @@ export class PlexPhoto {
     albumId: number,
     query?: {
       /** @format int32 */
-      page?: number | null;
+      page?: null | number;
       /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
+      size?: null | number;
+      sort?: null | string;
     },
     params: RequestParams = {},
   ) =>
@@ -149,9 +149,9 @@ export class PlexPhoto {
     assetId: number,
     query?: {
       /** @format int32 */
-      membershipPage?: number | null;
+      membershipPage?: null | number;
       /** @format int32 */
-      membershipSize?: number | null;
+      membershipSize?: null | number;
     },
     params: RequestParams = {},
   ) =>
@@ -177,11 +177,11 @@ export class PlexPhoto {
     assetId: number,
     query: {
       /** @format int32 */
-      height?: number | null;
+      height?: null | number;
       /** @example "original" */
       representation: PhotoImageRepresentation;
       /** @format int32 */
-      width?: number | null;
+      width?: null | number;
     },
     params: RequestParams = {},
   ) =>
@@ -206,14 +206,14 @@ export class PlexPhoto {
     folderId: number,
     query?: {
       /** @format int32 */
-      assetPage?: number | null;
+      assetPage?: null | number;
       /** @format int32 */
-      assetSize?: number | null;
+      assetSize?: null | number;
       /** @format int32 */
-      folderPage?: number | null;
+      folderPage?: null | number;
       /** @format int32 */
-      folderSize?: number | null;
-      sort?: string | null;
+      folderSize?: null | number;
+      sort?: null | string;
     },
     params: RequestParams = {},
   ) =>
@@ -237,10 +237,10 @@ export class PlexPhoto {
     plexLibraryId: number,
     query?: {
       /** @format int32 */
-      page?: number | null;
+      page?: null | number;
       /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
+      size?: null | number;
+      sort?: null | string;
     },
     params: RequestParams = {},
   ) =>
@@ -257,32 +257,32 @@ export class PlexPhoto {
 export class PlexPhotoPaths {
   static getPhotoAlbumsEndpoint = (query?: {
     /** @format int32 */
-    page?: number | null;
+    page?: null | number;
     /** @format int32 */
-    plexLibraryId?: number | null;
+    plexLibraryId?: null | number;
     /** @format int32 */
-    size?: number | null;
-    sort?: string | null;
+    size?: null | number;
+    sort?: null | string;
   }) => queryString.stringifyUrl({ url: `/api/PlexPhoto/albums`, query });
 
   static getPhotoAssetsEndpoint = (query?: {
     /** @format int32 */
-    page?: number | null;
+    page?: null | number;
     /** @format int32 */
-    plexLibraryId?: number | null;
+    plexLibraryId?: null | number;
     /** @format int32 */
-    size?: number | null;
-    sort?: string | null;
-    unmappedOnly?: boolean | null;
+    size?: null | number;
+    sort?: null | string;
+    unmappedOnly?: null | boolean;
   }) => queryString.stringifyUrl({ url: `/api/PlexPhoto/assets`, query });
 
   static searchPhotoAssetsEndpoint = (query?: {
     /** @format int32 */
-    page?: number | null;
-    q?: string | null;
+    page?: null | number;
+    q?: null | string;
     /** @format int32 */
-    size?: number | null;
-    sort?: string | null;
+    size?: null | number;
+    sort?: null | string;
   }) =>
     queryString.stringifyUrl({ url: `/api/PlexPhoto/assets/search`, query });
 
@@ -291,10 +291,10 @@ export class PlexPhotoPaths {
     albumId: number,
     query?: {
       /** @format int32 */
-      page?: number | null;
+      page?: null | number;
       /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
+      size?: null | number;
+      sort?: null | string;
     },
   ) =>
     queryString.stringifyUrl({
@@ -307,9 +307,9 @@ export class PlexPhotoPaths {
     assetId: number,
     query?: {
       /** @format int32 */
-      membershipPage?: number | null;
+      membershipPage?: null | number;
       /** @format int32 */
-      membershipSize?: number | null;
+      membershipSize?: null | number;
     },
   ) =>
     queryString.stringifyUrl({
@@ -322,11 +322,11 @@ export class PlexPhotoPaths {
     assetId: number,
     query: {
       /** @format int32 */
-      height?: number | null;
+      height?: null | number;
       /** @example "original" */
       representation: PhotoImageRepresentation;
       /** @format int32 */
-      width?: number | null;
+      width?: null | number;
     },
   ) =>
     queryString.stringifyUrl({
@@ -339,14 +339,14 @@ export class PlexPhotoPaths {
     folderId: number,
     query?: {
       /** @format int32 */
-      assetPage?: number | null;
+      assetPage?: null | number;
       /** @format int32 */
-      assetSize?: number | null;
+      assetSize?: null | number;
       /** @format int32 */
-      folderPage?: number | null;
+      folderPage?: null | number;
       /** @format int32 */
-      folderSize?: number | null;
-      sort?: string | null;
+      folderSize?: null | number;
+      sort?: null | string;
     },
   ) =>
     queryString.stringifyUrl({
@@ -358,10 +358,10 @@ export class PlexPhotoPaths {
     plexLibraryId: number,
     query?: {
       /** @format int32 */
-      page?: number | null;
+      page?: null | number;
       /** @format int32 */
-      size?: number | null;
-      sort?: string | null;
+      size?: null | number;
+      sort?: null | string;
     },
   ) =>
     queryString.stringifyUrl({

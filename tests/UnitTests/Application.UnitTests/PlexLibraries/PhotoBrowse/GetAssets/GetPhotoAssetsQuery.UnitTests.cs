@@ -16,15 +16,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     public async Task ShouldReturnScopedTotalsInOneAggregate_WhenPagingUnmappedAssets(int assetCount, int page)
     {
         // Arrange
-        await SetupDatabase(
-            71020,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 3;
-            }
-        );
+        await SetupDatabase(71020, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 3;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -39,22 +36,26 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
         assets.Count.ShouldBe(3);
         for (var index = 0; index < assets.Count; index++)
         {
-            assets[index].Title = "Same title";
+            var asset = assets[index];
+            var assetId = asset.Id;
+            var assetSize = index * 100L;
+            asset.Title = "Same title";
             await dbContext
-                .PlexPhotoMediaData.Where(x => x.Id == assets[index].Id)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Size, index * 100L), CancellationToken);
+                .PlexPhotoMediaData.Where(x => x.Id == assetId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Size, assetSize), CancellationToken);
             if (index < assetCount)
-                assets[index].PlexPhotoFolderId = null;
+                asset.PlexPhotoFolderId = null;
         }
         await dbContext.SaveChangesAsync(CancellationToken);
         var expectedAssets = assets.Take(assetCount).ToList();
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
         using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var subscriptions = commandSubscriptions;
         using var listeners = DiagnosticListener
             .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
             .Subscribe(listener =>
-                commandSubscriptions.Add(
+                subscriptions.Add(
                     listener
                         .Select(entry => entry.Value!)
                         .OfType<CommandExecutedEventData>()
@@ -94,10 +95,11 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
         using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var subscriptions = commandSubscriptions;
         using var listeners = DiagnosticListener
             .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
             .Subscribe(listener =>
-                commandSubscriptions.Add(
+                subscriptions.Add(
                     listener
                         .Select(entry => entry.Value!)
                         .OfType<CommandExecutedEventData>()
@@ -107,12 +109,8 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
             );
 
         // Act
-        var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 100, SortType.Title)
-        );
-        var scopedResult = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(fixture.LibraryId, 1, 100, SortType.Title)
-        );
+        var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new GetPhotoAssetsQuery(null));
+        var scopedResult = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new GetPhotoAssetsQuery(fixture.LibraryId));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -195,17 +193,14 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
     private async Task<(int LibraryId, List<PlexPhotoMediaData> Assets)> ArrangeEligibleLibraryMetricsAsync()
     {
-        await SetupDatabase(
-            71023,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 3;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 2;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71023, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 3;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -229,16 +224,13 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
     private async Task<(int LibraryId, List<int> AssetIds)> ArrangeZeroByteLibraryAsync(int imageCount, int clipCount)
     {
-        await SetupDatabase(
-            71024,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = imageCount;
-                config.PhotoClipCount = clipCount;
-            }
-        );
+        await SetupDatabase(71024, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = imageCount;
+            config.PhotoClipCount = clipCount;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
         await dbContext.PlexPhotoMediaData.ExecuteUpdateAsync(
@@ -256,16 +248,13 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
     private async Task<UniqueAssetFixture> ArrangeUniqueAssetFixtureAsync()
     {
-        await SetupDatabase(
-            71002,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 3;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71002, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 3;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext
             .PlexPhotoMediaData.OrderBy(x => x.Title)
@@ -335,15 +324,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     public async Task ShouldSortNaturalTiesInBothDirectionsAndReturnEmptyBoundedPages()
     {
         // Arrange
-        await SetupDatabase(
-            71009,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 4;
-            }
-        );
+        await SetupDatabase(71009, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexPhotoMediaData.ExecuteUpdateAsync(
             x => x.SetProperty(y => y.Title, "Same title"),
@@ -352,20 +338,16 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
 
         // Act
-        var ascending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 1, SortType.Title)
-        );
+        var ascending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new GetPhotoAssetsQuery(null, 1, 1));
         var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAssetsQuery(null, 1, 1, SortType.Title, SortDirection.Desc)
         );
-        var emptyPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 100, 2, SortType.Title)
-        );
+        var emptyPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new GetPhotoAssetsQuery(null, 100, 2));
         var invalidSize = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, MediaQueryFilter.MaximumPageSize + 1, SortType.Title)
+            new GetPhotoAssetsQuery(null, 1, MediaQueryFilter.MaximumPageSize + 1)
         );
         var overflowPage = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, int.MaxValue, MediaQueryFilter.MaximumPageSize, SortType.Title)
+            new GetPhotoAssetsQuery(null, int.MaxValue)
         );
         var invalidSort = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAssetsQuery(null, 1, 1, (SortType)999)
@@ -414,15 +396,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     )
     {
         // Arrange
-        await SetupDatabase(
-            71012,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 4;
-            }
-        );
+        await SetupDatabase(71012, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).Take(4).ToListAsync(CancellationToken);
         var date = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -436,13 +415,16 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
         var titles = new[] { "Zulu", "Alpha", "Charlie", "Bravo" };
         for (var index = 0; index < assets.Count; index++)
         {
+            var asset = assets[index];
+            var assetId = asset.Id;
             var value = values[index];
+            var assetTitle = titles[index];
             await dbContext
-                .PlexPhotoMediaData.Where(x => x.Id == assets[index].Id)
+                .PlexPhotoMediaData.Where(x => x.Id == assetId)
                 .ExecuteUpdateAsync(
                     setters =>
                         setters
-                            .SetProperty(x => x.Title, titles[index])
+                            .SetProperty(x => x.Title, assetTitle)
                             .SetProperty(x => x.Duration, value.Duration)
                             .SetProperty(x => x.Size, value.Size)
                             .SetProperty(x => x.AddedAt, value.AddedAt)
@@ -484,15 +466,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     public async Task ShouldExcludeDisabledServersFromAggregateAndRejectExplicitRequests()
     {
         // Arrange
-        await SetupDatabase(
-            71010,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(71010, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -518,15 +497,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     public async Task ShouldReturnOnlyNullFolderAssets_WhenUnmappedOnlyIsScopedToLibrary()
     {
         // Arrange
-        await SetupDatabase(
-            71011,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 3;
-            }
-        );
+        await SetupDatabase(71011, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 3;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -557,9 +533,7 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
         var scoped = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAssetsQuery(library.Id, 1, 100, SortType.Title, SortDirection.Asc, true)
         );
-        var aggregate = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAssetsQuery(null, 1, 100, SortType.Title)
-        );
+        var aggregate = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new GetPhotoAssetsQuery(null));
         var invalidAggregate = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAssetsQuery(null, 1, 100, SortType.Title, SortDirection.Asc, true)
         );

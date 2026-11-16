@@ -11,6 +11,11 @@ public class StopDownloadTaskEndpointUnitTests
         var guid = Guid.NewGuid();
 
         Mock.SetupCommand(It.IsAny<StopDownloadTaskCommand>).ReturnsAsync(Result.Ok());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.DownloadControlProcessed(TelemetryAction.Stop, guid, It.Is<ResultBase>(r => r.IsSuccess), true)
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -30,6 +35,7 @@ public class StopDownloadTaskEndpointUnitTests
                     ),
                 Times.Once
             );
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]

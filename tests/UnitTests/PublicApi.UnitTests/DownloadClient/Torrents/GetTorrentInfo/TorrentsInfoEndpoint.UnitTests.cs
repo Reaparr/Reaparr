@@ -1,6 +1,4 @@
-using Reaparr.Application.Contracts;
 using Reaparr.Data.Contracts;
-using Reaparr.PublicAPI.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 
@@ -16,17 +14,14 @@ public class TorrentsInfoEndpointUnitTests
         // Arrange
         const string category = "Custom Radarr";
         const string hash = "hash-custom-radarr";
-        await SetupDatabase(
-            5107,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(5107, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -64,18 +59,15 @@ public class TorrentsInfoEndpointUnitTests
         // Arrange
         const string category = "Custom Sonarr";
         const string hash = "hash-custom-sonarr";
-        await SetupDatabase(
-            5108,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(5108, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.SonarrIntegrationCount = 1;
+        });
 
         var dbContext = IDbContext;
         var episodeFile = await dbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
@@ -116,19 +108,16 @@ public class TorrentsInfoEndpointUnitTests
         // Arrange
         const string category = "custom-radarr-episode";
         const string hash = "hash-radarr-episode";
-        await SetupDatabase(
-            5109,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(5109, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
 
         var dbContext = IDbContext;
         var episodeFile = await dbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
@@ -250,17 +239,14 @@ public class TorrentsInfoEndpointUnitTests
     public async Task ShouldReturnEmptyList_WhenServerIsOwned()
     {
         // Arrange
-        await SetupDatabase(
-            5106,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(5106, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -326,15 +312,12 @@ public class TorrentsInfoEndpointUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            5138,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 2;
-                config.RadarrIntegrationCount = 2;
-            }
-        );
+        await SetupDatabase(5138, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 2;
+            config.RadarrIntegrationCount = 2;
+        });
         var dbContext = IDbContext;
         var integrations = await dbContext.RadarrIntegrations.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var files = await dbContext
@@ -412,17 +395,14 @@ public class TorrentsInfoEndpointUnitTests
         string? PersistedHash
     )> PrepareAndExecuteTorrentsInfoTest(int seed, string hash, DownloadStatus downloadStatus)
     {
-        await SetupDatabase(
-            seed,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(seed, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);

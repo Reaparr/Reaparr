@@ -55,6 +55,24 @@ public class UpdateRadarrIntegrationEndpointUnitTests
         updated.ProvisioningState.ShouldBe(IntegrationProvisioningState.ChangesPending);
         updated.QBittorrentApiKey.ShouldBe("qbt_23456789ABCDEFGHIJKLMNPQ");
         updated.TorznabApiKey.ShouldBe("0123456789abcdef0123456789abcdef");
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.IntegrationChanged(
+                        It.Is<RadarrIntegration>(value =>
+                            value.Id == integration.Id
+                            && value.DisplayName == "Updated Radarr"
+                            && value.BaseUrl == "https://updated-radarr.example.com"
+                            && value.RadarrApiKey == "new-key"
+                            && value.Category == "new-category"
+                            && value.DownloadFolderId == FolderTypeDefaults.DefaultDownloadFolderId
+                            && value.ProvisioningState == IntegrationProvisioningState.ChangesPending
+                        ),
+                        TelemetryAction.Update,
+                        true
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
@@ -107,6 +125,20 @@ public class UpdateRadarrIntegrationEndpointUnitTests
         updated.LastConnectionTestHttpStatusCode.ShouldBeNull();
         updated.LastConnectionTestErrorMessage.ShouldBeNull();
         updated.LastConnectionTestedAt.ShouldBeNull();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.IntegrationChanged(
+                        It.Is<RadarrIntegration>(value =>
+                            value.Id == integration.Id
+                            && value.RadarrApiKey == "new-key"
+                            && value.ProvisioningState == IntegrationProvisioningState.ChangesPending
+                        ),
+                        TelemetryAction.Update,
+                        true
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
@@ -159,10 +191,24 @@ public class UpdateRadarrIntegrationEndpointUnitTests
         updated.LastConnectionTestHttpStatusCode.ShouldBe(StatusCodes.Status200OK);
         updated.LastConnectionTestErrorMessage.ShouldBeNull();
         updated.LastConnectionTestedAt.ShouldBe(testedAt);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.IntegrationChanged(
+                        It.Is<RadarrIntegration>(value =>
+                            value.Id == integration.Id
+                            && value.DisplayName == "Renamed Radarr"
+                            && value.ProvisioningState == IntegrationProvisioningState.Configured
+                        ),
+                        TelemetryAction.Update,
+                        false
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
-    public async Task ShouldPreserveConnectionEvidence_WhenUrlOnlyAddsTrailingSlash()
+    public async Task ShouldPreserveConnectionEvidenceAndSuppressTelemetry_WhenUrlAndApiKeyOnlyChangeByNormalization()
     {
         // Arrange
         await SetupDatabase(55307);
@@ -173,7 +219,7 @@ public class UpdateRadarrIntegrationEndpointUnitTests
             Id = Guid.Parse("00000000-0000-0000-0000-000000055307"),
             DisplayName = "Radarr",
             BaseUrl = "https://radarr.example.com/",
-            RadarrApiKey = "key",
+            RadarrApiKey = " key ",
             QBittorrentApiKey = "qbt_23456789ABCDEFGHIJKLMNPQ",
             TorznabApiKey = "0123456789abcdef0123456789abcdef",
             Category = "category",
@@ -191,7 +237,7 @@ public class UpdateRadarrIntegrationEndpointUnitTests
             IntegrationId = integration.Id,
             Name = "Radarr",
             Url = "https://radarr.example.com///",
-            ApiKey = "key",
+            ApiKey = " key ",
             Category = "category",
             DownloadFolderId = FolderTypeDefaults.DefaultDownloadFolderId,
         };
@@ -206,11 +252,18 @@ public class UpdateRadarrIntegrationEndpointUnitTests
         endpointResult.Response!.IsSuccess.ShouldBeTrue();
         endpointResult.Response!.Errors.Count.ShouldBe(0);
         updated.BaseUrl.ShouldBe("https://radarr.example.com");
+        updated.RadarrApiKey.ShouldBe("key");
+        endpointResult.Response.Value.ShouldNotBeNull().ApiKey.ShouldBe("key");
         updated.ProvisioningState.ShouldBe(IntegrationProvisioningState.Configured);
         updated.LastConnectionTestStatus.ShouldBe(TestConnectionStatus.Success);
         updated.LastConnectionTestHttpStatusCode.ShouldBe(StatusCodes.Status200OK);
         updated.LastConnectionTestErrorMessage.ShouldBeNull();
         updated.LastConnectionTestedAt.ShouldBe(testedAt);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.IntegrationChanged(It.IsAny<RadarrIntegration>(), It.IsAny<TelemetryAction>(), It.IsAny<bool>()),
+                Times.Never()
+            );
     }
 
     [Test]

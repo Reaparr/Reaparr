@@ -140,7 +140,8 @@
 						clickable
 						tag="a"
 						href="https://github.com/Reaparr/Reaparr"
-						target="_blank">
+						target="_blank"
+						@click="openGithub">
 						<q-item-section avatar>
 							<q-icon name="mdi-github" />
 						</q-item-section>
@@ -170,6 +171,7 @@ import { useGlobalStore, useDialogStore, useUpdateStore } from '@store';
 import { DialogType } from '@enums';
 import { useClipboard } from '@vueuse/core';
 
+const telemetry = useTelemetry();
 const globalStore = useGlobalStore();
 const dialogStore = useDialogStore();
 const updateStore = useUpdateStore();
@@ -179,7 +181,7 @@ const { copy } = useClipboard({ legacy: true });
 const githubLabel = 'GitHub';
 const discordLabel = 'Discord';
 
-defineProps<{
+const props = defineProps<{
 	showNavigationDrawerState?: boolean;
 }>();
 
@@ -188,6 +190,7 @@ const emit = defineEmits<{
 }>();
 
 function showNavigationDrawer(): void {
+	telemetry.navigationDrawerToggled(props.showNavigationDrawerState === true);
 	emit('show-navigation');
 }
 
@@ -196,7 +199,12 @@ function showNotificationsDrawer(): void {
 }
 
 function openUpdateDialog(): void {
+	telemetry.updateOpened();
 	dialogStore.openDialog(DialogType.UpdateAvailableDialog);
+}
+
+function openGithub(): void {
+	telemetry.githubOpened();
 }
 </script>
 

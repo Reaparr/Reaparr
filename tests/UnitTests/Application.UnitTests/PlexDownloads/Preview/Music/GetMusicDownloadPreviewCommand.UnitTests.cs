@@ -9,16 +9,13 @@ public class GetMusicDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMu
     public async Task ShouldReturnTypedAncestorsAndSelectedDescendants_WhenMusicIsRequested(PlexMediaType type)
     {
         // Arrange
-        await SetupDatabase(
-            62801,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 2;
-                config.MusicAlbumCount = 2;
-                config.MusicTrackCount = 2;
-            }
-        );
+        await SetupDatabase(62801, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 2;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 2;
+        });
         var artist = await IDbContext
             .PlexMusicArtists.Include(x => x.Albums)
                 .ThenInclude(x => x.Tracks)
@@ -74,16 +71,13 @@ public class GetMusicDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMu
     )
     {
         // Arrange
-        await SetupDatabase(
-            62813,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(62813, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var dbContext = IDbContext;
         var artist = await dbContext
             .PlexMusicArtists.Include(x => x.Albums)
@@ -109,26 +103,25 @@ public class GetMusicDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMu
         };
         var creator = Mock.Create<GenerateDownloadTaskMusicTracksCommandHandler>();
         var created = await creator.ExecuteAsync(
-            new GenerateDownloadTaskMusicTracksCommand(
-                [
-                    new DownloadMediaDTO
-                    {
-                        Type = PlexMediaType.MusicTrack,
-                        SelectionKind = null,
-                        PlexServerId = track.PlexServerId,
-                        PlexLibraryId = track.PlexLibraryId,
-                        MediaIds = [track.Id],
-                        Qualities = [],
-                    },
-                ]
-            ),
+            new GenerateDownloadTaskMusicTracksCommand([
+                new DownloadMediaDTO
+                {
+                    Type = PlexMediaType.MusicTrack,
+                    SelectionKind = null,
+                    PlexServerId = track.PlexServerId,
+                    PlexLibraryId = track.PlexLibraryId,
+                    MediaIds = [track.Id],
+                    Qualities = [],
+                },
+            ]),
             CancellationToken
         );
         created.IsSuccess.ShouldBeTrue();
         created.Errors.Count.ShouldBe(0);
         created.Value.ShouldBe(new DownloadTaskCreationReport { MusicTracks = 1 });
         var artistTask = await dbContext
-            .DownloadTaskMusicArtists.AsTracking().Include(x => x.Children)
+            .DownloadTaskMusicArtists.AsTracking()
+            .Include(x => x.Children)
                 .ThenInclude(x => x.Children)
                     .ThenInclude(x => x.Children)
             .SingleAsync(CancellationToken);
@@ -145,14 +138,18 @@ public class GetMusicDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMu
         trackTask.DownloadStatus = status;
         fileTask.DownloadStatus = status;
         await dbContext.SaveChangesAsync(CancellationToken);
-        (await dbContext.DownloadTaskMusicArtists.Select(x => x.DownloadStatus).SingleAsync(CancellationToken))
-            .ShouldBe(status);
-        (await dbContext.DownloadTaskMusicAlbums.Select(x => x.DownloadStatus).SingleAsync(CancellationToken))
-            .ShouldBe(status);
-        (await dbContext.DownloadTaskMusicTracks.Select(x => x.DownloadStatus).SingleAsync(CancellationToken))
-            .ShouldBe(status);
-        (await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.DownloadStatus).SingleAsync(CancellationToken))
-            .ShouldBe(status);
+        (
+            await dbContext.DownloadTaskMusicArtists.Select(x => x.DownloadStatus).SingleAsync(CancellationToken)
+        ).ShouldBe(status);
+        (await dbContext.DownloadTaskMusicAlbums.Select(x => x.DownloadStatus).SingleAsync(CancellationToken)).ShouldBe(
+            status
+        );
+        (await dbContext.DownloadTaskMusicTracks.Select(x => x.DownloadStatus).SingleAsync(CancellationToken)).ShouldBe(
+            status
+        );
+        (
+            await dbContext.DownloadTaskMusicTrackFiles.Select(x => x.DownloadStatus).SingleAsync(CancellationToken)
+        ).ShouldBe(status);
         var expectedSize = track.MediaDataList.Sum(x => x.Size);
         var expectedPartCount = track.MediaDataList.Count;
 
@@ -170,14 +167,16 @@ public class GetMusicDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMu
         artistPreview.MediaType.ShouldBe(PlexMediaType.MusicArtist);
         artistPreview.ChildCount.ShouldBe(1);
         artistPreview.Size.ShouldBe(expectedSize);
-        artistPreview.Children.Select(x => (x.Id, x.Title, x.MediaType, x.ChildCount, x.Size))
+        artistPreview
+            .Children.Select(x => (x.Id, x.Title, x.MediaType, x.ChildCount, x.Size))
             .ShouldBe([(album.Id, album.Title, PlexMediaType.MusicAlbum, 1, expectedSize)]);
         var albumPreview = artistPreview.Children.Single();
-        albumPreview.Children.Select(x => (x.Id, x.Title, x.MediaType, x.ChildCount, x.Size))
+        albumPreview
+            .Children.Select(x => (x.Id, x.Title, x.MediaType, x.ChildCount, x.Size))
             .ShouldBe([(track.Id, track.Title, PlexMediaType.MusicTrack, expectedPartCount, expectedSize)]);
         var trackPreview = albumPreview.Children.Single();
-        trackPreview.Qualities
-            .Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.VideoQuality, x.AudioQuality))
+        trackPreview
+            .Qualities.Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.VideoQuality, x.AudioQuality))
             .ShouldBe([(track.Id, data.Id, PlexMediaType.MusicTrack, VideoQuality.None, data.AudioQuality)]);
     }
 }

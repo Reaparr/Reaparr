@@ -17,17 +17,14 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
     )
     {
         // Arrange
-        await SetupDatabase(
-            88200,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 2;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(88200, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 2;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 3;
+        });
         var dbContext = IDbContext;
         var files = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -130,17 +127,14 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
     )
     {
         // Arrange
-        await SetupDatabase(
-            88330,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 4;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88330, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 4;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var files = (
             await dbContext
@@ -153,14 +147,13 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
             .Cast<DownloadTaskFileBase>()
             .ToList();
         var download = files[0];
+        var parentId = ((DownloadTaskMusicTrackFile)download).ParentId;
         for (var index = 1; index < 3; index++)
         {
+            var fileId = files[index].Id;
             await dbContext
-                .DownloadTaskMusicTrackFiles.Where(x => x.Id == files[index].Id)
-                .ExecuteUpdateAsync(
-                    p => p.SetProperty(x => x.ParentId, ((DownloadTaskMusicTrackFile)download).ParentId),
-                    CancellationToken
-                );
+                .DownloadTaskMusicTrackFiles.Where(x => x.Id == fileId)
+                .ExecuteUpdateAsync(p => p.SetProperty(x => x.ParentId, parentId), CancellationToken);
         }
         DownloadTaskBase node = selection switch
         {
@@ -248,17 +241,14 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
     public async Task ShouldRestorePausedMusicAndPropagateCancellation_WhenStartIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            88340,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 1;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88340, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 1;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         await dbContext.SetDownloadStatus(file.ToKey(), DownloadStatus.AutoPaused);

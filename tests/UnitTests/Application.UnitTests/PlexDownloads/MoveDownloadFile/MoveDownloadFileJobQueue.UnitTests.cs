@@ -21,35 +21,29 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
     )
     {
         // Arrange
-        await SetupDatabase(
-            88301,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 1;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88301, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var photoLibrary = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
-            .GetDownloadTaskPhotoFolder(
-                new Seed(88301),
-                config =>
-                {
-                    config.PhotoImageDownloadTasksCount = 1;
-                }
-            )
+            .GetDownloadTaskPhotoFolder(new Seed(88301), config =>
+            {
+                config.PhotoImageDownloadTasksCount = 1;
+            })
             .Generate();
         var photoFile = album.Files.Single();
         foreach (var node in new DownloadTaskBase[] { album, photoFile })
@@ -214,14 +208,11 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
     public async Task ShouldReturnSuccessResult_WhenNoDownloadTaskIsReadyToMove()
     {
         // Arrange — tasks exist but none are in DownloadFinished state
-        await SetupDatabase(
-            9876,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(9876, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 3;
+        });
 
         var dbContext = IDbContext;
         var downloadTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -272,14 +263,11 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
     public async Task ShouldReturnFailureResult_WhenStartMoveDownloadFileJobFails()
     {
         // Arrange
-        await SetupDatabase(
-            6661,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(6661, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -313,17 +301,14 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
     public async Task ShouldPreferOldestDownloadTask_WhenBothAreEligibleToMove()
     {
         // Arrange — both a movie and a TV episode are DownloadFinished; the SUT must pick the oldest
-        await SetupDatabase(
-            1122,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(1122, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFileTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -374,17 +359,14 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
     public async Task ShouldScheduleDownloadFinished_WhenMoveErrorIsOlder()
     {
         // Arrange
-        await SetupDatabase(
-            7788,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(7788, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFileTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);

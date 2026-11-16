@@ -52,9 +52,9 @@ public class AddOrUpdatePlexLibrariesBatchingUnitTests : BaseUnitTest<AddOrUpdat
             .ThenBy(x => x.LibraryId)
             .ToArray();
         var reads = new LibraryReadCounter();
-        await using var measuredContext = CreateMeasuredContext(dbContext.DatabaseName, reads);
+        var databaseName = dbContext.DatabaseName;
         SetupDependencies(builder =>
-            builder.RegisterInstance(measuredContext).As<IReaparrDbContext>().ExternallyOwned()
+            builder.Register(_ => CreateMeasuredContext(databaseName, reads)).As<IReaparrDbContext>().SingleInstance()
         );
         var pipeline = new ValidationPipeline<AddOrUpdatePlexLibrariesCommand, Result<List<PlexLibraryAccessRapport>>>([
             new AddOrUpdatePlexLibrariesValidator(),
@@ -91,6 +91,7 @@ public class AddOrUpdatePlexLibrariesBatchingUnitTests : BaseUnitTest<AddOrUpdat
         // Assert: count only the handler's physical reads, not fixture or post-state queries.
         reads.LibraryReads.ShouldBe(1);
         reads.OwnershipReads.ShouldBe(1);
+        var measuredContext = Mock.Container.Resolve<IReaparrDbContext>().ShouldBeOfType<ReaparrDbContext>();
         measuredContext.ChangeTracker.Entries<PlexLibrary>().Select(x => x.Entity.Id).Order().ShouldBe(targetIds);
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
@@ -113,14 +114,20 @@ public class AddOrUpdatePlexLibrariesBatchingUnitTests : BaseUnitTest<AddOrUpdat
             .OrderBy(x => x.Id)
             .Select(x => new LibraryRow(x.Id, x.PlexServerId, x.Uuid, x.Title, x.IsEnabled, x.UpdatedAt))
             .ToListAsync(CancellationToken);
-        libraries.ShouldBe(scenario.ExpectedLibraries);
+        libraries
+            .Select(x => (x.Id, x.ServerId, x.Uuid, x.Title, x.IsEnabled, x.UpdatedAt))
+            .ShouldBe(
+                scenario.ExpectedLibraries.Select(x => (x.Id, x.ServerId, x.Uuid, x.Title, x.IsEnabled, x.UpdatedAt))
+            );
         var access = await dbContext
             .PlexAccountLibraries.OrderBy(x => x.PlexAccountId)
             .ThenBy(x => x.PlexServerId)
             .ThenBy(x => x.PlexLibraryId)
             .Select(x => new AccessRow(x.PlexAccountId, x.PlexServerId, x.PlexLibraryId, x.IsLibraryOwned))
             .ToListAsync(CancellationToken);
-        access.ShouldBe(expectedAccess);
+        access
+            .Select(x => (x.AccountId, x.ServerId, x.LibraryId, x.IsOwned))
+            .ShouldBe(expectedAccess.Select(x => (x.AccountId, x.ServerId, x.LibraryId, x.IsOwned)));
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<QueueLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
@@ -128,15 +135,12 @@ public class AddOrUpdatePlexLibrariesBatchingUnitTests : BaseUnitTest<AddOrUpdat
 
     private async Task<Scenario> CreateScenario(int serverCount, int librariesPerServer)
     {
-        await SetupDatabase(
-            5001,
-            config =>
-            {
-                config.PlexServerCount = serverCount + 1;
-                config.PlexMovieLibraryCount = librariesPerServer + 1;
-                config.PlexAccountCount = 2;
-            }
-        );
+        await SetupDatabase(5001, config =>
+        {
+            config.PlexServerCount = serverCount + 1;
+            config.PlexMovieLibraryCount = librariesPerServer + 1;
+            config.PlexAccountCount = 2;
+        });
         using var dbContext = IDbContext;
         var accountId = await dbContext.PlexAccounts.OrderBy(x => x.Id).Select(x => x.Id).FirstAsync();
         var serverIds = await dbContext

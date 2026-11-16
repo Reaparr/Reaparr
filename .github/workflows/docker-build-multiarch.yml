@@ -14,6 +14,26 @@ on:
                 description: 'Informational version'
                 required: true
                 type: string
+            telemetry_host:
+                description: 'Telemetry HTTPS ingestion origin for release builds'
+                required: false
+                type: string
+                default: ''
+            telemetry_project_token:
+                description: 'Telemetry public project ingestion token for release builds'
+                required: false
+                type: string
+                default: ''
+            posthog_cli_project_id:
+                description: 'PostHog project ID for private source-map uploads'
+                required: false
+                type: string
+                default: ''
+            posthog_cli_host:
+                description: 'Optional direct PostHog management API host'
+                required: false
+                type: string
+                default: ''
             push:
                 description: 'Push images and create manifests'
                 required: false
@@ -29,11 +49,55 @@ on:
                 required: false
             DOCKER_USERNAME:
                 required: false
+            POSTHOG_CLI_API_KEY:
+                required: false
 
 jobs:
+    prepare-frontend:
+        name: Prepare Docker frontend assets
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Client App Install
+              uses: ./.github/actions/client-app-install/
+
+            - name: Generate frontend
+              working-directory: src/AppHost/ClientApp/
+              env:
+                  NUXT_PUBLIC_PLATFORM: docker
+                  NUXT_PUBLIC_API_PORT: '7000'
+                  NUXT_PUBLIC_VERSION: ${{ inputs.version }}
+                  NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
+                  NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
+                  NUXT_SOURCEMAP_CLIENT: ${{ inputs.push && 'hidden' || '' }}
+              run: bun run generate --fail-on-error
+
+            - name: Upload private source maps
+              if: inputs.push
+              uses: ./.github/actions/posthog-source-maps/
+              with:
+                  directory: .output/public
+                  project-id: ${{ inputs.posthog_cli_project_id }}
+                  api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+                  host: ${{ inputs.posthog_cli_host }}
+                  ingestion-host: ${{ inputs.telemetry_host }}
+                  release-version: ${{ inputs.informational_version }}
+
+            - name: Upload processed frontend artifact
+              uses: actions/upload-artifact@v7
+              with:
+                  name: frontend-public-docker
+                  path: src/AppHost/ClientApp/.output/public
+                  retention-days: 1
+
     # Build both architectures natively in parallel
     build-images:
         name: Build ${{ matrix.arch }} Image
+        needs: [prepare-frontend]
         strategy:
             matrix:
                 include:
@@ -49,6 +113,12 @@ jobs:
               uses: actions/checkout@v7
               with:
                   persist-credentials: false
+
+            - name: Download processed frontend artifact
+              uses: actions/download-artifact@v8
+              with:
+                  name: frontend-public-docker
+                  path: .tmp/frontend-public-docker
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
@@ -79,9 +149,13 @@ jobs:
                   push: ${{ inputs.push }}
                   tags: reaparr/reaparr:${{ inputs.version }}-${{ matrix.arch }}
                   labels: ${{ steps.metadata.outputs.labels }}
+                  build-contexts: |
+                      frontend-public=./.tmp/frontend-public-docker
                   build-args: |
                       VERSION=${{ inputs.version }}
                       INFORMATIONAL_VERSION=${{ inputs.informational_version }}
+                      TELEMETRY_HOST=${{ inputs.telemetry_host }}
+                      TELEMETRY_PROJECT_TOKEN=${{ inputs.telemetry_project_token }}
                       BUILDPLATFORM=linux/${{ matrix.arch }}
                       TARGETPLATFORM=linux/${{ matrix.arch }}
                   cache-from: |

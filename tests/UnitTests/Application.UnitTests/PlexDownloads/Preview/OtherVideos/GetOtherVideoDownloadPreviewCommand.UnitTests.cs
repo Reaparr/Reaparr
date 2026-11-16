@@ -6,14 +6,11 @@ public class GetOtherVideoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<
     public async Task ShouldReturnOtherVideoPreviewWithSelectedQualities()
     {
         // Arrange
-        await SetupDatabase(
-            23901,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 2;
-            }
-        );
+        await SetupDatabase(23901, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 2;
+        });
         var videos = await IDbContext
             .PlexOtherVideos.Include(x => x.MediaDataList)
             .AsNoTracking()
@@ -58,14 +55,11 @@ public class GetOtherVideoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<
     public async Task ShouldPreviewSelectedOtherVideo_WhenMatchingDownloadTaskAlreadyExists(DownloadStatus status)
     {
         // Arrange
-        await SetupDatabase(
-            23913,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 2;
-            }
-        );
+        await SetupDatabase(23913, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 2;
+        });
         var dbContext = IDbContext;
         var videos = await dbContext
             .PlexOtherVideos.Include(x => x.MediaDataList)
@@ -90,7 +84,8 @@ public class GetOtherVideoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<
         created.Errors.Count.ShouldBe(0);
         created.Value.ShouldBe(new DownloadTaskCreationReport { OtherVideos = 1 });
         var task = await dbContext
-            .DownloadTaskOtherVideos.AsTracking().Include(x => x.Children)
+            .DownloadTaskOtherVideos.AsTracking()
+            .Include(x => x.Children)
             .SingleAsync(CancellationToken);
         var data = video.MediaDataList.Single();
         task.PlexApiRatingKey.ShouldBe(video.PlexApiRatingKey);
@@ -100,7 +95,9 @@ public class GetOtherVideoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<
         task.DownloadStatus = status;
         task.Children.Single().DownloadStatus = status;
         await dbContext.SaveChangesAsync(CancellationToken);
-        var persistedTask = await dbContext.DownloadTaskOtherVideos.Include(x => x.Children).SingleAsync(CancellationToken);
+        var persistedTask = await dbContext
+            .DownloadTaskOtherVideos.Include(x => x.Children)
+            .SingleAsync(CancellationToken);
         persistedTask.DownloadStatus.ShouldBe(status);
         persistedTask.Children.Single().DownloadStatus.ShouldBe(status);
         var expectedSize = video.MediaDataList.Sum(x => x.Size);
@@ -114,11 +111,12 @@ public class GetOtherVideoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.Select(x => (x.Id, x.Title, x.MediaType, x.ChildCount, x.Size))
+        result
+            .Value.Select(x => (x.Id, x.Title, x.MediaType, x.ChildCount, x.Size))
             .ShouldBe([(video.Id, video.Title, PlexMediaType.OtherVideos, expectedPartCount, expectedSize)]);
         var preview = result.Value.Single();
-        preview.Qualities
-            .Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.VideoQuality, x.AudioQuality))
+        preview
+            .Qualities.Select(x => (x.MediaId, x.DataId, x.MediaDataType, x.VideoQuality, x.AudioQuality))
             .ShouldBe([(video.Id, data.Id, PlexMediaType.OtherVideos, data.VideoQuality, AudioQuality.None)]);
     }
 }

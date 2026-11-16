@@ -1,6 +1,5 @@
 using BencodeNET.Objects;
 using BencodeNET.Torrents;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
 
@@ -30,15 +29,17 @@ public class DownloadTorrentEndpointRequestValidator : Validator<DownloadTorrent
 public class DownloadTorrentEndpoint : Endpoint<DownloadTorrentEndpointRequest>
 {
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
     private const int PIECE_LENGTH = 256 * 1024; // 256KB
 
     private readonly ILogger _log;
 
-    public DownloadTorrentEndpoint(ILogger logger, IReaparrDbContext dbContext)
+    public DownloadTorrentEndpoint(ILogger logger, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = logger.ForContext<DownloadTorrentEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -110,9 +111,32 @@ public class DownloadTorrentEndpoint : Endpoint<DownloadTorrentEndpointRequest>
             ExtraFields = extraFields,
         };
 
+        var torrentBytes = torrent.EncodeAsBytes();
+        _telemetry.TorrentMetadataGenerated(
+            HttpContext.GetIntegrationIdentity(),
+            ToTelemetryDTO(req),
+            fileInfo.FileName,
+            fileInfo.Size,
+            PIECE_LENGTH,
+            numPieces
+        );
+
         // Return the torrent file
-        await Send.BytesAsync(torrent.EncodeAsBytes(), fileName, "application/x-bittorrent", cancellation: ct);
+        await Send.BytesAsync(torrentBytes, fileName, "application/x-bittorrent", cancellation: ct);
     }
+
+    private static TorrentMetadataTelemetryDTO ToTelemetryDTO(TorrentMetadataDTO metadata) =>
+        new()
+        {
+            Type = metadata.Type,
+            MediaId = metadata.MediaId,
+            DataId = metadata.DataId,
+            PartId = metadata.PartId,
+            PlexApiPartId = metadata.PlexApiPartId,
+            VideoQuality = metadata.VideoQuality,
+            LibraryId = metadata.LibraryId,
+            ServerId = metadata.ServerId,
+        };
 
     private Task<MediaFileInfo?> GetFileInfoAsync(DownloadTorrentEndpointRequest req, CancellationToken ct) =>
         req.Type switch

@@ -1,6 +1,6 @@
 namespace Reaparr.Data.Contracts;
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsPlexAccount
 {
     public static IQueryable<PlexAccount> IncludeServerAccess(this IQueryable<PlexAccount> plexAccount) =>
         plexAccount.Include(v => v.PlexAccountServers).ThenInclude(x => x.PlexServer);

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+
 namespace Reaparr.BaseTests;
 
 public class MockAppRuntimeInfo : IAppRuntimeInfo
@@ -45,6 +47,8 @@ public class MockAppRuntimeInfo : IAppRuntimeInfo
     public string AppRunId { get; } = Guid.NewGuid().ToString("N");
 
     public bool IsIntegrationTestMode { get; set; }
+
+    public string DotnetEnvironment => IsDevelopmentEnvironment ? Environments.Development : Environments.Production;
 
     public bool IsDevelopmentEnvironment
     {

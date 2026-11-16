@@ -10,16 +10,13 @@ public class ApplyOwnedMovieComparisonStateCommandUnitTests : BaseCommandUnitTes
     public async Task ShouldMarkOwned_WhenCurrentRemoteScopeHasNoUpgradeHit()
     {
         // Arrange
-        await SetupDatabase(
-            64,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(64, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -60,16 +57,13 @@ public class ApplyOwnedMovieComparisonStateCommandUnitTests : BaseCommandUnitTes
     public async Task ShouldMarkPending_WhenNoCurrentRemoteScopeAndComparisonIsQueued()
     {
         // Arrange
-        await SetupDatabase(
-            65,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(65, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -119,16 +113,13 @@ public class ApplyOwnedMovieComparisonStateCommandUnitTests : BaseCommandUnitTes
     public async Task ShouldMarkHigherQuality_WhenCurrentRemoteScopeHasUpgradeHit()
     {
         // Arrange
-        await SetupDatabase(
-            66,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(66, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -169,16 +160,13 @@ public class ApplyOwnedMovieComparisonStateCommandUnitTests : BaseCommandUnitTes
     public async Task ShouldLeaveNotCompared_WhenOnlyCompletedQueueExistsWithoutCurrentScope()
     {
         // Arrange
-        await SetupDatabase(
-            67,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(67, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);

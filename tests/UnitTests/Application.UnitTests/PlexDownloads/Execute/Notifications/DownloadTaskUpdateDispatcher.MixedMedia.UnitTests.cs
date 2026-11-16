@@ -6,16 +6,13 @@ public class DownloadTaskUpdateDispatcherMixedMediaUnitTests : BaseUnitTest<Down
     public async Task ShouldPersistBothProgressLogs_WhenMediaFamiliesGenerateTheSameLogId()
     {
         // Arrange
-        await SetupDatabase(
-            84336,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84336, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         using var arrangeContext = IDbContext;
         var movie = await arrangeContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         var episode = await arrangeContext.DownloadTaskTvShowEpisodeFile.SingleAsync(CancellationToken);

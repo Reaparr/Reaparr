@@ -18,8 +18,14 @@ import {
 } from '@dto';
 import { toDownloadSelectionKind } from '@composables/conversion';
 import DownloadConfirmation from '@/components/Dialogs/DownloadConfirmation.vue';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
 import messages from '@/lang/en-US.json';
 
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 const CardDialog = defineComponent({
 	name: 'QCardDialog',
 	emits: ['opened', 'closed'],
@@ -27,6 +33,17 @@ const CardDialog = defineComponent({
 		return () => h('section', [
 			slots['top-row']?.(), slots.default?.(), slots.actions?.({ close: () => emit('closed') }),
 		]);
+	},
+});
+const CancelButton = defineComponent({
+	name: 'CancelButton',
+	props: { cy: { type: String, required: true } },
+	emits: ['click'],
+	setup(props, { emit }) {
+		return () => h('button', {
+			'data-cy': props.cy,
+			onClick: () => emit('click'),
+		});
 	},
 });
 
@@ -80,6 +97,7 @@ describe('DownloadConfirmation - family destinations and preview lifetime', () =
 		pinia = createPinia();
 		previewRequests = [];
 		setActivePinia(pinia);
+		capture.mockClear();
 	});
 	afterEach(() => {
 		mounted.forEach((wrapper) => wrapper.unmount());
@@ -98,7 +116,7 @@ describe('DownloadConfirmation - family destinations and preview lifetime', () =
 		const wrapper = await mountSuspended(DownloadConfirmation, {
 			global: {
 				plugins: [pinia, createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': messages } })],
-				stubs: { QCardDialog: CardDialog, DirectoryBrowser, QFileSize: true, QMediaTypeIcon: true },
+				stubs: { QCardDialog: CardDialog, CancelButton, DirectoryBrowser, QFileSize: true, QMediaTypeIcon: true },
 			},
 		});
 		mounted.push(wrapper);
@@ -217,5 +235,46 @@ describe('DownloadConfirmation - family destinations and preview lifetime', () =
 			destinationFolderPathId: 41,
 			downloadMedias: [{ type: PlexMediaType.PhotoImage, selectionKind: toDownloadSelectionKind(PlexMediaType.PhotoImage) }],
 		});
+	});
+	test('Should capture preview and dismissal without forwarding destination text', async () => {
+		const response = new Subject<DownloadPreviewContainerDTO | null>();
+		const wrapper = await render([], [response]);
+		const dialog = wrapper.getComponent(CardDialog);
+		dialog.vm.$emit('opened', command(PlexMediaType.Movie));
+		response.next(preview('Movie title', PlexMediaType.Movie));
+		await flushPromises();
+		await wrapper.get('[data-cy="download-confirmation-cancel"]').trigger('click');
+
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendDownloadInteraction, {
+			action: FrontendTelemetryAction.Preview,
+			media_type: PlexMediaType.Movie,
+			selection_count: 1,
+			destination_id: 0,
+			is_custom_destination: true,
+			is_retry: false,
+		});
+		expect(capture).toHaveBeenCalledWith(FrontendTelemetryEvent.FrontendDownloadInteraction, {
+			action: FrontendTelemetryAction.Dismiss,
+			media_type: PlexMediaType.Movie,
+			selection_count: 1,
+		});
+		expect(JSON.stringify(capture.mock.calls)).not.toContain('Movie title');
+	});
+
+	test('Should submit exactly once without confirmation or dismissal telemetry', async () => {
+		const response = new Subject<DownloadPreviewContainerDTO | null>();
+		const wrapper = await render([], [response]);
+		const dialog = wrapper.getComponent(CardDialog);
+		dialog.vm.$emit('opened', command(PlexMediaType.Movie));
+		response.next(preview('Movie title', PlexMediaType.Movie));
+		await flushPromises();
+		await wrapper.get('[data-cy="download-confirmation-submit"]').findAll('button')[0]!.trigger('click');
+
+		expect(capture.mock.calls.map(([, payload]) => payload.action)).toEqual([
+			FrontendTelemetryAction.Preview,
+		]);
+		expect(wrapper.emitted('download')).toHaveLength(1);
+		expect(capture.mock.calls.some(([, payload]) => payload.action === FrontendTelemetryAction.Confirm)).toBe(false);
+		expect(capture.mock.calls.some(([, payload]) => payload.action === FrontendTelemetryAction.Dismiss)).toBe(false);
 	});
 });

@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using System.Reactive.Subjects;
 using Reaparr.External.Contracts;
+using Serilog.Events;
+using Serilog.Sinks.TestCorrelator;
 using DomainDownloadStatus = Reaparr.Domain.DownloadStatus;
 
 namespace Reaparr.Application.UnitTests;
@@ -67,15 +70,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     )
     {
         // Arrange
-        await SetupDatabase(
-            12001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -87,6 +87,9 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         var outputSubject = new Subject<string>();
         var completionSubject = new Subject<DashDownloadCompletedEventArgs>();
         DashMpdCliOptions? capturedOptions = null;
+        DownloadTaskFileBase? attemptDownloadTask = null;
+        long attemptEffectiveSpeedLimitBytes = 0;
+        string? attemptOutputPath = null;
         var terminalWriteEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var terminalWriteRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var completionOrder = new List<string>();
@@ -118,6 +121,19 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         dashWrapperMock.Setup(x => x.DisposeAsync()).Returns(ValueTask.CompletedTask);
 
         SetupCommandExecutor();
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.StartDashDownloadAttempt(It.IsAny<DownloadTaskFileBase>(), It.IsAny<string>(), It.IsAny<long>())
+            )
+            .Callback<DownloadTaskFileBase, string, long>(
+                (task, outputPath, speedLimit) =>
+                {
+                    attemptDownloadTask = task;
+                    attemptOutputPath = outputPath;
+                    attemptEffectiveSpeedLimitBytes = speedLimit;
+                }
+            )
+            .Returns((Activity?)null);
 
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Setup(x =>
@@ -199,6 +215,10 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         result.Errors.Count.ShouldBe(0);
         capturedOptions.ShouldNotBeNull();
         capturedOptions.LimitRate.ShouldBe(expectedLimitRate);
+        attemptDownloadTask.ShouldNotBeNull();
+        attemptDownloadTask!.FileName.ShouldNotBeNullOrWhiteSpace();
+        attemptOutputPath.ShouldNotBeNullOrWhiteSpace();
+        attemptEffectiveSpeedLimitBytes.ShouldBe(speedLimitBytes);
         finalProgress.ShouldNotBeNull();
         finalProgress!.DataTotal.ShouldBe(7_654L);
         finalProgress.DataReceived.ShouldBe(7_654L);
@@ -250,15 +270,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     )
     {
         // Arrange
-        await SetupDatabase(
-            12012,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12012, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var machineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -345,15 +362,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     public async Task ShouldReportDownloadClientError_WhenFinalProgressPersistenceFails()
     {
         // Arrange
-        await SetupDatabase(
-            12013,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12013, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var machineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -437,15 +451,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     public async Task ShouldPersistActualOutputProgressBeforeDownloadFinishedStatus()
     {
         // Arrange
-        await SetupDatabase(
-            12011,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12011, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var machineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -568,14 +579,11 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     [Test]
     public async Task ShouldReturnEntityNotFoundError_WhenDownloadTaskKeyDoesNotExist()
     {
-        await SetupDatabase(
-            12002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         SetupCommandExecutor();
 
@@ -639,15 +647,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     [Test]
     public async Task ShouldReturnFailedResult_WhenGetDashDownloadUrlFails()
     {
-        await SetupDatabase(
-            12003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
 
@@ -705,15 +710,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     [Test]
     public async Task ShouldSetServerUnreachableStatus_WhenDashCompletesWithGatewayTimeoutError()
     {
-        await SetupDatabase(
-            12008,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12008, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -777,9 +779,16 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         dashWrapperMock.Setup(x => x.DisposeAsync()).Returns(ValueTask.CompletedTask);
 
         var sut = CreateSut(dashWrapperMock);
+        using var logContext = TestCorrelator.CreateContext();
         var result = await sut.Start(downloadTask.ToKey(), CancellationToken);
 
         result.IsFailed.ShouldBeTrue();
+        result.ShouldBeSameAs(networkErrorResult);
+        var error = TestCorrelator
+            .GetLogEventsFromCurrentContext()
+            .Where(x => x.Level == LogEventLevel.Error)
+            .ShouldHaveSingleItem();
+        error.MessageTemplate.Text.ShouldStartWith(networkErrorResult.Errors[0].Message);
 
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
             .Verify(
@@ -805,15 +814,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     [Test]
     public async Task ShouldSetSourceUnavailableStatus_WhenDashCompletesWithNotFoundError()
     {
-        await SetupDatabase(
-            12010,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12010, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -904,15 +910,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     [Test]
     public async Task ShouldSetServerUnreachableStatus_WhenDashCompletesWithNetworkTimeoutError()
     {
-        await SetupDatabase(
-            12009,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12009, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var downloadTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -1003,15 +1006,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     [Test]
     public async Task ShouldDispatchProgressUpdate_WhenDashProgressEmits()
     {
-        await SetupDatabase(
-            12004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -1097,15 +1097,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     [Test]
     public async Task ShouldKeepDataTotalAtZero_WhenDashDoesNotReportTotalBytes()
     {
-        await SetupDatabase(
-            12007,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12007, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -1190,15 +1187,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     [Test]
     public async Task ShouldNotMarkDownloadFinished_WhenProgressReaches100WithoutCompletionEvent()
     {
-        await SetupDatabase(
-            12005,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12005, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -1289,26 +1283,23 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
         string originalExtension
     )
     {
-        await SetupDatabase(
-            12006,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 2;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PhotoFolderDownloadTasksCount = 2;
-                config.PhotoImageDownloadTasksCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12006, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 2;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PhotoFolderDownloadTasksCount = 2;
+            config.PhotoImageDownloadTasksCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         List<DownloadTaskFileBase> downloadTasks =
@@ -1410,15 +1401,12 @@ public class DashPlexDownloadClientUnitTests : BaseUnitTest<DashPlexDownloadClie
     public async Task ShouldStopDashProcessAndReturnCancelled_WhenCallerCancelsDuringStart()
     {
         // Arrange
-        await SetupDatabase(
-            12010,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(12010, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);

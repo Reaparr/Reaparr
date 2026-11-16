@@ -8,16 +8,13 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
     public async Task ShouldSearchAcrossAllEligibleLibrariesWithoutDuplicateRows()
     {
         // Arrange
-        await SetupDatabase(
-            71007,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71007, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         assets.Count.ShouldBeGreaterThan(1);
@@ -59,7 +56,7 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title)
+            new SearchPhotoAssetsQuery("cross-library-search")
         );
         var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title, SortDirection.Desc)
@@ -103,15 +100,12 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
     public async Task ShouldNormalizeUnicodePunctuationAndRejectQueriesWithOnlyShortTerms()
     {
         // Arrange
-        await SetupDatabase(
-            71015,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 3;
-            }
-        );
+        await SetupDatabase(71015, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 3;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var matchingIds = assets.Take(2).Select(x => x.Id).ToArray();
@@ -125,35 +119,73 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
             .PlexPhotoMediaData.Where(x => x.Id == assets[2].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "unrelated"), CancellationToken);
 
+        var telemetryCalls =
+            new List<(
+                PhotoSearchTelemetryDTO Query,
+                IReadOnlyList<string> SearchTerms,
+                Result<PhotoAssetPageDTO> Result
+            )>();
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.PhotoSearchFinished(
+                    It.IsAny<PhotoSearchTelemetryDTO>(),
+                    It.IsAny<IReadOnlyList<string>>(),
+                    It.IsAny<Result<PhotoAssetPageDTO>>()
+                )
+            )
+            .Callback<PhotoSearchTelemetryDTO, IReadOnlyList<string>, Result<PhotoAssetPageDTO>>(
+                (query, searchTerms, result) => telemetryCalls.Add((query, searchTerms, result))
+            )
+            .Verifiable(Times.Exactly(3));
+
         // Act
         var normalized = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("Café, résumé!", 1, 100)
+            new SearchPhotoAssetsQuery("The Café, résumé!")
         );
-        var accentTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("résumé", 1, 100));
-        var shortTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("a", 1, 100));
+        var accentTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("résumé"));
+        var shortTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("a"));
 
         // Assert
         normalized.IsSuccess.ShouldBeTrue();
+        normalized.Errors.Count.ShouldBe(0);
         normalized.Value.TotalCount.ShouldBe(2);
         normalized.Value.Items.Select(x => x.Id).ShouldBe(matchingIds.OrderBy(x => x));
         accentTerm.IsSuccess.ShouldBeTrue();
+        accentTerm.Errors.Count.ShouldBe(0);
         accentTerm.Value.TotalCount.ShouldBe(2);
+        shortTerm.IsFailed.ShouldBeTrue();
+        shortTerm.Errors.Count.ShouldBe(1);
         shortTerm.Has400BadRequestError().ShouldBeTrue();
+
+        telemetryCalls.Count.ShouldBe(3);
+        telemetryCalls.Select(call => call.Query.Page).ShouldBe([1, 1, 1]);
+        telemetryCalls.Select(call => call.Query.PageSize).ShouldBe([100, 100, 100]);
+        telemetryCalls.Select(call => call.Query.Sort).ShouldBe([SortType.Title, SortType.Title, SortType.Title]);
+        telemetryCalls
+            .Select(call => call.Query.Direction)
+            .ShouldBe([SortDirection.Asc, SortDirection.Asc, SortDirection.Asc]);
+        telemetryCalls[0].SearchTerms.ShouldBe(["cafe", "resume"]);
+        telemetryCalls[0].Result.IsSuccess.ShouldBeTrue();
+        telemetryCalls[0].Result.Errors.Count.ShouldBe(0);
+        telemetryCalls[1].SearchTerms.ShouldBe(["resume"]);
+        telemetryCalls[1].Result.IsSuccess.ShouldBeTrue();
+        telemetryCalls[1].Result.Errors.Count.ShouldBe(0);
+        telemetryCalls[2].SearchTerms.ShouldBeEmpty();
+        telemetryCalls[2].Result.IsFailed.ShouldBeTrue();
+        telemetryCalls[2].Result.Errors.Count.ShouldBe(1);
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
     public async Task ShouldPreserveSubstringAllTermAndTwoCharacterSearchSemantics()
     {
         // Arrange
-        await SetupDatabase(
-            71016,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 4;
-            }
-        );
+        await SetupDatabase(71016, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var searchTitles = new[] { "alpha beta gamma", "alphabet betamax", "alpha only", "cafe resume" };
@@ -167,14 +199,10 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
         }
 
         // Act
-        var substring = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("pha", 1, 100));
-        var allTerms = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("alpha beta", 1, 100)
-        );
-        var twoCharacter = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("ha", 1, 100));
-        var punctuation = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("Café, résumé!", 1, 100)
-        );
+        var substring = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("pha"));
+        var allTerms = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("alpha beta"));
+        var twoCharacter = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("ha"));
+        var punctuation = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("Café, résumé!"));
 
         // Assert
         substring.IsSuccess.ShouldBeTrue();

@@ -1,6 +1,5 @@
 using BencodeNET.Parsing;
 using BencodeNET.Torrents;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI.UnitTests;
 
@@ -11,19 +10,16 @@ public class DownloadTorrentEndpointUnitTests
     public async Task ShouldReturnValidTorrent_WhenEpisodeExists()
     {
         // Arrange – seed an episode with media data/part
-        await SetupDatabase(
-            1001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 10;
-                config.TvShowSeasonCount = 3;
-                config.TvShowEpisodeCount = 5;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 10;
+            config.TvShowSeasonCount = 3;
+            config.TvShowEpisodeCount = 5;
+            config.SonarrIntegrationCount = 1;
+        });
         var integration = await IDbContext.SonarrIntegrations.SingleAsync(CancellationToken);
 
         var episodeData = await IDbContext.PlexTvShowEpisodeData.FirstOrDefaultAsync(CancellationToken);
@@ -75,16 +71,13 @@ public class DownloadTorrentEndpointUnitTests
     public async Task ShouldReturnValidTorrent_WhenMovieExists()
     {
         // Arrange – seed a movie with media data/part
-        await SetupDatabase(
-            1002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken);
 
         var movieData = await IDbContext.PlexMovieData.FirstOrDefaultAsync(CancellationToken);
@@ -165,15 +158,12 @@ public class DownloadTorrentEndpointUnitTests
     public async Task ShouldReturnNotFound_WhenMovieMediaIdBelongsToDifferentSource()
     {
         // Arrange
-        await SetupDatabase(
-            1004,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1004, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.OrderBy(x => x.Id).ToArrayAsync(CancellationToken);
@@ -208,18 +198,15 @@ public class DownloadTorrentEndpointUnitTests
     public async Task ShouldReturnNotFound_WhenNoMatchingMediaFound()
     {
         // Arrange – database with server/library but no matching data id
-        await SetupDatabase(
-            1003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.MovieCount = 0;
-                config.TvShowCount = 0;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.MovieCount = 0;
+            config.TvShowCount = 0;
+            config.SonarrIntegrationCount = 1;
+        });
         var integration = await IDbContext.SonarrIntegrations.SingleAsync(CancellationToken);
 
         var server = await IDbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);

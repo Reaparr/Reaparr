@@ -14,6 +14,7 @@ public class LibrarySyncJob : IJob
     private readonly INotificationHubService _notificationHubService;
     private readonly IReaparrDbContext _dbContext;
     private readonly IMediaOverviewRebuildCoordinator _mediaOverviewRebuildCoordinator;
+    private readonly ITelemetry _telemetry;
     private int _serverId;
     private int _libraryId;
 
@@ -22,7 +23,8 @@ public class LibrarySyncJob : IJob
         ICommandExecutor commandExecutor,
         INotificationHubService notificationHubService,
         IReaparrDbContext dbContext,
-        IMediaOverviewRebuildCoordinator mediaOverviewRebuildCoordinator
+        IMediaOverviewRebuildCoordinator mediaOverviewRebuildCoordinator,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<LibrarySyncJob>();
@@ -30,6 +32,7 @@ public class LibrarySyncJob : IJob
         _notificationHubService = notificationHubService;
         _dbContext = dbContext;
         _mediaOverviewRebuildCoordinator = mediaOverviewRebuildCoordinator;
+        _telemetry = telemetry;
     }
 
     public static JobKey GetJobKey(int serverId, int libraryId) =>
@@ -37,18 +40,20 @@ public class LibrarySyncJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.LibrarySync, context.GetTelemetryContext());
+
         var payloadResult = context.GetRequiredPayload<LibrarySyncJobPayload>();
-        if (payloadResult.IsFailed)
+        if (payloadResult.IsCancelledOrFailed)
         {
-            context.SetResult(JobStatus.Failed, payloadResult);
-            payloadResult.LogError();
+            context.SetResult(payloadResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, payloadResult);
+            payloadResult.LogIfFailed();
+            _telemetry.CaptureErrors(payloadResult, TelemetryActivity.LibrarySync);
             return;
         }
 
         var cancellationToken = context.CancellationToken;
         _serverId = payloadResult.Value.ServerId;
         _libraryId = payloadResult.Value.LibraryId;
-
         _log.Here()
             .Debug(
                 "Executing job: {LibrarySyncJobName} for server {ServerId}, library {LibraryId}",
@@ -56,69 +61,96 @@ public class LibrarySyncJob : IJob
                 _serverId,
                 _libraryId
             );
+
         var shouldDispatch = true;
         var isServerOffline = false;
+        LibrarySyncJobQueue? queueItem = null;
+
         // Jobs should swallow exceptions as otherwise Quartz will keep re-executing it
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
-        var result = await Result.Try(async Task<Result> () =>
-        {
-            var queueStatus = await _dbContext
-                .LibrarySyncJobQueues.Where(x => x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId)
-                .Select(x => x.Status)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (queueStatus != LibrarySyncJobStatus.Processing)
+        var result = await Result.Try(
+            async Task<Result> () =>
             {
-                shouldDispatch = false;
-                context.SetResult(JobStatus.Cancelled);
-                _log.Here()
-                    .Information(
-                        "Skipping library sync job for server {ServerId}, library {LibraryId} because its queue status is {QueueStatus}",
-                        _serverId,
-                        _libraryId,
-                        queueStatus
-                    );
-                return Result.Ok();
-            }
+                queueItem = await _dbContext
+                    .LibrarySyncJobQueues.Include(x => x.PlexLibrary)
+                    .Where(x => x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+                var queueStatus = queueItem?.Status ?? LibrarySyncJobStatus.Unknown;
+                if (queueStatus != LibrarySyncJobStatus.Processing)
+                {
+                    shouldDispatch = false;
+                    context.SetResult(JobStatus.Cancelled);
+                    _log.Here()
+                        .Information(
+                            "Skipping library sync job for server {ServerId}, library {LibraryId} because its queue status is {QueueStatus}",
+                            _serverId,
+                            _libraryId,
+                            queueStatus
+                        );
+                    return Result.Ok();
+                }
 
-            // Check if the server is online before starting sync
-            isServerOffline = !await _dbContext.IsServerOnline(_serverId);
-            if (isServerOffline)
-            {
-                _log.Here().Warning("Server {ServerId} is offline, marking queue item and skipping sync", _serverId);
-                return Result.Ok();
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            using var syncLease = await _mediaOverviewRebuildCoordinator.AcquireLibrarySyncLeaseAsync(
-                cancellationToken
-            );
-            await UpdateQueueItemAsync(LibrarySyncJobStatus.Processing);
+                // Check if the server is online before starting sync.
+                isServerOffline = !await _dbContext.IsServerOnline(_serverId);
+                if (isServerOffline)
+                {
+                    _log.Here()
+                        .Warning("Server {ServerId} is offline, marking queue item and skipping sync", _serverId);
+                    return Result.Ok();
+                }
 
-            // Execute the library sync command
-            var refreshResult = await _commandExecutor.Send(
-                new RefreshLibraryMediaCommand(_libraryId, payloadResult.Value.ForceMediaRefresh),
-                cancellationToken
-            );
-            return refreshResult.ToResult();
-        });
+                using var syncLease = await _mediaOverviewRebuildCoordinator.AcquireLibrarySyncLeaseAsync(
+                    cancellationToken
+                );
+                var claimed = await UpdateQueueItemAsync(LibrarySyncJobStatus.Processing);
+                if (claimed != 1)
+                {
+                    shouldDispatch = false;
+                    context.SetResult(JobStatus.Cancelled);
+                    return Result.Ok();
+                }
 
+                return (
+                    await _commandExecutor.Send(
+                        new RefreshLibraryMediaCommand(_libraryId, payloadResult.Value.ForceMediaRefresh),
+                        cancellationToken
+                    )
+                ).ToResult();
+            },
+            exception =>
+                exception is OperationCanceledException && !cancellationToken.IsCancellationRequested
+                    ? new Error(exception.Message).CausedBy(exception)
+                    : new ExceptionalError(exception)
+        );
         if (!shouldDispatch)
             return;
 
         LibrarySyncJobStatus status;
-        if (result.IsCancelled)
+        if (result.IsCancelledOrFailed)
         {
-            result.LogWarning();
-            status = LibrarySyncJobStatus.Cancelled;
-            context.SetResult(JobStatus.Cancelled, result);
-        }
-        else if (result.IsFailed)
-        {
-            result.LogError();
-            status = LibrarySyncJobStatus.Failed;
-            // Check if failure was due to the server being offline (504 Gateway Timeout)
-            // TODO make "Server offline" a generic FluentResult check as this can happen in other places as well and we want to handle it consistently across the app
-            isServerOffline = result.Has504GatewayTimeoutError();
-            context.SetResult(JobStatus.Failed, result);
+            if (result.IsCancelled)
+            {
+                result.LogIfFailed();
+                status = LibrarySyncJobStatus.Cancelled;
+                context.SetResult(JobStatus.Cancelled, result);
+                _telemetry.CaptureErrors(result, TelemetryActivity.LibrarySync);
+            }
+            else if (result.Has504GatewayTimeoutError())
+            {
+                result.LogWarning();
+                isServerOffline = true;
+                status = LibrarySyncJobStatus.Queued;
+                context.SetResult(JobStatus.Completed, result);
+            }
+            else
+            {
+                result.LogIfFailed();
+                status = LibrarySyncJobStatus.Failed;
+                context.SetResult(JobStatus.Failed, result);
+                _telemetry.CaptureErrors(result, TelemetryActivity.LibrarySync);
+            }
         }
         else
         {
@@ -138,19 +170,37 @@ public class LibrarySyncJob : IJob
         var persistenceResult = await Result.Try(() =>
             UpdateQueueItemAsync(
                 status,
-                errorMessage: status == LibrarySyncJobStatus.Failed ? result.Errors.First().Message : null,
+                errorMessage: status == LibrarySyncJobStatus.Failed ? result.Errors.FirstOrDefault()?.Message : null,
                 isServerOffline: isServerOffline
             )
         );
         persistenceResult.LogIfFailed();
+        var persisted = persistenceResult.IsSuccess && persistenceResult.Value == 1;
         if (persistenceResult.IsFailed)
+        {
             context.SetResult(JobStatus.Failed, persistenceResult);
+            _telemetry.CaptureErrors(persistenceResult, TelemetryActivity.LibrarySync);
+        }
+
+        if (
+            persisted
+            && queueItem is not null
+            && status
+                is (LibrarySyncJobStatus.Completed or LibrarySyncJobStatus.Failed or LibrarySyncJobStatus.Cancelled)
+        )
+        {
+            _telemetry.LibrarySyncFinished(
+                queueItem,
+                queueItem.PlexLibrary?.Type,
+                payloadResult.Value.ForceMediaRefresh,
+                status,
+                isServerOffline
+            );
+        }
 
         // Deliver refresh notifications even when the Quartz job token has been cancelled.
         using var cleanupTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cleanupToken = cleanupTokenSource.Token;
-
-        // Send PlexLibrary refresh notification
         var notificationResult = await Result.Try(() =>
             _notificationHubService
                 .SendRefreshNotificationAsync([RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus])
@@ -159,7 +209,7 @@ public class LibrarySyncJob : IJob
         notificationResult.LogIfFailed();
     }
 
-    private async Task UpdateQueueItemAsync(
+    private async Task<int> UpdateQueueItemAsync(
         LibrarySyncJobStatus status,
         string? errorMessage = null,
         bool isServerOffline = false
@@ -169,78 +219,47 @@ public class LibrarySyncJob : IJob
             x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId && x.Status == LibrarySyncJobStatus.Processing
         );
 
-        switch (status)
+        return status switch
         {
-            case LibrarySyncJobStatus.Queued:
-                await query.ExecuteUpdateAsync(
-                    s =>
-                        s.SetProperty(x => x.Status, status)
-                            .SetProperty(x => x.StartedAt, (DateTime?)null)
-                            .SetProperty(x => x.ErrorMessage, (string?)null)
-                            .SetProperty(x => x.IsServerOffline, isServerOffline),
-                    CancellationToken.None
-                );
-                break;
-
-            case LibrarySyncJobStatus.Processing:
-                await query.ExecuteUpdateAsync(
-                    s =>
-                        s.SetProperty(x => x.Status, status)
-                            .SetProperty(x => x.StartedAt, DateTime.UtcNow)
-                            .SetProperty(x => x.IsServerOffline, false),
-                    CancellationToken.None
-                );
-                break;
-
-            case LibrarySyncJobStatus.Completed:
-                await query.ExecuteUpdateAsync(
-                    s =>
-                        s.SetProperty(x => x.Status, status)
-                            .SetProperty(x => x.CompletedAt, DateTime.UtcNow)
-                            .SetProperty(x => x.IsServerOffline, false),
-                    CancellationToken.None
-                );
-                break;
-
-            case LibrarySyncJobStatus.Failed:
-                await query.ExecuteUpdateAsync(
-                    s =>
-                        s.SetProperty(x => x.Status, status)
-                            .SetProperty(x => x.CompletedAt, DateTime.UtcNow)
-                            .SetProperty(x => x.ErrorMessage, errorMessage)
-                            .SetProperty(x => x.IsServerOffline, isServerOffline),
-                    CancellationToken.None
-                );
-                break;
-
-            case LibrarySyncJobStatus.Cancelled:
-                await query.ExecuteUpdateAsync(
-                    s =>
-                        s.SetProperty(x => x.Status, status)
-                            .SetProperty(x => x.CompletedAt, DateTime.UtcNow)
-                            .SetProperty(x => x.ErrorMessage, (string?)null)
-                            .SetProperty(x => x.IsServerOffline, false),
-                    CancellationToken.None
-                );
-                break;
-
-            case LibrarySyncJobStatus.Unknown:
-                _log.Here()
-                    .Warning(
-                        "Attempted to set LibrarySyncJobStatus to Unknown for server {ServerId}, library {LibraryId}",
-                        _serverId,
-                        _libraryId
-                    );
-                break;
-            default:
-                _log.Here()
-                    .Warning(
-                        "Attempted to set LibrarySyncJobStatus to invalid value {Status} for server {ServerId}, library {LibraryId}",
-                        status,
-                        _serverId,
-                        _libraryId
-                    );
-                break;
-        }
+            LibrarySyncJobStatus.Queued => await query.ExecuteUpdateAsync(
+                s =>
+                    s.SetProperty(x => x.Status, status)
+                        .SetProperty(x => x.StartedAt, (DateTime?)null)
+                        .SetProperty(x => x.ErrorMessage, (string?)null)
+                        .SetProperty(x => x.IsServerOffline, isServerOffline),
+                CancellationToken.None
+            ),
+            LibrarySyncJobStatus.Processing => await query.ExecuteUpdateAsync(
+                s =>
+                    s.SetProperty(x => x.Status, status)
+                        .SetProperty(x => x.StartedAt, DateTime.UtcNow)
+                        .SetProperty(x => x.IsServerOffline, false),
+                CancellationToken.None
+            ),
+            LibrarySyncJobStatus.Completed => await query.ExecuteUpdateAsync(
+                s =>
+                    s.SetProperty(x => x.Status, status)
+                        .SetProperty(x => x.CompletedAt, DateTime.UtcNow)
+                        .SetProperty(x => x.IsServerOffline, false),
+                CancellationToken.None
+            ),
+            LibrarySyncJobStatus.Failed => await query.ExecuteUpdateAsync(
+                s =>
+                    s.SetProperty(x => x.Status, status)
+                        .SetProperty(x => x.CompletedAt, DateTime.UtcNow)
+                        .SetProperty(x => x.ErrorMessage, errorMessage)
+                        .SetProperty(x => x.IsServerOffline, isServerOffline),
+                CancellationToken.None
+            ),
+            LibrarySyncJobStatus.Cancelled => await query.ExecuteUpdateAsync(
+                s =>
+                    s.SetProperty(x => x.Status, status)
+                        .SetProperty(x => x.CompletedAt, DateTime.UtcNow)
+                        .SetProperty(x => x.ErrorMessage, (string?)null)
+                        .SetProperty(x => x.IsServerOffline, false),
+                CancellationToken.None
+            ),
+            _ => 0,
+        };
     }
 }

@@ -54,7 +54,7 @@ public class GenerateDownloadTaskMusicTracksCommandHandler
         _log.Here()
             .Debug("Creating {TrackCount} Music track download tasks", trackSelections.Sum(x => x.MediaIds.Count));
 
-        var downloadRootPath = (await _dbContext.GetDownloadFolder(null)).DirectoryPath;
+        var downloadRootPath = (await _dbContext.GetDownloadFolder()).DirectoryPath;
         var createdTrackIds = new HashSet<int>();
         var artistTasks = new Dictionary<(int ServerId, int LibraryId, int RatingKey), DownloadTaskMusicArtist>();
         var createdFiles = new List<DownloadTaskMusicTrackFile>();

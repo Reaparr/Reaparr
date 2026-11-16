@@ -18,7 +18,8 @@
 					:input-debounce="0"
 					data-cy="time-zone"
 					@filter="filterTimeZones"
-					@popup-show="timeZoneDate = new Date()" />
+					@popup-show="timeZoneDate = new Date()"
+					@update:model-value="onDateTimeSettingChanged" />
 			</HelpRow>
 			<!--	Short Date Format Setting	-->
 			<HelpRow
@@ -28,7 +29,8 @@
 				<q-select
 					v-model:model-value="shortDateFormat"
 					:options="shortDateOptions"
-					data-cy="short-date-format">
+					data-cy="short-date-format"
+					@update:model-value="onDateTimeSettingChanged">
 					<template #option="scope">
 						<q-item
 							v-bind="scope.itemProps"
@@ -48,7 +50,8 @@
 				<q-select
 					v-model:model-value="longDateFormat"
 					:options="longDateOptions"
-					data-cy="long-date-format">
+					data-cy="long-date-format"
+					@update:model-value="onDateTimeSettingChanged">
 					<template #option="scope">
 						<q-item
 							v-bind="scope.itemProps"
@@ -68,7 +71,8 @@
 				<q-select
 					v-model:model-value="timeFormat"
 					:options="timeFormatOptions"
-					data-cy="time-format">
+					data-cy="time-format"
+					@update:model-value="onDateTimeSettingChanged">
 					<template #option="scope">
 						<q-item
 							v-bind="scope.itemProps"
@@ -89,7 +93,8 @@
 					v-model:model-value="settingsStore.dateTimeSettings.showRelativeDates"
 					size="lg"
 					color="red"
-					data-cy="relative-date" />
+					data-cy="relative-date"
+					@update:model-value="onDateTimeSettingChanged" />
 			</HelpRow>
 		</HelpGroup>
 	</QSection>
@@ -103,8 +108,13 @@ import { orderBy } from 'lodash-es';
 import { get, set } from '@vueuse/core';
 import { useSettingsStore } from '@store';
 
+const telemetry = useTelemetry();
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
+
+function onDateTimeSettingChanged(): void {
+	telemetry.dateTimeSettingsChanged();
+}
 
 interface ISelectOption {
 	value: string;

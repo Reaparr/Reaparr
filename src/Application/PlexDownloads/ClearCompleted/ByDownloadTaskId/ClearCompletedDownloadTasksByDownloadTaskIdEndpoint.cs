@@ -8,14 +8,17 @@ public class ClearCompletedDownloadTasksByDownloadTaskIdEndpoint : Endpoint<List
 {
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
     public ClearCompletedDownloadTasksByDownloadTaskIdEndpoint(
         IReaparrDbContext dbContext,
-        ICommandExecutor commandExecutor
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
     )
     {
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -29,6 +32,9 @@ public class ClearCompletedDownloadTasksByDownloadTaskIdEndpoint : Endpoint<List
     {
         var keys = await _dbContext.GetDownloadTaskKeysAsync(req, ct);
         var result = await _commandExecutor.Send(new ClearCompletedDownloadTasksByDownloadTaskKeyCommand(keys), ct);
+
+        _telemetry.CompletedDownloadsCleared(req, keys, result);
+
         if (result.IsFailed)
         {
             await Send.FluentResult(result.ToResult(), ct);

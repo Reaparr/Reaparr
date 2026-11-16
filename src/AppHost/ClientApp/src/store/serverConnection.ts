@@ -33,6 +33,7 @@ export const useServerConnectionStore = defineStore(StoreNames.ServerConnectionS
 	const signalRStore = useSignalrStore();
 	const serverStore = useServerStore();
 
+	const telemetry = useTelemetry();
 	const actions = {
 		setConnectionLoading(connectionId: number, isLoading: boolean) {
 			state.connectionLoadingById[connectionId] = isLoading;
@@ -64,6 +65,8 @@ export const useServerConnectionStore = defineStore(StoreNames.ServerConnectionS
 			);
 		},
 		checkServerConnection(plexServerConnectionId: number): Observable<PlexServerStatusDTO | null> {
+			const connection = state.serverConnections.find((item) => item.id === plexServerConnectionId);
+			telemetry.connectionTestRequested(plexServerConnectionId, connection);
 			signalRStore.clearServerConnectionCheckStatusProgress(plexServerConnectionId);
 			actions.setConnectionLoading(plexServerConnectionId, true);
 			return plexServerConnectionApi.checkConnectionStatusByIdEndpoint(plexServerConnectionId).pipe(
@@ -85,6 +88,7 @@ export const useServerConnectionStore = defineStore(StoreNames.ServerConnectionS
      * @param plexServerId
      */
 		checkServerStatus(plexServerId: number) {
+			telemetry.serverConnectionsTestRequested(plexServerId, state.serverConnections);
 			actions.setConnectionsLoadingForServer(plexServerId, true);
 			return plexServerConnectionApi.checkAllConnectionsStatusByPlexServerEndpoint(plexServerId).pipe(
 				switchMap((response) => response.isSuccess ? actions.refreshPlexServerConnections() : of(response)),
@@ -95,16 +99,19 @@ export const useServerConnectionStore = defineStore(StoreNames.ServerConnectionS
 			plexServerConnectionApi.validatePlexServerConnectionEndpoint({
 				url: connectionUrl,
 			}),
-		createServerConnection: (data: CreatePlexServerConnectionEndpointRequest) =>
-			plexServerConnectionApi.createPlexServerConnectionEndpoint(data).pipe(
+		createServerConnection: (data: CreatePlexServerConnectionEndpointRequest) => {
+			telemetry.connectionCreateRequested(data);
+			return plexServerConnectionApi.createPlexServerConnectionEndpoint(data).pipe(
 				tap(({ isSuccess, value }) => {
 					if (isSuccess && value) {
 						state.serverConnections.push(value);
 					}
 				}),
-			),
-		updateServerConnection: (data: UpdatePlexServerConnectionEndpointRequest) =>
-			plexServerConnectionApi.updatePlexServerConnectionEndpoint(data).pipe(
+			);
+		},
+		updateServerConnection: (data: UpdatePlexServerConnectionEndpointRequest) => {
+			telemetry.connectionUpdateRequested(data);
+			return plexServerConnectionApi.updatePlexServerConnectionEndpoint(data).pipe(
 				tap(({ isSuccess, value }) => {
 					if (isSuccess && value) {
 						const index = state.serverConnections.findIndex((x) => x.id === value.id);
@@ -113,9 +120,12 @@ export const useServerConnectionStore = defineStore(StoreNames.ServerConnectionS
 						}
 					}
 				}),
-			),
-		deleteServerConnection: (connectionId: number) =>
-			plexServerConnectionApi.deletePlexServerConnectionById(connectionId).pipe(
+			);
+		},
+		deleteServerConnection: (connectionId: number) => {
+			const connection = state.serverConnections.find((item) => item.id === connectionId);
+			telemetry.connectionDeleteRequested(connectionId, connection);
+			return plexServerConnectionApi.deletePlexServerConnectionById(connectionId).pipe(
 				tap(({ isSuccess }) => {
 					if (isSuccess) {
 						const index = state.serverConnections.findIndex((x) => x.id === connectionId);
@@ -124,11 +134,14 @@ export const useServerConnectionStore = defineStore(StoreNames.ServerConnectionS
 						}
 					}
 				}),
-			),
-		setPreferredPlexServerConnection: (plexServerId: number, connectionId: number) =>
-			plexServerApi
+			);
+		},
+		setPreferredPlexServerConnection: (plexServerId: number, connectionId: number) => {
+			telemetry.preferredConnectionChanged(plexServerId, connectionId);
+			return plexServerApi
 				.setPreferredPlexServerConnectionEndpoint(plexServerId, connectionId)
-				.pipe(switchMap((response) => response.isSuccess ? serverStore.refreshPlexServer(plexServerId) : of(response))),
+				.pipe(switchMap((response) => response.isSuccess ? serverStore.refreshPlexServer(plexServerId) : of(response)));
+		},
 		$reset() {
 			Object.assign(state, cloneDeep(defaultState));
 		},

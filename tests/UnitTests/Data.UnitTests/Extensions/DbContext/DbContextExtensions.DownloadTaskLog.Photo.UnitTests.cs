@@ -6,14 +6,11 @@ public class DbContextExtensionsDownloadTaskLogPhotoUnitTests : BaseUnitTest
     public async Task ShouldPersistPhotoLogWithFileIdOnly_WhenMovieLogUsesTheSameIdentity()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            62311,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(62311, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -263,9 +260,8 @@ public class DbContextExtensionsDownloadTaskLogPhotoUnitTests : BaseUnitTest
                 continue;
 
             var child = FakeData
-                .GetDownloadTaskPhotoFolder(
-                    new Seed(seed.Next()),
-                    config => config.PhotoImageDownloadTasksCount = filesPerFolder
+                .GetDownloadTaskPhotoFolder(new Seed(seed.Next()), config =>
+                    config.PhotoImageDownloadTasksCount = filesPerFolder
                 )
                 .Generate();
             child.Parent = root;

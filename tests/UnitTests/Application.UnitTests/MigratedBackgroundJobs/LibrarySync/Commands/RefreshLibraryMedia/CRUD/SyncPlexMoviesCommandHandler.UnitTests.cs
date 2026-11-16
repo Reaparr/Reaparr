@@ -9,14 +9,11 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldCreateAllMovies_WhenNoneExistsYet()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            451253,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(451253, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         library.ShouldNotBeNull();
@@ -51,15 +48,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldPreserveIdsAndReportNoChanges_WhenResultIsIdentical()
     {
         // Arrange
-        await SetupDatabase(
-            713452,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 10;
-            }
-        );
+        await SetupDatabase(713452, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 10;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         var movies = IDbContext
@@ -93,15 +87,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldDeleteAllMovies_WhenSuccessfulResultIsEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            713453,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 10;
-            }
-        );
+        await SetupDatabase(713453, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 10;
+        });
 
         var library = IDbContext.PlexLibraries.First();
 
@@ -122,16 +113,13 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldPreserveUnchangedNestedMediaAndReplaceOnlyChangedMovieMedia()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            713454,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = true;
-            }
-        );
+        var seed = await SetupDatabase(713454, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = true;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         var currentMovies = IDbContext
@@ -181,15 +169,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldNotDeleteMoviesFromOtherLibraries_WhenTargetResultIsEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            713455,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(713455, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+            config.MovieCount = 3;
+        });
 
         var libraries = IDbContext.PlexLibraries.OrderBy(x => x.Id).ToList();
         var target = libraries[0];
@@ -273,15 +258,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldBeIdempotent_WhenSameChangedResultIsRepeated()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            713456,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(713456, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var current = IDbContext.PlexMovies.AsNoTracking().Single();
         var changed = FakeData.GetPlexMovies(seed).Generate();
@@ -316,15 +298,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldLeaveMoviesUnchanged_WhenAlreadyCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            713457,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(713457, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+        });
         var library = IDbContext.PlexLibraries.First();
         var originalIds = IDbContext.PlexMovies.Select(x => x.Id).Order().ToList();
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -346,15 +325,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldReplaceAllMovies_WhenForceMediaRefreshIsTrue()
     {
         // Arrange
-        await SetupDatabase(
-            713459,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(713459, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
         var library = IDbContext.PlexLibraries.First();
         var movies = IDbContext.PlexMovies.AsNoTracking().OrderBy(x => x.Id).ToList();
         var originalIds = movies.Select(x => x.Id).ToList();
@@ -379,16 +355,13 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldDeleteTwentyMovies_WhenSomeExist()
     {
         // Arrange
-        await SetupDatabase(
-            4503253,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 50;
-            }
-        );
+        await SetupDatabase(4503253, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 50;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         library.ShouldNotBeNull();
@@ -421,16 +394,13 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldCreateUpdateAndDeleteMovies_WhenSomeExist()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            4903259,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 50;
-            }
-        );
+        var seed = await SetupDatabase(4903259, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 50;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         var moviesDb = IDbContext.PlexMovies.AsNoTracking().Include(x => x.MediaDataList).ToList();
@@ -487,15 +457,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldPersistStreamsForNewOrUpdatedMovieParts(bool isNew)
     {
         // Arrange
-        var seed = await SetupDatabase(
-            713460,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = isNew ? 0 : 1;
-            }
-        );
+        var seed = await SetupDatabase(713460, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = isNew ? 0 : 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var movie = isNew
             ? FakeData.GetPlexMovies(seed).Generate()
@@ -571,15 +538,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldLeaveMovieStreamsAndOwnersUnchanged_WhenTimestampIsUnchangedDespiteMediaDataChanges()
     {
         // Arrange
-        await SetupDatabase(
-            713469,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(713469, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var movie = IDbContext.PlexMovies.AsNoTracking().Include(x => x.MediaDataList).Single();
         var original = movie.MediaDataList.First();
@@ -700,15 +664,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldReconcileMovieStreamLifecycleWithoutChurn()
     {
         // Arrange
-        await SetupDatabase(
-            713464,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(713464, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
 
         async Task<PlexMovie> LoadMovie() =>
@@ -990,15 +951,12 @@ public class SyncPlexMoviesCommandHandlerUnitTests : BaseCommandUnitTest<SyncPle
     public async Task ShouldPreserveStreamsWhenSynchronizationIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            713476,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(713476, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var movie = IDbContext.PlexMovies.AsNoTracking().Include(x => x.MediaDataList).Single();
         movie

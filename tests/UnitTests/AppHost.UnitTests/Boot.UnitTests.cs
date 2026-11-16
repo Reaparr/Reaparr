@@ -64,6 +64,11 @@ public class BootUnitTests : BaseUnitTest<Boot>
             .Setup(x => x.Send(It.IsAny<CreateDefaultAppUserCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .InSequence(sequence)
+            .Setup(x => x.InitializeAsync())
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
         Mock.Mock<IDownloadQueue>()
             .InSequence(sequence)
             .Setup(x => x.Setup(CancellationToken.None))
@@ -90,6 +95,7 @@ public class BootUnitTests : BaseUnitTest<Boot>
 
         // Assert
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<IDownloadQueue>().Verify();
         Mock.Mock<IBackgroundJobsSetup>().Verify();
         Mock.Mock<IMoveDownloadFileQueue>()
@@ -208,16 +214,13 @@ public class BootUnitTests : BaseUnitTest<Boot>
     {
         // Arrange
         SetAppRuntimeInfo(x => x.IsIntegrationTestMode = false);
-        await SetupDatabase(
-            58123,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(58123, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.MovieDownloadTasksCount = 3;
+        });
 
         var dbContext = IDbContext;
         var files = await dbContext

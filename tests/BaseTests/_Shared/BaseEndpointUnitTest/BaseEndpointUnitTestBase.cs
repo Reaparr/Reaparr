@@ -36,8 +36,9 @@ public abstract class BaseEndpointUnitTestBase<TEndpoint, TResponse> : BaseUnitT
     {
         var requestType = typeof(TRequest);
 
-        var validatorTypes = requestType
-            .Assembly.GetTypes()
+        var validatorTypes = new[] { requestType.Assembly, typeof(TEndpoint).Assembly }
+            .Distinct()
+            .SelectMany(assembly => assembly.GetTypes())
             .Where(t =>
                 t is { IsAbstract: false, IsInterface: false }
                 && t.GetInterfaces()
@@ -139,6 +140,7 @@ public abstract class BaseEndpointUnitTestBase<TEndpoint, TResponse> : BaseUnitT
                 s.AddTransient(_ => IsDatabaseSetup ? IAuthDbContext : Mock.Create<IAuthDbContext>());
                 s.AddTransient(_ => Mock.Create<IAuthDbContextFactory>());
                 s.AddTransient(_ => Mock.Mock<ICommandExecutor>().Object);
+                s.AddSingleton(_ => Mock.Mock<ITelemetry>().Object);
                 s.AddSingleton(_ => Mock.Mock<IScheduler>().Object);
                 s.AddSingleton(_ => Mock.Mock<IProgressHubService>().Object);
                 s.AddSingleton(_ => Mock.Mock<IDownloadHubService>().Object);

@@ -54,8 +54,7 @@ public static class BasePlexMediaDataMapper
     {
         // Extract video stream info. Plex may mark an audio stream as default, so only a
         // default video stream may be selected; otherwise preserve the first-video fallback.
-        var videoStream =
-            partItem.Stream.FirstOrDefault(s => s is { StreamType: StreamType.Video, Default: true })
+        var videoStream = partItem.Stream.FirstOrDefault(s => s is { StreamType: StreamType.Video, Default: true })
             ?? partItem.Stream.FirstOrDefault(s => s.StreamType == StreamType.Video);
         if (videoStream is null)
         {

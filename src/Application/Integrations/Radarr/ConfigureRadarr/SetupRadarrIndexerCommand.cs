@@ -59,8 +59,7 @@ public class SetupRadarrIndexerCommandHandler
                 .WithErrors(getResult.Errors)
                 .LogError();
 
-        var existing =
-            getResult.Value.FirstOrDefault(d => d.Id == integration.ExternalIndexerId)
+        var existing = getResult.Value.FirstOrDefault(d => d.Id == integration.ExternalIndexerId)
             ?? getResult.Value.FirstOrDefault(d =>
                 string.Equals(d.Name, _indexerName, StringComparison.OrdinalIgnoreCase)
             );

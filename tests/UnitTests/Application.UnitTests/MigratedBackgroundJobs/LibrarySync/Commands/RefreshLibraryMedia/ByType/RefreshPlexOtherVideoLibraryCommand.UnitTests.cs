@@ -6,14 +6,11 @@ public class RefreshPlexOtherVideoLibraryCommandUnitTests : BaseCommandUnitTest<
     public async Task ShouldPublishStructuredErrorAndSkipOptimization_WhenSyncFails()
     {
         // Arrange
-        await SetupDatabase(
-            625623,
-            x =>
-            {
-                x.PlexServerCount = 1;
-                x.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(625623, x =>
+        {
+            x.PlexServerCount = 1;
+            x.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
             p => p.SetProperty(x => x.Type, PlexMediaType.OtherVideos),

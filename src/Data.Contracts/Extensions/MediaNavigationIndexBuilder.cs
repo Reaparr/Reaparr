@@ -35,9 +35,8 @@ public static class MediaNavigationIndexBuilder
         {
             SortType.Year or SortType.VideoQuality or SortType.AudioQuality => BuildGroupedAsync<int?>(
                 rows,
-                (
-                    sort.Field == SortType.Year ? row => row.Year : row => row.QualityValue,
-                    static value => value?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL
+                (sort.Field == SortType.Year ? row => row.Year : row => row.QualityValue, static value =>
+                    value?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL
                 ),
                 sort,
                 cancellationToken
@@ -57,9 +56,7 @@ public static class MediaNavigationIndexBuilder
                     sort.Field == SortType.AddedAt
                         ? row => row.AddedAt.Year * 100 + row.AddedAt.Month
                         : row =>
-                            row.UpdatedAt.HasValue
-                                ? row.UpdatedAt.Value.Year * 100 + row.UpdatedAt.Value.Month
-                                : (int?)null,
+                            row.UpdatedAt.HasValue ? row.UpdatedAt.Value.Year * 100 + row.UpdatedAt.Value.Month : null,
                     bucket =>
                     {
                         if (bucket is null)
@@ -100,9 +97,9 @@ public static class MediaNavigationIndexBuilder
         var groups =
             sort.Direction == SortDirection.Desc
                 ? rows.GroupBy(bucket.Key)
-                    .Select(group => new { Key = group.Key, FirstRank = group.Max(row => row.SortRank) })
+                    .Select(group => new { group.Key, FirstRank = group.Max(row => row.SortRank) })
                 : rows.GroupBy(bucket.Key)
-                    .Select(group => new { Key = group.Key, FirstRank = group.Min(row => row.SortRank) });
+                    .Select(group => new { group.Key, FirstRank = group.Min(row => row.SortRank) });
 
         var positionedGroups =
             sort.Direction == SortDirection.Desc

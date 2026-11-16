@@ -36,5 +36,6 @@
 /TestResults
 /export
 /tests
+/.tmp/frontend-public-docker
 LICENSE
 README.md

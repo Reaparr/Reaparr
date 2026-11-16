@@ -11,15 +11,12 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
     public async Task ShouldListOnlyActiveRootsAndKeepRecursiveTotalsOnTheFolderItems()
     {
         // Arrange
-        await SetupDatabase(
-            71003,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(71003, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -73,15 +70,12 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
     public async Task ShouldReturnAValidEmptyPageWhenNoActiveRootsRemain()
     {
         // Arrange
-        await SetupDatabase(
-            71012,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(71012, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -104,15 +98,12 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
     public async Task ShouldBoundLargeRootPagesAndBatchRecursiveTotals()
     {
         // Arrange
-        await SetupDatabase(
-            71016,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(71016, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -148,11 +139,12 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
         using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var subscriptions = commandSubscriptions;
         using var listeners = DiagnosticListener.AllListeners.Subscribe(listener =>
         {
             if (listener.Name != "Microsoft.EntityFrameworkCore")
                 return;
-            commandSubscriptions.Add(
+            subscriptions.Add(
                 listener.Subscribe(entry =>
                 {
                     if (
@@ -166,16 +158,16 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
 
         // Act
         var smallPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 1, SortType.Title)
+            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 1)
         );
         var smallPageQueryCount = commands.Count;
         commands.Clear();
         var firstPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, SortType.Title)
+            new GetPhotoSourceRootsQueryCommand(library.Id)
         );
         var largePageQueryCount = commands.Count;
         var secondPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 2, 100, SortType.Title)
+            new GetPhotoSourceRootsQueryCommand(library.Id, 2)
         );
         var descendingPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
             new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, SortType.Title, SortDirection.Desc)

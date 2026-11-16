@@ -1,10 +1,18 @@
 import { describe, beforeAll, beforeEach, test, expect, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
+
 import { baseSetup, baseVars, getAxiosMock, subscribeSpyTo } from '@services-test-base';
 import { PlexAccountPaths, PlexLibraryPaths, PlexServerPaths } from '@api-urls';
 import { generateFailedResultDTO, generatePlexAccount, generateResultDTO } from '@mock';
 import { DialogType } from '@enums';
 import { useAccountDialogStore, useAccountStore, useDialogStore } from '@store';
+import { FrontendTelemetryAction, FrontendTelemetryEvent } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 describe('AccountDialogStore.saveAccount()', () => {
 	let { mock } = baseVars();
@@ -16,6 +24,7 @@ describe('AccountDialogStore.saveAccount()', () => {
 	beforeEach(() => {
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
+		capture.mockClear();
 	});
 
 	test('Should preserve a failed create draft and close only after a successful retry', async () => {
@@ -85,6 +94,26 @@ describe('AccountDialogStore.saveAccount()', () => {
 		expect(successfulSave.getFirstValue()).toEqual(successfulResult);
 		expect(closeDialogSpy).toHaveBeenCalledWith(DialogType.AccountDialog);
 		expect(accountDialogStore.savingLoading).toBe(false);
+		expect(capture.mock.calls).toEqual([
+			[FrontendTelemetryEvent.FrontendAccountInteraction, {
+				action: FrontendTelemetryAction.ValidateCredentials,
+				account_id: 0,
+				is_new_account: true,
+			}],
+			[FrontendTelemetryEvent.FrontendAccountInteraction, {
+				action: FrontendTelemetryAction.Save,
+				account_id: 0,
+				is_new_account: true,
+				is_auth_token_mode: false,
+			}],
+			[FrontendTelemetryEvent.FrontendAccountInteraction, {
+				action: FrontendTelemetryAction.Save,
+				account_id: 0,
+				is_new_account: true,
+				is_auth_token_mode: false,
+			}],
+		]);
+		expect(JSON.stringify(capture.mock.calls)).not.toContain('create-password');
 	});
 
 	test('Should preserve a failed update draft and close only after a successful retry', async () => {

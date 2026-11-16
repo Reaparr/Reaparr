@@ -4,7 +4,7 @@
         <AssemblyName>Reaparr.PublicAPI.UnitTests</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="CSharpier.MsBuild" Version="1.3.0">
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -19,6 +19,8 @@
         <ProjectReference Include="..\..\BaseTests\BaseTests.csproj" />
     </ItemGroup>
     <ItemGroup>
+        <Using Include="Reaparr.Application.Contracts" />
+        <Using Include="Reaparr.PublicAPI.Contracts" />
         <Using Include="Microsoft.EntityFrameworkCore" />
         <Using Include="Reaparr.FluentResults" />
         <Using Include="Reaparr.FluentResultExtensions" />

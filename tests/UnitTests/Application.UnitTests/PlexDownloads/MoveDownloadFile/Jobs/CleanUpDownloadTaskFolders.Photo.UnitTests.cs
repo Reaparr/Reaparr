@@ -58,14 +58,11 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectMovieSiblingStatusWhenCleaningPhoto(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            64002,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(64002, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
@@ -122,16 +119,13 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectEpisodeSiblingStatusWhenCleaningPhoto(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            64004,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(64004, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
@@ -247,18 +241,15 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectMusicSiblingStatusWhenCleaningPhoto(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            64007,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(64007, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData
@@ -318,16 +309,13 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectOtherVideoSiblingStatusWhenCleaningPhoto(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            64009,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 1;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(64009, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var album = FakeData

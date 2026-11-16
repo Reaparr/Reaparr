@@ -1,6 +1,6 @@
 namespace Reaparr.Data.Contracts;
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsPlexTvShowSeason
 {
     public static IQueryable<PlexTvShowSeason> IncludePlexLibrary(this IQueryable<PlexTvShowSeason> plexTvShowSeason) =>
         plexTvShowSeason.Include(x => x.PlexLibrary);

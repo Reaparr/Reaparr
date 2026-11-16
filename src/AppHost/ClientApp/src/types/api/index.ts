@@ -13,6 +13,7 @@ import { Settings } from '@api/generated/Settings';
 import { Integration } from '@api/generated/Integration';
 import { Update } from '@api/generated/Update';
 import { Debug } from '@api/generated/Debug';
+import { Telemetry } from '@api/generated/Telemetry';
 
 export * from './api-paths';
 export * from './custom';
@@ -32,6 +33,7 @@ const plexServerConnectionApi = new PlexServerConnection();
 const integrationApi = new Integration();
 const settingsApi = new Settings();
 const updateApi = new Update();
+const telemetryApi = new Telemetry();
 
 export {
 	authenticationApi,
@@ -49,4 +51,5 @@ export {
 	settingsApi,
 	integrationApi,
 	updateApi,
+	telemetryApi,
 };

@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Moq;
 using Moq.Contrib.HttpClient;
 using NuGet.Versioning;
 using Velopack;
@@ -25,23 +24,20 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
             ReleaseNotes = [],
         };
 
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "docker",
-                    Version = "0.38.0",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                {
-                    builder.Register(_ => CreateCommandExecutor(updateResult)).As<ICommandExecutor>().SingleInstance();
-                };
-            }
-        );
+                RuntimeMode = "docker",
+                Version = "0.38.0",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+            {
+                builder.Register(_ => CreateCommandExecutor(updateResult)).As<ICommandExecutor>().SingleInstance();
+            };
+        });
 
         var client = container.GetApiClient();
 
@@ -93,22 +89,19 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
             .Setup(x => x.CheckForUpdatesAsync())
             .ReturnsAsync(new UpdateInfo(asset, false))
             .Verifiable(Times.Exactly(2));
-        using var container = await CreateContainer(
-            new Seed(11002),
-            config =>
+        using var container = await CreateContainer(new Seed(11002), config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "docker",
-                    Version = "0.38.0",
-                    InformationalVersion = "0.38.0",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                    RegisterUpdateServices(builder, githubClientFactory.Object, updateManager.Object);
-            }
-        );
+                RuntimeMode = "docker",
+                Version = "0.38.0",
+                InformationalVersion = "0.38.0",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+                RegisterUpdateServices(builder, githubClientFactory.Object, updateManager.Object);
+        });
         var notificationService = container.Resolve<MockNotificationHubService>();
         var client = container.GetApiClient();
 
@@ -167,22 +160,19 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
             new Mock<IVelopackLocator>(MockBehavior.Loose).Object
         );
         manager.Setup(x => x.CheckForUpdatesAsync()).ReturnsAsync((UpdateInfo?)null).Verifiable(Times.Once());
-        using var container = await CreateContainer(
-            new Seed(11006),
-            config =>
+        using var container = await CreateContainer(new Seed(11006), config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "docker",
-                    Version = "0.38.0",
-                    InformationalVersion = "0.38.0",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                    RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
-            }
-        );
+                RuntimeMode = "docker",
+                Version = "0.38.0",
+                InformationalVersion = "0.38.0",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+                RegisterUpdateServices(builder, githubClientFactory.Object, manager.Object);
+        });
         var notifications = container.Resolve<MockNotificationHubService>();
         using var client = container.GetApiClient();
 
@@ -224,22 +214,19 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
             ],
         };
 
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "docker",
-                    Version = "0.38.0-dev.6",
-                    InformationalVersion = "0.38.0-dev.6",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                    builder.Register(_ => CreateCommandExecutor(updateResult)).As<ICommandExecutor>().SingleInstance();
-            }
-        );
+                RuntimeMode = "docker",
+                Version = "0.38.0-dev.6",
+                InformationalVersion = "0.38.0-dev.6",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+                builder.Register(_ => CreateCommandExecutor(updateResult)).As<ICommandExecutor>().SingleInstance();
+        });
 
         var client = container.GetApiClient();
 
@@ -284,21 +271,18 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
             ],
         };
 
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "desktop",
-                    Version = "0.38.0",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                    builder.Register(_ => CreateCommandExecutor(updateResult)).As<ICommandExecutor>().SingleInstance();
-            }
-        );
+                RuntimeMode = "desktop",
+                Version = "0.38.0",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+                builder.Register(_ => CreateCommandExecutor(updateResult)).As<ICommandExecutor>().SingleInstance();
+        });
 
         var client = container.GetApiClient();
 
@@ -335,21 +319,18 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
             ReleaseNotes = [],
         };
 
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.OverrideAppBuildInfo = new MockAppBuildInfo
             {
-                config.OverrideAppBuildInfo = new MockAppBuildInfo
-                {
-                    RuntimeMode = "desktop",
-                    Version = "0.38.0",
-                    RuntimeIdentifier = "linux-x64",
-                    CurrentOS = OperatingSystemPlatform.Linux,
-                };
-                config.OverrideServices = builder =>
-                    builder.Register(_ => CreateCommandExecutor(updateResult)).As<ICommandExecutor>().SingleInstance();
-            }
-        );
+                RuntimeMode = "desktop",
+                Version = "0.38.0",
+                RuntimeIdentifier = "linux-x64",
+                CurrentOS = OperatingSystemPlatform.Linux,
+            };
+            config.OverrideServices = builder =>
+                builder.Register(_ => CreateCommandExecutor(updateResult)).As<ICommandExecutor>().SingleInstance();
+        });
 
         var client = container.GetApiClient();
 
@@ -391,11 +372,18 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         };
 
     private static void RegisterUpdateServices(
-        Autofac.ContainerBuilder builder,
+        ContainerBuilder builder,
         IHttpClientFactory githubClientFactory,
         UpdateManager updateManager
     )
     {
+        var telemetryHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        telemetryHandler.SetupAnyRequest().ReturnsResponse(HttpStatusCode.OK);
+        var telemetryClient = new HttpClient(telemetryHandler.Object, disposeHandler: false)
+        {
+            BaseAddress = new Uri("https://telemetry.example.test/"),
+        };
+        Mock.Get(githubClientFactory).Setup(x => x.CreateClient("PostHogClient")).Returns(telemetryClient);
         builder.RegisterInstance(githubClientFactory).As<IHttpClientFactory>().SingleInstance();
         builder.RegisterInstance(updateManager).As<UpdateManager>().SingleInstance();
         builder.RegisterType<MockNotificationHubService>().As<INotificationHubService>().AsSelf().SingleInstance();

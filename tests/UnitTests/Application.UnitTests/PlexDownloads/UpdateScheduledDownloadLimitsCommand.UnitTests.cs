@@ -6,15 +6,12 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     public async Task ShouldRedistributeCappedSharesAndRemoveInactiveGrants_WhenServersHaveMultipleFiles()
     {
         // Arrange
-        await SetupDatabase(
-            85301,
-            config =>
-            {
-                config.PlexServerCount = 4;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 0;
-            }
-        );
+        await SetupDatabase(85301, config =>
+        {
+            config.PlexServerCount = 4;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 0;
+        });
         var dbContext = IDbContext;
         var servers = (await dbContext.PlexServers.ToListAsync(CancellationToken))
             .OrderBy(x => x.MachineIdentifier, StringComparer.Ordinal)
@@ -47,22 +44,22 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         activeFileServers.Count.ShouldBeGreaterThan(3);
 
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
         };
         settings.ServerSettings.SetDownloadSpeedLimit(servers[0].MachineIdentifier, 100);
         settings.ServerSettings.SetDownloadSpeedLimit(servers[3].MachineIdentifier, 200);
-        speedLimits.SetScheduledDownloadSpeedLimits(
-            new Dictionary<string, long> { [servers[3].MachineIdentifier] = 1 }
-        );
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(
+            new Dictionary<string, long> { [servers[3].MachineIdentifier] = 1 }
+        );
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -72,7 +69,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         // Assert
         servers
             .Select(x => speedLimits.GetEffectiveDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe(new long[] { 102400, 460800, 460800, 204800 });
+            .ShouldBe([102400, 460800, 460800, 204800]);
         settings
             .ServerSettings.Data.Single(x => x.MachineIdentifier == servers[0].MachineIdentifier)
             .DownloadSpeedLimit.ShouldBe(100);
@@ -87,16 +84,13 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     public async Task ShouldIncludeMusicPhotoAndOtherVideoFilesAsDistinctParticipants()
     {
         // Arrange
-        await SetupDatabase(
-            85304,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMusicLibraryCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(85304, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMusicLibraryCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var servers = await dbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var mediaTypes = new[] { PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos };
@@ -157,18 +151,26 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             CancellationToken
         );
 
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 3_000 } },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["00:00"] = 3_000 },
+                    },
+                },
+            },
         };
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -179,22 +181,19 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         result.IsSuccess.ShouldBeTrue();
         servers
             .Select(x => speedLimits.GetEffectiveDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe(new long[] { 1_024_000, 1_024_000, 1_024_000 });
+            .ShouldBe([1_024_000, 1_024_000, 1_024_000]);
     }
 
     [Test]
     public async Task ShouldSplitOneKilobyteWithoutRoundingUp_WhenThreeServersAreDownloading()
     {
         // Arrange
-        await SetupDatabase(
-            85302,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 0;
-            }
-        );
+        await SetupDatabase(85302, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 0;
+        });
         var dbContext = IDbContext;
         foreach (var server in await dbContext.PlexServers.ToListAsync(CancellationToken))
         {
@@ -217,17 +216,17 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             .ToList();
         servers.Count.ShouldBe(3);
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1 } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1 } },
         };
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -235,7 +234,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         );
 
         // Assert
-        servers.Select(speedLimits.GetEffectiveDownloadSpeedLimit).ShouldBe(new long[] { 341, 341, 342 });
+        servers.Select(speedLimits.GetEffectiveDownloadSpeedLimit).ShouldBe([341, 341, 342]);
         settings.ServerSettings.Data.ShouldBeEmpty();
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
@@ -248,15 +247,15 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     {
         // Arrange
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule { Enabled = enabled };
         settings.ServerSettings.SetDownloadSpeedLimit("capped", 100);
-        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["capped"] = 1, ["uncapped"] = 2 });
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["capped"] = 1, ["uncapped"] = 2 });
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -278,18 +277,18 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     {
         // Arrange
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = invalidLimit } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = invalidLimit } },
         };
-        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -307,15 +306,12 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     public async Task ShouldLeaveExcessBudgetUnused_WhenEveryDownloadingServerHasAFiniteManualCap()
     {
         // Arrange
-        await SetupDatabase(
-            85331,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 0;
-            }
-        );
+        await SetupDatabase(85331, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 0;
+        });
         using var dbContext = IDbContext;
         var servers = (await dbContext.PlexServers.ToListAsync(CancellationToken))
             .OrderBy(x => x.MachineIdentifier, StringComparer.Ordinal)
@@ -338,19 +334,19 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             CancellationToken
         );
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
         };
         settings.ServerSettings.SetDownloadSpeedLimit(servers[0].MachineIdentifier, 100);
         settings.ServerSettings.SetDownloadSpeedLimit(servers[1].MachineIdentifier, 200);
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -360,10 +356,8 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         // Assert
         servers
             .Select(x => speedLimits.GetEffectiveDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe(new long[] { 102400, 204800 });
-        servers
-            .Select(x => settings.ServerSettings.GetDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe(new[] { 100, 200 });
+            .ShouldBe([102400, 204800]);
+        servers.Select(x => settings.ServerSettings.GetDownloadSpeedLimit(x.MachineIdentifier)).ShouldBe([100, 200]);
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
     }
@@ -386,21 +380,21 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             .DownloadTaskMovieFile.Select(x => x.PlexServer!.MachineIdentifier)
             .FirstAsync(CancellationToken);
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
         };
         settings.ServerSettings.SetDownloadSpeedLimit(machineIdentifier, 100);
-        speedLimits.SetScheduledDownloadSpeedLimits(
-            new Dictionary<string, long> { [machineIdentifier] = 1, ["inactive"] = 2 }
-        );
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(
+            new Dictionary<string, long> { [machineIdentifier] = 1, ["inactive"] = 2 }
+        );
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -442,30 +436,35 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         var machineIdentifier = await dbContext
             .PlexServers.Select(x => x.MachineIdentifier)
             .SingleAsync(CancellationToken);
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new()
+            DownloadManagerSettings =
             {
-                ["Monday"] = new()
+                DownloadSchedule = new DownloadSchedule
                 {
-                    ["17:30"] = null,
-                    ["09:30"] = 400,
-                    ["09:00"] = 200,
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new()
+                        {
+                            ["17:30"] = null,
+                            ["09:30"] = 400,
+                            ["09:00"] = 200,
+                        },
+                        ["Sunday"] = new() { ["23:30"] = 800 },
+                    },
                 },
-                ["Sunday"] = new() { ["23:30"] = 800 },
             },
         };
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
-        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { [machineIdentifier] = 12345 });
         var clock = new Mock<TimeProvider>(MockBehavior.Strict);
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
             builder.RegisterInstance(clock.Object).As<TimeProvider>();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { [machineIdentifier] = 12345 });
 
         // Act
         var result = await TestHandlerExecuteAsync(
@@ -498,26 +497,31 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             CancellationToken
         );
         var machineIdentifier = await dbContext.PlexServers.Select(x => x.MachineIdentifier).SingleAsync();
-        var settings = new UserSettings();
-        settings.DateTimeSettings.TimeZone = timeZone;
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new()
+            DateTimeSettings = { TimeZone = timeZone },
+            DownloadManagerSettings =
             {
-                ["Monday"] = new() { ["00:00"] = 1000, ["00:30"] = 2000 },
-                ["Sunday"] = new() { ["01:00"] = 3000, ["02:00"] = 4000 },
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["00:00"] = 1000, ["00:30"] = 2000 },
+                        ["Sunday"] = new() { ["01:00"] = 3000, ["02:00"] = 4000 },
+                    },
+                },
             },
         };
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
         var clock = new Mock<TimeProvider>(MockBehavior.Strict);
         clock.Setup(x => x.GetUtcNow()).Returns(DateTimeOffset.Parse(utc)).Verifiable(Times.Once());
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
             builder.RegisterInstance(clock.Object).As<TimeProvider>();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
 
         // Act
         var result = await TestHandlerExecuteAsync(new UpdateScheduledDownloadLimitsCommand());
@@ -535,15 +539,15 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     {
         // Arrange
         var settings = new UserSettings();
-        using var speedLimits = new DownloadSpeedLimitProvider(settings);
-        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
         var clock = new Mock<TimeProvider>(MockBehavior.Strict);
         SetupDependencies(builder =>
         {
             builder.RegisterInstance(settings).As<IUserSettings>();
-            builder.RegisterInstance(speedLimits).As<IDownloadSpeedLimitProvider>();
+            builder.RegisterType<DownloadSpeedLimitProvider>().As<IDownloadSpeedLimitProvider>().SingleInstance();
             builder.RegisterInstance(clock.Object).As<TimeProvider>();
         });
+        var speedLimits = Mock.Container.Resolve<IDownloadSpeedLimitProvider>();
+        speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
 
         // Act
         var result = await TestHandlerExecuteAsync(new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.MinValue));

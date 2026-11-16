@@ -144,14 +144,11 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
 
         // Act
         var tvShowTask = FakeData
-            .GetDownloadTaskTvShow(
-                seed,
-                options =>
-                {
-                    options.TvShowSeasonDownloadTasksCount = config.TvShowSeasonDownloadTasksCount;
-                    options.TvShowEpisodeDownloadTasksCount = config.TvShowEpisodeDownloadTasksCount;
-                }
-            )
+            .GetDownloadTaskTvShow(seed, options =>
+            {
+                options.TvShowSeasonDownloadTasksCount = config.TvShowSeasonDownloadTasksCount;
+                options.TvShowEpisodeDownloadTasksCount = config.TvShowEpisodeDownloadTasksCount;
+            })
             .Generate();
 
         // Assert
@@ -190,15 +187,12 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
 
         // Act
         var tvShowTask = FakeData
-            .GetDownloadTaskTvShow(
-                seed,
-                options =>
-                {
-                    options.TvShowSeasonDownloadTasksCount = 1;
-                    options.TvShowEpisodeDownloadTasksCount = 1;
-                    options.IncludeMultiPartEpisodes = true;
-                }
-            )
+            .GetDownloadTaskTvShow(seed, options =>
+            {
+                options.TvShowSeasonDownloadTasksCount = 1;
+                options.TvShowEpisodeDownloadTasksCount = 1;
+                options.IncludeMultiPartEpisodes = true;
+            })
             .Generate();
 
         var episode = tvShowTask.Children.Single().Children.Single();
@@ -224,15 +218,12 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
 
         // Act
         var artist = FakeData
-            .GetDownloadTaskMusicArtist(
-                seed,
-                options =>
-                {
-                    options.MusicAlbumDownloadTasksCount = config.MusicAlbumDownloadTasksCount;
-                    options.MusicTrackDownloadTasksCount = config.MusicTrackDownloadTasksCount;
-                    options.MusicTrackFileDownloadTasksCount = config.MusicTrackFileDownloadTasksCount;
-                }
-            )
+            .GetDownloadTaskMusicArtist(seed, options =>
+            {
+                options.MusicAlbumDownloadTasksCount = config.MusicAlbumDownloadTasksCount;
+                options.MusicTrackDownloadTasksCount = config.MusicTrackDownloadTasksCount;
+                options.MusicTrackFileDownloadTasksCount = config.MusicTrackFileDownloadTasksCount;
+            })
             .Generate();
         var files = artist.Children.SelectMany(album => album.Children).SelectMany(track => track.Children).ToList();
 
@@ -263,9 +254,8 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
 
         // Act
         var folders = FakeData
-            .GetDownloadTaskPhotoFolder(
-                seed,
-                options => options.PhotoImageDownloadTasksCount = config.PhotoImageDownloadTasksCount
+            .GetDownloadTaskPhotoFolder(seed, options =>
+                options.PhotoImageDownloadTasksCount = config.PhotoImageDownloadTasksCount
             )
             .RuleFor(x => x.Id, faker => faker.Random.Guid())
             .Generate(config.PhotoFolderDownloadTasksCount);
@@ -319,14 +309,11 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
         // Arrange
         const int photoFolderCount = 1;
         const int photoImageCount = 2;
-        await SetupDatabase(
-            24684,
-            config =>
-            {
-                config.PhotoFolderDownloadTasksCount = photoFolderCount;
-                config.PhotoImageDownloadTasksCount = photoImageCount;
-            }
-        );
+        await SetupDatabase(24684, config =>
+        {
+            config.PhotoFolderDownloadTasksCount = photoFolderCount;
+            config.PhotoImageDownloadTasksCount = photoImageCount;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -358,9 +345,8 @@ public class FakeDataDownloadTasksUnitTests : BaseUnitTest
 
         // Act
         var video = FakeData
-            .GetDownloadTaskOtherVideo(
-                seed,
-                options => options.OtherVideoFileDownloadTasksCount = config.OtherVideoFileDownloadTasksCount
+            .GetDownloadTaskOtherVideo(seed, options =>
+                options.OtherVideoFileDownloadTasksCount = config.OtherVideoFileDownloadTasksCount
             )
             .Generate();
         var files = video.Children.ToList();

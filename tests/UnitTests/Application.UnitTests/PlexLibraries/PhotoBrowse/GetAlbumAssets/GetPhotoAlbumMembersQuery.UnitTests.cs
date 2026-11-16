@@ -15,15 +15,12 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
     public async Task ShouldReturnUniqueTotalsInOneAggregate_WhenPagingAlbumMembers(int assetCount, int page)
     {
         // Arrange
-        await SetupDatabase(
-            71021,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 3;
-            }
-        );
+        await SetupDatabase(71021, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 3;
+        });
         var dbContext = IDbContext;
         var album = await dbContext.PlexPhotoAlbums.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         var assets = await dbContext
@@ -35,10 +32,12 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
         assets.Count.ShouldBe(3);
         for (var index = 0; index < assets.Count; index++)
         {
+            var assetId = assets[index].Id;
+            var assetSize = index * 100L;
             await dbContext
-                .PlexPhotoMediaData.Where(x => x.Id == assets[index].Id)
+                .PlexPhotoMediaData.Where(x => x.Id == assetId)
                 .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(x => x.Size, index * 100L).SetProperty(x => x.Title, "Same title"),
+                    setters => setters.SetProperty(x => x.Size, assetSize).SetProperty(x => x.Title, "Same title"),
                     CancellationToken
                 );
         }
@@ -60,10 +59,11 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
         using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var subscriptions = commandSubscriptions;
         using var listeners = DiagnosticListener
             .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
             .Subscribe(listener =>
-                commandSubscriptions.Add(
+                subscriptions.Add(
                     listener
                         .Select(entry => entry.Value!)
                         .OfType<CommandExecutedEventData>()
@@ -98,16 +98,13 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
     public async Task ShouldReturnOnlyDistinctMembersForTheRequestedAlbumAndLibrary()
     {
         // Arrange
-        await SetupDatabase(
-            71005,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 3;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71005, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 3;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -157,7 +154,7 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, SortType.Title)
+            new GetPhotoAlbumMembersQuery(library.Id, album.Id)
         );
         var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new GetPhotoAlbumMembersQuery(library.Id, album.Id, 1, 100, SortType.Title, SortDirection.Desc)
@@ -209,15 +206,12 @@ public class GetPhotoAlbumMembersQueryUnitTests : BaseCommandUnitTest<GetPhotoAl
     public async Task ShouldPageOverlappingMembershipsAndRejectForeignAlbumScope()
     {
         // Arrange
-        await SetupDatabase(
-            71013,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(71013, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var album = await dbContext

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 
-namespace Reaparr.Data.UnitTests.Configurations;
+namespace Reaparr.Data.UnitTests;
 
 public class IntegrationConfigurationUnitTests : BaseUnitTest
 {

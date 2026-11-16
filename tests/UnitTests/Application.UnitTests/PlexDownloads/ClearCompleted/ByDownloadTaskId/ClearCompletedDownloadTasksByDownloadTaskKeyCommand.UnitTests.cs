@@ -7,15 +7,12 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     public async Task ShouldReturnSuccessWithZeroCount_WhenNoneOfTheKeysAreCompleted()
     {
         // Arrange
-        await SetupDatabase(
-            55001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(55001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 5;
+        });
         var nonExistentKeys = new List<DownloadTaskKey>
         {
             new()
@@ -54,15 +51,12 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     public async Task ShouldDispatchDeleteCommand_WhenCompletedMovieTaskKeysAreGiven()
     {
         // Arrange
-        await SetupDatabase(
-            55002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(55002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 5;
+        });
 
         var dbContext = IDbContext;
         var downloadTasks = await dbContext
@@ -106,15 +100,12 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     public async Task ShouldNotDispatchDeleteCommand_WhenTasksAreNotCompleted()
     {
         // Arrange
-        await SetupDatabase(
-            55003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(55003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 5;
+        });
 
         var dbContext = IDbContext;
         var downloadTasks = await dbContext
@@ -147,15 +138,12 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     public async Task ShouldDispatchOnlyCompletedKeys_WhenPartialKeyListIsGiven()
     {
         // Arrange — 10 tasks all Completed; only 3 keys passed to the command.
-        await SetupDatabase(
-            55004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 10;
-            }
-        );
+        await SetupDatabase(55004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 10;
+        });
 
         var dbContext = IDbContext;
         var downloadTasks = await dbContext
@@ -200,17 +188,14 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     public async Task ShouldDispatchDeleteCommand_WhenEpisodeFileKeyIsCompleted()
     {
         // Arrange
-        await SetupDatabase(
-            55005,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(55005, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var tvShowTasks = await dbContext
@@ -256,17 +241,14 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     public async Task ShouldDispatchCompletedKeysAcrossTaskTypes()
     {
         // Arrange
-        await SetupDatabase(
-            55008,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(55008, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieTask = await dbContext.DownloadTaskMovie.AsTracking().SingleAsync(CancellationToken);
@@ -313,15 +295,12 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     public async Task ShouldOnlyCountAndDeleteFullyMatchedCompletedKeys_WhenSameIdIsProvidedWithWrongType()
     {
         // Arrange
-        await SetupDatabase(
-            55006,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(55006, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieTask = await dbContext
@@ -365,15 +344,12 @@ public class ClearCompletedDownloadTasksByDownloadTaskKeyCommandUnitTests
     public async Task ShouldDeduplicateAndDeleteOnlyFullyMatchedCompletedKeys_WhenServerOrLibraryDoNotMatch()
     {
         // Arrange
-        await SetupDatabase(
-            55007,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(55007, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieTask = await dbContext

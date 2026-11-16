@@ -1,4 +1,4 @@
-namespace Reaparr.Application.Contracts.Validators;
+namespace Reaparr.Application.Contracts;
 
 public class PlexMediaDTOValidator : AbstractValidator<PlexMediaDTO>
 {

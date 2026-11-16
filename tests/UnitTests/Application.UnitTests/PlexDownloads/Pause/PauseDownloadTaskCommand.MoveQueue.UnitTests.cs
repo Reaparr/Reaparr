@@ -19,17 +19,14 @@ public class PauseDownloadTaskCommandMoveQueueUnitTests : BaseCommandUnitTest<Pa
             builder.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>().SingleInstance();
             builder.RegisterType<MoveDownloadFileJobQueue>().As<IMoveDownloadFileQueue>();
         });
-        await SetupDatabase(
-            33001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(33001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var root = await dbContext.DownloadTaskTvShow.SingleAsync(CancellationToken);
         var selected = await dbContext

@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;

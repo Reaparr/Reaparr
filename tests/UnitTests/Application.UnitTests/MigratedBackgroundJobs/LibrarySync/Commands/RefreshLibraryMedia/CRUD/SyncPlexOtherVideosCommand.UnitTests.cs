@@ -11,15 +11,12 @@ public class SyncPlexOtherVideosCommandUnitTests : BaseCommandUnitTest<SyncPlexO
     public async Task ShouldReconcileOnlySelectedLibrary_WithAccurateReportsAndOriginals(string scenario)
     {
         // Arrange
-        await SetupDatabase(
-            625201,
-            x =>
-            {
-                x.PlexServerCount = 2;
-                x.PlexOtherVideoLibraryCount = 2;
-                x.OtherVideoCount = 2;
-            }
-        );
+        await SetupDatabase(625201, x =>
+        {
+            x.PlexServerCount = 2;
+            x.PlexOtherVideoLibraryCount = 2;
+            x.OtherVideoCount = 2;
+        });
         var db = IDbContext;
         var library = await db.PlexLibraries.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         var storedVideos = await db
@@ -252,13 +249,10 @@ public class SyncPlexOtherVideosCommandUnitTests : BaseCommandUnitTest<SyncPlexO
     public async Task ShouldRefreshOtherVideoMetrics_WhenStoredAndIncomingLibrariesAreEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            625292,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(625292, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+        });
         var db = IDbContext;
         var library = await db.PlexLibraries.SingleAsync(CancellationToken);
         const long staleMediaSize = 43_413_438_912;
@@ -294,15 +288,12 @@ public class SyncPlexOtherVideosCommandUnitTests : BaseCommandUnitTest<SyncPlexO
     public async Task ShouldNotRefreshStreamsForUnchangedVideoParts()
     {
         // Arrange
-        await SetupDatabase(
-            713463,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(713463, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
         var storedVideo = db.PlexOtherVideos.AsNoTracking().Include(x => x.MediaDataList).Single();
@@ -368,15 +359,12 @@ public class SyncPlexOtherVideosCommandUnitTests : BaseCommandUnitTest<SyncPlexO
     public async Task ShouldIgnoreVideoTopologyAndStreamsWhenTimestampIsUnchanged()
     {
         // Arrange
-        await SetupDatabase(
-            713473,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(713473, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
         var storedVideo = db.PlexOtherVideos.AsNoTracking().Include(x => x.MediaDataList).Single();
@@ -459,15 +447,12 @@ public class SyncPlexOtherVideosCommandUnitTests : BaseCommandUnitTest<SyncPlexO
     public async Task ShouldReconcileVideoStreamLifecycleWithoutChurn()
     {
         // Arrange
-        await SetupDatabase(
-            713467,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(713467, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
 
@@ -732,15 +717,12 @@ public class SyncPlexOtherVideosCommandUnitTests : BaseCommandUnitTest<SyncPlexO
     public async Task ShouldPreserveOtherVideoStateWhenSynchronizationIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            713476,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(713476, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
         var storedVideo = db.PlexOtherVideos.AsNoTracking().Include(x => x.MediaDataList).Single();

@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI;
 
 public sealed class DeleteTorrentRequest
@@ -38,12 +36,19 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public DeleteTorrentEndpoint(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public DeleteTorrentEndpoint(
+        ILogger log,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<DeleteTorrentEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -59,32 +64,46 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
     {
         _log.Here().DebugApiCall(HttpContext, req);
         var integration = HttpContext.GetIntegrationIdentity();
-
         var normalizedHashes = ParseHashes(req);
+        var report = new ExternalDownloadRemovalReport(
+            normalizedHashes?.Count ?? 0,
+            normalizedHashes is null,
+            req.DeleteFiles ?? true
+        );
 
         if (normalizedHashes is { Count: 0 })
         {
+            _telemetry.ExternalDownloadRemovalProcessed(integration, report);
             await Send.StringAsync("Ok.", cancellation: ct);
             return;
         }
 
         var (activeKeys, nonActiveKeys, allKeys) = await QueryKeysByStatus(normalizedHashes, integration, ct);
 
+        report.MatchedCount = allKeys.Count;
+        report.ActiveCount = activeKeys.Count;
+        report.NonActiveCount = nonActiveKeys.Count;
+
         if (allKeys.Count == 0)
         {
+            _telemetry.ExternalDownloadRemovalProcessed(integration, report);
             await Send.StringAsync("Ok.", cancellation: ct);
             return;
         }
 
-        var deleteFiles = req.DeleteFiles ?? true;
         var keysToDelete = new List<DownloadTaskKey>();
 
         foreach (var key in activeKeys)
         {
-            var stopResult = await _commandExecutor.Send(new StopDownloadTaskCommand(key.Id, deleteFiles), ct);
-            if (stopResult.IsFailed)
+            var stopResult = await _commandExecutor.Send(new StopDownloadTaskCommand(key.Id, report.DeleteFiles), ct);
+            if (stopResult.IsCancelledOrFailed)
             {
+                if (stopResult.IsCancelled)
+                    report.StopCancellationCount++;
+                else
+                    report.StopFailureCount++;
                 _log.Here().Warning("Failed to stop download task {DownloadTaskKey}: {Errors}", key, stopResult.Errors);
+                _telemetry.CaptureErrors(stopResult, TelemetryActivity.ExternalDownloadRemoval);
                 continue;
             }
 
@@ -93,16 +112,21 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
 
         // Active tasks are handled via StopDownloadTaskCommand above.
         // For non-active tasks, explicitly delete source files when requested.
-        if (deleteFiles && nonActiveKeys.Count > 0)
+        if (report.DeleteFiles && nonActiveKeys.Count > 0)
         {
             var deleteFilesResult = await _commandExecutor.Send(new DeleteDownloadTaskFilesCommand(nonActiveKeys), ct);
-            if (deleteFilesResult.IsFailed)
+            if (deleteFilesResult.IsCancelledOrFailed)
             {
+                if (deleteFilesResult.IsCancelled)
+                    report.FileCancellationCount++;
+                else
+                    report.FileFailureCount++;
                 _log.Here()
                     .Warning(
                         "Failed to delete download files for non-active tasks: {Errors}",
                         deleteFilesResult.Errors
                     );
+                _telemetry.CaptureErrors(deleteFilesResult, TelemetryActivity.ExternalDownloadRemoval);
             }
             else
             {
@@ -116,6 +140,8 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
 
         if (keysToDelete.Count == 0)
         {
+            report.Stage = TelemetryStage.Prerequisites;
+            _telemetry.ExternalDownloadRemovalProcessed(integration, report);
             _log.Here()
                 .Warning(
                     "Skipping download task deletion because prerequisite operations failed for all matched tasks ({TaskCount})",
@@ -126,13 +152,19 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
             return;
         }
 
+        report.EligibleCount = keysToDelete.Count;
         var deleteResult = await _commandExecutor.Send(new DeleteDownloadTasksByKeyCommand(keysToDelete), ct);
-        if (deleteResult.IsFailed)
+        if (deleteResult.IsCancelledOrFailed)
         {
+            report.Result = deleteResult;
+            report.Stage = TelemetryStage.Delete;
+            _telemetry.CaptureErrors(deleteResult, TelemetryActivity.ExternalDownloadRemoval);
+            _telemetry.ExternalDownloadRemovalProcessed(integration, report);
             _log.Here().Warning("Failed to delete download tasks: {Errors}", deleteResult.Errors);
         }
         else
         {
+            report.DeletedCount = keysToDelete.Count;
             var rootKeys = await GetRootKeysAsync(keysToDelete, integration, ct);
             if (rootKeys.Count > 0)
             {
@@ -140,9 +172,24 @@ public sealed class DeleteTorrentEndpoint : Endpoint<DeleteTorrentRequest>
                     new ClearCompletedDownloadTasksByDownloadTaskKeyCommand(rootKeys),
                     ct
                 );
-                if (clearResult.IsFailed)
+                if (clearResult.IsCancelledOrFailed)
+                {
+                    report.CleanupFailureCount++;
                     _log.Here().Warning("Failed to clear completed download tasks: {Errors}", clearResult.Errors);
+                    _telemetry.CaptureErrors(clearResult, TelemetryActivity.ExternalDownloadRemoval);
+                    report.Result = clearResult;
+                }
             }
+
+            report.Stage =
+                report.CleanupFailureCount > 0 ? TelemetryStage.Cleanup
+                : report.StopFailureCount > 0
+                || report.StopCancellationCount > 0
+                || report.FileFailureCount > 0
+                || report.FileCancellationCount > 0
+                    ? TelemetryStage.Prerequisites
+                : TelemetryStage.Delete;
+            _telemetry.ExternalDownloadRemovalProcessed(integration, report);
         }
 
         await Send.StringAsync("Ok.", cancellation: ct);

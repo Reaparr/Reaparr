@@ -148,6 +148,11 @@ public interface IAppRuntimeInfo
     /// <returns>The port number or 5000 if not configured.</returns>
     int AppPort { get; }
 
+    /// <summary>
+    /// Gets the value of the DOTNET_ENVIRONMENT environment variable, which indicates the current runtime environment (e.g., Development, Production).
+    /// </summary>
+    string DotnetEnvironment { get; }
+
     #endregion
 
     #region Auth

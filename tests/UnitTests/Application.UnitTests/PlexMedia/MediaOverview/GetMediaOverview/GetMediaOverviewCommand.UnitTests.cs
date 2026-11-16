@@ -58,10 +58,7 @@ public class GetMediaOverviewCommandUnitTests
     )
     {
         // Arrange
-        var filter = CreateFilter(PlexMediaType.MusicArtist) with
-        {
-            ComparisonState = state,
-        };
+        var filter = CreateFilter(PlexMediaType.MusicArtist) with { ComparisonState = state };
         var request = new GetAllMediaByTypeRequest { MediaType = PlexMediaType.MusicArtist, ComparisonState = state };
 
         // Act
@@ -119,10 +116,7 @@ public class GetMediaOverviewCommandUnitTests
     public void ShouldValidateEnumSortFields_WhenValidatingRequest(PlexMediaType mediaType, string sort, bool expected)
     {
         // Arrange
-        var filter = CreateFilter(mediaType) with
-        {
-            Parameters = new FlexQueryParameters { Sort = sort },
-        };
+        var filter = CreateFilter(mediaType) with { Parameters = new FlexQueryParameters { Sort = sort } };
 
         // Act
         var result = new GetMediaOverviewCommandValidator().Validate(new GetMediaOverviewCommand(filter));

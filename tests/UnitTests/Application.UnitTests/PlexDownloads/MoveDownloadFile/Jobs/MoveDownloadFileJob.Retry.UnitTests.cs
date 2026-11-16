@@ -44,9 +44,12 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
         var key = target.ToKey();
         var jobKey = MoveDownloadFileJob.GetJobKey(key.Id);
         var scheduler = Mock.Mock<IScheduler>();
+        var moveException = new IOException("retryable move failure");
+        var moveFailure = Result.Fail(new ExceptionalError(moveException));
         var pending = new List<ITrigger>();
-        var moveFailure = Result.Fail("retryable move failure");
-
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.MoveDownloadJob))
+            .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.Is<MoveDownloadFileFromFileTaskCommand>(c => c.Key == key), CancellationToken))
             .ReturnsAsync(moveFailure)
@@ -91,6 +94,11 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             var outcome = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
             outcome.Status.ShouldBe(JobStatus.Failed);
         }
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.MoveDownloadJob),
+                Times.Once()
+            );
 
         pending.Count.ShouldBe(MoveDownloadFileJob.MaxRetryCount);
         pending
@@ -120,6 +128,62 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             x => x.ScheduleJob(It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
             Times.Exactly(MoveDownloadFileJob.MaxRetryCount)
         );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<CleanUpDownloadTaskFoldersCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+    }
+
+    [Test]
+    public async Task ShouldCaptureSchedulingExceptionInsteadOfMoveFailure_WhenRetrySchedulingThrows()
+    {
+        // Arrange
+        await SetupDatabase(78184, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var target = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
+        await dbContext.SetDownloadStatus(target.ToKey(), DownloadStatus.MoveError);
+        var key = target.ToKey();
+        var scheduler = Mock.Mock<IScheduler>();
+        var moveException = new IOException("retryable move failure");
+        var schedulingException = new InvalidOperationException("retry scheduling failed");
+        ResultBase? captured = null;
+        var context = CreateContext(key, scheduler.Object, CancellationToken, "move-job-schedule-failure");
+
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.Is<MoveDownloadFileFromFileTaskCommand>(c => c.Key == key), CancellationToken))
+            .ReturnsAsync(Result.Fail(new ExceptionalError(moveException)))
+            .Verifiable(Times.Once());
+        Mock.Mock<IMoveDownloadFileQueue>()
+            .Setup(x => x.CheckMoveDownloadFileJobQueue(CancellationToken))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        scheduler
+            .Setup(x => x.CheckExists(It.IsAny<TriggerKey>(), CancellationToken))
+            .ReturnsAsync(false)
+            .Verifiable(Times.Once());
+        scheduler
+            .Setup(x => x.ScheduleJob(It.IsAny<ITrigger>(), CancellationToken))
+            .ThrowsAsync(schedulingException)
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.MoveDownloadJob))
+            .Callback<ResultBase, TelemetryActivity>((result, _) => captured = result)
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.Execute(context.Object);
+
+        // Assert
+        context.Object.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
+        captured.ShouldNotBeNull();
+        captured!.Errors.Count.ShouldBe(1);
+        captured.Errors.Single().ShouldBeOfType<ExceptionalError>().Exception.ShouldBeSameAs(schedulingException);
+        (await dbContext.GetDownloadTaskStatusAsync(key, CancellationToken)).ShouldBe(DownloadStatus.MoveError);
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<IMoveDownloadFileQueue>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        scheduler.Verify();
         Mock.Mock<ICommandExecutor>()
             .Verify(
                 x => x.Send(It.IsAny<CleanUpDownloadTaskFoldersCommand>(), It.IsAny<CancellationToken>()),

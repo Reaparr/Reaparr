@@ -70,7 +70,6 @@ public static partial class DbContextExtensions
         List<PlexServerConnection> successPlexServerConnections
     )
     {
-
         // Find based on preference
         if (plexServer.PreferredConnectionId > 0)
         {

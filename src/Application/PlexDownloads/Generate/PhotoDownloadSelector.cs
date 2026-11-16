@@ -73,7 +73,7 @@ internal sealed class PhotoDownloadSelector
         CancellationToken cancellationToken
     )
     {
-        var downloadRoot = NormalizeRootPath((await _dbContext.GetDownloadFolder(null)).DirectoryPath);
+        var downloadRoot = NormalizeRootPath((await _dbContext.GetDownloadFolder()).DirectoryPath);
         var folders = await _dbContext
             .PlexPhotoFolders.Where(x => libraryIds.Contains(x.PlexLibraryId))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
@@ -110,7 +110,7 @@ internal sealed class PhotoDownloadSelector
     {
         var media = item.MediaData;
         var scope = (media.PlexServerId, media.PlexLibraryId);
-        var folder = media.PlexPhotoFolderId is int folderId ? context.Folders.GetValueOrDefault(folderId) : null;
+        var folder = media.PlexPhotoFolderId is { } folderId ? context.Folders.GetValueOrDefault(folderId) : null;
         PlexPhotoFolder? root = null;
         if (folder is not null && !rootsByFolder.TryGetValue(folder.Id, out root))
             rootsByFolder[folder.Id] = root = FindRoot(folder, context.Folders);
@@ -466,7 +466,7 @@ internal sealed class PhotoDownloadSelector
     )
     {
         var destinationOverride = customDestinationFolderPath;
-        if (string.IsNullOrWhiteSpace(destinationOverride) && destinationFolderPathId is int destinationId)
+        if (string.IsNullOrWhiteSpace(destinationOverride) && destinationFolderPathId is { } destinationId)
         {
             destinationOverride = await _dbContext
                 .FolderPaths.Where(x => x.Id == destinationId)
@@ -545,7 +545,7 @@ internal sealed class PhotoDownloadSelector
     private static PlexPhotoFolder? FindRoot(PlexPhotoFolder folder, IReadOnlyDictionary<int, PlexPhotoFolder> folders)
     {
         var current = folder;
-        while (current.ParentId is int parentId)
+        while (current.ParentId is { } parentId)
         {
             if (!folders.TryGetValue(parentId, out var parent))
                 return null;

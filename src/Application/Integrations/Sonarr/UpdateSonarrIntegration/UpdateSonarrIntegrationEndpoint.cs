@@ -32,8 +32,13 @@ public class UpdateSonarrIntegrationRequestValidator : Validator<UpdateSonarrInt
 public class UpdateSonarrIntegrationEndpoint : Endpoint<UpdateSonarrIntegrationRequest, ResultDTO<SonarrIntegrationDTO>>
 {
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public UpdateSonarrIntegrationEndpoint(IReaparrDbContext dbContext) => _dbContext = dbContext;
+    public UpdateSonarrIntegrationEndpoint(IReaparrDbContext dbContext, ITelemetry telemetry)
+    {
+        _dbContext = dbContext;
+        _telemetry = telemetry;
+    }
 
     public override void Configure()
     {
@@ -56,12 +61,10 @@ public class UpdateSonarrIntegrationEndpoint : Endpoint<UpdateSonarrIntegrationR
             await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(SonarrIntegration), req.IntegrationId), ct);
             return;
         }
-
         var name = req.Name.Trim();
         var url = req.Url.Trim().TrimEnd('/');
         var apiKey = req.ApiKey.Trim();
         var category = req.Category.Trim();
-
         if (
             !await _dbContext.FolderPaths.AnyAsync(
                 x => x.Id == req.DownloadFolderId && x.FolderType == FolderType.DownloadFolder,
@@ -90,9 +93,13 @@ public class UpdateSonarrIntegrationEndpoint : Endpoint<UpdateSonarrIntegrationR
             );
             return;
         }
+        var originalConfiguration = integration.ToDTO() with
+        {
+            Url = integration.BaseUrl.Trim().TrimEnd('/'),
+            ApiKey = integration.SonarrApiKey.Trim(),
+        };
 
-        var connectionIdentityChanged =
-            integration.BaseUrl.Trim().TrimEnd('/') != url || integration.SonarrApiKey.Trim() != apiKey;
+        var connectionIdentityChanged = originalConfiguration.Url != url || originalConfiguration.ApiKey != apiKey;
 
         if (
             integration.ProvisioningState == IntegrationProvisioningState.Configured
@@ -115,6 +122,13 @@ public class UpdateSonarrIntegrationEndpoint : Endpoint<UpdateSonarrIntegrationR
         integration.DownloadFolderId = req.DownloadFolderId;
         await _dbContext.SaveChangesAsync(ct);
 
-        await Send.FluentResult(Result.Ok(integration), model => model.ToDTO(), ct);
+        var updatedConfiguration = integration.ToDTO();
+        var configurationChanged = originalConfiguration != updatedConfiguration;
+        if (configurationChanged)
+        {
+            _telemetry.IntegrationChanged(integration, TelemetryAction.Update, connectionIdentityChanged);
+        }
+
+        await Send.FluentResult(Result.Ok(updatedConfiguration), ct);
     }
 }

@@ -229,6 +229,7 @@ import type { TreeTableSelectionKeys } from 'primevue/treetable';
 import { omit, uniqueId, uniqBy } from 'lodash-es';
 import { catchError, defer, EMPTY, finalize, map, Subject, switchMap, take, throwIfEmpty } from 'rxjs';
 
+const telemetry = useTelemetry();
 interface IComparisonDetailsRow extends Omit<PlexMediaComparisonDetailsRowDTO, 'children'> {
 	key: string;
 	children: IComparisonDetailsRow[];
@@ -324,12 +325,20 @@ function getComparisonState(row: IComparisonDetailsRow): PlexMediaComparisonStat
 }
 
 function onOpen(value: unknown) {
-	set(selectedMediaItem, value as PlexMediaSlimDTO);
+	const mediaItem = value as PlexMediaSlimDTO | null;
+	set(selectedMediaItem, mediaItem);
+	if (mediaItem) {
+		telemetry.mediaInspected(mediaItem);
+	}
 	requestComparison();
 }
 
 function requestComparison() {
-	comparisonRequests.next(get(selectedMediaItem));
+	const mediaItem = get(selectedMediaItem);
+	if (mediaItem && get(comparisonFailed)) {
+		telemetry.mediaComparisonRetryRequested(mediaItem);
+	}
+	comparisonRequests.next(mediaItem);
 }
 
 function onClose() {
@@ -371,6 +380,10 @@ function onSelectionChange(keys: TreeTableSelectionKeys) {
 		const tracks = getActionableMusicTracks(getSelectedDownloadRows(get(comparisonRows)));
 		set(selectedRows, Object.fromEntries(tracks.map((track) => [track.key, { checked: true, partialChecked: false }])));
 	}
+	const mediaItem = get(selectedMediaItem);
+	if (mediaItem) {
+		telemetry.mediaComparisonSelectionChanged(mediaItem, Object.keys(get(selectedRows)).length);
+	}
 }
 
 function getActionableMusicTracks(rows: IComparisonDetailsRow[]): IComparisonDetailsRow[] {
@@ -403,6 +416,10 @@ function toggleMusicSelection(rows: IComparisonDetailsRow[], checked: boolean) {
 			keys[track.key] = { checked: true, partialChecked: false };
 	}
 	set(selectedRows, keys);
+	const mediaItem = get(selectedMediaItem);
+	if (mediaItem) {
+		telemetry.mediaComparisonSelectionChanged(mediaItem, Object.keys(keys).length, checked);
+	}
 }
 
 function getSelectedDownloadRows(rows: IComparisonDetailsRow[]): IComparisonDetailsRow[] {

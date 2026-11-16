@@ -23,7 +23,8 @@
 				<q-toggle
 					v-model="settingsStore.generalSettings.hideMediaFromOfflineServers"
 					color="red"
-					data-cy="media-options-hide-offline-toggle" />
+					data-cy="media-options-hide-offline-toggle"
+					@update:model-value="onGeneralSettingChanged" />
 			</HelpRow>
 			<HelpRow
 				:col-label="colLabel"
@@ -35,7 +36,8 @@
 				<q-toggle
 					v-model="settingsStore.generalSettings.hideMediaFromOwnedServers"
 					color="red"
-					data-cy="media-options-hide-owned-toggle" />
+					data-cy="media-options-hide-owned-toggle"
+					@update:model-value="onGeneralSettingChanged" />
 			</HelpRow>
 			<HelpRow
 				:col-label="colLabel"
@@ -46,7 +48,8 @@
 				:text="$t('help.media-options.use-low-quality-poster-images.text')">
 				<q-toggle
 					v-model="settingsStore.generalSettings.useLowQualityPosterImages"
-					color="red" />
+					color="red"
+					@update:model-value="onGeneralSettingChanged" />
 			</HelpRow>
 		</template>
 	</QCardDialog>
@@ -58,6 +61,7 @@ import { DialogType } from '@enums';
 import { useSettingsStore } from '@store';
 import type { ColLevels } from '@props';
 
+const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
 const originalValues: Record<string, boolean> = {};
 const emits = defineEmits<{
@@ -86,6 +90,9 @@ function onOpen() {
 	originalValues.useLowQualityPosterImages = settingsStore.generalSettings.useLowQualityPosterImages;
 }
 
+function onGeneralSettingChanged(): void {
+	telemetry.generalSettingsChanged();
+}
 function onClosing() {
 	const visibilityChanged = (
 		originalValues.hideMediaFromOfflineServers !== settingsStore.generalSettings.hideMediaFromOfflineServers

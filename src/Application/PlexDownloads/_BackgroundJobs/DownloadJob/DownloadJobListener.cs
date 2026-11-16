@@ -51,7 +51,8 @@ public sealed class DownloadJobListener : IJobListener
             {
                 _log.Here()
                     .Debug("DownloadTask with id {DownloadTaskId} finished; checking the move queue", payload.Id);
-                await _moveDownloadFileQueue.CheckMoveDownloadFileJobQueue(cancellationToken);
+                var moveQueueResult = await _moveDownloadFileQueue.CheckMoveDownloadFileJobQueue(cancellationToken);
+                moveQueueResult.LogIfFailed();
             }
 
             _log.Here()

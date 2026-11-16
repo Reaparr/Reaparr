@@ -72,6 +72,7 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 	const dialogStore = useDialogStore();
 	const accountStore = useAccountStore();
 
+	const telemetry = useTelemetry();
 	const actions = {
 		openDialog({ accountId }: IAccountDialog): void {
 			actions.$reset();
@@ -95,6 +96,7 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 			actions.$reset();
 		},
 		validatePlexToken() {
+			telemetry.accountTokenValidationRequested(state);
 			return ownValidation(plexAccountApi.validatePlexTokenEndpoint({
 				plexAccountId: state.id,
 				displayName: state.displayName,
@@ -134,6 +136,7 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 			);
 		},
 		validatePlexAccount() {
+			telemetry.accountCredentialsValidationRequested(state);
 			return ownValidation(plexAccountApi.validatePlexCredentialsEndpoint(get(getters.getAccountData))).pipe(
 				tap(({ value, isSuccess }) => {
 					if (!isSuccess || !value || value.isUnAuthorized) {
@@ -192,6 +195,7 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 			);
 		},
 		validateVerificationCode() {
+			telemetry.accountVerificationRequested(state.id);
 			return ownValidation(plexAccountApi.validatePlexCredentialsEndpoint(get(getters.getAccountData))).pipe(
 				tap(({ value, isSuccess }) => {
 					if (isSuccess && value) {
@@ -214,6 +218,9 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 			);
 		},
 		generateToken(verificationCode: string = '') {
+			if (!verificationCode) {
+				telemetry.accountTokenGenerationRequested(state.id);
+			}
 			return plexAccountApi.generatePlexTokenEndpoint(state.id, { verificationCode });
 		},
 		saveAccount(): Observable<ResultDTO<PlexAccountDTO>> {
@@ -229,6 +236,7 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 					successes: [],
 				});
 			}
+			telemetry.accountSaveRequested(state);
 			state.savingLoading = true;
 			if (state.isNewAccount) {
 				const accountData = get(getters.getAccountData);
@@ -277,6 +285,7 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 		deleteAccount() {
 			const session = dialogSession;
 			const accountId = state.id;
+			telemetry.accountDeleteRequested(accountId);
 			state.deleteLoading = true;
 			return accountStore
 				.deleteAccount(accountId)

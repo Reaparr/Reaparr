@@ -290,7 +290,8 @@
             "ui": "UI",
             "buttons": "Przyciski",
             "scratchpad": "Notatnik",
-            "integrations": "Integracje"
+            "integrations": "Integracje",
+            "telemetry": "Telemetria"
         },
         "notifications-drawer": {
             "clear-notifications": "Wyczyść wszystkie powiadomienia",
@@ -1463,6 +1464,16 @@
                 "media-quality-header": "Wyświetlacz jakości multimediów",
                 "alert-display-header": "Nagłówek wyświetlacza alertów",
                 "media-comparison-state-header": "Porównanie stanów mediów"
+            },
+            "telemetry": {
+                "title": "Diagnostyka telemetrii",
+                "description": "Każde żądanie przechodzi przez backend Reaparr. Pomyślny wynik oznacza, że zdarzenie diagnostyczne zostało zaakceptowane do wysłania, a nie że PostHog je zaakceptował, odebrał lub dostarczył.",
+                "send-test-event": "Wyślij zdarzenie testowe",
+                "backend": "Backend",
+                "frontend": "Frontend",
+                "not-run": "Jeszcze nie uruchomiono",
+                "accepted": "Diagnostic event accepted for sending",
+                "failed": "Zdarzenie diagnostyczne nie zostało zaakceptowane do wysłania"
             }
         },
         "empty": {

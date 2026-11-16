@@ -28,13 +28,21 @@ public class GetFolderPathDirectoryEndpoint : Endpoint<GetFolderPathDirectoryReq
     private readonly IDirectory _directory;
     private readonly IPath _path;
     private readonly IDiskProvider _diskProvider;
+    private readonly ITelemetry _telemetry;
 
-    public GetFolderPathDirectoryEndpoint(ILogger log, IDirectory directory, IPath path, IDiskProvider diskProvider)
+    public GetFolderPathDirectoryEndpoint(
+        ILogger log,
+        IDirectory directory,
+        IPath path,
+        IDiskProvider diskProvider,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<GetFolderPathDirectoryEndpoint>();
         _directory = directory;
         _path = path;
         _diskProvider = diskProvider;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -58,6 +66,7 @@ public class GetFolderPathDirectoryEndpoint : Endpoint<GetFolderPathDirectoryReq
         var path = req.Path;
 
         var result = LookupContents(path, false, true);
+        _telemetry.FolderDirectoryListed(path, result);
 
         await Send.FluentResult(result, x => x.ToDTO(), ct);
     }

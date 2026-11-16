@@ -7,17 +7,14 @@ public class RefreshPlexTvShowLibraryCommandEmptyUnitTests : BaseCommandUnitTest
     public async Task ShouldRemoveOnlyTargetHierarchyAndResetMetrics_WhenConfirmedTvCatalogIsEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            78131,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 2;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(78131, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 2;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var target = libraries[0];

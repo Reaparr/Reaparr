@@ -14,40 +14,37 @@ public class StartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(8933);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexMovieLibraryCount = 1;
-                    x.MovieCount = 1;
-                    x.MovieDownloadTasksCount = 1;
-                };
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexMovieLibraryCount = 1;
+                x.MovieCount = 1;
+                x.MovieDownloadTasksCount = 1;
+            };
 
-                config.OverrideServices = builder =>
-                {
-                    builder
-                        .Register(_ =>
-                            new FakeCommandExecutor().Intercept<GetDirectDownloadUrlCommand, Result<string>>(
-                                (_, _) => Task.FromResult(Result.Ok("http://mock/direct-file.mkv"))
-                            )
+            config.OverrideServices = builder =>
+            {
+                builder
+                    .Register(_ =>
+                        new FakeCommandExecutor().Intercept<GetDirectDownloadUrlCommand, Result<string>>(
+                            (_, _) => Task.FromResult(Result.Ok("http://mock/direct-file.mkv"))
                         )
-                        .As<ICommandExecutor>()
-                        .InstancePerDependency();
+                    )
+                    .As<ICommandExecutor>()
+                    .InstancePerDependency();
 
-                    builder
-                        .Register(_ =>
-                            (Func<DownloadConfiguration, IDownloadService>)(
-                                _ => BuildMidDownloadTimeoutFailureDownloadService()
-                            )
+                builder
+                    .Register(_ =>
+                        (Func<DownloadConfiguration, IDownloadService>)(
+                            _ => BuildMidDownloadTimeoutFailureDownloadService()
                         )
-                        .SingleInstance();
-                };
-            }
-        );
+                    )
+                    .SingleInstance();
+            };
+        });
 
         var downloadTasks = await container.DbContext.GetAllDownloadTasksByServerAsync(
             cancellationToken: CancellationToken
@@ -145,26 +142,23 @@ public class StartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(8932);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) =>
             {
-                config.HttpClientOptions = (x, _) =>
-                {
-                    x.SetupIdentityRequest(seed);
-                };
+                x.SetupIdentityRequest(seed);
+            };
 
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexMovieLibraryCount = 2;
-                    x.MovieCount = 10;
-                    x.MovieDownloadTasksCount = 1;
-                    x.DownloadFileSizeInMb = 1;
-                };
-            }
-        );
+            config.DatabaseOptions = x =>
+            {
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexMovieLibraryCount = 2;
+                x.MovieCount = 10;
+                x.MovieDownloadTasksCount = 1;
+                x.DownloadFileSizeInMb = 1;
+            };
+        });
 
         var downloadTasks = await container.DbContext.GetAllDownloadTasksByServerAsync(
             cancellationToken: CancellationToken

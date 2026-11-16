@@ -23,8 +23,11 @@ public class FileSystemTasksUnitTests : BaseUnitTest
         var fileSystem = Mock.Container.Resolve<IFileSystem>();
 
         // Act
-        var action = () => fileSystemTasks.CopyDirectory(
-            new BuildDirectoryPath(fileSystem, source), new BuildDirectoryPath(fileSystem, target));
+        var action = () =>
+            fileSystemTasks.CopyDirectory(
+                new BuildDirectoryPath(fileSystem, source),
+                new BuildDirectoryPath(fileSystem, target)
+            );
 
         // Assert
         var exception = action.ShouldThrow<InvalidOperationException>();
@@ -47,10 +50,12 @@ public class FileSystemTasksUnitTests : BaseUnitTest
         var fileSystemTasks = CreateFileSystemTasks();
 
         // Act
-        var action = () => fileSystemTasks.ClearArtifactDirectory(
-            new BuildDirectoryPath(fileSystem, root),
-            new BuildDirectoryPath(fileSystem, artifactDirectory),
-            preservePublish ? new BuildDirectoryPath(fileSystem, Path.Combine(artifactDirectory, "publish")) : null);
+        var action = () =>
+            fileSystemTasks.ClearArtifactDirectory(
+                new BuildDirectoryPath(fileSystem, root),
+                new BuildDirectoryPath(fileSystem, artifactDirectory),
+                preservePublish ? new BuildDirectoryPath(fileSystem, Path.Combine(artifactDirectory, "publish")) : null
+            );
 
         // Assert
         action.ShouldThrow<InvalidOperationException>();
@@ -66,7 +71,10 @@ public class FileSystemTasksUnitTests : BaseUnitTest
         // Arrange
         IFileSystem fileSystem = realFileSystem ? new System.IO.Abstractions.FileSystem() : new MockFileSystem();
         var root = fileSystem.Path.Combine(
-            fileSystem.Path.GetTempPath(), nameof(FileSystemTasksUnitTests), Guid.NewGuid().ToString("N"));
+            fileSystem.Path.GetTempPath(),
+            nameof(FileSystemTasksUnitTests),
+            Guid.NewGuid().ToString("N")
+        );
         try
         {
             var paths = new BuildPaths(root, fileSystem);
@@ -97,11 +105,14 @@ public class FileSystemTasksUnitTests : BaseUnitTest
             fileSystemTasks.ClearArtifactDirectory(
                 new BuildDirectoryPath(fileSystem, root),
                 new BuildDirectoryPath(fileSystem, artifacts),
-                new BuildDirectoryPath(fileSystem, publish));
+                new BuildDirectoryPath(fileSystem, publish)
+            );
 
             // Assert
-            fileSystem.Directory.EnumerateFiles(artifacts, "*", SearchOption.AllDirectories)
-                .Order(StringComparer.Ordinal).ShouldBe(new[] { binary, index }.Order(StringComparer.Ordinal));
+            fileSystem
+                .Directory.EnumerateFiles(artifacts, "*", SearchOption.AllDirectories)
+                .Order(StringComparer.Ordinal)
+                .ShouldBe(new[] { binary, index }.Order(StringComparer.Ordinal));
             fileSystem.Directory.EnumerateDirectories(artifacts).ShouldBe([publish]);
             fileSystem.File.ReadAllBytes(binary).ShouldBe([0, 1, 2, 255]);
             fileSystem.File.ReadAllBytes(index).ShouldBe("frontend"u8.ToArray());
@@ -130,17 +141,21 @@ public class FileSystemTasksUnitTests : BaseUnitTest
         var fileSystemTasks = CreateFileSystemTasks();
 
         // Act
-        var action = () => fileSystemTasks.ClearArtifactDirectory(
-            new BuildDirectoryPath(fileSystem, root),
-            new BuildDirectoryPath(fileSystem, artifacts),
-            new BuildDirectoryPath(fileSystem, publish));
+        var action = () =>
+            fileSystemTasks.ClearArtifactDirectory(
+                new BuildDirectoryPath(fileSystem, root),
+                new BuildDirectoryPath(fileSystem, artifacts),
+                new BuildDirectoryPath(fileSystem, publish)
+            );
 
         // Assert
         action.ShouldThrow<InvalidOperationException>();
         fileSystem.File.ReadAllText(artifacts + "/old.bin").ShouldBe("old");
         fileSystem.File.ReadAllText(publish + "/Reaparr.AppHost").ShouldBe("binary");
-        fileSystem.Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal).ShouldBe([artifacts + "/old.bin", publish + "/Reaparr.AppHost"]);
+        fileSystem
+            .Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe([artifacts + "/old.bin", publish + "/Reaparr.AppHost"]);
     }
 
     [Test]
@@ -161,7 +176,9 @@ public class FileSystemTasksUnitTests : BaseUnitTest
 
         // Act
         fileSystemTasks.ClearArtifactDirectory(
-            new BuildDirectoryPath(fileSystem, root), new BuildDirectoryPath(fileSystem, artifactDirectory));
+            new BuildDirectoryPath(fileSystem, root),
+            new BuildDirectoryPath(fileSystem, artifactDirectory)
+        );
 
         // Assert
         fileSystem.Directory.Exists(artifactDirectory).ShouldBeTrue();
@@ -186,13 +203,16 @@ public class FileSystemTasksUnitTests : BaseUnitTest
         fileSystemTasks.CopyDirectory(source, target);
 
         // Assert
-        fileSystem.Directory.EnumerateFiles(target.Value, "*", SearchOption.AllDirectories)
+        fileSystem
+            .Directory.EnumerateFiles(target.Value, "*", SearchOption.AllDirectories)
             .Order(StringComparer.Ordinal)
             .ShouldBe(["/repo/source-other/app.bin", "/repo/source-other/nested/config.json"]);
         fileSystem.File.ReadAllBytes("/repo/source-other/app.bin").ShouldBe([0, 1, 255]);
         fileSystem.File.ReadAllText("/repo/source-other/nested/config.json").ShouldBe("config");
-        fileSystem.Directory.EnumerateFiles(source.Value, "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal).ShouldBe(["/repo/source/app.bin", "/repo/source/nested/config.json"]);
+        fileSystem
+            .Directory.EnumerateFiles(source.Value, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(["/repo/source/app.bin", "/repo/source/nested/config.json"]);
         fileSystem.File.ReadAllBytes("/repo/source/app.bin").ShouldBe([0, 1, 255]);
         fileSystem.File.ReadAllText("/repo/source/nested/config.json").ShouldBe("config");
     }

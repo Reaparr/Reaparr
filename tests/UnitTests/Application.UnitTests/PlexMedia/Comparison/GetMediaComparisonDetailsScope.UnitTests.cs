@@ -92,20 +92,17 @@ public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
 
     private async Task<(PlexLibrary Remote, PlexLibrary Owned)> SetupLibrariesAsync(PlexMediaType mediaType)
     {
-        await SetupDatabase(
-            63580,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = mediaType == PlexMediaType.Movie ? 1 : 0;
-                config.PlexTvShowLibraryCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
-                config.MovieCount = mediaType == PlexMediaType.Movie ? 1 : 0;
-                config.TvShowCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
-                config.TvShowSeasonCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
-                config.TvShowEpisodeCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
-            }
-        );
+        await SetupDatabase(63580, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = mediaType == PlexMediaType.Movie ? 1 : 0;
+            config.PlexTvShowLibraryCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
+            config.MovieCount = mediaType == PlexMediaType.Movie ? 1 : 0;
+            config.TvShowCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
+            config.TvShowSeasonCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
+            config.TvShowEpisodeCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
+        });
         var libraries = await IDbContext
             .PlexLibraries.Where(x => x.Type == mediaType)
             .OrderBy(x => x.Id)

@@ -40,15 +40,11 @@ internal sealed class DefaultHttpClientRetryHandler(ILogger log) : DelegatingHan
             }
         }
 
-        var retryPipeline = CreateRetryPipeline(
-            requestUri,
-            retryCount,
-            progress =>
-            {
-                latestRetryAttempt = progress.RetryAttemptIndex;
-                progressCallback?.Invoke(progress);
-            }
-        );
+        var retryPipeline = CreateRetryPipeline(requestUri, retryCount, progress =>
+        {
+            latestRetryAttempt = progress.RetryAttemptIndex;
+            progressCallback?.Invoke(progress);
+        });
 
         try
         {

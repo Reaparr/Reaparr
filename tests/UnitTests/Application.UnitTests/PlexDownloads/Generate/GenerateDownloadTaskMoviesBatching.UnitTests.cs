@@ -7,8 +7,8 @@ namespace Reaparr.Application.UnitTests;
 
 public class GenerateDownloadTaskMoviesBatchingUnitTests : BaseCommandUnitTest<GenerateDownloadTaskMoviesCommand>
 {
-    private const int DestinationFolderPathId = 99;
-    private const string CustomDestinationFolderPath = "/custom-movie-destination";
+    private const int DESTINATION_FOLDER_PATH_ID = 99;
+    private const string CUSTOM_DESTINATION_FOLDER_PATH = "/custom-movie-destination";
 
     [Test]
     [Arguments(1, 1)]
@@ -51,9 +51,9 @@ public class GenerateDownloadTaskMoviesBatchingUnitTests : BaseCommandUnitTest<G
                     .OrderBy(x => x.Item2)
             );
         var reads = new MovieDuplicateReadCounter();
-        await using var measuredContext = CreateMeasuredContext(dbContext.DatabaseName, reads);
+        var databaseName = dbContext.DatabaseName;
         SetupDependencies(builder =>
-            builder.RegisterInstance(measuredContext).As<IReaparrDbContext>().ExternallyOwned()
+            builder.Register(_ => CreateMeasuredContext(databaseName, reads)).As<IReaparrDbContext>().SingleInstance()
         );
 
         // Act
@@ -82,26 +82,188 @@ public class GenerateDownloadTaskMoviesBatchingUnitTests : BaseCommandUnitTest<G
         after
             .Parents.Where(x => parentIds.Contains(x.Id))
             .OrderBy(x => x.Id)
-            .ShouldBe(before.Parents.OrderBy(x => x.Id));
-        after.Files.Where(x => fileIds.Contains(x.Id)).OrderBy(x => x.Id).ShouldBe(before.Files.OrderBy(x => x.Id));
-        newParents.Select(x => x with { Id = Guid.Empty, CreatedAt = default }).ShouldBe(scenario.ExpectedNewParents);
-        newFiles.Select(x => x with { Id = Guid.Empty }).ShouldBe(ExpectedFiles(scenario, newParents));
-        after.Logs.ShouldBe(ExpectedLogs(newFiles));
+            .Select(x =>
+                (
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId,
+                    x.Title,
+                    x.FullTitle,
+                    x.Year,
+                    x.DownloadStatus,
+                    x.CreatedAt
+                )
+            )
+            .ShouldBe(
+                before
+                    .Parents.OrderBy(x => x.Id)
+                    .Select(x =>
+                        (
+                            x.Id,
+                            x.PlexApiRatingKey,
+                            x.PlexServerId,
+                            x.PlexLibraryId,
+                            x.RadarrIntegrationId,
+                            x.SonarrIntegrationId,
+                            x.Title,
+                            x.FullTitle,
+                            x.Year,
+                            x.DownloadStatus,
+                            x.CreatedAt
+                        )
+                    )
+            );
+        after
+            .Files.Where(x => fileIds.Contains(x.Id))
+            .OrderBy(x => x.Id)
+            .Select(x =>
+                (
+                    x.Id,
+                    x.ParentId,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.PlexApiRatingKey,
+                    x.PlexApiMediaId,
+                    x.PlexApiPartId,
+                    x.VideoQuality,
+                    x.DownloadStatus,
+                    x.DestinationFolderPathId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId,
+                    x.FileName,
+                    x.FileLocationUrl,
+                    x.DataTotal,
+                    x.DestinationRootPath,
+                    x.KeepCompletedInDownloadFolder
+                )
+            )
+            .ShouldBe(
+                before
+                    .Files.OrderBy(x => x.Id)
+                    .Select(x =>
+                        (
+                            x.Id,
+                            x.ParentId,
+                            x.PlexServerId,
+                            x.PlexLibraryId,
+                            x.PlexApiRatingKey,
+                            x.PlexApiMediaId,
+                            x.PlexApiPartId,
+                            x.VideoQuality,
+                            x.DownloadStatus,
+                            x.DestinationFolderPathId,
+                            x.RadarrIntegrationId,
+                            x.SonarrIntegrationId,
+                            x.FileName,
+                            x.FileLocationUrl,
+                            x.DataTotal,
+                            x.DestinationRootPath,
+                            x.KeepCompletedInDownloadFolder
+                        )
+                    )
+            );
+        newParents
+            .Select(x => x with { Id = Guid.Empty, CreatedAt = default })
+            .Select(x =>
+                (
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId,
+                    x.Title,
+                    x.FullTitle,
+                    x.Year,
+                    x.DownloadStatus,
+                    x.CreatedAt
+                )
+            )
+            .ShouldBe(
+                scenario.ExpectedNewParents.Select(x =>
+                    (
+                        x.Id,
+                        x.PlexApiRatingKey,
+                        x.PlexServerId,
+                        x.PlexLibraryId,
+                        x.RadarrIntegrationId,
+                        x.SonarrIntegrationId,
+                        x.Title,
+                        x.FullTitle,
+                        x.Year,
+                        x.DownloadStatus,
+                        x.CreatedAt
+                    )
+                )
+            );
+        newFiles
+            .Select(x => x with { Id = Guid.Empty })
+            .Select(x =>
+                (
+                    x.Id,
+                    x.ParentId,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.PlexApiRatingKey,
+                    x.PlexApiMediaId,
+                    x.PlexApiPartId,
+                    x.VideoQuality,
+                    x.DownloadStatus,
+                    x.DestinationFolderPathId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId,
+                    x.FileName,
+                    x.FileLocationUrl,
+                    x.DataTotal,
+                    x.DestinationRootPath,
+                    x.KeepCompletedInDownloadFolder
+                )
+            )
+            .ShouldBe(
+                ExpectedFiles(scenario, newParents)
+                    .Select(x =>
+                        (
+                            x.Id,
+                            x.ParentId,
+                            x.PlexServerId,
+                            x.PlexLibraryId,
+                            x.PlexApiRatingKey,
+                            x.PlexApiMediaId,
+                            x.PlexApiPartId,
+                            x.VideoQuality,
+                            x.DownloadStatus,
+                            x.DestinationFolderPathId,
+                            x.RadarrIntegrationId,
+                            x.SonarrIntegrationId,
+                            x.FileName,
+                            x.FileLocationUrl,
+                            x.DataTotal,
+                            x.DestinationRootPath,
+                            x.KeepCompletedInDownloadFolder
+                        )
+                    )
+            );
+        after
+            .Logs.Select(x => (x.DownloadTaskFileId, x.DownloadTaskMovieId, x.Status, x.LogLevel, x.Message))
+            .ShouldBe(
+                ExpectedLogs(newFiles)
+                    .Select(x => (x.DownloadTaskFileId, x.DownloadTaskMovieId, x.Status, x.LogLevel, x.Message))
+            );
     }
 
     private async Task<Scenario> CreateScenario(int groupCount, int moviesPerGroup)
     {
-        await SetupDatabase(
-            56000 + groupCount * 100 + moviesPerGroup,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = groupCount;
-                config.MovieCount = moviesPerGroup;
-                config.IncludeMultiPartMovies = true;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(56000 + groupCount * 100 + moviesPerGroup, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = groupCount;
+            config.MovieCount = moviesPerGroup;
+            config.IncludeMultiPartMovies = true;
+            config.RadarrIntegrationCount = 1;
+        });
         using var dbContext = IDbContext;
         var libraries = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.Movie)
@@ -163,8 +325,8 @@ public class GenerateDownloadTaskMoviesBatchingUnitTests : BaseCommandUnitTest<G
                         KeepCompletedInDownloadFolder = true,
                     })
                     .ToList(),
-                DestinationFolderPathId,
-                CustomDestinationFolderPath,
+                DESTINATION_FOLDER_PATH_ID,
+                CUSTOM_DESTINATION_FOLDER_PATH,
                 owner
             )
         );
@@ -239,13 +401,13 @@ public class GenerateDownloadTaskMoviesBatchingUnitTests : BaseCommandUnitTest<G
                         data.PlexApiPartId,
                         data.VideoQuality,
                         DownloadStatus.Queued,
-                        DestinationFolderPathId,
+                        DESTINATION_FOLDER_PATH_ID,
                         scenario.Owner.Id,
                         null,
                         data.GetFileName,
                         data.Key,
                         data.Size,
-                        CustomDestinationFolderPath,
+                        CUSTOM_DESTINATION_FOLDER_PATH,
                         true
                     )
                 );

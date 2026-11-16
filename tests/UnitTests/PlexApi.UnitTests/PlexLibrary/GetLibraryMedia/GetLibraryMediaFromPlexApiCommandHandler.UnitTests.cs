@@ -144,7 +144,6 @@ public class GetLibraryMediaFromPlexApiCommandHandlerUnitTests : BaseUnitTest<Ge
         sources[0] = sources[0] with { Title = "Item 10", SortTitle = "Item 10", RatingKey = 110 };
         sources[1] = sources[1] with { Title = "Item 2", SortTitle = "Item 2", RatingKey = 102 };
         sources[2] = sources[2] with { Title = "Item 1", SortTitle = "Item 1", RatingKey = 101 };
-        var countries = sources.SelectMany(x => x.Country).ToArray();
         var genres = sources.SelectMany(x => x.Genre).ToArray();
         var actors = sources.SelectMany(x => x.Role).ToArray();
         Mock.SetupCommand(() => It.Is<GetLibrarySectionsCommand>(x => x.PlexServerId == original.PlexServerId))

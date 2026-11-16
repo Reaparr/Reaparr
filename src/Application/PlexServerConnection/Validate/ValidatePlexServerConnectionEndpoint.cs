@@ -22,10 +22,12 @@ public class ValidatePlexServerConnectionEndpoint
     : Endpoint<ValidatePlexServerConnectionEndpointRequest, ResultDTO<ServerIdentityDTO>>
 {
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public ValidatePlexServerConnectionEndpoint(ICommandExecutor commandExecutor)
+    public ValidatePlexServerConnectionEndpoint(ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -42,6 +44,7 @@ public class ValidatePlexServerConnectionEndpoint
     public override async Task HandleAsync(ValidatePlexServerConnectionEndpointRequest req, CancellationToken ct)
     {
         var result = await _commandExecutor.Send(new ValidatePlexConnectionUrlCommand(req.Url), ct);
+        _telemetry.ConnectionCheckFinished(result);
         await Send.FluentResult(result, ct);
     }
 }

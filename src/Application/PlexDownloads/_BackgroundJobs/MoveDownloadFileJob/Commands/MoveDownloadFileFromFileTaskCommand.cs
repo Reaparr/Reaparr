@@ -23,6 +23,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
     private readonly IEventPublisher _eventPublisher;
     private readonly IDownloadTaskUpdateDispatcher _downloadTaskUpdateDispatcher;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
     private readonly IReaparrDbContextFactory _dbContextFactory;
     private readonly IFile _file;
@@ -40,7 +41,8 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
         IFile file,
         IDirectory directory,
         IPath path,
-        IDownloadManagerSettings downloadManagerSettings
+        IDownloadManagerSettings downloadManagerSettings,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<MoveDownloadFileFromFileTaskCommandHandler>();
@@ -53,6 +55,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
         _directory = directory;
         _path = path;
         _downloadManagerSettings = downloadManagerSettings;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(
@@ -70,6 +73,14 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
         // Resolve paths
         var downloadFilePath = downloadTask.DownloadFilePath;
         var destinationPath = downloadTask.DestinationFilePath;
+        var keepInDownloads = ShouldKeepInDownloads(downloadTask);
+        using var moveActivity = _telemetry.StartMoveDownloadFile(
+            downloadTask,
+            downloadFilePath,
+            destinationPath,
+            keepInDownloads,
+            GetRetentionReason(downloadTask, keepInDownloads)
+        );
 
         _log.Here().Debug("Starting file move process for {DownloadFilePath}", downloadFilePath);
 
@@ -145,10 +156,11 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
                         key.Id
                     );
                 downloadFilePath = movedInDownloadsPath!;
+                _telemetry.SetMoveDownloadFileSourcePath(moveActivity, downloadFilePath);
             }
             else if (destinationExists)
             {
-                var destinationSizeResult = GetFileLength(destinationPath!);
+                var destinationSizeResult = GetFileLength(destinationPath);
                 if (destinationSizeResult.IsFailed)
                     return await ErrorDownloadTask(key, destinationSizeResult.ToResult());
 
@@ -238,7 +250,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
 
             // Determine if we should keep the file in the downloads directory
             var destinationDirectoryPath = _path.GetDirectoryName(destinationPath);
-            var keepInDownloads = ShouldKeepInDownloads(downloadTask);
+            keepInDownloads = ShouldKeepInDownloads(downloadTask);
 
             _log.Here()
                 .Debug(
@@ -325,7 +337,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
             {
                 if (destinationAlreadyExists)
                 {
-                    var destinationSizeResult = GetFileLength(destinationPath!);
+                    var destinationSizeResult = GetFileLength(destinationPath);
                     if (destinationSizeResult.IsFailed)
                         return await ErrorDownloadTask(key, destinationSizeResult.ToResult());
 
@@ -569,6 +581,21 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
                 // Ignore cancellation during progress channel completion.
             }
         }
+    }
+
+    private TelemetryRetentionReason GetRetentionReason(DownloadTaskFileBase downloadTask, bool keepInDownloads)
+    {
+        if (!keepInDownloads)
+            return TelemetryRetentionReason.Destination;
+        if (downloadTask.DirectoryMeta.KeepCompletedInDownloadFolder)
+            return TelemetryRetentionReason.TaskSetting;
+        if (_downloadManagerSettings.KeepCompletedInDownloadFolder)
+            return TelemetryRetentionReason.GlobalSetting;
+        if (downloadTask.DownloadFilePath.RemoveReapTempSuffix() == downloadTask.DestinationFilePath)
+            return TelemetryRetentionReason.SamePath;
+        if (string.IsNullOrWhiteSpace(downloadTask.DestinationFilePath))
+            return TelemetryRetentionReason.MissingDestination;
+        return TelemetryRetentionReason.Destination;
     }
 
     private async Task<Result> ErrorDownloadTask(DownloadTaskKey key, Result result)

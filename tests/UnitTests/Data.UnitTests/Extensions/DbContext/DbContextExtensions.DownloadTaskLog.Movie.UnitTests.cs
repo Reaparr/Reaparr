@@ -42,4 +42,75 @@ public class DbContextExtensionsDownloadTaskLogMovieUnitTests : BaseUnitTest
             "control",
         ]);
     }
+
+    [Test]
+    public async Task ShouldPersistTypedMovieLogBatch_WhenProvidedAsHomogeneousList()
+    {
+        // Arrange
+        await SetupDatabase(62305, config => config.MovieDownloadTasksCount = 2);
+        var dbContext = IDbContext;
+        var files = await dbContext.DownloadTaskMovieFile.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        files.Count.ShouldBe(2);
+        (await dbContext.DownloadTaskMovieFileLogs.CountAsync(CancellationToken)).ShouldBe(0);
+        var firstCreatedAt = new DateTime(2026, 10, 5, 10, 0, 0, DateTimeKind.Utc);
+        var secondCreatedAt = firstCreatedAt.AddMinutes(1);
+        List<DownloadTaskMovieFileLog> logs =
+        [
+            new()
+            {
+                DownloadTaskFileId = files[0].Id,
+                DownloadTaskMovieId = files[0].ParentId,
+                Message = "batch-target",
+                Status = DownloadStatus.Downloading,
+                LogLevel = NotificationLevel.Information,
+                CreatedAt = firstCreatedAt,
+            },
+            new()
+            {
+                DownloadTaskFileId = files[1].Id,
+                DownloadTaskMovieId = files[1].ParentId,
+                Message = "batch-control",
+                Status = DownloadStatus.Error,
+                LogLevel = NotificationLevel.Warning,
+                CreatedAt = secondCreatedAt,
+            },
+        ];
+
+        // Act
+        await dbContext.CreateDownloadClientLogs(logs, CancellationToken);
+
+        // Assert
+        var persisted = await dbContext
+            .DownloadTaskMovieFileLogs.OrderBy(x => x.DownloadTaskFileId)
+            .Select(x => new
+            {
+                x.DownloadTaskFileId,
+                x.DownloadTaskMovieId,
+                x.Message,
+                x.Status,
+                x.LogLevel,
+                x.CreatedAt,
+            })
+            .ToListAsync(CancellationToken);
+        persisted.ShouldBe([
+            new
+            {
+                DownloadTaskFileId = files[0].Id,
+                DownloadTaskMovieId = files[0].ParentId,
+                Message = "batch-target",
+                Status = DownloadStatus.Downloading,
+                LogLevel = NotificationLevel.Information,
+                CreatedAt = firstCreatedAt,
+            },
+            new
+            {
+                DownloadTaskFileId = files[1].Id,
+                DownloadTaskMovieId = files[1].ParentId,
+                Message = "batch-control",
+                Status = DownloadStatus.Error,
+                LogLevel = NotificationLevel.Warning,
+                CreatedAt = secondCreatedAt,
+            },
+        ]);
+    }
 }

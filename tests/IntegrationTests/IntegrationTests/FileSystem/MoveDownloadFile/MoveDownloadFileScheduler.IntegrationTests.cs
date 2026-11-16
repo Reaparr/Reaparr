@@ -6,32 +6,29 @@ public class MoveDownloadFileSchedulerIntegrationTests : BaseIntegrationTests
     public async Task ShouldFinishMergingDownloadTaskAsFileTaskJobAndSetToCompleted_WhenDownloadTaskHasFinishedDownloading()
     {
         // Arrange
-        using var container = await CreateContainer(
-            235689,
-            config =>
+        using var container = await CreateContainer(235689, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 1;
-                    x.PlexMovieLibraryCount = 3;
-                    x.MovieCount = 1;
-                    x.MovieDownloadTasksCount = 1;
-                    x.DownloadFileSizeInMb = 10;
-                };
+                x.PlexServerCount = 1;
+                x.PlexMovieLibraryCount = 3;
+                x.MovieCount = 1;
+                x.MovieDownloadTasksCount = 1;
+                x.DownloadFileSizeInMb = 10;
+            };
 
-                config.FileSystemOptions = (system, dbContext) =>
-                {
-                    var downloadTask = dbContext.DownloadTaskMovieFile.First();
-                    downloadTask.DownloadFilePath.ShouldNotBeNullOrEmpty();
+            config.FileSystemOptions = (system, dbContext) =>
+            {
+                var downloadTask = dbContext.DownloadTaskMovieFile.First();
+                downloadTask.DownloadFilePath.ShouldNotBeNullOrEmpty();
 
-                    // We need a DownloadFinished file to move
-                    var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
-                    directoryPath.ShouldNotBeNullOrEmpty();
-                    system.Directory.CreateDirectory(directoryPath);
-                    system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(10));
-                };
-            }
-        );
+                // We need a DownloadFinished file to move
+                var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
+                directoryPath.ShouldNotBeNullOrEmpty();
+                system.Directory.CreateDirectory(directoryPath);
+                system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(10));
+            };
+        });
         var dbContext = container.DbContext;
         var downloadTasks = dbContext.DownloadTaskMovie.AsTracking().Include(x => x.Children).ToList();
         downloadTasks.ShouldNotBeNull();
@@ -89,65 +86,62 @@ public class MoveDownloadFileSchedulerIntegrationTests : BaseIntegrationTests
     public async Task ShouldSetMoveErrorAndKeepSourceFile_WhenMoveFailsAfterCopy()
     {
         // Arrange
-        using var container = await CreateContainer(
-            235690,
-            config =>
+        using var container = await CreateContainer(235690, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexServerCount = 1;
-                    x.PlexMovieLibraryCount = 3;
-                    x.MovieCount = 1;
-                    x.MovieDownloadTasksCount = 1;
-                    x.DownloadFileSizeInMb = 10;
-                };
+                x.PlexServerCount = 1;
+                x.PlexMovieLibraryCount = 3;
+                x.MovieCount = 1;
+                x.MovieDownloadTasksCount = 1;
+                x.DownloadFileSizeInMb = 10;
+            };
 
-                config.FileSystemOptions = (system, dbContext) =>
-                {
-                    var downloadTask = dbContext.DownloadTaskMovieFile.First();
-                    downloadTask.DownloadFilePath.ShouldNotBeNullOrEmpty();
+            config.FileSystemOptions = (system, dbContext) =>
+            {
+                var downloadTask = dbContext.DownloadTaskMovieFile.First();
+                downloadTask.DownloadFilePath.ShouldNotBeNullOrEmpty();
 
-                    var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
-                    directoryPath.ShouldNotBeNullOrEmpty();
-                    system.Directory.CreateDirectory(directoryPath);
-                    system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(10));
-                };
+                var directoryPath = system.Path.GetDirectoryName(downloadTask.DownloadFilePath);
+                directoryPath.ShouldNotBeNullOrEmpty();
+                system.Directory.CreateDirectory(directoryPath);
+                system.File.WriteAllBytes(downloadTask.DownloadFilePath, FakeData.GetDownloadFile(10));
+            };
 
-                config.OverrideServices = builder =>
-                    builder
-                        .Register(ctx =>
-                        {
-                            var file = ctx.Resolve<IFile>();
+            config.OverrideServices = builder =>
+                builder
+                    .Register(ctx =>
+                    {
+                        var file = ctx.Resolve<IFile>();
 
-                            return new FakeCommandExecutor().Intercept<MoveFileWithResumeCommand, Result>(
-                                async (moveCmd, ct) =>
-                                {
-                                    await using var writeStream = file.Open(
-                                        moveCmd.TargetPath,
-                                        FileMode.OpenOrCreate,
-                                        FileAccess.Write,
-                                        FileShare.ReadWrite
-                                    );
-                                    await using var readStream = file.Open(
-                                        moveCmd.SourcePath,
-                                        FileMode.Open,
-                                        FileAccess.Read,
-                                        FileShare.ReadWrite
-                                    );
+                        return new FakeCommandExecutor().Intercept<MoveFileWithResumeCommand, Result>(
+                            async (moveCmd, ct) =>
+                            {
+                                await using var writeStream = file.Open(
+                                    moveCmd.TargetPath,
+                                    FileMode.OpenOrCreate,
+                                    FileAccess.Write,
+                                    FileShare.ReadWrite
+                                );
+                                await using var readStream = file.Open(
+                                    moveCmd.SourcePath,
+                                    FileMode.Open,
+                                    FileAccess.Read,
+                                    FileShare.ReadWrite
+                                );
 
-                                    await readStream.CopyToAsync(writeStream, ct);
+                                await readStream.CopyToAsync(writeStream, ct);
 
-                                    return Result.Fail(
-                                        "Failed to delete source file after move: {MoveCmdSourcePath}",
-                                        moveCmd.SourcePath
-                                    );
-                                }
-                            );
-                        })
-                        .As<ICommandExecutor>()
-                        .InstancePerDependency();
-            }
-        );
+                                return Result.Fail(
+                                    "Failed to delete source file after move: {MoveCmdSourcePath}",
+                                    moveCmd.SourcePath
+                                );
+                            }
+                        );
+                    })
+                    .As<ICommandExecutor>()
+                    .InstancePerDependency();
+        });
 
         using var setupDbContext = container.DbContext;
         var downloadTasks = setupDbContext.DownloadTaskMovie.AsTracking().Include(x => x.Children).ToList();

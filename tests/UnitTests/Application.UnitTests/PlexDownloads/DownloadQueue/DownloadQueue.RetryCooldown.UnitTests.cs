@@ -6,16 +6,13 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
     public async Task ShouldSkipRecentlyAttemptedQueuedTask_AndPickAnotherInsteadOnRapidReentry()
     {
         // Arrange
-        await SetupDatabase(
-            58119,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(58119, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.MovieDownloadTasksCount = 3;
+        });
 
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()))
@@ -45,16 +42,13 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
     public async Task ShouldSkipRecentlyAttemptedErrorTask_AndPickNextErrorTaskBeforeQueuedTask()
     {
         // Arrange
-        await SetupDatabase(
-            58120,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(58120, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.MovieDownloadTasksCount = 3;
+        });
 
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(
             asTracking: true,
@@ -108,16 +102,13 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
     public async Task ShouldReturnSchedulerFailureAndRetryTask_WhenSchedulingFails()
     {
         // Arrange
-        await SetupDatabase(
-            58123,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(58123, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken);
         var expectedTask = downloadTasks[0].Children[0];
@@ -160,16 +151,13 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
     public async Task ShouldReturnSchedulerCancellationAndRetryTask_WhenSchedulingIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            58124,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(58124, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken);
         var expectedTask = downloadTasks[0].Children[0];

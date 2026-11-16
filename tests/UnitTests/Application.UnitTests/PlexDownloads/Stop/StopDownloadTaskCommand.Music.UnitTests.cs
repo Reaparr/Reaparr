@@ -14,17 +14,14 @@ public class StopDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StopDow
     )
     {
         // Arrange
-        await SetupDatabase(
-            88220,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 2;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88220, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 2;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)

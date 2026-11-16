@@ -12,20 +12,17 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     )
     {
         // Arrange
-        await SetupDatabase(
-            62537,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62537, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicRoots = await dbContext.DownloadTaskMusicArtists.IncludeAll().ToArrayAsync(CancellationToken);
         var videoRoots = await dbContext.DownloadTaskOtherVideos.IncludeAll().ToArrayAsync(CancellationToken);
@@ -67,20 +64,17 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldPersistExactMusicAndOtherVideoLogs_WhenUsingExistingBatchLogWorkflow()
     {
         // Arrange
-        await SetupDatabase(
-            62536,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 1;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62536, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var music = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -159,20 +153,17 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldRemoveOnlyEmptyNewMediaAncestors_WhenCleaningByServerOrGlobally(bool music, bool byServer)
     {
         // Arrange
-        await SetupDatabase(
-            62533,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62533, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -246,20 +237,17 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldPersistOnlySelectedFileState_WhenSettingNewMediaStatus(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(
-            62534,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62534, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var music = type is DownloadTaskType.MusicTrackData;
         var musicFiles = await dbContext
@@ -293,20 +281,17 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     )
     {
         // Arrange
-        await SetupDatabase(
-            62531,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62531, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var music = type is DownloadTaskType.MusicTrackData;
         var musicFiles = await dbContext
@@ -365,7 +350,7 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         var changed = await dbContext.DetermineDownloadStatus(key, CancellationToken);
 
         // Assert
-        changed.ShouldBe(ancestorKeys);
+        changed.Select(x => (x.Key, x.Status)).ShouldBe(ancestorKeys.Select(x => (x, DownloadStatus.Error)));
         (await dbContext.GetDownloadTaskKeyAsync(target.Id, CancellationToken)).ShouldBe(canonicalKey);
         (await dbContext.GetDownloadTaskTypeAsync(target.Id, CancellationToken)).ShouldBe(canonicalKey.Type);
         (await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: CancellationToken)).ShouldBe(rootKey);
@@ -450,20 +435,17 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldResolveEveryHierarchyKeyAndDeleteOnlySelectedEmptyRoot_WhenCleaningNewMedia(bool music)
     {
         // Arrange
-        await SetupDatabase(
-            62532,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62532, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -540,16 +522,13 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldPersistOnlySelectedFileStatus_WhenSettingStatus(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(
-            226687,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 2;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(226687, config =>
+        {
+            config.MovieDownloadTasksCount = 2;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
         using var dbContext = IDbContext;
         DownloadTaskFileBase target =
             type == DownloadTaskType.MovieData
@@ -577,13 +556,10 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldSetTheDownloadTaskParentOfTypeMovieDataToDownloadFinished_WhenTheMovieDataIsDownloadStatusIsDownloadFinished()
     {
         // Arrange
-        await SetupDatabase(
-            77674,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(77674, config =>
+        {
+            config.MovieDownloadTasksCount = 5;
+        });
 
         using var dbContext = IDbContext;
         var downloadTasks = await dbContext.DownloadTaskMovie.Include(x => x.Children).ToListAsync(CancellationToken);
@@ -596,7 +572,7 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         var changedKeys = await dbContext.DetermineDownloadStatus(testDownloadTask.ToKey(), CancellationToken);
 
         // Assert
-        changedKeys.ShouldBe([targetMovie.ToKey()]);
+        changedKeys.Select(x => (x.Key, x.Status)).ShouldBe([(targetMovie.ToKey(), DownloadStatus.DownloadFinished)]);
         var after = await dbContext
             .DownloadTaskMovie.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.DownloadStatus })
@@ -612,15 +588,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldSetTheDownloadTaskParentOfTypeEpisodeDataToError_WhenTheEpisodeDataIsDownloadStatusIsError()
     {
         // Arrange
-        await SetupDatabase(
-            864828,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 5;
-                config.TvShowSeasonDownloadTasksCount = 5;
-                config.TvShowEpisodeDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(864828, config =>
+        {
+            config.TvShowDownloadTasksCount = 5;
+            config.TvShowSeasonDownloadTasksCount = 5;
+            config.TvShowEpisodeDownloadTasksCount = 5;
+        });
 
         using var dbContext = IDbContext;
         var downloadTasks = await dbContext.DownloadTaskTvShow.IncludeAll().ToListAsync(CancellationToken);
@@ -645,7 +618,9 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
         );
 
         // Assert
-        changedKeys.ShouldBe(expectedChangedKeys);
+        changedKeys
+            .Select(x => (x.Key, x.Status))
+            .ShouldBe(expectedChangedKeys.Select(x => (x, DownloadStatus.Error)));
         var after = await dbContext.DownloadTaskTvShow.IncludeAll().ToListAsync(CancellationToken);
         after
             .Cast<DownloadTaskBase>()
@@ -728,16 +703,13 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnError_WhenUnsupportedDownloadTaskTypeProvided(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(
-            81238,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 5;
-                config.TvShowDownloadTasksCount = 5;
-                config.TvShowSeasonDownloadTasksCount = 5;
-                config.TvShowEpisodeDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(81238, config =>
+        {
+            config.MovieDownloadTasksCount = 5;
+            config.TvShowDownloadTasksCount = 5;
+            config.TvShowSeasonDownloadTasksCount = 5;
+            config.TvShowEpisodeDownloadTasksCount = 5;
+        });
 
         var dbContext = IDbContext;
         DownloadTaskKey? key;
@@ -822,15 +794,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnResetDownloadTaskTypeEpisodeFile_WhenResetDownloadTaskProgressCalled()
     {
         // Arrange
-        await SetupDatabase(
-            8231434,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 2;
-                config.TvShowSeasonDownloadTasksCount = 2;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(8231434, config =>
+        {
+            config.TvShowDownloadTasksCount = 2;
+            config.TvShowSeasonDownloadTasksCount = 2;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var downloadTasks = await dbContext.DownloadTaskTvShowEpisodeFile.AsTracking().ToListAsync(CancellationToken);
         var testDownloadTask = downloadTasks[4];
@@ -878,15 +847,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldBuildDownloadUrl_WithHttpsConnectionAndToken()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            561231,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 0;
-                config.PlexAccountCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(561231, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 0;
+            config.PlexAccountCount = 1;
+        });
 
         var db = IDbContext;
         var server = await db.PlexServers.FirstAsync(CancellationToken);
@@ -927,15 +893,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldFail_GetDownloadUrl_WhenNoConnectionsAvailable()
     {
         // Arrange
-        await SetupDatabase(
-            992341,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 0;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(992341, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 0;
+            config.PlexAccountCount = 1;
+        });
         var db = IDbContext;
         var server = await db.PlexServers.FirstAsync(CancellationToken);
 
@@ -950,15 +913,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldFail_GetDownloadUrl_WhenNoTokenAvailable()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            335522,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 0;
-                config.PlexAccountCount = 0;
-            }
-        );
+        var seed = await SetupDatabase(335522, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 0;
+            config.PlexAccountCount = 0;
+        });
 
         var db = IDbContext;
         var server = await db.PlexServers.FirstAsync(CancellationToken);
@@ -1006,13 +966,10 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnDownloadTask_WhenTypeIsNoneAndIdMatchesMovieFile()
     {
         // Arrange
-        await SetupDatabase(
-            226677,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(226677, config =>
+        {
+            config.MovieDownloadTasksCount = 3;
+        });
         var db = IDbContext;
         var movieFile = await db.DownloadTaskMovieFile.FirstAsync(CancellationToken);
 
@@ -1031,15 +988,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnMovieRoot_WhenRadarrOwnedMovieFileHasNoIntegrationFilter()
     {
         // Arrange
-        await SetupDatabase(
-            226678,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(226678, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
         var dbContext = IDbContext;
         var movie = await dbContext.DownloadTaskMovie.SingleAsync(CancellationToken);
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
@@ -1063,17 +1017,14 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnTvShowRoot_WhenRadarrOwnedEpisodeFileHasNoIntegrationFilter()
     {
         // Arrange
-        await SetupDatabase(
-            226679,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(226679, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
         var dbContext = IDbContext;
         var tvShow = await dbContext.DownloadTaskTvShow.SingleAsync(CancellationToken);
         var episodeFile = await dbContext.DownloadTaskTvShowEpisodeFile.SingleAsync(CancellationToken);
@@ -1097,15 +1048,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnNull_WhenRadarrOwnedMovieFileHasDifferentIntegrationFilter()
     {
         // Arrange
-        await SetupDatabase(
-            226680,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(226680, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         var differentIntegration = new IntegrationIdentity(
@@ -1130,14 +1078,11 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnOwnedAndUnownedTasks_WhenIntegrationFilterIsNull()
     {
         // Arrange
-        await SetupDatabase(
-            226681,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 2;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(226681, config =>
+        {
+            config.MovieDownloadTasksCount = 2;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integrationId = await dbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
         var movieFiles = await dbContext
@@ -1163,14 +1108,11 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnOnlyUnownedTasks_WhenOwnershipMatchIsNull()
     {
         // Arrange
-        await SetupDatabase(
-            226682,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 2;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(226682, config =>
+        {
+            config.MovieDownloadTasksCount = 2;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integrationId = await dbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
         var movieFiles = await dbContext
@@ -1195,15 +1137,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnOnlyMatchingRadarrTasks_WhenIntegrationIsSpecified()
     {
         // Arrange
-        await SetupDatabase(
-            226683,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 4;
-                config.RadarrIntegrationCount = 2;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(226683, config =>
+        {
+            config.MovieDownloadTasksCount = 4;
+            config.RadarrIntegrationCount = 2;
+            config.SonarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var radarrIds = await dbContext
             .RadarrIntegrations.OrderBy(x => x.Id)
@@ -1233,15 +1172,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnOnlyMatchingSonarrTasks_WhenIntegrationIsSpecified()
     {
         // Arrange
-        await SetupDatabase(
-            226684,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 3;
-                config.RadarrIntegrationCount = 1;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(226684, config =>
+        {
+            config.MovieDownloadTasksCount = 3;
+            config.RadarrIntegrationCount = 1;
+            config.SonarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var radarrId = await dbContext.RadarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
         var sonarrId = await dbContext.SonarrIntegrations.Select(x => x.Id).SingleAsync(CancellationToken);
@@ -1267,15 +1203,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldReturnMatchingAndUnownedTasks_WhenIntegrationOrUnownedIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            226685,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 4;
-                config.RadarrIntegrationCount = 2;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(226685, config =>
+        {
+            config.MovieDownloadTasksCount = 4;
+            config.RadarrIntegrationCount = 2;
+            config.SonarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var radarrIds = await dbContext
             .RadarrIntegrations.OrderBy(x => x.Id)
@@ -1310,15 +1243,12 @@ public class DbContextExtensionsDownloadTasksUnitTests : BaseUnitTest
     public async Task ShouldNotMatchRadarrTask_WhenSonarrIdentityUsesSameId()
     {
         // Arrange
-        await SetupDatabase(
-            226686,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(226686, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         var radarrId = movieFile.RadarrIntegrationId.ShouldNotBeNull();

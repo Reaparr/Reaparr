@@ -30,7 +30,7 @@
 					align-self="stretch">
 					<!-- Tab Index -->
 					<q-tabs
-						v-model="tabIndex"
+						v-model="selectedTab"
 						:vertical="$q.screen.gt.xs"
 						active-color="red">
 						<!--	Server Data	Tab Header -->
@@ -175,6 +175,7 @@ const serverStore = useServerStore();
 const $q = useQuasar();
 const libraryStore = useLibraryStore();
 const dialogStore = useDialogStore();
+const telemetry = useTelemetry();
 
 const loading = ref(false);
 const tabIndex = ref<string>('server-data');
@@ -183,9 +184,28 @@ const plexServer = ref<PlexServerDTO | null>(null);
 const plexServerId = ref<number>(0);
 
 const isVisible = computed((): boolean => plexServerId.value > 0);
+const tabPositions: Record<string, number> = {
+	'server-data': 0,
+	'server-connection': 1,
+	'server-config': 2,
+	'server-libraries': 3,
+	'server-commands': 4,
+	'server-stats': 5,
+};
+const selectedTab = computed({
+	get: () => get(tabIndex),
+	set: (value: string) => {
+		if (value === get(tabIndex)) return;
+		telemetry.serverTabChanged(get(plexServerId), tabPositions[value] ?? -1);
+		set(tabIndex, value);
+	},
+});
 
 function open(event: unknown): void {
 	const newPlexServerId = event as number;
+	if (newPlexServerId > 0) {
+		telemetry.serverOpened(newPlexServerId);
+	}
 	set(plexServerId, newPlexServerId);
 	set(loading, true);
 

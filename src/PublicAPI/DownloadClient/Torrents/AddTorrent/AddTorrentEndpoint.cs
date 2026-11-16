@@ -1,7 +1,6 @@
 using BencodeNET.Exceptions;
 using BencodeNET.Parsing;
 using BencodeNET.Torrents;
-using Reaparr.Application.Contracts;
 
 namespace Reaparr.PublicAPI;
 
@@ -65,6 +64,20 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ILogger _log;
+    private readonly ITelemetry _telemetry;
+
+    public AddTorrentEndpoint(
+        ILogger logger,
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
+    {
+        _log = logger.ForContext<AddTorrentEndpoint>();
+        _dbContext = dbContext;
+        _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
+    }
 
     public override void Configure()
     {
@@ -73,13 +86,6 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         AllowFileUploads();
         AllowAnonymous();
         PreProcessor<DownloadClientAuthenticationPreProcessor<AddTorrentEndpointRequest>>();
-    }
-
-    public AddTorrentEndpoint(ILogger logger, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
-    {
-        _log = logger.ForContext<AddTorrentEndpoint>();
-        _dbContext = dbContext;
-        _commandExecutor = commandExecutor;
     }
 
     public override async Task HandleAsync(AddTorrentEndpointRequest req, CancellationToken ct)
@@ -100,6 +106,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         {
             _log.Here()
                 .Warning(
+                    ex,
                     "[Torrent/Add] Invalid torrent file format for {TorrentFileName}: {Error}",
                     req.TorrentFile?.FileName,
                     ex.Message
@@ -112,6 +119,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         {
             _log.Here()
                 .Warning(
+                    ex,
                     "[Torrent/Add] Invalid torrent file bencode for {TorrentFileName}: {Error}",
                     req.TorrentFile?.FileName,
                     ex.Message
@@ -123,7 +131,8 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         catch (Exception ex)
         {
             _log.Here()
-                .Warning(
+                .Error(
+                    ex,
                     "[Torrent/Add] Failed to parse torrent file for {TorrentFileName}: {Error}",
                     req.TorrentFile?.FileName,
                     ex.Message
@@ -154,6 +163,14 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         var identity = HttpContext.GetIntegrationIdentity();
         if (!identity.Supports(metadata.Type))
         {
+            _telemetry.ExternalDownloadSubmissionProcessed(
+                identity,
+                ToTelemetryDTO(metadata),
+                hashId,
+                null,
+                null,
+                TelemetryStage.MediaSupport
+            );
             await Send.ForbiddenAsync(ct);
             return;
         }
@@ -161,7 +178,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         var source = await GetValidatedMediaSourceAsync(metadata, ct);
         if (source is null)
         {
-            await RespondToMissingSourceAsync(metadata, ct);
+            await RespondToMissingSourceAsync(metadata, hashId, identity, ct);
             return;
         }
 
@@ -173,11 +190,16 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
                 metadata
             );
 
-        var torrentDetails = (Metadata: metadata, HashId: hashId, FileName: req.TorrentFile.FileName);
+        var torrentDetails = (metadata, hashId, req.TorrentFile.FileName);
         await CreateAndTrackDownloadAsync(torrentDetails, source, identity, ct);
     }
 
-    private async Task RespondToMissingSourceAsync(TorrentMetadataDTO metadata, CancellationToken ct)
+    private async Task RespondToMissingSourceAsync(
+        TorrentMetadataDTO metadata,
+        string hashId,
+        IntegrationIdentity identity,
+        CancellationToken ct
+    )
     {
         if (await HasStoredMediaIdentityAsync(metadata))
         {
@@ -187,6 +209,14 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
                     metadata.Type,
                     metadata
                 );
+            _telemetry.ExternalDownloadSubmissionProcessed(
+                identity,
+                ToTelemetryDTO(metadata),
+                hashId,
+                null,
+                null,
+                TelemetryStage.SourceValidation
+            );
             AddError(
                 new FluentValidation.Results.ValidationFailure(
                     nameof(TorrentMetadataDTO.DataId),
@@ -198,6 +228,14 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         }
 
         _log.Here().Warning("[Torrent/Add] Torrent source no longer exists: {MetaData}", metadata);
+        _telemetry.ExternalDownloadSubmissionProcessed(
+            identity,
+            ToTelemetryDTO(metadata),
+            hashId,
+            null,
+            null,
+            TelemetryStage.SourceValidation
+        );
         await Send.StringAsync("Fails.", cancellation: ct);
     }
 
@@ -236,20 +274,52 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
             new CreateDownloadTasksCommand(new CreateDownloadTasksRequest(list, integration: identity)),
             ct
         );
-        if (createResult.IsFailed)
+        if (createResult.IsCancelledOrFailed)
         {
-            _log.Here()
-                .Error(
-                    "[Torrent/Add] Failed to create download tasks for torrent {TorrentFileName}, Error: {Error}",
-                    torrent.FileName,
-                    createResult.Errors
-                );
+            createResult.LogIfFailed();
+            _telemetry.CaptureErrors(createResult, TelemetryActivity.ExternalDownloadSubmission);
+            _telemetry.ExternalDownloadSubmissionProcessed(
+                identity,
+                ToTelemetryDTO(metadata),
+                torrent.HashId,
+                createResult,
+                null,
+                TelemetryStage.TaskCreation
+            );
+            if (createResult.IsCancelled && ct.IsCancellationRequested)
+                return;
+
             await Send.StringAsync("Fails.", cancellation: ct);
             return;
         }
 
         // Set the hashId on the created download tasks so Sonarr/Radarr can keep track
-        if (!await SetHashIdOnDownloadTask((Type: metadata.Type, Source: source), torrent.HashId, identity, ct))
+        var associationResult = await Result.Try(() =>
+            SetHashIdOnDownloadTask((metadata.Type, source), torrent.HashId, identity, ct)
+        );
+        _telemetry.ExternalDownloadSubmissionProcessed(
+            identity,
+            ToTelemetryDTO(metadata),
+            torrent.HashId,
+            createResult,
+            associationResult,
+            TelemetryStage.HashAssociation
+        );
+
+        if (associationResult.IsCancelledOrFailed)
+        {
+            associationResult.LogIfFailed();
+            if (associationResult.IsCancelled && ct.IsCancellationRequested)
+                return;
+
+            if (!associationResult.IsCancelled)
+                _telemetry.CaptureErrors(associationResult, TelemetryActivity.ExternalDownloadSubmission);
+
+            await Send.FluentResult(associationResult.ToResult(), CancellationToken.None);
+            return;
+        }
+
+        if (associationResult.Value == 0)
         {
             await Send.StringAsync("Fails.", cancellation: ct);
             return;
@@ -257,6 +327,19 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
 
         await Send.StringAsync("Ok.", cancellation: ct);
     }
+
+    private static TorrentMetadataTelemetryDTO ToTelemetryDTO(TorrentMetadataDTO metadata) =>
+        new()
+        {
+            Type = metadata.Type,
+            MediaId = metadata.MediaId,
+            DataId = metadata.DataId,
+            PartId = metadata.PartId,
+            PlexApiPartId = metadata.PlexApiPartId,
+            VideoQuality = metadata.VideoQuality,
+            LibraryId = metadata.LibraryId,
+            ServerId = metadata.ServerId,
+        };
 
     private Task<MediaSourceIdentity?> GetValidatedMediaSourceAsync(
         TorrentMetadataDTO metadata,
@@ -320,7 +403,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
             })
             .SingleOrDefaultAsync(ct);
 
-    private async Task<bool> SetHashIdOnDownloadTask(
+    private async Task<int> SetHashIdOnDownloadTask(
         (PlexMediaType Type, MediaSourceIdentity Source) validatedSource,
         string hashId,
         IntegrationIdentity identity,
@@ -351,12 +434,12 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
                     "Could not find any DownloadTask to set HashId for torrent source: {Source}",
                     validatedSource.Source
                 );
-            return false;
+            return 0;
         }
 
         _log.Here()
             .Debug("Set HashId on {Count} DownloadTasks for torrent source: {Source}", count, validatedSource.Source);
-        return true;
+        return count;
     }
 
     private static Task<int> SetHashIdAsync<T>(

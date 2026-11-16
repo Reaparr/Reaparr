@@ -96,7 +96,7 @@ public class GetTvShowDownloadPreviewCommandHandler
         }
         catch (Exception ex)
         {
-            _log.Here().Error("Failed to create TV show previews: {ExceptionMsg}", ex.Message);
+            _log.Here().Error(ex, "Failed to create TV show previews");
             return Result.Fail(new ExceptionalError(ex)).LogError();
         }
     }

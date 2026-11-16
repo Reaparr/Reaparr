@@ -57,11 +57,13 @@ public class ValidatePlexCredentialsEndpoint
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public ValidatePlexCredentialsEndpoint(ILogger log, ICommandExecutor commandExecutor)
+    public ValidatePlexCredentialsEndpoint(ILogger log, ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _log = log.ForContext<ValidatePlexCredentialsEndpoint>();
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -113,6 +115,7 @@ public class ValidatePlexCredentialsEndpoint
                 ValidatedAt = null,
                 Is2Fa = true,
             };
+            _telemetry.PlexAuthenticationProcessed(TelemetryAuthenticationMethod.Credentials, null, signInResult);
             await Send.FluentResult(Result.Ok(response), ct);
 
             return;
@@ -137,6 +140,7 @@ public class ValidatePlexCredentialsEndpoint
                 ValidatedAt = null,
                 Is2Fa = false,
             };
+            _telemetry.PlexAuthenticationProcessed(TelemetryAuthenticationMethod.Credentials, null, signInResult);
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
@@ -160,10 +164,17 @@ public class ValidatePlexCredentialsEndpoint
                 ValidatedAt = signInResult.Value.ValidatedAt,
                 Is2Fa = signInResult.Value.Is2Fa,
             };
+            _telemetry.PlexAuthenticationProcessed(
+                TelemetryAuthenticationMethod.Credentials,
+                null,
+                signInResult,
+                new PlexAuthenticationTelemetryDTO { IsValidated = signInResult.Value.IsValidated }
+            );
             await Send.FluentResult(Result.Ok(response), ct);
             return;
         }
 
+        _telemetry.PlexAuthenticationProcessed(TelemetryAuthenticationMethod.Credentials, null, signInResult);
         // Default: return all errors if none of the above conditions matched
         await Send.FluentResult(signInResult.ToResult(), ct);
     }

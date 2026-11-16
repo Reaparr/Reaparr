@@ -12,15 +12,11 @@ public static class IntegrationApiKeyGenerator
     public static string GenerateQBittorrentApiKey(Guid integrationId)
     {
         var hash = SHA256.HashData(integrationId.ToByteArray());
-        var key = string.Create(
-            28,
-            hash,
-            static (characters, bytes) =>
-            {
-                for (var i = 0; i < characters.Length; i++)
-                    characters[i] = Q_BITTORRENT_ALPHABET[bytes[i % bytes.Length] % Q_BITTORRENT_ALPHABET.Length];
-            }
-        );
+        var key = string.Create(28, hash, static (characters, bytes) =>
+        {
+            for (var i = 0; i < characters.Length; i++)
+                characters[i] = Q_BITTORRENT_ALPHABET[bytes[i % bytes.Length] % Q_BITTORRENT_ALPHABET.Length];
+        });
         return $"qbt_{key}";
     }
 

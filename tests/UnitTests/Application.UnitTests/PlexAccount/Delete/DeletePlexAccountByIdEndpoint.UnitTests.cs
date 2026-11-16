@@ -7,17 +7,14 @@ public class DeletePlexAccountByIdEndpointUnitTests
     public async Task ShouldDeleteAllRelatedDataWhenAccountIsDeleted()
     {
         // Arrange
-        await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 5;
-                config.PlexMovieLibraryCount = 3;
-                config.MovieCount = 10;
-                config.TvShowCount = 10;
-            }
-        );
+        await SetupDatabase(1223, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 5;
+            config.PlexMovieLibraryCount = 3;
+            config.MovieCount = 10;
+            config.TvShowCount = 10;
+        });
 
         var testAccount = IDbContext.PlexAccounts.IncludeServerAccess().IncludeLibraryAccess().FirstOrDefault();
         testAccount.ShouldNotBeNull();
@@ -44,21 +41,28 @@ public class DeletePlexAccountByIdEndpointUnitTests
         IDbContext.PlexLibraries.ToList().ShouldBeEmpty();
         IDbContext.PlexMovies.ToList().ShouldBeEmpty();
         IDbContext.PlexTvShows.ToList().ShouldBeEmpty();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexAccountChanged(
+                        TelemetryAction.Delete,
+                        testAccount.Id,
+                        It.Is<PlexAccount?>(account => account == null || account.Id == testAccount.Id)
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
     public async Task ShouldDeleteOnlyUnreferencedServersAndLibraries_AfterRemovingDeletedAccountAccess()
     {
         // Arrange
-        await SetupDatabase(
-            91102,
-            config =>
-            {
-                config.PlexAccountCount = 2;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91102, config =>
+        {
+            config.PlexAccountCount = 2;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -75,7 +79,10 @@ public class DeletePlexAccountByIdEndpointUnitTests
         var sharedServerId = servers[1].Id;
 
         var deleteOnlyLibraryId = libraries.First(x => x.PlexServerId == deleteOnlyServerId).Id;
-        var sharedLibraryId = libraries.First(x => x.PlexServerId == sharedServerId).Id;
+        var sharedLibrary = libraries.First(x => x.PlexServerId == sharedServerId);
+        var sharedLibraryId = sharedLibrary.Id;
+        sharedLibrary.IsEnabled = false;
+        await dbContext.SaveChangesAsync(CancellationToken);
 
         await dbContext.PlexAccountServers.ExecuteDeleteAsync(CancellationToken);
         await dbContext.PlexAccountLibraries.ExecuteDeleteAsync(CancellationToken);
@@ -173,5 +180,15 @@ public class DeletePlexAccountByIdEndpointUnitTests
             .PlexAccountServers.Where(x => x.PlexAccountId == deleteAccountId)
             .ToListAsync(CancellationToken);
         deletedAccountLinks.ShouldBeEmpty();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.PlexAccountChanged(
+                        TelemetryAction.Delete,
+                        deleteAccountId,
+                        It.Is<PlexAccount?>(account => account == null || account.Id == deleteAccountId)
+                    ),
+                Times.Once()
+            );
     }
 }

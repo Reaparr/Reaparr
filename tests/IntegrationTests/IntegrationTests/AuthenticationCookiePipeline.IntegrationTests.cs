@@ -17,12 +17,10 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
         // Arrange
         using var container = await CreateRealAuthenticationContainer(17014);
         using var client = CreateUnauthenticatedClient(container);
-        using var formData = new MultipartFormDataContent
-        {
-            { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
-            { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
-            { new StringContent(rememberMe.ToString()), "RememberMe" },
-        };
+        using var formData = new MultipartFormDataContent();
+        formData.Add(new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username");
+        formData.Add(new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password");
+        formData.Add(new StringContent(rememberMe.ToString()), "RememberMe");
         var seededUser = await container
             .Resolve<IUserService>()
             .FindByNameAsync(DefaultUserAppCredentials.DefaultUsername);
@@ -41,7 +39,7 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
         ticket.Principal.Identity.Name.ShouldBe(DefaultUserAppCredentials.DefaultUsername);
         var nameIdentifierClaim = ticket.Principal.FindFirst(ClaimTypes.NameIdentifier);
         nameIdentifierClaim.ShouldNotBeNull();
-        nameIdentifierClaim!.Value.ShouldBe(seededUser!.Id);
+        nameIdentifierClaim.Value.ShouldBe(seededUser.Id);
         ticket.Principal.IsInRole(DefaultUserAppCredentials.DefaultAdminRole).ShouldBeTrue();
         ticket.Properties.IsPersistent.ShouldBe(rememberMe);
 
@@ -57,12 +55,10 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
         // Arrange
         using var container = await CreateRealAuthenticationContainer(17015);
         using var loginClient = CreateUnauthenticatedClient(container);
-        using var formData = new MultipartFormDataContent
-        {
-            { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
-            { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
-            { new StringContent("false"), "RememberMe" },
-        };
+        using var formData = new MultipartFormDataContent();
+        formData.Add(new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username");
+        formData.Add(new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password");
+        formData.Add(new StringContent("false"), "RememberMe");
         var loginResponse = await loginClient.PostAsync(ApiRoutes.LoginEndpoint, formData);
         loginResponse.IsSuccessStatusCode.ShouldBeTrue();
         var cookie = GetCookiePair(GetSingleAuthenticationCookie(loginResponse));
@@ -101,7 +97,7 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
     }
 
     private static List<string> GetSetCookieHeaders(HttpResponseMessage response) =>
-        response.Headers.TryGetValues("Set-Cookie", out var values) ? values.ToList() : [];
+        response.Headers.TryGetValues("Set-Cookie", out var values) ? [.. values] : [];
 
     private static string GetSingleAuthenticationCookie(HttpResponseMessage response)
     {
@@ -122,6 +118,6 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
             .Resolve<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        return options.TicketDataFormat!.Unprotect(cookieValue).ShouldNotBeNull();
+        return options.TicketDataFormat.Unprotect(cookieValue).ShouldNotBeNull();
     }
 }

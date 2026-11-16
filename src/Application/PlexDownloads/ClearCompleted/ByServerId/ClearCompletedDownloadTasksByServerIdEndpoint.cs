@@ -15,14 +15,17 @@ public class ClearCompletedDownloadTasksByServerIdEndpoint
 {
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
+    private readonly ITelemetry _telemetry;
 
     public ClearCompletedDownloadTasksByServerIdEndpoint(
         ICommandExecutor commandExecutor,
-        INotificationHubService notificationHubService
+        INotificationHubService notificationHubService,
+        ITelemetry telemetry
     )
     {
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -41,6 +44,9 @@ public class ClearCompletedDownloadTasksByServerIdEndpoint
             new ClearCompletedDownloadTasksByServerIdCommand(req.PlexServerId),
             ct
         );
+
+        _telemetry.CompletedDownloadsCleared(req.PlexServerId, result);
+
         if (result.IsCancelledOrFailed)
         {
             await Send.FluentResult(result.ToResult(), ct);

@@ -1,4 +1,3 @@
-using System.Net;
 using System.Xml.Linq;
 
 namespace Reaparr.IntegrationTests;
@@ -12,26 +11,23 @@ public class TorznabImdbIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var isMovie = family == PlexMediaType.Movie;
-        using var container = await CreateContainer(
-            new Seed(8637),
-            config =>
+        using var container = await CreateContainer(new Seed(8637), config =>
+        {
+            config.DatabaseOptions = database =>
             {
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexServerCount = 1;
-                    database.PlexAccountCount = 1;
-                    database.PlexMovieLibraryCount = isMovie ? 1 : 0;
-                    database.PlexTvShowLibraryCount = isMovie ? 0 : 1;
-                    database.MovieCount = isMovie ? 2 : 0;
-                    database.IncludeMultiPartMovies = false;
-                    database.TvShowCount = isMovie ? 0 : 2;
-                    database.TvShowSeasonCount = isMovie ? 0 : 1;
-                    database.TvShowEpisodeCount = isMovie ? 0 : 1;
-                    database.RadarrIntegrationCount = isMovie ? 1 : 0;
-                    database.SonarrIntegrationCount = isMovie ? 0 : 1;
-                };
-            }
-        );
+                database.PlexServerCount = 1;
+                database.PlexAccountCount = 1;
+                database.PlexMovieLibraryCount = isMovie ? 1 : 0;
+                database.PlexTvShowLibraryCount = isMovie ? 0 : 1;
+                database.MovieCount = isMovie ? 2 : 0;
+                database.IncludeMultiPartMovies = false;
+                database.TvShowCount = isMovie ? 0 : 2;
+                database.TvShowSeasonCount = isMovie ? 0 : 1;
+                database.TvShowEpisodeCount = isMovie ? 0 : 1;
+                database.RadarrIntegrationCount = isMovie ? 1 : 0;
+                database.SonarrIntegrationCount = isMovie ? 0 : 1;
+            };
+        });
         var dbContext = container.DbContext;
         if (isMovie)
         {

@@ -1,6 +1,11 @@
 import { fileURLToPath } from 'url';
 import { defineNuxtConfig } from 'nuxt/config';
 
+const posthogBrowserApiHost = (process.env.NUXT_PUBLIC_PLATFORM ?? process.env.PLATFORM) === 'docker'
+	? `${(process.env.NUXT_APP_BASE_URL || '/').replace(/\/$/, '')}/e`
+	: `http://localhost:${process.env.NUXT_PUBLIC_API_PORT ?? process.env.API_PORT ?? '5000'}/e`;
+const posthogUiHost = (process.env.NUXT_PUBLIC_RP_HOST || '').replace('.i.posthog.com', '.posthog.com');
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
 	modules: [
@@ -12,6 +17,7 @@ export default defineNuxtConfig({
 		'@nuxt/test-utils/module',
 		'@pinia/nuxt',
 		'@nuxt/eslint',
+		'@posthog/nuxt',
 	],
 	ssr: false,
 	components: {
@@ -85,6 +91,11 @@ export default defineNuxtConfig({
 
 	build: {
 		transpile: ['primevue'],
+	},
+	// CI requests hidden maps; injection, private upload, and deletion happen in a separate pipeline step.
+	sourcemap: {
+		client: process.env.NUXT_SOURCEMAP_CLIENT === 'hidden' ? 'hidden' : false,
+		server: false,
 	},
 	compatibilityDate: '2024-07-25',
 
@@ -166,6 +177,33 @@ export default defineNuxtConfig({
 		// https://pinia.vuejs.org/ssr/nuxt.html#Auto-imports
 		storesDirs: ['./src/store/**'],
 	},
+	posthogConfig: {
+		publicKey: process.env.NUXT_PUBLIC_RP_KEY || '', // Embedded public ingestion key; empty keeps this build unconfigured.
+		// Use the Reaparr proxy for PostHog module requests.
+		host: posthogBrowserApiHost,
+		clientConfig: { // Initial defaults; 2.posthog.client.ts activates collection once the existing account UUID arrives.
+			capture_pageview: false, // The router plugin owns pageviews; prevent opt-in from emitting an SDK startup pageview.
+			ui_host: posthogUiHost, // Use the PostHog UI domain for links, not its ingestion/proxy address.
+			capture_exceptions: false, // Native browser errors start after UUID bootstrap, independently of authentication.
+			capture_performance: { web_vitals: true }, // Native document-lifetime observers must start at init; opt-out gates sends.
+			mask_all_text: true, // Omit DOM text from autocapture metadata; ordinary replay text remains visible.
+			mask_all_element_attributes: true, // Omit DOM attribute values from autocapture; replay uses separate privacy hooks.
+			advanced_disable_feature_flags: true, // Feature flags are outside scope; native replay configuration is still needed.
+			disable_surveys: true, // Surveys are outside scope.
+			disable_surveys_automatic_display: true, // Do not automatically display survey UI.
+			disable_product_tours: true, // Product tours are outside scope; telemetry must not introduce onboarding UI.
+			disable_web_experiments: true, // Experiments are outside scope; telemetry must not alter application behavior.
+			disable_conversations: true, // PostHog conversation/chat UI is outside scope.
+			opt_out_capturing_by_default: true, // Start opted out; plugin opts in when the UUID arrives, not when the user logs in.
+			person_profiles: 'identified_only', // Create profiles for the existing account UUID, not SDK-generated anonymous IDs.
+			tracing_headers: [], // Plugin enables native correlation headers for the backend hostname only after bootstrap.
+			disable_capture_url_hashes: true, // URL fragments can contain sensitive/transient state; URL privacy hooks also strip them.
+		},
+		serverConfig: {
+			disabled: true, // .NET owns backend telemetry; do not run a second SDK in Nuxt/Nitro.
+			enableExceptionAutocapture: false, // Backend errors belong to .NET, not duplicate Nitro exception capture.
+		},
+	},
 	primevue: {
 		importTheme: { from: '@/assets/scss/primevue/reaparr-theme.ts' },
 	},
@@ -183,7 +221,7 @@ export default defineNuxtConfig({
 		extras: {
 			// string | null: Auto-import roboto font. https://quasar.dev/style/typography#default-font
 			font: 'roboto-font', // string[]: Auto-import webfont icons. Usage: https://quasar.dev/vue-components/icon#webfont-usage
-			fontIcons: ['mdi-v7'], // string[]: Auto-import svg icon collections. Usage: https://quasar.dev/vue-components/icon#svg-usage
+			fontIcons: ['mdi-v7'], // string[]: Auto-import svg icon collections. Usage: https://quasar.dev/quasar-plugins
 			svgIcons: [], // string[]: Auto-import animations from 'animate.css'. Usage: https://quasar.dev/options/animations#usage
 			// string[]: Auto-import animations from 'animate.css'. Usage: https://quasar.dev/options/animations#usage
 			animations: ['fadeInLeft', 'fadeInRight', 'fadeInUp', 'fadeInDown', 'fadeOutLeft'],

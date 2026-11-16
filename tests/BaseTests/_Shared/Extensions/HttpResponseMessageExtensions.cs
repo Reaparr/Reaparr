@@ -6,8 +6,7 @@ public static class HttpResponseMessageExtensions
 {
     public static async Task<ResultDTO<T>> Deserialize<T>(this HttpResponseMessage response)
     {
-        var result =
-            await response.Content.ReadFromJsonAsync<ResultDTO<T>>(DefaultJsonSerializerOptions.ConfigStandard)
+        var result = await response.Content.ReadFromJsonAsync<ResultDTO<T>>(DefaultJsonSerializerOptions.ConfigStandard)
             ?? new ResultDTO<T>
             {
                 IsSuccess = false,

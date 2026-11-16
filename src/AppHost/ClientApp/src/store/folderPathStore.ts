@@ -30,6 +30,7 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 	}
 
 	// Actions
+	const telemetry = useTelemetry();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			return actions.refreshFolderPaths().pipe(
@@ -49,6 +50,7 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 			);
 		},
 		createFolderPath(folderPath: FolderPathDTO) {
+			telemetry.folderCreateRequested(folderPath);
 			return folderPathApi.createFolderPathEndpoint(folderPath).pipe(
 				tap((result) => {
 					if (result?.isSuccess && result.value) {
@@ -58,6 +60,7 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 			);
 		},
 		setFolderPathDirectory(folderPathId: number, directory: string): Observable<ResultDTO<FolderPathDTO>> {
+			telemetry.folderDirectoryChanged(folderPathId);
 			let folderPath = getters.getFolderPath(folderPathId);
 			if (folderPath) {
 				folderPath = { ...folderPath, directory };
@@ -66,6 +69,7 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 			return throwError(() => 'Could not find folderPath with id: ' + folderPathId);
 		},
 		setFolderPathDisplayName(folderPathId: number, displayName: string): Observable<ResultDTO<FolderPathDTO>> {
+			telemetry.folderNameChanged(folderPathId);
 			let folderPath = getters.getFolderPath(folderPathId);
 			if (folderPath) {
 				folderPath = { ...folderPath, displayName };
@@ -83,6 +87,7 @@ export const useFolderPathStore = defineStore(StoreNames.FolderPathStore, () => 
 			);
 		},
 		deleteFolderPath(folderPathId: number) {
+			telemetry.folderDeleteRequested(folderPathId);
 			return folderPathApi.deleteFolderPathEndpoint(folderPathId).pipe(
 				tap((result) => {
 					if (!result.isSuccess) {

@@ -19,6 +19,7 @@
 import { useSettingsStore } from '@store';
 
 const settingsStore = useSettingsStore();
+const telemetry = useTelemetry();
 
 const props = defineProps<{
 	machineIdentifier: string;
@@ -33,6 +34,7 @@ const value = computed({
 			value = 0;
 		}
 		settingsStore.updateDownloadLimit(props.machineIdentifier, value);
+		telemetry.serverDownloadLimitChanged(props.machineIdentifier);
 	},
 });
 </script>

@@ -8,16 +8,13 @@ public class DownloadQueueCheckDownloadQueueForAllServersUnitTests : BaseUnitTes
     public async Task ShouldKickQueueForConfiguredPlexServers_WhenCheckingAllServers()
     {
         // Arrange
-        await SetupDatabase(
-            58121,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(58121, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.MovieDownloadTasksCount = 2;
+        });
 
         Mock.Mock<IDownloadTaskScheduler>()
             .Setup(x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), CancellationToken))
@@ -45,16 +42,13 @@ public class DownloadQueueCheckDownloadQueueForAllServersUnitTests : BaseUnitTes
     public async Task ShouldContinueCheckingQueuedServers_WhenOneQueueCheckThrows()
     {
         // Arrange
-        await SetupDatabase(
-            58122,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(58122, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.MovieDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var downloadTasks = await dbContext.GetAllDownloadTasksByServerAsync(
             asTracking: true,

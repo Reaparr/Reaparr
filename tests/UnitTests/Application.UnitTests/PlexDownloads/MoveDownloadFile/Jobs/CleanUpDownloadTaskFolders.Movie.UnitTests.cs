@@ -101,16 +101,13 @@ public class CleanUpDownloadTaskFoldersMovieUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectEpisodeSiblingStatusWhenCleaningMovie(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            63003,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 3;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(63003, config =>
+        {
+            config.MovieDownloadTasksCount = 3;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFiles = await dbContext
             .DownloadTaskMovieFile.AsTracking()
@@ -168,14 +165,11 @@ public class CleanUpDownloadTaskFoldersMovieUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectPhotoSiblingStatusWhenCleaningMovie(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            63004,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 3;
-                config.PlexPhotoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(63004, config =>
+        {
+            config.MovieDownloadTasksCount = 3;
+            config.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFiles = await dbContext
             .DownloadTaskMovieFile.AsTracking()
@@ -240,18 +234,15 @@ public class CleanUpDownloadTaskFoldersMovieUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectMusicSiblingStatusWhenCleaningMovie(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            63006,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 3;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(63006, config =>
+        {
+            config.MovieDownloadTasksCount = 3;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFiles = await dbContext
             .DownloadTaskMovieFile.AsTracking()
@@ -305,16 +296,13 @@ public class CleanUpDownloadTaskFoldersMovieUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectOtherVideoSiblingStatusWhenCleaningMovie(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            63007,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 3;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 1;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(63007, config =>
+        {
+            config.MovieDownloadTasksCount = 3;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFiles = await dbContext
             .DownloadTaskMovieFile.AsTracking()

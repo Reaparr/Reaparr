@@ -16,16 +16,19 @@ public class RefreshPlexServerConnectionsEndpoint : Endpoint<RefreshPlexServerCo
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
     public RefreshPlexServerConnectionsEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,
-        ICommandExecutor commandExecutor
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<RefreshPlexServerConnectionsEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -33,9 +36,9 @@ public class RefreshPlexServerConnectionsEndpoint : Endpoint<RefreshPlexServerCo
         Get(ApiRoutes.PlexServerController + "/{PlexServerId}/refresh");
 
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<PlexServerDTO>))
-                .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
+            x.Produces<ResultDTO<PlexServerDTO>>()
+                .Produces<BaseResultDTO>(StatusCodes.Status404NotFound)
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError)
         );
     }
 
@@ -46,15 +49,25 @@ public class RefreshPlexServerConnectionsEndpoint : Endpoint<RefreshPlexServerCo
         var plexAccountResult = await _dbContext.ChoosePlexAccountToConnect(req.PlexServerId, ct);
         if (plexAccountResult.IsFailed)
         {
+            _telemetry.PlexAccessRefreshRequested(
+                TelemetryScope.Account,
+                plexAccountResult,
+                serverId: req.PlexServerId
+            );
             await Send.FluentResult(plexAccountResult.ToResult(), ct);
             return;
         }
 
         var refreshResult = await _commandExecutor.Send(
-            new RefreshPlexServerAccessCommand(plexAccountResult.Value.Id),
+            new RefreshPlexAccountAccessCommand(plexAccountResult.Value.Id),
             ct
         );
-
+        _telemetry.PlexAccessRefreshRequested(
+            TelemetryScope.Account,
+            refreshResult,
+            accountId: plexAccountResult.Value.Id,
+            serverId: req.PlexServerId
+        );
         await Send.FluentResult(refreshResult.ToResult(), ct);
     }
 }

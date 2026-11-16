@@ -2,13 +2,20 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vi
 import type { Mock } from 'vitest';
 import { defineComponent, h, nextTick, reactive, type PropType, type VNode } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import type { DOMWrapper, VueWrapper } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
+import type { DOMWrapper, VueWrapper } from '@vue/test-utils';
 import { of, type Observable } from 'rxjs';
 import { baseSetup } from '@services-test-base';
 import { PhotoAssetKind, PhotoItemKind, type PhotoAssetBrowseDTO, type PhotoAssetInspectionDTO } from '@dto';
 import messages from '@/lang/en-US.json';
 import PhotoAssetDialog from '@/components/Photos/PhotoAssetDialog.vue';
+import { FrontendTelemetryAction } from '@composables/telemetry/events';
+
+const { capture } = vi.hoisted(() => ({ capture: vi.fn() }));
+beforeEach(async () => {
+	const { createTelemetry } = await import('@composables/telemetry/createTelemetry');
+	Object.assign(useNuxtApp().$telemetry, createTelemetry({ capture }));
+});
 
 const usePhotoBrowsingStoreMock = vi.hoisted(() => vi.fn());
 const useMediaStoreMock = vi.hoisted(() => vi.fn());
@@ -57,6 +64,7 @@ describe('PhotoAssetDialog - image-first viewer', () => {
 		store = createViewerStore();
 		usePhotoBrowsingStoreMock.mockReturnValue(store);
 		useMediaStoreMock.mockReturnValue(reactive({ photoPreviewSize: { width: 1280, height: 720 } }));
+		capture.mockClear();
 	});
 	afterEach(() => {
 		mounted.forEach((wrapper) => wrapper.unmount());
@@ -305,6 +313,12 @@ describe('PhotoAssetDialog - image-first viewer', () => {
 		expect(store.openDetails).toHaveBeenCalledTimes(1);
 		expect(store.closeAssetDialog).toHaveBeenCalledTimes(1);
 		expect(wrapper.emitted('download')).toHaveLength(1);
+		expect(capture.mock.calls.map(([, payload]) => payload.action)).toEqual([
+			FrontendTelemetryAction.Zoom,
+			FrontendTelemetryAction.OpenDetails,
+			FrontendTelemetryAction.Close,
+		]);
+		expect(capture.mock.calls.some(([, payload]) => payload.action === FrontendTelemetryAction.Download)).toBe(false);
 	});
 
 	test('Should keep the current counter and navigation outside the bottom Dock', async () => {

@@ -122,13 +122,10 @@ public class PauseDownloadTaskCommandMovieUnitTests : BaseUnitTest<PauseDownload
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-        await SetupDatabase(
-            57001,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(57001, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var fileTask = await dbContext.DownloadTaskMovieFile.AsTracking().FirstAsync(CancellationToken);

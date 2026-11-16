@@ -6,14 +6,11 @@ public class DbContextExtensionsPlexLibraryUnitTests : BaseUnitTest
     public async Task ShouldReturnLibraryName_WhenLibraryExists()
     {
         // Arrange
-        await SetupDatabase(
-            12300,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(12300, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
 
         // Act

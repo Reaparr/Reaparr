@@ -4,6 +4,18 @@ namespace Reaparr.Application.UnitTests;
 
 public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<DownloadTaskUpdateDispatcher>
 {
+    private async Task WaitUntilAsync(Func<Task<bool>> predicate, int timeoutMs = 5_000, int pollIntervalMs = 100)
+    {
+        var started = DateTime.UtcNow;
+        while (DateTime.UtcNow - started < TimeSpan.FromMilliseconds(timeoutMs))
+        {
+            if (await predicate())
+                return;
+            await Task.Delay(pollIntervalMs, CancellationToken);
+        }
+        (await predicate()).ShouldBeTrue();
+    }
+
     [Test]
     public async Task ShouldNotSendPatch_WhenProgressIsUpdatedForUnknownKey()
     {
@@ -52,15 +64,12 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
     public async Task ShouldPersistTerminalProgressAfterBufferedEstimate_WhenFinalProgressArrives()
     {
         // Arrange
-        await SetupDatabase(
-            84332,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84332, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var key = downloadTask.ToKey();
@@ -140,21 +149,16 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
     public async Task ShouldPublishTransferProgressAfterTerminalProgress_WhenLateDownloadEstimateArrives()
     {
         // Arrange
-        await SetupDatabase(
-            84333,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84333, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var key = downloadTask.ToKey();
-        var capturedPatches = new List<IReadOnlyCollection<DownloadPatchDTO>>();
-        var transferPatchEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var notifyRequested = 0;
+        var capturedPatches = new ConcurrentQueue<IReadOnlyCollection<DownloadPatchDTO>>();
         Mock.Mock<IDownloadHubService>()
             .Setup(x =>
                 x.SendDownloadPatchAsync(
@@ -166,17 +170,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                 )
             )
             .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
-                (_, _, upserts, _, _) =>
-                {
-                    capturedPatches.Add(upserts);
-                    if (
-                        Volatile.Read(ref notifyRequested) != 0
-                        && upserts.Any(x =>
-                            x.Id == key.Id && x.DataTotal == 4_321 && x.DataReceived == 4_321 && x.Percentage == 100m
-                        )
-                    )
-                        transferPatchEntered.TrySetResult();
-                }
+                (_, _, upserts, _, _) => capturedPatches.Enqueue(upserts)
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
@@ -205,9 +199,19 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                 TimeRemaining = 12,
             }
         );
-        Volatile.Write(ref notifyRequested, 1);
+        var patchCountBeforeTransfer = capturedPatches.Count;
         sut.NotifyFileTransferProgress(key);
-        await transferPatchEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
+        await WaitUntilAsync(() =>
+            Task.FromResult(
+                capturedPatches
+                    .Skip(patchCountBeforeTransfer)
+                    .Any(batch =>
+                        batch.Any(x =>
+                            x.Id == key.Id && x.DataTotal == 4_321 && x.DataReceived == 4_321 && x.Percentage == 100m
+                        )
+                    )
+            )
+        );
         await sut.StopAsync(CancellationToken.None);
 
         // Assert
@@ -295,7 +299,6 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             if (snapshotTask is not null)
                 await snapshotTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
         }
-
     }
 
     [Test]
@@ -447,7 +450,6 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             if (patchTask is not null)
                 await patchTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
         }
-
     }
 
     [Test]
@@ -516,7 +518,6 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             if (snapshotTask is not null)
                 await snapshotTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
         }
-
     }
 
     [Test]
@@ -530,18 +531,15 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         failingContext.Setup(x => x.Dispose()).Verifiable(Times.Once());
         var succeedingContext = IDbContext;
         var factory = new Mock<IReaparrDbContextFactory>(MockBehavior.Strict);
-        factory
-            .SetupSequence(x => x.CreateAsync())
-            .ReturnsAsync(failingContext.Object)
-            .ReturnsAsync(succeedingContext);
+        factory.SetupSequence(x => x.CreateAsync()).ReturnsAsync(failingContext.Object).ReturnsAsync(succeedingContext);
         SetupDependencies(builder =>
             builder.RegisterInstance(factory.Object).As<IReaparrDbContextFactory>().SingleInstance()
         );
         var sut = Sut;
 
         // Act
-        var exception = await Should.ThrowAsync<InvalidOperationException>(
-            () => sut.GetSnapshotAsync(CancellationToken.None)
+        var exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            sut.GetSnapshotAsync(CancellationToken.None)
         );
         var snapshot = await sut.GetSnapshotAsync(CancellationToken.None);
 
@@ -576,7 +574,13 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         // Act
         var result = await sut.PersistProgressAsync(
             key,
-            new DownloadTaskProgress { DataTotal = 100, DataReceived = 25, Percentage = 25, DownloadSpeed = 5 },
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                Percentage = 25,
+                DownloadSpeed = 5,
+            },
             cancellationToken: CancellationToken.None
         );
         var snapshot = await sut.GetSnapshotAsync(CancellationToken.None);
@@ -614,7 +618,13 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         // Act
         var result = await sut.PersistProgressAsync(
             key,
-            new DownloadTaskProgress { DataTotal = 100, DataReceived = 25, Percentage = 25, DownloadSpeed = 5 },
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                Percentage = 25,
+                DownloadSpeed = 5,
+            },
             cancellationToken: CancellationToken.None
         );
         var snapshot = await sut.GetSnapshotAsync(CancellationToken.None);
@@ -623,5 +633,74 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         result.IsCancelled.ShouldBeTrue();
         snapshot.PatchSequenceByServer.ShouldBe(new Dictionary<int, long> { [key.PlexServerId] = 1 });
         Mock.Mock<IDownloadHubService>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldTrackOnlyCommittedRootLifecycleTransition_AndIgnoreDuplicateStatusRequests()
+    {
+        // Arrange
+        await SetupDatabase(84340, config => config.MovieDownloadTasksCount = 1);
+        var key = (await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
+        var rootKey = (await IDbContext.DownloadTaskMovie.FirstAsync(CancellationToken)).ToKey();
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(key.PlexServerId))
+            .ReturnsAsync(false)
+            .Verifiable(Times.Once());
+        Mock.Mock<ICommandExecutor>()
+            .Setup(x => x.Send(It.IsAny<UpdateScheduledDownloadLimitsCommand>(), CancellationToken.None))
+            .ReturnsAsync(Result.Ok())
+            .Verifiable(Times.Once());
+        var lifecycleEvents = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.DownloadLifecycleChanged(It.IsAny<DownloadTaskKey>(), DownloadStatus.Downloading))
+            .Callback<DownloadTaskKey, DownloadStatus>((eventKey, status) => lifecycleEvents.Add((eventKey, status)))
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, CancellationToken.None);
+        await Sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, CancellationToken.None);
+
+        // Assert
+        lifecycleEvents.Count.ShouldBe(1);
+        lifecycleEvents[0].Key.ShouldBe(rootKey);
+        lifecycleEvents[0].Status.ShouldBe(DownloadStatus.Downloading);
+        Mock.Mock<ITelemetry>().Verify();
+        Mock.Mock<IDownloadTaskScheduler>().Verify();
+        Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldPublishLifecycleEventBeforeCancellableChannelWrite()
+    {
+        // Arrange
+        await SetupDatabase(84341, config => config.MovieDownloadTasksCount = 1);
+        var key = (await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
+        var rootKey = (await IDbContext.DownloadTaskMovie.FirstAsync(CancellationToken)).ToKey();
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.IsServerDownloading(key.PlexServerId))
+            .ReturnsAsync(false)
+            .Verifiable(Times.Once());
+        using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
+        var lifecycleEvents = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.DownloadLifecycleChanged(It.IsAny<DownloadTaskKey>(), DownloadStatus.Downloading))
+            .Callback<DownloadTaskKey, DownloadStatus>(
+                (eventKey, status) =>
+                {
+                    lifecycleEvents.Add((eventKey, status));
+                    cancel();
+                }
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        await Sut.OnStatusChangedAsync(key, DownloadStatus.Downloading, cancellation.Token);
+
+        lifecycleEvents.Count.ShouldBe(1);
+        lifecycleEvents[0].Key.ShouldBe(rootKey);
+        lifecycleEvents[0].Status.ShouldBe(DownloadStatus.Downloading);
+        Mock.Mock<ITelemetry>().Verify();
+        Mock.Mock<IDownloadTaskScheduler>().Verify();
     }
 }

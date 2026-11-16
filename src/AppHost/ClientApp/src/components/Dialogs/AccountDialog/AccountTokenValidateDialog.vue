@@ -8,7 +8,9 @@
 			{{ $t('components.account-token-validate-dialog.title') }}
 		</template>
 		<template #top-row>
-			<QSubHeader v-if="accountDialogStore.isValidated">
+			<QSubHeader
+				v-if="accountDialogStore.isValidated"
+				class="ph-no-capture">
 				{{ $t('components.account-token-validate-dialog.sub-header',
 					{ authToken: accountDialogStore.authenticationToken })
 				}}

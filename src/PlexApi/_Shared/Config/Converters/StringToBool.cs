@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Reaparr.PlexApi.Converters;
+namespace Reaparr.PlexApi;
 
 public class StringToBool : JsonConverter<bool>
 {

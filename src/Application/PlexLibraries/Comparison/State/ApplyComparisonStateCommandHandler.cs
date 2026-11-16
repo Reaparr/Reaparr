@@ -7,7 +7,7 @@ public class ApplyComparisonStateCommandValidator : AbstractValidator<ApplyCompa
         RuleFor(x => x).NotNull();
         RuleFor(x => x.Items).NotNull().WithMessage("Items must not be null.");
         RuleFor(x => x.PlexLibraryId)
-            .Must(x => !x.HasValue || x.Value > 0)
+            .Must(x => x is not <= 0)
             .WithMessage("PlexLibraryId must be greater than 0 when specified.");
         RuleForEach(x => x.Items)
             .Must(x => x.PlexLibraryId > 0)
@@ -28,19 +28,31 @@ public class ApplyComparisonStateCommandHandler : ICommandHandler<ApplyCompariso
 {
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public ApplyComparisonStateCommandHandler(IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public ApplyComparisonStateCommandHandler(
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(ApplyComparisonStateCommand command, CancellationToken ct)
     {
+        using var activity = _telemetry.StartComparisonStateApplication(
+            command.MediaType,
+            command.PlexLibraryId,
+            command.Items.Count
+        );
+
         if (command.Items.Count == 0)
             return Result.Ok();
 
-        var itemsByLibrary = command.PlexLibraryId is int plexLibraryId
+        var itemsByLibrary = command.PlexLibraryId is { } plexLibraryId
             ? new Dictionary<int, List<PlexMediaSlimDTO>> { [plexLibraryId] = command.Items }
             : GroupItemsByLibrary(command.Items);
         var libraryIds = itemsByLibrary.Keys.ToArray();
@@ -93,55 +105,47 @@ public class ApplyComparisonStateCommandHandler : ICommandHandler<ApplyCompariso
     {
         if (isOwned)
         {
-            switch (mediaType)
+            return mediaType switch
             {
-                case PlexMediaType.Movie:
-                    return await _commandExecutor.Send(
-                        new ApplyOwnedMovieComparisonStateCommand(items, plexLibraryId),
-                        ct
-                    );
-                case PlexMediaType.TvShow:
-                    return await _commandExecutor.Send(
-                        new ApplyOwnedTvShowComparisonStateCommand(items, plexLibraryId),
-                        ct
-                    );
-                case PlexMediaType.MusicArtist:
-                    return await _commandExecutor.Send(
-                        new ApplyOwnedMusicComparisonStateCommand(items, plexLibraryId),
-                        ct
-                    );
-                default:
-                    return Result.Fail(
-                        "Unsupported media type {PlexMediaType} for owned library {PlexLibraryId}",
-                        mediaType,
-                        plexLibraryId
-                    );
-            }
-        }
-
-        switch (mediaType)
-        {
-            case PlexMediaType.Movie:
-                return await _commandExecutor.Send(
-                    new ApplyRemoteMovieComparisonStateCommand(items, plexLibraryId),
+                PlexMediaType.Movie => await _commandExecutor.Send(
+                    new ApplyOwnedMovieComparisonStateCommand(items, plexLibraryId),
                     ct
-                );
-            case PlexMediaType.TvShow:
-                return await _commandExecutor.Send(
-                    new ApplyRemoteTvShowComparisonStateCommand(items, plexLibraryId),
+                ),
+                PlexMediaType.TvShow => await _commandExecutor.Send(
+                    new ApplyOwnedTvShowComparisonStateCommand(items, plexLibraryId),
                     ct
-                );
-            case PlexMediaType.MusicArtist:
-                return await _commandExecutor.Send(
-                    new ApplyRemoteMusicComparisonStateCommand(items, plexLibraryId),
+                ),
+                PlexMediaType.MusicArtist => await _commandExecutor.Send(
+                    new ApplyOwnedMusicComparisonStateCommand(items, plexLibraryId),
                     ct
-                );
-            default:
-                return Result.Fail(
-                    "Unsupported media type {PlexMediaType} for remote library {PlexLibraryId}",
+                ),
+                _ => Result.Fail(
+                    "Unsupported media type {PlexMediaType} for owned library {PlexLibraryId}",
                     mediaType,
                     plexLibraryId
-                );
+                ),
+            };
         }
+
+        return mediaType switch
+        {
+            PlexMediaType.Movie => await _commandExecutor.Send(
+                new ApplyRemoteMovieComparisonStateCommand(items, plexLibraryId),
+                ct
+            ),
+            PlexMediaType.TvShow => await _commandExecutor.Send(
+                new ApplyRemoteTvShowComparisonStateCommand(items, plexLibraryId),
+                ct
+            ),
+            PlexMediaType.MusicArtist => await _commandExecutor.Send(
+                new ApplyRemoteMusicComparisonStateCommand(items, plexLibraryId),
+                ct
+            ),
+            _ => Result.Fail(
+                "Unsupported media type {PlexMediaType} for remote library {PlexLibraryId}",
+                mediaType,
+                plexLibraryId
+            ),
+        };
     }
 }

@@ -136,12 +136,11 @@ public static partial class FakeData
 
                 tvShow.ChildCount = tvShow.Seasons.Count;
                 tvShow.GrandChildCount = tvShow.Seasons.Sum(season => season.Episodes.Count);
-                tvShow.VideoQuality =
-                    tvShow
-                        .Seasons.SelectMany(season => season.Episodes)
-                        .SelectMany(episode => episode.MediaDataList)
-                        .Select(mediaData => (VideoQuality?)mediaData.VideoQuality)
-                        .Max()
+                tvShow.VideoQuality = tvShow
+                    .Seasons.SelectMany(season => season.Episodes)
+                    .SelectMany(episode => episode.MediaDataList)
+                    .Select(mediaData => (VideoQuality?)mediaData.VideoQuality)
+                    .Max()
                     ?? VideoQuality.Unknown;
                 tvShow.MediaSize = tvShow.Seasons.Sum(season => season.MediaSize);
             }

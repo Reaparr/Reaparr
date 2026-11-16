@@ -11,14 +11,11 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
     public async Task ShouldPreserveTerminalHistory_WhenCancelling(LibrarySyncJobStatus status)
     {
         // Arrange
-        await SetupDatabase(
-            3102,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(3102, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = dbContext.PlexLibraries.Single();
         var completedAt = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
@@ -77,14 +74,11 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
     public async Task ShouldCancelProcessingJob_WhenQuartzInterruptCompletesExecution()
     {
         // Arrange
-        await SetupDatabase(
-            3104,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(3104, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = dbContext.PlexLibraries.Single();
         var createdAt = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
@@ -152,14 +146,11 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
     public async Task ShouldReturnCancellation_WhenCompletionWaitIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            3106,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(3106, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = dbContext.PlexLibraries.Single();
         var createdAt = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
@@ -209,14 +200,11 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
     public async Task ShouldNotCancelNewerProcessingExecution_WhenSuccessorClaimsSameKey()
     {
         // Arrange
-        await SetupDatabase(
-            3105,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(3105, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = dbContext.PlexLibraries.Single();
         var createdAt = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
@@ -283,14 +271,11 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
     public async Task ShouldCancelQueuedJob_WhenQuartzJobChangedStateBeforeDeletion()
     {
         // Arrange
-        await SetupDatabase(
-            3100,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(3100, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = dbContext.PlexLibraries.Single();
         var queueItem = new LibrarySyncJobQueue
@@ -321,7 +306,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             {
                 PlexLibraryId = library.Id,
                 Status = LibrarySyncJobStatus.Queued,
-                CreatedAt = queueItem.CreatedAt,
+                queueItem.CreatedAt,
                 ErrorMessage = (string?)"Stale queued details",
                 IsServerOffline = true,
             }
@@ -379,14 +364,11 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
     public async Task ShouldNotCancelNewerProcessingExecution_WhenQueuedJobIsClaimedAfterDeletion()
     {
         // Arrange
-        await SetupDatabase(
-            3107,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(3107, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = dbContext.PlexLibraries.Single();
         var createdAt = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
@@ -455,14 +437,11 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
     public async Task ShouldCancelProcessingJob_WhenDeletionRaceInterruptsExecution()
     {
         // Arrange
-        await SetupDatabase(
-            3101,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(3101, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = dbContext.PlexLibraries.Single();
         var createdAt = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
@@ -532,14 +511,11 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
     public async Task ShouldCancelOnlyTargetedLibrary_AndAdvanceQueue()
     {
         // Arrange
-        await SetupDatabase(
-            3103,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(3103, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var libraries = dbContext.PlexLibraries.OrderBy(x => x.Id).ToList();

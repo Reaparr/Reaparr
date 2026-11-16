@@ -1,4 +1,4 @@
-namespace Reaparr.Data.UnitTests.Entities;
+namespace Reaparr.Data.UnitTests;
 
 public class DownloadTaskExtensionsCalculateUnitTests : BaseUnitTest
 {
@@ -6,15 +6,12 @@ public class DownloadTaskExtensionsCalculateUnitTests : BaseUnitTest
     public async Task ShouldUpdateDownloadProgressAcrossAllLayers_WhenCallingCalculateOnRootDownloadTask()
     {
         // Arrange
-        await SetupDatabase(
-            72869,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 5;
-                config.TvShowSeasonDownloadTasksCount = 5;
-                config.TvShowEpisodeDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(72869, config =>
+        {
+            config.TvShowDownloadTasksCount = 5;
+            config.TvShowSeasonDownloadTasksCount = 5;
+            config.TvShowEpisodeDownloadTasksCount = 5;
+        });
 
         var downloadTasks = await IDbContext.DownloadTaskTvShow.IncludeAll().ToListAsync(CancellationToken);
 
@@ -61,15 +58,12 @@ public class DownloadTaskExtensionsCalculateUnitTests : BaseUnitTest
     public async Task ShouldCalculateRootTimeRemaining_FromTotalReceivedAndTotalSize()
     {
         // Arrange
-        await SetupDatabase(
-            72870,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 5;
-                config.TvShowSeasonDownloadTasksCount = 5;
-                config.TvShowEpisodeDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(72870, config =>
+        {
+            config.TvShowDownloadTasksCount = 5;
+            config.TvShowSeasonDownloadTasksCount = 5;
+            config.TvShowEpisodeDownloadTasksCount = 5;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskTvShow.IncludeAll().FirstAsync(CancellationToken);
         var files = downloadTask.Children.SelectMany(x => x.Children).SelectMany(x => x.Children).ToList();

@@ -46,7 +46,7 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         return result;
     }
 
-    private async Task<CrudPhotosReport> ReconcileAsync(
+    private static async Task<CrudPhotosReport> ReconcileAsync(
         IReaparrDbContext context,
         PlexLibrary library,
         CancellationToken ct
@@ -192,7 +192,7 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         var obsoleteFolderIds = obsoleteFolders.Select(x => x.Id).ToHashSet();
         foreach (var file in currentFiles)
         {
-            if (file.PlexPhotoFolderId is int folderId && obsoleteFolderIds.Contains(folderId))
+            if (file.PlexPhotoFolderId is { } folderId && obsoleteFolderIds.Contains(folderId))
                 file.PlexPhotoFolderId = null;
         }
         if (obsoleteFolders.Count > 0)
@@ -256,11 +256,10 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
             ct
         );
         var albumCount = await context.PlexPhotoAlbums.CountAsync(x => x.PlexLibraryId == library.Id, ct);
-        var totalMediaSize =
-            await context
-                .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
-                .Select(x => (long?)x.Size)
-                .SumAsync(ct)
+        var totalMediaSize = await context
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
+            .Select(x => (long?)x.Size)
+            .SumAsync(ct)
             ?? 0;
         // Catalog metrics and shared sync completion must commit with photo reconciliation.
         var syncedAt = DateTime.UtcNow;
@@ -380,7 +379,7 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
         target.IsActive = parent is null ? true : null;
     }
 
-    private static Dictionary<FolderKey, PlexPhotoFolder> BuildFolderMap(IReadOnlyCollection<PlexPhotoFolder> folders)
+    private static Dictionary<FolderKey, PlexPhotoFolder> BuildFolderMap(List<PlexPhotoFolder> folders)
     {
         var byId = folders.ToDictionary(x => x.Id);
         var byKey = new Dictionary<FolderKey, PlexPhotoFolder>(folders.Count);

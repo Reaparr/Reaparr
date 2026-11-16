@@ -82,15 +82,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldSuccessfullyRefreshLibraryAndKeepSyncedAtUnchanged_WhenTvShowsExist()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            9423,
-            config =>
-            {
-                config.TvShowCount = 3;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        var seed = await SetupDatabase(9423, config =>
+        {
+            config.TvShowCount = 3;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 5;
+        });
         var dbContext = IDbContext;
         var testLibrary = dbContext.PlexLibraries.Include(x => x.TvShows).First();
         var originalSyncedAt = testLibrary.SyncedAt;
@@ -121,15 +118,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldSendProgressWithSeasonAndEpisodeItems_WhenTvShowsExist()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            9423,
-            config =>
-            {
-                config.TvShowCount = 3;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        var seed = await SetupDatabase(9423, config =>
+        {
+            config.TvShowCount = 3;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 5;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
         var capturedItems = new List<LibraryProgressItem>();
 
@@ -157,13 +151,10 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldReturnFailure_WhenGetAllMediaSeasonsCommandFails()
     {
         // Arrange
-        await SetupDatabase(
-            9426,
-            config =>
-            {
-                config.TvShowCount = 3;
-            }
-        );
+        await SetupDatabase(9426, config =>
+        {
+            config.TvShowCount = 3;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
 
         SetupProgressStoreMocks();
@@ -188,15 +179,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldReturnFailure_WhenGetAllMediaEpisodesCommandFails()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            9427,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 3;
-            }
-        );
+        var seed = await SetupDatabase(9427, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 3;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
 
         SetupProgressStoreMocks();
@@ -224,13 +212,10 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldReturnFailure_WhenSyncPlexTvShowsCommandFails()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            9428,
-            config =>
-            {
-                config.TvShowCount = 3;
-            }
-        );
+        var seed = await SetupDatabase(9428, config =>
+        {
+            config.TvShowCount = 3;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
 
         SetupProgressStoreMocks();
@@ -260,15 +245,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldFilterOutSeasonsWithNullParentGuid_WhenBuildingTree()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            11001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(11001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
 
         SetupProgressStoreMocks();
@@ -307,15 +289,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldRepairMissingSeasonNumber_WhenEpisodeParentIndexesAgree()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            11004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(11004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
         SetupProgressStoreMocks();
 
@@ -352,15 +331,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldKeepMissingSeasonNumber_WhenEpisodeParentIndexesConflict()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            11005,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(11005, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
         SetupProgressStoreMocks();
 
@@ -397,15 +373,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldFilterOutEpisodesWithNullParentGuid_WhenBuildingTree()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            11002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(11002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
 
         SetupProgressStoreMocks();
@@ -450,15 +423,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldIgnoreOrphanedSeasons_WhenParentTvShowDoesNotExist()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            11003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(11003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
 
         SetupProgressStoreMocks();
@@ -494,15 +464,12 @@ public class RefreshPlexTvShowLibraryCommandUnitTests : BaseUnitTest<RefreshPlex
     public async Task ShouldAggregateMediaSizeAndDurationFromEpisodes_WhenBuildingTree()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            11004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(11004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.TvShows).First();
 
         SetupProgressStoreMocks();

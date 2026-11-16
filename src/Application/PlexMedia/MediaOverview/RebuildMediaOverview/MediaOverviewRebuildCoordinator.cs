@@ -121,9 +121,7 @@ public sealed class MediaOverviewRebuildCoordinator : IMediaOverviewRebuildCoord
             if (!HasPendingRequest && IsWithinCooldown(null, startedAt))
                 return null;
 
-            var scope = HasPendingRequest
-                ? CreatePendingScope()
-                : new MediaOverviewRebuildScope(true, AllMediaTypes);
+            var scope = HasPendingRequest ? CreatePendingScope() : new MediaOverviewRebuildScope(true, AllMediaTypes);
             ClearPendingRequest();
             _rebuildTriggerPending = false;
             _rebuildJobActive = true;

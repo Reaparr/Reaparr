@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reactive.Subjects;
 
 namespace Reaparr.Application.UnitTests;
@@ -89,25 +90,22 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
     )
     {
         // Arrange
-        await SetupDatabase(
-            52223,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(52223, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         DownloadTaskFileBase control;
@@ -264,12 +262,55 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
 
+        DownloadTaskFileBase? moveDownloadTask = null;
+        string? moveSourcePath = null;
+        string? moveDestinationPath = null;
+        var moveKeepInDownloads = false;
+        TelemetryRetentionReason? moveRetentionReason = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.StartMoveDownloadFile(
+                    It.IsAny<DownloadTaskFileBase>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<TelemetryRetentionReason>()
+                )
+            )
+            .Callback<DownloadTaskFileBase, string, string, bool, TelemetryRetentionReason>(
+                (task, source, destination, keepInDownloads, reason) =>
+                {
+                    moveDownloadTask = task;
+                    moveSourcePath = source;
+                    moveDestinationPath = destination;
+                    moveKeepInDownloads = keepInDownloads;
+                    moveRetentionReason = reason;
+                }
+            )
+            .Returns((Activity?)null)
+            .Verifiable(Times.Once());
+
         // Act
         var result = await TestHandlerExecuteAsync(new MoveDownloadFileFromFileTaskCommand(key, progress));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
+        moveDownloadTask.ShouldNotBeNull();
+        moveDownloadTask!.ToKey().ShouldBe(key);
+        moveSourcePath.ShouldBe(sourcePath);
+        moveDestinationPath.ShouldBe(destinationPath);
+        moveDownloadTask.DataTotal.ShouldBe(content.Length);
+        moveKeepInDownloads.ShouldBe(keep || strategy == "in-place");
+        moveRetentionReason.ShouldBe(
+            strategy switch
+            {
+                "keep-task" => TelemetryRetentionReason.TaskSetting,
+                "keep-global" or "renamed-kept" => TelemetryRetentionReason.GlobalSetting,
+                "in-place" => TelemetryRetentionReason.SamePath,
+                _ => TelemetryRetentionReason.Destination,
+            }
+        );
         fs.File.ReadAllBytes(finalPath).ShouldBe(content);
         fs.Path.GetFileName(finalPath).ShouldBe(target.FileName);
         fs.File.Exists(sourcePath).ShouldBeFalse();
@@ -314,6 +355,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         controlLogs.Errors.Count.ShouldBe(0);
         controlLogs.Value.ShouldBeEmpty();
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
     }
 
@@ -326,25 +368,22 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
     public async Task ShouldPersistExactPartialOffsetAndKeepSource_WhenRealCopyIsCancelled(PlexMediaType family)
     {
         // Arrange
-        await SetupDatabase(
-            52224,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(52224, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         DownloadTaskFileBase control;
@@ -419,6 +458,8 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         });
         var fs = Mock.Container.Resolve<IFileSystem>();
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
+        var cancellationToken = cancellation.Token;
         using var progress = new Subject<IDownloadFileTransferProgress>();
         var updates = new List<IDownloadFileTransferProgress>();
         var subjectCompleted = false;
@@ -436,7 +477,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                         && c.CurrentOffset == 0
                         && c.DataTotal == content.Length
                     ),
-                    cancellation.Token
+                    cancellationToken
                 )
             )
             .Returns<MoveFileWithResumeCommand, CancellationToken>(
@@ -448,7 +489,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                                 Progress = dto =>
                                 {
                                     c.Progress(dto);
-                                    cancellation.Cancel();
+                                    cancel();
                                 },
                             },
                             ct
@@ -516,25 +557,22 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
     )
     {
         // Arrange
-        await SetupDatabase(
-            52225,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(52225, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         DownloadTaskFileBase control;
@@ -745,21 +783,18 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
     public async Task ShouldUseFreshProgressResourcesAndMoveBothFiles_WhenSameHandlerExecutesTwice(PlexMediaType family)
     {
         // Arrange
-        await SetupDatabase(
-            52227,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(52227, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase[] tasks = family switch
         {
@@ -826,7 +861,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         var handler = Mock.Create<MoveDownloadFileFromFileTaskCommandHandler>();
         var fs = Mock.Container.Resolve<IFileSystem>();
 
-        // Act and assert
+        // Act
         for (var i = 0; i < tasks.Length; i++)
         {
             using var progress = new Subject<IDownloadFileTransferProgress>();
@@ -837,6 +872,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                 new MoveDownloadFileFromFileTaskCommand(tasks[i].ToKey(), progress),
                 CancellationToken
             );
+            // Assert
             result.IsSuccess.ShouldBeTrue();
             result.Errors.ShouldBeEmpty();
             fs.File.ReadAllBytes(tasks[i].DestinationFilePath).ShouldBe(contents[i]);
@@ -881,21 +917,18 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
     )
     {
         // Arrange
-        await SetupDatabase(
-            52228,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(52228, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target = family switch
         {
@@ -1035,25 +1068,22 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
     )
     {
         // Arrange
-        await SetupDatabase(
-            52229,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(52229, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         switch (family)
@@ -1207,25 +1237,22 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
     )
     {
         // Arrange
-        await SetupDatabase(
-            52230,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(52230, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         switch (family)
@@ -1289,6 +1316,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         SetupDependencies(b =>
             b.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>().SingleInstance()
         );
+        Mock.Mock<IDownloadManagerSettings>().SetupGet(x => x.KeepCompletedInDownloadFolder).Returns(false);
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<MoveFileWithResumeCommand>(), It.IsAny<CancellationToken>()))
             .Verifiable(Times.Never());
@@ -1348,25 +1376,22 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
     )
     {
         // Arrange
-        await SetupDatabase(
-            52231,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(52231, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         switch (family)
@@ -1423,6 +1448,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         );
         Mock.Mock<IDownloadManagerSettings>().SetupGet(x => x.KeepCompletedInDownloadFolder).Returns(false);
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
         var moveOffsets = new List<long>();
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<MoveFileWithResumeCommand>(), It.IsAny<CancellationToken>()))
@@ -1439,7 +1465,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                                 Progress = progress =>
                                 {
                                     moveCommand.Progress(progress);
-                                    cancellation.Cancel();
+                                    cancel();
                                 },
                             },
                             ct

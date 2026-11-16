@@ -37,6 +37,7 @@ export const useAuthenticationStore = defineStore(StoreNames.AuthenticationStore
 
 	const globalStore = useGlobalStore();
 
+	const telemetry = useTelemetry();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			return actions.status().pipe(map((statusResult) => ({
@@ -64,6 +65,7 @@ export const useAuthenticationStore = defineStore(StoreNames.AuthenticationStore
 			if (!usernameChanged && !passwordChanged) {
 				return of(null);
 			}
+			telemetry.credentialsChangeRequested(usernameChanged, passwordChanged);
 			return authenticationApi.updateCredentialsEndpoint({
 				username: usernameChanged ? state.username : null,
 				password: passwordChanged ? state.password : null,
@@ -98,6 +100,7 @@ export const useAuthenticationStore = defineStore(StoreNames.AuthenticationStore
 		},
 		logout() {
 			const router = useRouter();
+			telemetry.logoutRequested();
 
 			return authenticationApi.appUserLogOutEndpoint().pipe(
 				switchMap((result) => {
@@ -112,7 +115,10 @@ export const useAuthenticationStore = defineStore(StoreNames.AuthenticationStore
 			);
 		},
 		status: () => authenticationApi.authenticationStatusEndpoint({ timeout: 5000 }).pipe(
-			tap((res) => state.isLoggedIn = res.isSuccess && !!res.value?.isLoggedIn),
+			tap((res) => {
+				const isLoggedIn = res.isSuccess && !!res.value?.isLoggedIn;
+				state.isLoggedIn = isLoggedIn;
+			}),
 			catchError((err) => {
 				state.isLoggedIn = false;
 				return of(err);

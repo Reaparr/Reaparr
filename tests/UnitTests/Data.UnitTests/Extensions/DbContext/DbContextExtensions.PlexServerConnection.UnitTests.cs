@@ -29,14 +29,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnFailedResult_WhenServerIsDisabled_EvenWhenUsingIgnoreFilterLoad()
     {
         // Arrange
-        await SetupDatabase(
-            47894,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexServerConnectionPerServerCount = 1;
-            }
-        );
+        await SetupDatabase(47894, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexServerConnectionPerServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServer = await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);
@@ -58,14 +55,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnAFailedResult_WhenThereAreNoPlexConnections()
     {
         // Act
-        await SetupDatabase(
-            10437,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 0;
-            }
-        );
+        await SetupDatabase(10437, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 0;
+        });
         var result = await IDbContext.ChoosePlexServerConnection(1, CancellationToken);
 
         // Assert
@@ -76,14 +70,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnThePreferredConnection_WhenAPlexServerHasOne()
     {
         // Arrange
-        await SetupDatabase(
-            35881,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 5;
-            }
-        );
+        await SetupDatabase(35881, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 5;
+        });
 
         var dbContext = IDbContext;
         var plexServer = await dbContext
@@ -109,14 +100,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnAFailedResult_WhenThereAreOnlyConnectionsWithoutStatus()
     {
         // Arrange
-        await SetupDatabase(
-            71032,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 1;
-            }
-        );
+        await SetupDatabase(71032, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
 
         var plexServer = await IDbContext
             .PlexServers.Include(x => x.PlexServerConnections)
@@ -135,14 +123,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnTheConnectionWithPublicAddress_WhenThereIsAValidPublicAddressConnectionsWithStatus()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            17710,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 0;
-            }
-        );
+        var seed = await SetupDatabase(17710, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 0;
+        });
 
         var dbContext = IDbContext;
         var plexServer = await dbContext.PlexServers.FirstOrDefaultAsync(CancellationToken);
@@ -214,14 +199,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldPreferHttpsConnection_WhenAvailable()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            19501,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexServerConnectionPerServerCount = 0;
-            }
-        );
+        var seed = await SetupDatabase(19501, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexServerConnectionPerServerCount = 0;
+        });
 
         var db = IDbContext;
         var server = await db.PlexServers.FirstAsync(CancellationToken);
@@ -284,14 +266,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldPreferLocalConnection_WhenAvailable()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            19502,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexServerConnectionPerServerCount = 0;
-            }
-        );
+        var seed = await SetupDatabase(19502, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexServerConnectionPerServerCount = 0;
+        });
 
         var db = IDbContext;
         var server = await db.PlexServers.FirstAsync(CancellationToken);
@@ -359,14 +338,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturn504GatewayTimeout_WhenNoOnlineConnections()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            19503,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexServerConnectionPerServerCount = 0;
-            }
-        );
+        var seed = await SetupDatabase(19503, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexServerConnectionPerServerCount = 0;
+        });
         var db = IDbContext;
         var server = await db.PlexServers.FirstAsync(CancellationToken);
 
@@ -393,14 +369,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldPreferDirectOverPlexRelay_WhenBothAvailable()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            19504,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexServerConnectionPerServerCount = 0;
-            }
-        );
+        var seed = await SetupDatabase(19504, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexServerConnectionPerServerCount = 0;
+        });
         var db = IDbContext;
         var server = await db.PlexServers.FirstAsync(CancellationToken);
 
@@ -462,14 +435,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     )
     {
         // Arrange
-        await SetupDatabase(
-            12107,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 2;
-            }
-        );
+        await SetupDatabase(12107, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 2;
+        });
         var dbContext = IDbContext;
         var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var mainId = accounts[0].Id;
@@ -556,14 +526,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnNonMainAccountToken_WhenAvailable()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            12100,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(12100, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 1;
+        });
         var db = IDbContext;
 
         // Add a second, non-main account with access to same server
@@ -596,14 +563,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldFallbackToMainAccountToken_WhenNonMainIsUnavailable()
     {
         // Arrange
-        await SetupDatabase(
-            12101,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12101, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 1;
+        });
         var db = IDbContext;
         var server = db.PlexServers.First();
         var mainAccess = db.PlexAccountServers.First(x => x.PlexServerId == server.Id);
@@ -620,14 +584,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldFallbackToValidatedMainAccountToken_WhenNonMainAccountIsNotValidated()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            12104,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(12104, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 1;
+        });
         var db = IDbContext;
         var server = db.PlexServers.First();
         var mainAccess = db.PlexAccountServers.First(x => x.PlexServerId == server.Id);
@@ -662,14 +623,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnFailedResult_WhenNoTokensAvailable()
     {
         // Arrange
-        await SetupDatabase(
-            12102,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 0;
-            }
-        );
+        await SetupDatabase(12102, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 0;
+        });
         var db = IDbContext;
         var server = db.PlexServers.First();
 
@@ -685,14 +643,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnTokenForSpecificAccount_WhenPlexAccountIdProvided()
     {
         // Arrange
-        await SetupDatabase(
-            12103,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12103, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 1;
+        });
         var db = IDbContext;
         var access = db.PlexAccountServers.First();
 
@@ -708,14 +663,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnFailedResult_WhenOnlyAccountIsNotValidated()
     {
         // Arrange
-        await SetupDatabase(
-            12105,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12105, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 1;
+        });
         var db = IDbContext;
         var access = db.PlexAccountServers.First();
         await db
@@ -733,14 +685,11 @@ public class DbContextExtensionsPlexServerConnectionUnitTests : BaseUnitTest
     public async Task ShouldReturnFailedResult_WhenSpecificAccountIsNotValidated()
     {
         // Arrange
-        await SetupDatabase(
-            12106,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12106, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 1;
+        });
         var db = IDbContext;
         var access = db.PlexAccountServers.First();
         await db

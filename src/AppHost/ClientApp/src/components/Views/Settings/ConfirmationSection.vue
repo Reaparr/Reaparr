@@ -9,7 +9,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadMovieConfirmation"
 					size="lg"
-					data-cy="ask-download-movie-confirmation" />
+					data-cy="ask-download-movie-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<!--	Ask Download TvShow Confirmation	-->
 			<HelpRow
@@ -19,7 +20,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadTvShowConfirmation"
 					size="lg"
-					data-cy="ask-download-tvshow-confirmation" />
+					data-cy="ask-download-tvshow-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<!--	Ask Download Season Confirmation	-->
 			<HelpRow
@@ -29,7 +31,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadSeasonConfirmation"
 					size="lg"
-					data-cy="ask-download-season-confirmation" />
+					data-cy="ask-download-season-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<!--	Ask Download Episode Confirmation	-->
 			<HelpRow
@@ -39,7 +42,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadEpisodeConfirmation"
 					size="lg"
-					data-cy="ask-download-episode-confirmation" />
+					data-cy="ask-download-episode-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<HelpRow
 				:label="$t('help.settings.ui.confirmation-settings.download-music-artist-confirmation.label')"
@@ -48,7 +52,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadMusicArtistConfirmation"
 					size="lg"
-					data-cy="ask-download-music-artist-confirmation" />
+					data-cy="ask-download-music-artist-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<HelpRow
 				:label="$t('help.settings.ui.confirmation-settings.download-music-album-confirmation.label')"
@@ -57,7 +62,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadMusicAlbumConfirmation"
 					size="lg"
-					data-cy="ask-download-music-album-confirmation" />
+					data-cy="ask-download-music-album-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<HelpRow
 				:label="$t('help.settings.ui.confirmation-settings.download-music-track-confirmation.label')"
@@ -66,7 +72,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadMusicTrackConfirmation"
 					size="lg"
-					data-cy="ask-download-music-track-confirmation" />
+					data-cy="ask-download-music-track-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<HelpRow
 				:label="$t('help.settings.ui.confirmation-settings.download-photo-album-confirmation.label')"
@@ -75,7 +82,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadPhotoAlbumConfirmation"
 					size="lg"
-					data-cy="ask-download-photo-album-confirmation" />
+					data-cy="ask-download-photo-album-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<HelpRow
 				:label="$t('help.settings.ui.confirmation-settings.download-photo-image-confirmation.label')"
@@ -84,7 +92,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadPhotoImageConfirmation"
 					size="lg"
-					data-cy="ask-download-photo-image-confirmation" />
+					data-cy="ask-download-photo-image-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 			<HelpRow
 				:label="$t('help.settings.ui.confirmation-settings.download-other-videos-confirmation.label')"
@@ -93,7 +102,8 @@
 				<q-toggle
 					v-model:model-value="settingsStore.confirmationSettings.askDownloadOtherVideosConfirmation"
 					size="lg"
-					data-cy="ask-download-other-videos-confirmation" />
+					data-cy="ask-download-other-videos-confirmation"
+					@update:model-value="onConfirmationSettingChanged" />
 			</HelpRow>
 		</HelpGroup>
 	</QSection>
@@ -102,5 +112,10 @@
 <script setup lang="ts">
 import { useSettingsStore } from '@store';
 
+const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
+
+function onConfirmationSettingChanged(): void {
+	telemetry.confirmationSettingsChanged();
+}
 </script>

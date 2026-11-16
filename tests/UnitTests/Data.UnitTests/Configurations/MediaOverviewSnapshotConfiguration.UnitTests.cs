@@ -1,4 +1,4 @@
-namespace Reaparr.Data.UnitTests.Configurations;
+namespace Reaparr.Data.UnitTests;
 
 public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
 {
@@ -6,15 +6,12 @@ public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
     public async Task ShouldConfigureUniqueMovieSnapshotPerCanonicalMedia()
     {
         // Arrange
-        await SetupDatabase(
-            81001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(81001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
         await using var context = (ReaparrDbContext)IDbContext;
 
         // Act
@@ -32,15 +29,12 @@ public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
     public async Task ShouldConfigureUniqueTvShowSnapshotPerCanonicalMedia()
     {
         // Arrange
-        await SetupDatabase(
-            81002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-            }
-        );
+        await SetupDatabase(81002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+        });
         await using var context = (ReaparrDbContext)IDbContext;
 
         // Act
@@ -58,15 +52,12 @@ public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
     public async Task ShouldCascadeMovieSnapshotDeleteAndLeaveUnrelatedRowsIntact()
     {
         // Arrange
-        await SetupDatabase(
-            81003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(81003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
         await using var context = (ReaparrDbContext)IDbContext;
         var movieIds = await context.PlexMovies.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
         context.MediaOverviewMovieSnapshots.AddRange(
@@ -100,15 +91,12 @@ public class MediaOverviewSnapshotConfigurationUnitTests : BaseUnitTest
     public async Task ShouldCascadeTvShowSnapshotDeleteAndLeaveUnrelatedRowsIntact()
     {
         // Arrange
-        await SetupDatabase(
-            81004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-            }
-        );
+        await SetupDatabase(81004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+        });
         await using var context = (ReaparrDbContext)IDbContext;
         var tvShowIds = await context.PlexTvShows.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
         context.MediaOverviewTvShowSnapshots.AddRange(

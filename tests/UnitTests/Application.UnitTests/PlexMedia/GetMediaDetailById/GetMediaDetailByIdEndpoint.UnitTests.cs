@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Reaparr.Application.Contracts.Validators;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -15,16 +14,13 @@ public class GetMediaDetailByIdEndpointUnitTests
     {
         // Arrange
         var movieCount = 10;
-        await SetupDatabase(
-            45588,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = movieCount;
-            }
-        );
+        await SetupDatabase(45588, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = movieCount;
+        });
 
         var testMovie = IDbContext.PlexMovies.FirstOrDefault(x => x.HasThumb);
         testMovie.ShouldNotBeNull();
@@ -52,18 +48,15 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldHavePlexMediaData_WhenValidMediaIdAndPlexMediaTypeTvShowIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            53442,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 10;
-                config.TvShowSeasonCount = 3;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        await SetupDatabase(53442, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 10;
+            config.TvShowSeasonCount = 3;
+            config.TvShowEpisodeCount = 5;
+        });
 
         var testTvShow = IDbContext.PlexTvShows.FirstOrDefault(x => x.HasThumb);
         testTvShow.ShouldNotBeNull();
@@ -107,16 +100,13 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldReturnDirectPhotoFilesWithoutAlbumOwnership_WhenPhotoAlbumDetailIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            62307,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(62307, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var album = await dbContext
             .PlexPhotoAlbums.Include(x => x.Memberships)
@@ -170,16 +160,13 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldReturnMusicHierarchyWithStoredDiscAndTrackNumbers_WhenArtistDetailIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            62503,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 2;
-                config.MusicAlbumCount = 2;
-                config.MusicTrackCount = 3;
-            }
-        );
+        await SetupDatabase(62503, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 2;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 3;
+        });
         var dbContext = IDbContext;
         var artist = await dbContext
             .PlexMusicArtists.AsTracking()
@@ -325,14 +312,11 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldReturnOtherVideoOriginalPartsAndVersionSelectors_WhenDetailIsRequested()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            62504,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(62504, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         using var dbContext = IDbContext;
         var video = await dbContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
         var original = video.MediaDataList.Single();
@@ -389,18 +373,15 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldReturnRootWithoutChildren_WhenHierarchyIsEmpty(PlexMediaType type)
     {
         // Arrange
-        await SetupDatabase(
-            62308,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 0;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 0;
-            }
-        );
+        await SetupDatabase(62308, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 0;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 0;
+        });
         var dbContext = IDbContext;
         var root =
             type == PlexMediaType.MusicArtist
@@ -409,7 +390,7 @@ public class GetMediaDetailByIdEndpointUnitTests
                     {
                         x.Id,
                         x.PlexLibraryId,
-                        ChildCount = x.ChildCount,
+                        x.ChildCount,
                     })
                     .SingleAsync(CancellationToken)
                 : await dbContext
@@ -549,18 +530,15 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldProjectEpisodeComparisonStates_WhenRemoteTvShowDetailHasCurrentOwnedComparisonScope()
     {
         // Arrange
-        await SetupDatabase(
-            53443,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(53443, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -654,18 +632,15 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldProjectShowHigherQualityAndEpisodesOwned_WhenRemoteTvShowDetailHasUpgradeAvailableButAllEpisodesMatched()
     {
         // Arrange
-        await SetupDatabase(
-            53444,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(53444, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -756,17 +731,14 @@ public class GetMediaDetailByIdMusicComparisonEndpointUnitTests
     public async Task ShouldMapActualMusicCoverageByTypedIdentity_WhenArtistAlbumAndTrackIdsCollide()
     {
         // Arrange
-        await SetupDatabase(
-            963530,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 2;
-            }
-        );
+        await SetupDatabase(963530, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 2;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];
@@ -927,30 +899,48 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
         var dbContext = IDbContext;
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
-        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
-        using var listeners = DiagnosticListener.AllListeners
-            .Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
-            .Subscribe(listener => commandSubscriptions.Add(listener
-                .Select(entry => entry.Value!)
-                .OfType<CommandExecutedEventData>()
-                .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
-                .Subscribe(command => commands.Enqueue(command.Command.CommandText))));
+        var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var listeners = DiagnosticListener
+            .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
+            .Subscribe(listener =>
+                commandSubscriptions.Add(
+                    listener
+                        .Select(entry => entry.Value!)
+                        .OfType<CommandExecutedEventData>()
+                        .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
+                        .Subscribe(command => commands.Enqueue(command.Command.CommandText))
+                )
+            );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(listeners, commandSubscriptions);
         if (type == PlexMediaType.MusicArtist)
         {
             var expectedIds = new[] { fixture.Id }.Concat(fixture.ChildIds).Concat(fixture.GrandchildIds).ToArray();
             var expectedTypes = new[] { PlexMediaType.MusicArtist, PlexMediaType.MusicAlbum, PlexMediaType.MusicTrack };
             Mock.Mock<ICommandExecutor>()
-                .Setup(x => x.Send(
-                    It.Is<ApplyComparisonStateCommand>(command =>
-                        command.MediaType == type
-                        && command.PlexLibraryId == fixture.LibraryId
-                        && command.Items.Select(item => item.Id).SequenceEqual(expectedIds)
-                        && command.Items.Select(item => item.Type).SequenceEqual(expectedTypes)),
-                    CancellationToken))
-                .Returns<ICommand<Result>, CancellationToken>((command, ct) =>
-                    new ApplyOwnedMusicComparisonStateCommandHandler(dbContext, Mock.Mock<Quartz.IScheduler>().Object)
-                        .ExecuteAsync(new ApplyOwnedMusicComparisonStateCommand(
-                            ((ApplyComparisonStateCommand)command).Items, fixture.LibraryId), ct))
+                .Setup(x =>
+                    x.Send(
+                        It.Is<ApplyComparisonStateCommand>(command =>
+                            command.MediaType == type
+                            && command.PlexLibraryId == fixture.LibraryId
+                            && command.Items.Select(item => item.Id).SequenceEqual(expectedIds)
+                            && command.Items.Select(item => item.Type).SequenceEqual(expectedTypes)
+                        ),
+                        CancellationToken
+                    )
+                )
+                .Returns<ICommand<Result>, CancellationToken>(
+                    (command, ct) =>
+                        new ApplyOwnedMusicComparisonStateCommandHandler(
+                            dbContext,
+                            Mock.Mock<Quartz.IScheduler>().Object
+                        ).ExecuteAsync(
+                            new ApplyOwnedMusicComparisonStateCommand(
+                                ((ApplyComparisonStateCommand)command).Items,
+                                fixture.LibraryId
+                            ),
+                            ct
+                        )
+                )
                 .Verifiable(Times.Once());
         }
 
@@ -965,20 +955,28 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
         result.Errors.Count.ShouldBe(0);
         var dto = result.Value.ShouldNotBeNull();
         (dto.Id, dto.Type, dto.PlexLibraryId, dto.PlexServerId, dto.Title, dto.MediaSize).ShouldBe(
-            (fixture.Id, type, fixture.LibraryId, fixture.ServerId, fixture.Title, fixture.MediaSize));
+            (fixture.Id, type, fixture.LibraryId, fixture.ServerId, fixture.Title, fixture.MediaSize)
+        );
         dto.Children.Select(x => x.Id).ShouldBe(fixture.ChildIds);
         dto.Children.SelectMany(x => x.Children).Select(x => x.Id).ShouldBe(fixture.GrandchildIds);
-        new[] { dto }.Concat(dto.Children).Concat(dto.Children.SelectMany(x => x.Children))
-            .SelectMany(x => x.MediaData).Select(x => x.Id).Order().ShouldBe(fixture.MediaIds.Order());
+        new[] { dto }
+            .Concat(dto.Children)
+            .Concat(dto.Children.SelectMany(x => x.Children))
+            .SelectMany(x => x.MediaData)
+            .Select(x => x.Id)
+            .Order()
+            .ShouldBe(fixture.MediaIds.Order());
         dto.ComparisonId.ShouldBe(PlexMediaComparisonState.NotCompared.ToComparisonId());
         commands.ShouldContain(sql => sql.Contains($"\"{fixture.TableName}\""));
         commands.ShouldAllBe(sql => !sql.Contains("\"PlexServerConnections\""));
         commands.ShouldAllBe(sql => !sql.Contains("\"PlexServerStatuses\""));
         commands.ShouldAllBe(sql => !sql.Contains("\"AuthToken\""));
         Mock.Mock<ICommandExecutor>().Verify();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
-            type == PlexMediaType.MusicArtist ? Times.Once() : Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<ApplyComparisonStateCommand>(), It.IsAny<CancellationToken>()),
+                type == PlexMediaType.MusicArtist ? Times.Once() : Times.Never()
+            );
     }
 
     private async Task<DetailFixture> ArrangeDetailAsync(PlexMediaType type, bool online, bool hasToken)
@@ -1001,15 +999,21 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
         });
         var dbContext = IDbContext;
         await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
-            setters => setters.SetProperty(x => x.IsSuccessful, online), CancellationToken);
+            setters => setters.SetProperty(x => x.IsSuccessful, online),
+            CancellationToken
+        );
         await dbContext.PlexAccounts.ExecuteUpdateAsync(
-            setters => setters.SetProperty(x => x.IsValidated, hasToken), CancellationToken);
-        var connections = await dbContext.PlexServerConnections
-            .Include(x => x.LatestConnectionStatus).ToListAsync(CancellationToken);
+            setters => setters.SetProperty(x => x.IsValidated, hasToken),
+            CancellationToken
+        );
+        var connections = await dbContext
+            .PlexServerConnections.Include(x => x.LatestConnectionStatus)
+            .ToListAsync(CancellationToken);
         connections.Select(x => x.IsOnline).ShouldBe([online]);
-        var tokens = await dbContext.PlexAccountServers
-            .Where(x => x.PlexAccount!.IsValidated && x.PlexAccount.IsEnabled)
-            .Select(x => x.AuthToken).ToListAsync(CancellationToken);
+        var tokens = await dbContext
+            .PlexAccountServers.Where(x => x.PlexAccount!.IsValidated && x.PlexAccount.IsEnabled)
+            .Select(x => x.AuthToken)
+            .ToListAsync(CancellationToken);
         tokens.ShouldBe(hasToken ? ["FAKE_AUTH_TOKEN"] : []);
         return type switch
         {
@@ -1022,32 +1026,61 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
 
     private async Task<DetailFixture> LoadMusicFixtureAsync(IReaparrDbContext dbContext)
     {
-        var artist = await dbContext.PlexMusicArtists
-            .Include(x => x.Albums).ThenInclude(x => x.Tracks).ThenInclude(x => x.MediaDataList)
+        var artist = await dbContext
+            .PlexMusicArtists.Include(x => x.Albums)
+                .ThenInclude(x => x.Tracks)
+                    .ThenInclude(x => x.MediaDataList)
             .SingleAsync(CancellationToken);
         var album = artist.Albums.ShouldHaveSingleItem();
         var track = album.Tracks.ShouldHaveSingleItem();
-        return new DetailFixture(artist.Id, artist.PlexLibraryId, artist.PlexServerId, artist.Title, artist.MediaSize,
-            [album.Id], [track.Id], track.MediaDataList.Select(x => x.Id).ToArray(),
-            nameof(IReaparrDbContext.PlexMusicArtists));
+        return new DetailFixture(
+            artist.Id,
+            artist.PlexLibraryId,
+            artist.PlexServerId,
+            artist.Title,
+            artist.MediaSize,
+            [album.Id],
+            [track.Id],
+            track.MediaDataList.Select(x => x.Id).ToArray(),
+            nameof(IReaparrDbContext.PlexMusicArtists)
+        );
     }
 
     private async Task<DetailFixture> LoadPhotoFixtureAsync(IReaparrDbContext dbContext)
     {
-        var album = await dbContext.PlexPhotoAlbums
-            .Include(x => x.Memberships).ThenInclude(x => x.PlexPhotoMediaData).SingleAsync(CancellationToken);
+        var album = await dbContext
+            .PlexPhotoAlbums.Include(x => x.Memberships)
+                .ThenInclude(x => x.PlexPhotoMediaData)
+            .SingleAsync(CancellationToken);
         var files = album.Memberships.Select(x => x.PlexPhotoMediaData!).OrderByNatural(x => x.Title).ToList();
         files.Count.ShouldBe(2);
-        return new DetailFixture(album.Id, album.PlexLibraryId, album.PlexServerId, album.Title,
-            files.Sum(x => x.Size), files.Select(x => x.Id).ToArray(), [], [],
-            nameof(IReaparrDbContext.PlexPhotoAlbums));
+        return new DetailFixture(
+            album.Id,
+            album.PlexLibraryId,
+            album.PlexServerId,
+            album.Title,
+            files.Sum(x => x.Size),
+            files.Select(x => x.Id).ToArray(),
+            [],
+            [],
+            nameof(IReaparrDbContext.PlexPhotoAlbums)
+        );
     }
 
     private async Task<DetailFixture> LoadOtherVideoFixtureAsync(IReaparrDbContext dbContext)
     {
         var video = await dbContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
-        return new DetailFixture(video.Id, video.PlexLibraryId, video.PlexServerId, video.Title, video.MediaSize,
-            [], [], video.MediaDataList.Select(x => x.Id).ToArray(), nameof(IReaparrDbContext.PlexOtherVideos));
+        return new DetailFixture(
+            video.Id,
+            video.PlexLibraryId,
+            video.PlexServerId,
+            video.Title,
+            video.MediaSize,
+            [],
+            [],
+            video.MediaDataList.Select(x => x.Id).ToArray(),
+            nameof(IReaparrDbContext.PlexOtherVideos)
+        );
     }
 
     private sealed record DetailFixture(

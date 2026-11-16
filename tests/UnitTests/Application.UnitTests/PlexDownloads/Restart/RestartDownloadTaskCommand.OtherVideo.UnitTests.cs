@@ -13,16 +13,13 @@ public class RestartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest
     )
     {
         // Arrange
-        await SetupDatabase(
-            88290,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 2;
-                c.OtherVideoFileDownloadTasksCount = 1;
-                c.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(88290, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 2;
+            c.OtherVideoFileDownloadTasksCount = 1;
+            c.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var otherVideoFiles = await dbContext
             .DownloadTaskOtherVideoFiles.Include(x => x.Parent)
@@ -135,15 +132,12 @@ public class RestartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest
     public async Task ShouldPreserveOtherVideoProgressAndPropagateCancellation_WhenRestartStopIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            88350,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 1;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88350, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 1;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         file.DataReceived = 128;

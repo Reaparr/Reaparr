@@ -55,7 +55,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandler
         {
             _log.Here()
                 .Warning("The library with name: {PlexLibraryName} contains no media to retrieve", plexLibrary.Name);
-            await SendProgress(plexLibrary.Id, mediaType, DateTime.UtcNow, 0, 0, ct);
+            await SendProgress(plexLibrary.Id, mediaType, DateTime.UtcNow, 0, 0);
             return Result.Ok(mediaList);
         }
 
@@ -77,7 +77,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandler
             if (mediaPage.Total.HasValue)
                 totalSize = mediaPage.Total.Value;
             mediaList.AddRange(mediaPage.Items);
-            await SendProgress(plexLibrary.Id, mediaType, startTime, mediaList.Count, totalSize, ct);
+            await SendProgress(plexLibrary.Id, mediaType, startTime, mediaList.Count, totalSize);
 
             if (ct.IsCancellationRequested)
             {
@@ -100,8 +100,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandler
         PlexMediaType plexMediaType,
         DateTime startTime,
         int index,
-        int totalSize,
-        CancellationToken cancellationToken
+        int totalSize
     )
     {
         var remainingTime = TimeSpan.Zero;

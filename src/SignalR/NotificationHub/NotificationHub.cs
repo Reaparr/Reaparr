@@ -65,7 +65,7 @@ public class NotificationHub : Hub<INotificationHub>, INotificationHub
     /// <inheritdoc/>
     public async Task RefreshNotification(RefreshDataType dataType)
     {
-        _log.Here().Debug("Sending refresh notification: {@DataType}", dataType);
+        _log.Here().Debug("Sending refresh notification: {DataType}", dataType);
         await Clients.All.RefreshNotification(dataType);
     }
 }

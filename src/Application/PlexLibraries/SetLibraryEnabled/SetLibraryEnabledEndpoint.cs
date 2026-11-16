@@ -22,18 +22,21 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly INotificationHubService _notificationHubService;
+    private readonly ITelemetry _telemetry;
 
     public SetLibraryEnabledEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
-        INotificationHubService notificationHubService
+        INotificationHubService notificationHubService,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<SetLibraryEnabledEndpoint>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
         _notificationHubService = notificationHubService;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -62,9 +65,10 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
             return;
         }
 
+        var changed = plexLibrary.IsEnabled != req.IsEnabled;
         var operationResult = req.IsEnabled
-            ? await EnableLibraryAsync(plexLibrary, ct)
-            : await DisableLibraryAsync(plexLibrary, ct);
+            ? await EnableLibraryAsync(plexLibrary, ct, changed)
+            : await DisableLibraryAsync(plexLibrary, ct, changed);
         if (operationResult.IsFailed)
         {
             operationResult.LogError();
@@ -87,7 +91,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         await Send.FluentResult(Result.Ok(updatedLibrary), x => x.ToDTO(), ct);
     }
 
-    private async Task<Result> EnableLibraryAsync(PlexLibrary plexLibrary, CancellationToken ct)
+    private async Task<Result> EnableLibraryAsync(PlexLibrary plexLibrary, CancellationToken ct, bool emitChange)
     {
         _log.Here().Information("Enabling PlexLibrary {PlexLibraryId}", plexLibrary.Id);
 
@@ -95,7 +99,10 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
             .PlexLibraries.IgnoreIsEnabledFilter()
             .Where(x => x.Id == plexLibrary.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true), ct);
-
+        if (emitChange)
+        {
+            _telemetry.PlexLibraryChanged(plexLibrary, TelemetryAction.Enabled, true);
+        }
         // Queue a fresh sync
         var queueResult = await _commandExecutor.Send(new QueueLibrarySyncJobCommand([plexLibrary.Id]), ct);
         if (queueResult.IsFailed)
@@ -114,7 +121,7 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         return Result.Ok();
     }
 
-    private async Task<Result> DisableLibraryAsync(PlexLibrary plexLibrary, CancellationToken ct)
+    private async Task<Result> DisableLibraryAsync(PlexLibrary plexLibrary, CancellationToken ct, bool emitChange)
     {
         _log.Here().Information("Disabling PlexLibrary {PlexLibraryId}", plexLibrary.Id);
 
@@ -187,6 +194,11 @@ public class SetLibraryEnabledEndpoint : Endpoint<SetLibraryEnabledRequest, Resu
         );
         if (deleteResult.IsFailed)
             return deleteResult.ToResult().LogIfFailed();
+
+        if (emitChange)
+        {
+            _telemetry.PlexLibraryChanged(plexLibrary, TelemetryAction.Disabled, false, deleteResult.Value);
+        }
 
         _log.Here()
             .Information("Purged {Count} media items from library {PlexLibraryId}", deleteResult.Value, plexLibrary.Id);

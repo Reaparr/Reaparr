@@ -6,15 +6,12 @@ public class RefreshLibraryAccessCompositionUnitTests : BaseUnitTest<RefreshLibr
     public async Task ShouldPersistSuccessfulRefreshAndRetainOfflineServerLibraries_WhenOneServerTimesOut()
     {
         // Arrange
-        await SetupDatabase(
-            5002,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(5002, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         using var dbContext = IDbContext;
         var accountId = await dbContext.PlexAccounts.Select(x => x.Id).SingleAsync();
         var servers = await dbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);

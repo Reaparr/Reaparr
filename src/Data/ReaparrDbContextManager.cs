@@ -1,5 +1,9 @@
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO.Abstractions;
+using System.Reactive.Linq;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Reaparr.Data;
 
@@ -131,8 +135,8 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
         try
         {
             // Create the database while applying any pending migrations.
-            var reaparrMigrateResult = _reaparrDbContextDatabase.Migrate();
-            var authMigrateResult = _authDbContextDatabase.Migrate();
+            var reaparrMigrateResult = ApplyMigrations(_reaparrDbContextDatabase, out _);
+            var authMigrateResult = ApplyMigrations(_authDbContextDatabase, out _);
 
             if (reaparrMigrateResult.IsFailed || authMigrateResult.IsFailed)
             {
@@ -143,8 +147,10 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
                 return Result.Merge(reaparrMigrateResult, authMigrateResult).LogError();
             }
 
+            _log.Here().Information("Optimizing database...");
             var optimize = await _reaparrDbContextDatabase.Optimize(cancellationToken);
             optimize.LogIfFailed();
+            _log.Here().Information("Database optimization finished");
 
             _log.Here().Information("The new database was successfully created at: {DatabasePath}", DatabasePath);
             return Result.Ok();
@@ -164,11 +170,10 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
         {
             // Don't migrate when running in memory, this causes an error:
             // "Relational-specific methods can only be used when the context is using a relational database provider."
-            var pendingMigrations = _reaparrDbContextDatabase.GetPendingMigrations();
-            if (!_reaparrDbContextDatabase.IsInMemory() && pendingMigrations.Any())
+            if (!_reaparrDbContextDatabase.IsInMemory())
             {
                 _log.Here().Information("Attempting to migrate database, this might take a while");
-                var migrateResult = _reaparrDbContextDatabase.Migrate();
+                var migrateResult = ApplyMigrations(_reaparrDbContextDatabase, out var pendingReaparrMigrations);
                 if (migrateResult.IsFailed)
                 {
                     _log.Here().Error("Failed to migrate the database");
@@ -179,17 +184,21 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
                 }
                 else
                 {
-                    var optimize = await _reaparrDbContextDatabase.Optimize(cancellationToken);
-                    optimize.LogIfFailed();
+                    if (pendingReaparrMigrations > 0)
+                    {
+                        _log.Here().Information("Database migrations applied; optimizing database...");
+                        var optimize = await _reaparrDbContextDatabase.Optimize(cancellationToken);
+                        optimize.LogIfFailed();
+                        _log.Here().Information("Database optimization finished");
+                    }
                     _log.Here().Information("Database migration successful!");
                 }
             }
 
-            pendingMigrations = _authDbContextDatabase.GetPendingMigrations();
-            if (!_authDbContextDatabase.IsInMemory() && pendingMigrations.Any())
+            if (!_authDbContextDatabase.IsInMemory())
             {
                 _log.Here().Information("Attempting to migrate Authentication tables database");
-                var migrateResult = _authDbContextDatabase.Migrate();
+                var migrateResult = ApplyMigrations(_authDbContextDatabase, out _);
                 if (migrateResult.IsFailed)
                 {
                     _log.Here().Error("Failed to migrate Authentication tables database");
@@ -212,6 +221,75 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
             _log.Here().ErrorResult(e);
 
             return await ResetDatabase();
+        }
+    }
+
+    private Result ApplyMigrations(IDbContextDatabaseHelpers database, out int pendingMigrationCount)
+    {
+        var step = 0;
+        var stepStarted = 0L;
+        var started = Stopwatch.GetTimestamp();
+        var migrationThread = System.Environment.CurrentManagedThreadId;
+        var pendingMigrations = database.GetPendingMigrations().ToImmutableList();
+        pendingMigrationCount = pendingMigrations.Count;
+        _log.Here().Information("Applying {MigrationCount} pending database migrations", pendingMigrationCount);
+        if (pendingMigrationCount == 0)
+            return Result.Ok();
+
+        // Migrate is synchronous. Scope the global EF diagnostics to this migration call's thread.
+        using var subscription = DiagnosticListener
+            .AllListeners.Where(listener => listener.Name == DbLoggerCategory.Name)
+            .SelectMany(listener =>
+                Observable.Create<KeyValuePair<string, object?>>(observer =>
+                    listener.Subscribe(observer, name => name == RelationalEventId.MigrationApplying.Name)
+                )
+            )
+            .Where(data =>
+                data.Key == RelationalEventId.MigrationApplying.Name
+                && System.Environment.CurrentManagedThreadId == migrationThread
+            )
+            .Subscribe(_ =>
+            {
+                LogCompletedStep();
+                step++;
+                stepStarted = Stopwatch.GetTimestamp();
+                _log.Here()
+                    .Information(
+                        "[{MigrationStep}/{MigrationCount}] Starting migration {MigrationName}",
+                        step,
+                        pendingMigrations.Count,
+                        pendingMigrations[step - 1]
+                    );
+            });
+
+        var result = database.Migrate();
+        if (result.IsSuccess)
+        {
+            LogCompletedStep();
+            _log.Here()
+                .Information(
+                    "All {MigrationCount} database migrations applied successfully in {ElapsedSeconds:F1}s",
+                    pendingMigrations.Count,
+                    Stopwatch.GetElapsedTime(started).TotalSeconds
+                );
+        }
+
+        return result;
+
+        void LogCompletedStep()
+        {
+            if (step == 0)
+                return;
+
+            // A step can execute before its transaction commits; only Migrate returning confirms success.
+            _log.Here()
+                .Information(
+                    "[{MigrationStep}/{MigrationCount}] Executed migration {MigrationName} in {ElapsedSeconds:F1}s (transaction completion pending)",
+                    step,
+                    pendingMigrations.Count,
+                    pendingMigrations[step - 1],
+                    Stopwatch.GetElapsedTime(stepStarted).TotalSeconds
+                );
         }
     }
 

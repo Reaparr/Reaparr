@@ -108,14 +108,11 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
     public async Task ShouldRetainDisabledPhotoLibraryGraph_WhenReadingTasksProgressStatusAndLogs()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            62407,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexPhotoLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(62407, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -318,7 +315,9 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         targetStatus.ShouldBe(DownloadStatus.Downloading);
         targetRootStatusBefore.ShouldBe(DownloadStatus.Queued);
         targetRootStatusAfter.ShouldBe(DownloadStatus.Downloading);
-        changedKeys.ShouldBe([targetChildKey, targetRootKey]);
+        changedKeys
+            .Select(x => (x.Key, x.Status))
+            .ShouldBe([(targetChildKey, DownloadStatus.Downloading), (targetRootKey, DownloadStatus.Downloading)]);
         rootKey.ShouldBe(targetRootKey);
         rootLogs.IsSuccess.ShouldBeTrue();
         rootLogs.Errors.Count.ShouldBe(0);
@@ -335,14 +334,11 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
     public async Task ShouldReturnOnlyPhotoFolderRootsWithNestedProgress_WhenFilteringByServer()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            62402,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexPhotoLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(62402, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -460,7 +456,9 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
         var changed = await dbContext.DetermineDownloadStatus(targetFile.ToKey(), CancellationToken);
 
         // Assert
-        changed.ShouldBe([targetChild.ToKey(), targetRoot.ToKey()]);
+        changed
+            .Select(x => (x.Key, x.Status))
+            .ShouldBe([(targetChild.ToKey(), DownloadStatus.Error), (targetRoot.ToKey(), DownloadStatus.Error)]);
         (await dbContext.GetDownloadStatusAsync(targetFile.ToKey())).ShouldBe(DownloadStatus.Error);
         (await dbContext.GetDownloadTaskStatusAsync(targetChild.ToKey(), CancellationToken)).ShouldBe(
             DownloadStatus.Error
@@ -603,14 +601,11 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
     public async Task ShouldRemoveOnlyScopedEmptyPhotoFolders_WhenCleaningOrphans()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            62405,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexPhotoLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(62405, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -778,9 +773,8 @@ public class DbContextExtensionsDownloadTasksPhotoUnitTests : BaseUnitTest
                 continue;
 
             var child = FakeData
-                .GetDownloadTaskPhotoFolder(
-                    new Seed(seed.Next()),
-                    config => config.PhotoImageDownloadTasksCount = filesPerFolder
+                .GetDownloadTaskPhotoFolder(new Seed(seed.Next()), config =>
+                    config.PhotoImageDownloadTasksCount = filesPerFolder
                 )
                 .Generate();
             child.Parent = root;

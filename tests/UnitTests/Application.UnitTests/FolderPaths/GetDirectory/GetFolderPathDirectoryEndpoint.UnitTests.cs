@@ -1,7 +1,4 @@
-using System.IO.Abstractions;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Autofac;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -27,20 +24,39 @@ public class GetFolderPathDirectoryEndpointUnitTests
         disk.Setup(x => x.GetFiles(It.IsAny<string>())).Verifiable(Times.Never());
         disk.Setup(x => x.GetParent(path)).Returns(parent).Verifiable(Times.Once());
         disk.Setup(x => x.GetDirectories(path))
-            .Returns(Result.Ok(new List<FileSystemModel>
-            {
-                new()
-                {
-                    Type = FileSystemEntityType.Folder,
-                    Name = "child",
-                    Path = childPath,
-                    LastModified = childModified,
-                    Extension = "",
-                    Size = 0,
-                    HasReadPermission = true,
-                    HasWritePermission = false,
-                },
-            }))
+            .Returns(
+                Result.Ok(
+                    new List<FileSystemModel>
+                    {
+                        new()
+                        {
+                            Type = FileSystemEntityType.Folder,
+                            Name = "child",
+                            Path = childPath,
+                            LastModified = childModified,
+                            Extension = "",
+                            Size = 0,
+                            HasReadPermission = true,
+                            HasWritePermission = false,
+                        },
+                    }
+                )
+            )
+            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.FolderDirectoryListed(
+                    path,
+                    It.Is<Result<FileSystemResult>>(result =>
+                        result.IsSuccess
+                        && result.Errors.Count == 0
+                        && result.Value.Parent == parent
+                        && result.Value.Current != null
+                        && result.Value.Directories.Count == 1
+                        && result.Value.Files.Count == 0
+                    )
+                )
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -49,22 +65,49 @@ public class GetFolderPathDirectoryEndpointUnitTests
         // Assert
         outcome.IsValid.ShouldBeTrue();
         outcome.StatusCode.ShouldBe(StatusCodes.Status200OK);
-        var result = (await JsonSerializer.DeserializeAsync<ResultDTO<FileSystemDTO>>(
-            outcome.Endpoint.HttpContext.Response.Body, DefaultJsonSerializerOptions.ConfigStandard, CancellationToken
-        )).ShouldNotBeNull();
+        var result = (
+            await JsonSerializer.DeserializeAsync<ResultDTO<FileSystemDTO>>(
+                outcome.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
         (result.IsSuccess, result.Errors.Count).ShouldBe((true, 0));
         var value = result.Value.ShouldNotBeNull();
         value.Parent.ShouldBe(parent);
         value.Files.ShouldBeEmpty();
         var current = value.Current.ShouldNotBeNull();
-        (current.Type, current.Name, current.Path, current.LastModified, current.Extension, current.Size,
-            current.HasReadPermission, current.HasWritePermission).ShouldBe(
-            (FileSystemEntityType.Folder, directory.Name, path + Path.DirectorySeparatorChar, (DateTime?)modified, "", 0L, true, true));
-        value.Directories.Select(x => (x.Type, x.Name, x.Path, x.LastModified, x.Extension, x.Size,
-            x.HasReadPermission, x.HasWritePermission)).ShouldBe([
-            (FileSystemEntityType.Folder, "child", childPath, (DateTime?)childModified, "", 0L, true, false),
-        ]);
+        (
+            current.Type,
+            current.Name,
+            current.Path,
+            current.LastModified,
+            current.Extension,
+            current.Size,
+            current.HasReadPermission,
+            current.HasWritePermission
+        ).ShouldBe(
+            (
+                FileSystemEntityType.Folder,
+                directory.Name,
+                path + Path.DirectorySeparatorChar,
+                (DateTime?)modified,
+                "",
+                0L,
+                true,
+                true
+            )
+        );
+        value
+            .Directories.Select(x =>
+                (x.Type, x.Name, x.Path, x.LastModified, x.Extension, x.Size, x.HasReadPermission, x.HasWritePermission)
+            )
+            .ShouldBe([
+                (FileSystemEntityType.Folder, "child", childPath, (DateTime?)childModified, "", 0L, true, false),
+            ]);
         disk.Verify();
+
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -82,15 +125,35 @@ public class GetFolderPathDirectoryEndpointUnitTests
         disk.Setup(x => x.GetFiles(It.IsAny<string>())).Verifiable(Times.Never());
         disk.Setup(x => x.GetParent(It.IsAny<string>())).Verifiable(Times.Never());
 
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.FolderDirectoryListed(
+                    path,
+                    It.Is<Result<FileSystemResult>>(result =>
+                        result.IsSuccess
+                        && result.Errors.Count == 0
+                        && result.Value.Parent == ""
+                        && result.Value.Current == null
+                        && result.Value.Directories.Count == 0
+                        && result.Value.Files.Count == 0
+                    )
+                )
+            )
+            .Verifiable(Times.Once());
+
         // Act
         var outcome = await TestEndpointHandleAsync(new GetFolderPathDirectoryRequest(path), RegisterDirectoryServices);
 
         // Assert
         outcome.IsValid.ShouldBeTrue();
         outcome.StatusCode.ShouldBe(StatusCodes.Status200OK);
-        var result = (await JsonSerializer.DeserializeAsync<ResultDTO<FileSystemDTO>>(
-            outcome.Endpoint.HttpContext.Response.Body, DefaultJsonSerializerOptions.ConfigStandard, CancellationToken
-        )).ShouldNotBeNull();
+        var result = (
+            await JsonSerializer.DeserializeAsync<ResultDTO<FileSystemDTO>>(
+                outcome.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
         (result.IsSuccess, result.Errors.Count).ShouldBe((true, 0));
         var value = result.Value.ShouldNotBeNull();
         value.Parent.ShouldBe("");
@@ -98,6 +161,8 @@ public class GetFolderPathDirectoryEndpointUnitTests
         value.Directories.ShouldBeEmpty();
         value.Files.ShouldBeEmpty();
         disk.Verify();
+
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -114,10 +179,21 @@ public class GetFolderPathDirectoryEndpointUnitTests
         disk.Setup(x => x.GetFiles(It.IsAny<string>())).Verifiable(Times.Never());
         disk.Setup(x => x.GetParent(It.IsAny<string>())).Verifiable(Times.Never());
         if (throws)
-            disk.Setup(x => x.GetDirectories(path)).Throws(new IOException("listing-unavailable")).Verifiable(Times.Once());
+            disk.Setup(x => x.GetDirectories(path))
+                .Throws(new IOException("listing-unavailable"))
+                .Verifiable(Times.Once());
         else
             disk.Setup(x => x.GetDirectories(path))
-                .Returns(Result.Fail<List<FileSystemModel>>("listing-unavailable")).Verifiable(Times.Once());
+                .Returns(Result.Fail<List<FileSystemModel>>("listing-unavailable"))
+                .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.FolderDirectoryListed(
+                    path,
+                    It.Is<Result<FileSystemResult>>(result => result.IsFailed && result.Errors.Count == 1)
+                )
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var outcome = await TestEndpointHandleAsync(new GetFolderPathDirectoryRequest(path), RegisterDirectoryServices);
@@ -125,12 +201,18 @@ public class GetFolderPathDirectoryEndpointUnitTests
         // Assert
         outcome.IsValid.ShouldBeTrue();
         outcome.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
-        var result = (await JsonSerializer.DeserializeAsync<ResultDTO<FileSystemDTO>>(
-            outcome.Endpoint.HttpContext.Response.Body, DefaultJsonSerializerOptions.ConfigStandard, CancellationToken
-        )).ShouldNotBeNull();
+        var result = (
+            await JsonSerializer.DeserializeAsync<ResultDTO<FileSystemDTO>>(
+                outcome.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
         (result.IsSuccess, result.Errors.Count).ShouldBe((false, 1));
         result.Value.ShouldBeNull();
         disk.Verify();
+
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -146,7 +228,10 @@ public class GetFolderPathDirectoryEndpointUnitTests
         disk.Setup(x => x.GetVolumeName(It.IsAny<DriveInfo>())).Verifiable(Times.Never());
 
         // Act
-        var outcome = await TestEndpointHandleAsync(new GetFolderPathDirectoryRequest(null!), RegisterDirectoryServices);
+        var outcome = await TestEndpointHandleAsync(
+            new GetFolderPathDirectoryRequest(null!),
+            RegisterDirectoryServices
+        );
 
         // Assert
         outcome.HasValidator.ShouldBeTrue();
@@ -154,6 +239,11 @@ public class GetFolderPathDirectoryEndpointUnitTests
         outcome.ValidationErrors.Select(x => x.PropertyName).ShouldBe([nameof(GetFolderPathDirectoryRequest.Path)]);
         outcome.Endpoint.HttpContext.Response.Body.Length.ShouldBe(0);
         disk.Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.FolderDirectoryListed(It.IsAny<string>(), It.IsAny<Result<FileSystemResult>>()),
+                Times.Never()
+            );
     }
 
     private void RegisterDirectoryServices(IServiceCollection services)

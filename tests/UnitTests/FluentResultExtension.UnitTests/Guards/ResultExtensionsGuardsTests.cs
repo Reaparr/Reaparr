@@ -1,4 +1,4 @@
-﻿namespace Reaparr.FluentResultExtension.UnitTests.Guards;
+﻿namespace Reaparr.FluentResultExtension.UnitTests;
 
 public class ResultExtensionsGuardsTests
 {
@@ -92,5 +92,73 @@ public class ResultExtensionsGuardsTests
 
         // Assert
         has404NotFoundError.ShouldBeTrue();
+    }
+
+    [Test]
+    public void ShouldRecognizeCancellation_WhenTypedAndUntypedResultsAreViewedThroughBaseContract()
+    {
+        // Arrange
+        var cancellation = new ExceptionalError(new OperationCanceledException());
+        var untyped = Result.Fail(cancellation);
+        var typed = Result.Fail<int>(cancellation);
+        ResultBase[] results = [untyped, typed];
+
+        // Act
+        var baseCancellation = results.Select(result => result.IsCancelled).ToArray();
+
+        // Assert
+        baseCancellation.ShouldBe(new[] { true, true });
+        untyped.IsCancelled.ShouldBeTrue();
+        typed.IsCancelled.ShouldBeTrue();
+        untyped.IsCancelledOrFailed.ShouldBeTrue();
+        typed.IsCancelledOrFailed.ShouldBeTrue();
+        foreach (var result in results)
+        {
+            result.IsCancelled.ShouldBeTrue();
+            result.IsCancelledOrFailed.ShouldBeTrue();
+            result.Errors.ShouldHaveSingleItem().ShouldBeSameAs(cancellation);
+        }
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public void ShouldDistinguishOrdinaryFailureFromCancellation_WhenUsingBaseContract(bool failed)
+    {
+        // Arrange
+        ResultBase[] results =
+        [
+            failed ? Result.Fail("Rejected") : Result.Ok(),
+            failed ? Result.Fail<int>(new ExceptionalError(new IOException("Unavailable"))) : Result.Ok(42),
+        ];
+
+        // Act
+        var baseFailures = results.Select(result => result.IsCancelledOrFailed).ToArray();
+
+        // Assert
+        baseFailures.ShouldBe(new[] { failed, failed });
+        foreach (var result in results)
+        {
+            result.IsCancelled.ShouldBeFalse();
+            result.IsCancelledOrFailed.ShouldBe(failed);
+            result.Errors.Count.ShouldBe(failed ? 1 : 0);
+        }
+    }
+
+    [Test]
+    public void ShouldPreserveTopLevelCancellationSemantics_WhenCancellationIsOnlyANestedCause()
+    {
+        // Arrange
+        ResultBase result = Result.Fail(
+            new Error("Dependency failure").CausedBy(new ExceptionalError(new OperationCanceledException()))
+        );
+
+        // Act
+        var cancelled = result.IsCancelled;
+
+        // Assert
+        cancelled.ShouldBeFalse();
+        result.IsCancelledOrFailed.ShouldBeTrue();
+        result.Errors.ShouldHaveSingleItem().Reasons.ShouldHaveSingleItem().ShouldBeOfType<ExceptionalError>();
     }
 }

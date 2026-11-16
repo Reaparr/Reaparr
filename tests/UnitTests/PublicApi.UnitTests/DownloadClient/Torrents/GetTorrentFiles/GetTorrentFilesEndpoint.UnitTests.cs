@@ -7,15 +7,12 @@ public class GetTorrentFilesEndpointUnitTests
 {
     private async Task<IntegrationIdentity> SetupIntegrationDatabase(int seed, Action<FakeDataConfig> configure)
     {
-        await SetupDatabase(
-            seed,
-            config =>
-            {
-                configure(config);
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        await SetupDatabase(seed, config =>
+        {
+            configure(config);
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
         return (await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken)).Id.ToRadarrIdentity();
     }
 
@@ -23,19 +20,16 @@ public class GetTorrentFilesEndpointUnitTests
     public async Task ShouldReturnEmptyList_WhenHashMatchesNoFiles()
     {
         // Arrange
-        var integrationIdentity = await SetupIntegrationDatabase(
-            4412,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        var integrationIdentity = await SetupIntegrationDatabase(4412, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var request = new GetTorrentFilesRequest { Hash = "missing-hash" };
 
@@ -64,16 +58,13 @@ public class GetTorrentFilesEndpointUnitTests
     public async Task ShouldReturnFileNameOnly_WhenDownloadRootPathIsEmpty()
     {
         // Arrange
-        var integrationIdentity = await SetupIntegrationDatabase(
-            4413,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowCount = 0;
-            }
-        );
+        var integrationIdentity = await SetupIntegrationDatabase(4413, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowCount = 0;
+        });
 
         var dbContext = IDbContext;
         var hash = "movie-hash-empty-root";
@@ -116,18 +107,15 @@ public class GetTorrentFilesEndpointUnitTests
     public async Task ShouldReturnFileNameOnly_WhenComputedDirectoryEscapesDownloadRoot()
     {
         // Arrange
-        var integrationIdentity = await SetupIntegrationDatabase(
-            4414,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.MovieCount = 0;
-            }
-        );
+        var integrationIdentity = await SetupIntegrationDatabase(4414, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.MovieCount = 0;
+        });
 
         var dbContext = IDbContext;
         var hash = "episode-hash-outside-root";

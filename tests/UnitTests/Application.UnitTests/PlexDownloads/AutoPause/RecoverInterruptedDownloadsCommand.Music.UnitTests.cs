@@ -6,17 +6,14 @@ public class RecoverInterruptedDownloadsCommandMusicUnitTests : BaseUnitTest<Rec
     public async Task ShouldRecoverInterruptedMusicFilesWithoutResettingProgressOrIdleControls_WhenRecovering()
     {
         // Arrange
-        await SetupDatabase(
-            88270,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 4;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88270, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 4;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var files = (
             await dbContext.DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken)
@@ -78,7 +75,7 @@ public class RecoverInterruptedDownloadsCommandMusicUnitTests : BaseUnitTest<Rec
                         new
                         {
                             x.Id,
-                            ParentId = ((DownloadTaskMusicTrackFile)x).ParentId,
+                            ((DownloadTaskMusicTrackFile)x).ParentId,
                             DownloadStatus = expectedStatuses[index],
                             DataReceived = 128L,
                             FileDataTransferred = 64L,

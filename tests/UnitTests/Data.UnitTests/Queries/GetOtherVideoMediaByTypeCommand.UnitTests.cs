@@ -18,15 +18,12 @@ public class GetOtherVideoMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetO
     )
     {
         // Arrange
-        await SetupDatabase(
-            73101,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexOtherVideoLibraryCount = 2;
-                cfg.OtherVideoCount = 6;
-            }
-        );
+        await SetupDatabase(73101, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexOtherVideoLibraryCount = 2;
+            cfg.OtherVideoCount = 6;
+        });
 
         var dbContext = IDbContext;
         var libraryIds = await dbContext

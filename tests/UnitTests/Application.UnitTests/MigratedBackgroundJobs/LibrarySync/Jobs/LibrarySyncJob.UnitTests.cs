@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Quartz;
 
 namespace Reaparr.Application.UnitTests;
@@ -15,12 +16,27 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         var payload = new LibrarySyncJobPayload(serverId, libraryId, forceMediaRefresh).ToJobDataMap();
         var jobDetail = new Mock<IJobDetail>();
         jobDetail.SetupGet(x => x.JobDataMap).Returns(payload);
+        jobDetail.SetupGet(x => x.Key).Returns(LibrarySyncJob.GetJobKey(serverId, libraryId));
         var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
         context.SetupGet(x => x.MergedJobDataMap).Returns(payload);
+        context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         context.SetupProperty(x => x.Result);
         return context;
+    }
+
+    private void SetupBeginJob()
+    {
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.BeginJob(
+                    TelemetryActivity.LibrarySync,
+                    It.IsAny<(ActivityContext Parent, string? SessionId, string JobKey, string FireInstanceId)>()
+                )
+            )
+            .Returns((IDisposable?)null)
+            .Verifiable(Times.Once());
     }
 
     [Test]
@@ -40,14 +56,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
                 .As<IMediaOverviewRebuildCoordinator>()
                 .SingleInstance()
         );
-        await SetupDatabase(
-            55100,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(55100, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var library = libraries[0];
@@ -121,7 +134,13 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-
+        if (expectedStatus != LibrarySyncJobStatus.Completed)
+        {
+            Mock.Mock<ITelemetry>()
+                .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+                .Verifiable(Times.Once());
+        }
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -160,6 +179,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -170,14 +190,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         SetupDependencies(builder =>
             builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
-        await SetupDatabase(
-            55108,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55108, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var library = libraries[0];
@@ -208,16 +225,17 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             new { PlexLibraryId = library.Id, Status = LibrarySyncJobStatus.Processing },
             new { PlexLibraryId = otherLibrary.Id, Status = LibrarySyncJobStatus.Processing },
         ]);
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        using var otherSyncLease = await coordinator.AcquireLibrarySyncLeaseAsync(cancellation.Token);
-        var rebuildTask = coordinator.AcquireRebuildLeaseAsync(cancellation.Token);
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var cancellationToken = cancellation.Token;
+        using var otherSyncLease = await coordinator.AcquireLibrarySyncLeaseAsync(cancellationToken);
+        var rebuildTask = coordinator.AcquireRebuildLeaseAsync(cancellationToken);
         rebuildTask.IsCompleted.ShouldBeFalse();
-        var context = SetupJobContext(library.PlexServerId, library.Id, cancellation.Token);
+        var context = SetupJobContext(library.PlexServerId, library.Id, cancellationToken);
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
                     It.Is<RefreshLibraryMediaCommand>(c => c.PlexLibraryId == library.Id && !c.ForceMediaRefresh),
-                    cancellation.Token
+                    cancellationToken
                 )
             )
             .ReturnsAsync(Result.Ok(library))
@@ -226,7 +244,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Setup(x =>
                 x.Send(
                     It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(),
-                    It.Is<CancellationToken>(token => token != cancellation.Token && !token.IsCancellationRequested)
+                    It.Is<CancellationToken>(token => token != cancellationToken && !token.IsCancellationRequested)
                 )
             )
             .ReturnsAsync(Result.Ok())
@@ -244,8 +262,9 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
+        SetupBeginJob();
         // Act
-        await ExecuteWithListenerAsync(context.Object).WaitAsync(cancellation.Token);
+        await ExecuteWithListenerAsync(context.Object).WaitAsync(cancellationToken);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.OrderBy(x => x.PlexLibraryId).ToListAsync(CancellationToken);
@@ -264,7 +283,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         rebuildTask.IsCompleted.ShouldBeFalse();
         // ReSharper disable once DisposeOnUsingVariable
         otherSyncLease.Dispose();
-        using var rebuildLease = await rebuildTask.WaitAsync(cancellation.Token);
+        using var rebuildLease = await rebuildTask.WaitAsync(cancellationToken);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ICommandExecutor>()
             .Verify(
@@ -276,6 +295,8 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
                 Times.Never
             );
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        cancellation.Dispose();
     }
 
     [Test]
@@ -285,14 +306,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         var coordinator = new MediaOverviewRebuildCoordinator();
         using var rebuildLease = await coordinator.AcquireRebuildLeaseAsync(CancellationToken);
         var leaseRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        await SetupDatabase(
-            55103,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(55103, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var library = libraries[0];
@@ -317,10 +335,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             x => x.SetProperty(y => y.IsSuccessful, true),
             CancellationToken
         );
-        using var cancellation = new CancellationTokenSource();
-        var context = SetupJobContext(library.PlexServerId, library.Id, cancellation.Token);
+        var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
+        var context = SetupJobContext(library.PlexServerId, library.Id, cancellationToken);
         Mock.Mock<IMediaOverviewRebuildCoordinator>()
-            .Setup(x => x.AcquireLibrarySyncLeaseAsync(cancellation.Token))
+            .Setup(x => x.AcquireLibrarySyncLeaseAsync(cancellationToken))
             .Returns(
                 (CancellationToken token) =>
                 {
@@ -335,7 +354,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Setup(x =>
                 x.Send(
                     It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(),
-                    It.Is<CancellationToken>(token => token != cancellation.Token && !token.IsCancellationRequested)
+                    It.Is<CancellationToken>(token => token != cancellationToken && !token.IsCancellationRequested)
                 )
             )
             .Returns(async () =>
@@ -359,7 +378,10 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+            .Verifiable(Times.Once());
+        SetupBeginJob();
         // Act
         var execution = ExecuteWithListenerAsync(context.Object);
         var firstCompleted = await Task.WhenAny(execution, leaseRequested.Task).WaitAsync(CancellationToken);
@@ -389,6 +411,8 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<RefreshLibraryMediaCommand>(), It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        cancellation.Dispose();
     }
 
     [Test]
@@ -403,14 +427,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
                 .As<IMediaOverviewRebuildCoordinator>()
                 .SingleInstance()
         );
-        await SetupDatabase(
-            55104,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55104, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         dbContext.LibrarySyncJobQueues.Add(
@@ -455,7 +476,13 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-
+        if (cancelled)
+        {
+            Mock.Mock<ITelemetry>()
+                .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+                .Verifiable(Times.Once());
+        }
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -470,6 +497,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Status.ShouldBe(cancelled ? JobStatus.Cancelled : JobStatus.Completed);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -479,14 +507,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
     public async Task ShouldPreserveQueueState_WhenDeliveryIsNoLongerProcessing(LibrarySyncJobStatus status)
     {
         // Arrange
-        await SetupDatabase(
-            55102,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55102, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var startedAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
@@ -506,6 +531,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         await dbContext.SaveChangesAsync(CancellationToken);
         var context = SetupJobContext(library.PlexServerId, library.Id);
 
+        SetupBeginJob();
         // Act
         await Sut.Execute(context.Object);
 
@@ -525,20 +551,18 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             );
         Mock.Mock<INotificationHubService>()
             .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Never);
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
     public async Task ShouldPersistFailureAndContinueQueue_WhenLeaseAcquisitionThrows()
     {
         // Arrange
-        await SetupDatabase(
-            55105,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55105, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         dbContext.LibrarySyncJobQueues.Add(
@@ -582,7 +606,10 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+            .Verifiable(Times.Once());
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -600,20 +627,18 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<RefreshLibraryMediaCommand>(), It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
     public async Task ShouldRequeueWithoutStartingMediaSync_WhenServerIsOffline()
     {
         // Arrange
-        await SetupDatabase(
-            55106,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55106, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var createdAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
@@ -657,6 +682,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
 
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -676,20 +702,18 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<IMediaOverviewRebuildCoordinator>()
             .Verify(x => x.AcquireLibrarySyncLeaseAsync(It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
     public async Task ShouldCancelClaim_WhenTokenIsAlreadyCancelledBeforeExecution()
     {
         // Arrange
-        await SetupDatabase(
-            55107,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55107, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var startedAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
@@ -708,14 +732,15 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         (await dbContext.LibrarySyncJobQueues.SingleAsync(CancellationToken)).Status.ShouldBe(
             LibrarySyncJobStatus.Processing
         );
-        using var cancellation = new CancellationTokenSource();
+        var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
         cancellation.Cancel();
-        var context = SetupJobContext(library.PlexServerId, library.Id, cancellation.Token);
+        var context = SetupJobContext(library.PlexServerId, library.Id, cancellationToken);
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
                     It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(),
-                    It.Is<CancellationToken>(token => token != cancellation.Token && !token.IsCancellationRequested)
+                    It.Is<CancellationToken>(token => token != cancellationToken && !token.IsCancellationRequested)
                 )
             )
             .ReturnsAsync(Result.Ok())
@@ -732,7 +757,10 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-
+        Mock.Mock<ITelemetry>()
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.LibrarySync))
+            .Verifiable(Times.Once());
+        SetupBeginJob();
         // Act
         await ExecuteWithListenerAsync(context.Object);
 
@@ -751,6 +779,8 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<IMediaOverviewRebuildCoordinator>()
             .Verify(x => x.AcquireLibrarySyncLeaseAsync(It.IsAny<CancellationToken>()), Times.Never);
         Mock.Mock<INotificationHubService>().Verify();
+        Mock.Mock<ITelemetry>().Verify();
+        cancellation.Dispose();
     }
 
     private async Task ExecuteWithListenerAsync(IJobExecutionContext context)

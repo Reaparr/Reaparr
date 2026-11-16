@@ -136,8 +136,8 @@ public class GenerateDownloadTaskMusicAlbumsCommandHandler
                             PlexLibraryId = track.PlexLibraryId,
                             MediaIds = [track.Id],
                             Qualities = directTrack?.Qualities ?? [],
-                            KeepCompletedInDownloadFolder =
-                                directTrack?.KeepCompletedInDownloadFolder ?? selection.KeepCompletedInDownloadFolder,
+                            KeepCompletedInDownloadFolder = directTrack?.KeepCompletedInDownloadFolder
+                                ?? selection.KeepCompletedInDownloadFolder,
                         }
                     );
                 }

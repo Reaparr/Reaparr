@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI.UnitTests;
 
 public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, TorznabEndpointRequest>
@@ -18,6 +16,7 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
             Offset = 2,
             ApiKey = "generic-key",
         };
+        var searchResult = SearchResult("tv-rss-result");
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -30,7 +29,7 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(SearchResult("tv-rss-result"))
+            .ReturnsAsync(searchResult)
             .Verifiable(Times.Once());
 
         // Act
@@ -44,6 +43,22 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
         var xml = await reader.ReadToEndAsync();
         xml.ShouldContain("tv-rss-result");
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.ExternalIndexerQueryFinished(
+                        It.Is<ExternalIndexerQueryReport>(report =>
+                            report.Integration == integration
+                            && report.Type == ExternalIndexerQueryType.Search
+                            && report.Mode == TelemetryMode.Rss
+                            && report.Categories.SequenceEqual(request.Categories)
+                            && report.ReturnedItemCount == 1
+                            && report.TotalCount == 1
+                        ),
+                        searchResult
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
@@ -220,6 +235,24 @@ public class TorznabEndpointUnitTests : BaseEndpointUnitTest<TorznabEndpoint, To
         endpointResult.StatusCode.ShouldBe(StatusCodes.Status200OK);
         endpointResult.Endpoint.HttpContext.Response.Body.Length.ShouldBe(0);
         Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.ExternalIndexerQueryFinished(
+                        It.Is<ExternalIndexerQueryReport>(report =>
+                            report.Integration.Id == integration.Id
+                            && report.Integration.Type == IntegrationType.Radarr
+                            && report.Type == ExternalIndexerQueryType.Search
+                            && report.Mode == TelemetryMode.Rss
+                        ),
+                        It.Is<ResultBase>(result =>
+                            result
+                                .Errors.OfType<ExceptionalError>()
+                                .Any(error => error.Exception is OperationCanceledException)
+                        )
+                    ),
+                Times.Once
+            );
     }
 
     private static Result<TorznabMediaSearchResponseDTO> SearchResult(params string[] titles) =>

@@ -5,8 +5,16 @@
 				:label="$t('help.settings.ui.language.language-selection.label')"
 				:title="$t('help.settings.ui.language.language-selection.title')"
 				:text="$t('help.settings.ui.language.language-selection.text')">
-				<LanguageSelect />
+				<LanguageSelect @update:model-value="onLanguageChanged" />
 			</HelpRow>
 		</HelpGroup>
 	</QSection>
 </template>
+
+<script setup lang="ts">
+const telemetry = useTelemetry();
+
+function onLanguageChanged(): void {
+	telemetry.languageSettingsChanged();
+}
+</script>

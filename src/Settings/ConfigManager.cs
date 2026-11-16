@@ -233,7 +233,7 @@ public class ConfigManager : IConfigManager
         }
         catch (Exception e)
         {
-            _log.Here().Error("Failed legacy file rename: {Message}", e.Message);
+            _log.Here().Error(e, "Failed legacy file rename: {Message}", e.Message);
         }
 
         return Result.Ok();

@@ -14,10 +14,12 @@ public class QueueInspectPlexServerJobEndpoint
     : Endpoint<QueueInspectPlexServerJobEndpointRequest, ResultDTO<PlexServerDTO>>
 {
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public QueueInspectPlexServerJobEndpoint(ICommandExecutor commandExecutor)
+    public QueueInspectPlexServerJobEndpoint(ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -34,6 +36,7 @@ public class QueueInspectPlexServerJobEndpoint
     public override async Task HandleAsync(QueueInspectPlexServerJobEndpointRequest req, CancellationToken ct)
     {
         var result = await _commandExecutor.Send(new QueueInspectPlexServerJobCommand([req.PlexServerId]), ct);
+        _telemetry.ServerInspectionRequested(req.PlexServerId, result);
         await Send.FluentResult(result, ct);
     }
 }

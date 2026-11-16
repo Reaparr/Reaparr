@@ -19,10 +19,21 @@ concurrency:
 permissions:
     contents: read
 
+
 jobs:
+    # Fail before semantic-release if source-map publishing credentials are unavailable.
+    validate-source-map-publishing:
+        name: Validate source-map publishing credentials
+        uses: ./.github/workflows/validate-source-map-publishing.yml
+        with:
+            posthog_cli_project_id: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
+        secrets:
+            POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+
     # Semantic Release for Dev Prereleases
     semantic-release:
         name: Semantic Release (DEV Release)
+        needs: [ validate-source-map-publishing ]
         runs-on: ubuntu-latest
         permissions:
             contents: write
@@ -69,11 +80,16 @@ jobs:
         uses: ./.github/workflows/desktop-build.yml
         secrets:
             RELEASE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
         with:
             push: true
             publish_release: true
             version: ${{ needs.semantic-release.outputs.new-release-version }}
             informational_version: ${{ needs.semantic-release.outputs.new-release-version }}
+            telemetry_host: ${{ vars.TELEMETRY_HOST }}
+            telemetry_project_token: ${{ vars.TELEMETRY_PROJECT_TOKEN }}
+            posthog_cli_project_id: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
+            posthog_cli_host: ${{ vars.POSTHOG_CLI_HOST }}
             velopack_channel: dev
 
     # Build and publish multi-arch Docker images
@@ -85,10 +101,15 @@ jobs:
         secrets:
             DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
             DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+            POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
         with:
             push: true
             version: ${{ needs.semantic-release.outputs.new-release-version }}
             informational_version: ${{ needs.semantic-release.outputs.new-release-version }}
+            telemetry_host: ${{ vars.TELEMETRY_HOST }}
+            telemetry_project_token: ${{ vars.TELEMETRY_PROJECT_TOKEN }}
+            posthog_cli_project_id: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
+            posthog_cli_host: ${{ vars.POSTHOG_CLI_HOST }}
             tags: "dev"
 
     # Notifications (depends on build-and-publish and build-desktop)

@@ -12,7 +12,7 @@
 				:disable="isSaving"
 				:aria-busy="saveState === 'toggle'"
 				data-cy="schedule-enable"
-				@update:model-value="saveRequests.next({ policy: { ...cloneDeep(policy), enabled: $event }, action: 'toggle' })">
+				@update:model-value="onScheduleEnabledChanged">
 				<QSpinner
 					v-if="saveState === 'toggle'"
 					class="q-ml-sm"
@@ -88,6 +88,7 @@ import type { DownloadScheduleRange } from '@composables/download-schedule';
 const settingsStore = useSettingsStore();
 const dialogStore = useDialogStore();
 const { t, locale } = useI18n();
+const telemetry = useTelemetry();
 const pendingPolicy = shallowRef<DownloadScheduleDTO | null>(null);
 const policy = computed(() => get(pendingPolicy) ?? settingsStore.confirmedDownloadSchedule);
 const saveState = ref<'idle' | 'toggle' | 'apply' | 'reset' | 'error'>('idle');
@@ -145,15 +146,25 @@ useSubscription(saveRequests.pipe(
 	}),
 ).subscribe());
 
+function onScheduleEnabledChanged(enabled: boolean): void {
+	telemetry.downloadManagerSettingsChanged();
+	saveRequests.next({ policy: { ...cloneDeep(get(policy)), enabled }, action: 'toggle' });
+}
+
 function applySelection(limit: number | null) {
 	if (!get(selection).length || !isDownloadScheduleLimit(limit)) return;
 	const updatedLimits = [...get(limits)];
 	for (const slot of get(selection)) updatedLimits[slot] = limit;
-	saveRequests.next({ policy: { ...cloneDeep(get(policy)), days: encodeDownloadScheduleDays(updatedLimits) }, action: 'apply' });
+	telemetry.downloadScheduleSaved();
+	saveRequests.next({
+		policy: { ...cloneDeep(get(policy)), days: encodeDownloadScheduleDays(updatedLimits) },
+		action: 'apply',
+	});
 }
 
 function resetSchedule() {
 	if (get(isSaving)) return;
+	telemetry.downloadScheduleResetRequested();
 	saveRequests.next({ policy: { ...cloneDeep(get(policy)), days: {} }, action: 'reset' });
 	dialogStore.closeDialog(DialogType.ResetDownloadScheduleConfirmationDialog);
 }

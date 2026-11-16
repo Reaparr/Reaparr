@@ -550,6 +550,7 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
         beforeAlbums.Count.ShouldBe(1);
         beforeTracks.Count.ShouldBe(2);
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
         using var writerContext = (ReaparrDbContext)IDbContext;
         var injected = false;
         writerContext.SavingChanges += (_, _) =>
@@ -558,11 +559,15 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
                 return;
             injected = true;
             if (change == "cancel")
-                cancellation.Cancel();
+                cancel();
             else if (change == "failure")
                 throw new InvalidOperationException("Injected write failure");
         };
-        var handler = new CompareMusicPlexLibraryCommandHandler(writerContext, Mock.Container.Resolve<ILogger>());
+        var handler = new CompareMusicPlexLibraryCommandHandler(
+            writerContext,
+            Mock.Container.Resolve<ILogger>(),
+            Mock.Mock<ITelemetry>().Object
+        );
 
         // Act
         var result = await handler.ExecuteAsync(
@@ -981,10 +986,8 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
                 (x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.RemotePlexMediaId, x.OwnedPlexMediaId, x.MatchType)
             )
             .ShouldBe(
-                remoteTracks.Zip(
-                    ownedTracks,
-                    (remoteTrack, ownedTrack) =>
-                        (remote.Id, owned.Id, remoteTrack.Id, ownedTrack.Id, PlexMediaComparisonMatchType.PlexTrackGuid)
+                remoteTracks.Zip(ownedTracks, (remoteTrack, ownedTrack) =>
+                    (remote.Id, owned.Id, remoteTrack.Id, ownedTrack.Id, PlexMediaComparisonMatchType.PlexTrackGuid)
                 )
             );
     }
@@ -1062,7 +1065,8 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
         // Act
         var result = await new CompareMusicPlexLibraryCommandHandler(
             dbContext,
-            Mock.Container.Resolve<ILogger>()
+            Mock.Container.Resolve<ILogger>(),
+            Mock.Mock<ITelemetry>().Object
         ).ExecuteAsync(new CompareMusicPlexLibraryCommand(owned.Id, remote.Id), CancellationToken);
 
         // Assert
@@ -1259,18 +1263,15 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
         int tracks = 2
     )
     {
-        await SetupDatabase(
-            76201,
-            config =>
-            {
-                config.PlexServerCount = servers;
-                config.PlexAccountCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = artists;
-                config.MusicAlbumCount = albums;
-                config.MusicTrackCount = tracks;
-            }
-        );
+        await SetupDatabase(76201, config =>
+        {
+            config.PlexServerCount = servers;
+            config.PlexAccountCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = artists;
+            config.MusicAlbumCount = albums;
+            config.MusicTrackCount = tracks;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];
@@ -1282,7 +1283,7 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
                 x.SetProperty(y => y.IsEnabled, true)
                     .SetProperty(y => y.Outdated, false)
                     .SetProperty(y => y.ContentChangedAt, 1)
-                    .SetProperty(y => y.SyncedContentChangedAt, (long?)1)
+                    .SetProperty(y => y.SyncedContentChangedAt, 1)
                     .SetProperty(y => y.SyncedAt, DateTime.UtcNow),
             CancellationToken
         );
@@ -1316,7 +1317,6 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
             artist.MusicBrainzArtistId = fallback ? null : MbId(100000 + i);
             foreach (var (album, albumIndex) in artist.Albums.OrderBy(x => x.Id).Select((x, index) => (x, index)))
             {
-                var albumKey = artist.Albums.Count == 1 ? $"{i}" : $"{i}-{albumIndex}";
                 album.Title = $"Album {albumIndex}";
                 album.UpdateInitProperty(nameof(PlexMusicAlbum.SearchTitle), $"album {albumIndex}");
                 album.Year = 2000;

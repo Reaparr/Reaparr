@@ -8,7 +8,7 @@ public record GetAllMediaByTypeRequest
     public required PlexMediaType MediaType { get; init; }
 
     /// <summary>
-    /// Is > 0 when a specific <see cref="PlexLibrary"/> is requested, and 0 when all are requested.
+    /// Is > 0 when a specific <see cref="PlexLibrary" /> is requested, and 0 when all are requested.
     /// </summary>
     [QueryParam, BindFrom("plexLibraryId")]
     public int? PlexLibraryId { get; init; }
@@ -102,11 +102,13 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
 {
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public GetAllMediaByTypeEndpoint(ILogger log, ICommandExecutor commandExecutor)
+    public GetAllMediaByTypeEndpoint(ILogger log, ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _log = log.ForContext<GetAllMediaByTypeEndpoint>();
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -124,6 +126,7 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
     {
         _log.Here().DebugApiCall(HttpContext, req);
         var stopWatch = Stopwatch.StartNew();
+        var filter = BuildFilter(req);
         var result = await _commandExecutor.Send(
             new GetMediaOverviewCommand(
                 new MediaQueryFilter
@@ -135,7 +138,7 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
                     ComparisonState = req.ComparisonState,
                     Parameters = new FlexQueryParameters
                     {
-                        Filter = BuildFilter(req),
+                        Filter = filter,
                         Sort = req.Sort,
                         Page = req.Page,
                         PageSize = req.PageSize,
@@ -148,24 +151,40 @@ public class GetAllMediaByTypeEndpoint : Endpoint<GetAllMediaByTypeRequest, Plex
 
         result.LogIfFailed();
 
-        await Send.FluentResult(result.IsFailed ? result.ToResult() : Result.Ok(ToStatisticsDTO(result.Value)), ct);
+        var statisticsResult = result.IsSuccess
+            ? Result.Ok(ToStatisticsDTO(result.Value))
+            : result.ToResult<PlexMediaStatisticsDTO>();
+        _telemetry.MediaQueryFinished(ToTelemetryDTO(req), filter, statisticsResult);
+
+        await Send.FluentResult(statisticsResult, ct);
     }
+
+    private static MediaQueryTelemetryDTO ToTelemetryDTO(GetAllMediaByTypeRequest request) =>
+        new()
+        {
+            Search = request.Search,
+            MediaType = request.MediaType,
+            Page = request.Page,
+            PageSize = request.PageSize,
+            PlexLibraryId = request.PlexLibraryId,
+            Sort = request.Sort,
+        };
 
     private static string BuildFilter(GetAllMediaByTypeRequest req)
     {
         var filters = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(req.Search))
-        {
-            var searchTerms = req
+        var x = string.IsNullOrWhiteSpace(req.Search)
+            ? []
+            : req
                 .Search.ToLowerInvariant()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Where(x => x.Length >= 2)
-                .Distinct();
+                .Distinct()
+                .ToArray();
 
-            foreach (var term in searchTerms)
-                filters.Add($"SearchTitle:contains:{EscapeFlexValue(term)}");
-        }
+        foreach (var term in x)
+            filters.Add($"SearchTitle:contains:{EscapeFlexValue(term)}");
 
         if (req.CountryId is > 0)
             filters.Add($"Countries:any:Id:eq:{req.CountryId}");

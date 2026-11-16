@@ -33,11 +33,13 @@ public class UpdateFolderPathEndpoint : Endpoint<UpdateFolderPathEndpointRequest
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public UpdateFolderPathEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public UpdateFolderPathEndpoint(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<UpdateFolderPathEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -65,21 +67,26 @@ public class UpdateFolderPathEndpoint : Endpoint<UpdateFolderPathEndpointRequest
             return;
         }
 
-        if (
-            (folderPathDb.FolderType, folderPathDb.MediaType) != (folderPath.FolderType, folderPath.MediaType)
-            && !await CanChangeRoleAsync(folderPath)
-        )
+        if (!folderPathDb.HasSameRole(folderPath) && !await CanChangeRoleAsync(folderPath))
         {
             await Send.FluentResult(
-                ResultExtensions.Create400BadRequestResult("The folder role is required by a default or assigned owner."),
+                ResultExtensions.Create400BadRequestResult(
+                    "The folder role is required by a default or assigned owner."
+                ),
                 ct
             );
             return;
         }
 
+        var changed = !folderPathDb.Equals(folderPath);
+
         _dbContext.Entry(folderPathDb).CurrentValues.SetValues(folderPath);
         await _dbContext.SaveChangesAsync(ct);
 
+        if (changed)
+        {
+            _telemetry.FolderPathChanged(folderPathDb, TelemetryAction.Update);
+        }
         await Send.FluentResult(Result.Ok(folderPathDb), path => path.ToDTO(), ct);
     }
 
@@ -93,7 +100,11 @@ public class UpdateFolderPathEndpoint : Endpoint<UpdateFolderPathEndpointRequest
             return false;
 
         // A library destination keeps its assigned role; editing its name or path remains supported.
-        if (await _dbContext.PlexLibraries.IgnoreIsEnabledFilter().AnyAsync(x => x.DefaultDestinationId == folderPath.Id))
+        if (
+            await _dbContext
+                .PlexLibraries.IgnoreIsEnabledFilter()
+                .AnyAsync(x => x.DefaultDestinationId == folderPath.Id)
+        )
             return false;
 
         if (folderPath.FolderType == FolderType.DownloadFolder)

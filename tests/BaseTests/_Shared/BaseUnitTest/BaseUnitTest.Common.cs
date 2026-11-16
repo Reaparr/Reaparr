@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Reaparr.BaseTests;
 
 public partial class BaseUnitTest
@@ -7,7 +9,7 @@ public partial class BaseUnitTest
     // Use loose behavior here to avoid Dispose() not mocked exception
     protected Mock<HttpMessageHandler> HttpHandlerMock = new(MockBehavior.Loose);
 
-    protected CancellationToken CancellationToken =>
+    protected static CancellationToken CancellationToken =>
         TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
 
     /// <summary>
@@ -15,6 +17,8 @@ public partial class BaseUnitTest
     /// </summary>
     protected BaseUnitTest()
     {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
         Log = LogFactory.Create<BaseUnitTest>();
         Mock = AutoMock.GetStrict(SetDefaultBuilder);
     }

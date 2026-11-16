@@ -55,6 +55,24 @@ public class UpdateSonarrIntegrationEndpointUnitTests
         updated.ProvisioningState.ShouldBe(IntegrationProvisioningState.ChangesPending);
         updated.QBittorrentApiKey.ShouldBe("qbt_23456789ABCDEFGHIJKLMNPQ");
         updated.TorznabApiKey.ShouldBe("0123456789abcdef0123456789abcdef");
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.IntegrationChanged(
+                        It.Is<SonarrIntegration>(value =>
+                            value.Id == integration.Id
+                            && value.DisplayName == "Updated Sonarr"
+                            && value.BaseUrl == "https://updated-sonarr.example.com"
+                            && value.SonarrApiKey == "new-key"
+                            && value.Category == "new-category"
+                            && value.DownloadFolderId == FolderTypeDefaults.DefaultDownloadFolderId
+                            && value.ProvisioningState == IntegrationProvisioningState.ChangesPending
+                        ),
+                        TelemetryAction.Update,
+                        true
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
@@ -157,6 +175,20 @@ public class UpdateSonarrIntegrationEndpointUnitTests
         updated.LastConnectionTestHttpStatusCode.ShouldBeNull();
         updated.LastConnectionTestErrorMessage.ShouldBeNull();
         updated.LastConnectionTestedAt.ShouldBeNull();
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.IntegrationChanged(
+                        It.Is<SonarrIntegration>(value =>
+                            value.Id == integration.Id
+                            && value.SonarrApiKey == "new-key"
+                            && value.ProvisioningState == IntegrationProvisioningState.ChangesPending
+                        ),
+                        TelemetryAction.Update,
+                        true
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
@@ -209,10 +241,24 @@ public class UpdateSonarrIntegrationEndpointUnitTests
         updated.LastConnectionTestHttpStatusCode.ShouldBe(StatusCodes.Status200OK);
         updated.LastConnectionTestErrorMessage.ShouldBeNull();
         updated.LastConnectionTestedAt.ShouldBe(testedAt);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.IntegrationChanged(
+                        It.Is<SonarrIntegration>(value =>
+                            value.Id == integration.Id
+                            && value.DisplayName == "Renamed Sonarr"
+                            && value.ProvisioningState == IntegrationProvisioningState.Configured
+                        ),
+                        TelemetryAction.Update,
+                        false
+                    ),
+                Times.Once()
+            );
     }
 
     [Test]
-    public async Task ShouldPreserveConnectionEvidence_WhenUrlOnlyAddsTrailingSlash()
+    public async Task ShouldPreserveConnectionEvidenceAndSuppressTelemetry_WhenUrlAndApiKeyOnlyChangeByNormalization()
     {
         // Arrange
         await SetupDatabase(62608);
@@ -223,7 +269,7 @@ public class UpdateSonarrIntegrationEndpointUnitTests
             Id = Guid.Parse("00000000-0000-0000-0000-000000062608"),
             DisplayName = "Sonarr",
             BaseUrl = "https://sonarr.example.com/",
-            SonarrApiKey = "key",
+            SonarrApiKey = " key ",
             QBittorrentApiKey = "qbt_23456789ABCDEFGHIJKLMNPQ",
             TorznabApiKey = "0123456789abcdef0123456789abcdef",
             Category = "category",
@@ -241,7 +287,7 @@ public class UpdateSonarrIntegrationEndpointUnitTests
             IntegrationId = integration.Id,
             Name = "Sonarr",
             Url = "https://sonarr.example.com///",
-            ApiKey = "key",
+            ApiKey = " key ",
             Category = "category",
             DownloadFolderId = FolderTypeDefaults.DefaultDownloadFolderId,
         };
@@ -256,11 +302,18 @@ public class UpdateSonarrIntegrationEndpointUnitTests
         endpointResult.Response!.IsSuccess.ShouldBeTrue();
         endpointResult.Response!.Errors.Count.ShouldBe(0);
         updated.BaseUrl.ShouldBe("https://sonarr.example.com");
+        updated.SonarrApiKey.ShouldBe("key");
+        endpointResult.Response.Value.ShouldNotBeNull().ApiKey.ShouldBe("key");
         updated.ProvisioningState.ShouldBe(IntegrationProvisioningState.Configured);
         updated.LastConnectionTestStatus.ShouldBe(TestConnectionStatus.Success);
         updated.LastConnectionTestHttpStatusCode.ShouldBe(StatusCodes.Status200OK);
         updated.LastConnectionTestErrorMessage.ShouldBeNull();
         updated.LastConnectionTestedAt.ShouldBe(testedAt);
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x => x.IntegrationChanged(It.IsAny<SonarrIntegration>(), It.IsAny<TelemetryAction>(), It.IsAny<bool>()),
+                Times.Never()
+            );
     }
 
     [Test]

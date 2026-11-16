@@ -1,5 +1,3 @@
-using Reaparr.Data;
-
 namespace Reaparr.Application.UnitTests;
 
 public class GenerateDownloadTaskPhotoImagesFolderSelectionUnitTests
@@ -63,16 +61,13 @@ public class GenerateDownloadTaskPhotoImagesFolderSelectionUnitTests
 
     private async Task<List<DownloadMediaDTO>> CreateOverlappingFolderSelectionsAsync(bool includeDirectSelection)
     {
-        await SetupDatabase(
-            62318,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62318, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var root = await dbContext.PlexPhotoFolders.SingleAsync(x => x.ParentId == null, CancellationToken);
         var folder = new PlexPhotoFolder
@@ -131,15 +126,12 @@ public class GenerateDownloadTaskPhotoImagesFolderSelectionUnitTests
 
     private async Task<DownloadMediaDTO> CreateRecursiveFolderSelectionAsync()
     {
-        await SetupDatabase(
-            62317,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(62317, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var root = await dbContext.PlexPhotoFolders.SingleAsync(x => x.ParentId == null, CancellationToken);
         var media = await dbContext.PlexPhotoMediaData.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);

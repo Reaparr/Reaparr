@@ -9,18 +9,21 @@ public class DownloadUpdateEndpoint : EndpointWithoutRequest<BaseResultDTO>
     private readonly IAppBuildInfo _appBuildInfo;
     private readonly IProgressHubService _progressHub;
     private readonly ILogger _log;
+    private readonly ITelemetry _telemetry;
 
     public DownloadUpdateEndpoint(
         ILogger log,
         IAppBuildInfo appBuildInfo,
         UpdateManager velopackManager,
-        IProgressHubService progressHub
+        IProgressHubService progressHub,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<DownloadUpdateEndpoint>();
         _appBuildInfo = appBuildInfo;
         _velopackManager = velopackManager;
         _progressHub = progressHub;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -39,9 +42,14 @@ public class DownloadUpdateEndpoint : EndpointWithoutRequest<BaseResultDTO>
         if (!_appBuildInfo.IsDesktopMode)
         {
             _log.Here().Debug("Skipping update download — not running in desktop mode");
-            await Send.FluentResult(Result.Fail("Desktop updates are not supported in the current runtime mode"), ct);
+            var unsupportedResult = Result.Fail("Desktop updates are not supported in the current runtime mode");
+            _telemetry.UpdateDownloadFinished(unsupportedResult);
+            await Send.FluentResult(unsupportedResult, ct);
             return;
         }
+
+        string? targetVersion = null;
+        bool? pendingRestart = null;
 
         var result = await Result.Try(async Task () =>
         {
@@ -55,7 +63,8 @@ public class DownloadUpdateEndpoint : EndpointWithoutRequest<BaseResultDTO>
                 return;
             }
 
-            _log.Here().Information("Downloading Velopack update {Version}", updateInfo.TargetFullRelease.Version);
+            targetVersion = updateInfo.TargetFullRelease.Version.ToString();
+            _log.Here().Information("Downloading Velopack update {Version}", targetVersion);
 
             await _velopackManager.DownloadUpdatesAsync(
                 updateInfo,
@@ -67,14 +76,18 @@ public class DownloadUpdateEndpoint : EndpointWithoutRequest<BaseResultDTO>
                 ct
             );
 
+            pendingRestart = _velopackManager.UpdatePendingRestart is not null;
             _log.Here()
                 .Information(
                     "Downloaded Velopack update {Version}; PendingRestart: {HasPendingRestart}",
-                    updateInfo.TargetFullRelease.Version,
-                    _velopackManager.UpdatePendingRestart is not null
+                    targetVersion,
+                    pendingRestart
                 );
         });
 
+        _telemetry.UpdateDownloadFinished(result, targetVersion, pendingRestart);
+        if (result.IsFailed)
+            _telemetry.CaptureErrors(result, TelemetryActivity.UpdateLauncher);
         await Send.FluentResult(result, ct);
     }
 }

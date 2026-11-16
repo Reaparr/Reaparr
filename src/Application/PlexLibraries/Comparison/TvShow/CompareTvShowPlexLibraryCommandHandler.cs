@@ -14,16 +14,19 @@ public class CompareTvShowPlexLibraryCommandHandler : ICommandHandler<CompareTvS
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
     private const int BATCH_SIZE = 100;
 
-    public CompareTvShowPlexLibraryCommandHandler(ILogger log, IReaparrDbContext dbContext)
+    public CompareTvShowPlexLibraryCommandHandler(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<CompareTvShowPlexLibraryCommandHandler>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public async Task<Result> ExecuteAsync(CompareTvShowPlexLibraryCommand command, CancellationToken cancellationToken)
     {
+        using var activity = _telemetry.StartTvShowComparison(command.OwnedPlexLibraryId, command.RemotePlexLibraryId);
         return await Result.Try(
             new Func<Task<Result>>(async () =>
             {

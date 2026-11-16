@@ -63,5 +63,35 @@ public class FolderPath : BaseEntity
     /// <returns>If the check is successful.</returns>
     public bool IsValid => Directory.Exists(DirectoryPath);
 
+    /// <summary>
+    /// Checks whether another folder serves the same role.
+    /// </summary>
+    public bool HasSameRole(FolderPath other) => FolderType == other.FolderType && MediaType == other.MediaType;
+
+    #endregion
+
+    #region Equality
+
+    /// <inheritdoc/>
+    public override int GetHashCode() => HashCode.Combine(DisplayName, FolderType, MediaType);
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj)
+    {
+        if (ReferenceEquals(null, obj))
+            return false;
+
+        if (ReferenceEquals(this, obj))
+            return true;
+
+        return obj.GetType() == GetType() && Equals((FolderPath)obj);
+    }
+
+    /// <summary>
+    /// Compares folder configuration without identity or navigation properties.
+    /// </summary>
+    protected bool Equals(FolderPath other) =>
+        DisplayName == other.DisplayName && DirectoryPath == other.DirectoryPath && HasSameRole(other);
+
     #endregion
 }

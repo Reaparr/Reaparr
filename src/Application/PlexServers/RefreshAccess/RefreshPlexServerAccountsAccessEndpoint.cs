@@ -20,11 +20,17 @@ public class RefreshPlexServerAccountsAccessEndpoint
 {
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
+    private readonly ITelemetry _telemetry;
 
-    public RefreshPlexServerAccountsAccessEndpoint(IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public RefreshPlexServerAccountsAccessEndpoint(
+        IReaparrDbContext dbContext,
+        ICommandExecutor commandExecutor,
+        ITelemetry telemetry
+    )
     {
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -32,9 +38,9 @@ public class RefreshPlexServerAccountsAccessEndpoint
         Post(ApiRoutes.PlexServerController + "/{PlexServerId}/refresh-access");
 
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<List<RefreshPlexAccountAccessRapportDTO>>))
-                .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
+            x.Produces<ResultDTO<List<RefreshPlexAccountAccessRapportDTO>>>()
+                .Produces<BaseResultDTO>(StatusCodes.Status404NotFound)
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError)
         );
     }
 
@@ -43,20 +49,21 @@ public class RefreshPlexServerAccountsAccessEndpoint
         var server = await _dbContext.PlexServers.IgnoreIsEnabledFilter().GetAsync(req.PlexServerId, ct);
         if (server is null)
         {
-            await Send.FluentResult(ResultExtensions.EntityNotFound(nameof(PlexServer), req.PlexServerId), ct);
+            var result = ResultExtensions.EntityNotFound(nameof(PlexServer), req.PlexServerId);
+            _telemetry.PlexAccessRefreshRequested(TelemetryScope.Server, result, serverId: req.PlexServerId);
+            await Send.FluentResult(result, ct);
             return;
         }
 
         if (!server.IsEnabled)
         {
-            await Send.FluentResult(
-                ResultExtensions.ServerIsDisabled(
-                    server.Name,
-                    server.Id,
-                    nameof(RefreshPlexServerAccountsAccessEndpoint)
-                ),
-                ct
+            var result = ResultExtensions.ServerIsDisabled(
+                server.Name,
+                server.Id,
+                nameof(RefreshPlexServerAccountsAccessEndpoint)
             );
+            _telemetry.PlexAccessRefreshRequested(TelemetryScope.Server, result, serverId: req.PlexServerId);
+            await Send.FluentResult(result, ct);
             return;
         }
 
@@ -74,6 +81,12 @@ public class RefreshPlexServerAccountsAccessEndpoint
 
             if (result.IsCancelled)
             {
+                _telemetry.PlexAccessRefreshRequested(
+                    TelemetryScope.Server,
+                    result,
+                    serverId: req.PlexServerId,
+                    accountCount: accountIds.Count
+                );
                 await Send.FluentResult(result, ct);
                 return;
             }
@@ -88,6 +101,13 @@ public class RefreshPlexServerAccountsAccessEndpoint
             rapports.AddRange(result.Value);
         }
 
-        await Send.FluentResult(Result.Ok(rapports).WithErrors(errors), ct);
+        var refreshResult = Result.Ok(rapports).WithErrors(errors);
+        _telemetry.PlexAccessRefreshRequested(
+            TelemetryScope.Server,
+            refreshResult,
+            serverId: req.PlexServerId,
+            accountCount: accountIds.Count
+        );
+        await Send.FluentResult(refreshResult, ct);
     }
 }

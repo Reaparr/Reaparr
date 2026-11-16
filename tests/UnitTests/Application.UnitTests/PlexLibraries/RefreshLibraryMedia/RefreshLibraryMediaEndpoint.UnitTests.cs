@@ -13,13 +13,10 @@ public class RefreshLibraryMediaEndpointUnitTests
     public async Task ShouldReturnActualQueueState_WhenLibrarySyncJobAccepted(LibrarySyncJobStatus status)
     {
         // Arrange
-        await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1223, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexLibrary = dbContext.PlexLibraries.First();
@@ -49,6 +46,26 @@ public class RefreshLibraryMediaEndpointUnitTests
             )
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
+        LibraryRefreshTelemetryDTO? telemetryRequest = null;
+        ResultBase? telemetryResult = null;
+        LibrarySyncJobStatus? telemetryQueueStatus = null;
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.LibraryRefreshRequested(
+                    It.IsAny<LibraryRefreshTelemetryDTO>(),
+                    It.IsAny<ResultBase>(),
+                    It.IsAny<LibrarySyncJobStatus?>()
+                )
+            )
+            .Callback<LibraryRefreshTelemetryDTO, ResultBase, LibrarySyncJobStatus?>(
+                (request, result, queueStatus) =>
+                {
+                    telemetryRequest = request;
+                    telemetryResult = result;
+                    telemetryQueueStatus = queueStatus;
+                }
+            )
+            .Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(
@@ -76,19 +93,23 @@ public class RefreshLibraryMediaEndpointUnitTests
         resultDTO.Value.IsServerOffline.ShouldBeFalse();
         resultDTO.Value.ErrorMessage.ShouldBeNull();
         Mock.Mock<ICommandExecutor>().Verify();
+        telemetryRequest.ShouldNotBeNull();
+        telemetryRequest.PlexLibraryId.ShouldBe(plexLibrary.Id);
+        telemetryRequest.ForceLibrarySync.ShouldBeTrue();
+        telemetryRequest.ForceMediaRefresh.ShouldBeTrue();
+        telemetryResult.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
+        telemetryQueueStatus.ShouldBe(status);
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
     public async Task ShouldReturnError_WhenRefreshCommandFails()
     {
         // Arrange
-        await SetupDatabase(
-            1226,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1226, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = IDbContext.PlexLibraries.First();
 

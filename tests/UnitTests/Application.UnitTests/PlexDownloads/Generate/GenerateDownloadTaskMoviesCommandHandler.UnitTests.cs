@@ -1,6 +1,4 @@
-﻿using Reaparr.Domain.Validators;
-
-namespace Reaparr.Application.UnitTests;
+﻿namespace Reaparr.Application.UnitTests;
 
 public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnitTest<GenerateDownloadTaskMoviesCommand>
 {
@@ -25,15 +23,12 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldHaveInsertedValidDownloadTaskMoviesInDatabase_WhenGivenValidPlexMovies()
     {
         // Arrange
-        await SetupDatabase(
-            18022,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 5;
-            }
-        );
+        await SetupDatabase(18022, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 5;
+        });
 
         var plexMovies = await IDbContext.PlexMovies.ToListAsync(CancellationToken);
         var movies = new List<DownloadMediaDTO>
@@ -87,15 +82,12 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldHaveDestinationFolderPathIdSet_WhenRequestContainsTheDestinationFolderPathIdSet()
     {
         // Arrange
-        await SetupDatabase(
-            18022,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 5;
-            }
-        );
+        await SetupDatabase(18022, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 5;
+        });
 
         var plexMovies = await IDbContext.PlexMovies.ToListAsync(CancellationToken);
         var movies = new List<DownloadMediaDTO>
@@ -145,14 +137,11 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldHaveMultipleDownloadTaskMovieFile_WhenPlexMovieHasMultiParts()
     {
         // Arrange
-        await SetupDatabase(
-            9999,
-            config =>
-            {
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = true;
-            }
-        );
+        await SetupDatabase(9999, config =>
+        {
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = true;
+        });
 
         var plexMovies = await IDbContext.PlexMovies.ToListAsync(CancellationToken);
         var movies = new List<DownloadMediaDTO>
@@ -212,15 +201,12 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldKeepEachMovieBoundToItsOriginalLibrary_WhenGeneratingAcrossMultipleLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            21123,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-                config.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(21123, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+            config.MovieCount = 6;
+        });
 
         var moviesByLibrary = await IDbContext
             .PlexMovies.GroupBy(x => x.PlexLibraryId)
@@ -272,16 +258,13 @@ public class GenerateDownloadTaskMoviesCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldRejectSelectionWithoutPersistingTasks_WhenMovieScopeIsInconsistent(string mismatch)
     {
         // Arrange
-        await SetupDatabase(
-            64201,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(64201, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var dbContext = IDbContext;
         var sourceMovies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         sourceMovies.Count.ShouldBe(2);

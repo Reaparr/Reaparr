@@ -16,15 +16,12 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
     public async Task ShouldReturnOnlyTvShowsFromSpecificLibrary_WhenPlexLibraryIdIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70002,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexTvShowLibraryCount = 2;
-                cfg.TvShowCount = 6;
-            }
-        );
+        await SetupDatabase(70002, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexTvShowLibraryCount = 2;
+            cfg.TvShowCount = 6;
+        });
 
         var dbContext = IDbContext;
         var targetLibraryId = await dbContext
@@ -74,15 +71,12 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
     public async Task ShouldProjectTvShowsInOneCommand_WhenPlexLibraryIdIsZero()
     {
         // Arrange
-        await SetupDatabase(
-            70037,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexTvShowLibraryCount = 3;
-                cfg.TvShowCount = 2;
-            }
-        );
+        await SetupDatabase(70037, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexTvShowLibraryCount = 3;
+            cfg.TvShowCount = 2;
+        });
 
         var command = new GetTvShowMediaByTypeCommand(
             new MediaQueryFilter
@@ -133,15 +127,12 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
     public async Task ShouldAssignSortIndexesSequentiallyForTvShows_WhenResultsReturned()
     {
         // Arrange
-        await SetupDatabase(
-            70013,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexTvShowLibraryCount = 1;
-                cfg.TvShowCount = 6;
-            }
-        );
+        await SetupDatabase(70013, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexTvShowLibraryCount = 1;
+            cfg.TvShowCount = 6;
+        });
 
         var command = new GetTvShowMediaByTypeCommand(
             new MediaQueryFilter
@@ -176,17 +167,14 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
     public async Task ShouldReturnOnlyTvShows_WhenTvShowTypeRequestedAndBothMediaTypesExist()
     {
         // Arrange
-        await SetupDatabase(
-            70018,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.PlexTvShowLibraryCount = 1;
-                cfg.MovieCount = 5;
-                cfg.TvShowCount = 5;
-            }
-        );
+        await SetupDatabase(70018, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.PlexTvShowLibraryCount = 1;
+            cfg.MovieCount = 5;
+            cfg.TvShowCount = 5;
+        });
 
         var command = new GetTvShowMediaByTypeCommand(
             new MediaQueryFilter
@@ -219,15 +207,12 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
     public async Task ShouldSortTvShowsByVideoQualityAscending_WhenVideoQualitySortFieldIsUsed()
     {
         // Arrange
-        await SetupDatabase(
-            70032,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexTvShowLibraryCount = 1;
-                cfg.TvShowCount = 4;
-            }
-        );
+        await SetupDatabase(70032, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexTvShowLibraryCount = 1;
+            cfg.TvShowCount = 4;
+        });
 
         var dbContext = IDbContext;
         var tvShowIds = await dbContext.PlexTvShows.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
@@ -271,15 +256,12 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
     public async Task ShouldSortTvShowsByVideoQualityDescending_WhenVideoQualitySortFieldIsUsed()
     {
         // Arrange
-        await SetupDatabase(
-            70033,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexTvShowLibraryCount = 1;
-                cfg.TvShowCount = 4;
-            }
-        );
+        await SetupDatabase(70033, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexTvShowLibraryCount = 1;
+            cfg.TvShowCount = 4;
+        });
 
         var dbContext = IDbContext;
         var tvShowIds = await dbContext.PlexTvShows.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
@@ -329,15 +311,12 @@ public class GetTvShowMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetTvSho
     )
     {
         // Arrange
-        await SetupDatabase(
-            73105,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-            }
-        );
+        await SetupDatabase(73105, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+        });
         var dbContext = IDbContext;
         var tvShow = await dbContext.PlexTvShows.SingleAsync(CancellationToken);
         await dbContext.PlexTvShowMediaQualities.ExecuteDeleteAsync(CancellationToken);

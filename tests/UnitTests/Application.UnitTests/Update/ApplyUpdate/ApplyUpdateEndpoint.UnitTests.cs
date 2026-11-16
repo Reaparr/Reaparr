@@ -27,8 +27,8 @@ public class ApplyUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTest<A
         result.IsSuccess.ShouldBeFalse();
         result.Errors.ShouldHaveSingleItem();
         result.Errors[0].Message.ShouldBe("Desktop updates are not supported in the current runtime mode");
+        Mock.Mock<ITelemetry>().Verify(x => x.UpdateApplyAccepted(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         mockManager.Verify(m => m.UpdatePendingRestart, Times.Never);
-        mockSource.VerifyNoOtherCalls();
     }
 
     [Test]
@@ -43,6 +43,7 @@ public class ApplyUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTest<A
         var mockLocator = new Mock<IVelopackLocator>();
         var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
         mockManager.Setup(m => m.UpdatePendingRestart).Returns(asset).Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.UpdateApplyAccepted("Reaparr", "9.9.9")).Verifiable(Times.Once());
 
         // Act
         var endpointResult = await TestEndpointHandleAsync(extraServices: s =>
@@ -56,6 +57,7 @@ public class ApplyUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTest<A
         result.IsSuccess.ShouldBeTrue();
 
         mockManager.Verify(m => m.UpdatePendingRestart, Times.Once);
+        Mock.Mock<ITelemetry>().Verify();
         mockSource.VerifyNoOtherCalls();
     }
 }

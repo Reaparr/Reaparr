@@ -22,15 +22,12 @@ public class GenerateDownloadTaskTvShowSeasonsCommandUnitTests
     public async Task ShouldHaveFailedResult_WhenCreatingEpisodeDownloadTasksFails()
     {
         // Arrange
-        await SetupDatabase(
-            5957,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(5957, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
 
         var plexSeasons = await IDbContext.PlexTvShowSeason.IncludeAll().ToListAsync(CancellationToken);
 

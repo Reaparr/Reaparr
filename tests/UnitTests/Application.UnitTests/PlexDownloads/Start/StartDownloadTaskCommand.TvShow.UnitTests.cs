@@ -16,15 +16,12 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
-        await SetupDatabase(
-            96318,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 5;
-                x.TvShowSeasonDownloadTasksCount = 2;
-                x.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(96318, x =>
+        {
+            x.TvShowDownloadTasksCount = 5;
+            x.TvShowSeasonDownloadTasksCount = 2;
+            x.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
         var tvShowDownloadTasks = await dbContext
@@ -63,15 +60,12 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
     public async Task ShouldNotPauseTheActiveDownloads_WhenThatActiveDownloadTaskIsStarted()
     {
         // Arrange
-        await SetupDatabase(
-            31917,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 5;
-                x.TvShowSeasonDownloadTasksCount = 2;
-                x.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(31917, x =>
+        {
+            x.TvShowDownloadTasksCount = 5;
+            x.TvShowSeasonDownloadTasksCount = 2;
+            x.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
         var tvShowDownloadTasks = await dbContext
@@ -144,16 +138,13 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
     public async Task ShouldStartPausedEpisode_WhenStartingPausedTvShowTask()
     {
         // Arrange
-        await SetupDatabase(
-            44821,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 1;
-                x.TvShowSeasonDownloadTasksCount = 1;
-                x.TvShowEpisodeCount = 5;
-                x.TvShowEpisodeDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(44821, x =>
+        {
+            x.TvShowDownloadTasksCount = 1;
+            x.TvShowSeasonDownloadTasksCount = 1;
+            x.TvShowEpisodeCount = 5;
+            x.TvShowEpisodeDownloadTasksCount = 5;
+        });
 
         var tvShow = await IDbContext.DownloadTaskTvShow.AsNoTracking().FirstAsync(CancellationToken);
         var orderedChildTasks = await IDbContext.GetDownloadableChildTasks(tvShow.ToKey(), CancellationToken);
@@ -217,16 +208,13 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
-        await SetupDatabase(
-            44822,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 1;
-                x.TvShowSeasonDownloadTasksCount = 1;
-                x.TvShowEpisodeCount = 3;
-                x.TvShowEpisodeDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(44822, x =>
+        {
+            x.TvShowDownloadTasksCount = 1;
+            x.TvShowSeasonDownloadTasksCount = 1;
+            x.TvShowEpisodeCount = 3;
+            x.TvShowEpisodeDownloadTasksCount = 3;
+        });
 
         var tvShow = await IDbContext.DownloadTaskTvShow.AsNoTracking().FirstAsync(CancellationToken);
         var orderedChildTasks = await IDbContext.GetDownloadableChildTasks(tvShow.ToKey(), CancellationToken);
@@ -298,16 +286,13 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
-        await SetupDatabase(
-            44823,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 1;
-                x.TvShowSeasonDownloadTasksCount = 1;
-                x.TvShowEpisodeCount = 3;
-                x.TvShowEpisodeDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(44823, x =>
+        {
+            x.TvShowDownloadTasksCount = 1;
+            x.TvShowSeasonDownloadTasksCount = 1;
+            x.TvShowEpisodeCount = 3;
+            x.TvShowEpisodeDownloadTasksCount = 3;
+        });
 
         var tvShow = await IDbContext.DownloadTaskTvShow.AsNoTracking().FirstAsync(CancellationToken);
         var orderedChildTasks = await IDbContext.GetDownloadableChildTasks(tvShow.ToKey(), CancellationToken);
@@ -372,16 +357,13 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
-        await SetupDatabase(
-            44824,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 1;
-                x.TvShowSeasonDownloadTasksCount = 1;
-                x.TvShowEpisodeCount = 3;
-                x.TvShowEpisodeDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(44824, x =>
+        {
+            x.TvShowDownloadTasksCount = 1;
+            x.TvShowSeasonDownloadTasksCount = 1;
+            x.TvShowEpisodeCount = 3;
+            x.TvShowEpisodeDownloadTasksCount = 3;
+        });
 
         var season = await IDbContext.DownloadTaskTvShowSeason.AsNoTracking().FirstAsync(CancellationToken);
         var orderedChildTasks = await IDbContext.GetDownloadableChildTasks(season.ToKey(), CancellationToken);
@@ -446,15 +428,12 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
-        await SetupDatabase(
-            44825,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 1;
-                x.TvShowSeasonDownloadTasksCount = 2;
-                x.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(44825, x =>
+        {
+            x.TvShowDownloadTasksCount = 1;
+            x.TvShowSeasonDownloadTasksCount = 2;
+            x.TvShowEpisodeDownloadTasksCount = 2;
+        });
 
         var tvShow = await IDbContext.DownloadTaskTvShow.AsNoTracking().FirstAsync(CancellationToken);
 
@@ -523,15 +502,12 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
-        await SetupDatabase(
-            44826,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 1;
-                x.TvShowSeasonDownloadTasksCount = 2;
-                x.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(44826, x =>
+        {
+            x.TvShowDownloadTasksCount = 1;
+            x.TvShowSeasonDownloadTasksCount = 2;
+            x.TvShowEpisodeDownloadTasksCount = 2;
+        });
 
         var tvShow = await IDbContext.DownloadTaskTvShow.AsNoTracking().FirstAsync(CancellationToken);
 
@@ -594,15 +570,12 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
     public async Task ShouldPauseTheActiveDownloads_WhenAnotherDownloadTaskIsStarted()
     {
         // Arrange
-        await SetupDatabase(
-            76276,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 5;
-                x.TvShowSeasonDownloadTasksCount = 2;
-                x.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(76276, x =>
+        {
+            x.TvShowDownloadTasksCount = 5;
+            x.TvShowSeasonDownloadTasksCount = 2;
+            x.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
         var tvShowDownloadTasks = await dbContext
@@ -685,15 +658,12 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
     public async Task ShouldStopNewJobAndPreserveTaskStates_WhenPausingActiveDownloadFails()
     {
         // Arrange
-        await SetupDatabase(
-            76277,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 5;
-                x.TvShowSeasonDownloadTasksCount = 2;
-                x.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(76277, x =>
+        {
+            x.TvShowDownloadTasksCount = 5;
+            x.TvShowSeasonDownloadTasksCount = 2;
+            x.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
         var tvShowDownloadTasks = await dbContext
@@ -786,16 +756,13 @@ public class StartDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StartDownloa
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
-        await SetupDatabase(
-            11107,
-            x =>
-            {
-                x.TvShowDownloadTasksCount = 1;
-                x.TvShowSeasonDownloadTasksCount = 1;
-                x.TvShowEpisodeCount = 3;
-                x.TvShowEpisodeDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(11107, x =>
+        {
+            x.TvShowDownloadTasksCount = 1;
+            x.TvShowSeasonDownloadTasksCount = 1;
+            x.TvShowEpisodeCount = 3;
+            x.TvShowEpisodeDownloadTasksCount = 3;
+        });
 
         var tvShow = await IDbContext.DownloadTaskTvShow.AsNoTracking().FirstAsync(CancellationToken);
         var orderedChildTasks = await IDbContext.GetDownloadableChildTasks(tvShow.ToKey(), CancellationToken);

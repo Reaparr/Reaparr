@@ -2,7 +2,6 @@ using System.Net;
 using LukeHagar.PlexAPI.SDK;
 using LukeHagar.PlexAPI.SDK.Models.Components;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
-using Reaparr.PlexApi.Contracts;
 
 namespace Reaparr.PlexApi.UnitTests;
 
@@ -12,16 +11,13 @@ public class GetLibraryMediaTotalsCommandUnitTests : BaseUnitTest<GetLibraryMedi
     public async Task ShouldPreflightEveryProgressLayerBeforeRetrieval()
     {
         // Arrange
-        await SetupDatabase(
-            9205,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 0;
-                config.PlexTvShowLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(9205, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 0;
+            config.PlexTvShowLibraryCount = 1;
+        });
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         var sectionId = long.Parse(library.Key);
         var expectedTotals = new Dictionary<PlexMediaType, int>
@@ -54,7 +50,7 @@ public class GetLibraryMediaTotalsCommandUnitTests : BaseUnitTest<GetLibraryMedi
 
         Mock.Mock<IPlexApiClientFactory>()
             .Setup(x => x.CreateClientAsync(library.PlexServerId, 10, 1, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk.Object))
+            .ReturnsAsync(Result.Ok(sdk.Object))
             .Verifiable(Times.Once());
 
         // Act

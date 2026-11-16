@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Velopack;
 
 namespace Reaparr.AppHost;
@@ -8,13 +9,23 @@ namespace Reaparr.AppHost;
 /// </summary>
 public class Program
 {
-    private static readonly AppRuntimeInfo _appRuntimeInfo = new();
-    private static readonly AppBuildInfo _appBuildInfo = new();
+    private static readonly AppRuntimeInfo _appRuntimeInfo;
+    private static readonly AppBuildInfo _appBuildInfo;
     private static PathProvider? _pathProvider;
     private static DesktopStartupFailureDialog? _failureDialog;
 
+    static Program()
+    {
+        // Program type initialization runs before Main, so configure backend culture before constructing startup metadata.
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
+        _appRuntimeInfo = new AppRuntimeInfo();
+        _appBuildInfo = new AppBuildInfo();
+    }
+
     // ReSharper disable once InconsistentNaming
-    private static Serilog.ILogger _log => Log.ForContext(typeof(Program));
+    private static Serilog.ILogger _log => Log.ForContext<Program>();
 
     /// <summary>
     ///  The main method entry point for the application.
@@ -27,7 +38,7 @@ public class Program
 
         _pathProvider = new PathProvider(_appBuildInfo, _appRuntimeInfo);
         var logBuffer = new LogBufferService();
-        var signalRLogConfig = new SignalRLogConfig(_appRuntimeInfo, _pathProvider, logBuffer);
+        var signalRLogConfig = new SignalRLogConfig(_appRuntimeInfo, _pathProvider, logBuffer, _appBuildInfo);
         _failureDialog = new DesktopStartupFailureDialog(_appBuildInfo, _pathProvider, logBuffer);
 
         // Skip logger setup in integration test mode to preserve test logger
@@ -60,7 +71,7 @@ public class Program
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Host.ConfigureAutofacBuilder(logBuffer);
-            builder.Services.ConfigureServices(builder.Environment, _appRuntimeInfo);
+            builder.Services.ConfigureServices(builder.Environment, _appRuntimeInfo, _appBuildInfo);
             var app = builder.Build();
 
             if (!_appRuntimeInfo.IsIntegrationTestMode)
@@ -109,8 +120,8 @@ public class Program
 
     internal static async Task<Result> RunDesktopLifecycleAsync(
         WebApplication app,
-        CancellationToken cancellationToken = default,
-        Action<Uri>? openBrowser = null
+        Action<Uri>? openBrowser = null,
+        CancellationToken cancellationToken = default
     )
     {
         var services = app.Services;
@@ -221,6 +232,8 @@ public class Program
         _log.Here().Fatal("Reaparr failed to start!");
 
         result.LogFatal();
+
+        LogFactory.CloseAndFlush();
 
         if (_appBuildInfo.IsDesktopMode && !_appRuntimeInfo.IsIntegrationTestMode)
         {

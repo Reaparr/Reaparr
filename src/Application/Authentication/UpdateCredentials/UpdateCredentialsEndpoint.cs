@@ -31,11 +31,13 @@ public class UpdateCredentialsEndpoint : Endpoint<UpdateCredentialsEndpointReque
 {
     private readonly ILogger _log;
     private readonly IUserService _userService;
+    private readonly ITelemetry _telemetry;
 
-    public UpdateCredentialsEndpoint(ILogger log, IUserService userService)
+    public UpdateCredentialsEndpoint(ILogger log, IUserService userService, ITelemetry telemetry)
     {
         _log = log.ForContext<UpdateCredentialsEndpoint>();
         _userService = userService;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -69,13 +71,15 @@ public class UpdateCredentialsEndpoint : Endpoint<UpdateCredentialsEndpointReque
         if (user is null)
         {
             var result = Result.Fail("No app user found in the database").LogError();
+            _telemetry.CredentialsUpdateProcessed(result, false, false);
             await Send.FluentResult(result, ct);
             return;
         }
 
         var newUsername = req.Username;
         var newPassword = req.Password;
-
+        var usernameChanged = false;
+        var passwordChanged = false;
         // Validate before saving the username so password-policy failures leave both credentials unchanged.
         var passwordValidation = newPassword is null
             ? null
@@ -84,6 +88,7 @@ public class UpdateCredentialsEndpoint : Endpoint<UpdateCredentialsEndpointReque
         {
             var result = Result.Fail(passwordValidation.Errors.Select(e => e.Description)).LogError();
             result.Add400BadRequestError("Failed to update password");
+            _telemetry.CredentialsUpdateProcessed(result, false, false);
             await Send.FluentResult(result, ct);
             return;
         }
@@ -91,17 +96,21 @@ public class UpdateCredentialsEndpoint : Endpoint<UpdateCredentialsEndpointReque
         if (newUsername is not null)
         {
             // Update the username
+            var previousUsername = user.UserName;
             user.UserName = newUsername;
-            user.NormalizedUserName = newUsername.ToUpper();
+            user.NormalizedUserName = newUsername.ToUpperInvariant();
 
             var usernameResult = await _userService.UpdateAsync(user);
             if (!usernameResult.Succeeded)
             {
                 var result = Result.Fail(usernameResult.Errors.Select(e => e.Description)).LogError();
                 result.Add400BadRequestError("Failed to update username");
+                _telemetry.CredentialsUpdateProcessed(result, false, false);
                 await Send.FluentResult(result, ct);
                 return;
             }
+
+            usernameChanged = !string.Equals(previousUsername, newUsername, StringComparison.Ordinal);
         }
 
         if (newPassword is not null)
@@ -113,14 +122,20 @@ public class UpdateCredentialsEndpoint : Endpoint<UpdateCredentialsEndpointReque
             {
                 var result = Result.Fail(passwordResult.Errors.Select(e => e.Description)).LogError();
                 result.Add400BadRequestError("Failed to update password");
+                _telemetry.CredentialsUpdateProcessed(result, usernameChanged, false);
                 await Send.FluentResult(result, ct);
                 return;
             }
+
+            passwordChanged = true;
         }
 
         _log.Here().Warning("The Reaparr app credentials have been updated! Make sure this is intended");
 
+        var successResult = Result.Ok();
+        _telemetry.CredentialsUpdateProcessed(successResult, usernameChanged, passwordChanged);
+
         // Respond with success
-        await Send.FluentResult(Result.Ok(), ct);
+        await Send.FluentResult(successResult, ct);
     }
 }

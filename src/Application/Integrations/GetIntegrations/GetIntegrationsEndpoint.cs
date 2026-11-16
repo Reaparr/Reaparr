@@ -32,8 +32,8 @@ public class GetIntegrationsEndpoint : EndpointWithoutRequest<List<IntegrationSu
     {
         Get(ApiRoutes.IntegrationController);
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<List<IntegrationSummary>>))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
+            x.Produces<ResultDTO<List<IntegrationSummary>>>()
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError)
         );
     }
 

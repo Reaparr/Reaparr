@@ -13,15 +13,12 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
     )
     {
         // Arrange
-        await SetupDatabase(
-            88200,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 1;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88200, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 1;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskOtherVideoFiles.Include(x => x.Parent).SingleAsync(CancellationToken);
         DownloadTaskBase node = selection == DownloadTaskType.OtherVideo ? target.Parent! : target;
@@ -86,15 +83,12 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
     public async Task ShouldResumeOnlyNextOtherVideoMoveAndRestoreRejectedMove_WhenContinuing(bool failMove)
     {
         // Arrange
-        await SetupDatabase(
-            88330,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 4;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88330, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 4;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var files = (
             await dbContext
@@ -105,14 +99,13 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             .Cast<DownloadTaskFileBase>()
             .ToList();
         var download = files[0];
+        var parentId = ((DownloadTaskOtherVideoFile)download).ParentId;
         for (var index = 1; index < 3; index++)
         {
+            var fileId = files[index].Id;
             await dbContext
-                .DownloadTaskOtherVideoFiles.Where(x => x.Id == files[index].Id)
-                .ExecuteUpdateAsync(
-                    p => p.SetProperty(x => x.ParentId, ((DownloadTaskOtherVideoFile)download).ParentId),
-                    CancellationToken
-                );
+                .DownloadTaskOtherVideoFiles.Where(x => x.Id == fileId)
+                .ExecuteUpdateAsync(p => p.SetProperty(x => x.ParentId, parentId), CancellationToken);
         }
         var node = ((DownloadTaskOtherVideoFile)download).Parent!;
         DownloadStatus[] statuses =
@@ -128,7 +121,6 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
         selected.Select(x => x.Id).Order().ShouldBe(files.Take(3).Select(x => x.Id).Order());
         var moves = selected.ToList();
         moves.Count.ShouldBe(3);
-        var nextMove = moves.First();
         var error = new Error("move rejected");
         SetupDependencies(b => b.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>());
         foreach (var move in moves.Take(1))
@@ -188,15 +180,12 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
     public async Task ShouldRestorePausedOtherVideoAndPropagateCancellation_WhenStartIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            88340,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 1;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88340, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 1;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         await dbContext.SetDownloadStatus(file.ToKey(), DownloadStatus.AutoPaused);

@@ -8,11 +8,13 @@ public class ClearAllNotificationsEndpoint : EndpointWithoutRequest<CountRespons
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public ClearAllNotificationsEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public ClearAllNotificationsEndpoint(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<ClearAllNotificationsEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -30,6 +32,9 @@ public class ClearAllNotificationsEndpoint : EndpointWithoutRequest<CountRespons
         _log.Here().DebugApiCall(HttpContext);
         // Empty the table
         var deletedNotificationsCount = await _dbContext.Notifications.ExecuteDeleteAsync(ct);
+
+        _telemetry.NotificationsCleared(deletedNotificationsCount);
+
         await Send.FluentResult(Result.Ok(new CountResponseDTO(deletedNotificationsCount)), x => x, ct);
     }
 }

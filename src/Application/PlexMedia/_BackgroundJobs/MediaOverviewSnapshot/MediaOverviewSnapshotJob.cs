@@ -10,18 +10,21 @@ public sealed class MediaOverviewSnapshotJob : IJob
     private readonly ICommandExecutor _commandExecutor;
     private readonly IScheduler _scheduler;
     private readonly IMediaOverviewRebuildCoordinator _coordinator;
+    private readonly ITelemetry _telemetry;
 
     public MediaOverviewSnapshotJob(
         ILogger log,
         ICommandExecutor commandExecutor,
         IScheduler scheduler,
-        IMediaOverviewRebuildCoordinator coordinator
+        IMediaOverviewRebuildCoordinator coordinator,
+        ITelemetry telemetry
     )
     {
         _log = log.ForContext<MediaOverviewSnapshotJob>();
         _commandExecutor = commandExecutor;
         _scheduler = scheduler;
         _coordinator = coordinator;
+        _telemetry = telemetry;
     }
 
     public static JobKey GetJobKey() =>
@@ -29,6 +32,11 @@ public sealed class MediaOverviewSnapshotJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
+        using var telemetryScope = _telemetry.BeginJob(
+            TelemetryActivity.MediaOverviewSnapshot,
+            context.GetTelemetryContext()
+        );
+
         var cancellationToken = context.CancellationToken;
         var scope = _coordinator.BeginRebuild(DateTimeOffset.UtcNow);
         if (scope is null)
@@ -64,6 +72,7 @@ public sealed class MediaOverviewSnapshotJob : IJob
                 result.LogError();
                 _log.Here().Error("Media overview snapshot job failed");
                 context.SetResult(JobStatus.Failed, result);
+                _telemetry.CaptureErrors(result, TelemetryActivity.MediaOverviewSnapshot);
                 return;
             }
 
@@ -78,6 +87,8 @@ public sealed class MediaOverviewSnapshotJob : IJob
             {
                 var triggerResult = await TriggerFollowUpRebuildAsync(cancellationToken);
                 triggerResult.LogIfFailed();
+                if (triggerResult.IsFailed)
+                    _telemetry.CaptureErrors(triggerResult, TelemetryActivity.MediaOverviewSnapshot);
             }
         }
     }

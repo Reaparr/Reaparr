@@ -15,8 +15,11 @@
 				<QRow no-wrap>
 					<LanguageSelect
 						class="q-ml-md"
-						dense />
-					<AnimatedBackgroundToggleButton class="q-ml-sm" />
+						dense
+						@update:model-value="onLanguageChanged" />
+					<AnimatedBackgroundToggleButton
+						class="q-ml-sm"
+						@click="onBackgroundChanged" />
 				</QRow>
 			</QCol>
 			<!-- Navigation buttons -->
@@ -78,6 +81,7 @@ const settingsStore = useSettingsStore();
 const authStore = useAuthenticationStore();
 const folderPathStore = useFolderPathStore();
 const accountStore = useAccountStore();
+const telemetry = useTelemetry();
 const model = defineModel<number>({
 	default: 1,
 });
@@ -130,25 +134,39 @@ const isFinishButtonVisible = computed(() => {
 	return get(model) === props.maxPages;
 });
 
-function next() {
+function next(capture = true) {
 	if (get(model) < props.maxPages) {
-		set(model, get(model) + 1);
+		const nextStep = get(model) + 1;
+		if (capture) {
+			telemetry.setupNextRequested(nextStep);
+		}
+		set(model, nextStep);
 	}
 }
 
 function back() {
 	if (get(model) > 1) {
-		set(model, get(model) - 1);
+		const previousStep = get(model) - 1;
+		telemetry.setupPreviousRequested(previousStep);
+		set(model, previousStep);
 	}
+}
+function onLanguageChanged(): void {
+	telemetry.setupLanguageChanged();
+}
+
+function onBackgroundChanged(): void {
+	telemetry.setupBackgroundChanged();
 }
 
 function onDisclaimerAgree() {
+	telemetry.setupDisclaimerAccepted();
 	settingsStore.$patch({
 		generalSettings: {
 			hasAgreedToDisclaimer: true,
 		},
 	});
-	next();
+	next(false);
 }
 </script>
 

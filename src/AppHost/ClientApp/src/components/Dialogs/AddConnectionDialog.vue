@@ -132,6 +132,7 @@ import { useServerConnectionStore, useServerStore, useSubscription } from '#impo
 
 const serverStore = useServerStore();
 const connectionStore = useServerConnectionStore();
+const telemetry = useTelemetry();
 
 const url = ref<string>('');
 const { t } = useI18n();
@@ -246,6 +247,7 @@ const type = computed(() => {
 
 function checkConnection() {
 	set(loadingTestConnection, true);
+	telemetry.connectionUrlTestRequested(get(plexServerId));
 	set(response, null);
 	useSubscription(connectionStore.checkServerConnectionUrl(get(connection).url).subscribe({
 		next: (result) => {

@@ -351,8 +351,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { PlexMediaDTO } from '@dto';
-import { PlexMediaType, SortDirection, SortType, ViewMode } from '@dto';
+import { PlexMediaType, SortDirection, SortType, ViewMode, type PlexMediaDTO } from '@dto';
 import type { IMediaOverviewBarActions, ISortOption } from '@interfaces';
 import type { IMediaOverviewSort } from '@composables/event-bus';
 import { createDefaultMediaOverviewSort, toggleMediaOverviewSort } from '@composables';
@@ -362,6 +361,7 @@ import type { PhotoBrowseView } from '@/store/photoBrowsingStore';
 import { useSubscription } from '@vueuse/rxjs';
 import { get } from '@vueuse/core';
 
+const telemetry = useTelemetry();
 type ViewOption = {
 	label: string;
 	viewMode: ViewMode | PhotoBrowseView;
@@ -490,8 +490,13 @@ function changeSort(field: SortType): void {
 }
 
 function changeView(viewMode: ViewMode | PhotoBrowseView): void {
+	const viewChanged = !isSelected(viewMode);
+	const mediaType = props.photoMode ? PlexMediaType.PhotoAlbum : mediaOverviewStore.getMediaType;
+	if (viewChanged) {
+		telemetry.mediaViewChanged({ mode: viewMode, photo: props.photoMode }, props.libraryId, mediaType);
+	}
 	if (viewMode === ViewMode.Poster || viewMode === ViewMode.Table) {
-		settingsStore.updateDisplayMode(props.photoMode ? PlexMediaType.PhotoAlbum : mediaOverviewStore.getMediaType, viewMode);
+		settingsStore.updateDisplayMode(mediaType, viewMode);
 		return;
 	}
 	if (props.photoMode) {

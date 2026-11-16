@@ -91,7 +91,7 @@ public class QueueInspectPlexServerJobCommandHandler : ICommandHandler<QueueInsp
                 _scheduler.ExecuteJob<InspectPlexServerJob, InspectPlexServerJobPayload>(
                     InspectPlexServerJob.GetJobKey(serverId),
                     new InspectPlexServerJobPayload([serverId]),
-                    cancellationToken
+                    cancellationToken: cancellationToken
                 )
             )
         );

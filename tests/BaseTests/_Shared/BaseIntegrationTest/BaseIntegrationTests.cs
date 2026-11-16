@@ -1,3 +1,4 @@
+using System.Globalization;
 using Reaparr.IntegrationTests;
 
 namespace Reaparr.BaseTests;
@@ -5,9 +6,14 @@ namespace Reaparr.BaseTests;
 [NotInParallel("IntegrationTests")]
 public abstract class BaseIntegrationTests
 {
+    protected BaseIntegrationTests()
+    {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+    }
+
     private readonly ILogger _log = LogFactory.Create<BaseIntegrationTests>();
 
-    protected CancellationToken CancellationToken =>
+    protected static CancellationToken CancellationToken =>
         TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
 
     protected static async Task WaitForDatabaseConditionAsync(

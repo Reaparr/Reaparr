@@ -20,15 +20,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     public async Task ShouldCanonicalizeOnlyRefreshedLibraryTypeAndRestoreMediaCount_WhenStoredTypeIsLegacyArtist()
     {
         // Arrange
-        await SetupDatabase(
-            62614,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexAccountCount = 1;
-                config.PlexMusicLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(62614, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexAccountCount = 1;
+            config.PlexMusicLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var account = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
@@ -152,6 +149,85 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
                 x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()),
                 Times.Never()
             );
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.LibraryAccessChanged(
+                        account.Id,
+                        It.IsAny<Guid>(),
+                        It.Is<IReadOnlyCollection<PlexLibraryAccessRapport>>(reports =>
+                            reports.Count == 1
+                            && reports.Single().Data.Count == 1
+                            && reports.Single().Data.Single().State == PlexAccessState.Updated
+                            && reports.Single().Data.Single().PlexServerId == target.PlexServerId
+                            && reports.Single().Data.Single().PlexLibraryId == targetId
+                        )
+                    ),
+                Times.Once()
+            );
+    }
+
+    [Test]
+    public async Task ShouldEmitAccessChangedTelemetryForGrantedAndRevokedRows_WhenReconciliationCommits()
+    {
+        // Arrange
+        await SetupDatabase(62615, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 3;
+            config.PlexAccountCount = 1;
+        });
+        var dbContext = IDbContext;
+        var plexAccount = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
+        var libraries = await dbContext.PlexLibraries.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var revokedLibrary = libraries[^1];
+        var grantedLibrary = libraries[0];
+        var updatedLibrary = libraries[1];
+        await dbContext
+            .PlexAccountLibraries.Where(x => x.PlexAccountId == plexAccount.Id && x.PlexLibraryId == grantedLibrary.Id)
+            .ExecuteDeleteAsync(CancellationToken);
+        var incomingLibraries = new List<PlexLibrary> { grantedLibrary, updatedLibrary };
+        var request = new AddOrUpdatePlexLibrariesCommand
+        {
+            PlexAccountId = plexAccount.Id,
+            PlexLibraries = incomingLibraries.ToApiLibraries(DateTime.UtcNow),
+        };
+        Mock.Mock<ITelemetry>()
+            .Setup(x =>
+                x.LibraryAccessChanged(
+                    plexAccount.Id,
+                    It.IsAny<Guid>(),
+                    It.Is<IReadOnlyCollection<PlexLibraryAccessRapport>>(reports =>
+                        reports.Count == 1
+                        && reports
+                            .Single()
+                            .GetGranted.Select(row => row.PlexLibraryId)
+                            .SequenceEqual(new[] { grantedLibrary.Id })
+                        && reports
+                            .Single()
+                            .GetUpdated.Select(row => row.PlexLibraryId)
+                            .SequenceEqual(new[] { updatedLibrary.Id })
+                        && reports
+                            .Single()
+                            .GetRevoked.Select(row => row.PlexLibraryId)
+                            .SequenceEqual(new[] { revokedLibrary.Id })
+                    )
+                )
+            )
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await Sut.ExecuteAsync(request, CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var access = await dbContext
+            .PlexAccountLibraries.OrderBy(x => x.PlexLibraryId)
+            .Select(x => x.PlexLibraryId)
+            .ToListAsync(CancellationToken);
+        access.ShouldBe(incomingLibraries.Select(x => x.Id).Order());
+        Mock.Mock<ITelemetry>().Verify();
     }
 
     [Test]
@@ -160,14 +236,11 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         // Arrange
         var serverCount = 5;
         var libraryCount = 5;
-        var seed = await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = serverCount;
-                config.PlexAccountCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = serverCount;
+            config.PlexAccountCount = 1;
+        });
 
         var plexAccount = IDbContext.PlexAccounts.FirstOrDefault();
         plexAccount.ShouldNotBeNull();
@@ -249,14 +322,11 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         // Arrange
         var serverCount = 1;
         var libraryCount = 2;
-        var seed = await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = serverCount;
-                config.PlexAccountCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = serverCount;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = dbContext.PlexAccounts.FirstOrDefault();
@@ -300,15 +370,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         // Arrange
         var serverCount = 1;
         var libraryCount = 3;
-        await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = serverCount;
-                config.PlexMovieLibraryCount = libraryCount;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = serverCount;
+            config.PlexMovieLibraryCount = libraryCount;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = dbContext.PlexAccounts.FirstOrDefault();
@@ -360,15 +427,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     public async Task ShouldReportGrantedOnly_WhenExistingLibraryAccessIsRestored()
     {
         // Arrange
-        await SetupDatabase(
-            35,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(35, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
@@ -414,15 +478,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         // Arrange
         var serverCount = 5;
         var libraryCount = 5;
-        await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = serverCount;
-                config.PlexMovieLibraryCount = libraryCount;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = serverCount;
+            config.PlexMovieLibraryCount = libraryCount;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = dbContext.PlexAccounts.FirstOrDefault();
@@ -530,15 +591,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     public async Task ShouldNotMarkLibraryOutdated_WhenContentChangeWasAlreadySynced()
     {
         // Arrange
-        await SetupDatabase(
-            33,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(33, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
@@ -580,15 +638,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     public async Task ShouldMarkLibraryOutdated_WhenContentChangedAfterLastSync()
     {
         // Arrange
-        await SetupDatabase(
-            34,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(34, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
@@ -640,15 +695,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     public async Task ShouldPreserveComputedLibraryMetrics_WhenIncomingPlexLibraryRefreshContainsDefaultMetrics()
     {
         // Arrange
-        await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 3;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 3;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = await dbContext.PlexAccounts.FirstAsync(CancellationToken);
@@ -762,15 +814,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
         // Arrange
         var serverCount = 5;
         var libraryCount = 6;
-        await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = serverCount;
-                config.PlexMovieLibraryCount = libraryCount;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = serverCount;
+            config.PlexMovieLibraryCount = libraryCount;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = dbContext.PlexAccounts.FirstOrDefault();
@@ -818,15 +867,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     public async Task ShouldBackfillGrantedHistoryEventOnlyOnce_WhenLibraryIsUpdatedAcrossMultipleRefreshes()
     {
         // Arrange
-        await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = dbContext.PlexAccounts.FirstOrDefault();
@@ -868,15 +914,12 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     public async Task ShouldNotBackfillGrantedHistoryEvent_WhenLibraryAlreadyHasAnyHistory()
     {
         // Arrange
-        await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = dbContext.PlexAccounts.FirstOrDefault();
@@ -924,14 +967,11 @@ public class AddOrUpdatePlexLibrariesCommandUnitTests : BaseUnitTest<AddOrUpdate
     public async Task ShouldDeduplicateIncomingLibrariesByServerAndUuid_WhenPlexReturnsDuplicateRows()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            32,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(32, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexAccount = dbContext.PlexAccounts.FirstOrDefault();

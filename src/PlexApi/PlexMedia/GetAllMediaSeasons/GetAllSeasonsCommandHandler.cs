@@ -1,4 +1,4 @@
-namespace Reaparr.PlexApi.GetAllMediaSeasons;
+namespace Reaparr.PlexApi;
 
 public class GetAllSeasonsCommandHandler : ICommandHandler<GetAllMediaSeasonsCommand, Result<List<PlexTvShowSeason>>>
 {

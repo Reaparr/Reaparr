@@ -1,5 +1,3 @@
-using Reaparr.Settings.Config;
-
 namespace Reaparr.AppHost;
 
 /// <summary>

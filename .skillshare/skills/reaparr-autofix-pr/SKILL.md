@@ -25,13 +25,28 @@ The operating loop is evidence-driven and batch-oriented:
 4. diagnose all independent proven root causes from the current run before pushing; do not wait for unrelated jobs to finish before starting an evidenced repair;
 5. perform a bounded failure-family sweep for equivalent occurrences;
 6. fix the complete proven repair batch, using separate focused commits when appropriate;
-7. run focused checks and the complete affected gates locally when practical;
+7. complete the bounded local verification defined below; use existing CI evidence instead of rerunning a failing baseline;
 8. push the verified commit batch once;
 9. wait for CI on the new SHA and repeat until green or genuinely blocked.
 
 Minimize expensive workflow runs without sacrificing evidence or verification. Commit granularity and push granularity are independent: keep commits focused, but normally push all verified repairs from one completed run together.
 
 **Never merge the PR.** Merging is exclusively the user's responsibility.
+
+## Mandatory CI-Driven Execution Contract
+
+Use this sequence: **bind current SHA → read failed CI evidence → trace source → repair the complete batch → one bounded verification pass → commit and push once → watch replacement CI**.
+
+- **Evidence first:** the failed CI run is the reproduction. When its logs/artifacts and source establish the cause, proceed directly to the fix. A local pre-fix reproduction is not a prerequisite.
+- **Failure ledger:** keep a concise entry for each failed job: run/SHA, first causal error, supporting source/artifact, repair paths, and verification outcome. Every repair and diagnostic command must answer a question in that ledger.
+- **Bounded verification:** finish all related implementation and test edits first. Then choose the smallest test/check that directly covers each changed behavior. Execute it once; a completed result remains valid until a relevant edit invalidates it.
+- **CI owns full gates:** full test projects, solution-wide builds, frontend suites, Cypress matrices, coverage, Docker, and desktop builds run in the replacement workflow. Run a full gate locally only when the user explicitly requests it or a specific unresolved CI diagnosis cannot be answered by a narrower check. Mere local availability, shared-file changes, or a desire for extra confidence is not justification.
+- **One timeout is enough:** before launching a local diagnostic or verification, set and record a finite execution timeout, or use tooling with a known finite limit. On expiry or runner unavailability, record incomplete verification and return to the repair/push/CI sequence. Do not extend the limit, switch runners, invoke direct executables, or add suites solely to obtain a local green result. Report the limitation; replacement CI must prove the gate.
+- **Local failures are not new scope:** inspect their evidence once to distinguish an introduced repair regression from an unrelated issue. Correct an introduced regression, then rerun only the invalidated check. An unrelated local failure does not authorize repository repairs or a new investigation; record it and let the replacement CI establish whether it is pipeline-relevant.
+- **Preserve the harness:** retain existing imports, test isolation attributes, cancellation behavior, and fixtures unless changing them is the evidenced repair. Review the complete repair diff before committing; accidental harness changes must be restored.
+- **After push, watch CI:** do not start local validation while the replacement workflow runs. Diagnose new terminal CI failures from that exact SHA; green ends pipeline work immediately.
+
+Before any local validation command, state the failed CI job, the changed behavior it verifies, and why the selected scope is minimal. If these cannot be named, omit the command. A permission denial still requires authorization for the underlying operation; this contract never authorizes another execution path.
 
 ## Strict Scope
 
@@ -42,7 +57,7 @@ It may:
 - inspect the existing PR and workflow runs;
 - read failed-job logs, annotations, and artifacts;
 - edit code, tests, configuration, workflows, and build files when necessary to fix a demonstrated CI failure;
-- run focused and affected local checks;
+- run only the bounded local checks allowed by the execution contract;
 - create focused repair commits;
 - push those commits to the current PR branch;
 - wait for and monitor replacement CI runs;
@@ -133,7 +148,7 @@ Trust the workflow conditions when deciding whether a skipped job is legitimatel
 - Never commit logs, coverage output, test results, screenshots, videos, build artifacts, secrets, or unrelated generated files.
 - Do not make speculative edits before examining the failed job's complete logs and relevant artifacts.
 - Diagnose each terminal failure completely before editing it. Before pushing, diagnose every failure in the completed current-SHA run.
-- Keep unrelated repairs in separate focused commits, but batch their push after all are locally verified.
+- Keep unrelated repairs in separate focused commits, then batch their push after bounded verification outcomes are recorded.
 - Before pushing, perform a bounded failure-family sweep across sibling tests, mirrored implementations, direct usages, and workflow matrices. Fix only equivalent occurrences proven by source evidence.
 - Do not keep pushing after CI is fully green.
 
@@ -224,14 +239,14 @@ Classify each failure before changing code:
 - **transient infrastructure/runner failure:** download, runner, service, port, or process failure without a demonstrated repository cause;
 - **unknown:** evidence is insufficient.
 
-Do not change repository code for transient or unknown failures. Re-run locally or through the permitted GitHub mechanism to gather evidence first. A local test-tool timeout is neither a test failure nor successful verification; retry with a focused command, inspect the still-running process/output when available, or use another project-approved test tool.
+For transient or unknown failures, gather missing GitHub logs, annotations, and artifacts first. Rerun the affected GitHub job through the permitted mechanism when that is the narrowest way to distinguish infrastructure from repository behavior. Use a local diagnostic only for a specific unresolved question under the execution contract. A local timeout is incomplete verification, not a reason to switch runners or expand local execution.
 
 ## Phase 4 — Batched Repair Loop
 
 Process terminal failures from the current-SHA run as one repair batch. A completed failed job may be diagnosed and repaired before unrelated jobs finish, but the batch must remain open until every applicable job in that run is terminal.
 
 1. retrieve complete evidence for each terminal failed job before editing that job's failure;
-2. reproduce each deterministic or likely repository failure locally when practical;
+2. use CI as the reproduction; run a local diagnostic only when a specific causal question remains unresolved;
 3. trace each failing path and establish intended behavior from source and contracts;
 4. perform a bounded failure-family sweep:
    - inspect sibling or mirrored tests and implementations;
@@ -239,44 +254,28 @@ Process terminal failures from the current-SHA run as one repair batch. A comple
    - compare workflow matrices against files/projects that actually exist;
    - inspect equivalent insert, serialization, or mock setup patterns;
 5. implement the smallest root-cause fixes for all proven occurrences;
-6. run every focused failing test/check;
-7. run the complete affected gate locally unless it is hosted-only, prohibitively unavailable, or a project-approved tool cannot complete it;
-8. inspect diagnostics and the complete repair diff;
+6. select and execute the smallest behavior-covering checks under the execution contract;
+7. record passed, failed, timed-out, or unavailable outcomes; leave complete gate execution to replacement CI;
+8. inspect required diagnostics and the complete repair diff, preserving unrelated harness behavior;
 9. create separate focused Reaparr-conformant commits for independent root causes;
-10. after all batch repairs are verified, push the commit batch once without force;
+10. after bounded verification and all current-run diagnoses are complete, push the commit batch once without force;
 11. verify the PR head SHA updated to the final pushed commit;
 12. wait for the workflow run for that new exact SHA;
 13. inspect every job in the replacement run and repeat only for newly evidenced failures.
 
 Automatic commit/push is part of this loop. Do not ask for confirmation for each narrowly scoped repair. Do not push immediately after the first fix while other failures from the same completed run remain undiagnosed or while a bounded family sweep is incomplete.
 
-### Local verification commands
+### Selecting Local Verification
 
-Use local checks to shorten feedback, but GitHub CI remains authoritative.
+This section is not a command checklist. Read the affected package scripts/project configuration and choose only the command needed for the failed job and changed behavior.
 
-For frontend gates, from the repository root:
+- **Test failure:** run the exact failing method, parameterized cases, class, or frontend test file that covers the repair. Use the repository-approved TUnit test tooling or Bun/Vitest/Cypress route. CI already supplies pre-fix failure evidence.
+- **Type/lint/build failure:** run the narrowest relevant compiler, typecheck, or lint check after editing. Run solution-wide compilation locally only when the demonstrated failure cannot be verified more narrowly.
+- **Workflow failure:** inspect the changed workflow/action references and use targeted workflow validation when available. Do not run unrelated application suites.
+- **Hosted-only failure:** make the source-evidenced repair and require replacement CI to verify the affected platform, architecture, credentials, or service.
+- **Timeout/unavailable check:** record the exact command/tool, result, and unverified behavior. Continue with the evidenced batch and let replacement CI verify it; if evidence is insufficient to justify a repair, report that blocker instead of guessing.
 
-```bash
-bun --cwd src/AppHost/ClientApp run typecheck
-bun --cwd src/AppHost/ClientApp run unit-test
-bun --cwd src/AppHost/ClientApp run lint
-bun --cwd src/AppHost/ClientApp run cypress:ci
-```
-
-Focused Vitest/Cypress runs are diagnostic only. Run the complete affected gate before pushing whenever the gate is locally available. If it cannot be completed, record the exact blocker or tool timeout and rely on the replacement GitHub run; do not silently treat incomplete execution as verification. Do not substitute `lint:fix` for the final `lint` verification.
-
-For backend solution compilation, use the repository's native .NET commands:
-
-```bash
-dotnet restore Reaparr.sln
-dotnet build Reaparr.sln --no-restore
-```
-
-Inspect and resolve every returned build problem before pushing. Use the narrowest command that reproduces the CI failure, and preserve the complete command output as evidence.
-
-For tests, match the TUnit/Microsoft.Testing.Platform behavior in the current workflow through the applicable test MCP tooling. Use focused filters during diagnosis, then run the complete affected project before pushing when practical. Follow the backend test skills and `dotnet-test-mcp` requirements.
-
-For hosted-only gates—Cypress Cloud parallel recording, amd64/arm64 Docker runners, Windows/Linux/macOS desktop builds, or credential-dependent steps—do not install host packages or request secrets merely to recreate CI. Make the evidence-based repository fix and require the next GitHub run to prove it.
+Run only invalidated checks after correcting an introduced regression. A method run followed by its class, project, solution, and then another runner is not a verification strategy. Do not use auto-fix, suppression, retry, or timeout changes to manufacture passing evidence.
 
 ### Commit discipline
 
@@ -290,7 +289,7 @@ Before every automatic repair commit:
 - include no AI attribution;
 - do not amend a pushed commit.
 
-Use separate commits for independent root causes unless one change necessarily fixes them together. Do not push after each commit by default. After the entire current-run repair batch passes local verification, push all focused commits normally to the established upstream PR branch in one operation.
+Use separate commits for independent root causes unless one change necessarily fixes them together. Push the complete diagnosed batch once after recording bounded verification outcomes. A documented local timeout does not require a full-suite rerun before pushing; the replacement workflow is the full-gate verifier.
 
 ### Pre-push consistency checks
 
@@ -300,7 +299,7 @@ Before pushing the batch:
 - verify changed workflow references, local actions, reusable workflows, package scripts, and artifact names are internally consistent;
 - search for equivalent occurrences of each demonstrated defect family;
 - run `git diff --check`, inspect every staged diff, and confirm unrelated working-tree changes remain unstaged;
-- confirm all focused checks passed and record whether each complete affected gate passed, timed out, or was hosted-only.
+- record each selected local check's outcome and the complete gates intentionally delegated to replacement CI.
 
 ## Phase 5 — Evaluate Every Replacement Run
 

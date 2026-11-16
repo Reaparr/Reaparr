@@ -87,15 +87,12 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
                 }
             )
             .Verifiable(Times.Exactly(2));
-        await SetupDatabase(
-            13001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(13001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -120,18 +117,18 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
 
         var sut = CreateSut(dashWrapperMock);
         var startTask = sut.Start(downloadTask.ToKey(), CancellationToken);
-        Task<Result>? stopTask = null;
+        Task<Result> stopTask;
         try
         {
             await startTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
             stopTask = sut.StopAsync();
             await runnerStopEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
-            stopTask!.IsCompleted.ShouldBeFalse();
+            stopTask.IsCompleted.ShouldBeFalse();
             runnerStopRelease.TrySetResult();
             await stoppedWriteEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
-            stopTask!.IsCompleted.ShouldBeFalse();
+            stopTask.IsCompleted.ShouldBeFalse();
             stoppedWriteRelease.TrySetResult();
-            var stopResult = await stopTask!.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
+            var stopResult = await stopTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
             var startResult = await startTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
 
             stopResult.IsSuccess.ShouldBeTrue();
@@ -168,15 +165,12 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
     public async Task ShouldAcceptCancelledRunnerStop_AndAwaitTerminalWorkBeforePersistingStopped()
     {
         // Arrange
-        await SetupDatabase(
-            13004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(13004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -256,15 +250,12 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Exactly(3));
-        await SetupDatabase(
-            13002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(13002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
@@ -316,15 +307,12 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
     public async Task ShouldAwaitRunnerAndTerminalWorkBeforeDisposeAsync()
     {
         // Arrange
-        await SetupDatabase(
-            13003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(13003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var serverMachineIdentifier = await IDbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);

@@ -11,7 +11,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             library,
             [new SourceRoot("/fixture/photos", null)],
             [CreateFile(201, 301, "/fixture/photos/Trips/one.jpg"), CreateFile(202, 302, "/fixture/photos/two.jpg")],
-            [new(101, "Album A"), new(102, "Album B")],
+            [(101, "Album A"), (102, "Album B")],
             [(101, 201), (102, 201), (101, 202)]
         );
 
@@ -53,7 +53,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
                 CreateFile(201, 301, "/fixture/photos/Trips/Renamed/one.jpg"),
                 CreateFile(202, 302, "/fixture/photos/two.jpg"),
             ],
-            [new(101, "Album A"), new(102, "Album B")],
+            [(101, "Album A"), (102, "Album B")],
             [(102, 201), (101, 202)]
         );
         var secondResult = await TestHandlerExecuteAsync<CrudPhotosReport>(new SyncPlexPhotosCommand(second, true));
@@ -113,7 +113,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
 
         result.IsSuccess.ShouldBeTrue(result.ToString());
         var retainedRoot = await IDbContext.PlexPhotoFolders.SingleAsync(x => x.Id == rootId, CancellationToken);
-        retainedRoot.IsActive.ShouldBe((bool?)false);
+        retainedRoot.IsActive.ShouldBe(false);
         (await IDbContext.PlexPhotoFolders.CountAsync(x => x.ParentId != null, CancellationToken)).ShouldBe(0);
         (await IDbContext.PlexPhotoMediaData.SingleAsync(CancellationToken)).PlexPhotoFolderId.ShouldBeNull();
     }
@@ -127,7 +127,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             library,
             [new SourceRoot("/fixture/photos", null)],
             [CreateFile(250, 350, "/fixture/photos/one.jpg"), CreateFile(251, 351, "/fixture/photos/two.jpg")],
-            [new(150, "Album")],
+            [(150, "Album")],
             [(150, 250), (150, 251)]
         );
         (await TestHandlerExecuteAsync<CrudPhotosReport>(new SyncPlexPhotosCommand(initial))).IsSuccess.ShouldBeTrue();
@@ -287,21 +287,21 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             library,
             [new SourceRoot("/fixture/photos", null)],
             [CreateFile(260, 360, "/fixture/photos/original.jpg")],
-            [new(160, "Original")],
+            [(160, "Original")],
             [(160, 260)]
         );
         var seeded = await TestHandlerExecuteAsync<CrudPhotosReport>(new SyncPlexPhotosCommand(initial));
         seeded.IsSuccess.ShouldBeTrue(seeded.ToString());
 
         var originalSyncedAt = new DateTime(2026, 10, 20, 10, 0, 0, DateTimeKind.Utc);
-        var originalSyncedContentChangedAt = 456_789L;
+        const long originalSyncedContentChangedAt = 456_789L;
         await IDbContext
             .PlexLibraries.Where(x => x.Id == library.Id)
             .ExecuteUpdateAsync(
                 setters =>
                     setters
-                        .SetProperty(x => x.SyncedAt, (DateTime?)originalSyncedAt)
-                        .SetProperty(x => x.SyncedContentChangedAt, (long?)originalSyncedContentChangedAt)
+                        .SetProperty(x => x.SyncedAt, originalSyncedAt)
+                        .SetProperty(x => x.SyncedContentChangedAt, originalSyncedContentChangedAt)
                         .SetProperty(x => x.Outdated, true),
                 CancellationToken
             );
@@ -455,21 +455,21 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
             library,
             [new SourceRoot("/fixture/photos", null)],
             [CreateFile(270, 370, "/fixture/photos/original.jpg")],
-            [new(170, "Original")],
+            [(170, "Original")],
             [(170, 270)]
         );
         var seeded = await TestHandlerExecuteAsync<CrudPhotosReport>(new SyncPlexPhotosCommand(initial));
         seeded.IsSuccess.ShouldBeTrue(seeded.ToString());
 
         var originalSyncedAt = new DateTime(2026, 10, 20, 11, 0, 0, DateTimeKind.Utc);
-        var originalSyncedContentChangedAt = 567_890L;
+        const long originalSyncedContentChangedAt = 567_890L;
         await IDbContext
             .PlexLibraries.Where(x => x.Id == library.Id)
             .ExecuteUpdateAsync(
                 setters =>
                     setters
-                        .SetProperty(x => x.SyncedAt, (DateTime?)originalSyncedAt)
-                        .SetProperty(x => x.SyncedContentChangedAt, (long?)originalSyncedContentChangedAt)
+                        .SetProperty(x => x.SyncedAt, originalSyncedAt)
+                        .SetProperty(x => x.SyncedContentChangedAt, originalSyncedContentChangedAt)
                         .SetProperty(x => x.Outdated, true),
                 CancellationToken
             );
@@ -541,7 +541,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
         var command = new SyncPlexPhotosCommand(cancelled);
         (await new SyncPlexPhotosCommandValidator().ValidateAsync(command, CancellationToken)).IsValid.ShouldBeTrue();
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
 
         // Act
         var result = await Mock.Create<SyncPlexPhotosCommandHandler>().ExecuteAsync(command, cancellation.Token);
@@ -636,7 +636,7 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
     private Task<Result<PhotoAssetPageDTO>> SearchPhotoAssetsAsync(
         SearchPhotoAssetsQueryHandler searchHandler,
         string searchTerm
-    ) => searchHandler.ExecuteAsync(new SearchPhotoAssetsQuery(searchTerm, 1, 100), CancellationToken);
+    ) => searchHandler.ExecuteAsync(new SearchPhotoAssetsQuery(searchTerm), CancellationToken);
 
     private static InsertMediaMetaDataCommandResponse CreateMetadata(
         PlexLibrary databaseLibrary,
@@ -663,8 +663,8 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
                 PlexLibraryId = library.Id,
                 ParentId = null,
                 RelativePath = string.Empty,
-                Title =
-                    rootInput.Path.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? rootInput.Path,
+                Title = rootInput.Path.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()
+                    ?? rootInput.Path,
                 RootIdentityKey = rootInput.LocationId is > 0
                     ? $"id:{rootInput.LocationId}"
                     : $"path:posix:{rootInput.Path}",

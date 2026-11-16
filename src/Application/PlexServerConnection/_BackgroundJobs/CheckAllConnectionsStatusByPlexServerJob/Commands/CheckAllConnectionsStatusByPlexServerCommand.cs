@@ -109,11 +109,12 @@ public class CheckAllConnectionsStatusByPlexServerHandler
         if (currentOnlineStatus)
             return Result.Ok(combinedResults.Value.ToList());
 
-        return _log.Here()
+        var warningResult = _log.Here()
             .WarningResult(
                 "All connections to plex server with name: {PlexServerName} and id: {PlexServerId} failed to connect",
                 plexServerName,
                 plexServerId
             );
+        return Result.Ok(combinedResults.Value.ToList()).WithReasons(warningResult.Reasons);
     }
 }

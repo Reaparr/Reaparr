@@ -1,6 +1,6 @@
 namespace Reaparr.Data.Contracts;
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsFolderPaths
 {
     /// <summary>
     /// Get the current download <see cref="FolderPath"/>.

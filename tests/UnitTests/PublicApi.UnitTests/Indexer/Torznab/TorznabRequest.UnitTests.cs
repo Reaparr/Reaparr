@@ -1,5 +1,3 @@
-using Reaparr.Application.Contracts;
-
 namespace Reaparr.PublicAPI.UnitTests;
 
 public class TorznabRequestUnitTests
@@ -126,5 +124,90 @@ public class TorznabRequestUnitTests
 
         // Assert
         result.IsValid.ShouldBe(expectedValid);
+    }
+
+    [Test]
+    [Arguments(TorznabQueryType.Search, ExternalIndexerQueryType.Search)]
+    [Arguments(TorznabQueryType.TvSearch, ExternalIndexerQueryType.TvSearch)]
+    [Arguments(TorznabQueryType.Movie, ExternalIndexerQueryType.Movie)]
+    public void ShouldProjectSearchAndRssWithoutCredentials_WhenBuildingTelemetryReports(
+        TorznabQueryType queryType,
+        ExternalIndexerQueryType expectedType
+    )
+    {
+        // Arrange
+        var integration = new IntegrationIdentity(
+            IntegrationType.Radarr,
+            Guid.Parse("473cf359-8c22-4f5d-8641-2a6384b48c65")
+        );
+        var rssRequest = new TorznabRequest
+        {
+            Type = queryType,
+            Query = string.Empty,
+            Season = 0,
+            Episode = 0,
+            TvdbId = 0,
+            ImdbId = string.Empty,
+            TmdbId = 0,
+            ApiKey = "private-indexer-key",
+            Limit = 50,
+            Offset = 0,
+            Categories = [2000, 5030],
+            Attributes = [],
+            Integration = integration,
+        };
+        var searchRequest = rssRequest with
+        {
+            Query = "The Matrix",
+            ImdbId = "tt0133093",
+            TmdbId = 603,
+            TvdbId = 456,
+            Season = 2,
+            Episode = 3,
+        };
+        var response = Result.Ok(
+            new TorznabMediaSearchResponseDTO
+            {
+                Channel = new TorznabChannel
+                {
+                    Items = [new TorznabItem(), new TorznabItem()],
+                    Response = new TorznabResponseMetadata { Total = 7 },
+                },
+            }
+        );
+        var cancelled = Result.Fail<TorznabMediaSearchResponseDTO>(
+            new ExceptionalError(new OperationCanceledException())
+        );
+
+        // Act
+        var rss = rssRequest.ToTelemetryReport(response);
+        var search = searchRequest.ToTelemetryReport(cancelled);
+
+        // Assert
+        rss.Integration.ShouldBe(integration);
+        rss.Type.ShouldBe(expectedType);
+        rss.Mode.ShouldBe(TelemetryMode.Rss);
+        rss.Query.ShouldBe(string.Empty);
+        rss.ImdbId.ShouldBe(string.Empty);
+        rss.TmdbId.ShouldBe(0);
+        rss.TvdbId.ShouldBe(0);
+        rss.Season.ShouldBe(0);
+        rss.Episode.ShouldBe(0);
+        rss.Categories.ShouldBe([2000, 5030]);
+        rss.ReturnedItemCount.ShouldBe(2);
+        rss.TotalCount.ShouldBe(7);
+        search.Integration.ShouldBe(integration);
+        search.Type.ShouldBe(expectedType);
+        search.Mode.ShouldBe(TelemetryMode.Search);
+        search.Query.ShouldBe("The Matrix");
+        search.ImdbId.ShouldBe("tt0133093");
+        search.TmdbId.ShouldBe(603);
+        search.TvdbId.ShouldBe(456);
+        search.Season.ShouldBe(2);
+        search.Episode.ShouldBe(3);
+        search.Categories.ShouldBe([2000, 5030]);
+        search.ReturnedItemCount.ShouldBe(0);
+        search.TotalCount.ShouldBe(0);
+        System.Text.Json.JsonSerializer.Serialize(new[] { rss, search }).ShouldNotContain(rssRequest.ApiKey);
     }
 }

@@ -14,11 +14,11 @@ public static class PlexMediaQualityExtensions
     }
 
     public static (PlexMusicTrackMediaData? File, AudioQuality Quality) PickAudioQuality(
-        this IEnumerable<PlexMusicTrackMediaData> files,
+        this ICollection<PlexMusicTrackMediaData> files,
         int? selectedDataId = null
     )
     {
-        var selected = selectedDataId is int id ? files.FirstOrDefault(x => x.Id == id) : null;
+        var selected = selectedDataId is { } id ? files.FirstOrDefault(x => x.Id == id) : null;
         var best = selected ?? files.GetBestAudioFile();
         if (best is not null)
             return (best, best.AudioQuality);

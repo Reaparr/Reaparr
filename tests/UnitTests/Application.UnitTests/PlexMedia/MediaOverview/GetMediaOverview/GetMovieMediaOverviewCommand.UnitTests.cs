@@ -9,15 +9,12 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     public async Task ShouldReturnOrderedBoundedMoviePageFromSnapshotRows()
     {
         // Arrange
-        await SetupDatabase(
-            84001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(84001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+        });
         var movieIds = await IDbContext.PlexMovies.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = await IDbContext
             .PlexMovies.Where(x => x.Id == movieIds[0])
@@ -98,15 +95,12 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     public async Task ShouldBuildNavigationIndexesFromFullOrderedSnapshot_WhenFirstPageIsBounded()
     {
         // Arrange
-        await SetupDatabase(
-            84003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(84003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+        });
         var dbContext = IDbContext;
         var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = movies[0].PlexLibraryId;
@@ -155,15 +149,12 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     public async Task ShouldReturnNavigationIndexes_WhenRequestingLaterPage()
     {
         // Arrange
-        await SetupDatabase(
-            84005,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(84005, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+        });
         var dbContext = IDbContext;
         var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = movies[0].PlexLibraryId;
@@ -218,15 +209,12 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     public async Task ShouldReturnNavigationIndexes_ForEverySupportedSort(string sort)
     {
         // Arrange
-        await SetupDatabase(
-            84004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(84004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+        });
         var dbContext = IDbContext;
         var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = movies[0].PlexLibraryId;
@@ -281,15 +269,12 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     [Test]
     public async Task ShouldFilterSnapshotRowsBeforePaging()
     {
-        await SetupDatabase(
-            84002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(84002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
         var movies = await IDbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var libraryId = movies[0].PlexLibraryId;
         var setupContext = IDbContext;
@@ -407,15 +392,12 @@ public class GetMovieMediaOverviewCommandUnitTests : BaseCommandUnitTest<GetMedi
     public async Task ShouldPropagateTypedQueryFailure_WhenMovieSnapshotIsMissing()
     {
         // Arrange
-        await SetupDatabase(
-            84008,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(84008, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexMovies.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
         (await dbContext.MediaOverviewMovieSnapshots.CountAsync(CancellationToken)).ShouldBe(0);

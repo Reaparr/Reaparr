@@ -7,16 +7,13 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
     public async Task ShouldCreateMissingHierarchyAndEverySelectedPartWithLog_WhenTrackIsSelected()
     {
         // Arrange
-        await SetupDatabase(
-            62605,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(62605, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var dbContext = IDbContext;
         var track = await dbContext
             .PlexMusicTracks.Include(x => x.PlexAlbum)
@@ -97,16 +94,13 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
     public async Task ShouldUseRequestedOriginalAndSkipDuplicateAtNewDestination_WhenTrackAlreadyExists()
     {
         // Arrange
-        await SetupDatabase(
-            62607,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(62607, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var dbContext = IDbContext;
         var track = await dbContext
             .PlexMusicTracks.Include(x => x.PlexAlbum)
@@ -187,16 +181,13 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            62615,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 2;
-            }
-        );
+        await SetupDatabase(62615, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 2;
+        });
         var dbContext = IDbContext;
         var tracks = await dbContext
             .PlexMusicTracks.Include(x => x.PlexAlbum)
@@ -309,16 +300,13 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
     public async Task ShouldFallBackToAutomaticOriginal_WhenRequestedDataIdIsMissing()
     {
         // Arrange
-        await SetupDatabase(
-            62611,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(62611, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var track = await IDbContext.PlexMusicTracks.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
         var automatic = track.MediaDataList.PickMediaQuality()!;
         var selection = new DownloadMediaDTO
@@ -358,16 +346,13 @@ public class GenerateDownloadTaskMusicTracksCommandUnitTests
     public async Task ShouldRejectTrackFromAnotherLibraryWithoutCreatingHierarchy_WhenOwnershipMismatches()
     {
         // Arrange
-        await SetupDatabase(
-            62609,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 2;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(62609, config =>
+        {
+            config.PlexMusicLibraryCount = 2;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var tracks = await IDbContext.PlexMusicTracks.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var selection = new DownloadMediaDTO
         {

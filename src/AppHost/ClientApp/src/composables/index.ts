@@ -6,3 +6,4 @@ export * from './useFlexQueryDsl';
 export * from './translations';
 export * from './download-schedule';
 export * from './useDownloadScheduleTimes';
+export { useTelemetry } from './telemetry/useTelemetry';

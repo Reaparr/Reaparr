@@ -44,7 +44,6 @@ public abstract class ComparisonSortingTestBase<TCommand> : BaseCommandUnitTest<
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(expectedInvocationCount));
     }
-
 }
 
 public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
@@ -170,10 +169,9 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
         result.Errors.Count.ShouldBe(0);
         result.Value.TotalCount.ShouldBe(4);
         result.Value.MediaCount.ShouldBe(4);
-        result.Value.NavigationIndexes
-            .Select(x => (x.Label, x.Index))
-            .ShouldBe([("720", 0), ("1080", 2)]);
-        result.Value.Items.Select(x => (x.Id, x.Qualities.Single().VideoQuality, x.ComparisonId))
+        result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([("720", 0), ("1080", 2)]);
+        result
+            .Value.Items.Select(x => (x.Id, x.Qualities.Single().VideoQuality, x.ComparisonId))
             .ShouldBe([
                 (fixture.Ids[1], VideoQuality.HD, PlexMediaComparisonState.Owned.ToComparisonId()),
                 (fixture.Ids[3], VideoQuality.HD, PlexMediaComparisonState.Missing.ToComparisonId()),
@@ -185,15 +183,12 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
 
     private async Task<(int LibraryId, List<int> Ids)> ArrangeMovieFixtureAsync()
     {
-        await SetupDatabase(
-            70240,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70240, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
 
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
@@ -208,14 +203,16 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
         for (var index = 0; index < movieIds.Count; index++)
         {
             var data = titleData[index];
+            var movieId = movieIds[index];
+            var mediaSize = (index + 1) * 100L;
             await dbContext
-                .PlexMovies.Where(x => x.Id == movieIds[index])
+                .PlexMovies.Where(x => x.Id == movieId)
                 .ExecuteUpdateAsync(
                     x =>
                         x.SetProperty(y => y.Title, data.Title)
                             .SetProperty(y => y.SearchTitle, data.Title.ToLowerInvariant())
                             .SetProperty(y => y.SortIndex, data.SortIndex)
-                            .SetProperty(y => y.MediaSize, (index + 1) * 100L),
+                            .SetProperty(y => y.MediaSize, mediaSize),
                     CancellationToken
                 );
         }
@@ -357,10 +354,9 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
         result.Errors.Count.ShouldBe(0);
         result.Value.TotalCount.ShouldBe(4);
         result.Value.MediaCount.ShouldBe(4);
-        result.Value.NavigationIndexes
-            .Select(x => (x.Label, x.Index))
-            .ShouldBe([("720", 0), ("1080", 2)]);
-        result.Value.Items.Select(x => (x.Id, x.Qualities.Single().VideoQuality, x.ComparisonId))
+        result.Value.NavigationIndexes.Select(x => (x.Label, x.Index)).ShouldBe([("720", 0), ("1080", 2)]);
+        result
+            .Value.Items.Select(x => (x.Id, x.Qualities.Single().VideoQuality, x.ComparisonId))
             .ShouldBe([
                 (fixture.Ids[1], VideoQuality.HD, PlexMediaComparisonState.Owned.ToComparisonId()),
                 (fixture.Ids[3], VideoQuality.HD, PlexMediaComparisonState.Missing.ToComparisonId()),
@@ -372,15 +368,12 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
 
     private async Task<(int LibraryId, List<int> Ids)> ArrangeTvShowFixtureAsync()
     {
-        await SetupDatabase(
-            70241,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexTvShowLibraryCount = 1;
-                cfg.TvShowCount = 4;
-            }
-        );
+        await SetupDatabase(70241, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexTvShowLibraryCount = 1;
+            cfg.TvShowCount = 4;
+        });
 
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
@@ -395,15 +388,17 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
         for (var index = 0; index < tvShowIds.Count; index++)
         {
             var data = titleData[index];
+            var tvShowId = tvShowIds[index];
+            var mediaSize = (index + 1) * 100L;
             await dbContext
-                .PlexTvShows.Where(x => x.Id == tvShowIds[index])
+                .PlexTvShows.Where(x => x.Id == tvShowId)
                 .ExecuteUpdateAsync(
                     x =>
                         x.SetProperty(y => y.Title, data.Title)
                             .SetProperty(y => y.SearchTitle, data.Title.ToLowerInvariant())
                             .SetProperty(y => y.SortIndex, data.SortIndex)
                             .SetProperty(y => y.Year, data.Year)
-                            .SetProperty(y => y.MediaSize, (index + 1) * 100L),
+                            .SetProperty(y => y.MediaSize, mediaSize),
                     CancellationToken
                 );
         }
@@ -530,15 +525,12 @@ public class GetMusicArtistMediaByTypeCommandComparisonSortingUnitTests
 
     private async Task<(int LibraryId, List<int> Ids)> ArrangeMusicArtistFixtureAsync()
     {
-        await SetupDatabase(
-            87502,
-            cfg =>
-            {
-                cfg.PlexMusicLibraryCount = 1;
-                cfg.MusicArtistCount = 4;
-                cfg.MusicAlbumCount = 0;
-            }
-        );
+        await SetupDatabase(87502, cfg =>
+        {
+            cfg.PlexMusicLibraryCount = 1;
+            cfg.MusicArtistCount = 4;
+            cfg.MusicAlbumCount = 0;
+        });
 
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);

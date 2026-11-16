@@ -26,14 +26,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
     public async Task ShouldReturnNotFoundAndPreserveAccess_WhenPlexAccountDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            71001,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-            }
-        );
+        await SetupDatabase(71001, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+        });
         var plexServers = await IDbContext.PlexServers.OrderBy(x => x.Id).ToListAsync();
         var missingPlexAccountId = 999;
         var before = await IDbContext
@@ -90,14 +87,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
     public async Task ShouldAddExactAssociations_WhenAccountHasNoServerAccess()
     {
         // Arrange
-        await SetupDatabase(
-            71002,
-            config =>
-            {
-                config.PlexAccountCount = 2;
-                config.PlexServerCount = 3;
-            }
-        );
+        await SetupDatabase(71002, config =>
+        {
+            config.PlexAccountCount = 2;
+            config.PlexServerCount = 3;
+        });
         var plexAccounts = await IDbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync();
         var plexServers = await IDbContext.PlexServers.OrderBy(x => x.Id).ToListAsync();
         var targetAccount = plexAccounts[0];
@@ -220,14 +214,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
     public async Task ShouldUpdateRetainedAndRevokeMissingAssociations_WhenAccessSetChanges()
     {
         // Arrange
-        await SetupDatabase(
-            71003,
-            config =>
-            {
-                config.PlexAccountCount = 2;
-                config.PlexServerCount = 3;
-            }
-        );
+        await SetupDatabase(71003, config =>
+        {
+            config.PlexAccountCount = 2;
+            config.PlexServerCount = 3;
+        });
         var plexAccounts = await IDbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync();
         var plexServers = await IDbContext.PlexServers.OrderBy(x => x.Id).ToListAsync();
         var targetAccount = plexAccounts[0];
@@ -372,14 +363,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
     public async Task ShouldIgnoreInvalidAndUnknownTokens_WhenMixedWithValidToken()
     {
         // Arrange
-        await SetupDatabase(
-            71004,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-            }
-        );
+        await SetupDatabase(71004, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+        });
         var plexAccount = await IDbContext.PlexAccounts.SingleAsync();
         var plexServers = await IDbContext.PlexServers.OrderBy(x => x.Id).ToListAsync();
         await IDbContext.PlexAccountServers.Where(x => x.PlexAccountId == plexAccount.Id).ExecuteDeleteAsync();
@@ -457,14 +445,11 @@ public class AddOrUpdatePlexAccountServersCommandHandlerUnitTests
     public async Task ShouldPersistAccessAndReturnFailure_WhenMediaOverviewRebuildFails()
     {
         // Arrange
-        await SetupDatabase(
-            71005,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(71005, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+        });
         var plexAccount = await IDbContext.PlexAccounts.SingleAsync();
         var plexServer = await IDbContext.PlexServers.SingleAsync();
         await IDbContext.PlexAccountServers.Where(x => x.PlexAccountId == plexAccount.Id).ExecuteDeleteAsync();

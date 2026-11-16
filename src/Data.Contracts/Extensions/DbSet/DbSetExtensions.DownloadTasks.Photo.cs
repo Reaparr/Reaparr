@@ -1,6 +1,6 @@
 namespace Reaparr.Data.Contracts;
 
-public static partial class DbSetExtensions
+public static class DbSetExtensionsDownloadTasksPhoto
 {
     public static IQueryable<DownloadTaskPhotoFolder> IncludeAll(this IQueryable<DownloadTaskPhotoFolder> tasks) =>
         tasks

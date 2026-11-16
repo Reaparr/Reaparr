@@ -33,11 +33,13 @@ public class CreateFolderPathEndpoint : Endpoint<CreateFolderPathEndpointRequest
 {
     private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
+    private readonly ITelemetry _telemetry;
 
-    public CreateFolderPathEndpoint(ILogger log, IReaparrDbContext dbContext)
+    public CreateFolderPathEndpoint(ILogger log, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = log.ForContext<CreateFolderPathEndpoint>();
         _dbContext = dbContext;
+        _telemetry = telemetry;
     }
 
     public override void Configure()
@@ -57,6 +59,8 @@ public class CreateFolderPathEndpoint : Endpoint<CreateFolderPathEndpointRequest
         var folderPath = req.FolderPathDto!.ToModel();
         await _dbContext.FolderPaths.AddAsync(folderPath, ct);
         await _dbContext.SaveChangesAsync(ct);
+
+        _telemetry.FolderPathChanged(folderPath, TelemetryAction.Create);
 
         var folderPathDb = await _dbContext.FolderPaths.GetAsync(folderPath.Id, ct);
         if (folderPathDb is null)

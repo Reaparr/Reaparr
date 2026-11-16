@@ -27,6 +27,7 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 	const signalRStore = useSignalrStore();
 
 	// Actions
+	const telemetry = useTelemetry();
 	const actions = {
 		setup(): Observable<ISetupResult> {
 			// Listen for refresh notifications
@@ -62,6 +63,7 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 			return fetchAndSetPlexServers().pipe(map(() => [...state.servers]));
 		},
 		setServerAlias(serverId: number, serverAlias: string) {
+			telemetry.serverAliasChanged(serverId);
 			return plexServerApi
 				.setServerAlias(serverId, {
 					serverAlias,
@@ -69,6 +71,7 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 				.pipe(switchMap((response) => response.isSuccess ? settingsStore.refreshSettings() : of(response)));
 		},
 		setServerEnabled(serverId: number, isEnabled: boolean) {
+			telemetry.serverEnabledChanged(serverId, isEnabled);
 			return plexServerApi
 				.setServerEnabledEndpoint(serverId, {
 					isEnabled,
@@ -85,6 +88,7 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 				);
 		},
 		setServerOwned(serverId: number, owned: boolean) {
+			telemetry.serverOwnershipChanged(serverId, owned);
 			return plexServerApi
 				.setServerOwnedEndpoint(serverId, {
 					isOwned: owned,
@@ -101,6 +105,7 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 				);
 		},
 		deleteServer(serverId: number) {
+			telemetry.serverDeleteRequested(serverId);
 			return plexServerApi.deletePlexServerEndpoint(serverId).pipe(
 				tap((response) => {
 					if (response.isSuccess) {
@@ -110,6 +115,7 @@ export const useServerStore = defineStore(StoreNames.ServerStore, () => {
 			);
 		},
 		setServerPaused(serverId: number, paused: boolean) {
+			telemetry.serverPausedChanged(serverId, paused);
 			const request$ = paused
 				? plexServerApi.pausePlexServerDownloadsEndpoint(serverId)
 				: plexServerApi.resumePlexServerDownloadsEndpoint(serverId);
