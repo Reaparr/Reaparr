@@ -73,7 +73,7 @@ internal sealed class PhotoDownloadSelector
         CancellationToken cancellationToken
     )
     {
-        var downloadRoot = NormalizeRootPath((await _dbContext.GetDownloadFolder(null)).DirectoryPath);
+        var downloadRoot = NormalizeRootPath((await _dbContext.GetDownloadFolder()).DirectoryPath);
         var folders = await _dbContext
             .PlexPhotoFolders.Where(x => libraryIds.Contains(x.PlexLibraryId))
             .ToDictionaryAsync(x => x.Id, cancellationToken);

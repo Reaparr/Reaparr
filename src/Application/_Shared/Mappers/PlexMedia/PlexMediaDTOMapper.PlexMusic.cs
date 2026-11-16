@@ -107,7 +107,7 @@ public static partial class PlexMediaDTOMapper
             Qualities = source
                 .MediaDataList.GroupBy(x => x.PlexApiMediaId)
                 .OrderBy(x => x.Key)
-                .Select(group => ToMusicQuality(source.Id, group))
+                .Select(group => ToMusicQuality(source.Id, group.ToArray()))
                 .ToList(),
             ComparisonId = source.ComparisonState.ToComparisonId(),
             PlexApiRatingKey = source.PlexApiRatingKey,

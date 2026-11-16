@@ -55,7 +55,6 @@
         <Using Include="Microsoft.AspNetCore.Http" />
         <Using Include="Microsoft.EntityFrameworkCore" />
         <Using Include="Reaparr.Application.Contracts" />
-        <Using Include="Reaparr.Application.Contracts.Validators" />
         <Using Include="Reaparr.Data.Contracts" />
         <Using Include="Reaparr.Domain" />
         <Using Include="Reaparr.Environment" />

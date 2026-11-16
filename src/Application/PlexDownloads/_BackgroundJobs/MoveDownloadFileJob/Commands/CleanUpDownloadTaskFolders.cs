@@ -56,7 +56,7 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
             return ResultExtensions.IsEmpty(nameof(filePath)).LogError();
 
         HashSet<string>? activeDirectories = null;
-        var hasOtherActiveTasksInDirectory = false;
+        bool hasOtherActiveTasksInDirectory;
         if (downloadTask.DownloadTaskType is DownloadTaskType.PhotoImage)
         {
             var rawActiveDirectories = await _dbContext.GetActiveDownloadDirectoriesAsync(
@@ -147,7 +147,8 @@ public class CleanUpDownloadTaskFoldersCommandHandler : ICommandHandler<CleanUpD
             if (!deleteResult.Value)
                 return Result.Ok();
 
-            var parentDirectoryResult = Result.Try(() => _path.GetDirectoryName(directory));
+            var currentDirectory = directory;
+            var parentDirectoryResult = Result.Try(() => _path.GetDirectoryName(currentDirectory));
             if (parentDirectoryResult.IsFailed)
                 return Result.Fail(parentDirectoryResult.Errors).LogError();
 

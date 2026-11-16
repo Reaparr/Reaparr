@@ -348,7 +348,7 @@ public static partial class DbContextExtensions
     // TODO Refactor this method to use the same approach as CreateDownloadClientLog
     public static async Task CreateDownloadClientLogs(
         this IReaparrDbContext dbContext,
-        IReadOnlyCollection<DownloadTaskLogBase> logs,
+        IEnumerable<DownloadTaskLogBase> logs,
         CancellationToken cancellationToken = default
     )
     {
