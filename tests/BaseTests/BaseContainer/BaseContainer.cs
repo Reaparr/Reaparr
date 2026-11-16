@@ -16,7 +16,7 @@ public class BaseContainer : IDisposable
 
     public string DatabaseName => _factory.MemoryDbName;
 
-    public string TestFileSystemRootPath { get; private set; }
+    public string TestFileSystemRootPath { get; }
 
     /// <summary>
     /// Creates an Autofac container and sets up a test database.
@@ -323,7 +323,7 @@ public class BaseContainer : IDisposable
         }
         catch (Exception ex)
         {
-            _log.Here().Error("Error during async operations wait: {Error}", ex.Message);
+            _log.Here().Error(ex, "Error during async operations wait: {Error}", ex.Message);
         }
         _log.Here().Information("Disposing factory for container {DatabaseName}", dbName);
         _factory.Dispose();
@@ -336,7 +336,7 @@ public class BaseContainer : IDisposable
         catch (Exception ex)
         {
             _log.Here()
-                .Error("Failed to delete database: {DatabaseName}, Error: {ExceptionMessage}", dbName, ex.Message);
+                .Error(ex, "Failed to delete database: {DatabaseName}, Error: {ExceptionMessage}", dbName, ex.Message);
         }
 
         var cleanupResult = Result.Try(() =>

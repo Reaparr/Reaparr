@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Reaparr.BaseTests;
 
 public partial class BaseUnitTest
@@ -15,6 +17,8 @@ public partial class BaseUnitTest
     /// </summary>
     protected BaseUnitTest()
     {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
         Log = LogFactory.Create<BaseUnitTest>();
         Mock = AutoMock.GetStrict(SetDefaultBuilder);
     }

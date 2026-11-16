@@ -122,7 +122,7 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
         result.Successes.Count.ShouldBe(1);
         result.Value.ShouldNotBeNull();
         var value = result.Value;
-        new ConnectionSnapshot(
+        (
             value.Id,
             value.Protocol,
             value.Address,
@@ -134,13 +134,27 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
             value.IPv6,
             value.IsCustom,
             value.PlexServerId
-        ).ShouldBe(expected);
+        ).ShouldBe(
+            (
+                expected.Id,
+                expected.Protocol,
+                expected.Address,
+                expected.Port,
+                expected.Url,
+                expected.Local,
+                expected.Relay,
+                expected.IPv4,
+                expected.IPv6,
+                expected.IsCustom,
+                expected.PlexServerId
+            )
+        );
         value.ChosenConnection.ShouldBeFalse();
         value.IsPlexTvConnection.ShouldBeFalse();
         value.Type.ShouldBe(PlexConnectionTypes.Public);
         value.LatestConnectionStatus.ShouldBeNull();
         var after = await ReadStateAsync(container);
-        after.Connections.ShouldBe(before.Connections.Select(x => x.Id == custom.Id ? expected : x).ToList());
+        after.Connections.ShouldBe([.. before.Connections.Select(x => x.Id == custom.Id ? expected : x)]);
         after.Servers.ShouldBe(before.Servers);
     }
 
@@ -154,7 +168,7 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
         var custom = await AddCustomConnectionAsync(container, 1);
         var initial = await ReadStateAsync(container);
         var otherServerConnectionId = initial.Connections.Single(x => x.PlexServerId == 2).Id;
-        var retainedConnectionId = initial.Connections.Single(x => x.PlexServerId == 1 && !x.IsCustom).Id;
+        var retainedConnectionId = initial.Connections.Single(x => x is { PlexServerId: 1, IsCustom: false }).Id;
         var originalPreference = preferred ? custom.Id : retainedConnectionId;
         await SetPreferredConnectionAsync(container, 1, originalPreference);
         await SetPreferredConnectionAsync(container, 2, otherServerConnectionId);
@@ -177,7 +191,7 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
         result.StatusCode.ShouldBe(StatusCodes.Status200OK);
         result.Errors.Count.ShouldBe(0);
         var after = await ReadStateAsync(container);
-        after.Connections.ShouldBe(before.Connections.Where(x => x.Id != custom.Id).ToList());
+        after.Connections.ShouldBe([.. before.Connections.Where(x => x.Id != custom.Id)]);
         after.Servers.ShouldBe([
             new ServerSnapshot(1, preferred ? 0 : retainedConnectionId),
             new ServerSnapshot(2, otherServerConnectionId),

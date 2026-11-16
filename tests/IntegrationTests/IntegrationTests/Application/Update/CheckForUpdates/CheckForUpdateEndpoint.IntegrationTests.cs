@@ -390,7 +390,7 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         };
 
     private static void RegisterUpdateServices(
-        Autofac.ContainerBuilder builder,
+        ContainerBuilder builder,
         IHttpClientFactory githubClientFactory,
         UpdateManager updateManager
     )
