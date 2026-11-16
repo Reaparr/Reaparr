@@ -12,6 +12,8 @@ namespace Reaparr.Build.UnitTests;
 
 internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuildCommandHandler>
 {
+    private static readonly string[] _generateArguments = ["run", "generate", "--fail-on-error"];
+
     [Test]
     [Arguments("", "1.2.3-dev.1", "--version")]
     [Arguments("1.2.3", "", "--informational-version")]
@@ -121,8 +123,18 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(0);
-        fileSystem.File.ReadAllText(publishedIndex).ShouldBe("frontend");
-        fileSystem.File.ReadAllText("/repo/src/AppHost/ClientApp/.output/public/index.html").ShouldBe("frontend");
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                publishedIndex,
+                CancellationToken
+            )
+        ).ShouldBe("frontend");
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                "/repo/src/AppHost/ClientApp/.output/public/index.html",
+                CancellationToken
+            )
+        ).ShouldBe("frontend");
         Mock.Mock<IDesktopCommandRunner>()
             .Verify(
                 x =>
@@ -174,7 +186,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 x.RunCommandAsync(
                     "bun",
                     It.Is<IReadOnlyList<string>>(arguments =>
-                        arguments.SequenceEqual(new[] { "run", "generate", "--fail-on-error" })
+                        arguments.SequenceEqual(_generateArguments)
                     ),
                     "/repo/src/AppHost/ClientApp",
                     It.Is<IReadOnlyDictionary<string, string?>?>(environment =>
@@ -230,7 +242,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     public async Task ShouldEmbedUpdatedTelemetryMetadataInEntryAssembly_WhenPublishingConfiguredCiBuild()
     {
         // Arrange
-        using var container = CreateSdkFixture(includeAppHostBuildConfiguration: true);
+        await using var container = CreateSdkFixture(includeAppHostBuildConfiguration: true);
         var paths = container.Resolve<BuildPaths>();
         var settings = new DesktopCommandSettings
         {
@@ -274,7 +286,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         runtime.Environment["ReaparrTelemetryProjectToken"] = "runtime-override";
         var startedProcess = Process.Start(runtime);
         startedProcess.ShouldNotBeNull();
-        using var process = startedProcess!;
+        using var process = startedProcess;
         var output = await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync(CancellationToken);
 
@@ -353,7 +365,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     )
     {
         // Arrange
-        using var container = CreateSdkFixture(includeAppHostBuildConfiguration: true);
+        await using var container = CreateSdkFixture(includeAppHostBuildConfiguration: true);
         var paths = container.Resolve<BuildPaths>();
         var start = new ProcessStartInfo("dotnet")
         {
@@ -390,7 +402,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     public async Task ShouldRejectBuildInputs_WhenTelemetryHostPortIsOutOfRange()
     {
         // Arrange
-        using var container = CreateSdkFixture(includeAppHostBuildConfiguration: true);
+        await using var container = CreateSdkFixture(includeAppHostBuildConfiguration: true);
         var paths = container.Resolve<BuildPaths>();
         var start = new ProcessStartInfo("dotnet")
         {
@@ -422,14 +434,18 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     public async Task ShouldKeepTelemetryMetadataOutOfOtherProjects_WhenBuildPropertiesAreForwarded()
     {
         // Arrange
-        using var container = CreateSdkFixture(includeAppHostBuildConfiguration: true);
+        await using var container = CreateSdkFixture(includeAppHostBuildConfiguration: true);
         var paths = container.Resolve<BuildPaths>();
         var fileSystem = container.Resolve<IFileSystem>();
         var dependencyDirectory = fileSystem.Path.Combine(paths.RootDirectory, "Dependency");
         var outputDirectory = fileSystem.Path.Combine(paths.RootDirectory, "dependency-publish");
         fileSystem.Directory.CreateDirectory(dependencyDirectory);
         var projectPath = fileSystem.Path.Combine(dependencyDirectory, "Dependency.csproj");
-        fileSystem.File.WriteAllText(projectPath, """<Project Sdk="Microsoft.NET.Sdk" />""");
+        await fileSystem.File.WriteAllTextAsync(
+            projectPath,
+            """<Project Sdk="Microsoft.NET.Sdk" />""",
+            CancellationToken
+        );
         var start = new ProcessStartInfo("dotnet")
         {
             WorkingDirectory = paths.RootDirectory,
@@ -467,7 +483,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     public async Task ShouldRestoreAndPublishRealSdkAssets_WhenRestoreIsEnabled()
     {
         // Arrange
-        using var container = CreateSdkFixture();
+        await using var container = CreateSdkFixture();
         var paths = container.Resolve<BuildPaths>();
         var fileSystem = container.Resolve<IFileSystem>();
         var assetsPath = fileSystem.Path.Combine(
@@ -494,21 +510,25 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(0);
-        using var assets = JsonDocument.Parse(fileSystem.File.ReadAllText(assetsPath));
+        await using var assetsStream = fileSystem.File.OpenRead(assetsPath);
+        using var assets = await JsonDocument.ParseAsync(assetsStream, cancellationToken: CancellationToken);
         assets.RootElement.GetProperty("targets").TryGetProperty("net10.0/linux-x64", out _).ShouldBeTrue();
         fileSystem
             .File.Exists(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "AppHost.dll"))
             .ShouldBeTrue();
-        fileSystem
-            .File.ReadAllText(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "wwwroot", "index.html"))
-            .ShouldBe("frontend-fixture");
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "wwwroot", "index.html"),
+                CancellationToken
+            )
+        ).ShouldBe("frontend-fixture");
     }
 
     [Test]
     public async Task ShouldFailWithoutCreatingRestoreAssets_WhenSkipRestoreHasNoAssets()
     {
         // Arrange
-        using var container = CreateSdkFixture();
+        await using var container = CreateSdkFixture();
         var paths = container.Resolve<BuildPaths>();
         var fileSystem = container.Resolve<IFileSystem>();
         var assetsPath = fileSystem.Path.Combine(
@@ -539,9 +559,12 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         fileSystem
             .File.Exists(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "AppHost.dll"))
             .ShouldBeFalse();
-        fileSystem
-            .File.ReadAllText(fileSystem.Path.Combine(paths.FrontendPublicDirectory, "index.html"))
-            .ShouldBe("frontend-fixture");
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                fileSystem.Path.Combine(paths.FrontendPublicDirectory, "index.html"),
+                CancellationToken
+            )
+        ).ShouldBe("frontend-fixture");
     }
 
     [Test]
@@ -574,9 +597,12 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             SkipRestore = false,
             DryRun = true,
         };
-        fileSystem
-            .File.ReadAllText(fileSystem.Path.Combine(paths.FrontendPublicDirectory, "index.html"))
-            .ShouldBe("frontend-fixture");
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                fileSystem.Path.Combine(paths.FrontendPublicDirectory, "index.html"),
+                CancellationToken
+            )
+        ).ShouldBe("frontend-fixture");
         var before = fileSystem
             .Directory.EnumerateFiles(paths.RootDirectory, "*", SearchOption.AllDirectories)
             .Order(StringComparer.Ordinal)
@@ -614,7 +640,9 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     public async Task ShouldApplyFrontendEnvironmentOnlyToTheChildBuildProcess()
     {
         // Arrange
-        using var container = CreateSdkFixture();
+        var cancellationToken =
+            TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
+        await using var container = CreateSdkFixture();
         var paths = container.Resolve<BuildPaths>();
         var outputPath = Path.Combine(paths.RootDirectory, "frontend-telemetry.txt");
         var project = XDocument.Load(paths.AppHostProject);
@@ -660,7 +688,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 );
 
             // Assert
-            File.ReadAllLines(outputPath).ShouldBe(["https://frontend.example.test|phc_frontend"]);
+            (await File.ReadAllLinesAsync(outputPath, cancellationToken)).ShouldBe(["https://frontend.example.test|phc_frontend"]);
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe("inherited-stale-host");
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe("inherited-stale-key");
 
@@ -685,7 +713,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 );
 
             // Assert
-            File.ReadAllLines(outputPath).ShouldBe(["|"]);
+            (await File.ReadAllLinesAsync(outputPath, cancellationToken)).ShouldBe(["|"]);
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe("inherited-stale-host");
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe("inherited-stale-key");
         }
@@ -699,7 +727,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe(parentKey);
     }
 
-    private static IReadOnlyDictionary<string, string?> ReadAssemblyMetadata(string assemblyPath)
+    private static Dictionary<string, string?> ReadAssemblyMetadata(string assemblyPath)
     {
         var loadContext = new AssemblyLoadContext($"BuildMetadata_{Guid.NewGuid():N}", isCollectible: true);
         try
@@ -839,8 +867,8 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         builder.RegisterInstance(fileSystem).As<IFileSystem>();
         builder.RegisterInstance(paths);
         builder
-            .Register(_ => new Serilog.LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
-            .As<Serilog.ILogger>()
+            .Register(_ => new LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
+            .As<ILogger>()
             .SingleInstance();
         return builder.Build();
     }

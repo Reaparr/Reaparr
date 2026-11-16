@@ -73,7 +73,7 @@ public class FolderPath : BaseEntity
     #region Equality
 
     /// <inheritdoc/>
-    public override int GetHashCode() => HashCode.Combine(DisplayName, DirectoryPath, FolderType, MediaType);
+    public override int GetHashCode() => HashCode.Combine(DisplayName, FolderType, MediaType);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj)

@@ -26,7 +26,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Program.RunDesktopLifecycleAsync(app, CancellationToken);
+        var result = await Program.RunDesktopLifecycleAsync(app, cancellationToken: CancellationToken);
 
         // Assert
         result.Errors.Count.ShouldBe(0);
@@ -62,7 +62,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Program.RunDesktopLifecycleAsync(app, CancellationToken);
+        var result = await Program.RunDesktopLifecycleAsync(app, cancellationToken: CancellationToken);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -100,7 +100,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Program.RunDesktopLifecycleAsync(app, CancellationToken, browserRequests.Add);
+        var result = await Program.RunDesktopLifecycleAsync(app, browserRequests.Add, CancellationToken);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -141,21 +141,22 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true).Verifiable(Times.Once());
         coordinator
             .Setup(x => x.StartListener(It.IsAny<Func<CancellationToken, Task<Result>>>(), cancellationToken))
-            .Returns((Func<CancellationToken, Task<Result>> onSignal, CancellationToken token) =>
-                pipe.StartListener(onSignal, token)
+            .Returns(
+                (Func<CancellationToken, Task<Result>> onSignal, CancellationToken token) =>
+                    pipe.StartListener(onSignal, token)
             )
             .Verifiable(Times.Once());
 
         // Act
         var lifecycle = Program.RunDesktopLifecycleAsync(
             app,
-            cancellationToken,
             uri =>
             {
                 browserRequests.Enqueue(uri);
                 if (!firstOpen.TrySetResult(uri))
                     nextOpen.TrySetResult(uri);
-            }
+            },
+            cancellationToken
         );
         Result result;
         try
@@ -238,7 +239,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             .Verifiable(Times.Once());
 
         // Act
-        var result = await Program.RunDesktopLifecycleAsync(app, CancellationToken);
+        var result = await Program.RunDesktopLifecycleAsync(app, cancellationToken: CancellationToken);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -265,8 +266,8 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         runtimeInfo.SetupGet(x => x.IsDesktopEmbeddedDisabled).Throws(failure).Verifiable(Times.Once());
 
         // Act
-        var exception = await Should.ThrowAsync<InvalidOperationException>(
-            () => Program.RunDesktopLifecycleAsync(app, CancellationToken)
+        var exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            Program.RunDesktopLifecycleAsync(app, cancellationToken: CancellationToken)
         );
 
         // Assert
@@ -298,7 +299,9 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         var desktopMode = new Mock<IDesktopMode>(MockBehavior.Strict);
         var coordinator = new Mock<IDesktopSingleInstanceCoordinator>(MockBehavior.Strict);
         await using var app = CreateApp(hostProbe, desktopMode.Object, coordinator.Object);
-        using var stoppedRegistration = app.Lifetime.ApplicationStopped.Register(() => applicationStopped.TrySetResult());
+        await using var stoppedRegistration = app.Lifetime.ApplicationStopped.Register(() =>
+            applicationStopped.TrySetResult()
+        );
 
         coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true).Verifiable(Times.Once());
         coordinator
@@ -317,7 +320,10 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
             .Verifiable(Times.Once());
 
         // Act
-        var lifecycle = Task.Run(() => Program.RunDesktopLifecycleAsync(app, cancellationToken), cancellationToken);
+        var lifecycle = Task.Run(
+            () => Program.RunDesktopLifecycleAsync(app, cancellationToken: cancellationToken),
+            cancellationToken
+        );
         Result result;
         try
         {
@@ -357,7 +363,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         builder.Services.AddSingleton<IHostedService>(hostProbe);
         builder.Services.AddSingleton(desktopMode);
         builder.Services.AddSingleton(coordinator);
-        builder.Services.AddSingleton<IAppRuntimeInfo>(appRuntimeInfo ?? new MockAppRuntimeInfo());
+        builder.Services.AddSingleton(appRuntimeInfo ?? new MockAppRuntimeInfo());
         return builder.Build();
     }
 
