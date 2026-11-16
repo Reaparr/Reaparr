@@ -1,22 +1,6 @@
-﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
 	<s:Boolean x:Key="/Default/CodeEditing/SuppressNullableWarningFix/Enabled/@EntryValue">False</s:Boolean>
-	<s:Boolean x:Key="/Default/CodeInspection/CodeAnnotations/NamespacesWithAnnotations/=PlexRipper_002ESettings_002EAnnotations/@EntryIndexedValue">True</s:Boolean>
-	<s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=EnforceIfStatementBraces/@EntryIndexedValue">SUGGESTION</s:String>
-	<s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=InvocationIsCultureSensitive/@EntryIndexedValue">DO_NOT_SHOW</s:String>
-	<s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=StyleCop_002ESA1101/@EntryIndexedValue">DO_NOT_SHOW</s:String>
-	<s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=StyleCop_002ESA1642/@EntryIndexedValue">DO_NOT_SHOW</s:String>
-	<s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=SuggestVarOrType_005FBuiltInTypes/@EntryIndexedValue">SUGGESTION</s:String>
-	<s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=SuggestVarOrType_005FElsewhere/@EntryIndexedValue">SUGGESTION</s:String>
-	<s:String x:Key="/Default/CodeInspection/Highlighting/InspectionSeverities/=SuggestVarOrType_005FSimpleTypes/@EntryIndexedValue">SUGGESTION</s:String>
-	<s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpCodeStyle/BRACES_FOR_IFELSE/@EntryValue">RequiredForMultiline</s:String>
-	<s:Int64 x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/BLANK_LINES_AFTER_BLOCK_STATEMENTS/@EntryValue">1</s:Int64>
-	<s:Int64 x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/BLANK_LINES_AFTER_CONTROL_TRANSFER_STATEMENTS/@EntryValue">1</s:Int64>
-	<s:Int64 x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/BLANK_LINES_BEFORE_BLOCK_STATEMENTS/@EntryValue">0</s:Int64>
-	<s:Int64 x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/BLANK_LINES_BEFORE_CONTROL_TRANSFER_STATEMENTS/@EntryValue">0</s:Int64>
-	<s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/EMPTY_BLOCK_STYLE/@EntryValue">TOGETHER_SAME_LINE</s:String>
-	<s:Int64 x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/KEEP_BLANK_LINES_IN_CODE/@EntryValue">1</s:Int64>
-	<s:Int64 x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/KEEP_BLANK_LINES_IN_DECLARATIONS/@EntryValue">1</s:Int64>
-	<s:Boolean x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/SPACE_AFTER_TYPECAST_PARENTHESES/@EntryValue">False</s:Boolean>
+	<s:Boolean x:Key="/Default/CodeInspection/NamespaceProvider/FoldersProvideNamespacesByDefault/@EntryValue">False</s:Boolean>
 	<s:String x:Key="/Default/CodeStyle/CSharpFileLayoutPatterns/Pattern/@EntryValue">&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;Patterns xmlns="urn:schemas-jetbrains-com:member-reordering-patterns"&gt;
     &lt;TypePattern DisplayName="Non-reorderable types"&gt;
@@ -34,82 +18,6 @@
                 &lt;HasAttribute Name="JetBrains.Annotations.NoReorder" /&gt;
             &lt;/Or&gt;
         &lt;/TypePattern.Match&gt;
-    &lt;/TypePattern&gt;
-    &lt;TypePattern DisplayName="xUnit.net Test Classes" RemoveRegions="All"&gt;
-        &lt;TypePattern.Match&gt;
-            &lt;And&gt;
-                &lt;Kind Is="Class" /&gt;
-                &lt;HasMember&gt;
-                    &lt;And&gt;
-                        &lt;Kind Is="Method" /&gt;
-                        &lt;HasAttribute Name="Xunit.FactAttribute" Inherited="True" /&gt;
-                    &lt;/And&gt;
-                &lt;/HasMember&gt;
-            &lt;/And&gt;
-        &lt;/TypePattern.Match&gt;
-        &lt;Region Name="Setup/Teardown"&gt;
-            &lt;Entry DisplayName="Setup/Teardown Methods"&gt;
-                &lt;Entry.Match&gt;
-                    &lt;Or&gt;
-                        &lt;Kind Is="Constructor" /&gt;
-                        &lt;And&gt;
-                            &lt;Kind Is="Method" /&gt;
-                            &lt;ImplementsInterface Name="System.IDisposable" /&gt;
-                        &lt;/And&gt;
-                    &lt;/Or&gt;
-                &lt;/Entry.Match&gt;
-                &lt;Entry.SortBy&gt;
-                    &lt;Kind Order="Constructor" /&gt;
-                &lt;/Entry.SortBy&gt;
-            &lt;/Entry&gt;
-        &lt;/Region&gt;
-        &lt;Entry DisplayName="All other members" /&gt;
-        &lt;Entry DisplayName="Test Methods" Priority="100"&gt;
-            &lt;Entry.Match&gt;
-                &lt;And&gt;
-                    &lt;Kind Is="Method" /&gt;
-                    &lt;HasAttribute Name="Xunit.FactAttribute" /&gt;
-                &lt;/And&gt;
-            &lt;/Entry.Match&gt;
-            &lt;Entry.SortBy&gt;
-                &lt;Name /&gt;
-            &lt;/Entry.SortBy&gt;
-        &lt;/Entry&gt;
-    &lt;/TypePattern&gt;
-    &lt;TypePattern DisplayName="NUnit Test Fixtures" RemoveRegions="All"&gt;
-        &lt;TypePattern.Match&gt;
-            &lt;And&gt;
-                &lt;Kind Is="Class" /&gt;
-                &lt;HasAttribute Name="NUnit.Framework.TestFixtureAttribute" Inherited="True" /&gt;
-            &lt;/And&gt;
-        &lt;/TypePattern.Match&gt;
-        &lt;Region Name="Setup/Teardown"&gt;
-            &lt;Entry DisplayName="Setup/Teardown Methods"&gt;
-                &lt;Entry.Match&gt;
-                    &lt;And&gt;
-                        &lt;Kind Is="Method" /&gt;
-                        &lt;Or&gt;
-                            &lt;HasAttribute Name="NUnit.Framework.SetUpAttribute" Inherited="True" /&gt;
-                            &lt;HasAttribute Name="NUnit.Framework.TearDownAttribute" Inherited="True" /&gt;
-                            &lt;HasAttribute Name="NUnit.Framework.FixtureSetUpAttribute" Inherited="True" /&gt;
-                            &lt;HasAttribute Name="NUnit.Framework.FixtureTearDownAttribute" Inherited="True" /&gt;
-                        &lt;/Or&gt;
-                    &lt;/And&gt;
-                &lt;/Entry.Match&gt;
-            &lt;/Entry&gt;
-        &lt;/Region&gt;
-        &lt;Entry DisplayName="All other members" /&gt;
-        &lt;Entry DisplayName="Test Methods" Priority="100"&gt;
-            &lt;Entry.Match&gt;
-                &lt;And&gt;
-                    &lt;Kind Is="Method" /&gt;
-                    &lt;HasAttribute Name="NUnit.Framework.TestAttribute" /&gt;
-                &lt;/And&gt;
-            &lt;/Entry.Match&gt;
-            &lt;Entry.SortBy&gt;
-                &lt;Name /&gt;
-            &lt;/Entry.SortBy&gt;
-        &lt;/Entry&gt;
     &lt;/TypePattern&gt;
     &lt;TypePattern DisplayName="Default Pattern"&gt;
         &lt;Region Name="Fields"&gt;
@@ -241,7 +149,6 @@
     &lt;/TypePattern&gt;
     &lt;FilePattern /&gt;
 &lt;/Patterns&gt;</s:String>
-	<s:Boolean x:Key="/Default/CodeStyle/CSharpVarKeywordUsage/PreferExplicitDiscardDeclaration/@EntryValue">True</s:Boolean>
 	<s:String x:Key="/Default/CodeStyle/Naming/CSharpNaming/Abbreviations/=DTO/@EntryIndexedValue">DTO</s:String>
 	<s:String x:Key="/Default/Environment/Hierarchy/Build/SolBuilderDuo/CustomGlobalProperties/=ReaparrTelemetryHost/@EntryIndexedValue">https://us.i.posthog.com</s:String>
 	<s:String x:Key="/Default/Environment/Hierarchy/Build/SolBuilderDuo/CustomGlobalProperties/=ReaparrTelemetryProjectToken/@EntryIndexedValue">phc_pjFmXA7RpD6nfKwc9TufdJL7h9sknT2S8Sft3kJ9L565</s:String>

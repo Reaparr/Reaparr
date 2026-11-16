@@ -18,6 +18,25 @@ csharp_style_var_when_type_is_apparent = true:suggestion
 
 # Keep optional single-statement if bodies brace-free.
 resharper_csharp_braces_for_ifelse = not_required
+# Rider formatting and syntax properties
+resharper_csharp_blank_lines_after_block_statements = 1
+resharper_csharp_blank_lines_after_control_transfer_statements = 1
+resharper_csharp_blank_lines_before_block_statements = 0
+resharper_csharp_blank_lines_before_control_transfer_statements = 0
+resharper_csharp_empty_block_style = together_same_line
+resharper_csharp_keep_blank_lines_in_code = 1
+resharper_csharp_keep_blank_lines_in_declarations = 1
+csharp_space_after_cast = false
+resharper_csharp_prefer_explicit_discard_declaration = true
+
+# Rider inspection severities
+resharper_enforce_if_statement_braces_highlighting = suggestion
+resharper_invocation_is_culture_sensitive_highlighting = none
+resharper_stylecop_sa1101_highlighting = none
+resharper_stylecop_sa1642_highlighting = none
+resharper_suggest_var_or_type_built_in_types_highlighting = suggestion
+resharper_suggest_var_or_type_elsewhere_highlighting = suggestion
+resharper_suggest_var_or_type_simple_types_highlighting = suggestion
 dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary:none
 dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:none
 dotnet_style_parentheses_in_relational_binary_operators = never_if_unnecessary:none

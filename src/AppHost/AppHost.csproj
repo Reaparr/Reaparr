@@ -86,7 +86,6 @@
         <Using Include="System.Net.Http.Json" />
     </ItemGroup>
     <ItemGroup>
-        <None Remove="AppHost.csproj.DotSettings" />
         <None Remove="ClientApp\**" />
     </ItemGroup>
     <ItemGroup>
