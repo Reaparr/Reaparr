@@ -123,7 +123,7 @@ public class Program
         app.ConfigureApplication(app.Environment, appBuildInfo, appRuntimeInfo);
 
         if (isDesktopProcess)
-            return await RunDesktopLifecycleAsync(app, cancellationToken);
+            return await RunDesktopLifecycleAsync(app, cancellationToken: cancellationToken);
 
         await app.RunAsync(cancellationToken);
         return Result.Ok();

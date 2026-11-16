@@ -120,7 +120,7 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
     private async Task PrepareFrontendAsync(DesktopCommandSettings settings)
     {
         var sourceDirectory = GetFrontendPublicDirectory(settings);
-        if (_fileSystem.Directory.Exists(sourceDirectory))
+        if (_fileSystem.Directory.Exists(sourceDirectory) && !string.IsNullOrWhiteSpace(settings.FrontendPublicDirectory))
         {
             _log.Here()
                 .Information("Reusing existing frontend output from {FrontendPublicDirectory}", sourceDirectory);

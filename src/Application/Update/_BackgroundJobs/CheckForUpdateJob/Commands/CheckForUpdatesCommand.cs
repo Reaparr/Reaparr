@@ -1,3 +1,5 @@
+using Semver;
+
 namespace Reaparr.Application;
 
 /// <summary>
@@ -20,6 +22,28 @@ public class CheckForUpdatesCommandHandler : ICommandHandler<CheckForUpdatesComm
             CurrentVersion = _appBuildInfo.InformationalVersion,
             ReleaseNotes = [],
         };
+    private static IReadOnlyList<ReleaseNote> FilterReleaseNotes(
+        IReadOnlyList<ReleaseNote> releaseNotes,
+        string targetVersion
+    )
+    {
+        if (!TryParseSemVersion(targetVersion, out var parsedTargetVersion))
+            return [];
+
+        return releaseNotes
+            .Where(x =>
+                TryParseSemVersion(x.Version, out var parsedVersion)
+                && parsedVersion.ComparePrecedenceTo(parsedTargetVersion) <= 0
+            )
+            .ToList();
+    }
+
+    private static bool TryParseSemVersion(string version, out SemVersion semVersion)
+    {
+        var success = SemVersion.TryParse(version.TrimStart('v'), SemVersionStyles.Any, out var parsedVersion);
+        semVersion = parsedVersion ?? new SemVersion(0);
+        return success;
+    }
 
     public CheckForUpdatesCommandHandler(
         ILogger log,
@@ -115,7 +139,9 @@ public class CheckForUpdatesCommandHandler : ICommandHandler<CheckForUpdatesComm
                     IsUpdateAvailable = true,
                     NewestVersion = targetVersion,
                     CurrentVersion = _appBuildInfo.InformationalVersion,
-                    ReleaseNotes = desktopReleasesResult.IsSuccess ? desktopReleasesResult.Value : [],
+                    ReleaseNotes = desktopReleasesResult.IsSuccess
+                        ? FilterReleaseNotes(desktopReleasesResult.Value, targetVersion)
+                        : [],
                 }
             );
         }

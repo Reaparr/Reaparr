@@ -60,6 +60,55 @@ public class CheckForUpdatesCommandUnitTests : BaseUnitTest<CheckForUpdatesComma
         mockManager.Verify();
         mockSource.VerifyNoOtherCalls();
     }
+    [Test]
+    public async Task ShouldFilterDesktopReleaseNotesToVelopackTargetVersion()
+    {
+        // Arrange
+        var updateInfo = new UpdateInfo(
+            new VelopackAsset { PackageId = "Reaparr", Version = new SemanticVersion(0, 39, 0) },
+            false
+        );
+        var releaseNotes = new List<ReleaseNote>
+        {
+            new()
+            {
+                Version = "v0.39.0",
+                Notes = "Target release notes",
+                ReleaseDate = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc),
+                IsDevRelease = false,
+            },
+            new()
+            {
+                Version = "v0.40.0",
+                Notes = "Future release notes",
+                ReleaseDate = new DateTime(2026, 4, 11, 0, 0, 0, DateTimeKind.Utc),
+                IsDevRelease = false,
+            },
+        };
+        var appBuildInfo = new Mock<IAppBuildInfo>(MockBehavior.Strict);
+        appBuildInfo.SetupGet(x => x.IsDesktopMode).Returns(true);
+        appBuildInfo.SetupGet(x => x.InformationalVersion).Returns("0.38.0");
+        var manager = new Mock<UpdateManager>(
+            new Mock<IUpdateSource>().Object,
+            null!,
+            new Mock<IVelopackLocator>(MockBehavior.Loose).Object
+        );
+        manager.Setup(x => x.IsInstalled).Returns(true);
+        manager.Setup(x => x.AppId).Returns("Reaparr");
+        manager.Setup(x => x.CurrentVersion).Returns(new SemanticVersion(0, 38, 0));
+        manager.Setup(x => x.CheckForUpdatesAsync()).ReturnsAsync(updateInfo);
+        var executor = Mock.Mock<ICommandExecutor>();
+        executor
+            .Setup(x => x.Send(It.IsAny<GetGitHubReleasesCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok<IReadOnlyList<ReleaseNote>>(releaseNotes));
+
+        // Act
+        var sut = new CheckForUpdatesCommandHandler(Log, executor.Object, appBuildInfo.Object, manager.Object);
+        var result = await sut.ExecuteAsync(new CheckForUpdatesCommand(), CancellationToken);
+
+        // Assert
+        result.Value.ReleaseNotes.Select(x => x.Version).ShouldBe(["v0.39.0"]);
+    }
 
     [Test]
     [Arguments(FallbackOutcome.Failed)]

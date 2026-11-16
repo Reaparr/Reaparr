@@ -84,7 +84,7 @@ public static class TorznabRequestMappers
             ImdbId = request.ImdbId,
             TmdbId = request.TmdbId,
             TvdbId = request.TvdbId,
-            Season = request.Season,
+            Season = request.Season ?? 0,
             Episode = request.Episode,
             Categories = request.Categories,
             ReturnedItemCount = response?.Channel.Items.Count ?? 0,

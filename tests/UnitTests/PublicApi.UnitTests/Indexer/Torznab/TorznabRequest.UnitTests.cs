@@ -215,7 +215,7 @@ public class TorznabRequestUnitTests
         {
             Type = queryType,
             Query = string.Empty,
-            Season = 0,
+            Season = null,
             Episode = 0,
             TvdbId = 0,
             ImdbId = string.Empty,
@@ -231,9 +231,9 @@ public class TorznabRequestUnitTests
         {
             Query = "The Matrix",
             ImdbId = "tt0133093",
+            Season = 2,
             TmdbId = 603,
             TvdbId = 456,
-            Season = 2,
             Episode = 3,
         };
         var response = Result.Ok(

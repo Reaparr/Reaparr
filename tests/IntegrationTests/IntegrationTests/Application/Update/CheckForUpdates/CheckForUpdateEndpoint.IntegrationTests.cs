@@ -656,7 +656,10 @@ public class CheckForUpdateEndpointIntegrationTests : BaseIntegrationTests
         builder.RegisterInstance(githubClientFactory).As<IHttpClientFactory>().SingleInstance();
         builder.RegisterInstance(updateManager).As<UpdateManager>().SingleInstance();
         builder.RegisterType<MockNotificationHubService>().As<INotificationHubService>().AsSelf().SingleInstance();
-        builder.RegisterInstance(new Mock<ITelemetry>(MockBehavior.Strict).Object).As<ITelemetry>().SingleInstance();
+        var telemetryMock = new Mock<ITelemetry>(MockBehavior.Strict);
+        telemetryMock.Setup(x => x.InitializeAsync()).Returns(Task.CompletedTask);
+        telemetryMock.Setup(x => x.BeginRequest(It.IsAny<string?>())).Returns((IDisposable?)null);
+        builder.RegisterInstance(telemetryMock.Object).As<ITelemetry>().SingleInstance();
     }
 
     private static FakeCommandExecutor CreateCommandExecutor(AppUpdateCheckResult updateResult) =>
