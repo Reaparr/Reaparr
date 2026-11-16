@@ -3,6 +3,7 @@ using System.Net.Mime;
 using System.Net.Sockets;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Net.Http.Headers;
 
 namespace Reaparr.Application;
 
@@ -100,6 +101,8 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
 
     public override async Task HandleAsync(GetPlexMediaThumbnailImageEndpointRequest req, CancellationToken ct)
     {
+        HttpContext.Response.Headers[HeaderNames.XContentTypeOptions] = "nosniff";
+
 #pragma warning disable ASP0015
         HttpContext.Response.Headers.AccessControlAllowOrigin = "*";
         HttpContext.Response.Headers.AccessControlAllowMethods = "GET, OPTIONS";
@@ -107,7 +110,7 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
 #pragma warning restore ASP0015
 
         // Generate ETag based on the unique thumbnail parameters
-        var etag = $"\"{req.PlexServerId}-{req.PlexKey}-{req.MetaDataKey}-{req.Width}x{req.Height}\"";
+        var etag = $"\"v2-{req.PlexServerId}-{req.PlexKey}-{req.MetaDataKey}-{req.Width}x{req.Height}\"";
         HttpContext.Response.Headers.ETag = etag;
 
         // Check If-None-Match header for conditional request (304 Not Modified)
@@ -217,7 +220,18 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
                 return;
             }
 
-            var contentType = response.Content.Headers.ContentType?.ToString() ?? "image/jpeg";
+            var contentType = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant()
+                ?? MediaTypeNames.Image.Jpeg;
+            if (!Domain.ContentType.IsPassiveImage(contentType))
+            {
+                HttpContext.Response.Headers.CacheControl = "no-store";
+                await Send.FluentResult(
+                    Result.Fail("Plex returned an unsupported image content type").Add502BadGatewayError(),
+                    ct
+                );
+                return;
+            }
+
             var contentLength = response.Content.Headers.ContentLength;
 
             if (contentLength.HasValue)

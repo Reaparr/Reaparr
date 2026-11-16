@@ -48,10 +48,10 @@ public class GetPhotoAssetImageEndpointUnitTests
             services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
-        // Assert
         result.IsValid.ShouldBeTrue();
         result.StatusCode.ShouldBe(StatusCodes.Status200OK);
         result.ContentType.ShouldBe("image/jpeg");
+        result.Endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
         result.Endpoint.HttpContext.Response.ContentLength.ShouldBeNull();
         ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe(payload);
         var cacheControl = result.Endpoint.HttpContext.Response.GetTypedHeaders().CacheControl;
@@ -115,10 +115,10 @@ public class GetPhotoAssetImageEndpointUnitTests
             services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
-        // Assert
         result.IsValid.ShouldBeTrue();
         result.StatusCode.ShouldBe(StatusCodes.Status200OK);
         result.ContentType.ShouldBe("image/png");
+        result.Endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
         ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe(payload);
         handler.RequestUris.Count.ShouldBe(1);
         var uri = handler.RequestUris[0];
@@ -205,6 +205,169 @@ public class GetPhotoAssetImageEndpointUnitTests
     }
 
     [Test]
+    [Arguments(null, "jpg", "image/jpeg")]
+    [Arguments("application/octet-stream", "png", "image/png")]
+    public async Task ShouldStreamPassiveFallbackImage_WhenUpstreamContentTypeIsMissingOrOctetStream(
+        string? upstreamContentType,
+        string container,
+        string expectedContentType
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            84016,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        await dbContext
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.Container, container), CancellationToken);
+        dbContext.ClearChangeTracker();
+        byte[] payload = [11, 12, 13, 14];
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) };
+        if (upstreamContentType is not null)
+            response.Content.Headers.ContentType = new(upstreamContentType);
+        var handler = new StubHttpMessageHandler(response);
+        var clientFactory = CreateClientFactory(handler);
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new GetPhotoAssetImageRequest
+            {
+                PlexLibraryId = asset.PlexLibraryId,
+                AssetId = asset.Id,
+                Representation = PhotoImageRepresentation.Original,
+            },
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        result.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        result.ContentType.ShouldBe(expectedContentType);
+        result.Endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
+        ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe(payload);
+        result.Endpoint.HttpContext.Response.Headers.Vary.ToString().ShouldBe("Cookie");
+        handler.RequestUris.Count.ShouldBe(1);
+        clientFactory.Verify();
+    }
+
+    [Test]
+    public async Task ShouldStreamTiffWhenPlexReturnsPassiveTiff()
+    {
+        // Arrange
+        await SetupDatabase(
+            84021,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        byte[] payload = [21, 22, 23];
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) };
+        response.Content.Headers.ContentType = new("image/tiff");
+        var handler = new StubHttpMessageHandler(response);
+        var clientFactory = CreateClientFactory(handler);
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new GetPhotoAssetImageRequest
+            {
+                PlexLibraryId = asset.PlexLibraryId,
+                AssetId = asset.Id,
+                Representation = PhotoImageRepresentation.Original,
+            },
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        result.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        result.ContentType.ShouldBe("image/tiff");
+        result.Endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
+        ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe(payload);
+        handler.RequestUris.Count.ShouldBe(1);
+        clientFactory.Verify();
+    }
+
+    [Test]
+    public async Task ShouldConvertSvgAssetToPng_WhenPlexReturnsPassivePng()
+    {
+        // Arrange
+        await SetupDatabase(
+            84019,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        const string sourcePath = "/private/plex/photos/secret/vector.svg";
+        var partKey = $"/library/parts/{asset.PlexApiPartId}/vector.svg";
+        await dbContext
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
+            .ExecuteUpdateAsync(
+                x =>
+                    x.SetProperty(y => y.SourcePath, sourcePath)
+                        .SetProperty(y => y.Key, partKey)
+                        .SetProperty(y => y.Container, "svg"),
+                CancellationToken
+            );
+        dbContext.ClearChangeTracker();
+        byte[] payload = [137, 80, 78, 71, 1, 2];
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) };
+        response.Content.Headers.ContentType = new("image/png");
+        var handler = new StubHttpMessageHandler(response);
+        var clientFactory = CreateClientFactory(handler);
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new GetPhotoAssetImageRequest
+            {
+                PlexLibraryId = asset.PlexLibraryId,
+                AssetId = asset.Id,
+                Representation = PhotoImageRepresentation.Converted,
+                Width = 320,
+                Height = 240,
+            },
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        result.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        result.ContentType.ShouldBe("image/png");
+        result.Endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
+        ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe(payload);
+        var uri = handler.RequestUris.Single();
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        query["format"].ToString().ShouldBe("png");
+        query["width"].ToString().ShouldBe("320");
+        query["height"].ToString().ShouldBe("240");
+        uri.ToString().ShouldNotContain(sourcePath);
+        clientFactory.Verify();
+    }
+
+    [Test]
     public async Task ShouldRejectWrongKindAndForeignScopeBeforeRequestingPlex()
     {
         // Arrange
@@ -263,6 +426,80 @@ public class GetPhotoAssetImageEndpointUnitTests
     }
 
     [Test]
+    [Arguments("text/html", PhotoImageRepresentation.Original)]
+    [Arguments("image/svg+xml", PhotoImageRepresentation.Original)]
+    [Arguments("image/x-unknown", PhotoImageRepresentation.Original)]
+    [Arguments("text/html", PhotoImageRepresentation.Converted)]
+    [Arguments("image/svg+xml", PhotoImageRepresentation.Converted)]
+    [Arguments("image/x-unknown", PhotoImageRepresentation.Converted)]
+    public async Task ShouldRejectUnsafeOrUnknownUpstreamContentTypeWithoutStreamingPayload(
+        string upstreamContentType,
+        PhotoImageRepresentation representation
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            84017,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        byte[] attackerPayload = System.Text.Encoding.UTF8.GetBytes("<svg><script>alert('active')</script></svg>");
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(attackerPayload),
+        };
+        response.Content.Headers.ContentType = new(upstreamContentType);
+        var handler = new StubHttpMessageHandler(response);
+        var clientFactory = CreateClientFactory(handler);
+        var request = new GetPhotoAssetImageRequest
+        {
+            PlexLibraryId = asset.PlexLibraryId,
+            AssetId = asset.Id,
+            Representation = representation,
+            Width = representation == PhotoImageRepresentation.Converted ? 320 : null,
+            Height = representation == PhotoImageRepresentation.Converted ? 240 : null,
+        };
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            request,
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        result.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
+        result.ContentType.ShouldContain("json");
+        result.Endpoint.HttpContext.Response.Headers.CacheControl.ToString().ShouldBe("no-store");
+        result.Endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
+        result.Endpoint.HttpContext.Response.ContentLength.ShouldBeNull();
+        result.Endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBeEmpty();
+        var responseBody = ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray();
+        responseBody.AsSpan().IndexOf(attackerPayload).ShouldBe(-1);
+        result.Endpoint.HttpContext.Response.Body.Position = 0;
+        var failure = (
+            await JsonSerializer.DeserializeAsync<BaseResultDTO>(
+                result.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
+        failure.IsSuccess.ShouldBeFalse();
+        failure.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
+        failure.Errors.Count.ShouldBe(1);
+        handler.RequestUris.Count.ShouldBe(1);
+        clientFactory.Verify();
+    }
+
+    [Test]
     public async Task ShouldRejectDisabledLibraryBeforeRequestingPlex()
     {
         // Arrange
@@ -299,6 +536,80 @@ public class GetPhotoAssetImageEndpointUnitTests
         result.IsValid.ShouldBeTrue();
         result.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         handler.RequestUris.ShouldBeEmpty();
+        clientFactory.Verify();
+    }
+
+    [Test]
+    [Arguments("svg", null)]
+    [Arguments("svg", "application/octet-stream")]
+    [Arguments("svgz", null)]
+    [Arguments("svgz", "application/octet-stream")]
+    public async Task ShouldRejectOriginalSvgContainer_WhenUpstreamContentTypeIsMissingOrOctetStream(
+        string container,
+        string? upstreamContentType
+    )
+    {
+        // Arrange
+        await SetupDatabase(
+            84018,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        await dbContext
+            .PlexPhotoMediaData.Where(x => x.Id == asset.Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.Container, container), CancellationToken);
+        dbContext.ClearChangeTracker();
+        byte[] attackerPayload = System.Text.Encoding.UTF8.GetBytes("<svg><script>alert('active')</script></svg>");
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(attackerPayload),
+        };
+        if (upstreamContentType is not null)
+            response.Content.Headers.ContentType = new(upstreamContentType);
+        var handler = new StubHttpMessageHandler(response);
+        var clientFactory = CreateClientFactory(handler);
+
+        // Act
+        var result = await TestEndpointHandleAsync(
+            new GetPhotoAssetImageRequest
+            {
+                PlexLibraryId = asset.PlexLibraryId,
+                AssetId = asset.Id,
+                Representation = PhotoImageRepresentation.Original,
+            },
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+
+        // Assert
+        result.IsValid.ShouldBeTrue();
+        result.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
+        result.ContentType.ShouldContain("json");
+        result.Endpoint.HttpContext.Response.Headers.CacheControl.ToString().ShouldBe("no-store");
+        result.Endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
+        result.Endpoint.HttpContext.Response.ContentLength.ShouldBeNull();
+        result.Endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBeEmpty();
+        var responseBody = ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray();
+        responseBody.AsSpan().IndexOf(attackerPayload).ShouldBe(-1);
+        result.Endpoint.HttpContext.Response.Body.Position = 0;
+        var failure = (
+            await JsonSerializer.DeserializeAsync<BaseResultDTO>(
+                result.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
+        failure.IsSuccess.ShouldBeFalse();
+        failure.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
+        failure.Errors.Count.ShouldBe(1);
+        handler.RequestUris.Count.ShouldBe(1);
         clientFactory.Verify();
     }
 
@@ -457,6 +768,61 @@ public class GetPhotoAssetImageEndpointUnitTests
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.MaxAge.ShouldBe(TimeSpan.FromDays(3));
         endpoint.HttpContext.Response.Headers.Vary.ToString().ShouldBe("Cookie");
         handler.RequestUris.Count.ShouldBe(1);
+        clientFactory.Verify();
+    }
+
+    [Test]
+    public async Task ShouldFetchImage_WhenConditionalETagUsesPrePolicyUnversionedValue()
+    {
+        // Arrange
+        await SetupDatabase(
+            84020,
+            config =>
+            {
+                config.PlexAccountCount = 1;
+                config.PlexServerCount = 1;
+                config.PlexPhotoLibraryCount = 1;
+                config.PhotoAlbumCount = 1;
+                config.PhotoCount = 1;
+            }
+        );
+        var dbContext = IDbContext;
+        var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
+        var handler = new StubHttpMessageHandler(
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) },
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([4, 5, 6]) }
+        );
+        foreach (var response in handler.Responses)
+            response.Content.Headers.ContentType = new("image/jpeg");
+        var clientFactory = CreateClientFactory(handler, expectedCalls: 2);
+        var request = new GetPhotoAssetImageRequest
+        {
+            PlexLibraryId = asset.PlexLibraryId,
+            AssetId = asset.Id,
+            Representation = PhotoImageRepresentation.Original,
+        };
+        var initial = await TestEndpointHandleAsync(
+            request,
+            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        );
+        initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        var versionedETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
+        versionedETag.ShouldStartWith("\"v2-");
+        var legacyETag = versionedETag.Replace("\"v2-", "\"", StringComparison.Ordinal);
+        var endpoint = initial.Endpoint;
+        endpoint.HttpContext.Response.Clear();
+        endpoint.HttpContext.Request.Headers.IfNoneMatch = legacyETag;
+
+        // Act
+        await endpoint.HandleAsync(request, CancellationToken);
+
+        // Assert
+        endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe([4, 5, 6]);
+        endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBe(versionedETag);
+        endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
+        endpoint.HttpContext.Response.Headers.Vary.ToString().ShouldBe("Cookie");
+        handler.RequestUris.Count.ShouldBe(2);
         clientFactory.Verify();
     }
 

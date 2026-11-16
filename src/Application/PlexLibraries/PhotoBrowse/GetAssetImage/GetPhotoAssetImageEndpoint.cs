@@ -53,6 +53,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
     private readonly IMemoryCache _cache;
 
     private const int RESPONSE_CACHE_DURATION_SECONDS = 259200;
+    private const string IMAGE_ENTITY_TAG_VERSION = "v2";
     private static readonly TimeSpan _connectionCacheDuration = TimeSpan.FromMinutes(5);
     private static readonly string _responseCacheControl = FormattableString.Invariant(
         $"private,max-age={RESPONSE_CACHE_DURATION_SECONDS}"
@@ -104,8 +105,8 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
 
     public override async Task HandleAsync(GetPhotoAssetImageRequest req, CancellationToken ct)
     {
+        HttpContext.Response.Headers[HeaderNames.XContentTypeOptions] = "nosniff";
         HttpContext.Response.Headers.CacheControl = "no-store";
-
         var scopeResult = await _dbContext.ResolvePlexPhotoBrowseScopeAsync(req.PlexLibraryId, ct);
         if (scopeResult.IsCancelledOrFailed)
         {
@@ -245,7 +246,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
                 : string.Empty;
         return new EntityTagHeaderValue(
             FormattableString.Invariant(
-                $"\"{asset.PlexServerId}-{asset.PlexLibraryId}-{asset.Id}-{asset.PlexApiPartId}-{asset.PlexApiRatingKey}-{asset.UpdatedAt?.Ticks ?? asset.AddedAt.Ticks}-{asset.Size}-{asset.Width}x{asset.Height}-{req.Representation}{targetSize}\""
+                $"\"{IMAGE_ENTITY_TAG_VERSION}-{asset.PlexServerId}-{asset.PlexLibraryId}-{asset.Id}-{asset.PlexApiPartId}-{asset.PlexApiRatingKey}-{asset.UpdatedAt?.Ticks ?? asset.AddedAt.Ticks}-{asset.Size}-{asset.Width}x{asset.Height}-{req.Representation}{targetSize}\""
             )
         );
     }
@@ -341,7 +342,7 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
     {
         if (!string.IsNullOrWhiteSpace(upstreamContentType))
         {
-            if (upstreamContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            if (Domain.ContentType.IsPassiveImage(upstreamContentType))
                 return upstreamContentType;
 
             if (!upstreamContentType.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
@@ -359,7 +360,6 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
             "heic" => "image/heic",
             "heif" => "image/heif",
             "avif" => "image/avif",
-            "svg" or "svgz" => "image/svg+xml",
             "jxl" => "image/jxl",
             _ => null,
         };
