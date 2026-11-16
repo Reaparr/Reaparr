@@ -94,6 +94,13 @@ public static class INetworkSettingsExtensions
             options.KnownProxies.Add(ipAddress);
         }
 
+        if (options.KnownProxies.Count == 0 && options.KnownIPNetworks.Count == 0)
+        {
+            options.ForwardedHeaders = ForwardedHeaders.None;
+            _log.Here()
+                .Error("Forwarded headers disabled because AllowedProxyIps contains no valid IP or network entries");
+        }
+
         return options;
     }
 }
