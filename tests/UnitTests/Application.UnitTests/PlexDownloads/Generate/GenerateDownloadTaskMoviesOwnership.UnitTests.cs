@@ -61,14 +61,107 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
         afterParents.Length.ShouldBe(beforeParents.Length + expectedCreatedCount);
         afterFiles.Length.ShouldBe(beforeFiles.Length + expectedCreatedCount);
 
-        afterParents.Where(x => scenario.ExistingTaskIds.Contains(x.Id)).ToArray().ShouldBe(beforeParents);
-        afterFiles.Where(x => beforeFiles.Select(y => y.Id).Contains(x.Id)).ToArray().ShouldBe(beforeFiles);
+        afterParents
+            .Where(x => scenario.ExistingTaskIds.Contains(x.Id))
+            .ToArray()
+            .Select(x => (
+                x.Id,
+                x.PlexApiRatingKey,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.RadarrIntegrationId,
+                x.SonarrIntegrationId,
+                x.DownloadStatus,
+                x.Title,
+                x.FullTitle,
+                x.Year,
+                x.CreatedAt
+            ))
+            .ShouldBe(
+                beforeParents.Select(x => (
+                    x.Id,
+                    x.PlexApiRatingKey,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId,
+                    x.DownloadStatus,
+                    x.Title,
+                    x.FullTitle,
+                    x.Year,
+                    x.CreatedAt
+                ))
+            );
+        afterFiles
+            .Where(x => beforeFiles.Select(y => y.Id).Contains(x.Id))
+            .ToArray()
+            .Select(x => (
+                x.Id,
+                x.ParentId,
+                x.PlexApiRatingKey,
+                x.PlexApiMediaId,
+                x.PlexApiPartId,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.RadarrIntegrationId,
+                x.SonarrIntegrationId,
+                x.DownloadStatus,
+                x.HashId,
+                x.Title,
+                x.FullTitle,
+                x.FileName,
+                x.FileLocationUrl,
+                x.VideoQuality,
+                x.DataTotal,
+                x.DestinationFolderPathId,
+                x.DownloadClientType
+            ))
+            .ShouldBe(
+                beforeFiles.Select(x => (
+                    x.Id,
+                    x.ParentId,
+                    x.PlexApiRatingKey,
+                    x.PlexApiMediaId,
+                    x.PlexApiPartId,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId,
+                    x.DownloadStatus,
+                    x.HashId,
+                    x.Title,
+                    x.FullTitle,
+                    x.FileName,
+                    x.FileLocationUrl,
+                    x.VideoQuality,
+                    x.DataTotal,
+                    x.DestinationFolderPathId,
+                    x.DownloadClientType
+                ))
+            );
 
         var createdParents = afterParents
             .Where(x => !scenario.ExistingTaskIds.Contains(x.Id))
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArray();
-        createdParents.Select(ToParentIdentity).ShouldBe(scenario.ExpectedCreatedParents);
+        createdParents
+            .Select(ToParentIdentity)
+            .Select(x => (
+                x.PlexApiRatingKey,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.RadarrIntegrationId,
+                x.SonarrIntegrationId
+            ))
+            .ShouldBe(
+                scenario.ExpectedCreatedParents.Select(x => (
+                    x.PlexApiRatingKey,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId
+                ))
+            );
         createdParents.ShouldAllBe(x => x.DownloadStatus == DownloadStatus.Queued);
 
         var existingFileIds = beforeFiles.Select(x => x.Id).ToArray();
@@ -77,7 +170,26 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
             .OrderBy(x => x.PlexApiRatingKey)
             .ToArray();
         createdFiles.Length.ShouldBe(expectedCreatedCount);
-        createdFiles.Select(ToFileIdentity).ShouldBe(createdParents.Select(ToParentFileIdentity));
+        createdFiles
+            .Select(ToFileIdentity)
+            .Select(x => (
+                x.ParentId,
+                x.PlexApiRatingKey,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.RadarrIntegrationId,
+                x.SonarrIntegrationId
+            ))
+            .ShouldBe(
+                createdParents.Select(ToParentFileIdentity).Select(x => (
+                    x.ParentId,
+                    x.PlexApiRatingKey,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId
+                ))
+            );
         createdFiles.ShouldAllBe(x => x.DownloadStatus == DownloadStatus.Queued);
     }
 
@@ -138,16 +250,46 @@ public class GenerateDownloadTaskMoviesOwnershipUnitTests : BaseCommandUnitTest<
         parents.Select(x => x.Title).Order().ShouldBe(movies.Select(x => x.Title).Order());
         parents
             .Select(ToParentIdentity)
+            .Select(x => (
+                x.PlexApiRatingKey,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.RadarrIntegrationId,
+                x.SonarrIntegrationId
+            ))
             .ShouldBe(
                 Enumerable.Repeat(
                     new ParentIdentity(sharedKey, movies[0].PlexServerId, movies[0].PlexLibraryId, null, null),
                     2
-                )
+                ).Select(x => (
+                    x.PlexApiRatingKey,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId
+                ))
             );
         files
             .Select(ToFileIdentity)
             .OrderBy(x => x.ParentId)
-            .ShouldBe(parents.Select(ToParentFileIdentity).OrderBy(x => x.ParentId));
+            .Select(x => (
+                x.ParentId,
+                x.PlexApiRatingKey,
+                x.PlexServerId,
+                x.PlexLibraryId,
+                x.RadarrIntegrationId,
+                x.SonarrIntegrationId
+            ))
+            .ShouldBe(
+                parents.Select(ToParentFileIdentity).OrderBy(x => x.ParentId).Select(x => (
+                    x.ParentId,
+                    x.PlexApiRatingKey,
+                    x.PlexServerId,
+                    x.PlexLibraryId,
+                    x.RadarrIntegrationId,
+                    x.SonarrIntegrationId
+                ))
+            );
         files
             .Select(x => (x.PlexApiMediaId, x.PlexApiPartId))
             .OrderBy(x => x.PlexApiPartId)

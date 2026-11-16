@@ -166,13 +166,9 @@ public class TorrentStatesIntegrationTests : BaseIntegrationTests
                 .ToArray()
         );
         using var afterContext = container.DbContext;
-        var afterFiles = isMovie
-            ? (
-                await afterContext.DownloadTaskMovieFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)
-            ).Cast<DownloadTaskFileBase>()
-            : (
-                await afterContext.DownloadTaskTvShowEpisodeFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)
-            ).Cast<DownloadTaskFileBase>();
+        IEnumerable<DownloadTaskFileBase> afterFiles = isMovie
+            ? await afterContext.DownloadTaskMovieFile.OrderBy(file => file.Id).ToListAsync(CancellationToken)
+            : await afterContext.DownloadTaskTvShowEpisodeFile.OrderBy(file => file.Id).ToListAsync(CancellationToken);
         afterFiles
             .Select(file =>
                 (

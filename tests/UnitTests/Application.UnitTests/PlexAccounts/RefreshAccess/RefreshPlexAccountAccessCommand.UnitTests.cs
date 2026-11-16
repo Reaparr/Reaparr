@@ -342,16 +342,27 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
         serverRapport.AddUpdated(servers[1].Id, servers[1].Name);
         const string identity = "a4eb5051-3c16-4b94-81a9-470b34b376a9";
         var user = new Mock<IUserService>(MockBehavior.Strict);
-        using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        using var telemetry = new Telemetry(
-            client.Object,
-            Mock.Container.Resolve<IAppBuildInfo>(),
-            user.Object,
-            source,
-            new UserSettings()
-        );
-        SetupDependencies(builder => builder.RegisterInstance(telemetry).As<ITelemetry>().ExternallyOwned());
+        SetupDependencies(builder =>
+        {
+            builder
+                .Register(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName))
+                .As<ActivitySource>()
+                .SingleInstance();
+            builder
+                .Register(ctx =>
+                    new Telemetry(
+                        client.Object,
+                        ctx.Resolve<IAppBuildInfo>(),
+                        user.Object,
+                        ctx.Resolve<ActivitySource>(),
+                        new UserSettings()
+                    )
+                )
+                .As<ITelemetry>()
+                .SingleInstance();
+        });
+        var telemetry = Mock.Container.Resolve<ITelemetry>();
         Dictionary<string, object>? capturedProperties = null;
 
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
@@ -423,7 +434,7 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
 
         // Act
         var result = await TestHandlerExecuteAsync<List<RefreshPlexAccountAccessRapportDTO>>(
-            new RefreshPlexAccountAccessCommand(account.Id, TelemetryTrigger.Manual)
+            new RefreshPlexAccountAccessCommand(account.Id)
         );
 
         // Assert

@@ -94,7 +94,7 @@ public class RefreshPlexAccountAccessEndpointUnitTests
                         && (string)properties[TelemetryProperty.Trigger] == nameof(TelemetryTrigger.Manual)
                         && (string)properties[TelemetryProperty.Outcome] == expectedEventOutcome.ToString()
                         && (int?)properties[TelemetryProperty.AccountId] == expectedAccountId
-                        && properties[TelemetryProperty.ServerId] == null
+                        && properties.GetValueOrDefault(TelemetryProperty.ServerId) == null
                     ),
                     null,
                     null,

@@ -37,16 +37,16 @@ public class UpdateUserSettingsEndpointUnitTests
                 DownloadSchedule = new DownloadSchedule
                 {
                     Enabled = true,
-                    Days = new Dictionary<string, Dictionary<string, int?>>
-                    {
-                        ["Monday"] = new() { ["00:00"] = 100 },
-                    },
+                    Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 100 } },
                 },
             },
         };
         settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
         var dto = settings.ToDTO();
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = invalidLimit } };
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
+        {
+            ["Monday"] = new() { ["00:00"] = invalidLimit },
+        };
 
         // Act
         var result = await TestEndpointHandleAsync(
@@ -79,7 +79,10 @@ public class UpdateUserSettingsEndpointUnitTests
         var settings = new UserSettings();
         var dto = settings.ToDTO();
         dto.DownloadManagerSettings.DownloadSchedule.Enabled = true;
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>> { [day] = new() { [time] = 100 } };
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
+        {
+            [day] = new() { [time] = 100 },
+        };
 
         // Act
         var result = await TestEndpointHandleAsync(
@@ -206,10 +209,7 @@ public class UpdateUserSettingsEndpointUnitTests
                 DownloadSchedule = new DownloadSchedule
                 {
                     Enabled = true,
-                    Days = new Dictionary<string, Dictionary<string, int?>>
-                    {
-                        ["Monday"] = new() { ["00:00"] = 100 },
-                    },
+                    Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 100 } },
                 },
             },
         };
@@ -262,7 +262,10 @@ public class UpdateUserSettingsEndpointUnitTests
                 dto.DateTimeSettings.TimeZone = "Asia/Kathmandu";
                 break;
             case "limit":
-                dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["09:30"] = 200 } };
+                dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
+                {
+                    ["Monday"] = new() { ["09:30"] = 200 },
+                };
                 break;
             case "enabled":
                 dto.DownloadManagerSettings.DownloadSchedule.Enabled = false;
@@ -440,7 +443,7 @@ public class UpdateUserSettingsEndpointUnitTests
                 x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
                 Times.Never()
             );
-        }
+    }
 
     [Test]
     [Arguments(100, 0, false, 500)]
@@ -475,10 +478,7 @@ public class UpdateUserSettingsEndpointUnitTests
                 DownloadSchedule = new DownloadSchedule
                 {
                     Enabled = true,
-                    Days = new Dictionary<string, Dictionary<string, int?>>
-                    {
-                        ["Monday"] = new() { ["00:00"] = 1000 },
-                    },
+                    Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
                 },
             },
         };
@@ -492,9 +492,7 @@ public class UpdateUserSettingsEndpointUnitTests
             limits,
             TimeProvider.System
         );
-        var command = new UpdateScheduledDownloadLimitsCommand(
-            DateTimeOffset.Parse("2026-10-05T12:00:00Z")
-        );
+        var command = new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.Parse("2026-10-05T12:00:00Z"));
         var initial = await allocator.ExecuteAsync(command, CancellationToken);
         initial.IsSuccess.ShouldBeTrue();
         initial.Errors.Count.ShouldBe(0);
@@ -745,14 +743,12 @@ public class UpdateUserSettingsEndpointUnitTests
             (await second).ValidationErrors.Count.ShouldBe(0);
             (await second).StatusCode.ShouldBe(200);
             settings.DateTimeSettings.TimeZone.ShouldBe("America/New_York");
-            calls.ShouldBe(
-                [
-                    "reschedule Asia/Kathmandu",
-                    "trigger Asia/Kathmandu",
-                    "reschedule America/New_York",
-                    "trigger America/New_York",
-                ]
-            );
+            calls.ShouldBe([
+                "reschedule Asia/Kathmandu",
+                "trigger Asia/Kathmandu",
+                "reschedule America/New_York",
+                "trigger America/New_York",
+            ]);
             scheduler.Verify();
         }
         finally

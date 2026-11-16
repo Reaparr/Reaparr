@@ -105,12 +105,14 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             .Cast<DownloadTaskFileBase>()
             .ToList();
         var download = files[0];
+        var parentId = ((DownloadTaskOtherVideoFile)download).ParentId;
         for (var index = 1; index < 3; index++)
         {
+            var fileId = files[index].Id;
             await dbContext
-                .DownloadTaskOtherVideoFiles.Where(x => x.Id == files[index].Id)
+                .DownloadTaskOtherVideoFiles.Where(x => x.Id == fileId)
                 .ExecuteUpdateAsync(
-                    p => p.SetProperty(x => x.ParentId, ((DownloadTaskOtherVideoFile)download).ParentId),
+                    p => p.SetProperty(x => x.ParentId, parentId),
                     CancellationToken
                 );
         }
@@ -128,7 +130,6 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
         selected.Select(x => x.Id).Order().ShouldBe(files.Take(3).Select(x => x.Id).Order());
         var moves = selected.ToList();
         moves.Count.ShouldBe(3);
-        var nextMove = moves.First();
         var error = new Error("move rejected");
         SetupDependencies(b => b.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>());
         foreach (var move in moves.Take(1))

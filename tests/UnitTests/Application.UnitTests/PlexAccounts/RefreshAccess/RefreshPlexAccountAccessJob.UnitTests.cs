@@ -61,15 +61,16 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
     {
         // Arrange
         using var cancellationSource = new CancellationTokenSource();
+        var cancellationToken = cancellationSource.Token;
         cancellationSource.Cancel();
-        var context = SetupJobContext(cancellationSource.Token);
-        var exception = new OperationCanceledException(cancellationSource.Token);
-        var capturedResult = (ResultBase?)null;
+        var context = SetupJobContext(cancellationToken);
+        var exception = new OperationCanceledException(cancellationToken);
+        ResultBase? capturedResult = null;
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
                     It.Is<RefreshPlexAccountAccessCommand>(command => command.Trigger == TelemetryTrigger.Scheduled),
-                    cancellationSource.Token
+                    cancellationToken
                 )
             )
             .ThrowsAsync(exception)

@@ -2358,19 +2358,28 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
         var originalSort = filter.Parameters.Sort;
         var originalHash = filter.QueryHash;
         var materializations = new EntityMaterializationCounter();
-        var options = new DbContextOptionsBuilder<ReaparrDbContext>();
-        options.ConfigureSqlite(dbContext.DatabaseName, SqliteOpenMode.Memory);
-        options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking).AddInterceptors(materializations);
-        await using var measuredContext = new ReaparrDbContext(
-            options.Options,
-            Mock.Container.Resolve<ILogger>(),
-            Mock.Container.Resolve<IPathProvider>(),
-            Mock.Container.Resolve<IAppRuntimeInfo>(),
-            dbContext.DatabaseName
-        );
+        var databaseName = dbContext.DatabaseName;
         SetupDependencies(builder =>
-            builder.RegisterInstance(measuredContext).As<IReaparrDbContext>().ExternallyOwned()
-        );
+        {
+            builder
+                .Register(ctx =>
+                {
+                    var measuredOptions = new DbContextOptionsBuilder<ReaparrDbContext>();
+                    measuredOptions.ConfigureSqlite(databaseName, SqliteOpenMode.Memory);
+                    measuredOptions
+                        .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+                        .AddInterceptors(materializations);
+                    return new ReaparrDbContext(
+                        measuredOptions.Options,
+                        ctx.Resolve<ILogger>(),
+                        ctx.Resolve<IPathProvider>(),
+                        ctx.Resolve<IAppRuntimeInfo>(),
+                        databaseName
+                    );
+                })
+                .As<IReaparrDbContext>()
+                .SingleInstance();
+        });
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(

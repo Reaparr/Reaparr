@@ -280,8 +280,16 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         triggers.ShouldAllBe(x => x.StartTimeUtc <= DateTimeOffset.UtcNow.AddMinutes(3));
         scheduled.Values.ShouldAllBe(x => x.Count == 1);
         var after = await ReadMusicStateAsync(dbContext);
-        after.Scopes.ShouldBe(fixture.Scopes);
-        after.Hits.ShouldBe(fixture.Hits);
+        after.Scopes
+            .Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.MediaType, x.CompletedAt))
+            .ShouldBe(
+                fixture.Scopes.Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.MediaType, x.CompletedAt))
+            );
+        after.Hits
+            .Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.RemotePlexMediaId, x.OwnedPlexMediaId, x.MatchType, x.ComparedAt))
+            .ShouldBe(
+                fixture.Hits.Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.RemotePlexMediaId, x.OwnedPlexMediaId, x.MatchType, x.ComparedAt))
+            );
         (await dbContext.PlexMusicArtists.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
             .ShouldBe(fixture.ArtistIds);
         scheduler.Verify();
@@ -313,14 +321,18 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         var before = await ReadMusicStateAsync(dbContext);
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
-        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
-        using var listeners = DiagnosticListener.AllListeners.Subscribe(listener =>
+        var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var listeners = DiagnosticListener.AllListeners.Subscribe(listener =>
             commandSubscriptions.Add(
                 listener.Select(entry => entry.Value!)
                     .OfType<CommandExecutedEventData>()
                     .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
                     .Subscribe(command => commands.Enqueue(command.Command.CommandText))
             )
+        );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
+            listeners,
+            commandSubscriptions
         );
 
         // Act
@@ -331,8 +343,44 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         result.Errors.Count.ShouldBe(0);
         commands.Count(x => x.Contains("PlexComparisonScopes", StringComparison.Ordinal)).ShouldBe(1);
         var after = await ReadMusicStateAsync(dbContext);
-        after.Scopes.ShouldBe(before.Scopes);
-        after.Hits.ShouldBe(before.Hits);
+        after.Scopes
+            .Select(x => (
+                x.Id,
+                x.RemotePlexLibraryId,
+                x.OwnedPlexLibraryId,
+                x.MediaType,
+                x.CompletedAt
+            ))
+            .ShouldBe(
+                before.Scopes.Select(x => (
+                    x.Id,
+                    x.RemotePlexLibraryId,
+                    x.OwnedPlexLibraryId,
+                    x.MediaType,
+                    x.CompletedAt
+                ))
+            );
+        after.Hits
+            .Select(x => (
+                x.Id,
+                x.RemotePlexLibraryId,
+                x.OwnedPlexLibraryId,
+                x.RemotePlexMediaId,
+                x.OwnedPlexMediaId,
+                x.MatchType,
+                x.ComparedAt
+            ))
+            .ShouldBe(
+                before.Hits.Select(x => (
+                    x.Id,
+                    x.RemotePlexLibraryId,
+                    x.OwnedPlexLibraryId,
+                    x.RemotePlexMediaId,
+                    x.OwnedPlexMediaId,
+                    x.MatchType,
+                    x.ComparedAt
+                ))
+            );
         Mock.Mock<IScheduler>()
             .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
@@ -468,7 +516,7 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         await dbContext.SaveChangesAsync(CancellationToken);
         var state = await ReadMusicStateAsync(dbContext);
         var artistIds = artists.Select(x => x.Id).Order().ToList();
-        return new MusicScopeFixture(dbContext, fixture.Libraries, fixture.CompletedAt, state.Scopes, state.Hits, artistIds);
+        return new MusicScopeFixture(dbContext, fixture.Libraries, state.Scopes, state.Hits, artistIds);
     }
 
     private async Task<(List<MusicScopeRow> Scopes, List<MusicHitRow> Hits)> ReadMusicStateAsync(
@@ -502,7 +550,6 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
     private sealed record MusicScopeFixture(
         IReaparrDbContext DbContext,
         PlexLibrary[] Libraries,
-        DateTime CompletedAt,
         List<MusicScopeRow> Scopes,
         List<MusicHitRow> Hits,
         List<int> ArtistIds

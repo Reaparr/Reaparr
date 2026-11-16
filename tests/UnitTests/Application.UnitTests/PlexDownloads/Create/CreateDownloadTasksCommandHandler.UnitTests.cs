@@ -43,7 +43,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         Mock.Mock<INotificationHubService>()
             .Setup(x =>
                 x.SendRefreshNotificationAsync(
-                    It.Is<List<RefreshDataType>>(x => x.SequenceEqual(new[] { RefreshDataType.DownloadTasks }))
+                    It.Is<List<RefreshDataType>>(types => types.SequenceEqual(new[] { RefreshDataType.DownloadTasks }))
                 )
             )
             .Returns(Task.CompletedTask)
@@ -304,10 +304,6 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
             .SingleAsync(CancellationToken);
         var photo = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var video = await dbContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
-        var season = show.Seasons.Single();
-        var episode = season.Episodes.Single();
-        var album = artist.Albums.Single();
-        var track = album.Tracks.Single();
         var request = new CreateDownloadTasksRequest(
             [
                 new DownloadMediaDTO
@@ -425,7 +421,7 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
         Mock.Mock<INotificationHubService>()
             .Setup(x =>
                 x.SendRefreshNotificationAsync(
-                    It.Is<List<RefreshDataType>>(x => x.SequenceEqual(new[] { RefreshDataType.DownloadTasks }))
+                    It.Is<List<RefreshDataType>>(types => types.SequenceEqual(new[] { RefreshDataType.DownloadTasks }))
                 )
             )
             .Returns(Task.CompletedTask)

@@ -326,13 +326,14 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
     {
         // Arrange
         const int plexServerId = 90004;
-        using var cancellationSource = new CancellationTokenSource();
+        var cancellationSource = new CancellationTokenSource();
+        var cancellationToken = cancellationSource.Token;
         cancellationSource.Cancel();
         var context = SetupJobContext(
             new List<int> { plexServerId },
-            cancellationSource.Token
+            cancellationToken
         );
-        var cancellation = new OperationCanceledException(cancellationSource.Token);
+        var cancellation = new OperationCanceledException(cancellationToken);
         var capturedResult = (ResultBase?)null;
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
@@ -340,7 +341,7 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
                     It.Is<CheckAllConnectionsStatusByPlexServerCommand>(
                         command => command.PlexServerId == plexServerId && command.Timeout == 5
                     ),
-                    cancellationSource.Token
+                    cancellationToken
                 )
             )
             .ThrowsAsync(cancellation)
@@ -379,6 +380,7 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
         Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<ITelemetry>()
             .Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<TelemetryActivity>()), Times.Never());
+        cancellationSource.Dispose();
 
     }
 

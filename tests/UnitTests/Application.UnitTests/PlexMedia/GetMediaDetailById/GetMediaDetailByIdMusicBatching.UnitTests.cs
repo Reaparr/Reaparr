@@ -23,8 +23,8 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
         var dbContext = IDbContext;
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
-        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
-        using var listeners = DiagnosticListener
+        var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var listeners = DiagnosticListener
             .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
             .Subscribe(listener =>
                 commandSubscriptions.Add(
@@ -35,6 +35,10 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
                         .Subscribe(command => commands.Enqueue(command.Command.CommandText))
                 )
             );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
+            listeners,
+            commandSubscriptions
+        );
         SetupMusicComparison(expected);
 
         // Act
@@ -120,8 +124,8 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
         large.Albums.Count.ShouldBe(3);
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
-        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
-        using var listeners = DiagnosticListener
+        var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var listeners = DiagnosticListener
             .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
             .Subscribe(listener =>
                 commandSubscriptions.Add(
@@ -132,6 +136,10 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
                         .Subscribe(command => commands.Enqueue(command.Command.CommandText))
                 )
             );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
+            listeners,
+            commandSubscriptions
+        );
         SetupMusicComparison(small);
         SetupMusicComparison(large);
 
@@ -198,15 +206,19 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
             .ToListAsync(CancellationToken);
         albumIds.Count.ShouldBe(4);
         for (var index = 0; index < albumIds.Count; index++)
+        {
+            var albumId = albumIds[index];
+            var albumSortIndex = albumIds.Count - index;
             await dbContext
-                .PlexMusicAlbums.Where(x => x.Id == albumIds[index])
+                .PlexMusicAlbums.Where(x => x.Id == albumId)
                 .ExecuteUpdateAsync(
                     setters =>
                         setters
-                            .SetProperty(x => x.SortIndex, albumIds.Count - index)
+                            .SetProperty(x => x.SortIndex, albumSortIndex)
                             .SetProperty(x => x.ChildCount, trackLimit),
                     CancellationToken
                 );
+        }
         var trackIds = await dbContext
             .PlexMusicTracks.Where(x => albumIds.Contains(x.PlexAlbumId))
             .OrderBy(x => x.Id)
@@ -214,16 +226,22 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
             .ToListAsync(CancellationToken);
         trackIds.Count.ShouldBe(12);
         for (var index = 0; index < trackIds.Count; index++)
+        {
+            var trackId = trackIds[index];
+            var sortIndex = index % 3 == 0 ? 2 : 1;
+            int? discNumber = index % 3 == 2 ? null : 2 - index % 3;
+            int? trackNumber = index % 3 == 2 ? null : 10 - index % 3;
             await dbContext
-                .PlexMusicTracks.Where(x => x.Id == trackIds[index])
+                .PlexMusicTracks.Where(x => x.Id == trackId)
                 .ExecuteUpdateAsync(
                     setters =>
                         setters
-                            .SetProperty(x => x.SortIndex, index % 3 == 0 ? 2 : 1)
-                            .SetProperty(x => x.DiscNumber, index % 3 == 2 ? null : 2 - index % 3)
-                            .SetProperty(x => x.TrackNumber, index % 3 == 2 ? null : 10 - index % 3),
+                            .SetProperty(x => x.SortIndex, sortIndex)
+                            .SetProperty(x => x.DiscNumber, discNumber)
+                            .SetProperty(x => x.TrackNumber, trackNumber),
                     CancellationToken
                 );
+        }
         await AddMultipartTrackAsync(dbContext, trackIds[0]);
         return await LoadBaselineHierarchyAsync(dbContext, artist.Id);
     }

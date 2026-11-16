@@ -55,6 +55,7 @@ public class ScheduledDownloadMembershipUnitTests : BaseUnitTest<DownloadTaskUpd
             },
         };
         using var speedLimits = new DownloadSpeedLimitProvider(settings);
+        Func<string, long> getEffectiveSpeedLimit = speedLimits.GetEffectiveDownloadSpeedLimit;
         var handler = new UpdateScheduledDownloadLimitsCommandHandler(
             new LoggerConfiguration().CreateLogger(),
             settings,
@@ -96,7 +97,7 @@ public class ScheduledDownloadMembershipUnitTests : BaseUnitTest<DownloadTaskUpd
                             .ToArrayAsync(CancellationToken)
                     );
                     var result = await handler.ExecuteAsync(command, token);
-                    limitsAtRefresh.Add(speedLimits.GetEffectiveDownloadSpeedLimit(machineIdentifier));
+                    limitsAtRefresh.Add(getEffectiveSpeedLimit(machineIdentifier));
                     return result;
                 }
             )
@@ -270,8 +271,9 @@ public class ScheduledDownloadMembershipUnitTests : BaseUnitTest<DownloadTaskUpd
             .Setup(x => x.StartAsync(It.IsAny<DashMpdCliOptions>()))
             .Returns<DashMpdCliOptions>(async options =>
             {
+                using var observedDb = IDbContext;
                 (
-                    await dbContext.DownloadTaskMovieFile.Select(x => x.DownloadStatus).SingleAsync(CancellationToken)
+                    await observedDb.DownloadTaskMovieFile.Select(x => x.DownloadStatus).SingleAsync(CancellationToken)
                 ).ShouldBe(DownloadStatus.Downloading);
                 launchedLimit = options.LimitRate;
                 return Result.Ok();

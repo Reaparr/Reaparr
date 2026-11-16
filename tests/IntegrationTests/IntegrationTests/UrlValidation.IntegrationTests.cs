@@ -43,7 +43,29 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
             );
         result.GetProperty("successes").GetArrayLength().ShouldBe(0);
         result.TryGetProperty("value", out _).ShouldBeFalse();
-        (await ReadSnapshotsAsync(container, target)).ShouldBe(before);
+        var after = await ReadSnapshotsAsync(container, target);
+        if (target == UrlTarget.Plex)
+        {
+            after
+                .Cast<PlexConnectionSnapshot>()
+                .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom, x.PlexServerId))
+                .ShouldBe(
+                    before
+                        .Cast<PlexConnectionSnapshot>()
+                        .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom, x.PlexServerId))
+                );
+        }
+        else
+        {
+            after
+                .Cast<ArrSnapshot>()
+                .Select(x => (x.Id, x.DisplayName, x.BaseUrl, x.ApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category, x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus, x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId))
+                .ShouldBe(
+                    before
+                        .Cast<ArrSnapshot>()
+                        .Select(x => (x.Id, x.DisplayName, x.BaseUrl, x.ApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category, x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus, x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId))
+                );
+        }
     }
 
     [Test]
@@ -91,7 +113,11 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
             operation == SaveOperation.Create
                 ? before.Append(expected).OrderBy(x => x.Id).ToArray()
                 : before.Select(x => x.Id == original.Id ? expected : x).ToArray();
-        after.ShouldBe(expectedRows);
+        after
+            .Select(x => (x.Id, x.DisplayName, x.BaseUrl, x.ApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category, x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus, x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId))
+            .ShouldBe(
+                expectedRows.Select(x => (x.Id, x.DisplayName, x.BaseUrl, x.ApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category, x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus, x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId))
+            );
         if (operation == SaveOperation.Create)
         {
             saved.QBittorrentApiKey.ShouldStartWith("qbt_");
@@ -146,23 +172,34 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         value.IsPlexTvConnection.ShouldBeFalse();
         value.Type.ShouldBe(PlexConnectionTypes.Local);
         value.LatestConnectionStatus.ShouldBeNull();
-        (await ReadPlexSnapshotsAsync(container))
-            .Single(x => x.Id == value.Id)
-            .ShouldBe(
-                new PlexConnectionSnapshot(
-                    value.Id,
-                    "https",
-                    scenario.Valid.Address,
-                    scenario.Valid.Port,
-                    scenario.ExpectedUrl,
-                    true,
-                    false,
-                    true,
-                    false,
-                    true,
-                    1
-                )
-            );
+        var stored = (await ReadPlexSnapshotsAsync(container)).Single(x => x.Id == value.Id);
+        (
+            stored.Id,
+            stored.Protocol,
+            stored.Address,
+            stored.Port,
+            stored.Url,
+            stored.Local,
+            stored.Relay,
+            stored.IPv4,
+            stored.IPv6,
+            stored.IsCustom,
+            stored.PlexServerId
+        ).ShouldBe(
+            (
+                value.Id,
+                "https",
+                scenario.Valid.Address,
+                scenario.Valid.Port,
+                scenario.ExpectedUrl,
+                true,
+                false,
+                true,
+                false,
+                true,
+                1
+            )
+        );
     }
 
     private Task<BaseContainer> CreateUrlContainerAsync(UrlTarget target, SaveOperation operation)
@@ -494,7 +531,7 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
     {
         private readonly ICommandExecutor _inner = new CommandExecutor();
 
-        public Task<TResult> Send<TResult>(FastEndpoints.ICommand<TResult> command, CancellationToken ct = default)
+        public Task<TResult> Send<TResult>(ICommand<TResult> command, CancellationToken ct = default)
             where TResult : ResultBase, new()
         {
             if (command is NotifyArrAppsOnStartupCommand)

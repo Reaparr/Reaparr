@@ -345,11 +345,9 @@ public class TelemetryNativeCaptureUnitTests : BaseUnitTest
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = candidate => ReferenceEquals(candidate, source),
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-        };
+        using var listener = new ActivityListener();
+        listener.ShouldListenTo = source.Equals;
+        listener.Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded;
         ActivitySource.AddActivityListener(listener);
         using var telemetry = new Telemetry(new Mock<IPostHogClient>().Object, Mock.Container.Resolve<IAppBuildInfo>(),
             user.Object, source, new UserSettings());

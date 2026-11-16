@@ -74,7 +74,11 @@ public class DeletePlexServerConnectionByIdUnitTests
             .ValidationErrors.Single()
             .PropertyName.ShouldBe(nameof(DeletePlexServerConnectionByIdRequest.PlexServerConnectionId));
         endpointResult.Response.ShouldBeNull();
-        connectionsAfter.ShouldBe(connectionsBefore);
+        connectionsAfter
+            .Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .ShouldBe(
+                connectionsBefore.Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            );
         serversAfter.ShouldBe(serversBefore);
     }
 
@@ -151,7 +155,11 @@ public class DeletePlexServerConnectionByIdUnitTests
         response.ShouldNotBeNull();
         response.IsSuccess.ShouldBeFalse();
         response.Errors.Count.ShouldBe(1);
-        connectionsAfter.ShouldBe(connectionsBefore);
+        connectionsAfter
+            .Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .ShouldBe(
+                connectionsBefore.Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            );
         serversAfter.ShouldBe(serversBefore);
     }
 
@@ -233,7 +241,11 @@ public class DeletePlexServerConnectionByIdUnitTests
         response.ShouldNotBeNull();
         response.IsSuccess.ShouldBeFalse();
         response.Errors.Count.ShouldBe(1);
-        connectionsAfter.ShouldBe(connectionsBefore);
+        connectionsAfter
+            .Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .ShouldBe(
+                connectionsBefore.Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            );
         serversAfter.ShouldBe(serversBefore);
     }
 

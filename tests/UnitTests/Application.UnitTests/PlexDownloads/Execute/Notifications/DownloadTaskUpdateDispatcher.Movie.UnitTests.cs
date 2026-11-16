@@ -240,7 +240,7 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
 
             var pauseLog = logs.LastOrDefault(x => x.Status == DownloadStatus.Paused);
             return pauseLog is not null
-                && logs.Where(x => x.Id > pauseLog.Id && x.Status == DownloadStatus.Downloading).Count() == 0;
+                && !logs.Any(x => x.Id > pauseLog.Id && x.Status == DownloadStatus.Downloading);
         });
         await sut.StopAsync(CancellationToken.None);
 

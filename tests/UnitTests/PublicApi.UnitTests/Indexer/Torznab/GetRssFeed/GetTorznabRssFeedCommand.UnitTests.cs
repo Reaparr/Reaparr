@@ -180,9 +180,10 @@ public class GetTorznabRssFeedCommandUnitTests : BaseCommandUnitTest<GetTorznabR
         var baseAddedAt = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
         for (var i = 0; i < episodeIds.Count; i++)
         {
+            var episodeId = episodeIds[i];
             var addedAt = baseAddedAt.AddMinutes(i);
             await dbContext
-                .PlexTvShowEpisodes.Where(x => x.Id == episodeIds[i])
+                .PlexTvShowEpisodes.Where(x => x.Id == episodeId)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.AddedAt, addedAt), CancellationToken);
         }
 

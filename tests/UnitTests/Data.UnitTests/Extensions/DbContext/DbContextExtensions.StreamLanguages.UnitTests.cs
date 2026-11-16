@@ -83,9 +83,8 @@ public class DbContextExtensionsStreamLanguagesUnitTests : BaseUnitTest
     {
         // Arrange
         await SetupDatabase(59302);
-        using var firstContext = IDbContext;
-        using var secondContext = IDbContext;
-        (await firstContext.StreamLanguages.ToListAsync(CancellationToken)).ShouldBeEmpty();
+        using var setupContext = IDbContext;
+        (await setupContext.StreamLanguages.ToListAsync(CancellationToken)).ShouldBeEmpty();
         var firstId = 0;
         var secondId = 0;
         var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -94,6 +93,7 @@ public class DbContextExtensionsStreamLanguagesUnitTests : BaseUnitTest
         var first = Task.Run(
             async () =>
             {
+                using var firstContext = IDbContext;
                 await start.Task;
                 return await firstContext.ExecuteTransactionAsync(
                     async (context, ct) =>
@@ -112,6 +112,7 @@ public class DbContextExtensionsStreamLanguagesUnitTests : BaseUnitTest
         var second = Task.Run(
             async () =>
             {
+                using var secondContext = IDbContext;
                 await start.Task;
                 return await secondContext.ExecuteTransactionAsync(
                     async (context, ct) =>

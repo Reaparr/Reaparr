@@ -18,23 +18,24 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
         // Arrange
         var fixture = await ArrangePreferredConnectionsAsync(serverCount);
         var commands = new ConcurrentQueue<string>();
-        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
-        using var listeners = DiagnosticListener.AllListeners.Subscribe(listener =>
+        var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var listeners = DiagnosticListener.AllListeners.Subscribe(listener =>
         {
             if (listener.Name != "Microsoft.EntityFrameworkCore")
                 return;
 
             commandSubscriptions.Add(
-                listener.Subscribe(entry =>
-                {
-                    if (
-                        entry.Value is CommandExecutedEventData command
-                        && command.Context?.Database.GetConnectionString() == fixture.ConnectionString
-                    )
-                        commands.Enqueue(command.Command.CommandText);
-                })
+                listener
+                    .Select(entry => entry.Value!)
+                    .OfType<CommandExecutedEventData>()
+                    .Where(command => command.Context?.Database.GetConnectionString() == fixture.ConnectionString)
+                    .Subscribe(command => commands.Enqueue(command.Command.CommandText))
             );
         });
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
+            listeners,
+            commandSubscriptions
+        );
 
         // Act
         var result = await TestEndpointHandleAsync();
@@ -52,7 +53,13 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
         response.Errors.Count.ShouldBe(0);
         var value = response.Value.ShouldNotBeNull();
         var actual = value.OrderBy(x => x.Id).Select(Snapshot).ToList();
-        actual.ShouldBe(fixture.Expected.OrderBy(x => x.Id));
+        actual
+            .Select(x => (x.Id, x.PlexServerId, x.ChosenConnection, x.StatusId, x.IsSuccessful, x.StatusCode, x.StatusMessage, x.LastChecked, x.StatusPlexServerId, x.StatusPlexServerConnectionId))
+            .ShouldBe(
+                fixture.Expected
+                    .OrderBy(x => x.Id)
+                    .Select(x => (x.Id, x.PlexServerId, x.ChosenConnection, x.StatusId, x.IsSuccessful, x.StatusCode, x.StatusMessage, x.LastChecked, x.StatusPlexServerId, x.StatusPlexServerConnectionId))
+            );
         actual.Where(x => x.ChosenConnection).Select(x => x.Id).OrderBy(x => x).ShouldBe(
             fixture.ChosenIds.OrderBy(x => x)
         );
@@ -81,7 +88,13 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
         response.Errors.Count.ShouldBe(0);
         var value = response.Value.ShouldNotBeNull();
         var actual = value.OrderBy(x => x.Id).Select(Snapshot).ToList();
-        actual.ShouldBe(fixture.Expected.OrderBy(x => x.Id));
+        actual
+            .Select(x => (x.Id, x.PlexServerId, x.ChosenConnection, x.StatusId, x.IsSuccessful, x.StatusCode, x.StatusMessage, x.LastChecked, x.StatusPlexServerId, x.StatusPlexServerConnectionId))
+            .ShouldBe(
+                fixture.Expected
+                    .OrderBy(x => x.Id)
+                    .Select(x => (x.Id, x.PlexServerId, x.ChosenConnection, x.StatusId, x.IsSuccessful, x.StatusCode, x.StatusMessage, x.LastChecked, x.StatusPlexServerId, x.StatusPlexServerConnectionId))
+            );
         actual.Select(x => x.Id).Intersect(fixture.DisabledConnectionIds).ShouldBeEmpty();
     }
 

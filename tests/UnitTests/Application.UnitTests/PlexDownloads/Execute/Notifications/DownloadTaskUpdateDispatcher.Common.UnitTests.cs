@@ -4,6 +4,18 @@ namespace Reaparr.Application.UnitTests;
 
 public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<DownloadTaskUpdateDispatcher>
 {
+    private async Task WaitUntilAsync(Func<Task<bool>> predicate, int timeoutMs = 5_000, int pollIntervalMs = 100)
+    {
+        var started = DateTime.UtcNow;
+        while (DateTime.UtcNow - started < TimeSpan.FromMilliseconds(timeoutMs))
+        {
+            if (await predicate())
+                return;
+            await Task.Delay(pollIntervalMs, CancellationToken);
+        }
+        (await predicate()).ShouldBeTrue();
+    }
+
     [Test]
     public async Task ShouldNotSendPatch_WhenProgressIsUpdatedForUnknownKey()
     {
@@ -152,9 +164,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var key = downloadTask.ToKey();
-        var capturedPatches = new List<IReadOnlyCollection<DownloadPatchDTO>>();
-        var transferPatchEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var notifyRequested = 0;
+        var capturedPatches = new ConcurrentQueue<IReadOnlyCollection<DownloadPatchDTO>>();
         Mock.Mock<IDownloadHubService>()
             .Setup(x =>
                 x.SendDownloadPatchAsync(
@@ -166,17 +176,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                 )
             )
             .Callback<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
-                (_, _, upserts, _, _) =>
-                {
-                    capturedPatches.Add(upserts);
-                    if (
-                        Volatile.Read(ref notifyRequested) != 0
-                        && upserts.Any(x =>
-                            x.Id == key.Id && x.DataTotal == 4_321 && x.DataReceived == 4_321 && x.Percentage == 100m
-                        )
-                    )
-                        transferPatchEntered.TrySetResult();
-                }
+                (_, _, upserts, _, _) => capturedPatches.Enqueue(upserts)
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce());
@@ -205,9 +205,22 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                 TimeRemaining = 12,
             }
         );
-        Volatile.Write(ref notifyRequested, 1);
+        var patchCountBeforeTransfer = capturedPatches.Count;
         sut.NotifyFileTransferProgress(key);
-        await transferPatchEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
+        await WaitUntilAsync(
+            () =>
+                Task.FromResult(
+                    capturedPatches.Skip(patchCountBeforeTransfer).Any(batch =>
+                        batch.Any(
+                            x =>
+                                x.Id == key.Id
+                                && x.DataTotal == 4_321
+                                && x.DataReceived == 4_321
+                                && x.Percentage == 100m
+                        )
+                    )
+                )
+        );
         await sut.StopAsync(CancellationToken.None);
 
         // Assert
@@ -670,6 +683,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
         var lifecycleEvents = new List<(DownloadTaskKey Key, DownloadStatus Status)>();
         Mock.Mock<ITelemetry>()
             .Setup(x => x.DownloadLifecycleChanged(It.IsAny<DownloadTaskKey>(), DownloadStatus.Downloading))
@@ -677,7 +691,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
                 (eventKey, status) =>
                 {
                     lifecycleEvents.Add((eventKey, status));
-                    cancellation.Cancel();
+                    cancel();
                 }
             )
             .Verifiable(Times.Once());

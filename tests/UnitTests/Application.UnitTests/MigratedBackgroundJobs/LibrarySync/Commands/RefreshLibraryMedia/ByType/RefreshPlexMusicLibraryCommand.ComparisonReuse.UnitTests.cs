@@ -157,9 +157,7 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
                     CancellationToken
                 )
             )
-            .Returns(() =>
-                Task.FromResult<Result<InsertMediaMetaDataCommandResponse>>(Result.Ok(refreshResponses.Dequeue()))
-            )
+            .Returns(() => Task.FromResult(Result.Ok(refreshResponses.Dequeue())))
             .Verifiable(Times.Exactly(2));
         executor
             .Setup(x =>

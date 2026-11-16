@@ -17,7 +17,7 @@ public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateSche
     public async Task ShouldRecordRecalculationOutcome_WhenCommandCompletes(bool failed, JobStatus expectedStatus)
     {
         // Arrange
-        var commandResult = failed ? Result.Fail("Schedule recalculation failed.") : Result.Ok();
+        var commandResult = failed ? Result.Fail("Schedule recalculation failed") : Result.Ok();
         var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.JobDetail).Returns(CreateJobDetail());
         context.SetupGet(x => x.FireInstanceId).Returns("scheduled-limits-test");

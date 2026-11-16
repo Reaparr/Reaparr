@@ -160,7 +160,7 @@ public class RestartDownloadTaskCommandSourceScopeUnitTests : BaseCommandUnitTes
         BasePlexMediaData competingSource;
         BasePlexMedia originalMedia;
         BasePlexMedia competingMedia;
-        string originalFullTitle = string.Empty;
+        string originalFullTitle;
         string originalMovieTitle = string.Empty;
         string originalTvShowTitle = string.Empty;
         string originalSeasonTitle = string.Empty;

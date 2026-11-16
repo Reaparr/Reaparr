@@ -3,7 +3,6 @@ using BencodeNET.Objects;
 using BencodeNET.Parsing;
 using BencodeNET.Torrents;
 using Microsoft.Extensions.DependencyInjection;
-using Reaparr.Data.Contracts;
 
 // ReSharper disable RedundantAssignment
 
@@ -253,6 +252,8 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         using var expectedHashStream = torrentFile.OpenReadStream();
         var expectedHashId = new BencodeParser().Parse<Torrent>(expectedHashStream).GetInfoHash();
         using var executionCancellation = new CancellationTokenSource();
+        var executionCancellationToken = executionCancellation.Token;
+        Action cancelExecution = executionCancellation.Cancel;
         var creationResult = Result.Fail<DownloadTaskCreationReport>(
             new ExceptionalError(new OperationCanceledException("Task creation was cancelled"))
         );
@@ -266,13 +267,13 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                         && command.Request.DownloadMedias[0].PlexLibraryId == metadata.LibraryId
                         && command.Request.DownloadMedias[0].PlexServerId == metadata.ServerId
                     ),
-                    executionCancellation.Token
+                    executionCancellationToken
                 )
             )
             .Returns(() =>
             {
                 if (cancelExecutionToken)
-                    executionCancellation.Cancel();
+                    cancelExecution();
 
                 return Task.FromResult(creationResult);
             })
@@ -315,7 +316,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         var endpointResult = await TestEndpointHandleAsync(
             request,
             integrationIdentity: integration.Id.ToRadarrIdentity(),
-            executionCancellationToken: executionCancellation.Token
+            executionCancellationToken: executionCancellationToken
         );
 
         // Assert
@@ -533,7 +534,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         // Act
         var endpointResult = await TestEndpointHandleAsync(
             request,
-            services => services.AddSingleton<IReaparrDbContext>(endpointDbContext),
+            services => services.AddSingleton(endpointDbContext),
             integrationIdentity: integration.Id.ToRadarrIdentity()
         );
 
@@ -612,6 +613,8 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         using var expectedHashStream = torrentFile.OpenReadStream();
         var expectedHashId = new BencodeParser().Parse<Torrent>(expectedHashStream).GetInfoHash();
         using var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
+        Action cancelAssociation = cancellation.Cancel;
         var endpointDbContext = IDbContext;
         var createResult = Result.Ok(new DownloadTaskCreationReport { Movies = 1 });
         Mock.Mock<ICommandExecutor>()
@@ -624,12 +627,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
                         && command.Request.DownloadMedias[0].PlexLibraryId == metadata.LibraryId
                         && command.Request.DownloadMedias[0].PlexServerId == metadata.ServerId
                     ),
-                    cancellation.Token
+                    cancellationToken
                 )
             )
             .Returns(() =>
             {
-                cancellation.Cancel();
+                cancelAssociation();
                 return Task.FromResult(createResult);
             })
             .Verifiable(Times.Once());
@@ -672,9 +675,9 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         // Act
         var endpointResult = await TestEndpointHandleAsync(
             request,
-            services => services.AddSingleton<IReaparrDbContext>(endpointDbContext),
+            services => services.AddSingleton(endpointDbContext),
             integration.Id.ToRadarrIdentity(),
-            cancellation.Token
+            cancellationToken
         );
 
         // Assert

@@ -87,7 +87,7 @@ public class PlexMediaDataMapperStreamsUnitTests : BaseUnitTest
         var codecFallback = CreateStream(202, null, StreamType.Subtitle, null, "SRT");
         var lyricFallback = CreateStream(203, null, StreamType.Lyrics, null, "lrc");
         var unknownCodec = CreateStream(204, null, StreamType.Subtitle, null, "ass");
-        var unknownFormat = CreateStream(205, null, StreamType.Subtitle, "vtt", "srt");
+        var unknownFormat = CreateStream(205, null, format: "vtt");
         var audioFormat = CreateStream(206, null, StreamType.Audio, "srt", "flac");
 
         // Act
@@ -108,7 +108,7 @@ public class PlexMediaDataMapperStreamsUnitTests : BaseUnitTest
             CreateStream(201, null, StreamType.Video, null, "h264"),
             CreateStream(202, null, StreamType.Unknown, null, "unknown"),
             CreateStream(203, null, StreamType.Audio, null, "flac"),
-            CreateStream(204, null, StreamType.Subtitle, null, "srt"),
+            CreateStream(204, null),
             CreateStream(205, null, StreamType.Lyrics, null, "lrc")
         );
 

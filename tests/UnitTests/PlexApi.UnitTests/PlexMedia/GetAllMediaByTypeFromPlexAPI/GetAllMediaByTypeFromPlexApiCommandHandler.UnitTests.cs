@@ -50,7 +50,7 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
             .Verifiable(Times.Once());
         Mock.Mock<IPlexApiClientFactory>()
             .Setup(x => x.CreateClientAsync(library.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk.Object))
+            .ReturnsAsync(Result.Ok(sdk.Object))
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>

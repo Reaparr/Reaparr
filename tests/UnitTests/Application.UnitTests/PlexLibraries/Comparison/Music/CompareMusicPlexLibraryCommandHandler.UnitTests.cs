@@ -550,6 +550,7 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
         beforeAlbums.Count.ShouldBe(1);
         beforeTracks.Count.ShouldBe(2);
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
         using var writerContext = (ReaparrDbContext)IDbContext;
         var injected = false;
         writerContext.SavingChanges += (_, _) =>
@@ -558,7 +559,7 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
                 return;
             injected = true;
             if (change == "cancel")
-                cancellation.Cancel();
+                cancel();
             else if (change == "failure")
                 throw new InvalidOperationException("Injected write failure");
         };
@@ -1321,7 +1322,6 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
             artist.MusicBrainzArtistId = fallback ? null : MbId(100000 + i);
             foreach (var (album, albumIndex) in artist.Albums.OrderBy(x => x.Id).Select((x, index) => (x, index)))
             {
-                var albumKey = artist.Albums.Count == 1 ? $"{i}" : $"{i}-{albumIndex}";
                 album.Title = $"Album {albumIndex}";
                 album.UpdateInitProperty(nameof(PlexMusicAlbum.SearchTitle), $"album {albumIndex}");
                 album.Year = 2000;

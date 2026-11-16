@@ -208,14 +208,16 @@ public class GetMovieMediaByTypeCommandComparisonSortingUnitTests
         for (var index = 0; index < movieIds.Count; index++)
         {
             var data = titleData[index];
+            var movieId = movieIds[index];
+            var mediaSize = (index + 1) * 100L;
             await dbContext
-                .PlexMovies.Where(x => x.Id == movieIds[index])
+                .PlexMovies.Where(x => x.Id == movieId)
                 .ExecuteUpdateAsync(
                     x =>
                         x.SetProperty(y => y.Title, data.Title)
                             .SetProperty(y => y.SearchTitle, data.Title.ToLowerInvariant())
                             .SetProperty(y => y.SortIndex, data.SortIndex)
-                            .SetProperty(y => y.MediaSize, (index + 1) * 100L),
+                            .SetProperty(y => y.MediaSize, mediaSize),
                     CancellationToken
                 );
         }
@@ -395,15 +397,17 @@ public class GetTvShowMediaByTypeCommandComparisonSortingUnitTests
         for (var index = 0; index < tvShowIds.Count; index++)
         {
             var data = titleData[index];
+            var tvShowId = tvShowIds[index];
+            var mediaSize = (index + 1) * 100L;
             await dbContext
-                .PlexTvShows.Where(x => x.Id == tvShowIds[index])
+                .PlexTvShows.Where(x => x.Id == tvShowId)
                 .ExecuteUpdateAsync(
                     x =>
                         x.SetProperty(y => y.Title, data.Title)
                             .SetProperty(y => y.SearchTitle, data.Title.ToLowerInvariant())
                             .SetProperty(y => y.SortIndex, data.SortIndex)
                             .SetProperty(y => y.Year, data.Year)
-                            .SetProperty(y => y.MediaSize, (index + 1) * 100L),
+                            .SetProperty(y => y.MediaSize, mediaSize),
                     CancellationToken
                 );
         }

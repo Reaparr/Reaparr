@@ -141,10 +141,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         coordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(true).Verifiable(Times.Once());
         coordinator
             .Setup(x => x.StartListener(It.IsAny<Func<CancellationToken, Task<Result>>>(), cancellationToken))
-            .Returns(
-                (Func<CancellationToken, Task<Result>> onSignal, CancellationToken token) =>
-                    pipe.StartListener(onSignal, token)
-            )
+            .Returns(pipe.StartListener)
             .Verifiable(Times.Once());
 
         // Act
@@ -311,19 +308,15 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         desktopMode.Setup(x => x.StartAsync(cancellationToken)).ReturnsAsync(Result.Ok()).Verifiable(Times.Once());
         desktopMode
             .Setup(x => x.WaitForExitAsync(cancellationToken))
-            .Returns(() =>
+            .Returns(async () =>
             {
                 windowWaitStarted.TrySetResult();
-                releaseWindowWait.Task.GetAwaiter().GetResult();
-                return Task.CompletedTask;
+                await releaseWindowWait.Task;
             })
             .Verifiable(Times.Once());
 
         // Act
-        var lifecycle = Task.Run(
-            () => Program.RunDesktopLifecycleAsync(app, cancellationToken: cancellationToken),
-            cancellationToken
-        );
+        var lifecycle = Program.RunDesktopLifecycleAsync(app, cancellationToken: cancellationToken);
         Result result;
         try
         {

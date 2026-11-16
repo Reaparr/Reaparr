@@ -369,7 +369,7 @@ public class TelemetryProxyUnitTests : BaseUnitTest
                     new MockAppRuntimeInfo()
                 )
             )
-            .AddSingleton<ITelemetry>(telemetry.Object)
+            .AddSingleton(telemetry.Object)
             .BuildServiceProvider();
         using (services)
         {

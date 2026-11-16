@@ -75,7 +75,7 @@ public class ClearCompletedDownloadTasksByDownloadTaskIdEndpointUnitTests
                 x.CompletedDownloadsCleared(
                     It.Is<IReadOnlyCollection<Guid>>(ids => ids.Order().SequenceEqual(expectedSelectedIds)),
                     It.Is<IReadOnlyCollection<DownloadTaskKey>>(keys =>
-                        keys.OrderBy(x => x.Id).SequenceEqual(expectedSelectedKeys)
+                        keys.OrderBy(downloadTaskKey => downloadTaskKey.Id).SequenceEqual(expectedSelectedKeys)
                     ),
                     It.Is<Result<int>>(r => r.IsSuccess && r.Value == 5)
                 )
@@ -168,7 +168,7 @@ public class ClearCompletedDownloadTasksByDownloadTaskIdEndpointUnitTests
                 x.CompletedDownloadsCleared(
                     It.Is<IReadOnlyCollection<Guid>>(ids => ids.Order().SequenceEqual(expectedIds)),
                     It.Is<IReadOnlyCollection<DownloadTaskKey>>(keys =>
-                        keys.OrderBy(x => x.Id).SequenceEqual(expectedKeys)
+                        keys.OrderBy(downloadTaskKey => downloadTaskKey.Id).SequenceEqual(expectedKeys)
                     ),
                     It.Is<Result<int>>(r => r.IsSuccess && r.Value == 0)
                 )

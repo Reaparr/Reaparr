@@ -153,12 +153,14 @@ public class StartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<StartD
             .Cast<DownloadTaskFileBase>()
             .ToList();
         var download = files[0];
+        var parentId = ((DownloadTaskMusicTrackFile)download).ParentId;
         for (var index = 1; index < 3; index++)
         {
+            var fileId = files[index].Id;
             await dbContext
-                .DownloadTaskMusicTrackFiles.Where(x => x.Id == files[index].Id)
+                .DownloadTaskMusicTrackFiles.Where(x => x.Id == fileId)
                 .ExecuteUpdateAsync(
-                    p => p.SetProperty(x => x.ParentId, ((DownloadTaskMusicTrackFile)download).ParentId),
+                    p => p.SetProperty(x => x.ParentId, parentId),
                     CancellationToken
                 );
         }

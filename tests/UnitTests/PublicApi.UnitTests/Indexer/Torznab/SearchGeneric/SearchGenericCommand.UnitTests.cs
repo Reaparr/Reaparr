@@ -30,34 +30,36 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
         var baseline = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         for (var i = 0; i < movieRows.Count; i++)
         {
+            var movieId = movieRows[i].Id;
+            var plexMovieId = movieRows[i].PlexMovieId;
+            var generatedFilename = $"movie-{i}.mkv";
+            var addedAt = baseline.AddMinutes(i);
             await dbContext
-                .PlexMovieData.Where(x => x.Id == movieRows[i].Id)
+                .PlexMovieData.Where(x => x.Id == movieId)
                 .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(x => x.GeneratedFilename, $"movie-{i}.mkv"),
+                    setters => setters.SetProperty(x => x.GeneratedFilename, generatedFilename),
                     CancellationToken
                 );
             await dbContext
-                .PlexMovies.Where(x => x.Id == movieRows[i].PlexMovieId)
-                .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(x => x.AddedAt, baseline.AddMinutes(i)),
-                    CancellationToken
-                );
+                .PlexMovies.Where(x => x.Id == plexMovieId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.AddedAt, addedAt), CancellationToken);
         }
 
         for (var i = 0; i < episodeRows.Count; i++)
         {
+            var episodeDataId = episodeRows[i].Id;
+            var episodeId = episodeRows[i].PlexTvShowEpisodeId;
+            var generatedFilename = $"episode-{i}.mkv";
+            var addedAt = baseline.AddMinutes(10 + i);
             await dbContext
-                .PlexTvShowEpisodeData.Where(x => x.Id == episodeRows[i].Id)
+                .PlexTvShowEpisodeData.Where(x => x.Id == episodeDataId)
                 .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(x => x.GeneratedFilename, $"episode-{i}.mkv"),
+                    setters => setters.SetProperty(x => x.GeneratedFilename, generatedFilename),
                     CancellationToken
                 );
             await dbContext
-                .PlexTvShowEpisodes.Where(x => x.Id == episodeRows[i].PlexTvShowEpisodeId)
-                .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(x => x.AddedAt, baseline.AddMinutes(10 + i)),
-                    CancellationToken
-                );
+                .PlexTvShowEpisodes.Where(x => x.Id == episodeId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.AddedAt, addedAt), CancellationToken);
         }
 
         var command = CreateCommand(limit: 3, offset: 1);

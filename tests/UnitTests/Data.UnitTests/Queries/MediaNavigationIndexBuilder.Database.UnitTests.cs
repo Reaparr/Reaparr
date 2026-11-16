@@ -11,7 +11,7 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
         DateTime? UpdatedAt,
         long MediaSize,
         int Rank
-    )[] SnapshotValues =
+    )[] _snapshotValues =
     [
         ("Alpha", 599, new(2026, 1, 15), null, 999_999_999L, 10),
         ("Bravo", 600, new(2026, 2, 1), new(2026, 2, 20), 1_000_000_000L, 50),
@@ -95,7 +95,7 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
             videos.Select(
                 (video, index) =>
                 {
-                    var value = SnapshotValues[index];
+                    var value = _snapshotValues[index];
                     return new MediaOverviewOtherVideoSnapshot
                     {
                         PlexOtherVideoId = video.Id,

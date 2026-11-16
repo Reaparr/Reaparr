@@ -464,6 +464,8 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         });
         var fs = Mock.Container.Resolve<IFileSystem>();
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
+        var cancellationToken = cancellation.Token;
         using var progress = new Subject<IDownloadFileTransferProgress>();
         var updates = new List<IDownloadFileTransferProgress>();
         var subjectCompleted = false;
@@ -481,7 +483,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                         && c.CurrentOffset == 0
                         && c.DataTotal == content.Length
                     ),
-                    cancellation.Token
+                    cancellationToken
                 )
             )
             .Returns<MoveFileWithResumeCommand, CancellationToken>(
@@ -493,7 +495,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                                 Progress = dto =>
                                 {
                                     c.Progress(dto);
-                                    cancellation.Cancel();
+                                    cancel();
                                 },
                             },
                             ct
@@ -1470,6 +1472,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         );
         Mock.Mock<IDownloadManagerSettings>().SetupGet(x => x.KeepCompletedInDownloadFolder).Returns(false);
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
         var moveOffsets = new List<long>();
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<MoveFileWithResumeCommand>(), It.IsAny<CancellationToken>()))
@@ -1486,7 +1489,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                                 Progress = progress =>
                                 {
                                     moveCommand.Progress(progress);
-                                    cancellation.Cancel();
+                                    cancel();
                                 },
                             },
                             ct

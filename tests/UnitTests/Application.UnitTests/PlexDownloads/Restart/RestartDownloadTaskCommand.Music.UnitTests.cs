@@ -134,7 +134,7 @@ public class RestartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<Rest
         after.ToParentKey().ShouldBe(before.ToParentKey());
         if (!sourceMissing)
         {
-            var track = ((PlexMusicTrackMediaData)source).PlexTrack!;
+            var track = source.PlexTrack!;
             after.DirectoryMeta.MusicArtistFolder.ShouldBe(track.PlexAlbum!.PlexArtist!.Title.SanitizeFolderName());
             after.DirectoryMeta.MusicAlbumFolder.ShouldBe(track.PlexAlbum.Title.SanitizeFolderName());
         }

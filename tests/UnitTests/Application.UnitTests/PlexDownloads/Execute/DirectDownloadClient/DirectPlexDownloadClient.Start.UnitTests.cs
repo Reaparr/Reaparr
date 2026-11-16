@@ -931,6 +931,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var serverMachineIdentifier = await dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
 
         using var speedLimits = new DownloadSpeedLimitProvider(new UserSettings());
+        Action<IReadOnlyDictionary<string, long>> setScheduledSpeedLimits = speedLimits.SetScheduledDownloadSpeedLimits;
         speedLimits.SetScheduledDownloadSpeedLimits(
             new Dictionary<string, long> { [serverMachineIdentifier] = 1000L * 1024 }
         );
@@ -954,7 +955,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                     SetupVerifiedFile(fileMock, Mock.Mock<IFileInfoFactory>(), targetPath, downloadTask.DataTotal);
                     capturedConfig.ShouldNotBeNull();
                     capturedConfig.MaximumBytesPerSecond.ShouldBe(1000L * 1024);
-                    speedLimits.SetScheduledDownloadSpeedLimits(
+                    setScheduledSpeedLimits(
                         new Dictionary<string, long> { [serverMachineIdentifier] = 2000L * 1024 }
                     );
                     capturedConfig.MaximumBytesPerSecond.ShouldBe(2000L * 1024);

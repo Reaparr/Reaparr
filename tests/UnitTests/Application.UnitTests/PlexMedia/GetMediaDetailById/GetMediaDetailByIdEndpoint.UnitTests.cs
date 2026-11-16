@@ -926,8 +926,8 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
         var dbContext = IDbContext;
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
-        using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
-        using var listeners = DiagnosticListener
+        var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var listeners = DiagnosticListener
             .AllListeners.Where(listener => listener.Name == "Microsoft.EntityFrameworkCore")
             .Subscribe(listener =>
                 commandSubscriptions.Add(
@@ -938,6 +938,10 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
                         .Subscribe(command => commands.Enqueue(command.Command.CommandText))
                 )
             );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
+            listeners,
+            commandSubscriptions
+        );
         if (type == PlexMediaType.MusicArtist)
         {
             var expectedIds = new[] { fixture.Id }.Concat(fixture.ChildIds).Concat(fixture.GrandchildIds).ToArray();

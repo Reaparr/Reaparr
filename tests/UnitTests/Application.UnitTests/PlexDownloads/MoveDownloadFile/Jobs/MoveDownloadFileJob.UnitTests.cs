@@ -230,6 +230,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             .ShouldBe(bytes);
         (await dbContext.GetDownloadTaskStatusAsync(key, CancellationToken)).ShouldBe(target.DownloadStatus);
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
         var token = scenario == "late-cancellation" ? cancellation.Token : CancellationToken.None;
         var context = SetupJobContext(key, token);
         SetupDependencies(b =>
@@ -269,7 +270,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
                 {
                     var result = await Mock.Create<MoveFileWithResumeCommandHandler>().ExecuteAsync(c, ct);
                     if (scenario == "late-cancellation")
-                        cancellation.Cancel();
+                        cancel();
                     return result;
                 }
             )
@@ -488,6 +489,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
         });
         var fs = Mock.Container.Resolve<IFileSystem>();
         using var cancellation = new CancellationTokenSource();
+        Action cancel = cancellation.Cancel;
         var token = scenario == "cancelled" ? cancellation.Token : CancellationToken.None;
         var context = SetupJobContext(key, token);
         SetupDependencies(b =>
@@ -527,7 +529,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
                                     Progress = dto =>
                                     {
                                         c.Progress(dto);
-                                        cancellation.Cancel();
+                                        cancel();
                                     },
                                 }
                                 : c,
