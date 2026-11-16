@@ -11,7 +11,7 @@ public record CreatePlexServerConnectionEndpointRequest
     public required int Port { get; init; }
 
     public required int PlexServerId { get; set; }
-};
+}
 
 public class CreatePlexServerConnectionEndpointRequestValidator : Validator<CreatePlexServerConnectionEndpointRequest>
 {
@@ -49,9 +49,9 @@ public class CreatePlexServerConnectionEndpoint
 
         Description(x =>
             x.ClearDefaultProduces()
-                .Produces(StatusCodes.Status201Created, typeof(ResultDTO<PlexServerConnectionDTO>))
-                .Produces(StatusCodes.Status400BadRequest, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
+                .Produces<ResultDTO<PlexServerConnectionDTO>>(StatusCodes.Status201Created)
+                .Produces<BaseResultDTO>(StatusCodes.Status400BadRequest)
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError)
         );
     }
 
@@ -62,7 +62,7 @@ public class CreatePlexServerConnectionEndpoint
         var connection = new PlexServerConnection
         {
             Id = 0,
-            Protocol = req.Protocol.ToLower(),
+            Protocol = req.Protocol.ToLowerInvariant(),
             Address = req.Address,
             Port = req.Port,
             Url = url,

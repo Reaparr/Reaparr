@@ -27,7 +27,7 @@ public class EventPublisher : IEventPublisher
         catch (Exception e)
         {
             // Swallow exception to avoid breaking the fire and forget
-            _log.Here().Error("Error publishing event {EventType}: {ErrorMessage}", @event, e.Message);
+            _log.Here().Error(e, "Error publishing event {EventType}", @event);
             _log.Here().ErrorResult(e);
         }
     }

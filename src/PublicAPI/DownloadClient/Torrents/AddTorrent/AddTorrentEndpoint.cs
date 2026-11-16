@@ -106,6 +106,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         {
             _log.Here()
                 .Warning(
+                    ex,
                     "[Torrent/Add] Invalid torrent file format for {TorrentFileName}: {Error}",
                     req.TorrentFile?.FileName,
                     ex.Message
@@ -118,6 +119,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         {
             _log.Here()
                 .Warning(
+                    ex,
                     "[Torrent/Add] Invalid torrent file bencode for {TorrentFileName}: {Error}",
                     req.TorrentFile?.FileName,
                     ex.Message
@@ -129,7 +131,8 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
         catch (Exception ex)
         {
             _log.Here()
-                .Warning(
+                .Error(
+                    ex,
                     "[Torrent/Add] Failed to parse torrent file for {TorrentFileName}: {Error}",
                     req.TorrentFile?.FileName,
                     ex.Message
@@ -187,7 +190,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
                 metadata
             );
 
-        var torrentDetails = (Metadata: metadata, HashId: hashId, FileName: req.TorrentFile.FileName);
+        var torrentDetails = (metadata, hashId, req.TorrentFile.FileName);
         await CreateAndTrackDownloadAsync(torrentDetails, source, identity, ct);
     }
 
@@ -292,7 +295,7 @@ public class AddTorrentEndpoint : Endpoint<AddTorrentEndpointRequest>
 
         // Set the hashId on the created download tasks so Sonarr/Radarr can keep track
         var associationResult = await Result.Try(() =>
-            SetHashIdOnDownloadTask((Type: metadata.Type, Source: source), torrent.HashId, identity, ct)
+            SetHashIdOnDownloadTask((metadata.Type, source), torrent.HashId, identity, ct)
         );
         _telemetry.ExternalDownloadSubmissionProcessed(
             identity,

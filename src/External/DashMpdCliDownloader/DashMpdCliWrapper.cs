@@ -23,7 +23,7 @@ public class DashMpdCliWrapper : IDashMpdCliWrapper
     private readonly CancellationTokenSource _gracefulCts = new();
     private readonly CancellationTokenSource _forcefulCts = new();
     private readonly string _binaryPath;
-    private readonly object _lifecycleGate = new();
+    private readonly Lock _lifecycleGate = new();
 
     private readonly Subject<string> _stdoutSubject = new();
     private readonly Subject<DashDownloadProgress> _progressSubject = new();
@@ -67,7 +67,7 @@ public class DashMpdCliWrapper : IDashMpdCliWrapper
         lock (_lifecycleGate)
         {
             if (_disposed)
-                return Result.Fail("Cannot start dash-mpd-cli after the wrapper has been disposed.");
+                return Result.Fail("Cannot start dash-mpd-cli after the wrapper has been disposed");
 
             if (_runTask is { IsCompleted: false })
                 throw new InvalidOperationException("dash-mpd-cli is already running.");
@@ -115,7 +115,7 @@ public class DashMpdCliWrapper : IDashMpdCliWrapper
         lock (_lifecycleGate)
         {
             if (_disposed)
-                return Result.Fail("Cannot start dash-mpd-cli after the wrapper has been disposed.");
+                return Result.Fail("Cannot start dash-mpd-cli after the wrapper has been disposed");
             if (_runTask is { IsCompleted: false })
                 throw new InvalidOperationException("dash-mpd-cli is already running.");
 
@@ -259,14 +259,7 @@ public class DashMpdCliWrapper : IDashMpdCliWrapper
             JsonSerializer.Deserialize<DashLogEvent>(output, DefaultJsonSerializerOptions.ConfigStandard)
         );
 
-        if (result.IsFailed)
-            return null;
-
-        var valueEvent = result.Value;
-        if (valueEvent is null)
-            return null;
-
-        return valueEvent;
+        return result.IsFailed ? null : result.Value;
     }
 
     private Result CreateFailureResult(int exitCode)
@@ -306,7 +299,7 @@ public class DashMpdCliWrapper : IDashMpdCliWrapper
         if (runTask is null)
             return Result.Ok();
 
-        return await Result.Try(async Task<Result> () => await runTask);
+        return await Result.Try(() => runTask);
     }
 
     /// <summary>
@@ -358,7 +351,7 @@ public class DashMpdCliWrapper : IDashMpdCliWrapper
     /// </summary>
     /// <param name="output">The output line to parse.</param>
     /// <returns>Progress information if successfully parsed, null otherwise.</returns>
-    private DashDownloadProgress? TryParseProgress(string output)
+    private static DashDownloadProgress? TryParseProgress(string output)
     {
         if (string.IsNullOrWhiteSpace(output))
             return null;
@@ -386,7 +379,7 @@ public class DashMpdCliWrapper : IDashMpdCliWrapper
         };
     }
 
-    private string GetDefaultBinaryPath()
+    private static string GetDefaultBinaryPath()
     {
         var assemblyDir = AppContext.BaseDirectory;
         var binaryDir = Path.Combine(assemblyDir, "dash-mpd-cli", "binary");
