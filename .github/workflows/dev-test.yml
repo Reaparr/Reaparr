@@ -228,9 +228,13 @@ jobs:
             matrix:
                 include:
                     -   containers: 1
-                        spec: 'cypress/e2e/pages/+(library|media-families|responsive|authentication|photos)/**/*.cy.{js,jsx,ts,tsx}'
+                        spec: 'cypress/e2e/pages/+(library|responsive)/**/*.cy.{js,jsx,ts,tsx}'
                     -   containers: 2
-                        spec: 'cypress/e2e/pages/!(library|media-families|responsive|authentication|photos)/**/*.cy.{js,jsx,ts,tsx}'
+                        spec: 'cypress/e2e/pages/+(media-families|authentication|photos)/**/*.cy.{js,jsx,ts,tsx}'
+                    -   containers: 3
+                        spec: 'cypress/e2e/pages/+(general|dialogs)/**/*.cy.{js,jsx,ts,tsx}'
+                    -   containers: 4
+                        spec: 'cypress/e2e/pages/!(library|responsive|media-families|authentication|photos|general|dialogs)/**/*.cy.{js,jsx,ts,tsx}'
         steps:
             -   uses: actions/checkout@v7
                 with:
