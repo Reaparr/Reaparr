@@ -1,3 +1,4 @@
+import { useNuxtApp } from '#app';
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import Axios from 'axios';
@@ -53,6 +54,8 @@ describe('MediaStore photo image ownership', () => {
 	beforeAll(() => baseSetup());
 	beforeEach(() => {
 		setViewport(DEFAULT_VIEWPORT.width, DEFAULT_VIEWPORT.height);
+		// Keep Quasar's resize handler synchronous so its timer cannot outlive this test window.
+		useNuxtApp().$q.screen.setDebounce(0);
 		mock = getAxiosMock();
 		setActivePinia(createPinia());
 	});
