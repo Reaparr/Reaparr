@@ -34,7 +34,9 @@
 						</q-tooltip>
 					</q-icon>
 				</QCol>
-				<QCol data-cy="directory-browser-path-field">
+				<QCol
+					ref="pathField"
+					data-cy="directory-browser-path-field">
 					<PTextField
 						:model-value="currentPath"
 						:readonly="saving"
@@ -185,6 +187,7 @@ const returnRow = ref<FileSystemModelDTO>({
 	hasReadPermission: true,
 	hasWritePermission: false,
 });
+const pathField = useTemplateRef<HTMLElement | { $el: HTMLElement }>('pathField');
 
 const emit = defineEmits<{
 	(e: 'confirm' | 'opened', path: FolderPathDTO): void;
@@ -294,7 +297,7 @@ function updateCurrentPath(newPath: string | undefined): void {
 	requestDirectories(pathValue);
 }
 
-function requestDirectories(newPath?: string): void {
+function requestDirectories(newPath?: string, restoreFocus = false): void {
 	invalidateLookup();
 	set(isLookupPending, true);
 
@@ -323,6 +326,15 @@ function requestDirectories(newPath?: string): void {
 					set(items, value.directories);
 					set(currentPathModel, value.current ?? null);
 					set(parentPath, value.parent);
+					if (restoreFocus) {
+						const target = get(pathField);
+						const root = target && '$el' in target ? target.$el : target;
+						const input = (root?.tagName === 'INPUT'
+							? root as HTMLInputElement
+							: root?.querySelector<HTMLInputElement>('input'))
+							?? document.querySelector<HTMLInputElement>('[data-cy="directory-browser-path-field"] input');
+						input?.focus();
+					}
 				}
 			},
 			error: (error) => Log.error('Directory lookup failed', error),
@@ -338,10 +350,10 @@ function directoryNavigate(dataRow: FileSystemModelDTO): void {
 	if (dataRow.path === '..') {
 		if (!get(currentPathModel)) return;
 		const parentPathValue = get(parentPath);
-		requestDirectories(parentPathValue);
+		requestDirectories(parentPathValue, true);
 		set(currentPath, parentPathValue);
 	} else {
-		requestDirectories(dataRow.path);
+		requestDirectories(dataRow.path, true);
 		set(currentPath, dataRow.path);
 	}
 }

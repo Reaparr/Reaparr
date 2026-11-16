@@ -31,12 +31,23 @@ export const useNotificationsStore = defineStore(StoreNames.NotificationsStore, 
 				),
 			);
 		},
-		fetchNotifications() {
+		fetchNotifications(preserveLive = false) {
+			const initialNotificationIds = preserveLive
+				? new Set(state.notifications.map(({ id }) => id))
+				: null;
 			return notificationApi.getAllNotificationsEndpoint().pipe(
 				tap((result) => {
-					if (result.isSuccess) {
-						state.notifications = result.value ?? [];
+					if (!result.isSuccess) return;
+					const notifications = result.value ?? [];
+					if (!initialNotificationIds) {
+						state.notifications = notifications;
+						return;
 					}
+					const snapshotIds = new Set(notifications.map(({ id }) => id));
+					const liveNotifications = state.notifications.filter(
+						({ id }) => !initialNotificationIds.has(id) && !snapshotIds.has(id),
+					);
+					state.notifications = [...notifications, ...liveNotifications];
 				}),
 			);
 		},

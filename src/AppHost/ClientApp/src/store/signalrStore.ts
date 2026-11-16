@@ -81,6 +81,7 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 	let connectionOperation: Promise<void> = Promise.resolve();
 	let setupOperation: Promise<void> | null = null;
 	let downloadRecovery: Subscription | null = null;
+	let notificationRecovery: Subscription | null = null;
 	let activeDownloadConnection: HubConnection | null = null;
 
 	const actions = {
@@ -209,7 +210,8 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 		notificationConnection?.onreconnected?.(() => {
 			if (notificationHubConnection !== notificationConnection || notificationConnection?.state !== HubConnectionState.Connected) return;
 			libraryStore.refreshLibrarySyncStatus().subscribe();
-			notificationsStore.fetchNotifications().subscribe();
+			notificationRecovery?.unsubscribe();
+			notificationRecovery = notificationsStore.fetchNotifications(true).subscribe();
 		});
 	}
 
@@ -312,6 +314,8 @@ export const useSignalrStore = defineStore(StoreNames.SignalrStore, () => {
 		activeDownloadConnection = null;
 		downloadRecovery?.unsubscribe();
 		downloadRecovery = null;
+		notificationRecovery?.unsubscribe();
+		notificationRecovery = null;
 		for (const connection of connections) {
 			if (!connection) continue;
 			connection.off('LogEvent');

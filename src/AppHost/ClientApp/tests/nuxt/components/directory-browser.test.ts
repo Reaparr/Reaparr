@@ -224,6 +224,8 @@ describe('DirectoryBrowser', () => {
 		const endpoint = FolderPathPaths.getFolderPathDirectoryEndpoint();
 		mock.onGet(endpoint).reply((request) => [200, generateResultDTO(directoryResult(request.params.path))]);
 		mock.resetHistory();
+		const pathInput = wrapper.get('input').element;
+		const focus = vi.spyOn(pathInput, 'focus');
 
 		// Act
 		await wrapper.get('[data-cy="directory-browser-navigate-0"]').trigger('click');
@@ -231,11 +233,13 @@ describe('DirectoryBrowser', () => {
 
 		// Assert
 		expect(mock.history.get.map((request) => request.params)).toEqual([{ path: '/root/Movies' }]);
-		expect(wrapper.get('input').element.value).toBe('/root/Movies');
+		expect(pathInput.value).toBe('/root/Movies');
+		expect(focus).toHaveBeenCalledTimes(1);
 		await wrapper.get('[data-cy="directory-browser-navigate-return"]').trigger('click');
 		await flushPromises();
 		expect(mock.history.get.map((request) => request.params)).toEqual([{ path: '/root/Movies' }, { path: '/root' }]);
-		expect(wrapper.get('input').element.value).toBe('/root');
+		expect(pathInput.value).toBe('/root');
+		expect(focus).toHaveBeenCalledTimes(2);
 		await wrapper.get('[data-cy="directory-browser-confirm-button"]').trigger('click');
 		expect(wrapper.emitted('confirm')).toEqual([[folderPath]]);
 	});

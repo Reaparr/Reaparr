@@ -131,6 +131,34 @@ describe('SignalrStore connections', () => {
 		expect(mock.history.get.filter((request) => request.url === endpoint)).toHaveLength(1);
 		await signalrStore.resetSession();
 	});
+	test('Should retain live notifications received during reconnect recovery', async () => {
+		// Arrange
+		const signalrStore = useSignalrStore();
+		const notificationsStore = useNotificationsStore();
+		const current = notification(1);
+		const missed = notification(2);
+		const live = notification(3);
+		const endpoint = NotificationPaths.getAllNotificationsEndpoint();
+		mock.onGet(endpoint).reply(200, generateResultDTO([current]));
+		await subscribeSpyTo(notificationsStore.setup()).onComplete();
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		mock.resetHandlers();
+		mock.onGet(PlexLibraryPaths.getLibrarySyncStatusEndpoint()).reply(200, generateResultDTO([]));
+		const held = Promise.withResolvers<[number, unknown]>();
+		mock.onGet(endpoint).replyOnce(() => held.promise);
+		const hub = hubConnections.get('notifications')!;
+
+		// Act
+		hub.reconnected?.();
+		await flushPromises();
+		hub.handlers.get(MessageTypes.Notification)?.(live);
+		held.resolve([200, generateResultDTO([current, missed])]);
+		await flushPromises();
+
+		// Assert
+		expect(notificationsStore.getVisibleNotifications).toEqual([current, missed, live]);
+		await signalrStore.resetSession();
+	});
 
 	test('Should retain notification history after a failed reconnect fetch and recover on the next reconnect', async () => {
 		// Arrange
@@ -159,6 +187,34 @@ describe('SignalrStore connections', () => {
 		expect(notificationsStore.getVisibleNotifications).toEqual([current, missed]);
 		expect(mock.history.get.filter((request) => request.url === endpoint)).toHaveLength(2);
 		await signalrStore.resetSession();
+	});
+	test('Should cancel pending notification recovery during session teardown', async () => {
+		// Arrange
+		const signalrStore = useSignalrStore();
+		const notificationsStore = useNotificationsStore();
+		const current = notification(1);
+		const endpoint = NotificationPaths.getAllNotificationsEndpoint();
+		mock.onGet(endpoint).reply(200, generateResultDTO([current]));
+		await subscribeSpyTo(notificationsStore.setup()).onComplete();
+		await subscribeSpyTo(signalrStore.setup()).onComplete();
+		mock.resetHandlers();
+		mock.onGet(PlexLibraryPaths.getLibrarySyncStatusEndpoint()).reply(200, generateResultDTO([]));
+		const held = Promise.withResolvers<[number, unknown]>();
+		mock.onGet(endpoint).replyOnce(() => held.promise);
+		const hub = hubConnections.get('notifications')!;
+
+		// Act
+		hub.reconnected?.();
+		await flushPromises();
+		const recoveryRequest = mock.history.get.filter((request) => request.url === endpoint).at(-1)!;
+		await signalrStore.resetSession();
+		notificationsStore.$reset();
+		held.resolve([200, generateResultDTO([notification(2)])]);
+		await flushPromises();
+
+		// Assert
+		expect(recoveryRequest.signal?.aborted).toBe(true);
+		expect(notificationsStore.getNotifications).toEqual([]);
 	});
 
 	test('Should restore the download queue on reconnect and ignore a replaced connection callback', async () => {
