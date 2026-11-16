@@ -477,17 +477,14 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
         PlexLibrary Control
     )> SetupMusicComparisonFixtureAsync(int seed)
     {
-        await SetupDatabase(
-            seed,
-            x =>
-            {
-                x.PlexServerCount = 3;
-                x.PlexMusicLibraryCount = 1;
-                x.MusicArtistCount = 1;
-                x.MusicAlbumCount = 1;
-                x.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(seed, x =>
+        {
+            x.PlexServerCount = 3;
+            x.PlexMusicLibraryCount = 1;
+            x.MusicArtistCount = 1;
+            x.MusicAlbumCount = 1;
+            x.MusicTrackCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];

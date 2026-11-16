@@ -17,45 +17,41 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             TelemetryHost = "https://telemetry.example.test",
             TelemetryProjectToken = "phc_test",
         };
-        using var container = await CreatePhotoContainerAsync(
-            new Seed(231159),
-            photoCount: 2,
-            config =>
+        using var container = await CreatePhotoContainerAsync(new Seed(231159), photoCount: 2, config =>
+        {
+            config.OverrideAppBuildInfo = buildInfo;
+            config.OverrideServices = builder =>
             {
-                config.OverrideAppBuildInfo = buildInfo;
-                config.OverrideServices = builder =>
-                {
-                    var handler = new Mock<HttpMessageHandler>();
-                    handler
-                        .Protected()
-                        .Setup<Task<HttpResponseMessage>>(
-                            "SendAsync",
-                            ItExpr.IsAny<HttpRequestMessage>(),
-                            ItExpr.IsAny<CancellationToken>()
-                        )
-                        .Returns(
-                            async (HttpRequestMessage request, CancellationToken token) =>
-                            {
-                                telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
-                                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
-                            }
-                        );
-                    var httpClient = new HttpClient(handler.Object);
-                    var factory = new Mock<IHttpClientFactory>();
-                    factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
-                    telemetryClient = new PostHogClient(
-                        new PostHogOptions
+                var handler = new Mock<HttpMessageHandler>();
+                handler
+                    .Protected()
+                    .Setup<Task<HttpResponseMessage>>(
+                        "SendAsync",
+                        ItExpr.IsAny<HttpRequestMessage>(),
+                        ItExpr.IsAny<CancellationToken>()
+                    )
+                    .Returns(
+                        async (HttpRequestMessage request, CancellationToken token) =>
                         {
-                            ProjectToken = buildInfo.TelemetryProjectToken,
-                            HostUrl = new Uri(buildInfo.TelemetryHost),
-                            EnableCompression = false,
-                        },
-                        httpClientFactory: factory.Object
+                            telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
+                            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+                        }
                     );
-                    builder.RegisterInstance(telemetryClient).As<IPostHogClient>();
-                };
-            }
-        );
+                var httpClient = new HttpClient(handler.Object);
+                var factory = new Mock<IHttpClientFactory>();
+                factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+                telemetryClient = new PostHogClient(
+                    new PostHogOptions
+                    {
+                        ProjectToken = buildInfo.TelemetryProjectToken,
+                        HostUrl = new Uri(buildInfo.TelemetryHost),
+                        EnableCompression = false,
+                    },
+                    httpClientFactory: factory.Object
+                );
+                builder.RegisterInstance(telemetryClient).As<IPostHogClient>();
+            };
+        });
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using var context = await factory.CreateAsync();
         var library = await context.PlexLibraries.SingleAsync(
@@ -369,22 +365,18 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         Seed seed,
         int photoCount,
         Action<UnitTestDataConfig>? overrides = null
-    ) =>
-        CreateContainer(
-            seed,
-            config =>
+    ) => CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexPhotoLibraryCount = 1;
-                    x.PhotoCount = photoCount;
-                };
-                config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
-                overrides?.Invoke(config);
-            }
-        );
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 1;
+                x.PhotoCount = photoCount;
+            };
+            config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+            overrides?.Invoke(config);
+        });
 
     private async Task<(
         List<PlexPhotoMediaData> Media,

@@ -44,17 +44,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldMoveEpisodeBeforeDeletingItsOldSeason()
     {
         // Arrange
-        await SetupDatabase(
-            11878,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(11878, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var show = IDbContext
             .PlexTvShows.AsNoTracking()
@@ -113,17 +110,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldMoveSeasonAndEpisodesBeforeDeletingItsOldShow()
     {
         // Arrange
-        await SetupDatabase(
-            11879,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(11879, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var shows = IDbContext
             .PlexTvShows.AsNoTracking()
@@ -190,27 +184,21 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldCreateAllTvShows_WhenNoneExists()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            11865,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(11865, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         library.ShouldNotBeNull();
 
         var newTvShows = FakeData
-            .GetPlexTvShows(
-                seed,
-                config =>
-                {
-                    config.TvShowSeasonCount = 2;
-                    config.TvShowEpisodeCount = 5;
-                }
-            )
+            .GetPlexTvShows(seed, config =>
+            {
+                config.TvShowSeasonCount = 2;
+                config.TvShowEpisodeCount = 5;
+            })
             .Generate(10);
 
         SetIds(library, newTvShows);
@@ -251,17 +239,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldDeleteAllTvMedia_WhenSuccessfulResultIsEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            11867,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 3;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(11867, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 3;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var library = IDbContext.PlexLibraries.First();
 
@@ -286,17 +271,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldReconcileHierarchyLevelsIndependentlyAndPreserveMatchedIds()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            11868,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        var seed = await SetupDatabase(11868, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         var show = IDbContext
@@ -377,18 +359,15 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldPreserveUnchangedEpisodeMediaAndReplaceOnlyChangedEpisodeMedia()
     {
         // Arrange
-        await SetupDatabase(
-            11869,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-                config.IncludeMultiPartEpisodes = true;
-            }
-        );
+        await SetupDatabase(11869, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+            config.IncludeMultiPartEpisodes = true;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         var show = IDbContext
@@ -435,17 +414,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldNotDeleteTvMediaFromOtherLibraries_WhenTargetResultIsEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            11870,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 2;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(11870, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 2;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var libraries = IDbContext.PlexLibraries.OrderBy(x => x.Id).ToList();
         var target = libraries[0];
         var other = libraries[1];
@@ -594,17 +570,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldBeIdempotent_WhenSameChangedHierarchyIsRepeated()
     {
         // Arrange
-        await SetupDatabase(
-            11871,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(11871, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var show = IDbContext.PlexTvShows.AsNoTracking().Include(x => x.Seasons).ThenInclude(x => x.Episodes).Single();
         show.Seasons.Single().Episodes.Single().UpdatedAt = DateTime.UtcNow.AddYears(1);
@@ -646,17 +619,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldReplaceAllTvShows_WhenForceMediaRefreshIsTrue()
     {
         // Arrange
-        await SetupDatabase(
-            11873,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(11873, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var shows = IDbContext
             .PlexTvShows.AsNoTracking()
@@ -687,17 +657,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldLeaveTvHierarchyUnchanged_WhenAlreadyCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            11872,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(11872, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var originalShowIds = IDbContext.PlexTvShows.Select(x => x.Id).Order().ToList();
         var originalSeasonIds = IDbContext.PlexTvShowSeason.Select(x => x.Id).Order().ToList();
@@ -723,17 +690,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldPreserveAncestorQualityIdentities_WhenIncomingHierarchyHasNoChanges()
     {
         // Arrange
-        await SetupDatabase(
-            11877,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(11877, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var shows = await dbContext
@@ -832,17 +796,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldUpdateAllTvShows_WhenAllExists()
     {
         // Arrange
-        await SetupDatabase(
-            48674,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 10;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        await SetupDatabase(48674, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 10;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 5;
+        });
 
         var library = IDbContext.PlexLibraries.AsNoTracking().First();
         library.ShouldNotBeNull();
@@ -881,16 +842,13 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldDeleteTwentyTvShows_WhenSomeExist()
     {
         // Arrange
-        await SetupDatabase(
-            4503253,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 50;
-            }
-        );
+        await SetupDatabase(4503253, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 50;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         library.ShouldNotBeNull();
@@ -921,18 +879,15 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldInsertSeasonsWithExistingTvShows_WhenSomeSeasonsAlreadyExist()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            34284,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 10;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        var seed = await SetupDatabase(34284, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 10;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 5;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         library.ShouldNotBeNull();
@@ -965,18 +920,15 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldNotCreateDuplicateKeys_WhenTheSameMediaIsCreated()
     {
         // Arrange
-        await SetupDatabase(
-            16344,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 10;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        await SetupDatabase(16344, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 10;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 5;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         library.ShouldNotBeNull();
@@ -1016,16 +968,13 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldCreateUpdateAndDeleteMovies_WhenSomeExist()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            85746,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 50;
-            }
-        );
+        var seed = await SetupDatabase(85746, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 50;
+        });
 
         var library = IDbContext.PlexLibraries.First();
         var tvShowsDb = IDbContext.PlexTvShows.AsNoTracking().ToList();
@@ -1082,28 +1031,22 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldPersistStreamsForNewOrUpdatedEpisodeParts(bool isNew)
     {
         // Arrange
-        var seed = await SetupDatabase(
-            713461,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = isNew ? 0 : 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(713461, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = isNew ? 0 : 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
         var show = isNew
             ? FakeData
-                .GetPlexTvShows(
-                    seed,
-                    config =>
-                    {
-                        config.TvShowSeasonCount = 1;
-                        config.TvShowEpisodeCount = 1;
-                    }
-                )
+                .GetPlexTvShows(seed, config =>
+                {
+                    config.TvShowSeasonCount = 1;
+                    config.TvShowEpisodeCount = 1;
+                })
                 .Generate()
             : IDbContext
                 .PlexTvShows.AsNoTracking()
@@ -1186,17 +1129,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldLeaveEpisodeStreamsAndOwnersUnchanged_WhenTimestampIsUnchangedDespiteParentAndMediaDataChanges()
     {
         // Arrange
-        await SetupDatabase(
-            713471,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(713471, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 2;
+        });
         var library = IDbContext.PlexLibraries.First();
         var show = IDbContext
             .PlexTvShows.AsNoTracking()
@@ -1356,17 +1296,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldReconcileEpisodeStreamLifecycleWithoutChurn()
     {
         // Arrange
-        await SetupDatabase(
-            713465,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(713465, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var library = IDbContext.PlexLibraries.First();
 
         async Task<PlexTvShow> LoadShow() =>
@@ -1666,17 +1603,14 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
     public async Task ShouldPreserveTvHierarchyAndStreamsWhenSynchronizationIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            713476,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(713476, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
         var show = db

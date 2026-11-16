@@ -52,8 +52,7 @@ public static class DbSetExtensionsPlexMusicComparison
             where library.Type == PlexMediaType.MusicArtist && !library.Outdated
             select library;
 
-        return
-            from scope in dbContext.PlexComparisonScopes
+        return from scope in dbContext.PlexComparisonScopes
             where scope.MediaType == PlexMediaType.MusicArtist
             join ownedLibrary in ownedLibraries on scope.OwnedPlexLibraryId equals ownedLibrary.Id
             join remoteLibrary in remoteLibraries on scope.RemotePlexLibraryId equals remoteLibrary.Id
@@ -73,8 +72,7 @@ public static class DbSetExtensionsPlexMusicComparison
         var partialArtistIds = QueryOwnedArtistsWithPartialChildren(dbContext, currentScopes);
         var higherQualityArtistIds = QueryOwnedArtistsWithHigherQuality(dbContext, currentScopes);
 
-        return
-            from artist in source
+        return from artist in source
             select new MusicArtistComparisonStateRow
             {
                 ArtistId = artist.Id,
@@ -106,8 +104,7 @@ public static class DbSetExtensionsPlexMusicComparison
         var partialArtistIds = QueryRemoteArtistsWithPartialChildren(dbContext, currentScopes);
         var higherQualityArtistIds = QueryRemoteArtistsWithHigherQuality(dbContext, currentScopes);
 
-        return
-            from artist in source
+        return from artist in source
             select new MusicArtistComparisonStateRow
             {
                 ArtistId = artist.Id,
@@ -126,12 +123,12 @@ public static class DbSetExtensionsPlexMusicComparison
         IQueryable<PlexComparisonState> currentScopes
     )
     {
-        return
-            from comparison in dbContext.PlexMusicArtistComparisons
-            where currentScopes.Any(scope =>
-                scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
-                && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
-            )
+        return from comparison in dbContext.PlexMusicArtistComparisons
+            where
+                currentScopes.Any(scope =>
+                    scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
+                    && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
+                )
             select comparison;
     }
 
@@ -140,12 +137,12 @@ public static class DbSetExtensionsPlexMusicComparison
         IQueryable<PlexComparisonState> currentScopes
     )
     {
-        return
-            from comparison in dbContext.PlexMusicAlbumComparisons
-            where currentScopes.Any(scope =>
-                scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
-                && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
-            )
+        return from comparison in dbContext.PlexMusicAlbumComparisons
+            where
+                currentScopes.Any(scope =>
+                    scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
+                    && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
+                )
             select comparison;
     }
 
@@ -154,12 +151,12 @@ public static class DbSetExtensionsPlexMusicComparison
         IQueryable<PlexComparisonState> currentScopes
     )
     {
-        return
-            from comparison in dbContext.PlexMusicTrackComparisons
-            where currentScopes.Any(scope =>
-                scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
-                && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
-            )
+        return from comparison in dbContext.PlexMusicTrackComparisons
+            where
+                currentScopes.Any(scope =>
+                    scope.RemotePlexLibraryId == comparison.RemotePlexLibraryId
+                    && scope.OwnedPlexLibraryId == comparison.OwnedPlexLibraryId
+                )
             select comparison;
     }
 
@@ -260,8 +257,8 @@ public static class DbSetExtensionsPlexMusicComparison
         var albumComparisons = QueryCurrentMusicAlbumComparisons(dbContext, currentScopes);
         var trackComparisons = QueryCurrentMusicTrackComparisons(dbContext, currentScopes);
 
-        return dbContext.PlexMusicArtists
-            .Where(HasRemoteArtistWithPartialChildren(dbContext, albumComparisons, trackComparisons))
+        return dbContext
+            .PlexMusicArtists.Where(HasRemoteArtistWithPartialChildren(dbContext, albumComparisons, trackComparisons))
             .Select(artist => artist.Id);
     }
 
@@ -316,8 +313,7 @@ public static class DbSetExtensionsPlexMusicComparison
         PlexMediaComparisonState state
     )
     {
-        return
-            from artist in source
+        return from artist in source
             select new MusicArtistComparisonStateRow { ArtistId = artist.Id, ComparisonState = state };
     }
 
@@ -326,8 +322,7 @@ public static class DbSetExtensionsPlexMusicComparison
         IQueryable<MusicArtistComparisonStateRow> states
     )
     {
-        return
-            from artist in artists
+        return from artist in artists
             join state in states on artist.Id equals state.ArtistId
             select new MusicArtistComparisonCandidateRow
             {
@@ -342,7 +337,6 @@ public static class DbSetExtensionsPlexMusicComparison
                 ComparisonId = (int)state.ComparisonState,
             };
     }
-
 
     public static IQueryable<MusicArtistComparisonCandidateRow> ProjectMusicArtistComparisonCandidates(
         this IQueryable<PlexMusicArtist> artists,

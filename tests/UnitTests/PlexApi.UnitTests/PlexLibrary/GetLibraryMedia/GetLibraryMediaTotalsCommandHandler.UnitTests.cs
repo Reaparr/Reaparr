@@ -11,16 +11,13 @@ public class GetLibraryMediaTotalsCommandUnitTests : BaseUnitTest<GetLibraryMedi
     public async Task ShouldPreflightEveryProgressLayerBeforeRetrieval()
     {
         // Arrange
-        await SetupDatabase(
-            9205,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 0;
-                config.PlexTvShowLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(9205, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 0;
+            config.PlexTvShowLibraryCount = 1;
+        });
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         var sectionId = long.Parse(library.Key);
         var expectedTotals = new Dictionary<PlexMediaType, int>

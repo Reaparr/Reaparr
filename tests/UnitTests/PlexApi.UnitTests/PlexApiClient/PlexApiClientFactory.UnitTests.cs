@@ -9,14 +9,11 @@ public class PlexApiClientFactoryUnitTests : BaseUnitTest
     public async Task ShouldPropagateTokenFailureMetadata_WhenTokenIsUnavailable()
     {
         // Arrange
-        await SetupDatabase(
-            9211,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 0;
-            }
-        );
+        await SetupDatabase(9211, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 0;
+        });
         var serverId = IDbContext.PlexServers.Single().Id;
         var expectedTokenResult = await IDbContext.GetPlexServerTokenAsync(serverId, CancellationToken);
         var dbContextFactory = new Mock<IReaparrDbContextFactory>(MockBehavior.Strict);
@@ -43,15 +40,12 @@ public class PlexApiClientFactoryUnitTests : BaseUnitTest
     public async Task ShouldPropagateConnectionFailure_WhenServerHasNoConnections()
     {
         // Arrange
-        await SetupDatabase(
-            9212,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexServerConnectionPerServerCount = 0;
-            }
-        );
+        await SetupDatabase(9212, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexServerConnectionPerServerCount = 0;
+        });
         var serverId = IDbContext.PlexServers.Single().Id;
         var expectedConnectionResult = await IDbContext.ChoosePlexServerConnection(serverId, CancellationToken);
         var dbContextFactory = new Mock<IReaparrDbContextFactory>(MockBehavior.Strict);
@@ -73,15 +67,12 @@ public class PlexApiClientFactoryUnitTests : BaseUnitTest
     public async Task ShouldCreateConfiguredClient_WhenTokenAndConnectionAreAvailable()
     {
         // Arrange
-        await SetupDatabase(
-            9213,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexServerConnectionPerServerCount = 1;
-            }
-        );
+        await SetupDatabase(9213, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
         var serverId = IDbContext.PlexServers.Single().Id;
         var expectedConnectionResult = await IDbContext.ChoosePlexServerConnection(serverId, CancellationToken);
         PlexApiClientOptions? capturedOptions = null;

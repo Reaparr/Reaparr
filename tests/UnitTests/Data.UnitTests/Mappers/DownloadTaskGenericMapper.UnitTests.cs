@@ -260,14 +260,11 @@ public class DownloadTaskGenericMapperUnitTests : BaseUnitTest
             case DownloadTaskType.Episode:
             case DownloadTaskType.EpisodeData:
                 var show = FakeData
-                    .GetDownloadTaskTvShow(
-                        seed,
-                        config =>
-                        {
-                            config.TvShowSeasonDownloadTasksCount = 1;
-                            config.TvShowEpisodeDownloadTasksCount = 1;
-                        }
-                    )
+                    .GetDownloadTaskTvShow(seed, config =>
+                    {
+                        config.TvShowSeasonDownloadTasksCount = 1;
+                        config.TvShowEpisodeDownloadTasksCount = 1;
+                    })
                     .Generate();
                 var season = show.Children.Single();
                 var episode = season.Children.Single();
@@ -287,15 +284,12 @@ public class DownloadTaskGenericMapperUnitTests : BaseUnitTest
             case DownloadTaskType.MusicTrack:
             case DownloadTaskType.MusicTrackData:
                 var artist = FakeData
-                    .GetDownloadTaskMusicArtist(
-                        seed,
-                        config =>
-                        {
-                            config.MusicAlbumDownloadTasksCount = 1;
-                            config.MusicTrackDownloadTasksCount = 1;
-                            config.MusicTrackFileDownloadTasksCount = 1;
-                        }
-                    )
+                    .GetDownloadTaskMusicArtist(seed, config =>
+                    {
+                        config.MusicAlbumDownloadTasksCount = 1;
+                        config.MusicTrackDownloadTasksCount = 1;
+                        config.MusicTrackFileDownloadTasksCount = 1;
+                    })
                     .Generate();
                 var album = artist.Children.Single();
                 var track = album.Children.Single();

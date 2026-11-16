@@ -109,7 +109,9 @@ public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskS
             .Verifiable(Times.Once());
         scheduler
             .Setup(x => x.GetJobDetail(DownloadJob.GetJobKey(missingPayload.Id), CancellationToken.None))
-            .ReturnsAsync(JobBuilder.Create<DownloadJob>().WithIdentity(DownloadJob.GetJobKey(missingPayload.Id)).Build())
+            .ReturnsAsync(
+                JobBuilder.Create<DownloadJob>().WithIdentity(DownloadJob.GetJobKey(missingPayload.Id)).Build()
+            )
             .Verifiable(Times.Once());
 
         var keys = await Sut.GetCurrentlyDownloadingKeysByServer(queued.PlexServerId);
@@ -118,10 +120,19 @@ public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskS
         keys.Single().ShouldBeEquivalentTo(queued);
         scheduler.Verify();
         foreach (var excluded in new[] { paused, cron, disappeared })
-            scheduler.Verify(x => x.GetJobDetail(DownloadJob.GetJobKey(excluded.Id), CancellationToken.None), Times.Never());
-        scheduler.Verify(x => x.GetTriggersOfJob(DownloadJob.GetJobKey(disappeared.Id), CancellationToken.None), Times.Never());
+            scheduler.Verify(
+                x => x.GetJobDetail(DownloadJob.GetJobKey(excluded.Id), CancellationToken.None),
+                Times.Never()
+            );
+        scheduler.Verify(
+            x => x.GetTriggersOfJob(DownloadJob.GetJobKey(disappeared.Id), CancellationToken.None),
+            Times.Never()
+        );
         var cronJobKey = DownloadJob.GetJobKey(cron.Id);
-        scheduler.Verify(x => x.GetTriggerState(new TriggerKey(cronJobKey.Name, cronJobKey.Group), CancellationToken.None), Times.Never());
+        scheduler.Verify(
+            x => x.GetTriggerState(new TriggerKey(cronJobKey.Name, cronJobKey.Group), CancellationToken.None),
+            Times.Never()
+        );
     }
 
     private static DownloadTaskKey CreateKey(int id, int serverId = 1) =>
@@ -133,7 +144,11 @@ public class DownloadTaskSchedulerSnapshotUnitTests : BaseUnitTest<DownloadTaskS
             PlexLibraryId = serverId,
         };
 
-    private static IJobExecutionContext CreateContext(DownloadTaskKey key, bool includePayload = true, string? group = null)
+    private static IJobExecutionContext CreateContext(
+        DownloadTaskKey key,
+        bool includePayload = true,
+        string? group = null
+    )
     {
         var payload = new DownloadJobPayload(key).ToJobDataMap();
         var jobKey = group is null ? DownloadJob.GetJobKey(key.Id) : new JobKey(key.Id.ToString(), group);

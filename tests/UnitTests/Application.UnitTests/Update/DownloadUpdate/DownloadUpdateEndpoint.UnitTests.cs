@@ -51,13 +51,7 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
         SetAppBuildInfo(x => x.RuntimeMode = "desktop");
         Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.UpdateDownloadFinished(
-                    It.Is<ResultBase>(r => r.IsSuccess),
-                    "9.9.9",
-                    false
-                )
-            )
+            .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsSuccess), "9.9.9", false))
             .Verifiable(Times.Once());
         mockManager.Setup(m => m.CheckForUpdatesAsync()).ReturnsAsync(updateInfo).Verifiable(Times.Once());
         mockManager
@@ -85,6 +79,7 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         Mock.Mock<ITelemetry>().Verify();
         mockSource.VerifyNoOtherCalls();
     }
+
     [Test]
     public async Task ShouldReturnSuccessWithoutDownload_WhenNoUpdateIsAvailable()
     {
@@ -93,10 +88,7 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         var mockLocator = new Mock<IVelopackLocator>();
         var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
         SetAppBuildInfo(x => x.RuntimeMode = "desktop");
-        mockManager
-            .Setup(m => m.CheckForUpdatesAsync())
-            .ReturnsAsync((UpdateInfo?)null)
-            .Verifiable(Times.Once());
+        mockManager.Setup(m => m.CheckForUpdatesAsync()).ReturnsAsync((UpdateInfo?)null).Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
             .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsSuccess), null, null))
             .Verifiable(Times.Once());
@@ -108,7 +100,8 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         endpointResult.Response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
         mockManager.Verify(m => m.CheckForUpdatesAsync(), Times.Once);
         mockManager.Verify(
-            m => m.DownloadUpdatesAsync(It.IsAny<UpdateInfo>(), It.IsAny<Action<int>?>(), It.IsAny<CancellationToken>()),
+            m =>
+                m.DownloadUpdatesAsync(It.IsAny<UpdateInfo>(), It.IsAny<Action<int>?>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
         Mock.Mock<ITelemetry>().Verify();
@@ -134,13 +127,7 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
             .ThrowsAsync(downloadException)
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.UpdateDownloadFinished(
-                    It.Is<ResultBase>(r => r.IsFailed),
-                    "9.9.9",
-                    null
-                )
-            )
+            .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsFailed), "9.9.9", null))
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
             .Setup(x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.UpdateLauncher))
@@ -180,7 +167,9 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         Mock.Mock<ITelemetry>()
             .Setup(x =>
                 x.UpdateDownloadFinished(
-                    It.Is<ResultBase>(r => r.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException)),
+                    It.Is<ResultBase>(r =>
+                        r.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException)
+                    ),
                     "9.9.9",
                     null
                 )
@@ -215,13 +204,7 @@ public class DownloadUpdateEndpointUnitTests : BaseEndpointWithoutRequestUnitTes
         var mockManager = new Mock<UpdateManager>(mockSource.Object, null!, mockLocator.Object);
         SetAppBuildInfo(x => x.RuntimeMode = "desktop");
         Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.UpdateDownloadFinished(
-                    It.Is<ResultBase>(r => r.IsSuccess),
-                    "9.9.9",
-                    false
-                )
-            )
+            .Setup(x => x.UpdateDownloadFinished(It.Is<ResultBase>(r => r.IsSuccess), "9.9.9", false))
             .Verifiable(Times.Once());
         mockManager.Setup(m => m.CheckForUpdatesAsync()).ReturnsAsync(updateInfo).Verifiable(Times.Once());
         mockManager

@@ -26,11 +26,9 @@ public sealed class UpdateScheduledDownloadLimitsJob : IJob
             .Create()
             .WithIdentity(GetTriggerKey())
             .ForJob(GetJobKey())
-            .WithCronSchedule(
-                "0 0,30 * * * ?",
-                x =>
-                    x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById(timeZoneId))
-                        .WithMisfireHandlingInstructionFireAndProceed()
+            .WithCronSchedule("0 0,30 * * * ?", x =>
+                x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById(timeZoneId))
+                    .WithMisfireHandlingInstructionFireAndProceed()
             )
             .Build();
 

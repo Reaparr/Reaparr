@@ -191,10 +191,8 @@ public class DesktopSingleInstanceCoordinatorUnitTests : BaseUnitTest<DesktopSin
 
     private sealed class FragmentedSignalStream(string message) : MemoryStream(Encoding.UTF8.GetBytes(message))
     {
-        public override ValueTask<int> ReadAsync(
-            Memory<byte> buffer,
-            CancellationToken cancellationToken = default
-        ) => base.ReadAsync(buffer[..Math.Min(buffer.Length, 1)], cancellationToken);
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            base.ReadAsync(buffer[..Math.Min(buffer.Length, 1)], cancellationToken);
     }
 
     private sealed class WaitingSignalStream : MemoryStream

@@ -2171,15 +2171,8 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
     private static DefaultHttpContext CreateHttpContext() =>
         new()
         {
-            Request =
-            {
-                Scheme = "http",
-                IsHttps = false,
-            },
-            Connection =
-            {
-                RemoteIpAddress = IPAddress.Parse("127.0.0.1"),
-            },
+            Request = { Scheme = "http", IsHttps = false },
+            Connection = { RemoteIpAddress = IPAddress.Parse("127.0.0.1") },
         };
 
     private static ClaimsPrincipal CreateAuthenticatedUser()

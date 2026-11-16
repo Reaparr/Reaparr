@@ -33,10 +33,10 @@ public static class DbSetExtensionsPlexLibrary
     public static IQueryable<PlexLibrary> WhereIsOwned(this IQueryable<PlexLibrary> query) =>
         query.Where(library =>
             library.PlexServer!.OwnedOverride
-                ?? (
-                    library.PlexAccountLibraries.Any(link => link.IsLibraryOwned)
-                    || library.PlexServer.PlexAccountServers.Any(link => link.IsServerOwned)
-                )
+            ?? (
+                library.PlexAccountLibraries.Any(link => link.IsLibraryOwned)
+                || library.PlexServer.PlexAccountServers.Any(link => link.IsServerOwned)
+            )
         );
 
     /// <summary>

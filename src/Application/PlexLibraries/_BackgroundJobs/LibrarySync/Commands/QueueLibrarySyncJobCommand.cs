@@ -162,7 +162,12 @@ public class QueueLibrarySyncJobCommandHandler : ICommandHandler<QueueLibrarySyn
             })
             .ToList();
 
-        await MarkForcedSyncLibrariesOutdatedAsync(command.ForceLibrarySync, itemsToAdd, itemsToReset, cancellationToken);
+        await MarkForcedSyncLibrariesOutdatedAsync(
+            command.ForceLibrarySync,
+            itemsToAdd,
+            itemsToReset,
+            cancellationToken
+        );
 
         if (itemsToAdd.Any())
         {

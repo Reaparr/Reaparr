@@ -11,17 +11,14 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
     public async Task ShouldReconcileMusicHierarchy_WithScopedOriginalsCountsAndReports(string scenario)
     {
         // Arrange
-        await SetupDatabase(
-            625203,
-            x =>
-            {
-                x.PlexServerCount = 2;
-                x.PlexMusicLibraryCount = 2;
-                x.MusicArtistCount = 2;
-                x.MusicAlbumCount = 1;
-                x.MusicTrackCount = 2;
-            }
-        );
+        await SetupDatabase(625203, x =>
+        {
+            x.PlexServerCount = 2;
+            x.PlexMusicLibraryCount = 2;
+            x.MusicArtistCount = 2;
+            x.MusicAlbumCount = 1;
+            x.MusicTrackCount = 2;
+        });
         var db = IDbContext;
         var library = await db.PlexLibraries.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         var storedArtists = await db
@@ -345,13 +342,10 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
     public async Task ShouldRefreshMusicMetrics_WhenStoredAndIncomingLibrariesAreEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            625291,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(625291, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+        });
         var db = IDbContext;
         var library = await db.PlexLibraries.SingleAsync(CancellationToken);
         const long staleMediaSize = 66_419_253_194;
@@ -419,16 +413,13 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
     )
     {
         // Arrange
-        await SetupDatabase(
-            625261,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 2;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 2;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(625261, config =>
+        {
+            config.PlexMusicLibraryCount = 2;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         var storedArtist = await dbContext
@@ -536,17 +527,14 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
     public async Task ShouldNotRefreshStreamsForUnchangedMusicTrackParts()
     {
         // Arrange
-        await SetupDatabase(
-            713462,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(713462, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
         var storedArtist = db
@@ -625,17 +613,14 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
     public async Task ShouldReconcileMusicStreamLifecycleWithoutChurn()
     {
         // Arrange
-        await SetupDatabase(
-            713466,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(713466, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
 
@@ -909,17 +894,14 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
     public async Task ShouldPreserveMusicStateWhenSynchronizationIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            713476,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(713476, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
         var storedArtist = db
@@ -1164,17 +1146,14 @@ public class SyncPlexMusicCommandUnitTests : BaseCommandUnitTest<SyncPlexMusicCo
     public async Task ShouldIgnoreMusicTopologyAndStreamsWhenTimestampsAreUnchanged()
     {
         // Arrange
-        await SetupDatabase(
-            713468,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(713468, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var db = IDbContext;
         var library = db.PlexLibraries.First();
         var storedArtist = await db

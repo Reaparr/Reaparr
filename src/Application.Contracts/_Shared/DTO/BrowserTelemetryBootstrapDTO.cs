@@ -28,5 +28,4 @@ public sealed record BrowserTelemetryBootstrapDTO
 
     /// <summary>Operating system platform.</summary>
     public required string Platform { get; init; }
-
 }

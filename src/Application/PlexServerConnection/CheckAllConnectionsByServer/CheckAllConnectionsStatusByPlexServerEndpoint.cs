@@ -17,10 +17,7 @@ public class CheckAllConnectionsStatusByPlexServerEndpoint
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
 
-    public CheckAllConnectionsStatusByPlexServerEndpoint(
-        ICommandExecutor commandExecutor,
-        ITelemetry telemetry
-    )
+    public CheckAllConnectionsStatusByPlexServerEndpoint(ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _commandExecutor = commandExecutor;
         _telemetry = telemetry;

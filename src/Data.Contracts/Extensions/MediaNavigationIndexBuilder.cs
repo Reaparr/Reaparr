@@ -35,9 +35,8 @@ public static class MediaNavigationIndexBuilder
         {
             SortType.Year or SortType.VideoQuality or SortType.AudioQuality => BuildGroupedAsync<int?>(
                 rows,
-                (
-                    sort.Field == SortType.Year ? row => row.Year : row => row.QualityValue,
-                    static value => value?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL
+                (sort.Field == SortType.Year ? row => row.Year : row => row.QualityValue, static value =>
+                    value?.ToString(CultureInfo.InvariantCulture) ?? UNKNOWN_LABEL
                 ),
                 sort,
                 cancellationToken

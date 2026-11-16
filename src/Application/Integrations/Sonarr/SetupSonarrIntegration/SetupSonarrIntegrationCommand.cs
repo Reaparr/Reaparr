@@ -167,7 +167,6 @@ public class SetupSonarrIntegrationCommandHandler
         return Result.Ok(integration);
     }
 
-
     private Task SendProgress(
         Guid integrationId,
         IntegrationSetupProgressStage stage,

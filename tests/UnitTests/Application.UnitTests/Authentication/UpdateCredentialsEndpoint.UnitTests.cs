@@ -39,9 +39,8 @@ public class UpdateCredentialsEndpointUnitTests
         var request = new UpdateCredentialsEndpointRequest { Username = "new-user", Password = "new-password" };
 
         // Act
-        var outcome = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton(Mock.Mock<IUserService>().Object)
+        var outcome = await TestEndpointHandleAsync(request, services =>
+            services.AddSingleton(Mock.Mock<IUserService>().Object)
         );
 
         // Assert

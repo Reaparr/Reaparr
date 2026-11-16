@@ -66,16 +66,13 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
 
     private async Task<MusicOverviewFixture> ArrangeFilteredArtistPageAsync()
     {
-        await SetupDatabase(
-            84201,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 2;
-                config.MusicArtistCount = 4;
-                config.MusicAlbumCount = 2;
-                config.MusicTrackCount = 3;
-            }
-        );
+        await SetupDatabase(84201, config =>
+        {
+            config.PlexMusicLibraryCount = 2;
+            config.MusicArtistCount = 4;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 3;
+        });
         var dbContext = IDbContext;
         var libraryIds = await dbContext
             .PlexLibraries.OrderBy(x => x.Id)
@@ -287,14 +284,11 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
 
     private async Task<CrossLibraryNavigationFixture> ArrangeCrossLibraryNavigationFixtureAsync()
     {
-        await SetupDatabase(
-            84205,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 2;
-                config.MusicArtistCount = 4;
-            }
-        );
+        await SetupDatabase(84205, config =>
+        {
+            config.PlexMusicLibraryCount = 2;
+            config.MusicArtistCount = 4;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true), CancellationToken);
         var artists = await dbContext
@@ -461,15 +455,12 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
     public async Task ShouldPropagateTypedQueryFailure_WhenArtistSnapshotIsMissing()
     {
         // Arrange
-        await SetupDatabase(
-            84208,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(84208, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexMusicArtists.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
         (await dbContext.MediaOverviewMusicArtistSnapshots.CountAsync(CancellationToken)).ShouldBe(0);
@@ -532,15 +523,12 @@ public class GetMediaOverviewMusicCommandUnitTests : BaseCommandUnitTest<GetMedi
 
     private async Task<int> ArrangeAudioQualitySnapshotAsync()
     {
-        await SetupDatabase(
-            84207,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(84207, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, true), CancellationToken);
         var artist = await dbContext.PlexMusicArtists.SingleAsync(CancellationToken);

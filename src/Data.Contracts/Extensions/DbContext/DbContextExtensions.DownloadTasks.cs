@@ -439,61 +439,61 @@ public static partial class DbContextExtensions
                 // DownloadTaskType.Movie
                 case DownloadTaskType.Movie:
                     return (
-                            await dbContext
-                                .DownloadTaskMovie.IncludeAll()
-                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-                        )?.ToGeneric() ?? null;
+                        await dbContext
+                            .DownloadTaskMovie.IncludeAll()
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.MovieData
                 case DownloadTaskType.MovieData:
                     return (
-                            await dbContext
-                                .DownloadTaskMovieFile.Include(x => x.PlexServer)
-                                .Include(x => x.PlexLibrary)
-                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-                        )?.ToGeneric() ?? null;
+                        await dbContext
+                            .DownloadTaskMovieFile.Include(x => x.PlexServer)
+                            .Include(x => x.PlexLibrary)
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.TvShow
                 case DownloadTaskType.TvShow:
                     return (
-                            await dbContext
-                                .DownloadTaskTvShow.Include(x => x.PlexServer)
-                                .Include(x => x.PlexLibrary)
-                                .Include(x => x.Children)
+                        await dbContext
+                            .DownloadTaskTvShow.Include(x => x.PlexServer)
+                            .Include(x => x.PlexLibrary)
+                            .Include(x => x.Children)
+                                .ThenInclude(x => x.Children)
                                     .ThenInclude(x => x.Children)
-                                        .ThenInclude(x => x.Children)
-                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-                        )?.ToGeneric() ?? null;
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.TvShowSeason
                 case DownloadTaskType.Season:
                     return (
-                            await dbContext
-                                .DownloadTaskTvShowSeason.Include(x => x.PlexServer)
-                                .Include(x => x.PlexLibrary)
-                                .Include(x => x.Children)
-                                    .ThenInclude(x => x.Children)
-                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-                        )?.ToGeneric() ?? null;
+                        await dbContext
+                            .DownloadTaskTvShowSeason.Include(x => x.PlexServer)
+                            .Include(x => x.PlexLibrary)
+                            .Include(x => x.Children)
+                                .ThenInclude(x => x.Children)
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.Episode
                 case DownloadTaskType.Episode:
                     return (
-                            await dbContext
-                                .DownloadTaskTvShowEpisode.Include(x => x.PlexServer)
-                                .Include(x => x.PlexLibrary)
-                                .Include(x => x.Children)
-                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-                        )?.ToGeneric() ?? null;
+                        await dbContext
+                            .DownloadTaskTvShowEpisode.Include(x => x.PlexServer)
+                            .Include(x => x.PlexLibrary)
+                            .Include(x => x.Children)
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric() ?? null;
 
                 // DownloadTaskType.EpisodeData
                 case DownloadTaskType.EpisodeData:
                     return (
-                            await dbContext
-                                .DownloadTaskTvShowEpisodeFile.Include(x => x.PlexServer)
-                                .Include(x => x.PlexLibrary)
-                                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-                        )?.ToGeneric() ?? null;
+                        await dbContext
+                            .DownloadTaskTvShowEpisodeFile.Include(x => x.PlexServer)
+                            .Include(x => x.PlexLibrary)
+                            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+                    )?.ToGeneric() ?? null;
 
                 case DownloadTaskType.PhotoFolder:
                     return await GetPhotoFolderTaskAsync(dbContext, id, cancellationToken);

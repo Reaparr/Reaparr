@@ -13,7 +13,6 @@ public record SyncPlexServerMediaEndpointRequest
 /// <summary>
 /// Sync all media from a Plex server by queuing sync jobs for all its libraries.
 /// </summary>
-
 public class SyncPlexServerMediaEndpointRequestValidator : Validator<SyncPlexServerMediaEndpointRequest>
 {
     public SyncPlexServerMediaEndpointRequestValidator()
@@ -101,5 +100,4 @@ public class SyncPlexServerMediaEndpoint : Endpoint<SyncPlexServerMediaEndpointR
             ForceLibrarySync = request.ForceLibrarySync,
             ForceMediaRefresh = request.ForceMediaRefresh,
         };
-
 }

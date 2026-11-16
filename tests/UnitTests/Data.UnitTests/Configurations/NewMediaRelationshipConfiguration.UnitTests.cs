@@ -178,16 +178,13 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
     public async Task ShouldRejectCrossLibraryMusicTrack_WhenCompositeOwnerKeyDoesNotMatchAlbum()
     {
         // Arrange
-        await SetupDatabase(
-            626556,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 2;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(626556, config =>
+        {
+            config.PlexMusicLibraryCount = 2;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         await using var context = (ReaparrDbContext)IDbContext;
         var albums = await context
             .PlexMusicAlbums.OrderBy(x => x.PlexLibraryId)
@@ -244,15 +241,12 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
     public async Task ShouldNullSelectedTrackDataReferences_WhenTrackDataIsDeleted()
     {
         // Arrange
-        await SetupDatabase(
-            626557,
-            config =>
-            {
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(626557, config =>
+        {
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         await using var context = (ReaparrDbContext)IDbContext;
         var track = await context.PlexMusicTracks.SingleAsync(CancellationToken);
         var data = await context.PlexMusicTrackData.SingleAsync(CancellationToken);
@@ -288,14 +282,11 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
     public async Task ShouldNullPhotoFolderReferenceWithoutChangingAssetOwnership_WhenFolderIsDeleted()
     {
         // Arrange
-        await SetupDatabase(
-            626558,
-            config =>
-            {
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(626558, config =>
+        {
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         await using var context = (ReaparrDbContext)IDbContext;
         var asset = await context.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var libraryId = asset.PlexLibraryId;
@@ -498,17 +489,13 @@ public class NewMediaRelationshipConfigurationUnitTests : BaseUnitTest
         int? ExpectedPrincipalForeignKeyCount = null
     );
 
-    private Task<Seed> SetupRelationshipConfigurationDatabase() =>
-        SetupDatabase(
-            626555,
-            config =>
-            {
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+    private Task<Seed> SetupRelationshipConfigurationDatabase() => SetupDatabase(626555, config =>
+        {
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+            config.OtherVideoCount = 1;
+        });
 }

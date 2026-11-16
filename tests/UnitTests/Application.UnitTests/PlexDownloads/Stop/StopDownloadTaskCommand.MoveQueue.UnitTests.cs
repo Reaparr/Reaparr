@@ -19,14 +19,11 @@ public class StopDownloadTaskCommandMoveQueueUnitTests : BaseCommandUnitTest<Sto
             builder.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>().SingleInstance();
             builder.RegisterType<MoveDownloadFileJobQueue>().As<IMoveDownloadFileQueue>();
         });
-        await SetupDatabase(
-            33002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(33002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var files = await dbContext
             .DownloadTaskMovieFile.AsTracking()

@@ -89,7 +89,6 @@ public sealed class SearchPhotoAssetsQueryHandler : ICommandHandler<SearchPhotoA
         );
         _telemetry.PhotoSearchFinished(ToTelemetryDTO(query), searchTerms, result);
         return result;
-
     }
 
     private static PhotoSearchTelemetryDTO ToTelemetryDTO(SearchPhotoAssetsQuery query) =>

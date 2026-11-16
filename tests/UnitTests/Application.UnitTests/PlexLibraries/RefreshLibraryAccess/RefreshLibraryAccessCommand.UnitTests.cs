@@ -6,14 +6,11 @@ public class RefreshLibraryAccessCommandUnitTests : BaseUnitTest<RefreshLibraryA
     public async Task ShouldReturnFailedResult_WhenPlexAccountIdIsInvalid()
     {
         // Arrange
-        await SetupDatabase(
-            1,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 0;
-            }
-        );
+        await SetupDatabase(1, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 0;
+        });
         var request = new RefreshLibraryAccessCommand(0);
 
         // Act
@@ -28,14 +25,11 @@ public class RefreshLibraryAccessCommandUnitTests : BaseUnitTest<RefreshLibraryA
     public async Task ShouldReturnEmptyResult_WhenNoPlexServersAccessible()
     {
         // Arrange
-        await SetupDatabase(
-            1,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 0;
-            }
-        );
+        await SetupDatabase(1, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 0;
+        });
 
         // Act
         var request = new RefreshLibraryAccessCommand(1);
@@ -51,14 +45,11 @@ public class RefreshLibraryAccessCommandUnitTests : BaseUnitTest<RefreshLibraryA
     public async Task ShouldRetrieveLibrariesFromSinglePlexServer_WhenPlexAccountHasAccessToOneServer()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+        });
         var plexServer = IDbContext.PlexServers.FirstOrDefault();
         plexServer.ShouldNotBeNull();
         var updatedTime = DateTime.UtcNow - TimeSpan.FromHours(9);
@@ -96,14 +87,11 @@ public class RefreshLibraryAccessCommandUnitTests : BaseUnitTest<RefreshLibraryA
     public async Task ShouldReturnFailedResult_WhenSpecificServerIsDisabled_EvenWhenRequestedDirectly()
     {
         // Arrange
-        await SetupDatabase(
-            2,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(2, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServer = await dbContext.PlexServers.IgnoreIsEnabledFilter().FirstAsync(CancellationToken);

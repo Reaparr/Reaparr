@@ -19,9 +19,8 @@ public class SendTelemetryDiagnosticEndpointUnitTests
         )!;
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton(Mock.Mock<ITelemetry>().Object)
+        var result = await TestEndpointHandleAsync(request, services =>
+            services.AddSingleton(Mock.Mock<ITelemetry>().Object)
         );
 
         // Assert
@@ -62,9 +61,8 @@ public class SendTelemetryDiagnosticEndpointUnitTests
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton(Mock.Mock<ITelemetry>().Object)
+        var result = await TestEndpointHandleAsync(request, services =>
+            services.AddSingleton(Mock.Mock<ITelemetry>().Object)
         );
 
         // Assert
@@ -93,9 +91,8 @@ public class SendTelemetryDiagnosticEndpointUnitTests
             .Verifiable(Times.Once());
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton(Mock.Mock<ITelemetry>().Object)
+        var result = await TestEndpointHandleAsync(request, services =>
+            services.AddSingleton(Mock.Mock<ITelemetry>().Object)
         );
 
         // Assert

@@ -106,11 +106,7 @@ public partial interface ITelemetry
     /// <summary>
     /// Records a Plex server connection change.
     /// </summary>
-    void PlexConnectionChanged(
-        TelemetryAction action,
-        PlexServerConnection connection,
-        int? preferredConnectionId
-    );
+    void PlexConnectionChanged(TelemetryAction action, PlexServerConnection connection, int? preferredConnectionId);
 
     /// <summary>
     /// Records completion of a single connection check.

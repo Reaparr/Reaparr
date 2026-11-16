@@ -18,17 +18,14 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
     )
     {
         // Arrange
-        await SetupDatabase(
-            73101,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMusicLibraryCount = 2;
-                cfg.MusicArtistCount = 6;
-                cfg.MusicAlbumCount = 2;
-                cfg.MusicTrackCount = 3;
-            }
-        );
+        await SetupDatabase(73101, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMusicLibraryCount = 2;
+            cfg.MusicArtistCount = 6;
+            cfg.MusicAlbumCount = 2;
+            cfg.MusicTrackCount = 3;
+        });
 
         var dbContext = IDbContext;
         var libraryIds = await dbContext
@@ -202,16 +199,13 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
     )
     {
         // Arrange
-        await SetupDatabase(
-            73104,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 2;
-                config.MusicTrackCount = 3;
-            }
-        );
+        await SetupDatabase(73104, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 3;
+        });
         var dbContext = IDbContext;
         var artist = await dbContext.PlexMusicArtists.SingleAsync(CancellationToken);
         dbContext.PlexMusicArtistMediaQualities.AddRange(
@@ -447,14 +441,11 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
     public async Task ShouldFilterBeforePagingAndCountOnlyMatches_WhenMusicComparisonStateIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            87501,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 4;
-            }
-        );
+        await SetupDatabase(87501, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 4;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
         var artists = await dbContext.PlexMusicArtists.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -562,15 +553,12 @@ public class GetMusicArtistMediaByTypeCommandUnitTests : BaseCommandUnitTest<Get
         params (string Title, int SortIndex, AudioQuality[] Qualities)[] values
     )
     {
-        await SetupDatabase(
-            seed,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = values.Length;
-                config.MusicAlbumCount = 0;
-            }
-        );
+        await SetupDatabase(seed, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = values.Length;
+            config.MusicAlbumCount = 0;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
         var artists = await dbContext.PlexMusicArtists.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);

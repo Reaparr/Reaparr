@@ -9,8 +9,7 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
     private static IJobExecutionContext SetupJobContext(
         List<int> plexServerIds,
         CancellationToken cancellationToken = default
-    ) =>
-        SetupJobContext(new InspectPlexServerJobPayload(plexServerIds), cancellationToken);
+    ) => SetupJobContext(new InspectPlexServerJobPayload(plexServerIds), cancellationToken);
 
     private static IJobExecutionContext SetupJobContext(
         InspectPlexServerJobPayload payload,
@@ -23,14 +22,13 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
 
         var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
-        context
-            .SetupGet(x => x.MergedJobDataMap)
-            .Returns(payload.ToJobDataMap());
+        context.SetupGet(x => x.MergedJobDataMap).Returns(payload.ToJobDataMap());
         context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         context.SetupGet(x => x.FireInstanceId).Returns("server-inspection-test");
         context.SetupProperty(x => x.Result);
         return context.Object;
     }
+
     private void SetupBeginJob()
     {
         Mock.Mock<ITelemetry>()
@@ -48,15 +46,12 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
     public async Task ShouldInspectServersInParallel_WhenMultipleServersAreQueued()
     {
         // Arrange
-        await SetupDatabase(
-            90001,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(90001, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServerIds = await dbContext
@@ -170,15 +165,12 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
     public async Task ShouldContinueInspectingRemainingServers_WhenOneServerConnectionCheckFails()
     {
         // Arrange
-        await SetupDatabase(
-            90002,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(90002, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServerIds = await dbContext
@@ -265,6 +257,7 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
             .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Once);
         Mock.Mock<ITelemetry>().Verify();
     }
+
     [Test]
     public async Task ShouldContainUnexpectedConnectionCheckExceptionAndMarkJobFailed()
     {
@@ -276,8 +269,8 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
-                    It.Is<CheckAllConnectionsStatusByPlexServerCommand>(
-                        command => command.PlexServerId == plexServerId && command.Timeout == 5
+                    It.Is<CheckAllConnectionsStatusByPlexServerCommand>(command =>
+                        command.PlexServerId == plexServerId && command.Timeout == 5
                     ),
                     CancellationToken.None
                 )
@@ -297,15 +290,20 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
             )
             .Callback<ResultBase, TelemetryActivity>((result, _) => capturedResult = result)
             .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.ServerInspectionStarted(plexServerId)).Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.ServerInspectionStarted(plexServerId))
-            .Verifiable(Times.Once());
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.ServerInspectionFinished(
-                plexServerId,
-                It.Is<ResultBase>(result => result.IsFailed && result.Errors.Count == 1
-                    && result.Errors.OfType<ExceptionalError>()
-                        .Any(error => ReferenceEquals(error.Exception, exception)))))
+            .Setup(x =>
+                x.ServerInspectionFinished(
+                    plexServerId,
+                    It.Is<ResultBase>(result =>
+                        result.IsFailed
+                        && result.Errors.Count == 1
+                        && result
+                            .Errors.OfType<ExceptionalError>()
+                            .Any(error => ReferenceEquals(error.Exception, exception))
+                    )
+                )
+            )
             .Verifiable(Times.Once());
 
         SetupBeginJob();
@@ -329,32 +327,33 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
         var cancellationSource = new CancellationTokenSource();
         var cancellationToken = cancellationSource.Token;
         cancellationSource.Cancel();
-        var context = SetupJobContext(
-            new List<int> { plexServerId },
-            cancellationToken
-        );
+        var context = SetupJobContext(new List<int> { plexServerId }, cancellationToken);
         var cancellation = new OperationCanceledException(cancellationToken);
         var capturedResult = (ResultBase?)null;
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
-                    It.Is<CheckAllConnectionsStatusByPlexServerCommand>(
-                        command => command.PlexServerId == plexServerId && command.Timeout == 5
+                    It.Is<CheckAllConnectionsStatusByPlexServerCommand>(command =>
+                        command.PlexServerId == plexServerId && command.Timeout == 5
                     ),
                     cancellationToken
                 )
             )
             .ThrowsAsync(cancellation)
             .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.ServerInspectionStarted(plexServerId)).Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.ServerInspectionStarted(plexServerId))
-            .Verifiable(Times.Once());
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.ServerInspectionFinished(
-                plexServerId,
-                It.Is<ResultBase>(result => result.Errors.Count == 1
-                    && result.Errors.OfType<ExceptionalError>()
-                        .Any(error => ReferenceEquals(error.Exception, cancellation)))))
+            .Setup(x =>
+                x.ServerInspectionFinished(
+                    plexServerId,
+                    It.Is<ResultBase>(result =>
+                        result.Errors.Count == 1
+                        && result
+                            .Errors.OfType<ExceptionalError>()
+                            .Any(error => ReferenceEquals(error.Exception, cancellation))
+                    )
+                )
+            )
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
             .Setup(x =>
@@ -381,7 +380,6 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
         Mock.Mock<ITelemetry>()
             .Verify(x => x.CaptureException(It.IsAny<Exception>(), It.IsAny<TelemetryActivity>()), Times.Never());
         cancellationSource.Dispose();
-
     }
 
     [Test]
@@ -401,37 +399,51 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
         var exception = new IOException("Inspection notification failed");
         var capturedResult = (ResultBase?)null;
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<CheckAllConnectionsStatusByPlexServerCommand>(command =>
-                    command.PlexServerId == plexServerId && command.Timeout == 5),
-                CancellationToken.None))
+            .Setup(x =>
+                x.Send(
+                    It.Is<CheckAllConnectionsStatusByPlexServerCommand>(command =>
+                        command.PlexServerId == plexServerId && command.Timeout == 5
+                    ),
+                    CancellationToken.None
+                )
+            )
             .ReturnsAsync(Result.Ok(new List<PlexServerStatus>()))
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<RefreshLibraryAccessCommand>(command =>
-                    command.PlexServerId == plexServerId && command.PlexAccountId == plexAccountId),
-                CancellationToken.None))
+            .Setup(x =>
+                x.Send(
+                    It.Is<RefreshLibraryAccessCommand>(command =>
+                        command.PlexServerId == plexServerId && command.PlexAccountId == plexAccountId
+                    ),
+                    CancellationToken.None
+                )
+            )
             .ReturnsAsync(Result.Ok(new PlexLibraryAccessRefreshResponse { Reports = [], OfflineServers = [] }))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
-            .Setup(x => x.SendRefreshNotificationAsync(
-                It.Is<List<RefreshDataType>>(types => types.SequenceEqual(new[]
-                {
-                    RefreshDataType.PlexAccount,
-                    RefreshDataType.PlexLibrary,
-                }))))
+            .Setup(x =>
+                x.SendRefreshNotificationAsync(
+                    It.Is<List<RefreshDataType>>(types =>
+                        types.SequenceEqual(new[] { RefreshDataType.PlexAccount, RefreshDataType.PlexLibrary })
+                    )
+                )
+            )
             .ThrowsAsync(exception)
             .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.ServerInspectionStarted(plexServerId)).Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.ServerInspectionStarted(plexServerId))
-            .Verifiable(Times.Once());
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.ServerInspectionFinished(
-                plexServerId,
-                It.Is<ResultBase>(result => result.IsFailed && result.Errors.Count == 1
-                    && result.Errors.OfType<ExceptionalError>()
-                        .Any(error => ReferenceEquals(error.Exception, exception)))))
+            .Setup(x =>
+                x.ServerInspectionFinished(
+                    plexServerId,
+                    It.Is<ResultBase>(result =>
+                        result.IsFailed
+                        && result.Errors.Count == 1
+                        && result
+                            .Errors.OfType<ExceptionalError>()
+                            .Any(error => ReferenceEquals(error.Exception, exception))
+                    )
+                )
+            )
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
             .Setup(x =>
@@ -459,7 +471,7 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
         Mock.Mock<ITelemetry>().Verify();
-        Mock.Mock<ICommandExecutor>().Verify(x => x.Send(
-            It.IsAny<QueueLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<QueueLibrarySyncJobCommand>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 }

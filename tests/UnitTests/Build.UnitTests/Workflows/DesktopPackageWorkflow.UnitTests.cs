@@ -220,12 +220,9 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
-        (
-            await fileSystem.File.ReadAllTextAsync(
-                "/repo/.artifacts/linux-x64/old.AppImage",
-                CancellationToken
-            )
-        ).ShouldBe("old");
+        (await fileSystem.File.ReadAllTextAsync("/repo/.artifacts/linux-x64/old.AppImage", CancellationToken)).ShouldBe(
+            "old"
+        );
         fileSystem
             .Directory.EnumerateFiles("/repo", "*", SearchOption.AllDirectories)
             .ShouldBe(["/repo/.artifacts/linux-x64/old.AppImage"]);

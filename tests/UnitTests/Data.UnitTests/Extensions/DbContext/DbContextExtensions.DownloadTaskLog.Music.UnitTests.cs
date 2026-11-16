@@ -7,18 +7,15 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
     public async Task ShouldPersistMusicLogWithAncestorIds_WhenMovieLogUsesTheSameId(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(
-            62301,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62301, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -73,17 +70,14 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
     )
     {
         // Arrange
-        await SetupDatabase(
-            62302,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62302, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -140,17 +134,14 @@ public class DbContextExtensionsDownloadTaskLogMusicUnitTests : BaseUnitTest
     public async Task ShouldDeleteOnlyRequestedMusicLogs_WhenSiblingLogsExist(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(
-            62303,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62303, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)

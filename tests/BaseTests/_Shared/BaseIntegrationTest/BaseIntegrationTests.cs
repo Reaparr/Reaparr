@@ -1,5 +1,4 @@
 using System.Globalization;
-
 using Reaparr.IntegrationTests;
 
 namespace Reaparr.BaseTests;

@@ -16,15 +16,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     public async Task ShouldReturnScopedTotalsInOneAggregate_WhenPagingUnmappedAssets(int assetCount, int page)
     {
         // Arrange
-        await SetupDatabase(
-            71020,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 3;
-            }
-        );
+        await SetupDatabase(71020, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 3;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -196,17 +193,14 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
     private async Task<(int LibraryId, List<PlexPhotoMediaData> Assets)> ArrangeEligibleLibraryMetricsAsync()
     {
-        await SetupDatabase(
-            71023,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 3;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 2;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71023, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 3;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -230,16 +224,13 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
     private async Task<(int LibraryId, List<int> AssetIds)> ArrangeZeroByteLibraryAsync(int imageCount, int clipCount)
     {
-        await SetupDatabase(
-            71024,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = imageCount;
-                config.PhotoClipCount = clipCount;
-            }
-        );
+        await SetupDatabase(71024, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = imageCount;
+            config.PhotoClipCount = clipCount;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
         await dbContext.PlexPhotoMediaData.ExecuteUpdateAsync(
@@ -257,16 +248,13 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
 
     private async Task<UniqueAssetFixture> ArrangeUniqueAssetFixtureAsync()
     {
-        await SetupDatabase(
-            71002,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 3;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71002, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 3;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext
             .PlexPhotoMediaData.OrderBy(x => x.Title)
@@ -336,15 +324,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     public async Task ShouldSortNaturalTiesInBothDirectionsAndReturnEmptyBoundedPages()
     {
         // Arrange
-        await SetupDatabase(
-            71009,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 4;
-            }
-        );
+        await SetupDatabase(71009, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexPhotoMediaData.ExecuteUpdateAsync(
             x => x.SetProperty(y => y.Title, "Same title"),
@@ -411,15 +396,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     )
     {
         // Arrange
-        await SetupDatabase(
-            71012,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 4;
-            }
-        );
+        await SetupDatabase(71012, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).Take(4).ToListAsync(CancellationToken);
         var date = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -484,15 +466,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     public async Task ShouldExcludeDisabledServersFromAggregateAndRejectExplicitRequests()
     {
         // Arrange
-        await SetupDatabase(
-            71010,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(71010, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -518,15 +497,12 @@ public class GetPhotoAssetsQueryUnitTests : BaseCommandUnitTest<GetPhotoAssetsQu
     public async Task ShouldReturnOnlyNullFolderAssets_WhenUnmappedOnlyIsScopedToLibrary()
     {
         // Arrange
-        await SetupDatabase(
-            71011,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 3;
-            }
-        );
+        await SetupDatabase(71011, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 3;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,

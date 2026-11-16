@@ -229,18 +229,14 @@ public class ConnectionOwnershipIntegrationTests : BaseIntegrationTests
         after.Servers.ShouldBe(before.Servers);
     }
 
-    private Task<BaseContainer> CreateConnectionContainerAsync(int seed) =>
-        CreateContainer(
-            seed,
-            config =>
+    private Task<BaseContainer> CreateConnectionContainerAsync(int seed) => CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = data =>
             {
-                config.DatabaseOptions = data =>
-                {
-                    data.PlexServerCount = 2;
-                    data.PlexServerConnectionPerServerCount = 1;
-                };
-            }
-        );
+                data.PlexServerCount = 2;
+                data.PlexServerConnectionPerServerCount = 1;
+            };
+        });
 
     private static HttpRequestMessage CreateMutationRequest(bool delete, int connectionId, int serverId) =>
         new(

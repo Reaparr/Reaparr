@@ -49,7 +49,6 @@ public class BootUnitTests : BaseUnitTest<Boot>
         Mock.Mock<ICommandExecutor>().Verify();
     }
 
-
     [Test]
     public async Task ShouldCleanUpInterruptedLibrarySyncsBeforeStartingBackgroundJobs()
     {
@@ -215,16 +214,13 @@ public class BootUnitTests : BaseUnitTest<Boot>
     {
         // Arrange
         SetAppRuntimeInfo(x => x.IsIntegrationTestMode = false);
-        await SetupDatabase(
-            58123,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.MovieDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(58123, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.MovieDownloadTasksCount = 3;
+        });
 
         var dbContext = IDbContext;
         var files = await dbContext

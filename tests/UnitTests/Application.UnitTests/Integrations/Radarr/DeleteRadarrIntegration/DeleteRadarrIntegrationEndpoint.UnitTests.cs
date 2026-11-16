@@ -1,5 +1,5 @@
-using Microsoft.Extensions.DependencyInjection;
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -10,13 +10,10 @@ public class DeleteRadarrIntegrationEndpointUnitTests
     public async Task ShouldDeleteLocalIntegration_WhenRemoteClientCreationFailsAndForceIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70401,
-            config =>
-            {
-                config.RadarrIntegrationCount = 2;
-            }
-        );
+        await SetupDatabase(70401, config =>
+        {
+            config.RadarrIntegrationCount = 2;
+        });
         var dbContext = IDbContext;
         var integrations = await dbContext.RadarrIntegrations.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var target = integrations[0];
@@ -63,21 +60,25 @@ public class DeleteRadarrIntegrationEndpointUnitTests
     public async Task ShouldDeleteLocalIntegrationAndCaptureCleanupFailure_WhenRemoteCleanupFailsAndForceIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70403,
-            config =>
-            {
-                config.RadarrIntegrationCount = 2;
-            }
-        );
+        await SetupDatabase(70403, config =>
+        {
+            config.RadarrIntegrationCount = 2;
+        });
         var dbContext = IDbContext;
-        var integrations = await dbContext.RadarrIntegrations.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var integrations = await dbContext
+            .RadarrIntegrations.AsTracking()
+            .OrderBy(x => x.Id)
+            .ToListAsync(CancellationToken);
         var target = integrations[0];
         var retained = integrations[1];
         target.ExternalIndexerId = 123;
         await dbContext.SaveChangesAsync(CancellationToken);
-        (await dbContext.RadarrIntegrations.Where(x => x.Id == target.Id)
-            .Select(x => x.ExternalIndexerId).SingleAsync(CancellationToken)).ShouldBe(123);
+        (
+            await dbContext
+                .RadarrIntegrations.Where(x => x.Id == target.Id)
+                .Select(x => x.ExternalIndexerId)
+                .SingleAsync(CancellationToken)
+        ).ShouldBe(123);
 
         var client = new HttpClient(new StatusCodeHandler(HttpStatusCode.InternalServerError, "Server Error"))
         {
@@ -93,9 +94,7 @@ public class DeleteRadarrIntegrationEndpointUnitTests
             .ReturnsAsync(Result.Ok(client))
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
-            .Setup(x =>
-                x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ExternalDownloadRemoval)
-            )
+            .Setup(x => x.CaptureErrors(It.IsAny<ResultBase>(), TelemetryActivity.ExternalDownloadRemoval))
             .Callback<ResultBase, TelemetryActivity>((result, _) => capturedCleanupResult = result)
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()

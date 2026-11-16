@@ -9,16 +9,13 @@ public class GetLibraryMediaMetadataUnitTests
     public async Task ShouldReturnExactOtherVideoQualityCounts_WhenBrowsingMetadata(bool allLibraries)
     {
         // Arrange
-        await SetupDatabase(
-            8239,
-            cfg =>
-            {
-                cfg.PlexOtherVideoLibraryCount = 2;
-                cfg.OtherVideoCount = 2;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(8239, cfg =>
+        {
+            cfg.PlexOtherVideoLibraryCount = 2;
+            cfg.OtherVideoCount = 2;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 1;
+        });
         var dbContext = IDbContext;
         var libraryIds = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.OtherVideos)
@@ -185,9 +182,8 @@ public class GetLibraryMediaMetadataUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            8243,
-            config => MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 3)
+        await SetupDatabase(8243, config =>
+            MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 3)
         );
         var dbContext = IDbContext;
         var fixture = new MetadataScopeTestFixture(dbContext, CancellationToken);
@@ -312,16 +308,13 @@ public class GetLibraryMediaMetadataUnitTests
     public async Task ShouldUseAudioGenresFromAllowedLibraries_WhenAllLibrariesAreRequested()
     {
         // Arrange
-        await SetupDatabase(
-            8245,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(8245, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
         var dbContext = IDbContext;
         var fixture = new MetadataScopeTestFixture(dbContext, CancellationToken);
         var libraries = await dbContext
@@ -376,14 +369,11 @@ public class GetLibraryMediaMetadataUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            8250,
-            config =>
-            {
-                MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 1);
-                config.MovieCount = 0;
-            }
-        );
+        await SetupDatabase(8250, config =>
+        {
+            MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 1);
+            config.MovieCount = 0;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync();
         if (disabled)

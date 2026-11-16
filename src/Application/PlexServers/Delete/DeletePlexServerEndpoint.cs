@@ -20,6 +20,7 @@ public class DeletePlexServerEndpoint : Endpoint<DeletePlexServerEndpointRequest
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
+
     public DeletePlexServerEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,

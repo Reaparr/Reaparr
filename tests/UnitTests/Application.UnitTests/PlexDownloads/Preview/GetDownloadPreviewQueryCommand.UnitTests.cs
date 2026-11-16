@@ -8,19 +8,16 @@ public class GetDownloadPreviewQueryCommandUnitTests : BaseCommandUnitTest<GetDo
     public async Task ShouldRejectWrongMediaScope_WhenNonPhotoSelectionUsesAnotherServer(PlexMediaType type)
     {
         // Arrange
-        await SetupDatabase(
-            62830,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = type == PlexMediaType.MusicTrack ? 1 : 0;
-                config.MusicArtistCount = type == PlexMediaType.MusicTrack ? 1 : 0;
-                config.MusicAlbumCount = type == PlexMediaType.MusicTrack ? 1 : 0;
-                config.MusicTrackCount = type == PlexMediaType.MusicTrack ? 2 : 0;
-                config.PlexOtherVideoLibraryCount = type == PlexMediaType.OtherVideos ? 1 : 0;
-                config.OtherVideoCount = type == PlexMediaType.OtherVideos ? 2 : 0;
-            }
-        );
+        await SetupDatabase(62830, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = type == PlexMediaType.MusicTrack ? 1 : 0;
+            config.MusicArtistCount = type == PlexMediaType.MusicTrack ? 1 : 0;
+            config.MusicAlbumCount = type == PlexMediaType.MusicTrack ? 1 : 0;
+            config.MusicTrackCount = type == PlexMediaType.MusicTrack ? 2 : 0;
+            config.PlexOtherVideoLibraryCount = type == PlexMediaType.OtherVideos ? 1 : 0;
+            config.OtherVideoCount = type == PlexMediaType.OtherVideos ? 2 : 0;
+        });
         var dbContext = IDbContext;
         List<BasePlexMedia> media =
             type == PlexMediaType.MusicTrack
@@ -80,18 +77,15 @@ public class GetDownloadPreviewQueryCommandUnitTests : BaseCommandUnitTest<GetDo
     public async Task ShouldBuildMixedMovieAndTvHierarchy()
     {
         // Arrange
-        await SetupDatabase(
-            47561,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 2;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(47561, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 2;
+            config.TvShowEpisodeCount = 2;
+        });
         var dbContext = IDbContext;
         var movies = await dbContext.PlexMovies.ToListAsync(CancellationToken);
         var shows = await dbContext.PlexTvShows.ToListAsync(CancellationToken);
@@ -140,15 +134,12 @@ public class GetDownloadPreviewQueryCommandUnitTests : BaseCommandUnitTest<GetDo
     public async Task ShouldHandleMultipleMovieLibrariesAndServers()
     {
         // Arrange
-        await SetupDatabase(
-            11223,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(11223, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.MovieCount = 2;
+        });
         var movies = await IDbContext.PlexMovies.AsNoTracking().ToListAsync(CancellationToken);
         var query = new GetDownloadPreviewQuery(
             new DownloadPreviewRequest

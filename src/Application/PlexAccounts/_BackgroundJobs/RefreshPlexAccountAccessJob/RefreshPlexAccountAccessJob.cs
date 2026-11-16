@@ -8,11 +8,8 @@ public class RefreshPlexAccountAccessJob : IJob
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
-    public RefreshPlexAccountAccessJob(
-        ILogger log,
-        ICommandExecutor commandExecutor,
-        ITelemetry telemetry
-    )
+
+    public RefreshPlexAccountAccessJob(ILogger log, ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _log = log.ForContext<RefreshPlexAccountAccessJob>();
         _commandExecutor = commandExecutor;
@@ -67,10 +64,7 @@ public class RefreshPlexAccountAccessJob : IJob
 
         if (executionResult.IsCancelledOrFailed)
         {
-            context.SetResult(
-                executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
-                executionResult
-            );
+            context.SetResult(executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, executionResult);
             executionResult.LogIfFailed();
             _telemetry.CaptureErrors(executionResult, TelemetryActivity.PlexAccessRefresh);
             return;

@@ -16,17 +16,14 @@ public class ApplyRemoteMusicComparisonStateCommandUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            87301,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 2;
-                config.MusicAlbumCount = 2;
-                config.MusicTrackCount = 3;
-            }
-        );
+        await SetupDatabase(87301, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 2;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 3;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -164,17 +161,14 @@ public class ApplyRemoteMusicComparisonStateCommandUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            87302,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(87302, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -241,15 +235,12 @@ public class ApplyRemoteMusicComparisonStateCommandUnitTests
     public async Task ShouldMarkMissing_WhenCurrentScopeHasNoHits()
     {
         // Arrange
-        await SetupDatabase(
-            87303,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(87303, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -273,15 +264,12 @@ public class ApplyRemoteMusicComparisonStateCommandUnitTests
     public async Task ShouldLeaveNotCompared_WhenSourceLibraryIsDisabledOrNoLongerRemote(bool disabled)
     {
         // Arrange
-        await SetupDatabase(
-            87304,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(87304, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -319,15 +307,12 @@ public class ApplyRemoteMusicComparisonStateCommandUnitTests
     public async Task ShouldResetToNotCompared_WhenSourceMusicLibraryIsOutdated(bool ownedSource)
     {
         // Arrange
-        await SetupDatabase(
-            87305,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(87305, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -369,17 +354,14 @@ public class ApplyRemoteMusicComparisonStateCommandUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            87306,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(87306, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);

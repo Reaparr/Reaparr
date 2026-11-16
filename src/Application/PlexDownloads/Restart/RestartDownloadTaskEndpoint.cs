@@ -17,8 +17,7 @@ public class RestartDownloadTaskEndpointRequestValidator : Validator<RestartDown
     }
 }
 
-public class RestartDownloadTaskEndpoint
-    : Endpoint<RestartDownloadTaskEndpointRequest>
+public class RestartDownloadTaskEndpoint : Endpoint<RestartDownloadTaskEndpointRequest>
 {
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;

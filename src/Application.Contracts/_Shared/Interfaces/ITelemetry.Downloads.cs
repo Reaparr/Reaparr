@@ -115,19 +115,16 @@ public partial interface ITelemetry
     /// Starts telemetry for download cleanup.
     /// </summary>
     Activity? StartDownloadCleanup(DownloadTaskFileBase downloadTask);
+
     /// <summary>
     /// Sets context on the current download activity.
     /// </summary>
-    void SetDownloadJobContext(
-        DownloadTaskFileBase downloadTask,
-        PlexDownloadClientType clientType
-    );
+    void SetDownloadJobContext(DownloadTaskFileBase downloadTask, PlexDownloadClientType clientType);
+
     /// <summary>
     /// Sets context on the current move activity.
     /// </summary>
     void SetMoveDownloadJobContext(DownloadTaskKey taskKey, int retryCount);
-
-
 
     /// <summary>
     /// Completes telemetry for a download job.

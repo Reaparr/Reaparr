@@ -21,9 +21,7 @@ public class DeleteFolderPathEndpointUnitTests
         );
         await db.SaveChangesAsync(CancellationToken);
         var control = await db.FolderPaths.SingleAsync(x => x.Id == 2, CancellationToken);
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.FolderPathDeleted(11, 1))
-            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.FolderPathDeleted(11, 1)).Verifiable(Times.Once());
 
         // Act
         var outcome = await TestEndpointHandleAsync(new DeleteFolderPathEndpointRequest(11));
@@ -45,9 +43,7 @@ public class DeleteFolderPathEndpointUnitTests
     {
         // Arrange
         await SetupDatabase(44210);
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.FolderPathDeleted(999, 0))
-            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.FolderPathDeleted(999, 0)).Verifiable(Times.Once());
 
         // Act
         var outcome = await TestEndpointHandleAsync(new DeleteFolderPathEndpointRequest(999));

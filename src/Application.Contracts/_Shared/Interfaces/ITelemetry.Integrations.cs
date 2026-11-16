@@ -35,21 +35,13 @@ public partial interface ITelemetry
     /// <summary>
     /// Records completion of integration setup.
     /// </summary>
-    void IntegrationSetupFinished<TStage>(
-        SonarrIntegration integration,
-        ResultBase result,
-        TStage stage
-    )
+    void IntegrationSetupFinished<TStage>(SonarrIntegration integration, ResultBase result, TStage stage)
         where TStage : struct, Enum;
 
     /// <summary>
     /// Records completion of integration setup.
     /// </summary>
-    void IntegrationSetupFinished<TStage>(
-        RadarrIntegration integration,
-        ResultBase result,
-        TStage stage
-    )
+    void IntegrationSetupFinished<TStage>(RadarrIntegration integration, ResultBase result, TStage stage)
         where TStage : struct, Enum;
 
     /// <summary>
@@ -96,4 +88,3 @@ public partial interface ITelemetry
     /// </summary>
     void ExternalDownloadRemovalProcessed(IntegrationIdentity integration, ExternalDownloadRemovalReport report);
 }
-

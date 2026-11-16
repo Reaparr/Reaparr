@@ -42,9 +42,7 @@ public class CheckPlexLibrariesForUpdatesJob : IJob
         var result = await Result.Try(
             async Task<Result> () =>
             {
-                var enabledServerIds = await _dbContext
-                    .PlexServers.Select(x => x.Id)
-                    .ToListAsync(cancellationToken);
+                var enabledServerIds = await _dbContext.PlexServers.Select(x => x.Id).ToListAsync(cancellationToken);
 
                 if (enabledServerIds.Count == 0)
                 {
@@ -110,7 +108,10 @@ public class CheckPlexLibrariesForUpdatesJob : IJob
                 }
 
                 _log.Here()
-                    .Information("Queueing {Count} outdated Plex libraries for automatic sync", outdatedLibraryIds.Count);
+                    .Information(
+                        "Queueing {Count} outdated Plex libraries for automatic sync",
+                        outdatedLibraryIds.Count
+                    );
 
                 var queueResult = await _commandExecutor.Send(
                     new QueueLibrarySyncJobCommand(outdatedLibraryIds, Trigger: TelemetryTrigger.Scheduled),

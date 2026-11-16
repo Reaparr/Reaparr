@@ -8,7 +8,8 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
     private static IJobExecutionContext SetupJobContext(CancellationToken cancellationToken = default)
     {
         var context = new Mock<IJobExecutionContext>();
-        context.SetupGet(x => x.JobDetail)
+        context
+            .SetupGet(x => x.JobDetail)
             .Returns(
                 JobBuilder
                     .Create<CheckPlexLibrariesForUpdatesJob>()
@@ -21,6 +22,7 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         context.SetupProperty(x => x.Result);
         return context.Object;
     }
+
     private void SetupBeginJob()
     {
         Mock.Mock<ITelemetry>()
@@ -38,14 +40,11 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
     public async Task ShouldRefreshLibraryAccessForEnabledServers_WhenAutoSyncIsEnabled()
     {
         // Arrange
-        await SetupDatabase(
-            4501,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4501, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         await dbContext
@@ -101,14 +100,11 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
     public async Task ShouldSkipServerWithoutTokenMapping_WhenRefreshingLibraryAccess()
     {
         // Arrange
-        await SetupDatabase(
-            4503,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4503, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
 
         await dbContext
@@ -165,16 +161,13 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
     {
         // Arrange
         var now = DateTime.UtcNow;
-        await SetupDatabase(
-            4502,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 4;
-                config.PlexTvShowLibraryCount = 0;
-            }
-        );
+        await SetupDatabase(4502, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 4;
+            config.PlexTvShowLibraryCount = 0;
+        });
         var dbContext = IDbContext;
 
         await dbContext
@@ -256,18 +249,16 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
     }
+
     [Test]
     public async Task ShouldContainUnexpectedRefreshExceptionAndMarkJobFailed()
     {
         // Arrange
-        await SetupDatabase(
-            4504,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4504, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
         await dbContext
             .PlexServers.IgnoreQueryFilters()
@@ -295,8 +286,8 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
-                    It.Is<RefreshLibraryAccessCommand>(
-                        command => command.PlexAccountId == accountId && command.PlexServerId == serverId
+                    It.Is<RefreshLibraryAccessCommand>(command =>
+                        command.PlexAccountId == accountId && command.PlexServerId == serverId
                     ),
                     CancellationToken.None
                 )
@@ -330,14 +321,11 @@ public class CheckPlexLibrariesForUpdatesJobUnitTests : BaseUnitTest<CheckPlexLi
     public async Task ShouldCancel_WhenCallerCancellationIsObservedDuringDatabaseRead()
     {
         // Arrange
-        await SetupDatabase(
-            4505,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(4505, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+        });
         using var cancellationSource = new CancellationTokenSource();
         cancellationSource.Cancel();
         var context = SetupJobContext(cancellationSource.Token);

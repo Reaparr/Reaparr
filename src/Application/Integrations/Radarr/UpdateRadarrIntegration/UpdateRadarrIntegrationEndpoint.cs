@@ -100,8 +100,7 @@ public class UpdateRadarrIntegrationEndpoint : Endpoint<UpdateRadarrIntegrationR
             ApiKey = integration.RadarrApiKey.Trim(),
         };
 
-        var connectionIdentityChanged =
-            originalConfiguration.Url != url || originalConfiguration.ApiKey != apiKey;
+        var connectionIdentityChanged = originalConfiguration.Url != url || originalConfiguration.ApiKey != apiKey;
 
         if (
             integration.ProvisioningState == IntegrationProvisioningState.Configured
@@ -133,5 +132,4 @@ public class UpdateRadarrIntegrationEndpoint : Endpoint<UpdateRadarrIntegrationR
 
         await Send.FluentResult(Result.Ok(updatedConfiguration), ct);
     }
-
 }

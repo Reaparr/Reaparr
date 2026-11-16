@@ -16,15 +16,12 @@ public class PauseDownloadTaskCommandTvShowUnitTests : BaseUnitTest<PauseDownloa
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Exactly(4));
-        await SetupDatabase(
-            19965,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 2;
-                config.TvShowSeasonDownloadTasksCount = 2;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(19965, config =>
+        {
+            config.TvShowDownloadTasksCount = 2;
+            config.TvShowSeasonDownloadTasksCount = 2;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
         var tvShowDownloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(
             cancellationToken: CancellationToken
         );
@@ -73,15 +70,12 @@ public class PauseDownloadTaskCommandTvShowUnitTests : BaseUnitTest<PauseDownloa
     public async Task ShouldPauseDownloadingAndMovingTasks_WhenMultipleChildrenAreActive()
     {
         // Arrange
-        await SetupDatabase(
-            45112,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(45112, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 3;
+        });
 
         var tvShowDownloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(
             cancellationToken: CancellationToken

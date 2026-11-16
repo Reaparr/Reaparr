@@ -261,11 +261,10 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
 
             changedShows.AddRange(createdShows.Concat(updatedShows));
             foreach (var show in createdShows.Concat(updatedShows))
-                show.VideoQuality =
-                    show.Seasons.SelectMany(x => x.Episodes)
-                        .SelectMany(x => x.MediaDataList)
-                        .Select(x => (VideoQuality?)x.VideoQuality)
-                        .Max()
+                show.VideoQuality = show.Seasons.SelectMany(x => x.Episodes)
+                    .SelectMany(x => x.MediaDataList)
+                    .Select(x => (VideoQuality?)x.VideoQuality)
+                    .Max()
                     ?? VideoQuality.Unknown;
 
             report.CreatedTvShows = createdShows.Count;

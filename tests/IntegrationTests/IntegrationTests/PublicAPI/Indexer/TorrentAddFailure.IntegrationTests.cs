@@ -22,53 +22,50 @@ public class TorrentAddFailureIntegrationTests : BaseIntegrationTests
             TelemetryProjectToken = "phc_test",
         };
 
-        using var container = await CreateContainer(
-            new Seed(8636),
-            config =>
+        using var container = await CreateContainer(new Seed(8636), config =>
+        {
+            config.DatabaseOptions = database =>
             {
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexServerCount = 1;
-                    database.PlexAccountCount = 1;
-                    database.PlexMovieLibraryCount = 1;
-                    database.MovieCount = 1;
-                    database.MovieDownloadTasksCount = 1;
-                    database.RadarrIntegrationCount = 1;
-                };
-                config.OverrideAppBuildInfo = buildInfo;
-                config.OverrideServices = builder =>
-                {
-                    var handler = new Mock<HttpMessageHandler>();
-                    handler
-                        .Protected()
-                        .Setup<Task<HttpResponseMessage>>(
-                            "SendAsync",
-                            ItExpr.IsAny<HttpRequestMessage>(),
-                            ItExpr.IsAny<CancellationToken>()
-                        )
-                        .Returns(
-                            async (HttpRequestMessage request, CancellationToken token) =>
-                            {
-                                telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
-                                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
-                            }
-                        );
-                    var httpClient = new HttpClient(handler.Object);
-                    var factory = new Mock<IHttpClientFactory>();
-                    factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
-                    telemetryClient = new PostHogClient(
-                        new PostHogOptions
+                database.PlexServerCount = 1;
+                database.PlexAccountCount = 1;
+                database.PlexMovieLibraryCount = 1;
+                database.MovieCount = 1;
+                database.MovieDownloadTasksCount = 1;
+                database.RadarrIntegrationCount = 1;
+            };
+            config.OverrideAppBuildInfo = buildInfo;
+            config.OverrideServices = builder =>
+            {
+                var handler = new Mock<HttpMessageHandler>();
+                handler
+                    .Protected()
+                    .Setup<Task<HttpResponseMessage>>(
+                        "SendAsync",
+                        ItExpr.IsAny<HttpRequestMessage>(),
+                        ItExpr.IsAny<CancellationToken>()
+                    )
+                    .Returns(
+                        async (HttpRequestMessage request, CancellationToken token) =>
                         {
-                            ProjectToken = buildInfo.TelemetryProjectToken,
-                            HostUrl = new Uri(buildInfo.TelemetryHost),
-                            EnableCompression = false,
-                        },
-                        httpClientFactory: factory.Object
+                            telemetryBodies.Enqueue(await request.Content!.ReadAsStringAsync(token));
+                            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+                        }
                     );
-                    builder.RegisterInstance(telemetryClient).As<IPostHogClient>();
-                };
-            }
-        );
+                var httpClient = new HttpClient(handler.Object);
+                var factory = new Mock<IHttpClientFactory>();
+                factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+                telemetryClient = new PostHogClient(
+                    new PostHogOptions
+                    {
+                        ProjectToken = buildInfo.TelemetryProjectToken,
+                        HostUrl = new Uri(buildInfo.TelemetryHost),
+                        EnableCompression = false,
+                    },
+                    httpClientFactory: factory.Object
+                );
+                builder.RegisterInstance(telemetryClient).As<IPostHogClient>();
+            };
+        });
         var dbContext = container.DbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movie = await dbContext.PlexMovies.SingleAsync(CancellationToken);

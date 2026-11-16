@@ -627,15 +627,12 @@ public class UpdateUserSettingsEndpointUnitTests
 
     private async Task<string[]> SetupDownloadingServersAsync()
     {
-        await SetupDatabase(
-            71997,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 0;
-            }
-        );
+        await SetupDatabase(71997, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 0;
+        });
         var dbContext = IDbContext;
         foreach (
             var library in await dbContext

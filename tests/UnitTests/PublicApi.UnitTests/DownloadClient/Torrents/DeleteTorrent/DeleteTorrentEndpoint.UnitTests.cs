@@ -17,15 +17,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldDeleteDownloadTask_WhenHashIdMatches()
     {
         // Arrange
-        await SetupDatabase(
-            1234,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(1234, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -76,15 +73,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     }
 
     private new Task<Seed> SetupDatabase(int seed, Action<FakeDataConfig>? configure = null) =>
-        base.SetupDatabase(
-            seed,
-            config =>
-            {
-                configure?.Invoke(config);
-                config.RadarrIntegrationCount = 1;
-                config.AssignUnownedDownloadTasksToRadarrIntegration = true;
-            }
-        );
+        base.SetupDatabase(seed, config =>
+        {
+            configure?.Invoke(config);
+            config.RadarrIntegrationCount = 1;
+            config.AssignUnownedDownloadTasksToRadarrIntegration = true;
+        });
 
     private async Task<EndpointUnitTestResult<DeleteTorrentEndpoint, object>> TestEndpointHandleAsync(
         DeleteTorrentRequest request,
@@ -99,15 +93,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldStopDownloadTask_WhenHashIdMatchesAndDownloading()
     {
         // Arrange
-        await SetupDatabase(
-            5678,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(5678, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -169,15 +160,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldStopDownloadTask_WhenHashIdMatchesHashesRawAndDownloading()
     {
         // Arrange
-        await SetupDatabase(
-            9012,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(9012, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -240,15 +228,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldStopDownloadTask_WhenHashIdCasingDiffersInHashesRaw()
     {
         // Arrange
-        await SetupDatabase(
-            3456,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(3456, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -304,15 +289,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldStopDownloadingAndDeleteMatchedTasks_WhenHashesRawIsTrimmedAll()
     {
         // Arrange
-        await SetupDatabase(
-            7890,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(7890, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 2;
+        });
 
         var dbContext = IDbContext;
         var movieFiles = await dbContext
@@ -402,15 +384,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldNotStopOrDelete_WhenHashesRawIsAllAndNoHashIdsExist()
     {
         // Arrange
-        await SetupDatabase(
-            2468,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(2468, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -443,15 +422,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldStopQueuedTask_WhenHashesRawIsAll()
     {
         // Arrange
-        await SetupDatabase(
-            1357,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(1357, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -494,15 +470,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldPassDeleteFilesFalseToStop_WhenHashesRawIsAll()
     {
         // Arrange
-        await SetupDatabase(
-            9753,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(9753, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -558,15 +531,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldCallDeleteDownloadTaskFilesCommand_WhenDeleteFilesTrueAndTaskIsCompleted()
     {
         // Arrange — Sonarr/Radarr scenario: task is Completed, deleteFiles=true.
-        await SetupDatabase(
-            9801,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(9801, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -611,15 +581,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldNotCallDeleteDownloadTaskFilesCommand_WhenDeleteFilesFalseAndTaskIsCompleted()
     {
         // Arrange — deleteFiles=false: files must not be touched even for completed tasks.
-        await SetupDatabase(
-            9802,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(9802, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -653,15 +620,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldNotCallDeleteDownloadTaskFilesCommand_WhenNoCompletedTasksMatchHash()
     {
         // Arrange — only a downloading task matched; DeleteDownloadTaskFilesCommand must not be called.
-        await SetupDatabase(
-            9803,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(9803, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -700,15 +664,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldDeleteOnlyKeysWhosePrerequisitesSucceeded_WhenStoppingAndDeletingFiles()
     {
         // Arrange
-        await SetupDatabase(
-            9804,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(9804, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 2;
+        });
 
         var dbContext = IDbContext;
         var movieFiles = await dbContext
@@ -775,15 +736,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldDeleteFilesForMatchedTasksInNonActiveStatuses_WhenDeleteFilesTrue()
     {
         // Arrange
-        await SetupDatabase(
-            9805,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(9805, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -843,15 +801,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldDeleteFilesForMoveFinishedTasks_WhenDeleteFilesTrue()
     {
         // Arrange
-        await SetupDatabase(
-            9806,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(9806, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
@@ -911,15 +866,12 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
     public async Task ShouldStopMovingTasks_WhenDeleteFilesTrue()
     {
         // Arrange
-        await SetupDatabase(
-            9807,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(9807, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFile = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);

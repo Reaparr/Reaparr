@@ -8,15 +8,12 @@ public class GetMovieMediaByTypeCommandQualityFiltersUnitTests : BaseCommandUnit
     [Test]
     public async Task ShouldSelectOnlyMatchingVideoQuality_WhenFilteringTheRootQualityCollection()
     {
-        await SetupDatabase(
-            70351,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(70351, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
         var dbContext = IDbContext;
         var roots = await dbContext
             .PlexMovies.OrderBy(x => x.Id)
@@ -79,15 +76,12 @@ public class GetTvShowMediaByTypeCommandQualityFiltersUnitTests : BaseCommandUni
     [Test]
     public async Task ShouldSelectOnlyMatchingVideoQuality_WhenFilteringTheRootQualityCollection()
     {
-        await SetupDatabase(
-            70351,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-            }
-        );
+        await SetupDatabase(70351, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+        });
         var dbContext = IDbContext;
         var roots = await dbContext
             .PlexTvShows.OrderBy(x => x.Id)
@@ -159,15 +153,12 @@ public class GetOtherVideoMediaByTypeCommandQualityFiltersUnitTests
     [Test]
     public async Task ShouldSelectOnlyMatchingVideoQuality_WhenFilteringTheRootQualityCollection()
     {
-        await SetupDatabase(
-            70351,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 2;
-            }
-        );
+        await SetupDatabase(70351, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 2;
+        });
         var dbContext = IDbContext;
         var roots = await dbContext
             .PlexOtherVideos.OrderBy(x => x.Id)

@@ -239,9 +239,10 @@ public sealed class GetPhotoAssetImageEndpoint : Endpoint<GetPhotoAssetImageRequ
 
     private static EntityTagHeaderValue CreateImageEntityTag(PlexPhotoMediaData asset, GetPhotoAssetImageRequest req)
     {
-        var targetSize = req.Representation == PhotoImageRepresentation.Converted
-            ? FormattableString.Invariant($"-{req.Width!.Value}x{req.Height!.Value}")
-            : string.Empty;
+        var targetSize =
+            req.Representation == PhotoImageRepresentation.Converted
+                ? FormattableString.Invariant($"-{req.Width!.Value}x{req.Height!.Value}")
+                : string.Empty;
         return new EntityTagHeaderValue(
             FormattableString.Invariant(
                 $"\"{asset.PlexServerId}-{asset.PlexLibraryId}-{asset.Id}-{asset.PlexApiPartId}-{asset.PlexApiRatingKey}-{asset.UpdatedAt?.Ticks ?? asset.AddedAt.Ticks}-{asset.Size}-{asset.Width}x{asset.Height}-{req.Representation}{targetSize}\""

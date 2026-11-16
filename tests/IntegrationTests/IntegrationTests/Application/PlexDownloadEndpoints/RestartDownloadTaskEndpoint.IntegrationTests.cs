@@ -7,26 +7,23 @@ public class RestartDownloadTaskEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(5594564);
-        using var container = await CreateContainer(
-            5594564,
-            config =>
+        using var container = await CreateContainer(5594564, config =>
+        {
+            config.HttpClientOptions = (x, _) =>
             {
-                config.HttpClientOptions = (x, _) =>
-                {
-                    x.SetupIdentityRequest(seed);
-                };
+                x.SetupIdentityRequest(seed);
+            };
 
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexMovieLibraryCount = 2;
-                    x.MovieCount = 10;
-                    x.MovieDownloadTasksCount = 1;
-                    x.DownloadFileSizeInMb = 1;
-                };
-            }
-        );
+            config.DatabaseOptions = x =>
+            {
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexMovieLibraryCount = 2;
+                x.MovieCount = 10;
+                x.MovieDownloadTasksCount = 1;
+                x.DownloadFileSizeInMb = 1;
+            };
+        });
 
         var downloadTaskToRestart = await container
             .DbContext.DownloadTaskMovieFile.AsNoTracking()

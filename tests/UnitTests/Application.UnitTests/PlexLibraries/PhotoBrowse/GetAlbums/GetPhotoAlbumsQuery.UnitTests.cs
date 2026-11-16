@@ -8,16 +8,13 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
     public async Task ShouldReturnScopedAlbumsWithUniqueTotalsAndNaturalTieOrdering()
     {
         // Arrange
-        await SetupDatabase(
-            71001,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 3;
-                config.PhotoCount = 3;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71001, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 3;
+            config.PhotoCount = 3;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var albums = await dbContext
@@ -118,15 +115,12 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
 
     private async Task<(int LibraryId, List<PlexPhotoAlbum> Albums)> ArrangeSortableAlbumsAsync()
     {
-        await SetupDatabase(
-            71013,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 4;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(71013, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 4;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(x => x.Type == PlexMediaType.PhotoAlbum);
         var albums = await dbContext.PlexPhotoAlbums.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -176,16 +170,13 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
     public async Task ShouldKeepOfflineLinkedLibrariesAndExcludeLibrariesAfterAccountLinkRemoval()
     {
         // Arrange
-        await SetupDatabase(
-            71008,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(71008, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var allAlbums = await dbContext.PlexPhotoAlbums.CountAsync(CancellationToken);

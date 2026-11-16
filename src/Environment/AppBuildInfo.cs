@@ -75,8 +75,10 @@ public sealed class AppBuildInfo : IAppBuildInfo
 
         _attributes = assembly.GetCustomAttributes<AssemblyMetadataAttribute>().ToList();
         Version = assembly.GetName().Version?.ToString() ?? "0.0.0";
-        InformationalVersion =
-            assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
+        InformationalVersion = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion
+            ?? "0.0.0";
     }
 
     private string GetAssemblyMetadataValue(string key, string fallback = "unknown") =>

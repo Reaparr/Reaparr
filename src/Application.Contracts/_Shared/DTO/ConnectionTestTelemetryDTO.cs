@@ -10,6 +10,7 @@ public sealed record ConnectionTestTelemetryDTO
 {
     /// <summary>The connection health or rejection reason reported by the probe.</summary>
     public required TestConnectionStatus Status { get; init; }
+
     /// <summary>The HTTP response status observed by the probe, or null when none was recorded.</summary>
     public int? HttpStatusCode { get; init; }
 }

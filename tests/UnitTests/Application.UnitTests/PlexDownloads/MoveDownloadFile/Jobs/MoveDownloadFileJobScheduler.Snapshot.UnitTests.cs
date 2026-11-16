@@ -109,7 +109,12 @@ public class MoveDownloadFileJobSchedulerSnapshotUnitTests : BaseUnitTest<MoveDo
             .Verifiable(Times.Once());
         scheduler
             .Setup(x => x.GetJobDetail(MoveDownloadFileJob.GetJobKey(missingPayload.Id), CancellationToken.None))
-            .ReturnsAsync(JobBuilder.Create<MoveDownloadFileJob>().WithIdentity(MoveDownloadFileJob.GetJobKey(missingPayload.Id)).Build())
+            .ReturnsAsync(
+                JobBuilder
+                    .Create<MoveDownloadFileJob>()
+                    .WithIdentity(MoveDownloadFileJob.GetJobKey(missingPayload.Id))
+                    .Build()
+            )
             .Verifiable(Times.Once());
 
         var keys = await Sut.GetCurrentlyMovingKeysByServer(queued.PlexServerId);
@@ -118,10 +123,19 @@ public class MoveDownloadFileJobSchedulerSnapshotUnitTests : BaseUnitTest<MoveDo
         keys.Single().ShouldBeEquivalentTo(queued);
         scheduler.Verify();
         foreach (var excluded in new[] { paused, cron, disappeared })
-            scheduler.Verify(x => x.GetJobDetail(MoveDownloadFileJob.GetJobKey(excluded.Id), CancellationToken.None), Times.Never());
-        scheduler.Verify(x => x.GetTriggersOfJob(MoveDownloadFileJob.GetJobKey(disappeared.Id), CancellationToken.None), Times.Never());
+            scheduler.Verify(
+                x => x.GetJobDetail(MoveDownloadFileJob.GetJobKey(excluded.Id), CancellationToken.None),
+                Times.Never()
+            );
+        scheduler.Verify(
+            x => x.GetTriggersOfJob(MoveDownloadFileJob.GetJobKey(disappeared.Id), CancellationToken.None),
+            Times.Never()
+        );
         var cronJobKey = MoveDownloadFileJob.GetJobKey(cron.Id);
-        scheduler.Verify(x => x.GetTriggerState(new TriggerKey(cronJobKey.Name, cronJobKey.Group), CancellationToken.None), Times.Never());
+        scheduler.Verify(
+            x => x.GetTriggerState(new TriggerKey(cronJobKey.Name, cronJobKey.Group), CancellationToken.None),
+            Times.Never()
+        );
     }
 
     private static DownloadTaskKey CreateKey(int id, int serverId = 1) =>
@@ -133,7 +147,11 @@ public class MoveDownloadFileJobSchedulerSnapshotUnitTests : BaseUnitTest<MoveDo
             PlexLibraryId = serverId,
         };
 
-    private static IJobExecutionContext CreateContext(DownloadTaskKey key, bool includePayload = true, string? group = null)
+    private static IJobExecutionContext CreateContext(
+        DownloadTaskKey key,
+        bool includePayload = true,
+        string? group = null
+    )
     {
         var payload = new MoveDownloadFileJobPayload(key).ToJobDataMap();
         var jobKey = group is null ? MoveDownloadFileJob.GetJobKey(key.Id) : new JobKey(key.Id.ToString(), group);

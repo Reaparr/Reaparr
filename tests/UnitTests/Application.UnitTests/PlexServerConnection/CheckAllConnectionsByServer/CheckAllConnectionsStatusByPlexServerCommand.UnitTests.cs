@@ -7,13 +7,10 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
     public async Task ShouldReturnServerNotEnabled_WhenPlexServerIsDisabled()
     {
         // Arrange
-        await SetupDatabase(
-            5231,
-            config =>
-            {
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(5231, config =>
+        {
+            config.PlexServerCount = 1;
+        });
         var plexServer = IDbContext.PlexServers.First();
         await IDbContext.PlexServers.ExecuteUpdateAsync(p => p.SetProperty(x => x.IsEnabled, false), CancellationToken);
 
@@ -45,13 +42,10 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
     public async Task ShouldReturnNoConnectionsFound_WhenPlexServerHasNoConnections()
     {
         // Arrange
-        await SetupDatabase(
-            4321,
-            config =>
-            {
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(4321, config =>
+        {
+            config.PlexServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServer = dbContext.PlexServers.First();
@@ -71,13 +65,10 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
     public async Task ShouldPublishOnlineStatusChange_WhenConnectionsBecomeHealthyWithoutProductTelemetry()
     {
         // Arrange
-        await SetupDatabase(
-            54231,
-            config =>
-            {
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(54231, config =>
+        {
+            config.PlexServerCount = 1;
+        });
 
         // Set server to offline
         var dbContext = IDbContext;
@@ -136,8 +127,7 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
         result.ShouldNotBeNull();
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        result.Value.Select(x => x.PlexServerConnectionId).Order()
-            .ShouldBe(connections.Select(x => x.Id).Order());
+        result.Value.Select(x => x.PlexServerConnectionId).Order().ShouldBe(connections.Select(x => x.Id).Order());
         result.Value.ShouldAllBe(x => x.PlexServerId == 1 && x.IsSuccessful);
         Mock.Mock<ICommandExecutor>()
             .Verify(
@@ -145,18 +135,15 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
                     x.Send(
                         It.Is<CheckConnectionStatusByIdCommand>(command =>
                             command.Timeout == 10
-                            && connections.Select(connection => connection.Id).Contains(command.PlexServerConnectionId)),
+                            && connections.Select(connection => connection.Id).Contains(command.PlexServerConnectionId)
+                        ),
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Exactly(connections.Count)
             );
         Mock.Mock<ITelemetry>()
             .Verify(
-                x =>
-                    x.ConnectionCheckFinished(
-                        It.IsAny<int>(),
-                        It.IsAny<Result<List<PlexServerStatus>>>()
-                    ),
+                x => x.ConnectionCheckFinished(It.IsAny<int>(), It.IsAny<Result<List<PlexServerStatus>>>()),
                 Times.Never()
             );
         Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
@@ -171,13 +158,10 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
     public async Task ShouldNotPublishServerOnlineStatusChangedNotification_WhenOnlineStatusHasNotChanged()
     {
         // Arrange
-        await SetupDatabase(
-            523187,
-            config =>
-            {
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(523187, config =>
+        {
+            config.PlexServerCount = 1;
+        });
 
         // Set server to online
         var dbContext = IDbContext;
@@ -246,13 +230,10 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
     public async Task ShouldNotPublishOnlineNotification_WhenAllConnectionChecksReturnUnsuccessfulStatuses()
     {
         // Arrange
-        await SetupDatabase(
-            523188,
-            config =>
-            {
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(523188, config =>
+        {
+            config.PlexServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         await dbContext.PlexServerStatuses.ExecuteDeleteAsync(CancellationToken);
@@ -280,7 +261,6 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             )
             .Verifiable(Times.Exactly(connections.Count));
 
-
         // Act
         var request = new CheckAllConnectionsStatusByPlexServerCommand(1);
         var result = await Sut.ExecuteAsync(request, CancellationToken);
@@ -292,11 +272,7 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
         result.ValueOrDefault!.Select(status => status.IsSuccessful).ShouldBe(connections.Select(_ => false));
         Mock.Mock<ITelemetry>()
             .Verify(
-                x =>
-                    x.ConnectionCheckFinished(
-                        It.IsAny<int>(),
-                        It.IsAny<Result<List<PlexServerStatus>>>()
-                    ),
+                x => x.ConnectionCheckFinished(It.IsAny<int>(), It.IsAny<Result<List<PlexServerStatus>>>()),
                 Times.Never()
             );
         Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
@@ -311,13 +287,10 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
     public async Task ShouldPublishOfflineNotification_WhenServerTransitionsFromOnlineToOffline()
     {
         // Arrange
-        await SetupDatabase(
-            523189,
-            config =>
-            {
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(523189, config =>
+        {
+            config.PlexServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         await dbContext.PlexServerStatuses.ExecuteDeleteAsync(CancellationToken);

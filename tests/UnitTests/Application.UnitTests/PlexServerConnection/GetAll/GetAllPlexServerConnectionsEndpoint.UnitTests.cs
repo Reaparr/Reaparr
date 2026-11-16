@@ -5,10 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace Reaparr.Application.UnitTests;
 
 public class GetAllPlexServerConnectionsEndpointUnitTests
-    : BaseEndpointWithoutRequestUnitTest<
-        GetAllPlexServerConnectionsEndpoint,
-        List<PlexServerConnectionDTO>
-    >
+    : BaseEndpointWithoutRequestUnitTest<GetAllPlexServerConnectionsEndpoint, List<PlexServerConnectionDTO>>
 {
     [Test]
     [Arguments(1)]
@@ -32,10 +29,7 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
                     .Subscribe(command => commands.Enqueue(command.Command.CommandText))
             );
         });
-        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
-            listeners,
-            commandSubscriptions
-        );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(listeners, commandSubscriptions);
 
         // Act
         var result = await TestEndpointHandleAsync();
@@ -54,15 +48,43 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
         var value = response.Value.ShouldNotBeNull();
         var actual = value.OrderBy(x => x.Id).Select(Snapshot).ToList();
         actual
-            .Select(x => (x.Id, x.PlexServerId, x.ChosenConnection, x.StatusId, x.IsSuccessful, x.StatusCode, x.StatusMessage, x.LastChecked, x.StatusPlexServerId, x.StatusPlexServerConnectionId))
+            .Select(x =>
+                (
+                    x.Id,
+                    x.PlexServerId,
+                    x.ChosenConnection,
+                    x.StatusId,
+                    x.IsSuccessful,
+                    x.StatusCode,
+                    x.StatusMessage,
+                    x.LastChecked,
+                    x.StatusPlexServerId,
+                    x.StatusPlexServerConnectionId
+                )
+            )
             .ShouldBe(
-                fixture.Expected
-                    .OrderBy(x => x.Id)
-                    .Select(x => (x.Id, x.PlexServerId, x.ChosenConnection, x.StatusId, x.IsSuccessful, x.StatusCode, x.StatusMessage, x.LastChecked, x.StatusPlexServerId, x.StatusPlexServerConnectionId))
+                fixture
+                    .Expected.OrderBy(x => x.Id)
+                    .Select(x =>
+                        (
+                            x.Id,
+                            x.PlexServerId,
+                            x.ChosenConnection,
+                            x.StatusId,
+                            x.IsSuccessful,
+                            x.StatusCode,
+                            x.StatusMessage,
+                            x.LastChecked,
+                            x.StatusPlexServerId,
+                            x.StatusPlexServerConnectionId
+                        )
+                    )
             );
-        actual.Where(x => x.ChosenConnection).Select(x => x.Id).OrderBy(x => x).ShouldBe(
-            fixture.ChosenIds.OrderBy(x => x)
-        );
+        actual
+            .Where(x => x.ChosenConnection)
+            .Select(x => x.Id)
+            .OrderBy(x => x)
+            .ShouldBe(fixture.ChosenIds.OrderBy(x => x));
         commands.Count.ShouldBe(1);
     }
 
@@ -89,25 +111,48 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
         var value = response.Value.ShouldNotBeNull();
         var actual = value.OrderBy(x => x.Id).Select(Snapshot).ToList();
         actual
-            .Select(x => (x.Id, x.PlexServerId, x.ChosenConnection, x.StatusId, x.IsSuccessful, x.StatusCode, x.StatusMessage, x.LastChecked, x.StatusPlexServerId, x.StatusPlexServerConnectionId))
+            .Select(x =>
+                (
+                    x.Id,
+                    x.PlexServerId,
+                    x.ChosenConnection,
+                    x.StatusId,
+                    x.IsSuccessful,
+                    x.StatusCode,
+                    x.StatusMessage,
+                    x.LastChecked,
+                    x.StatusPlexServerId,
+                    x.StatusPlexServerConnectionId
+                )
+            )
             .ShouldBe(
-                fixture.Expected
-                    .OrderBy(x => x.Id)
-                    .Select(x => (x.Id, x.PlexServerId, x.ChosenConnection, x.StatusId, x.IsSuccessful, x.StatusCode, x.StatusMessage, x.LastChecked, x.StatusPlexServerId, x.StatusPlexServerConnectionId))
+                fixture
+                    .Expected.OrderBy(x => x.Id)
+                    .Select(x =>
+                        (
+                            x.Id,
+                            x.PlexServerId,
+                            x.ChosenConnection,
+                            x.StatusId,
+                            x.IsSuccessful,
+                            x.StatusCode,
+                            x.StatusMessage,
+                            x.LastChecked,
+                            x.StatusPlexServerId,
+                            x.StatusPlexServerConnectionId
+                        )
+                    )
             );
         actual.Select(x => x.Id).Intersect(fixture.DisabledConnectionIds).ShouldBeEmpty();
     }
 
     private async Task<PreferredFixture> ArrangePreferredConnectionsAsync(int serverCount)
     {
-        await SetupDatabase(
-            72000 + serverCount,
-            config =>
-            {
-                config.PlexServerCount = serverCount;
-                config.PlexServerConnectionPerServerCount = 3;
-            }
-        );
+        await SetupDatabase(72000 + serverCount, config =>
+        {
+            config.PlexServerCount = serverCount;
+            config.PlexServerConnectionPerServerCount = 3;
+        });
 
         var dbContext = IDbContext;
         var servers = await dbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -117,8 +162,8 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
         {
             var preferred = connections.Where(x => x.PlexServerId == server.Id).OrderBy(x => x.Id).Skip(1).First();
             chosenIds.Add(preferred.Id);
-            await dbContext.PlexServers
-                .IgnoreIsEnabledFilter()
+            await dbContext
+                .PlexServers.IgnoreIsEnabledFilter()
                 .Where(x => x.Id == server.Id)
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.PreferredConnectionId, preferred.Id), CancellationToken);
         }
@@ -136,34 +181,31 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
 
     private async Task<PolicyFixture> ArrangePolicyFailureGraphAsync()
     {
-        await SetupDatabase(
-            72005,
-            config =>
-            {
-                config.PlexServerCount = 5;
-                config.PlexServerConnectionPerServerCount = 3;
-            }
-        );
+        await SetupDatabase(72005, config =>
+        {
+            config.PlexServerCount = 5;
+            config.PlexServerConnectionPerServerCount = 3;
+        });
 
         var dbContext = IDbContext;
         var servers = await dbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var connections = await dbContext.PlexServerConnections.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var preferred = connections.Where(x => x.PlexServerId == servers[0].Id).OrderBy(x => x.Id).Skip(1).First();
-        await dbContext.PlexServers
-            .IgnoreIsEnabledFilter()
+        await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == servers[0].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.PreferredConnectionId, preferred.Id), CancellationToken);
-        await dbContext.PlexServerStatuses
-            .Where(x => x.PlexServerId == servers[1].Id)
+        await dbContext
+            .PlexServerStatuses.Where(x => x.PlexServerId == servers[1].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsSuccessful, false), CancellationToken);
-        await dbContext.PlexServerStatuses
-            .Where(x => x.PlexServerId == servers[2].Id || x.PlexServerId == servers[4].Id)
+        await dbContext
+            .PlexServerStatuses.Where(x => x.PlexServerId == servers[2].Id || x.PlexServerId == servers[4].Id)
             .ExecuteDeleteAsync(CancellationToken);
-        await dbContext.PlexServerConnections
-            .Where(x => x.PlexServerId == servers[4].Id)
+        await dbContext
+            .PlexServerConnections.Where(x => x.PlexServerId == servers[4].Id)
             .ExecuteDeleteAsync(CancellationToken);
-        await dbContext.PlexServers
-            .IgnoreIsEnabledFilter()
+        await dbContext
+            .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => x.Id == servers[3].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
 
@@ -179,10 +221,7 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
             .Where(x => x.PlexServerId != servers[3].Id)
             .Select(x => Snapshot(x, x.Id == preferred.Id))
             .ToList();
-        return new(
-            expected,
-            disabledConnectionIds
-        );
+        return new(expected, disabledConnectionIds);
     }
 
     private static ConnectionSnapshot Snapshot(PlexServerConnection source, bool chosen) =>
@@ -219,10 +258,7 @@ public class GetAllPlexServerConnectionsEndpointUnitTests
         string ConnectionString
     );
 
-    private sealed record PolicyFixture(
-        List<ConnectionSnapshot> Expected,
-        HashSet<int> DisabledConnectionIds
-    );
+    private sealed record PolicyFixture(List<ConnectionSnapshot> Expected, HashSet<int> DisabledConnectionIds);
 
     private sealed record ConnectionSnapshot(
         int Id,

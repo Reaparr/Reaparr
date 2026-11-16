@@ -6,15 +6,12 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
     public async Task ShouldSuccessfullyRefreshLibraryAndKeepSyncedAtUnchanged_WhenMoviesExist()
     {
         // Arrange
-        await SetupDatabase(
-            8423,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(8423, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.MovieCount = 3;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.Movies).First();
         var originalSyncedAt = testLibrary.SyncedAt;
 
@@ -52,15 +49,12 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
     public async Task ShouldSendProgressWithMovieItem_WhenMoviesExist()
     {
         // Arrange
-        await SetupDatabase(
-            8423,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(8423, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.MovieCount = 3;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.Movies).First();
         var capturedItems = new List<LibraryProgressItem>();
 
@@ -95,15 +89,12 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
     public async Task ShouldStillUpdateLibraryAndLogWarning_WhenNoMoviesExist()
     {
         // Arrange
-        await SetupDatabase(
-            8424,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.MovieCount = 0;
-            }
-        );
+        await SetupDatabase(8424, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.MovieCount = 0;
+        });
         var testLibrary = IDbContext.PlexLibraries.First();
         var originalSyncedAt = testLibrary.SyncedAt;
 
@@ -143,15 +134,12 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
     public async Task ShouldUpdateLibraryAndLogError_WhenMoviesExistWithZeroMediaSize()
     {
         // Arrange
-        await SetupDatabase(
-            8425,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(8425, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.MovieCount = 3;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.Movies).First();
         var originalSyncedAt = testLibrary.SyncedAt;
         foreach (var movie in testLibrary.Movies)
@@ -193,15 +181,12 @@ public class RefreshPlexMovieLibraryCommandUnitTests : BaseUnitTest<RefreshPlexM
     public async Task ShouldReturnFailedResult_WhenSyncPlexMoviesCommandFails()
     {
         // Arrange
-        await SetupDatabase(
-            8426,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.MovieCount = 5;
-            }
-        );
+        await SetupDatabase(8426, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.MovieCount = 5;
+        });
         var testLibrary = IDbContext.PlexLibraries.Include(x => x.Movies).First();
         LibraryProgressItem? capturedItem = null;
 

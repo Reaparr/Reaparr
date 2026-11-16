@@ -6,14 +6,11 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
     public async Task ShouldUpdateExistingStatus_WhenConnectionAlreadyHasStatus()
     {
         // Arrange
-        await SetupDatabase(
-            57231,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 1;
-            }
-        );
+        await SetupDatabase(57231, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServerConnection = await dbContext.PlexServerConnections.SingleAsync(CancellationToken);
@@ -67,14 +64,11 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
     public async Task ShouldInsertStatus_WhenConnectionDoesNotHaveStatus()
     {
         // Arrange
-        await SetupDatabase(
-            57232,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 1;
-            }
-        );
+        await SetupDatabase(57232, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServerConnection = await dbContext.PlexServerConnections.SingleAsync(CancellationToken);

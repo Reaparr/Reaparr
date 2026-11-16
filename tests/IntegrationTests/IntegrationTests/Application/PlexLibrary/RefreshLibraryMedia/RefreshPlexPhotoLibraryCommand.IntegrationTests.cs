@@ -29,82 +29,79 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             TelemetryHost = "https://telemetry.example.test",
             TelemetryProjectToken = "phc_test",
         };
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (http, _) => http.SetupIdentityRequest(seed);
+            config.OverrideAppBuildInfo = buildInfo;
+            config.OverrideServices = builder =>
             {
-                config.HttpClientOptions = (http, _) => http.SetupIdentityRequest(seed);
-                config.OverrideAppBuildInfo = buildInfo;
-                config.OverrideServices = builder =>
-                {
-                    telemetryHandler
-                        .SetupRequest(HttpMethod.Post, $"{buildInfo.TelemetryHost.TrimEnd('/')}/batch")
-                        .Returns(
-                            async (HttpRequestMessage request, CancellationToken token) =>
-                            {
-                                var body = request.Content is null
-                                    ? string.Empty
-                                    : await request.Content.ReadAsStringAsync(token);
-                                telemetryBodies.Enqueue(body);
-                                telemetryRequests.Enqueue(
-                                    (
-                                        request.Method,
-                                        request.RequestUri?.ToString(),
-                                        request.Headers.Authorization?.ToString(),
-                                        request.Content?.Headers.ContentType?.MediaType,
-                                        body
-                                    )
-                                );
-                                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
-                            }
-                        )
-                        .Verifiable(Times.AtLeastOnce());
-                    var httpClient = new HttpClient(telemetryHandler.Object, disposeHandler: false);
-                    telemetryFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
-                    telemetryFactory
-                        .Setup(x => x.CreateClient(It.IsAny<string>()))
-                        .Returns(httpClient)
-                        .Verifiable(Times.Once());
-                    var telemetryClient = new PostHogClient(
-                        new PostHogOptions
+                telemetryHandler
+                    .SetupRequest(HttpMethod.Post, $"{buildInfo.TelemetryHost.TrimEnd('/')}/batch")
+                    .Returns(
+                        async (HttpRequestMessage request, CancellationToken token) =>
                         {
-                            ProjectToken = buildInfo.TelemetryProjectToken,
-                            HostUrl = new Uri(buildInfo.TelemetryHost),
-                            EnableCompression = false,
-                        },
-                        httpClientFactory: telemetryFactory.Object
-                    );
-                    builder.RegisterInstance(telemetryClient).As<IPostHogClient>();
-                };
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexAccountCount = 1;
-                    database.PlexServerCount = 1;
-                    database.PlexMusicLibraryCount = 1;
-                    database.PlexPhotoLibraryCount = 1;
-                    database.PlexOtherVideoLibraryCount = 1;
-                    database.MusicArtistCount = 2;
-                    database.MusicAlbumCount = 2;
-                    database.MusicTrackCount = 2;
-                    database.OtherVideoCount = 3;
-                };
-                config.BaseMockHttpClientOptions = plex =>
-                {
-                    plex.GenerateFromDatabase = true;
-                    plex.PlexServerAccessCount = 1;
-                    plex.MusicLibraryCount = 1;
-                    plex.PhotoLibraryCount = 1;
-                    plex.OtherVideoLibraryCount = 1;
-                    plex.ArtistsPerLibraryCount = 2;
-                    plex.AlbumsPerArtistCount = 2;
-                    plex.TracksPerAlbumCount = 2;
-                    plex.PhotoAlbumsPerLibraryCount = 2;
-                    plex.PhotosPerAlbumCount = 2;
-                    plex.PhotoClipsPerAlbumCount = 1;
-                    plex.PhotoAlbumsOverlap = true;
-                };
-            }
-        );
+                            var body = request.Content is null
+                                ? string.Empty
+                                : await request.Content.ReadAsStringAsync(token);
+                            telemetryBodies.Enqueue(body);
+                            telemetryRequests.Enqueue(
+                                (
+                                    request.Method,
+                                    request.RequestUri?.ToString(),
+                                    request.Headers.Authorization?.ToString(),
+                                    request.Content?.Headers.ContentType?.MediaType,
+                                    body
+                                )
+                            );
+                            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+                        }
+                    )
+                    .Verifiable(Times.AtLeastOnce());
+                var httpClient = new HttpClient(telemetryHandler.Object, disposeHandler: false);
+                telemetryFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+                telemetryFactory
+                    .Setup(x => x.CreateClient(It.IsAny<string>()))
+                    .Returns(httpClient)
+                    .Verifiable(Times.Once());
+                var telemetryClient = new PostHogClient(
+                    new PostHogOptions
+                    {
+                        ProjectToken = buildInfo.TelemetryProjectToken,
+                        HostUrl = new Uri(buildInfo.TelemetryHost),
+                        EnableCompression = false,
+                    },
+                    httpClientFactory: telemetryFactory.Object
+                );
+                builder.RegisterInstance(telemetryClient).As<IPostHogClient>();
+            };
+            config.DatabaseOptions = database =>
+            {
+                database.PlexAccountCount = 1;
+                database.PlexServerCount = 1;
+                database.PlexMusicLibraryCount = 1;
+                database.PlexPhotoLibraryCount = 1;
+                database.PlexOtherVideoLibraryCount = 1;
+                database.MusicArtistCount = 2;
+                database.MusicAlbumCount = 2;
+                database.MusicTrackCount = 2;
+                database.OtherVideoCount = 3;
+            };
+            config.BaseMockHttpClientOptions = plex =>
+            {
+                plex.GenerateFromDatabase = true;
+                plex.PlexServerAccessCount = 1;
+                plex.MusicLibraryCount = 1;
+                plex.PhotoLibraryCount = 1;
+                plex.OtherVideoLibraryCount = 1;
+                plex.ArtistsPerLibraryCount = 2;
+                plex.AlbumsPerArtistCount = 2;
+                plex.TracksPerAlbumCount = 2;
+                plex.PhotoAlbumsPerLibraryCount = 2;
+                plex.PhotosPerAlbumCount = 2;
+                plex.PhotoClipsPerAlbumCount = 1;
+                plex.PhotoAlbumsOverlap = true;
+            };
+        });
         var telemetryClient = container.Resolve<IPostHogClient>();
         using var client = container.GetApiClient();
         await client.SignIn();

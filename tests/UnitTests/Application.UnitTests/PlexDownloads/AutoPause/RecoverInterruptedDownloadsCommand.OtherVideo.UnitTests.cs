@@ -7,15 +7,12 @@ public class RecoverInterruptedDownloadsCommandOtherVideoUnitTests
     public async Task ShouldRecoverInterruptedOtherVideoFilesWithoutResettingProgressOrIdleControls_WhenRecovering()
     {
         // Arrange
-        await SetupDatabase(
-            88270,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 4;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88270, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 4;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var files = (
             await dbContext.DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey).ToListAsync(CancellationToken)

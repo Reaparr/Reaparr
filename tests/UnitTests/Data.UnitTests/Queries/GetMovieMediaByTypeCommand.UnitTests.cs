@@ -20,15 +20,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnOnlyMoviesFromSpecificLibrary_WhenPlexLibraryIdIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70001,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 5;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70001, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 5;
+            cfg.MovieCount = 6;
+        });
 
         var dbContext = IDbContext;
         var targetLibraryId = await dbContext
@@ -77,15 +74,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldFilterMoviesByProjectedComparisonState_WhenComparisonStateFilterIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70020,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70020, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
 
         var dbContext = IDbContext;
         var targetLibraryId = await dbContext
@@ -164,15 +158,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldFilterMoviesByProjectedComparisonStateAcrossLibraries_WhenAllMediaModeComparisonStateFilterIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70022,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(70022, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 2;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -231,15 +222,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnMoviesFromMultipleLibraries_WhenPlexLibraryIdIsZero()
     {
         // Arrange
-        await SetupDatabase(
-            70003,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70003, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 4;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -271,15 +259,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldProjectMoviesInOneCommand_WhenPlexLibraryIdIsZero()
     {
         // Arrange
-        await SetupDatabase(
-            70038,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 3;
-                cfg.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(70038, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 3;
+            cfg.MovieCount = 2;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -329,15 +314,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnProjectionFailure_WhenAllLibraryComparisonProjectionFails()
     {
         // Arrange
-        await SetupDatabase(
-            70039,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(70039, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 2;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -384,15 +366,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldPropagateProjectionCancellationFromDispatchedMovieHandler()
     {
         // Arrange
-        await SetupDatabase(
-            70040,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(70040, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 2;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -440,16 +419,13 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldExcludeOwnedLibraries_WhenFilterOwnedMediaIsTrueForAllLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            70004,
-            cfg =>
-            {
-                cfg.PlexServerCount = 2;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70004, cfg =>
+        {
+            cfg.PlexServerCount = 2;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+            cfg.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraryToKeep = await dbContext
@@ -492,16 +468,13 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnEmpty_WhenAllLibrariesAreOwnedAndFilterOwnedMediaIsTrueForAllLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            70005,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 4;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70005, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 4;
+            cfg.PlexAccountCount = 1;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -534,15 +507,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldExcludeOfflineServerLibraries_WhenFilterOfflineMediaIsTrueForAllLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            70006,
-            cfg =>
-            {
-                cfg.PlexServerCount = 2;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(70006, cfg =>
+        {
+            cfg.PlexServerCount = 2;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 3;
+        });
 
         var dbContext = IDbContext;
         var serverIds = await dbContext.PlexServers.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
@@ -582,16 +552,13 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldExcludeServerLibraries_WhenServerHasNoPlexAccountAccessForAllLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            70033,
-            cfg =>
-            {
-                cfg.PlexServerCount = 2;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 3;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70033, cfg =>
+        {
+            cfg.PlexServerCount = 2;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 3;
+            cfg.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var inaccessibleServerId = await dbContext
@@ -633,16 +600,13 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldIgnoreServerAccessFilter_WhenSpecificLibraryIdIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70034,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 3;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70034, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 3;
+            cfg.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var targetLibrary = await dbContext
@@ -684,16 +648,13 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldExcludeLibrariesWithoutPlexAccountAccess_WhenServerHasPartialLibraryAccessForAllLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            70035,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 4;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70035, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 4;
+            cfg.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraryIds = await dbContext
@@ -737,16 +698,13 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldIgnoreLibraryAccessFilter_WhenSpecificLibraryIdIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70036,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 4;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70036, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 4;
+            cfg.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var inaccessibleLibraryId = await dbContext
@@ -789,15 +747,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnEmpty_WhenAllServersAreOfflineAndFilterOfflineMediaIsTrueForAllLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            70007,
-            cfg =>
-            {
-                cfg.PlexServerCount = 2;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(70007, cfg =>
+        {
+            cfg.PlexServerCount = 2;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 3;
+        });
 
         var dbContext = IDbContext;
         await dbContext.PlexServerStatuses.ExecuteDeleteAsync(CancellationToken);
@@ -832,16 +787,13 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldIgnoreOwnedFilter_WhenSpecificPlexLibraryIdIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70008,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 4;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70008, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 4;
+            cfg.PlexAccountCount = 1;
+        });
 
         var dbContext = IDbContext;
         var targetLibraryId = await dbContext
@@ -879,15 +831,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldIgnoreOfflineFilter_WhenSpecificPlexLibraryIdIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70009,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70009, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
 
         var dbContext = IDbContext;
         await dbContext.PlexServerStatuses.ExecuteDeleteAsync(CancellationToken);
@@ -927,15 +876,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldRejectNonMovieMediaType_BeforeComparisonProjection()
     {
         // Arrange
-        await SetupDatabase(
-            70010,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(70010, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 2;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1002,15 +948,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldAssignSortIndexesSequentiallyForMovies_WhenResultsReturned()
     {
         // Arrange
-        await SetupDatabase(
-            70012,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70012, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 6;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1045,15 +988,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldUseDefaultPageSize_WhenPageSizeIsNotProvided()
     {
         // Arrange
-        await SetupDatabase(
-            70106,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 150;
-            }
-        );
+        await SetupDatabase(70106, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 150;
+        });
 
         var expectedMovieCount = await IDbContext.PlexMovies.CountAsync(CancellationToken);
         var command = new GetMovieMediaByTypeCommand(
@@ -1088,15 +1028,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldRespectPaging_WhenPageAndPageSizeAreProvided()
     {
         // Arrange
-        await SetupDatabase(
-            70014,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 8;
-            }
-        );
+        await SetupDatabase(70014, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 8;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1127,15 +1064,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnPageAndPageSize_WhenPageAndPageSizeAreProvided()
     {
         // Arrange
-        await SetupDatabase(
-            70101,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 8;
-            }
-        );
+        await SetupDatabase(70101, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 8;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1167,15 +1101,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnTotalMatchingCount_WhenPagingIsApplied()
     {
         // Arrange
-        await SetupDatabase(
-            70102,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 8;
-            }
-        );
+        await SetupDatabase(70102, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 8;
+        });
 
         var expectedMovieCount = await IDbContext.PlexMovies.CountAsync(CancellationToken);
         var command = new GetMovieMediaByTypeCommand(
@@ -1209,17 +1140,14 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldCountOnlyRequestedMediaType_WhenAllLibraryModeHasMultipleServersAndMixedLibraries()
     {
         // Arrange
-        await SetupDatabase(
-            70103,
-            cfg =>
-            {
-                cfg.PlexServerCount = 2;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.PlexTvShowLibraryCount = 2;
-                cfg.MovieCount = 3;
-                cfg.TvShowCount = 4;
-            }
-        );
+        await SetupDatabase(70103, cfg =>
+        {
+            cfg.PlexServerCount = 2;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.PlexTvShowLibraryCount = 2;
+            cfg.MovieCount = 3;
+            cfg.TvShowCount = 4;
+        });
 
         var expectedMovieCount = await IDbContext.PlexMovies.CountAsync(CancellationToken);
         var command = new GetMovieMediaByTypeCommand(
@@ -1256,15 +1184,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldAssignGlobalSortIndexes_WhenPageChanges()
     {
         // Arrange
-        await SetupDatabase(
-            70104,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 10;
-            }
-        );
+        await SetupDatabase(70104, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 10;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1295,15 +1220,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldBuildNavigationIndexesFromFullSortedResult_WhenPageIsPartial()
     {
         // Arrange
-        await SetupDatabase(
-            70105,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 10;
-            }
-        );
+        await SetupDatabase(70105, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 10;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1336,15 +1258,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnDifferentPageData_WhenPageChanges()
     {
         // Arrange
-        await SetupDatabase(
-            70015,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 10;
-            }
-        );
+        await SetupDatabase(70015, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 10;
+        });
 
         var page1 = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1396,15 +1315,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnEmpty_WhenSpecificLibraryIdDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            70016,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70016, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1437,17 +1353,14 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnOnlyMovies_WhenMovieTypeRequestedAndBothMediaTypesExist()
     {
         // Arrange
-        await SetupDatabase(
-            70017,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.PlexTvShowLibraryCount = 1;
-                cfg.MovieCount = 5;
-                cfg.TvShowCount = 5;
-            }
-        );
+        await SetupDatabase(70017, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.PlexTvShowLibraryCount = 1;
+            cfg.MovieCount = 5;
+            cfg.TvShowCount = 5;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1479,16 +1392,13 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldNotExcludeOwnedLibraries_WhenFilterOwnedMediaIsFalse()
     {
         // Arrange
-        await SetupDatabase(
-            70019,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 4;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70019, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 4;
+            cfg.PlexAccountCount = 1;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1520,15 +1430,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldNotExcludeOfflineLibraries_WhenFilterOfflineMediaIsFalse()
     {
         // Arrange
-        await SetupDatabase(
-            70020,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70020, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
 
         var dbContext = IDbContext;
         await dbContext.PlexServerStatuses.ExecuteDeleteAsync(CancellationToken);
@@ -1562,17 +1469,14 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnEmpty_WhenSpecificLibraryExistsButForDifferentMediaType()
     {
         // Arrange
-        await SetupDatabase(
-            70021,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.PlexTvShowLibraryCount = 1;
-                cfg.MovieCount = 4;
-                cfg.TvShowCount = 4;
-            }
-        );
+        await SetupDatabase(70021, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.PlexTvShowLibraryCount = 1;
+            cfg.MovieCount = 4;
+            cfg.TvShowCount = 4;
+        });
 
         var dbContext = IDbContext;
         var tvShowLibraryId = await dbContext
@@ -1609,15 +1513,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnEmpty_WhenRequestedPageIsBeyondAvailableRange()
     {
         // Arrange
-        await SetupDatabase(
-            70022,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 3;
-            }
-        );
+        await SetupDatabase(70022, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 3;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1651,15 +1552,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldTreatServerAsOffline_WhenOnlyUnsuccessfulStatusesExistAndFilterOfflineMediaIsTrue()
     {
         // Arrange
-        await SetupDatabase(
-            70023,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 5;
-            }
-        );
+        await SetupDatabase(70023, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 5;
+        });
 
         var dbContext = IDbContext;
         await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
@@ -1696,15 +1594,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldApplyProvidedSort_WhenSortExpressionIsSet()
     {
         // Arrange
-        await SetupDatabase(
-            70024,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 10;
-            }
-        );
+        await SetupDatabase(70024, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 10;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter
@@ -1740,15 +1635,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldSortAllLibraryMoviesByTitle_WhenCanonicalOrLegacyTitleSortIsRequested(string sort)
     {
         // Arrange
-        await SetupDatabase(
-            70233,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70233, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 4;
+        });
 
         var dbContext = IDbContext;
         var movieIds = await dbContext.PlexMovies.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
@@ -1787,15 +1679,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldSortMoviesByVideoQualityAscending_WhenVideoQualitySortFieldIsUsed()
     {
         // Arrange
-        await SetupDatabase(
-            70030,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70030, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
 
         var dbContext = IDbContext;
         var movieIds = await dbContext.PlexMovies.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
@@ -1841,15 +1730,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldSortMoviesByVideoQualityDescending_WhenVideoQualitySortFieldIsUsed()
     {
         // Arrange
-        await SetupDatabase(
-            70031,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70031, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
 
         var dbContext = IDbContext;
         var movieIds = await dbContext.PlexMovies.OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(CancellationToken);
@@ -1895,15 +1781,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldReturnOnlyRequestedLibrary_WhenSpecificLibraryIdAndSortProvided()
     {
         // Arrange
-        await SetupDatabase(
-            70025,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 5;
-            }
-        );
+        await SetupDatabase(70025, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 5;
+        });
 
         var dbContext = IDbContext;
         var targetLibraryId = await dbContext
@@ -1942,15 +1825,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldUseLibraryCounts_WhenNoFilterOrSearchAndAllLibrariesRequested()
     {
         // Arrange
-        await SetupDatabase(
-            70026,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70026, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 6;
+        });
 
         var dbContext = IDbContext;
         var expectedMovieCount = await dbContext.PlexMovies.CountAsync(CancellationToken);
@@ -1991,15 +1871,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldUseRequestedLibraryCounts_WhenNoFilterOrSearchAndSpecificLibraryRequested()
     {
         // Arrange
-        await SetupDatabase(
-            70027,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70027, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.MovieCount = 6;
+        });
 
         var dbContext = IDbContext;
         var targetLibrary = await dbContext
@@ -2050,15 +1927,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldCalculateMediaSizeFromMovieRows_WhenLibraryMediaSizeSnapshotIsStale()
     {
         // Arrange
-        await SetupDatabase(
-            70232,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70232, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 6;
+        });
 
         var dbContext = IDbContext;
         var targetLibrary = await dbContext
@@ -2104,15 +1978,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldFilterMoviesByCountryId_WhenMetadataCountryFilterIsApplied()
     {
         // Arrange
-        await SetupDatabase(
-            70028,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70028, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 6;
+        });
 
         var dbContext = IDbContext;
         var expectedMovie = await ConfigureExactMetadataMatchAsync(dbContext, VideoQuality.FullHD);
@@ -2148,15 +2019,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldFilterMoviesByRoleId_WhenMetadataRoleFilterIsApplied()
     {
         // Arrange
-        await SetupDatabase(
-            70029,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70029, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 6;
+        });
 
         var dbContext = IDbContext;
         var expectedMovie = await ConfigureExactMetadataMatchAsync(dbContext, VideoQuality.FullHD);
@@ -2192,15 +2060,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldFilterMoviesByGenreId_WhenMetadataGenreFilterIsApplied()
     {
         // Arrange
-        await SetupDatabase(
-            70230,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70230, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 6;
+        });
 
         var dbContext = IDbContext;
         var expectedMovie = await ConfigureExactMetadataMatchAsync(dbContext, VideoQuality.FullHD);
@@ -2236,15 +2101,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldFilterMoviesByQualityGenreCountryAndRole_WhenAllMetadataFiltersAreApplied()
     {
         // Arrange
-        await SetupDatabase(
-            70231,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 6;
-            }
-        );
+        await SetupDatabase(70231, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 6;
+        });
 
         var dbContext = IDbContext;
         var expectedMovie = await ConfigureExactMetadataMatchAsync(dbContext, VideoQuality.FullHD);
@@ -2325,15 +2187,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldLeaveRawFilterUnchanged_WhenTheSameCommandExecutesRepeatedly()
     {
         // Arrange
-        await SetupDatabase(
-            70232,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70232, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext.PlexLibraries.Select(x => x.Id).SingleAsync(CancellationToken);
         var expectedIds = await dbContext
@@ -2615,15 +2474,12 @@ public class GetMovieMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetMovieM
     public async Task ShouldSetRequestHashFromFilter_WhenQueryReturnsResults()
     {
         // Arrange
-        await SetupDatabase(
-            70231,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.MovieCount = 4;
-            }
-        );
+        await SetupDatabase(70231, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.MovieCount = 4;
+        });
 
         var command = new GetMovieMediaByTypeCommand(
             new MediaQueryFilter

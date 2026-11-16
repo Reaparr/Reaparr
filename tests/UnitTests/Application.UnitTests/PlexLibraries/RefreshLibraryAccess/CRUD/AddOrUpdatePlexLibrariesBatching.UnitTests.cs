@@ -54,10 +54,7 @@ public class AddOrUpdatePlexLibrariesBatchingUnitTests : BaseUnitTest<AddOrUpdat
         var reads = new LibraryReadCounter();
         var databaseName = dbContext.DatabaseName;
         SetupDependencies(builder =>
-            builder
-                .Register(_ => CreateMeasuredContext(databaseName, reads))
-                .As<IReaparrDbContext>()
-                .SingleInstance()
+            builder.Register(_ => CreateMeasuredContext(databaseName, reads)).As<IReaparrDbContext>().SingleInstance()
         );
         var pipeline = new ValidationPipeline<AddOrUpdatePlexLibrariesCommand, Result<List<PlexLibraryAccessRapport>>>([
             new AddOrUpdatePlexLibrariesValidator(),
@@ -138,15 +135,12 @@ public class AddOrUpdatePlexLibrariesBatchingUnitTests : BaseUnitTest<AddOrUpdat
 
     private async Task<Scenario> CreateScenario(int serverCount, int librariesPerServer)
     {
-        await SetupDatabase(
-            5001,
-            config =>
-            {
-                config.PlexServerCount = serverCount + 1;
-                config.PlexMovieLibraryCount = librariesPerServer + 1;
-                config.PlexAccountCount = 2;
-            }
-        );
+        await SetupDatabase(5001, config =>
+        {
+            config.PlexServerCount = serverCount + 1;
+            config.PlexMovieLibraryCount = librariesPerServer + 1;
+            config.PlexAccountCount = 2;
+        });
         using var dbContext = IDbContext;
         var accountId = await dbContext.PlexAccounts.OrderBy(x => x.Id).Select(x => x.Id).FirstAsync();
         var serverIds = await dbContext

@@ -6,15 +6,12 @@ public class ProcessMovieMetadataCommandUnitTests : BaseCommandUnitTest<ProcessM
     public async Task ShouldPersistGeneratedMovieNameAndTimestamp_WhenDefaultStreamIsAudio()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            771001,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(771001, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var targetServer = await dbContext.PlexServers.OrderBy(x => x.Id).FirstAsync(CancellationToken);
@@ -122,15 +119,12 @@ public class ProcessMovieMetadataCommandUnitTests : BaseCommandUnitTest<ProcessM
     public async Task ShouldLeaveMoviePendingAndReportZero_WhenMetadataHasNoVideoStream()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            771002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(771002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var targetServer = await dbContext.PlexServers.SingleAsync(CancellationToken);

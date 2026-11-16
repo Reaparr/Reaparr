@@ -311,12 +311,7 @@ public class UpdateSonarrIntegrationEndpointUnitTests
         updated.LastConnectionTestedAt.ShouldBe(testedAt);
         Mock.Mock<ITelemetry>()
             .Verify(
-                x =>
-                    x.IntegrationChanged(
-                        It.IsAny<SonarrIntegration>(),
-                        It.IsAny<TelemetryAction>(),
-                        It.IsAny<bool>()
-                    ),
+                x => x.IntegrationChanged(It.IsAny<SonarrIntegration>(), It.IsAny<TelemetryAction>(), It.IsAny<bool>()),
                 Times.Never()
             );
     }

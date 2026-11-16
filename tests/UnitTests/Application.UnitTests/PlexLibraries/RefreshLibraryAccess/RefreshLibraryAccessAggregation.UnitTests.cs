@@ -6,14 +6,11 @@ public class RefreshLibraryAccessAggregationUnitTests : BaseUnitTest<RefreshLibr
     public async Task ShouldCollectEveryTimedOutServer_WhenParallelRefreshesCompleteWithMixedResults()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            4601,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 4;
-            }
-        );
+        var seed = await SetupDatabase(4601, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 4;
+        });
         var servers = await IDbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         servers.Count.ShouldBe(4);
         var libraries = FakeData
@@ -52,14 +49,11 @@ public class RefreshLibraryAccessAggregationUnitTests : BaseUnitTest<RefreshLibr
     public async Task ShouldPreserveFailureAndCancellationWithoutUpdatingLibraries_WhenNoRefreshSucceeds(bool cancelled)
     {
         // Arrange
-        await SetupDatabase(
-            4602,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-            }
-        );
+        await SetupDatabase(4602, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+        });
         var servers = await IDbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         servers.Count.ShouldBe(2);
         var first = ResultExtensions.Create504GatewayTimeoutResult("Timed out").ToResult<List<PlexLibrary>>();

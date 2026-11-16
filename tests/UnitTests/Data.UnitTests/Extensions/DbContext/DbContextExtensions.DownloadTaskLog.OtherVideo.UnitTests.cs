@@ -7,16 +7,13 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
     public async Task ShouldPersistOtherVideoLogWithParentId_WhenMovieLogUsesTheSameId(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(
-            62321,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 1;
-                config.OtherVideoFileDownloadTasksCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62321, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         var movieFile = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
@@ -64,15 +61,12 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
     )
     {
         // Arrange
-        await SetupDatabase(
-            62322,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62322, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var videoFiles = await dbContext
             .DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey)
@@ -114,15 +108,12 @@ public class DbContextExtensionsDownloadTaskLogOtherVideoUnitTests : BaseUnitTes
     public async Task ShouldDeleteOnlyRequestedOtherVideoLogs_WhenSiblingLogsExist(DownloadTaskType type)
     {
         // Arrange
-        await SetupDatabase(
-            62323,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(62323, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var videoFiles = await dbContext
             .DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey)

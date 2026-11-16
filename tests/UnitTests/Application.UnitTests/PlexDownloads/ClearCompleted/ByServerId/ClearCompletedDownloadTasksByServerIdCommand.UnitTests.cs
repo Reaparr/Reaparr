@@ -7,14 +7,11 @@ public class ClearCompletedDownloadTasksByServerIdCommandUnitTests
     public async Task ShouldClearOnlyCompletedPhotosOnRequestedServer_WhenClearingServer()
     {
         // Arrange
-        await SetupDatabase(
-            88100,
-            c =>
-            {
-                c.PlexServerCount = 2;
-                c.PlexPhotoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(88100, c =>
+        {
+            c.PlexServerCount = 2;
+            c.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
         var albums = FakeData
@@ -67,20 +64,17 @@ public class ClearCompletedDownloadTasksByServerIdCommandUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            88260,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 3;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 3;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88260, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 3;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 3;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.Include(x => x.Parent)
@@ -216,14 +210,11 @@ public class ClearCompletedDownloadTasksByServerIdCommandUnitTests
     [Test]
     public async Task ShouldClearCompletedStandalonePhotoRootWithoutTouchingActiveOrOtherServer()
     {
-        await SetupDatabase(
-            88116,
-            c =>
-            {
-                c.PlexServerCount = 2;
-                c.PlexPhotoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(88116, c =>
+        {
+            c.PlexServerCount = 2;
+            c.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
         var roots = FakeData.GetDownloadTaskPhotoFolder(new Seed(88116)).Generate(3);

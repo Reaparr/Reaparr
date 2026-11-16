@@ -67,8 +67,7 @@ public class UpdateScheduledDownloadLimitsCommandHandler : ICommandHandler<Updat
         if (!DownloadSchedule.IsValidDays(schedule.Days))
             return Result.Fail("The saved download schedule contains invalid change points or limits").LogError();
 
-        var localTime =
-            command.LocalTime
+        var localTime = command.LocalTime
             ?? TimeZoneInfo.ConvertTime(
                 _timeProvider.GetUtcNow(),
                 TimeZoneInfo.FindSystemTimeZoneById(_userSettings.DateTimeSettings.TimeZone)
@@ -126,10 +125,9 @@ public class UpdateScheduledDownloadLimitsCommandHandler : ICommandHandler<Updat
                 foreach (var machineIdentifier in serverIds)
                 {
                     // Reading a missing manual setting must not create/persist a settings row.
-                    var manualKb =
-                        _userSettings
-                            .ServerSettings.Data.FirstOrDefault(x => x.MachineIdentifier == machineIdentifier)
-                            ?.DownloadSpeedLimit
+                    var manualKb = _userSettings
+                        .ServerSettings.Data.FirstOrDefault(x => x.MachineIdentifier == machineIdentifier)
+                        ?.DownloadSpeedLimit
                         ?? 0;
                     var cap = manualKb > 0 ? checked((long)manualKb * 1024) : long.MaxValue;
                     participants.Add((machineIdentifier, cap));

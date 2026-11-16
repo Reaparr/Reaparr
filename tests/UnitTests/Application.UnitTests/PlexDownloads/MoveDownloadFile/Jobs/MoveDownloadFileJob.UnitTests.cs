@@ -73,25 +73,22 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
     )
     {
         // Arrange
-        await SetupDatabase(
-            11001,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(11001, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         DownloadTaskFileBase control;
@@ -395,25 +392,22 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
     )
     {
         // Arrange
-        await SetupDatabase(
-            11002,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(11002, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 2 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 2 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         DownloadTaskFileBase control;
@@ -651,25 +645,22 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
     )
     {
         // Arrange
-        await SetupDatabase(
-            11003,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
-                c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(11003, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
+            c.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexPhotoLibraryCount = family == PlexMediaType.PhotoImage ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target;
         switch (family)
@@ -746,21 +737,18 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
     )
     {
         // Arrange
-        await SetupDatabase(
-            11004,
-            c =>
-            {
-                c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
-                c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
-                c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-                c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
-            }
-        );
+        await SetupDatabase(11004, c =>
+        {
+            c.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 1 : 0;
+            c.MusicArtistDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicAlbumDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.MusicTrackFileDownloadTasksCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.PlexMusicLibraryCount = family == PlexMediaType.MusicTrack ? 1 : 0;
+            c.OtherVideoDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.OtherVideoFileDownloadTasksCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+            c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
+        });
         var dbContext = IDbContext;
         DownloadTaskFileBase target = family switch
         {

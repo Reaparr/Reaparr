@@ -6,15 +6,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     public async Task ShouldDeletePlainFileFromDownloadDirectory_WhenTaskIsCompleted()
     {
         // Arrange
-        await SetupDatabase(
-            84001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFileTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var movieFileKey = await dbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -37,15 +34,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     public async Task ShouldDeleteReapTempFileFromDownloadDirectory_WhenFileHasTempSuffix()
     {
         // Arrange
-        await SetupDatabase(
-            84002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFileTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var movieFileKey = await dbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -68,15 +62,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     public async Task ShouldDeleteBothReapTempAndPlainFiles_WhenBothExist()
     {
         // Arrange
-        await SetupDatabase(
-            84014,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84014, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFileTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var movieFileKey = await dbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -105,15 +96,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     public async Task ShouldSucceed_WhenFileIsNotPresentOnDisk()
     {
         // Arrange — no files on disk; handler should succeed gracefully.
-        await SetupDatabase(
-            84003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var movieFileKey = await IDbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
 
         SetupFileSystem();
@@ -130,15 +118,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     public async Task ShouldDeleteFiles_WhenMultipleKeysAreGiven()
     {
         // Arrange
-        await SetupDatabase(
-            84004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 2;
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(84004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 2;
+            config.MovieDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var movieFileTasks = await dbContext.DownloadTaskMovieFile.ToListAsync(CancellationToken);
         movieFileTasks.Count.ShouldBe(2);
@@ -166,15 +151,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     public async Task ShouldDeleteEmptyDirectoryAfterFileDeletion_WhenDirectoryBecomesEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            84005,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84005, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFileTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var movieFileKey = await dbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -197,15 +179,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     {
         // Arrange — place an unrelated sibling file in the same download directory so it stays
         // non-empty after the task's own file is deleted.
-        await SetupDatabase(
-            84006,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84006, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFileTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var movieFileKey = await dbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -240,15 +219,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     public async Task ShouldHandleEpisodeFileKeys()
     {
         // Arrange — TV show episode file task
-        await SetupDatabase(
-            84007,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84007, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var episodeFileTask = await dbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
         var episodeFileKey = await dbContext.DownloadTaskTvShowEpisodeFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -273,15 +249,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
         // Scenario: the only movie in the category is deleted. The task folder empties out
         // and is removed, but recursion must stop at …/Movies/ (the category stop-root)
         // and must never touch …/Downloads/ above it.
-        await SetupDatabase(
-            84010,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84010, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFileTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var movieFileKey = await dbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -316,17 +289,14 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
         // Scenario: the only episode of a show is deleted. Season folder and show folder both
         // empty out and are removed, but recursion must stop at …/TvShows/ (the category
         // stop-root) and must never touch …/Downloads/ above it.
-        await SetupDatabase(
-            84011,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84011, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var episodeFileTask = await dbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
         var episodeFileKey = await dbContext.DownloadTaskTvShowEpisodeFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -364,17 +334,14 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
         // Scenario: a show has two seasons; only the first season's episode is deleted.
         // The first season folder empties out and is removed, but the show folder must
         // survive because it still contains the second season folder (with its file).
-        await SetupDatabase(
-            84012,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 2;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84012, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 2;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var episodeFileTasks = await dbContext.DownloadTaskTvShowEpisodeFile.ToListAsync(CancellationToken);
         episodeFileTasks.Count.ShouldBe(2);
@@ -422,19 +389,16 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
         // Scenario: a command targets one movie file and one TV episode file simultaneously.
         // Both task folders must be cleaned up, and both Movies/ and TvShows/ category
         // folders (the stop-roots) must survive even though they become childless.
-        await SetupDatabase(
-            84013,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84013, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var movieFileTask = await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var movieFileKey = await dbContext.DownloadTaskMovieFile.ProjectToKey().FirstAsync(CancellationToken);
@@ -492,20 +456,17 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     )
     {
         // Arrange
-        await SetupDatabase(
-            84015,
-            config =>
-            {
-                config.MusicArtistDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
-                config.MusicAlbumDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
-                config.MusicTrackDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 2 : 0;
-                config.MusicTrackFileDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
-                config.PhotoFolderDownloadTasksCount = taskType == DownloadTaskType.PhotoImage ? 1 : 0;
-                config.PhotoImageDownloadTasksCount = taskType == DownloadTaskType.PhotoImage ? 2 : 0;
-                config.OtherVideoDownloadTasksCount = taskType == DownloadTaskType.OtherVideoData ? 2 : 0;
-                config.OtherVideoFileDownloadTasksCount = taskType == DownloadTaskType.OtherVideoData ? 1 : 0;
-            }
-        );
+        await SetupDatabase(84015, config =>
+        {
+            config.MusicArtistDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
+            config.MusicAlbumDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
+            config.MusicTrackDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 2 : 0;
+            config.MusicTrackFileDownloadTasksCount = taskType == DownloadTaskType.MusicTrackData ? 1 : 0;
+            config.PhotoFolderDownloadTasksCount = taskType == DownloadTaskType.PhotoImage ? 1 : 0;
+            config.PhotoImageDownloadTasksCount = taskType == DownloadTaskType.PhotoImage ? 2 : 0;
+            config.OtherVideoDownloadTasksCount = taskType == DownloadTaskType.OtherVideoData ? 2 : 0;
+            config.OtherVideoFileDownloadTasksCount = taskType == DownloadTaskType.OtherVideoData ? 1 : 0;
+        });
         var dbContext = IDbContext;
         List<DownloadTaskFileBase> tasks =
         [
@@ -561,15 +522,12 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
     public async Task ShouldDeletePhotoFilesFromFolder()
     {
         // Arrange
-        await SetupDatabase(
-            88115,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoFolderDownloadTasksCount = 1;
-                config.PhotoImageDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88115, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoFolderDownloadTasksCount = 1;
+            config.PhotoImageDownloadTasksCount = 1;
+        });
         var fileTask = await IDbContext.DownloadTaskPhotoImageFiles.SingleAsync(CancellationToken);
         var reapTempPath = fileTask.DownloadFilePath;
         var plainPath = reapTempPath.RemoveReapTempSuffix();

@@ -7,16 +7,13 @@ public class GetMovieMediaComparisonDetailsCommandHandlerUnitTests
     public async Task ShouldReturnMissingMovieRow_WhenRemoteMovieHasCurrentOwnedScopeWithoutComparisonHits()
     {
         // Arrange
-        await SetupDatabase(
-            63501,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(63501, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -59,16 +56,13 @@ public class GetMovieMediaComparisonDetailsCommandHandlerUnitTests
     public async Task ShouldNotReturnMissingRows_WhenRemoteMovieMatchesAnyCurrentOwnedLibrary()
     {
         // Arrange
-        await SetupDatabase(
-            63511,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(63511, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -116,16 +110,13 @@ public class GetMovieMediaComparisonDetailsCommandHandlerUnitTests
     public async Task ShouldReturnHigherQualityRowsOnly_WhenRemoteMovieHasMixedCurrentHits()
     {
         // Arrange
-        await SetupDatabase(
-            63503,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(63503, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -192,16 +183,13 @@ public class GetMovieMediaComparisonDetailsCommandHandlerUnitTests
     public async Task ShouldReturnNoRows_WhenOwnedMovieHasOnlyMatchedRemoteHits()
     {
         // Arrange
-        await SetupDatabase(
-            63504,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(63504, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -245,16 +233,13 @@ public class GetMovieMediaComparisonDetailsCommandHandlerUnitTests
     public async Task ShouldReturnFailure_WhenMovieDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            63507,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(63507, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var command = new GetMovieMediaComparisonDetailsCommand(999_999);
 
@@ -271,16 +256,13 @@ public class GetMovieMediaComparisonDetailsCommandHandlerUnitTests
     public async Task ShouldReturnOwnedStateWithNoRows_WhenRemoteMovieHasMatchedCurrentHitOnly()
     {
         // Arrange
-        await SetupDatabase(
-            63508,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(63508, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = 1;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);

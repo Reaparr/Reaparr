@@ -15,15 +15,12 @@ public class PauseDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<P
     )
     {
         // Arrange
-        await SetupDatabase(
-            88211,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 1;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88211, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 1;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskOtherVideoFiles.Include(x => x.Parent).SingleAsync(CancellationToken);
         target.DataReceived = 128;
@@ -89,15 +86,12 @@ public class PauseDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<P
     public async Task ShouldPropagateRejectedMoveStop_WhenPausingOtherVideo()
     {
         // Arrange
-        await SetupDatabase(
-            88321,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 1;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88321, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 1;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         file.DownloadStatus = DownloadStatus.Moving;

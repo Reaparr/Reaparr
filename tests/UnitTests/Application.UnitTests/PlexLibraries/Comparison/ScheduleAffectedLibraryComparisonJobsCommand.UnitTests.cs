@@ -19,15 +19,12 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
     public async Task ShouldScheduleOnlySameTypeOppositeRolePairs_WhenEitherSideChanges(PlexMediaType type, bool owned)
     {
         // Arrange
-        await SetupDatabase(
-            91112,
-            config =>
-            {
-                config.PlexServerCount = 5;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(91112, config =>
+        {
+            config.PlexServerCount = 5;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(5);
@@ -98,19 +95,14 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
     [Test]
     [Arguments(PlexMediaType.OtherVideos)]
     [Arguments(PlexMediaType.PhotoAlbum)]
-    public async Task ShouldReturnSuccessWithoutScheduling_WhenLibraryTypeDoesNotSupportComparison(
-        PlexMediaType type
-    )
+    public async Task ShouldReturnSuccessWithoutScheduling_WhenLibraryTypeDoesNotSupportComparison(PlexMediaType type)
     {
         // Arrange
-        await SetupDatabase(
-            91117,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(91117, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);
@@ -120,21 +112,17 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
             CancellationToken
         );
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, true);
-        var ownership = await dbContext.PlexLibraries
-            .OrderBy(x => x.Id)
+        var ownership = await dbContext
+            .PlexLibraries.OrderBy(x => x.Id)
             .SelectOwnership()
             .ToListAsync(CancellationToken);
-        ownership.ShouldBe(
-            [
-                new PlexLibraryOwnership(libraries[0].Id, type, true),
-                new PlexLibraryOwnership(libraries[1].Id, type, false),
-            ]
-        );
+        ownership.ShouldBe([
+            new PlexLibraryOwnership(libraries[0].Id, type, true),
+            new PlexLibraryOwnership(libraries[1].Id, type, false),
+        ]);
 
         // Act
-        var result = await TestHandlerExecuteAsync(
-            new ScheduleAffectedLibraryComparisonJobsCommand(libraries[0].Id)
-        );
+        var result = await TestHandlerExecuteAsync(new ScheduleAffectedLibraryComparisonJobsCommand(libraries[0].Id));
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -161,14 +149,11 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
     public async Task ShouldReturnFailure_WhenLibraryIsMissingOrDisabled(bool disabled)
     {
         // Arrange
-        await SetupDatabase(
-            91118,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(91118, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var libraryId = library.Id;
@@ -179,13 +164,18 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
                 .Where(x => x.Id == libraryId)
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
             updated.ShouldBe(1);
-            (await dbContext.PlexLibraries.IgnoreIsEnabledFilter().SingleAsync(CancellationToken)).IsEnabled.ShouldBeFalse();
+            (
+                await dbContext.PlexLibraries.IgnoreIsEnabledFilter().SingleAsync(CancellationToken)
+            ).IsEnabled.ShouldBeFalse();
         }
         else
         {
             libraryId = int.MaxValue;
-            (await dbContext.PlexLibraries.IgnoreIsEnabledFilter().AnyAsync(x => x.Id == libraryId, CancellationToken))
-                .ShouldBeFalse();
+            (
+                await dbContext
+                    .PlexLibraries.IgnoreIsEnabledFilter()
+                    .AnyAsync(x => x.Id == libraryId, CancellationToken)
+            ).ShouldBeFalse();
         }
 
         // Act
@@ -270,7 +260,9 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         result.Errors.Count.ShouldBe(0);
         scheduled.ShouldNotBeNull();
         scheduled.Keys.Select(x => x.Key).ShouldBe(expectedKeys);
-        scheduled.Keys.Select(x => x.JobDataMap.GetPayload<PlexLibraryComparisonJobPayload>()).ShouldBe(expectedPayloads);
+        scheduled
+            .Keys.Select(x => x.JobDataMap.GetPayload<PlexLibraryComparisonJobPayload>())
+            .ShouldBe(expectedPayloads);
         var triggers = scheduled.Values.SelectMany(x => x).ToList();
         triggers.Select(x => (x.Key.Name, x.Key.Group)).ShouldBe(expectedKeys.Select(x => (x.Name, x.Group)));
         triggers.Select(x => x.JobKey).ShouldBe(expectedKeys);
@@ -280,18 +272,41 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         triggers.ShouldAllBe(x => x.StartTimeUtc <= DateTimeOffset.UtcNow.AddMinutes(3));
         scheduled.Values.ShouldAllBe(x => x.Count == 1);
         var after = await ReadMusicStateAsync(dbContext);
-        after.Scopes
-            .Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.MediaType, x.CompletedAt))
+        after
+            .Scopes.Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.MediaType, x.CompletedAt))
             .ShouldBe(
-                fixture.Scopes.Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.MediaType, x.CompletedAt))
+                fixture.Scopes.Select(x =>
+                    (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.MediaType, x.CompletedAt)
+                )
             );
-        after.Hits
-            .Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.RemotePlexMediaId, x.OwnedPlexMediaId, x.MatchType, x.ComparedAt))
+        after
+            .Hits.Select(x =>
+                (
+                    x.Id,
+                    x.RemotePlexLibraryId,
+                    x.OwnedPlexLibraryId,
+                    x.RemotePlexMediaId,
+                    x.OwnedPlexMediaId,
+                    x.MatchType,
+                    x.ComparedAt
+                )
+            )
             .ShouldBe(
-                fixture.Hits.Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.RemotePlexMediaId, x.OwnedPlexMediaId, x.MatchType, x.ComparedAt))
+                fixture.Hits.Select(x =>
+                    (
+                        x.Id,
+                        x.RemotePlexLibraryId,
+                        x.OwnedPlexLibraryId,
+                        x.RemotePlexMediaId,
+                        x.OwnedPlexMediaId,
+                        x.MatchType,
+                        x.ComparedAt
+                    )
+                )
             );
-        (await dbContext.PlexMusicArtists.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken))
-            .ShouldBe(fixture.ArtistIds);
+        (await dbContext.PlexMusicArtists.Select(x => x.Id).OrderBy(x => x).ToListAsync(CancellationToken)).ShouldBe(
+            fixture.ArtistIds
+        );
         scheduler.Verify();
     }
 
@@ -306,17 +321,23 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         var libraries = fixture.Libraries;
         var source = libraries[0];
         foreach (var target in libraries.Skip(1))
-            dbContext.PlexComparisonScopes.Add(CreateComparisonScope(
-                sourceOwned ? target : source,
-                sourceOwned ? source : target,
-                PlexMediaType.MusicArtist,
-                fixture.CompletedAt));
+            dbContext.PlexComparisonScopes.Add(
+                CreateComparisonScope(
+                    sourceOwned ? target : source,
+                    sourceOwned ? source : target,
+                    PlexMediaType.MusicArtist,
+                    fixture.CompletedAt
+                )
+            );
         var artists = await dbContext.PlexMusicArtists.ToListAsync(CancellationToken);
         var pair = sourceOwned ? (Remote: libraries[1], Owned: source) : (Remote: source, Owned: libraries[1]);
-        dbContext.PlexMusicArtistComparisons.Add(CreateArtistComparison(
-            artists.Single(x => x.PlexLibraryId == pair.Remote.Id),
-            artists.Single(x => x.PlexLibraryId == pair.Owned.Id),
-            fixture.CompletedAt));
+        dbContext.PlexMusicArtistComparisons.Add(
+            CreateArtistComparison(
+                artists.Single(x => x.PlexLibraryId == pair.Remote.Id),
+                artists.Single(x => x.PlexLibraryId == pair.Owned.Id),
+                fixture.CompletedAt
+            )
+        );
         await dbContext.SaveChangesAsync(CancellationToken);
         var before = await ReadMusicStateAsync(dbContext);
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
@@ -324,16 +345,14 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
         var listeners = DiagnosticListener.AllListeners.Subscribe(listener =>
             commandSubscriptions.Add(
-                listener.Select(entry => entry.Value!)
+                listener
+                    .Select(entry => entry.Value!)
                     .OfType<CommandExecutedEventData>()
                     .Where(command => command.Context?.Database.GetConnectionString() == connectionString)
                     .Subscribe(command => commands.Enqueue(command.Command.CommandText))
             )
         );
-        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
-            listeners,
-            commandSubscriptions
-        );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(listeners, commandSubscriptions);
 
         // Act
         var result = await TestHandlerExecuteAsync(new ScheduleAffectedLibraryComparisonJobsCommand(source.Id));
@@ -343,35 +362,16 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         result.Errors.Count.ShouldBe(0);
         commands.Count(x => x.Contains("PlexComparisonScopes", StringComparison.Ordinal)).ShouldBe(1);
         var after = await ReadMusicStateAsync(dbContext);
-        after.Scopes
-            .Select(x => (
-                x.Id,
-                x.RemotePlexLibraryId,
-                x.OwnedPlexLibraryId,
-                x.MediaType,
-                x.CompletedAt
-            ))
+        after
+            .Scopes.Select(x => (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.MediaType, x.CompletedAt))
             .ShouldBe(
-                before.Scopes.Select(x => (
-                    x.Id,
-                    x.RemotePlexLibraryId,
-                    x.OwnedPlexLibraryId,
-                    x.MediaType,
-                    x.CompletedAt
-                ))
+                before.Scopes.Select(x =>
+                    (x.Id, x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.MediaType, x.CompletedAt)
+                )
             );
-        after.Hits
-            .Select(x => (
-                x.Id,
-                x.RemotePlexLibraryId,
-                x.OwnedPlexLibraryId,
-                x.RemotePlexMediaId,
-                x.OwnedPlexMediaId,
-                x.MatchType,
-                x.ComparedAt
-            ))
-            .ShouldBe(
-                before.Hits.Select(x => (
+        after
+            .Hits.Select(x =>
+                (
                     x.Id,
                     x.RemotePlexLibraryId,
                     x.OwnedPlexLibraryId,
@@ -379,7 +379,20 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
                     x.OwnedPlexMediaId,
                     x.MatchType,
                     x.ComparedAt
-                ))
+                )
+            )
+            .ShouldBe(
+                before.Hits.Select(x =>
+                    (
+                        x.Id,
+                        x.RemotePlexLibraryId,
+                        x.OwnedPlexLibraryId,
+                        x.RemotePlexMediaId,
+                        x.OwnedPlexMediaId,
+                        x.MatchType,
+                        x.ComparedAt
+                    )
+                )
             );
         Mock.Mock<IScheduler>()
             .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
@@ -403,14 +416,11 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
     public async Task ShouldNotScheduleDuplicatePair_WhenJobAlreadyExists(PlexMediaType type)
     {
         // Arrange
-        await SetupDatabase(
-            91113,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(91113, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.Type, type), CancellationToken);
@@ -448,14 +458,11 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
     public async Task ShouldNotSchedule_WhenNoEligiblePairExists(PlexMediaType type)
     {
         // Arrange
-        await SetupDatabase(
-            91114,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(91114, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await dbContext.PlexLibraries.ExecuteUpdateAsync(x => x.SetProperty(y => y.Type, type), CancellationToken);
@@ -484,35 +491,39 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
             );
     }
 
-    private async Task<MusicScopeFixture> ArrangeMusicScopeFixtureAsync(
-        int seed,
-        bool sourceOwned,
-        bool sourceOutdated
-    )
+    private async Task<MusicScopeFixture> ArrangeMusicScopeFixtureAsync(int seed, bool sourceOwned, bool sourceOutdated)
     {
         var fixture = await ArrangeMusicLibrariesAsync(seed, sourceOwned, sourceOutdated, 6);
         var dbContext = fixture.DbContext;
         var source = fixture.Libraries[0];
-        var pairs = fixture.Libraries.Skip(1)
+        var pairs = fixture
+            .Libraries.Skip(1)
             .Select(target => sourceOwned ? (Remote: target, Owned: source) : (Remote: source, Owned: target))
             .ToArray();
-        dbContext.PlexComparisonScopes.Add(CreateComparisonScope(
-            pairs[0].Remote, pairs[0].Owned, PlexMediaType.MusicArtist, fixture.CompletedAt));
+        dbContext.PlexComparisonScopes.Add(
+            CreateComparisonScope(pairs[0].Remote, pairs[0].Owned, PlexMediaType.MusicArtist, fixture.CompletedAt)
+        );
         var artists = await dbContext.PlexMusicArtists.ToListAsync(CancellationToken);
-        dbContext.PlexMusicArtistComparisons.Add(CreateArtistComparison(
-            artists.Single(x => x.PlexLibraryId == pairs[0].Remote.Id),
-            artists.Single(x => x.PlexLibraryId == pairs[0].Owned.Id),
-            fixture.CompletedAt));
+        dbContext.PlexMusicArtistComparisons.Add(
+            CreateArtistComparison(
+                artists.Single(x => x.PlexLibraryId == pairs[0].Remote.Id),
+                artists.Single(x => x.PlexLibraryId == pairs[0].Owned.Id),
+                fixture.CompletedAt
+            )
+        );
         var outdatedTarget = fixture.Libraries[3];
         await dbContext
             .PlexLibraries.Where(x => x.Id == outdatedTarget.Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.Outdated, true), CancellationToken);
-        dbContext.PlexComparisonScopes.Add(CreateComparisonScope(
-            pairs[2].Remote, pairs[2].Owned, PlexMediaType.MusicArtist, fixture.CompletedAt));
-        dbContext.PlexComparisonScopes.Add(CreateComparisonScope(
-            pairs[3].Remote, pairs[3].Owned, PlexMediaType.Movie, fixture.CompletedAt));
-        dbContext.PlexComparisonScopes.Add(CreateComparisonScope(
-            pairs[4].Owned, pairs[4].Remote, PlexMediaType.MusicArtist, fixture.CompletedAt));
+        dbContext.PlexComparisonScopes.Add(
+            CreateComparisonScope(pairs[2].Remote, pairs[2].Owned, PlexMediaType.MusicArtist, fixture.CompletedAt)
+        );
+        dbContext.PlexComparisonScopes.Add(
+            CreateComparisonScope(pairs[3].Remote, pairs[3].Owned, PlexMediaType.Movie, fixture.CompletedAt)
+        );
+        dbContext.PlexComparisonScopes.Add(
+            CreateComparisonScope(pairs[4].Owned, pairs[4].Remote, PlexMediaType.MusicArtist, fixture.CompletedAt)
+        );
         await dbContext.SaveChangesAsync(CancellationToken);
         var state = await ReadMusicStateAsync(dbContext);
         var artistIds = artists.Select(x => x.Id).Order().ToList();
@@ -573,44 +584,39 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         DateTime ComparedAt
     );
 
-    private async Task<(IReaparrDbContext DbContext, PlexLibrary[] Libraries, DateTime CompletedAt)> ArrangeMusicLibrariesAsync(
-        int seed,
-        bool sourceOwned,
-        bool sourceOutdated,
-        int libraryCount
-    )
+    private async Task<(
+        IReaparrDbContext DbContext,
+        PlexLibrary[] Libraries,
+        DateTime CompletedAt
+    )> ArrangeMusicLibrariesAsync(int seed, bool sourceOwned, bool sourceOutdated, int libraryCount)
     {
-        await SetupDatabase(
-            seed,
-            config =>
-            {
-                config.PlexServerCount = libraryCount;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(seed, config =>
+        {
+            config.PlexServerCount = libraryCount;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
         var dbContext = IDbContext;
         var completedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var libraries = (await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken)).ToArray();
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
-            x => x.SetProperty(y => y.Outdated, false)
-                .SetProperty(y => y.SyncedAt, completedAt)
-                .SetProperty(y => y.SyncedContentChangedAt, y => y.ContentChangedAt),
+            x =>
+                x.SetProperty(y => y.Outdated, false)
+                    .SetProperty(y => y.SyncedAt, completedAt)
+                    .SetProperty(y => y.SyncedContentChangedAt, y => y.ContentChangedAt),
             CancellationToken
         );
         await dbContext.PlexServers.ExecuteUpdateAsync(
             x => x.SetProperty(y => y.OwnedOverride, !sourceOwned),
             CancellationToken
         );
-        await dbContext.PlexServers.Where(x => x.Id == libraries[0].PlexServerId).ExecuteUpdateAsync(
-            x => x.SetProperty(y => y.OwnedOverride, sourceOwned),
-            CancellationToken
-        );
+        await dbContext
+            .PlexServers.Where(x => x.Id == libraries[0].PlexServerId)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.OwnedOverride, sourceOwned), CancellationToken);
         if (sourceOutdated)
-            await dbContext.PlexLibraries.Where(x => x.Id == libraries[0].Id).ExecuteUpdateAsync(
-                x => x.SetProperty(y => y.Outdated, true),
-                CancellationToken
-            );
+            await dbContext
+                .PlexLibraries.Where(x => x.Id == libraries[0].Id)
+                .ExecuteUpdateAsync(x => x.SetProperty(y => y.Outdated, true), CancellationToken);
         return (dbContext, libraries, completedAt);
     }
 
@@ -619,25 +625,27 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         PlexLibrary owned,
         PlexMediaType mediaType,
         DateTime completedAt
-    ) => new()
-    {
-        RemotePlexLibraryId = remote.Id,
-        OwnedPlexLibraryId = owned.Id,
-        MediaType = mediaType,
-        CompletedAt = completedAt,
-    };
+    ) =>
+        new()
+        {
+            RemotePlexLibraryId = remote.Id,
+            OwnedPlexLibraryId = owned.Id,
+            MediaType = mediaType,
+            CompletedAt = completedAt,
+        };
 
     private static PlexMusicArtistComparison CreateArtistComparison(
         PlexMusicArtist remote,
         PlexMusicArtist owned,
         DateTime comparedAt
-    ) => new()
-    {
-        RemotePlexLibraryId = remote.PlexLibraryId,
-        OwnedPlexLibraryId = owned.PlexLibraryId,
-        RemotePlexMediaId = remote.Id,
-        OwnedPlexMediaId = owned.Id,
-        MatchType = PlexMediaComparisonMatchType.MusicBrainzArtistId,
-        ComparedAt = comparedAt,
-    };
+    ) =>
+        new()
+        {
+            RemotePlexLibraryId = remote.PlexLibraryId,
+            OwnedPlexLibraryId = owned.PlexLibraryId,
+            RemotePlexMediaId = remote.Id,
+            OwnedPlexMediaId = owned.Id,
+            MatchType = PlexMediaComparisonMatchType.MusicBrainzArtistId,
+            ComparedAt = comparedAt,
+        };
 }

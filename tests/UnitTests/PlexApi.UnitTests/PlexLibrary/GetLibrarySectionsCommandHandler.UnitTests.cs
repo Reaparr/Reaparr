@@ -12,16 +12,13 @@ public class GetLibrarySectionsCommandHandlerUnitTests : BaseUnitTest<GetLibrary
     public async Task ShouldClassifyLibraryFamiliesWithoutChangingItemTypes_WhenReadingSections()
     {
         // Arrange
-        await SetupDatabase(
-            9301,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 0;
-                config.PlexTvShowLibraryCount = 0;
-            }
-        );
+        await SetupDatabase(9301, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 0;
+            config.PlexTvShowLibraryCount = 0;
+        });
         var serverId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
         var sections = new List<LibrarySection>
         {

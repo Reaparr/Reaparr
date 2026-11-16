@@ -12,42 +12,39 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
         // Arrange
         // Keep the generated Plex hierarchy and file payloads; control only external identity/layout metadata.
         var fixture = new MusicResponseFixture();
-        using var container = await CreateContainer(
-            10623,
-            config =>
+        using var container = await CreateContainer(10623, config =>
+        {
+            config.DatabaseOptions = database =>
             {
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexAccountCount = 1;
-                    database.PlexServerCount = 2;
-                    database.PlexMusicLibraryCount = 1;
-                    database.PlexMovieLibraryCount = 1;
-                    database.PlexTvShowLibraryCount = 1;
-                    database.MovieCount = 1;
-                    database.TvShowCount = 1;
-                    database.TvShowSeasonCount = 1;
-                    database.TvShowEpisodeCount = 1;
-                };
-                config.BaseMockHttpClientOptions = plex =>
-                {
-                    plex.GenerateFromDatabase = true;
-                    plex.PlexServerAccessCount = 0;
-                    plex.MusicLibraryCount = 1;
-                    plex.ArtistsPerLibraryCount = 3;
-                    plex.AlbumsPerArtistCount = 1;
-                    plex.TracksPerAlbumCount = 2;
-                };
-                config.OverrideServices = builder =>
-                {
-                    builder
-                        .Register(context => new HttpClient(
-                            new MusicFixtureHandler(context.Resolve<Mock<HttpMessageHandler>>().Object, fixture)
-                        ))
-                        .As<HttpClient>()
-                        .InstancePerDependency();
-                };
-            }
-        );
+                database.PlexAccountCount = 1;
+                database.PlexServerCount = 2;
+                database.PlexMusicLibraryCount = 1;
+                database.PlexMovieLibraryCount = 1;
+                database.PlexTvShowLibraryCount = 1;
+                database.MovieCount = 1;
+                database.TvShowCount = 1;
+                database.TvShowSeasonCount = 1;
+                database.TvShowEpisodeCount = 1;
+            };
+            config.BaseMockHttpClientOptions = plex =>
+            {
+                plex.GenerateFromDatabase = true;
+                plex.PlexServerAccessCount = 0;
+                plex.MusicLibraryCount = 1;
+                plex.ArtistsPerLibraryCount = 3;
+                plex.AlbumsPerArtistCount = 1;
+                plex.TracksPerAlbumCount = 2;
+            };
+            config.OverrideServices = builder =>
+            {
+                builder
+                    .Register(context => new HttpClient(
+                        new MusicFixtureHandler(context.Resolve<Mock<HttpMessageHandler>>().Object, fixture)
+                    ))
+                    .As<HttpClient>()
+                    .InstancePerDependency();
+            };
+        });
         var dbFactory = container.Resolve<IReaparrDbContextFactory>();
         var scheduler = container.BackgroundJobScheduler;
         var client = container.GetApiClient();

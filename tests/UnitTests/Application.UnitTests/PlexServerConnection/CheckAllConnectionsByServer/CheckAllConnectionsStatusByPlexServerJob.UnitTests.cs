@@ -107,13 +107,10 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
     public async Task ShouldFail_WhenOneOrMorePlexServersAreUnavailable()
     {
         // Arrange
-        await SetupDatabase(
-            135044,
-            config =>
-            {
-                config.PlexServerCount = 2;
-            }
-        );
+        await SetupDatabase(135044, config =>
+        {
+            config.PlexServerCount = 2;
+        });
 
         var plexServers = await IDbContext
             .PlexServers.Include(x => x.PlexServerConnections)
@@ -172,13 +169,10 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
     public async Task ShouldCaptureNestedTerminalException_WhenScheduledConnectionCheckFails()
     {
         // Arrange
-        await SetupDatabase(
-            135045,
-            config =>
-            {
-                config.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(135045, config =>
+        {
+            config.PlexServerCount = 1;
+        });
 
         Mock.Mock<IProgressHubService>()
             .Setup(x => x.SendJobStatusUpdateAsync(It.IsAny<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>()))

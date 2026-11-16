@@ -19,16 +19,13 @@ public class ReaparrDbContextExtensionsGetAllDownloadTasksAsyncUnitTests : BaseU
     public async Task ShouldReturnMovieDownloadTasks_WhenMovieDownloadTasksAreInDB()
     {
         // Arrange
-        await SetupDatabase(
-            21467,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-                config.MovieCount = 20;
-                config.MovieDownloadTasksCount = 10;
-            }
-        );
+        await SetupDatabase(21467, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+            config.MovieCount = 20;
+            config.MovieDownloadTasksCount = 10;
+        });
 
         // Act
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken);
@@ -46,18 +43,15 @@ public class ReaparrDbContextExtensionsGetAllDownloadTasksAsyncUnitTests : BaseU
     public async Task ShouldAllTvShowDownloadTasksWithAllIncludes_WhenTvShowDownloadTasksAreInDB()
     {
         // Arrange
-        await SetupDatabase(
-            2767,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-                config.TvShowCount = 20;
-                config.TvShowDownloadTasksCount = 5;
-                config.TvShowSeasonDownloadTasksCount = 5;
-                config.TvShowEpisodeDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(2767, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+            config.TvShowCount = 20;
+            config.TvShowDownloadTasksCount = 5;
+            config.TvShowSeasonDownloadTasksCount = 5;
+            config.TvShowEpisodeDownloadTasksCount = 5;
+        });
 
         // Act
         var downloadTasks = await IDbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken);

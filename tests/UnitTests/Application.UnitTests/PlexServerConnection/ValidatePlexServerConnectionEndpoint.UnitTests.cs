@@ -43,10 +43,11 @@ public class ValidatePlexServerConnectionEndpointUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ICommandExecutor>()
             .Verify(
-                x => x.Send(
-                    It.Is<ValidatePlexConnectionUrlCommand>(command => command.PlexConnectionUrl == url),
-                    It.IsAny<CancellationToken>()
-                ),
+                x =>
+                    x.Send(
+                        It.Is<ValidatePlexConnectionUrlCommand>(command => command.PlexConnectionUrl == url),
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Once()
             );
         Mock.Mock<ITelemetry>().Verify();

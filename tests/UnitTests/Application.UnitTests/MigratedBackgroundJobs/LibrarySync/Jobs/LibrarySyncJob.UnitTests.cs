@@ -25,6 +25,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         context.SetupProperty(x => x.Result);
         return context;
     }
+
     private void SetupBeginJob()
     {
         Mock.Mock<ITelemetry>()
@@ -55,14 +56,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
                 .As<IMediaOverviewRebuildCoordinator>()
                 .SingleInstance()
         );
-        await SetupDatabase(
-            55100,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(55100, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var library = libraries[0];
@@ -192,14 +190,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         SetupDependencies(builder =>
             builder.RegisterInstance(coordinator).As<IMediaOverviewRebuildCoordinator>().SingleInstance()
         );
-        await SetupDatabase(
-            55108,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55108, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var library = libraries[0];
@@ -311,14 +306,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         var coordinator = new MediaOverviewRebuildCoordinator();
         using var rebuildLease = await coordinator.AcquireRebuildLeaseAsync(CancellationToken);
         var leaseRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        await SetupDatabase(
-            55103,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(55103, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var library = libraries[0];
@@ -435,14 +427,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
                 .As<IMediaOverviewRebuildCoordinator>()
                 .SingleInstance()
         );
-        await SetupDatabase(
-            55104,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55104, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         dbContext.LibrarySyncJobQueues.Add(
@@ -518,14 +507,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
     public async Task ShouldPreserveQueueState_WhenDeliveryIsNoLongerProcessing(LibrarySyncJobStatus status)
     {
         // Arrange
-        await SetupDatabase(
-            55102,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55102, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var startedAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
@@ -572,14 +558,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
     public async Task ShouldPersistFailureAndContinueQueue_WhenLeaseAcquisitionThrows()
     {
         // Arrange
-        await SetupDatabase(
-            55105,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55105, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         dbContext.LibrarySyncJobQueues.Add(
@@ -651,14 +634,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
     public async Task ShouldRequeueWithoutStartingMediaSync_WhenServerIsOffline()
     {
         // Arrange
-        await SetupDatabase(
-            55106,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55106, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var createdAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
@@ -729,14 +709,11 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
     public async Task ShouldCancelClaim_WhenTokenIsAlreadyCancelledBeforeExecution()
     {
         // Arrange
-        await SetupDatabase(
-            55107,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(55107, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var startedAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);

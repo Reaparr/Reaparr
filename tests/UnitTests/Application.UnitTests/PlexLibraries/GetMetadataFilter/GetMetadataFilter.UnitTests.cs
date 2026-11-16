@@ -14,16 +14,13 @@ public class GetMetadataFilterUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            8238,
-            cfg =>
-            {
-                cfg.PlexMovieLibraryCount = 2;
-                cfg.PlexOtherVideoLibraryCount = 2;
-                cfg.MovieCount = 2;
-                cfg.OtherVideoCount = 2;
-            }
-        );
+        await SetupDatabase(8238, cfg =>
+        {
+            cfg.PlexMovieLibraryCount = 2;
+            cfg.PlexOtherVideoLibraryCount = 2;
+            cfg.MovieCount = 2;
+            cfg.OtherVideoCount = 2;
+        });
         var dbContext = IDbContext;
         var libraryIds = await dbContext
             .PlexLibraries.Where(x => x.Type == mediaType)
@@ -85,14 +82,11 @@ public class GetMetadataFilterUnitTests
     public async Task ShouldKeepAudioAndVideoGenreIdsScoped_WhenNamesAndIdsOverlap(bool omitMediaType)
     {
         // Arrange
-        await SetupDatabase(
-            8239,
-            cfg =>
-            {
-                cfg.PlexMovieLibraryCount = 1;
-                cfg.PlexMusicLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(8239, cfg =>
+        {
+            cfg.PlexMovieLibraryCount = 1;
+            cfg.PlexMusicLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var videoLibrary = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.Movie,
@@ -198,16 +192,13 @@ public class GetMetadataFilterUnitTests
     public async Task ShouldUseAudioGenresFromAllowedLibraries_WhenAllLibrariesAreRequested()
     {
         // Arrange
-        await SetupDatabase(
-            8253,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-            }
-        );
+        await SetupDatabase(8253, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+        });
         var dbContext = IDbContext;
         var fixture = new MetadataScopeTestFixture(dbContext, CancellationToken);
         var libraries = await dbContext
@@ -248,9 +239,8 @@ public class GetMetadataFilterUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            8254,
-            config => MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 3)
+        await SetupDatabase(8254, config =>
+            MetadataScopeTestFixture.ConfigureVideoSeed(config, PlexMediaType.Movie, 3)
         );
         var dbContext = IDbContext;
         var fixture = new MetadataScopeTestFixture(dbContext, CancellationToken);
@@ -308,16 +298,13 @@ public class GetMetadataFilterUnitTests
     public async Task ShouldKeepDirectLibraryFilterMetadata_WhenScopeFlagsAreSet()
     {
         // Arrange
-        await SetupDatabase(
-            8255,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(8255, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.PlexServerId).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);

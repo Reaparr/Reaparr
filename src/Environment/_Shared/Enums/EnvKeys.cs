@@ -140,5 +140,4 @@ public static class EnvKeys
     /// Supplies the build-time ingestion origin so release artifacts share one telemetry destination; it is not a runtime override.
     /// </summary>
     public const string TelemetryHost = "TELEMETRY_HOST";
-
 }

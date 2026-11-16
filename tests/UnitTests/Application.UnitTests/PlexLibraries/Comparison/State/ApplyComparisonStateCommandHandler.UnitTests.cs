@@ -6,15 +6,12 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldReturnSuccessWithoutDispatch_WhenItemsAreEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            70,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(70, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var command = new ApplyComparisonStateCommand([], PlexMediaType.Movie, 1);
 
@@ -87,15 +84,12 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchMovieProjectionPerLibrary_WhenAllLibraryScopeIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            76,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(76, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexAccountCount = 1;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, true);
@@ -145,15 +139,12 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchTvShowProjectionPerLibrary_WhenAllLibraryScopeIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            77,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 2;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(77, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 2;
+            config.PlexAccountCount = 1;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, true);
@@ -203,14 +194,11 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchOwnedAndRemoteMovieProjection_WhenAllLibraryScopeContainsBothOwnershipTypes()
     {
         // Arrange
-        await SetupDatabase(
-            78,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(78, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, true);
@@ -276,14 +264,11 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchOwnedAndRemoteTvShowProjection_WhenAllLibraryScopeContainsBothOwnershipTypes()
     {
         // Arrange
-        await SetupDatabase(
-            79,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(79, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, true);
@@ -349,14 +334,11 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchExplicitLibraryProjectionAsOneBatch_WhenItemsHaveDifferentLibraryIds()
     {
         // Arrange
-        await SetupDatabase(
-            80,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(80, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, true);
@@ -392,14 +374,11 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldStopDispatchingRemainingLibraries_WhenProjectionFails()
     {
         // Arrange
-        await SetupDatabase(
-            81,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(81, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         libraries.Count.ShouldBe(2);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, true);
@@ -443,15 +422,12 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchOwnedMovieProjection_WhenMovieLibraryIsOwned()
     {
         // Arrange
-        await SetupDatabase(
-            71,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(71, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         await SetOwnedOverrideAsync(library.PlexServerId, true);
@@ -482,15 +458,12 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchRemoteMovieProjection_WhenMovieLibraryIsNotOwned()
     {
         // Arrange
-        await SetupDatabase(
-            72,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(72, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         await SetOwnedOverrideAsync(library.PlexServerId, false);
@@ -521,15 +494,12 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchOwnedTvShowProjection_WhenTvShowLibraryIsOwned()
     {
         // Arrange
-        await SetupDatabase(
-            73,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(73, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         await SetOwnedOverrideAsync(library.PlexServerId, true);
@@ -560,15 +530,12 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldDispatchRemoteTvShowProjection_WhenTvShowLibraryIsNotOwned()
     {
         // Arrange
-        await SetupDatabase(
-            74,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(74, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         await SetOwnedOverrideAsync(library.PlexServerId, false);
@@ -599,15 +566,12 @@ public class ApplyComparisonStateCommandHandlerUnitTests : BaseCommandUnitTest<A
     public async Task ShouldReturnFailureWithoutDispatch_WhenMediaTypeIsUnsupported()
     {
         // Arrange
-        await SetupDatabase(
-            75,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(75, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+        });
 
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         var command = new ApplyComparisonStateCommand(

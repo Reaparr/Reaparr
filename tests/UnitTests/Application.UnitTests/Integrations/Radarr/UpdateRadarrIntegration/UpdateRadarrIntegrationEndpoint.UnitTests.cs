@@ -261,12 +261,7 @@ public class UpdateRadarrIntegrationEndpointUnitTests
         updated.LastConnectionTestedAt.ShouldBe(testedAt);
         Mock.Mock<ITelemetry>()
             .Verify(
-                x =>
-                    x.IntegrationChanged(
-                        It.IsAny<RadarrIntegration>(),
-                        It.IsAny<TelemetryAction>(),
-                        It.IsAny<bool>()
-                    ),
+                x => x.IntegrationChanged(It.IsAny<RadarrIntegration>(), It.IsAny<TelemetryAction>(), It.IsAny<bool>()),
                 Times.Never()
             );
     }

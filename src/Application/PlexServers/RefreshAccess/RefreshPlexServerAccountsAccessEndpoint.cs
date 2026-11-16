@@ -21,6 +21,7 @@ public class RefreshPlexServerAccountsAccessEndpoint
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
+
     public RefreshPlexServerAccountsAccessEndpoint(
         IReaparrDbContext dbContext,
         ICommandExecutor commandExecutor,
@@ -76,10 +77,7 @@ public class RefreshPlexServerAccountsAccessEndpoint
         var errors = new List<IError>();
         foreach (var accountId in accountIds)
         {
-            var result = await _commandExecutor.Send(
-                new RefreshPlexAccountAccessCommand(accountId),
-                ct
-            );
+            var result = await _commandExecutor.Send(new RefreshPlexAccountAccessCommand(accountId), ct);
 
             if (result.IsCancelled)
             {

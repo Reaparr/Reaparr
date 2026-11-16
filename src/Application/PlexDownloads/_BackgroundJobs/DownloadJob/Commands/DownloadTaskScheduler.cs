@@ -112,8 +112,8 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
         if (!await _scheduler.IsJobScheduledOrExecuting(jobKey, CancellationToken.None))
             return null;
 
-        return (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))?.JobDataMap
-            .GetPayload<DownloadJobPayload>()
+        return (await _scheduler.GetJobDetail(jobKey, CancellationToken.None))
+            ?.JobDataMap.GetPayload<DownloadJobPayload>()
             ?.DownloadTaskKey;
     }
 }

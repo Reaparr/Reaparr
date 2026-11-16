@@ -7,15 +7,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldQueueOneFolderAndOneFile_WhenDirectMergedAssetIsSelected()
     {
         // Arrange
-        await SetupDatabase(
-            62304,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62304, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var media = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var destination = "/destination";
@@ -68,15 +65,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldQueueUnmappedUnalbumedAssetAtLibraryRoot_WithoutCreatingCatalogFolders()
     {
         // Arrange
-        await SetupDatabase(
-            62319,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62319, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var media = await dbContext.PlexPhotoMediaData.AsTracking().SingleAsync(CancellationToken);
         var server = await dbContext.PlexServers.AsTracking().SingleAsync(CancellationToken);
@@ -127,15 +121,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldQueueMappedAndUnmappedAssetsAtLibraryRoot_WhenAllCatalogRootsAreInactive()
     {
         // Arrange
-        await SetupDatabase(
-            62320,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(62320, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var root = await dbContext
             .PlexPhotoFolders.AsTracking()
@@ -252,15 +243,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldRejectMissingOrForeignDirectFileIds_WithoutCreatingPartialTasks()
     {
         // Arrange
-        await SetupDatabase(
-            62316,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62316, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var files = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         files.Count.ShouldBe(2);
@@ -296,16 +284,13 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldExpandAlbumMembershipsAndDeduplicateOverlap_WhenAlbumAndFileAreSelected()
     {
         // Arrange
-        await SetupDatabase(
-            62305,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62305, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var albums = await dbContext.PlexPhotoAlbums.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var files = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -453,15 +438,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldReuseCapturedRootAndSkipExactDuplicate_WhenRequestIsRetried()
     {
         // Arrange
-        await SetupDatabase(
-            62307,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62307, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var media = await IDbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var request = new CreateDownloadTasksRequest(
             [
@@ -500,15 +482,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldDeduplicateEquivalentDestinationRoots_WhenRequestIsRetried()
     {
         // Arrange
-        await SetupDatabase(
-            62313,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62313, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var media = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var downloadFolder = await dbContext
@@ -563,15 +542,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldNamespaceFilesByCatalogRootId_WhenMultipleActiveRootsShareALibrary()
     {
         // Arrange
-        await SetupDatabase(
-            62308,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62308, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var sourceRoot = await dbContext.PlexPhotoFolders.SingleAsync(x => x.ParentId == null, CancellationToken);
         var media = await dbContext.PlexPhotoMediaData.AsTracking().SingleAsync(CancellationToken);
@@ -624,15 +600,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldExcludeEveryNewCandidate_WhenDistinctFilesCollideAtOnePath()
     {
         // Arrange
-        await SetupDatabase(
-            62309,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62309, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var media = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var duplicate = new PlexPhotoMediaData
@@ -696,15 +669,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldHonorHostFilesystemCaseSemantics_WhenPhotoNamesDifferOnlyByCase()
     {
         // Arrange
-        await SetupDatabase(
-            62315,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(62315, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var files = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         files.Count.ShouldBe(2);
@@ -753,15 +723,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldRetainCapturedTaskPath_WhenCatalogFolderChanges()
     {
         // Arrange
-        await SetupDatabase(
-            62310,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62310, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var media = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var request = new CreateDownloadTasksRequest(
@@ -816,16 +783,13 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldSuffixRootName_WhenEqualNamedLibrariesAreQueuedWithDifferentDownloadRoots()
     {
         // Arrange
-        await SetupDatabase(
-            62311,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62311, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext
             .PlexLibraries.AsTracking()
@@ -889,15 +853,12 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
     public async Task ShouldCreateNewContext_WhenDownloadRootChanges()
     {
         // Arrange
-        await SetupDatabase(
-            62312,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62312, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var media = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var request = new CreateDownloadTasksRequest(
@@ -955,16 +916,13 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         List<PlexPhotoMediaData> Files
     )> CreateMappedAndUnmappedAlbumAsync()
     {
-        await SetupDatabase(
-            62321,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(62321, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.AsTracking().SingleAsync(CancellationToken);
         var library = await dbContext.PlexLibraries.AsTracking().SingleAsync(CancellationToken);
@@ -996,16 +954,13 @@ public class GenerateDownloadTaskPhotoImagesCommandUnitTests
         List<PlexPhotoMediaData> Files
     )> CreateOverlappingAlbumSelectionsAsync(bool includeDirectSelection)
     {
-        await SetupDatabase(
-            62306,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62306, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var albums = await dbContext.PlexPhotoAlbums.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var files = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);

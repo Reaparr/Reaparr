@@ -13,13 +13,10 @@ public class RefreshLibraryMediaEndpointUnitTests
     public async Task ShouldReturnActualQueueState_WhenLibrarySyncJobAccepted(LibrarySyncJobStatus status)
     {
         // Arrange
-        await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1223, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexLibrary = dbContext.PlexLibraries.First();
@@ -109,13 +106,10 @@ public class RefreshLibraryMediaEndpointUnitTests
     public async Task ShouldReturnError_WhenRefreshCommandFails()
     {
         // Arrange
-        await SetupDatabase(
-            1226,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(1226, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexLibrary = IDbContext.PlexLibraries.First();
 

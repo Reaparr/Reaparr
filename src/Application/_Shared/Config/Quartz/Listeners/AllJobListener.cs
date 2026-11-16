@@ -28,7 +28,10 @@ public sealed class AllJobListener : IJobListener
     )
     {
         var exception = jobException?.InnerException ?? jobException;
-        if (exception is not null && (exception is not OperationCanceledException || !context.CancellationToken.IsCancellationRequested))
+        if (
+            exception is not null
+            && (exception is not OperationCanceledException || !context.CancellationToken.IsCancellationRequested)
+        )
         {
             using var scope = _telemetry.BeginJob(TelemetryActivity.BackgroundJob, context.GetTelemetryContext());
             _telemetry.CaptureException(exception, TelemetryActivity.BackgroundJob);

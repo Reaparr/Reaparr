@@ -204,15 +204,9 @@ public class SetServerEnabledEndpointUnitTests
         updated.IsEnabled.ShouldBe(true);
         Mock.Mock<ITelemetry>()
             .Verify(
-                x =>
-                    x.PlexServerChanged(
-                        It.IsAny<TelemetryAction>(),
-                        It.IsAny<int>(),
-                        It.IsAny<PlexServer?>()
-                    ),
+                x => x.PlexServerChanged(It.IsAny<TelemetryAction>(), It.IsAny<int>(), It.IsAny<PlexServer?>()),
                 Times.Never()
             );
-
     }
 
     [Test]
@@ -292,15 +286,12 @@ public class SetServerEnabledEndpointUnitTests
     public async Task ShouldInvalidateServerLibraries_WhenTogglingIsEnabled()
     {
         // Arrange
-        await SetupDatabase(
-            91211,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-                config.PlexTvShowLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91211, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var server = await dbContext

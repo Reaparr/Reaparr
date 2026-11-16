@@ -76,9 +76,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
             // publication gate as patch reads/sends. This makes the returned watermark cover
             // every emitted patch that could otherwise race with the snapshot.
             using var dbContext = await _dbContextFactory.CreateAsync();
-            var downloadTasks = await dbContext.GetAllDownloadTasksByServerAsync(
-                cancellationToken: cancellationToken
-            );
+            var downloadTasks = await dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: cancellationToken);
 
             return new DownloadSnapshotDTO
             {

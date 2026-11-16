@@ -159,9 +159,9 @@ public partial class FakePlexApiData
         var json = GetMakeDecisionMediaContainerJsonText(options);
 
         return JsonSerializer.Deserialize<MediaContainerWithDecision>(
-                json,
-                DefaultJsonSerializerOptions.PlexApiSerialization
-            ) ?? throw new InvalidOperationException("Failed to deserialize transcode decision media container");
+            json,
+            DefaultJsonSerializerOptions.PlexApiSerialization
+        ) ?? throw new InvalidOperationException("Failed to deserialize transcode decision media container");
     }
 
     public static MediaContainerWithDecision GetMakeDecisionMediaContainerWithMismatchedDisplayTitle() =>

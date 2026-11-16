@@ -62,11 +62,7 @@ public class MetadataSyncJobUnitTests : BaseUnitTest<MetadataSyncJob>
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
             .Setup(x =>
-                x.MetadataSyncFinished(
-                    server.Id,
-                    0,
-                    It.Is<ResultBase>(result => ReferenceEquals(result, movieResult))
-                )
+                x.MetadataSyncFinished(server.Id, 0, It.Is<ResultBase>(result => ReferenceEquals(result, movieResult)))
             )
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()

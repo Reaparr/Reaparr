@@ -35,11 +35,7 @@ public class DownloadTorrentEndpoint : Endpoint<DownloadTorrentEndpointRequest>
 
     private readonly ILogger _log;
 
-    public DownloadTorrentEndpoint(
-        ILogger logger,
-        IReaparrDbContext dbContext,
-        ITelemetry telemetry
-    )
+    public DownloadTorrentEndpoint(ILogger logger, IReaparrDbContext dbContext, ITelemetry telemetry)
     {
         _log = logger.ForContext<DownloadTorrentEndpoint>();
         _dbContext = dbContext;

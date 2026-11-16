@@ -6,14 +6,11 @@ public class DbContextExtensionsPlexAccountUnitTests : BaseUnitTest
     public async Task ShouldGetAccessibleServers_WhenAccountHasServers()
     {
         // Arrange
-        await SetupDatabase(
-            12200,
-            cfg =>
-            {
-                cfg.PlexServerCount = 2;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12200, cfg =>
+        {
+            cfg.PlexServerCount = 2;
+            cfg.PlexAccountCount = 1;
+        });
         var account = IDbContext.PlexAccounts.First();
 
         // Act
@@ -41,14 +38,11 @@ public class DbContextExtensionsPlexAccountUnitTests : BaseUnitTest
     public async Task ShouldChooseNonMainAccount_WhenMultipleEnabledAccounts()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            12202,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(12202, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 1;
+        });
         var db = IDbContext;
         var server = db.PlexServers.First();
 
@@ -81,13 +75,10 @@ public class DbContextExtensionsPlexAccountUnitTests : BaseUnitTest
     public async Task ShouldReturnDisplayName_WhenAccountExists()
     {
         // Arrange
-        await SetupDatabase(
-            12203,
-            cfg =>
-            {
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12203, cfg =>
+        {
+            cfg.PlexAccountCount = 1;
+        });
         var account = IDbContext.PlexAccounts.First();
 
         // Act
@@ -101,13 +92,10 @@ public class DbContextExtensionsPlexAccountUnitTests : BaseUnitTest
     public async Task ShouldDetectTakenUsername_WhenAccountExists()
     {
         // Arrange
-        await SetupDatabase(
-            12204,
-            cfg =>
-            {
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12204, cfg =>
+        {
+            cfg.PlexAccountCount = 1;
+        });
         var account = IDbContext.PlexAccounts.First();
 
         // Act
@@ -121,14 +109,11 @@ public class DbContextExtensionsPlexAccountUnitTests : BaseUnitTest
     public async Task ShouldReturnAccountsWithAccess_WhenServerHasAssociations()
     {
         // Arrange
-        await SetupDatabase(
-            12205,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(12205, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexAccountCount = 1;
+        });
         var server = IDbContext.PlexServers.First();
 
         // Act

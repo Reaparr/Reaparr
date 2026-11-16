@@ -10,22 +10,19 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(29003);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
+            config.DatabaseOptions = x =>
             {
-                config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexPhotoLibraryCount = 1;
-                    x.PhotoAlbumCount = 2;
-                    x.PhotoCount = 3;
-                    x.PhotoClipCount = 1;
-                };
-            }
-        );
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 1;
+                x.PhotoAlbumCount = 2;
+                x.PhotoCount = 3;
+                x.PhotoClipCount = 1;
+            };
+        });
         var context = container.DbContext;
         var library = await context.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -95,22 +92,19 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(29005);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
+            config.DatabaseOptions = x =>
             {
-                config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexPhotoLibraryCount = 2;
-                    x.PhotoAlbumCount = 1;
-                    x.PhotoCount = 0;
-                    x.PhotoClipCount = 4;
-                };
-            }
-        );
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 2;
+                x.PhotoAlbumCount = 1;
+                x.PhotoCount = 0;
+                x.PhotoClipCount = 4;
+            };
+        });
         var context = container.DbContext;
         var libraryId = await context
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
@@ -397,21 +391,18 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(29005);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
+            config.DatabaseOptions = x =>
             {
-                config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexPhotoLibraryCount = 2;
-                    x.PhotoAlbumCount = 1;
-                    x.PhotoCount = 1;
-                };
-            }
-        );
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 2;
+                x.PhotoAlbumCount = 1;
+                x.PhotoCount = 1;
+            };
+        });
         var context = container.DbContext;
         var libraries = await context.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var serverId = libraries[0].PlexServerId;
@@ -524,21 +515,18 @@ public class PlexPhotoBrowseEndpointsIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(29004);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
+            config.DatabaseOptions = x =>
             {
-                config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexPhotoLibraryCount = 1;
-                    x.PhotoAlbumCount = 1;
-                    x.PhotoCount = 1;
-                };
-            }
-        );
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 1;
+                x.PhotoAlbumCount = 1;
+                x.PhotoCount = 1;
+            };
+        });
         var library = await container.DbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
             CancellationToken

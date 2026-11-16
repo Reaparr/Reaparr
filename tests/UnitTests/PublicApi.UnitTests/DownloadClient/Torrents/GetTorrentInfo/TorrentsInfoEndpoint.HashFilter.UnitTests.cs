@@ -83,14 +83,12 @@ public class TorrentsInfoEndpointHashFilterUnitTests
             .Response!.Select(x => (x.Hash, x.State, x.Category, x.SavePath, x.ContentPath))
             .OrderBy(x => x.Hash, StringComparer.Ordinal)
             .ToList();
-        actual.ShouldBe(
-            [
-                .. expected
-                    .Episodes.Concat(expected.Movies)
-                    .Select(x => (x.Hash, x.State, x.Category, x.SavePath, x.ContentPath))
-                    .OrderBy(x => x.Hash, StringComparer.Ordinal),
-            ]
-        );
+        actual.ShouldBe([
+            .. expected
+                .Episodes.Concat(expected.Movies)
+                .Select(x => (x.Hash, x.State, x.Category, x.SavePath, x.ContentPath))
+                .OrderBy(x => x.Hash, StringComparer.Ordinal),
+        ]);
         movieReads.Count.ShouldBe(1);
         episodeReads.Count.ShouldBe(1);
         movieReads.Single().ShouldBe(expected.MovieReaderRows);
@@ -99,18 +97,15 @@ public class TorrentsInfoEndpointHashFilterUnitTests
 
     private async Task<TestFixture> SetupFixtureAsync()
     {
-        await SetupDatabase(
-            71471,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.MovieDownloadTasksCount = ELIGIBLE_FILE_COUNT + CONTROL_FILE_COUNT;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = ELIGIBLE_FILE_COUNT + CONTROL_FILE_COUNT;
-                config.RadarrIntegrationCount = 2;
-            }
-        );
+        await SetupDatabase(71471, config =>
+        {
+            config.PlexServerCount = 2;
+            config.MovieDownloadTasksCount = ELIGIBLE_FILE_COUNT + CONTROL_FILE_COUNT;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = ELIGIBLE_FILE_COUNT + CONTROL_FILE_COUNT;
+            config.RadarrIntegrationCount = 2;
+        });
 
         var dbContext = IDbContext;
         var servers = await dbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -195,7 +190,13 @@ public class TorrentsInfoEndpointHashFilterUnitTests
         return scenario switch
         {
             HashFilterScenario.SingleMovie => new ScenarioExpectation(movie.Hash.ToUpperInvariant(), [movie], [], 1, 0),
-            HashFilterScenario.SingleEpisode => new ScenarioExpectation(episode.Hash.ToUpperInvariant(), [], [episode], 0, 1),
+            HashFilterScenario.SingleEpisode => new ScenarioExpectation(
+                episode.Hash.ToUpperInvariant(),
+                [],
+                [episode],
+                0,
+                1
+            ),
             HashFilterScenario.MixedCasePipeList => new ScenarioExpectation(
                 $" {movie.Hash.ToUpperInvariant()} | {episode.Hash} ",
                 [movie],

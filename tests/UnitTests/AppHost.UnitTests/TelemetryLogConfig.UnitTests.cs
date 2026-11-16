@@ -125,46 +125,44 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         var logger = logConfig.GetLogger();
         try
         {
-        var user = new Mock<IUserService>();
-        user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY);
-        var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls("http://127.0.0.1:0");
-        builder.Configuration.AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["PostHog:HostUrl"] = "https://runtime-override.invalid",
-                ["PostHog:ProjectToken"] = "runtime-override",
-            }
-        );
-        builder.Services.AddSingleton(build.Object);
-        builder.Services.AddScoped(_ => user.Object);
-        builder.Services.AddSingleton(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName));
-        builder.Services.AddSingleton<IUserSettings>(new UserSettings());
-        builder.Services.AddSingleton<ITelemetry, Telemetry>();
-        builder.Services.AddSingleton<Serilog.ILogger>(logger);
-        // Observe real SDK logging through the application logger without including unrelated host logs.
-        builder.Logging.ClearProviders();
-        builder.Logging.SetMinimumLevel(LogLevel.Debug);
-        builder.Logging.AddSerilog(logger);
-        builder.Logging.AddFilter<Serilog.Extensions.Logging.SerilogLoggerProvider>(
-            (category, _) => category is not null && category.StartsWith("PostHog", StringComparison.Ordinal)
-        );
-        builder.Services.ConfigureTelemetry(build.Object, runtime);
-        builder.Services.PostConfigure<PostHogOptions>(options => options.EnableCompression = false);
-        using var postHogContainer = BuildPostHogContainer(builder.Services);
-        builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
-        // Both hosts share a process: exclude the collector's own incoming requests from instrumentation.
-        builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(options =>
-            options.Filter = context => context.Request.Host.Value != ingestionAuthority
-        );
-        await using var app = builder.Build();
-        app.UseRouting();
-        app.UseMiddleware<TelemetryContextMiddleware>();
-        ActivityTraceId operationTrace = default;
-        ActivitySpanId operationSpan = default;
-        app.MapGet(
-            PROBE_PATH,
-            (ITelemetry telemetry, Serilog.ILogger operationLogger) =>
+            var user = new Mock<IUserService>();
+            user.Setup(x => x.GetTelemetryId()).ReturnsAsync(IDENTITY);
+            var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseUrls("http://127.0.0.1:0");
+            builder.Configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["PostHog:HostUrl"] = "https://runtime-override.invalid",
+                    ["PostHog:ProjectToken"] = "runtime-override",
+                }
+            );
+            builder.Services.AddSingleton(build.Object);
+            builder.Services.AddScoped(_ => user.Object);
+            builder.Services.AddSingleton(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName));
+            builder.Services.AddSingleton<IUserSettings>(new UserSettings());
+            builder.Services.AddSingleton<ITelemetry, Telemetry>();
+            builder.Services.AddSingleton<Serilog.ILogger>(logger);
+            // Observe real SDK logging through the application logger without including unrelated host logs.
+            builder.Logging.ClearProviders();
+            builder.Logging.SetMinimumLevel(LogLevel.Debug);
+            builder.Logging.AddSerilog(logger);
+            builder.Logging.AddFilter<Serilog.Extensions.Logging.SerilogLoggerProvider>(
+                (category, _) => category is not null && category.StartsWith("PostHog", StringComparison.Ordinal)
+            );
+            builder.Services.ConfigureTelemetry(build.Object, runtime);
+            builder.Services.PostConfigure<PostHogOptions>(options => options.EnableCompression = false);
+            using var postHogContainer = BuildPostHogContainer(builder.Services);
+            builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
+            // Both hosts share a process: exclude the collector's own incoming requests from instrumentation.
+            builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(options =>
+                options.Filter = context => context.Request.Host.Value != ingestionAuthority
+            );
+            await using var app = builder.Build();
+            app.UseRouting();
+            app.UseMiddleware<TelemetryContextMiddleware>();
+            ActivityTraceId operationTrace = default;
+            ActivitySpanId operationSpan = default;
+            app.MapGet(PROBE_PATH, (ITelemetry telemetry, Serilog.ILogger operationLogger) =>
             {
                 using var operation = telemetry.StartActivity(TelemetryActivity.LibrarySync);
                 operation.ShouldNotBeNull();
@@ -174,111 +172,113 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 operationLogger.Information("Native telemetry operation {ApiKey}", LOG_SECRET);
                 telemetry.NotificationsCleared(17);
                 return Results.Accepted();
-            }
-        );
-        app.MapGet(
-            FAILURE_PATH,
-            _ =>
+            });
+            app.MapGet(FAILURE_PATH, _ =>
                 Task.FromException(new InvalidOperationException($"Native failure token={EXCEPTION_SECRET}"))
-        );
-        await app.StartAsync();
-        await app.Services.GetRequiredService<ITelemetry>().InitializeAsync();
-
-        try
-        {
-            // Act: exercise a real incoming request and native Activity propagation across HttpClient/ASP.NET.
-            using var initiatingActivity = new Activity(
-                nameof(ShouldCorrelateRealSdkTracesAndLogs_WhilePreservingExistingMaskPolicy)
-            )
-                .SetIdFormat(ActivityIdFormat.W3C)
-                .Start();
-            initiatingActivity.ActivityTraceFlags = ActivityTraceFlags.Recorded;
-            using var http = app.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
-            using var request = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + PROBE_PATH);
-            request.Headers.Add(TelemetryProtocol.SessionIdHeader, SESSION);
-            using var response = await http.SendAsync(request, CancellationToken);
-            response.StatusCode.ShouldBe(System.Net.HttpStatusCode.Accepted);
-            using var failedRequest = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + FAILURE_PATH);
-            failedRequest.Headers.Add(TelemetryProtocol.SessionIdHeader, SESSION);
-            using var failedResponse = await http.SendAsync(failedRequest, CancellationToken);
-            failedResponse.StatusCode.ShouldBe(System.Net.HttpStatusCode.InternalServerError);
-            await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
-            app.Services.GetRequiredService<TracerProvider>().ForceFlush().ShouldBeTrue();
-            logger.Dispose();
-
-            // Assert native wire identities, not a mock echo of a dictionary passed to a sink.
-            operationTrace.ShouldBe(initiatingActivity.TraceId);
-            var batches = received
-                .Where(item => item.Path != TelemetryProtocol.TracesPath && item.Path != TelemetryProtocol.LogsPath)
-                .ToArray();
-            var sdkEvents = new List<JsonElement>();
-            foreach (var batch in batches)
-            {
-                using var document = JsonDocument.Parse(batch.Body);
-                sdkEvents.AddRange(
-                    document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone())
-                );
-            }
-            var properties = sdkEvents
-                .Single(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.NotificationsCleared))
-                .GetProperty("properties");
-            properties.GetProperty(TelemetryProtocol.TraceId).GetString().ShouldBe(operationTrace.ToHexString());
-            properties.GetProperty(TelemetryProtocol.SpanId).GetString().ShouldBe(operationSpan.ToHexString());
-            properties.GetProperty(TelemetryProtocol.SessionId).GetString().ShouldBe(SESSION);
-            properties.GetProperty(TelemetryProtocol.DistinctId).GetString().ShouldBe(IDENTITY);
-            properties.GetProperty(TelemetryProperty.DeletedCount).GetInt32().ShouldBe(17);
-            properties.GetProperty(TelemetryProperty.Outcome).GetString().ShouldBe(nameof(TelemetryOutcome.Succeeded));
-            var nativeError = sdkEvents
-                .Single(item => item.GetProperty("event").GetString() == TelemetryProtocol.ExceptionEvent)
-                .GetProperty("properties");
-            nativeError.GetProperty(TelemetryProtocol.TraceId).GetString().ShouldBe(operationTrace.ToHexString());
-            nativeError.GetProperty(TelemetryProtocol.SessionId).GetString().ShouldBe(SESSION);
-            nativeError.GetProperty(TelemetryProperty.HttpRoute).GetString().ShouldBe(FAILURE_PATH);
-            nativeError.GetRawText().ShouldContain(typeof(InvalidOperationException).FullName!);
-            nativeError.GetRawText().ShouldContain(EXCEPTION_SECRET);
-            foreach (var traceExport in received.Where(item => item.Path == TelemetryProtocol.TracesPath))
-                Encoding.UTF8.GetString(traceExport.Body).ShouldNotContain(EXCEPTION_SECRET);
-
-            foreach (var endpoint in new[] { TelemetryProtocol.TracesPath, TelemetryProtocol.LogsPath })
-            {
-                var exports = received.Where(item => item.Path == endpoint).ToArray();
-                var correlated = exports.Single(item =>
-                    item.Body.AsSpan().IndexOf(Convert.FromHexString(operationSpan.ToHexString())) >= 0
-                );
-                correlated.Authorization.ShouldBe($"{TelemetryProtocol.BearerScheme} {PROJECT_TOKEN}");
-                correlated.ContentType.ShouldBe("application/x-protobuf");
-                correlated
-                    .Body.AsSpan()
-                    .IndexOf(Convert.FromHexString(operationTrace.ToHexString()))
-                    .ShouldBeGreaterThanOrEqualTo(0);
-                var attributes = Encoding.UTF8.GetString(correlated.Body);
-                attributes.ShouldContain(TelemetryProtocol.SessionIdTag);
-                attributes.ShouldContain(SESSION);
-                attributes.ShouldContain(TelemetryProtocol.DistinctIdTag);
-                attributes.ShouldContain(IDENTITY);
-                attributes.ShouldContain(TelemetryProtocol.ServiceName);
-                attributes.ShouldContain(TelemetryProtocol.Service);
-                attributes.ShouldContain("1.0.0-test");
-                if (endpoint == TelemetryProtocol.LogsPath)
-                {
-                    attributes.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
-                    attributes.ShouldNotContain("Below the configured log threshold");
-                }
-            }
-
-            var localLog = await File.ReadAllTextAsync(
-                Directory.GetFiles(directory.FullName, "log*.txt").Single(),
-                CancellationToken
             );
-            localLog.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
-            localLog.ShouldNotContain("Below the configured log threshold");
-            buffer.GetAll().Single().Message.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
-        }
-        finally
-        {
-            await app.StopAsync();
-            await receiver.StopAsync();
-        }
+            await app.StartAsync();
+            await app.Services.GetRequiredService<ITelemetry>().InitializeAsync();
+
+            try
+            {
+                // Act: exercise a real incoming request and native Activity propagation across HttpClient/ASP.NET.
+                using var initiatingActivity = new Activity(
+                    nameof(ShouldCorrelateRealSdkTracesAndLogs_WhilePreservingExistingMaskPolicy)
+                )
+                    .SetIdFormat(ActivityIdFormat.W3C)
+                    .Start();
+                initiatingActivity.ActivityTraceFlags = ActivityTraceFlags.Recorded;
+                using var http = app.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
+                using var request = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + PROBE_PATH);
+                request.Headers.Add(TelemetryProtocol.SessionIdHeader, SESSION);
+                using var response = await http.SendAsync(request, CancellationToken);
+                response.StatusCode.ShouldBe(System.Net.HttpStatusCode.Accepted);
+                using var failedRequest = new HttpRequestMessage(HttpMethod.Get, app.Urls.Single() + FAILURE_PATH);
+                failedRequest.Headers.Add(TelemetryProtocol.SessionIdHeader, SESSION);
+                using var failedResponse = await http.SendAsync(failedRequest, CancellationToken);
+                failedResponse.StatusCode.ShouldBe(System.Net.HttpStatusCode.InternalServerError);
+                await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
+                app.Services.GetRequiredService<TracerProvider>().ForceFlush().ShouldBeTrue();
+                logger.Dispose();
+
+                // Assert native wire identities, not a mock echo of a dictionary passed to a sink.
+                operationTrace.ShouldBe(initiatingActivity.TraceId);
+                var batches = received
+                    .Where(item => item.Path != TelemetryProtocol.TracesPath && item.Path != TelemetryProtocol.LogsPath)
+                    .ToArray();
+                var sdkEvents = new List<JsonElement>();
+                foreach (var batch in batches)
+                {
+                    using var document = JsonDocument.Parse(batch.Body);
+                    sdkEvents.AddRange(
+                        document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone())
+                    );
+                }
+                var properties = sdkEvents
+                    .Single(item =>
+                        item.GetProperty("event").GetString() == nameof(TelemetryEvent.NotificationsCleared)
+                    )
+                    .GetProperty("properties");
+                properties.GetProperty(TelemetryProtocol.TraceId).GetString().ShouldBe(operationTrace.ToHexString());
+                properties.GetProperty(TelemetryProtocol.SpanId).GetString().ShouldBe(operationSpan.ToHexString());
+                properties.GetProperty(TelemetryProtocol.SessionId).GetString().ShouldBe(SESSION);
+                properties.GetProperty(TelemetryProtocol.DistinctId).GetString().ShouldBe(IDENTITY);
+                properties.GetProperty(TelemetryProperty.DeletedCount).GetInt32().ShouldBe(17);
+                properties
+                    .GetProperty(TelemetryProperty.Outcome)
+                    .GetString()
+                    .ShouldBe(nameof(TelemetryOutcome.Succeeded));
+                var nativeError = sdkEvents
+                    .Single(item => item.GetProperty("event").GetString() == TelemetryProtocol.ExceptionEvent)
+                    .GetProperty("properties");
+                nativeError.GetProperty(TelemetryProtocol.TraceId).GetString().ShouldBe(operationTrace.ToHexString());
+                nativeError.GetProperty(TelemetryProtocol.SessionId).GetString().ShouldBe(SESSION);
+                nativeError.GetProperty(TelemetryProperty.HttpRoute).GetString().ShouldBe(FAILURE_PATH);
+                nativeError.GetRawText().ShouldContain(typeof(InvalidOperationException).FullName!);
+                nativeError.GetRawText().ShouldContain(EXCEPTION_SECRET);
+                foreach (var traceExport in received.Where(item => item.Path == TelemetryProtocol.TracesPath))
+                    Encoding.UTF8.GetString(traceExport.Body).ShouldNotContain(EXCEPTION_SECRET);
+
+                foreach (var endpoint in new[] { TelemetryProtocol.TracesPath, TelemetryProtocol.LogsPath })
+                {
+                    var exports = received.Where(item => item.Path == endpoint).ToArray();
+                    var correlated = exports.Single(item =>
+                        item.Body.AsSpan().IndexOf(Convert.FromHexString(operationSpan.ToHexString())) >= 0
+                    );
+                    correlated.Authorization.ShouldBe($"{TelemetryProtocol.BearerScheme} {PROJECT_TOKEN}");
+                    correlated.ContentType.ShouldBe("application/x-protobuf");
+                    correlated
+                        .Body.AsSpan()
+                        .IndexOf(Convert.FromHexString(operationTrace.ToHexString()))
+                        .ShouldBeGreaterThanOrEqualTo(0);
+                    var attributes = Encoding.UTF8.GetString(correlated.Body);
+                    attributes.ShouldContain(TelemetryProtocol.SessionIdTag);
+                    attributes.ShouldContain(SESSION);
+                    attributes.ShouldContain(TelemetryProtocol.DistinctIdTag);
+                    attributes.ShouldContain(IDENTITY);
+                    attributes.ShouldContain(TelemetryProtocol.ServiceName);
+                    attributes.ShouldContain(TelemetryProtocol.Service);
+                    attributes.ShouldContain("1.0.0-test");
+                    if (endpoint == TelemetryProtocol.LogsPath)
+                    {
+                        attributes.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
+                        attributes.ShouldNotContain("Below the configured log threshold");
+                    }
+                }
+
+                var localLog = await File.ReadAllTextAsync(
+                    Directory.GetFiles(directory.FullName, "log*.txt").Single(),
+                    CancellationToken
+                );
+                localLog.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
+                localLog.ShouldNotContain("Below the configured log threshold");
+                buffer.GetAll().Single().Message.Contains(LOG_SECRET, StringComparison.Ordinal).ShouldBe(unmasked);
+            }
+            finally
+            {
+                await app.StopAsync();
+                await receiver.StopAsync();
+            }
         }
         finally
         {
@@ -314,32 +314,30 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
         );
         try
         {
-        var user = new Mock<IUserService>(MockBehavior.Strict);
-        var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls("http://127.0.0.1:0");
-        builder.Configuration.AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["PostHog:HostUrl"] = receiver.Urls.Single(),
-                ["PostHog:ProjectToken"] = PROJECT_TOKEN,
-                ["PostHog:Disabled"] = bool.FalseString,
-            }
-        );
-        builder.Services.AddSingleton(build.Object);
-        builder.Services.AddScoped(_ => user.Object);
-        builder.Services.AddSingleton(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName));
-        builder.Services.AddSingleton<IUserSettings>(new UserSettings());
-        builder.Services.AddSingleton<ITelemetry, Telemetry>();
-        builder.Services.AddSingleton<Serilog.ILogger>(logger);
-        builder.Services.ConfigureTelemetry(build.Object, runtime);
-        using var postHogContainer = BuildPostHogContainer(builder.Services);
-        builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
-        await using var app = builder.Build();
-        app.UseRouting();
-        app.UseMiddleware<TelemetryContextMiddleware>();
-        app.MapGet(
-            PROBE_PATH,
-            (ITelemetry telemetry, Serilog.ILogger operationLogger) =>
+            var user = new Mock<IUserService>(MockBehavior.Strict);
+            var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseUrls("http://127.0.0.1:0");
+            builder.Configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["PostHog:HostUrl"] = receiver.Urls.Single(),
+                    ["PostHog:ProjectToken"] = PROJECT_TOKEN,
+                    ["PostHog:Disabled"] = bool.FalseString,
+                }
+            );
+            builder.Services.AddSingleton(build.Object);
+            builder.Services.AddScoped(_ => user.Object);
+            builder.Services.AddSingleton(_ => new ActivitySource(TelemetryProtocol.ActivitySourceName));
+            builder.Services.AddSingleton<IUserSettings>(new UserSettings());
+            builder.Services.AddSingleton<ITelemetry, Telemetry>();
+            builder.Services.AddSingleton<Serilog.ILogger>(logger);
+            builder.Services.ConfigureTelemetry(build.Object, runtime);
+            using var postHogContainer = BuildPostHogContainer(builder.Services);
+            builder.Services.AddSingleton(postHogContainer.Resolve<IPostHogClient>());
+            await using var app = builder.Build();
+            app.UseRouting();
+            app.UseMiddleware<TelemetryContextMiddleware>();
+            app.MapGet(PROBE_PATH, (ITelemetry telemetry, Serilog.ILogger operationLogger) =>
             {
                 using var operation = telemetry.StartActivity(TelemetryActivity.LibrarySync);
                 operation.ShouldBeNull();
@@ -350,33 +348,32 @@ public class TelemetryLogConfigUnitTests : BaseUnitTest
                 );
                 operationLogger.Information("Business operation completed without telemetry configuration");
                 return Results.NoContent();
+            });
+            await app.StartAsync();
+            await app.Services.GetRequiredService<ITelemetry>().InitializeAsync();
+            try
+            {
+                using var http = app.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
+                using var response = await http.GetAsync(app.Urls.Single() + PROBE_PATH, CancellationToken);
+                response.StatusCode.ShouldBe(System.Net.HttpStatusCode.NoContent);
+                await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
+                app.Services.GetService<TracerProvider>().ShouldBeNull();
+                logger.Dispose();
+                received.ShouldBeEmpty();
+                user.Verify(x => x.GetTelemetryId(), Times.Never());
+                buffer.GetAll().Single().Message.ShouldContain("Business operation completed");
+                (
+                    await File.ReadAllTextAsync(
+                        Directory.GetFiles(directory.FullName, "log*.txt").Single(),
+                        CancellationToken
+                    )
+                ).ShouldContain("Business operation completed");
             }
-        );
-        await app.StartAsync();
-        await app.Services.GetRequiredService<ITelemetry>().InitializeAsync();
-        try
-        {
-            using var http = app.Services.GetRequiredService<IHttpClientFactory>().CreateClient();
-            using var response = await http.GetAsync(app.Urls.Single() + PROBE_PATH, CancellationToken);
-            response.StatusCode.ShouldBe(System.Net.HttpStatusCode.NoContent);
-            await app.Services.GetRequiredService<IPostHogClient>().FlushAsync();
-            app.Services.GetService<TracerProvider>().ShouldBeNull();
-            logger.Dispose();
-            received.ShouldBeEmpty();
-            user.Verify(x => x.GetTelemetryId(), Times.Never());
-            buffer.GetAll().Single().Message.ShouldContain("Business operation completed");
-            (
-                await File.ReadAllTextAsync(
-                    Directory.GetFiles(directory.FullName, "log*.txt").Single(),
-                    CancellationToken
-                )
-            ).ShouldContain("Business operation completed");
-        }
-        finally
-        {
-            await app.StopAsync();
-            await receiver.StopAsync();
-        }
+            finally
+            {
+                await app.StopAsync();
+                await receiver.StopAsync();
+            }
         }
         finally
         {

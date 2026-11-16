@@ -30,7 +30,13 @@ public class GetFolderPathDirectoryEndpoint : Endpoint<GetFolderPathDirectoryReq
     private readonly IDiskProvider _diskProvider;
     private readonly ITelemetry _telemetry;
 
-    public GetFolderPathDirectoryEndpoint(ILogger log, IDirectory directory, IPath path, IDiskProvider diskProvider, ITelemetry telemetry)
+    public GetFolderPathDirectoryEndpoint(
+        ILogger log,
+        IDirectory directory,
+        IPath path,
+        IDiskProvider diskProvider,
+        ITelemetry telemetry
+    )
     {
         _log = log.ForContext<GetFolderPathDirectoryEndpoint>();
         _directory = directory;

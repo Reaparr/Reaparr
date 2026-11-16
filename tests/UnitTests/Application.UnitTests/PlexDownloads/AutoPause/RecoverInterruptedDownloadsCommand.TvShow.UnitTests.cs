@@ -6,17 +6,14 @@ public class RecoverInterruptedDownloadsCommandTvShowUnitTests : BaseUnitTest<Re
     public async Task ShouldRecoverInterruptedTvShowEpisodeFiles_WhenActiveStatusesExist()
     {
         // Arrange
-        await SetupDatabase(
-            68115,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 4;
-            }
-        );
+        await SetupDatabase(68115, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 4;
+        });
         var files = await IDbContext
             .DownloadTaskTvShowEpisodeFile.OrderBy(x => x.Id)
             .Take(4)
@@ -94,17 +91,14 @@ public class RecoverInterruptedDownloadsCommandTvShowUnitTests : BaseUnitTest<Re
     public async Task ShouldNotDispatchStatusChanges_WhenTvShowEpisodeFilesAreAlreadyIdle()
     {
         // Arrange
-        await SetupDatabase(
-            68116,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(68116, config =>
+        {
+            config.PlexServerCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
         var files = await IDbContext.DownloadTaskTvShowEpisodeFile.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await IDbContext
             .DownloadTaskTvShowEpisodeFile.Where(x => x.Id == files[0].Id)

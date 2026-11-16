@@ -109,14 +109,11 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
     public async Task ShouldPublishStructuredErrorAndSkipOptimization_WhenSyncFails()
     {
         // Arrange
-        await SetupDatabase(
-            625623,
-            x =>
-            {
-                x.PlexServerCount = 1;
-                x.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(625623, x =>
+        {
+            x.PlexServerCount = 1;
+            x.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
             p => p.SetProperty(x => x.Type, PlexMediaType.MusicArtist),
@@ -206,14 +203,11 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
     [Test]
     public async Task ShouldPreserveCancellationWithoutPublishingError_WhenAlbumMetadataInsertionIsCancelled()
     {
-        await SetupDatabase(
-            625625,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(625625, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
             update => update.SetProperty(entity => entity.Type, PlexMediaType.MusicArtist),
@@ -222,12 +216,14 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var cancellation = ResultExtensions.TaskIsCancelled("album metadata");
         Mock.Mock<ICommandExecutor>()
-            .Setup(executor => executor.Send(
-                It.Is<GetLibraryMediaFromPlexApiCommand>(command =>
-                    command.PlexLibrary == library && command.MediaType == PlexMediaType.MusicAlbum
-                ),
-                CancellationToken
-            ))
+            .Setup(executor =>
+                executor.Send(
+                    It.Is<GetLibraryMediaFromPlexApiCommand>(command =>
+                        command.PlexLibrary == library && command.MediaType == PlexMediaType.MusicAlbum
+                    ),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(Result.Ok(new LibraryMetadata(library)));
         Mock.Mock<ICommandExecutor>()
             .Setup(executor => executor.Send(It.IsAny<InsertMediaMetaDataCommand>(), CancellationToken))
@@ -242,7 +238,10 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
         Mock.Mock<ILibrarySyncProgressStore>()
             .Verify(store => store.UpdateErrorAsync(It.IsAny<int>(), It.IsAny<Result>()), Times.Never());
         Mock.Mock<ICommandExecutor>()
-            .Verify(executor => executor.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                executor => executor.Send(It.IsAny<SyncPlexMusicCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -256,14 +255,11 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
     )
     {
         // Arrange
-        await SetupDatabase(
-            625624,
-            x =>
-            {
-                x.PlexServerCount = 1;
-                x.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(625624, x =>
+        {
+            x.PlexServerCount = 1;
+            x.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
             p => p.SetProperty(x => x.Type, PlexMediaType.MusicArtist),
@@ -364,14 +360,11 @@ public class RefreshPlexMusicLibraryCommandUnitTests : BaseCommandUnitTest<Refre
     public async Task ShouldBuildHierarchyWithoutDroppingTypedDescendants_WhenRefreshingMusic()
     {
         // Arrange
-        await SetupDatabase(
-            625625,
-            x =>
-            {
-                x.PlexServerCount = 1;
-                x.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(625625, x =>
+        {
+            x.PlexServerCount = 1;
+            x.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexLibraries.ExecuteUpdateAsync(
             p => p.SetProperty(x => x.Type, PlexMediaType.MusicArtist),

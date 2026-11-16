@@ -8,28 +8,25 @@ public class RefreshPlexMusicLibraryCommandIntegrationTests : BaseIntegrationTes
         // Arrange
         // Synthetic Plex responses, real hosted refresh and SQLite persistence.
         var seed = new Seed(9625);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (http, _) => http.SetupIdentityRequest(seed);
+            config.DatabaseOptions = database =>
             {
-                config.HttpClientOptions = (http, _) => http.SetupIdentityRequest(seed);
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexAccountCount = 1;
-                    database.PlexServerCount = 1;
-                    database.PlexMusicLibraryCount = 1;
-                };
-                config.BaseMockHttpClientOptions = plex =>
-                {
-                    plex.GenerateFromDatabase = true;
-                    plex.PlexServerAccessCount = 1;
-                    plex.MusicLibraryCount = 1;
-                    plex.ArtistsPerLibraryCount = 2;
-                    plex.AlbumsPerArtistCount = 2;
-                    plex.TracksPerAlbumCount = 2;
-                };
-            }
-        );
+                database.PlexAccountCount = 1;
+                database.PlexServerCount = 1;
+                database.PlexMusicLibraryCount = 1;
+            };
+            config.BaseMockHttpClientOptions = plex =>
+            {
+                plex.GenerateFromDatabase = true;
+                plex.PlexServerAccessCount = 1;
+                plex.MusicLibraryCount = 1;
+                plex.ArtistsPerLibraryCount = 2;
+                plex.AlbumsPerArtistCount = 2;
+                plex.TracksPerAlbumCount = 2;
+            };
+        });
         var client = container.GetApiClient();
         await client.SignIn();
         var library = await container.DbContext.PlexLibraries.SingleAsync(CancellationToken);

@@ -23,18 +23,15 @@ public class StartDownloadTaskCommandHandoffUnitTests : BaseCommandUnitTest<Star
         SetupDependencies(builder =>
             builder.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>().SingleInstance()
         );
-        await SetupDatabase(
-            31831,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 2;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeCount = 3;
-                config.TvShowEpisodeDownloadTasksCount = 3;
-            }
-        );
+        await SetupDatabase(31831, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 2;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeCount = 3;
+            config.TvShowEpisodeDownloadTasksCount = 3;
+        });
         var dbContext = IDbContext;
         await dbContext.DownloadTaskTvShowEpisodeFile.ExecuteUpdateAsync(
             update => update.SetProperty(file => file.DownloadStatus, DownloadStatus.Completed),

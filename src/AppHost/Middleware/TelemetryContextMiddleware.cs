@@ -22,13 +22,16 @@ public sealed class TelemetryContextMiddleware
     /// </summary>
     public async Task InvokeAsync(HttpContext context, ITelemetry telemetry)
     {
-        using var scope = telemetry.BeginRequest(context.Request.Headers[TelemetryProtocol.SessionIdHeader].FirstOrDefault());
+        using var scope = telemetry.BeginRequest(
+            context.Request.Headers[TelemetryProtocol.SessionIdHeader].FirstOrDefault()
+        );
 
         try
         {
             await _next(context);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException || !context.RequestAborted.IsCancellationRequested)
+        catch (Exception exception)
+            when (exception is not OperationCanceledException || !context.RequestAborted.IsCancellationRequested)
         {
             telemetry.HttpRequestFailed(
                 exception,

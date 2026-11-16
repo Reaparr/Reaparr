@@ -6,15 +6,12 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
     public async Task ShouldCreateDirectPhotoFolderAndFile_AndReportPhotoFolderAndImageCounts()
     {
         // Arrange
-        await SetupDatabase(
-            62501,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62501, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var media = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var request = new CreateDownloadTasksRequest(
@@ -70,15 +67,12 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
     public async Task ShouldKeepOtherFamilyValidationAndNotDispatchPhotoGenerator_WhenQualityIsInvalid()
     {
         // Arrange
-        await SetupDatabase(
-            62502,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62502, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var media = await IDbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var command = new CreateDownloadTasksCommand(
             new CreateDownloadTasksRequest([
@@ -125,15 +119,12 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
     public async Task ShouldReturnGeneratorFailureWithoutNotification_WhenPhotoGeneratorFails()
     {
         // Arrange
-        await SetupDatabase(
-            62503,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62503, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var media = await IDbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var request = new CreateDownloadTasksRequest([CreatePhotoAssetSelection(media)]);
         Mock.Mock<ICommandExecutor>()
@@ -269,27 +260,24 @@ public class CreateDownloadTasksCommandHandlerUnitTests : BaseCommandUnitTest<Cr
     public async Task ShouldPersistAllFiveFamiliesAndReportEveryCreatedTask_WhenSelectionsAreMixed()
     {
         // Arrange
-        await SetupDatabase(
-            62504,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62504, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         var movie = await dbContext.PlexMovies.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
         var show = await dbContext

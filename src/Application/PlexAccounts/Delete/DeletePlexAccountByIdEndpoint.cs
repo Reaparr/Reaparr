@@ -17,6 +17,7 @@ public class DeletePlexAccountByIdEndpoint : Endpoint<DeletePlexAccountByIdReque
     private readonly INotificationHubService _notificationHubService;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
+
     public DeletePlexAccountByIdEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,

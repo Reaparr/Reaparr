@@ -15,64 +15,61 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         var seed = new Seed(231156);
         var originalBytes = new ConcurrentDictionary<string, byte[]>();
         var downloadRequests = new ConcurrentBag<(string Url, string TargetPath)>();
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexMovieLibraryCount = 1;
+                x.MovieCount = 3;
+                x.PlexTvShowLibraryCount = 1;
+                x.TvShowCount = 1;
+                x.TvShowSeasonCount = 1;
+                x.TvShowEpisodeCount = 1;
+                x.PlexMusicLibraryCount = 1;
+                x.MusicArtistCount = 1;
+                x.MusicAlbumCount = 1;
+                x.MusicTrackCount = 1;
+                x.PlexPhotoLibraryCount = 1;
+                x.PhotoAlbumCount = 1;
+                x.PhotoCount = 1;
+                x.PhotoClipCount = 1;
+                x.PlexOtherVideoLibraryCount = 1;
+                x.OtherVideoDownloadTasksCount = 1;
+                x.OtherVideoFileDownloadTasksCount = 1;
+                x.OtherVideoCount = 1;
+                x.DownloadFileSizeInMb = 1;
+            };
+            config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+            config.MockDownloadServiceFactory = file =>
+                configuration =>
                 {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexMovieLibraryCount = 1;
-                    x.MovieCount = 3;
-                    x.PlexTvShowLibraryCount = 1;
-                    x.TvShowCount = 1;
-                    x.TvShowSeasonCount = 1;
-                    x.TvShowEpisodeCount = 1;
-                    x.PlexMusicLibraryCount = 1;
-                    x.MusicArtistCount = 1;
-                    x.MusicAlbumCount = 1;
-                    x.MusicTrackCount = 1;
-                    x.PlexPhotoLibraryCount = 1;
-                    x.PhotoAlbumCount = 1;
-                    x.PhotoCount = 1;
-                    x.PhotoClipCount = 1;
-                    x.PlexOtherVideoLibraryCount = 1;
-                    x.OtherVideoDownloadTasksCount = 1;
-                    x.OtherVideoFileDownloadTasksCount = 1;
-                    x.OtherVideoCount = 1;
-                    x.DownloadFileSizeInMb = 1;
-                };
-                config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
-                config.MockDownloadServiceFactory = file =>
-                    configuration =>
-                    {
-                        var downloader = MockDownloadService.SuccessFactory(file)(configuration);
-                        var mock = Mock.Get(downloader);
-                        mock.Setup(x =>
-                                x.DownloadFileTaskAsync(
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<CancellationToken>()
-                                )
+                    var downloader = MockDownloadService.SuccessFactory(file)(configuration);
+                    var mock = Mock.Get(downloader);
+                    mock.Setup(x =>
+                            x.DownloadFileTaskAsync(
+                                It.IsAny<string>(),
+                                It.IsAny<string>(),
+                                It.IsAny<CancellationToken>()
                             )
-                            .Returns<string, string, CancellationToken>(
-                                (url, targetPath, _) =>
-                                {
-                                    downloadRequests.Add((url, targetPath));
-                                    file.WriteAllBytes(targetPath, originalBytes[new Uri(url).AbsolutePath]);
-                                    mock.Raise(
-                                        x => x.DownloadFileCompleted += null,
-                                        downloader,
-                                        new AsyncCompletedEventArgs(null, false, downloader.Package)
-                                    );
-                                    return Task.CompletedTask;
-                                }
-                            );
-                        return downloader;
-                    };
-            }
-        );
+                        )
+                        .Returns<string, string, CancellationToken>(
+                            (url, targetPath, _) =>
+                            {
+                                downloadRequests.Add((url, targetPath));
+                                file.WriteAllBytes(targetPath, originalBytes[new Uri(url).AbsolutePath]);
+                                mock.Raise(
+                                    x => x.DownloadFileCompleted += null,
+                                    downloader,
+                                    new AsyncCompletedEventArgs(null, false, downloader.Package)
+                                );
+                                return Task.CompletedTask;
+                            }
+                        );
+                    return downloader;
+                };
+        });
         container.Resolve<IDownloadManagerSettings>().DownloadSegments = 1;
         var factory = container.Resolve<IReaparrDbContextFactory>();
         var fileSystem = container.Resolve<IFileSystem>();
@@ -440,49 +437,46 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         // Arrange
         byte[] expectedContent = FakeData.GetDownloadFile(1);
         var seed = new Seed(231156);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 1;
+                x.PhotoAlbumCount = 1;
+                x.PhotoCount = 1;
+                x.PhotoClipCount = 1;
+                x.DownloadFileSizeInMb = 1;
+            };
+            config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+            config.MockDownloadServiceFactory = file =>
+                configuration =>
                 {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexPhotoLibraryCount = 1;
-                    x.PhotoAlbumCount = 1;
-                    x.PhotoCount = 1;
-                    x.PhotoClipCount = 1;
-                    x.DownloadFileSizeInMb = 1;
-                };
-                config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
-                config.MockDownloadServiceFactory = file =>
-                    configuration =>
-                    {
-                        var downloader = MockDownloadService.SuccessFactory(file)(configuration);
-                        var mock = Mock.Get(downloader);
-                        mock.Setup(x =>
-                                x.DownloadFileTaskAsync(
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<CancellationToken>()
-                                )
+                    var downloader = MockDownloadService.SuccessFactory(file)(configuration);
+                    var mock = Mock.Get(downloader);
+                    mock.Setup(x =>
+                            x.DownloadFileTaskAsync(
+                                It.IsAny<string>(),
+                                It.IsAny<string>(),
+                                It.IsAny<CancellationToken>()
                             )
-                            .Returns<string, string, CancellationToken>(
-                                (_, targetPath, _) =>
-                                {
-                                    file.WriteAllBytes(targetPath.RemoveReapTempSuffix(), expectedContent);
-                                    mock.Raise(
-                                        x => x.DownloadFileCompleted += null,
-                                        downloader,
-                                        new AsyncCompletedEventArgs(null, false, downloader.Package)
-                                    );
-                                    return Task.CompletedTask;
-                                }
-                            );
-                        return downloader;
-                    };
-            }
-        );
+                        )
+                        .Returns<string, string, CancellationToken>(
+                            (_, targetPath, _) =>
+                            {
+                                file.WriteAllBytes(targetPath.RemoveReapTempSuffix(), expectedContent);
+                                mock.Raise(
+                                    x => x.DownloadFileCompleted += null,
+                                    downloader,
+                                    new AsyncCompletedEventArgs(null, false, downloader.Package)
+                                );
+                                return Task.CompletedTask;
+                            }
+                        );
+                    return downloader;
+                };
+        });
         container.Resolve<IDownloadManagerSettings>().DownloadSegments = 1;
         var factory = container.Resolve<IReaparrDbContextFactory>();
         var fileSystem = container.Resolve<IFileSystem>();
@@ -617,25 +611,22 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
     {
         // Arrange
         var seed = new Seed(231157);
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexPhotoLibraryCount = 1;
-                    x.PhotoCount = 2;
-                };
-                config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
-            }
-        );
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 1;
+                x.PhotoCount = 2;
+            };
+            config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+        });
         var factory = container.Resolve<IReaparrDbContextFactory>();
         using (var arrangeContext = await factory.CreateAsync())
         {
-            var photoLibraryId = await arrangeContext.PlexLibraries
-                .Where(x => x.Type == PlexMediaType.PhotoAlbum)
+            var photoLibraryId = await arrangeContext
+                .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)
                 .Select(x => x.Id)
                 .SingleAsync(CancellationToken);
             var files = await arrangeContext
@@ -693,20 +684,17 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         // Arrange
         var seed = new Seed(231158);
         string alternateDestination;
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexPhotoLibraryCount = 1;
-                    x.PhotoCount = 1;
-                };
-                config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
-            }
-        );
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexPhotoLibraryCount = 1;
+                x.PhotoCount = 1;
+            };
+            config.HttpClientOptions = (handler, _) => handler.SetupIdentityRequest(seed);
+        });
         alternateDestination = Path.Combine(container.PathProvider.DefaultPhotosDestinationFolder, "alternate");
         var fileSystem = container.Resolve<IFileSystem>();
         fileSystem.Directory.CreateDirectory(alternateDestination);

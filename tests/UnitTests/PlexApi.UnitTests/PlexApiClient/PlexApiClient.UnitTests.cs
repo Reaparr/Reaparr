@@ -17,17 +17,14 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
         {
             config
                 .SetupAnyRequest()
-                .ReturnsResponse(
-                    HttpStatusCode.Unauthorized,
-                    x =>
-                    {
-                        x.Content = new StringContent(
-                            "<html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>",
-                            Encoding.UTF8,
-                            ContentType.TextHtml
-                        );
-                    }
-                );
+                .ReturnsResponse(HttpStatusCode.Unauthorized, x =>
+                {
+                    x.Content = new StringContent(
+                        "<html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>",
+                        Encoding.UTF8,
+                        ContentType.TextHtml
+                    );
+                });
         });
 
         // Arrange
@@ -95,17 +92,14 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
         {
             config
                 .SetupAnyRequest()
-                .ReturnsResponse(
-                    HttpStatusCode.InternalServerError,
-                    x =>
-                    {
-                        x.Content = new StringContent(
-                            "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>",
-                            Encoding.UTF8,
-                            ContentType.TextHtml
-                        );
-                    }
-                );
+                .ReturnsResponse(HttpStatusCode.InternalServerError, x =>
+                {
+                    x.Content = new StringContent(
+                        "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>",
+                        Encoding.UTF8,
+                        ContentType.TextHtml
+                    );
+                });
         });
 
         // Arrange

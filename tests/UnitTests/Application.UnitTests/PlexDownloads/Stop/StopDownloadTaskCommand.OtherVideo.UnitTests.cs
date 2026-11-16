@@ -12,15 +12,12 @@ public class StopDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<St
     )
     {
         // Arrange
-        await SetupDatabase(
-            88220,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 2;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88220, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 2;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var otherVideoFiles = await dbContext
             .DownloadTaskOtherVideoFiles.Include(x => x.Parent)
@@ -98,15 +95,12 @@ public class StopDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<St
     public async Task ShouldStopAllOtherVideoChildren_WhenStoppingOtherVideo()
     {
         // Arrange
-        await SetupDatabase(
-            88221,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 1;
-                c.OtherVideoFileDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(88221, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 1;
+            c.OtherVideoFileDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var otherVideo = await dbContext.DownloadTaskOtherVideos.FirstAsync(CancellationToken);
         var files = await dbContext.DownloadTaskOtherVideoFiles.OrderBy(x => x.Id).ToListAsync(CancellationToken);

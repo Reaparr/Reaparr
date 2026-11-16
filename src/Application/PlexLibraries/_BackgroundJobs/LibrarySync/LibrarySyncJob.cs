@@ -40,10 +40,7 @@ public class LibrarySyncJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
-        using var telemetryScope = _telemetry.BeginJob(
-            TelemetryActivity.LibrarySync,
-            context.GetTelemetryContext()
-        );
+        using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.LibrarySync, context.GetTelemetryContext());
 
         var payloadResult = context.GetRequiredPayload<LibrarySyncJobPayload>();
         if (payloadResult.IsCancelledOrFailed)
@@ -76,9 +73,7 @@ public class LibrarySyncJob : IJob
             {
                 queueItem = await _dbContext
                     .LibrarySyncJobQueues.Include(x => x.PlexLibrary)
-                    .Where(x =>
-                        x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId
-                    )
+                    .Where(x => x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId)
                     .FirstOrDefaultAsync(CancellationToken.None);
                 var queueStatus = queueItem?.Status ?? LibrarySyncJobStatus.Unknown;
                 if (queueStatus != LibrarySyncJobStatus.Processing)
@@ -101,7 +96,8 @@ public class LibrarySyncJob : IJob
                 isServerOffline = !await _dbContext.IsServerOnline(_serverId);
                 if (isServerOffline)
                 {
-                    _log.Here().Warning("Server {ServerId} is offline, marking queue item and skipping sync", _serverId);
+                    _log.Here()
+                        .Warning("Server {ServerId} is offline, marking queue item and skipping sync", _serverId);
                     return Result.Ok();
                 }
 
@@ -189,7 +185,8 @@ public class LibrarySyncJob : IJob
         if (
             persisted
             && queueItem is not null
-            && status is (LibrarySyncJobStatus.Completed or LibrarySyncJobStatus.Failed or LibrarySyncJobStatus.Cancelled)
+            && status
+                is (LibrarySyncJobStatus.Completed or LibrarySyncJobStatus.Failed or LibrarySyncJobStatus.Cancelled)
         )
         {
             _telemetry.LibrarySyncFinished(
@@ -206,10 +203,7 @@ public class LibrarySyncJob : IJob
         var cleanupToken = cleanupTokenSource.Token;
         var notificationResult = await Result.Try(() =>
             _notificationHubService
-                .SendRefreshNotificationAsync([
-                    RefreshDataType.PlexLibrary,
-                    RefreshDataType.PlexLibrarySyncStatus,
-                ])
+                .SendRefreshNotificationAsync([RefreshDataType.PlexLibrary, RefreshDataType.PlexLibrarySyncStatus])
                 .WaitAsync(cleanupToken)
         );
         notificationResult.LogIfFailed();
@@ -222,9 +216,7 @@ public class LibrarySyncJob : IJob
     )
     {
         var query = _dbContext.LibrarySyncJobQueues.Where(x =>
-            x.PlexServerId == _serverId
-            && x.PlexLibraryId == _libraryId
-            && x.Status == LibrarySyncJobStatus.Processing
+            x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId && x.Status == LibrarySyncJobStatus.Processing
         );
 
         return status switch

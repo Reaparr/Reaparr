@@ -13,17 +13,14 @@ public class DownloadTaskUpdateDispatcherMusicUnitTests : BaseUnitTest<DownloadT
     )
     {
         // Arrange
-        await SetupDatabase(
-            88003,
-            c =>
-            {
-                c.PlexMusicLibraryCount = 1;
-                c.MusicArtistDownloadTasksCount = 2;
-                c.MusicAlbumDownloadTasksCount = 1;
-                c.MusicTrackDownloadTasksCount = 1;
-                c.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88003, c =>
+        {
+            c.PlexMusicLibraryCount = 1;
+            c.MusicArtistDownloadTasksCount = 2;
+            c.MusicAlbumDownloadTasksCount = 1;
+            c.MusicTrackDownloadTasksCount = 1;
+            c.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var files = await dbContext
             .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)

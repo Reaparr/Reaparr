@@ -6,15 +6,12 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     public async Task ShouldRedistributeCappedSharesAndRemoveInactiveGrants_WhenServersHaveMultipleFiles()
     {
         // Arrange
-        await SetupDatabase(
-            85301,
-            config =>
-            {
-                config.PlexServerCount = 4;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 0;
-            }
-        );
+        await SetupDatabase(85301, config =>
+        {
+            config.PlexServerCount = 4;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 0;
+        });
         var dbContext = IDbContext;
         var servers = (await dbContext.PlexServers.ToListAsync(CancellationToken))
             .OrderBy(x => x.MachineIdentifier, StringComparer.Ordinal)
@@ -87,16 +84,13 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     public async Task ShouldIncludeMusicPhotoAndOtherVideoFilesAsDistinctParticipants()
     {
         // Arrange
-        await SetupDatabase(
-            85304,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMusicLibraryCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(85304, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMusicLibraryCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var servers = await dbContext.PlexServers.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var mediaTypes = new[] { PlexMediaType.MusicArtist, PlexMediaType.PhotoAlbum, PlexMediaType.OtherVideos };
@@ -194,15 +188,12 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     public async Task ShouldSplitOneKilobyteWithoutRoundingUp_WhenThreeServersAreDownloading()
     {
         // Arrange
-        await SetupDatabase(
-            85302,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 0;
-            }
-        );
+        await SetupDatabase(85302, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 0;
+        });
         var dbContext = IDbContext;
         foreach (var server in await dbContext.PlexServers.ToListAsync(CancellationToken))
         {
@@ -315,15 +306,12 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
     public async Task ShouldLeaveExcessBudgetUnused_WhenEveryDownloadingServerHasAFiniteManualCap()
     {
         // Arrange
-        await SetupDatabase(
-            85331,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 0;
-            }
-        );
+        await SetupDatabase(85331, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 0;
+        });
         using var dbContext = IDbContext;
         var servers = (await dbContext.PlexServers.ToListAsync(CancellationToken))
             .OrderBy(x => x.MachineIdentifier, StringComparer.Ordinal)
@@ -369,9 +357,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         servers
             .Select(x => speedLimits.GetEffectiveDownloadSpeedLimit(x.MachineIdentifier))
             .ShouldBe([102400, 204800]);
-        servers
-            .Select(x => settings.ServerSettings.GetDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe([100, 200]);
+        servers.Select(x => settings.ServerSettings.GetDownloadSpeedLimit(x.MachineIdentifier)).ShouldBe([100, 200]);
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
     }

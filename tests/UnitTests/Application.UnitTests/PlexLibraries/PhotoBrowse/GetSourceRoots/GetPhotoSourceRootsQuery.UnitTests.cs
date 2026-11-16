@@ -11,15 +11,12 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
     public async Task ShouldListOnlyActiveRootsAndKeepRecursiveTotalsOnTheFolderItems()
     {
         // Arrange
-        await SetupDatabase(
-            71003,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(71003, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -73,15 +70,12 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
     public async Task ShouldReturnAValidEmptyPageWhenNoActiveRootsRemain()
     {
         // Arrange
-        await SetupDatabase(
-            71012,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(71012, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,
@@ -104,15 +98,12 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
     public async Task ShouldBoundLargeRootPagesAndBatchRecursiveTotals()
     {
         // Arrange
-        await SetupDatabase(
-            71016,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(71016, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(
             x => x.Type == PlexMediaType.PhotoAlbum,

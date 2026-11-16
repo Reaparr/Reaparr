@@ -121,10 +121,7 @@ public class UpdateScheduledDownloadLimitsJobUnitTests : BaseUnitTest<UpdateSche
         commandResult.Errors.Single().ShouldBeOfType<ExceptionalError>().Exception.ShouldBeSameAs(exception);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>()
-            .Verify(
-                x => x.CaptureErrors(commandResult, TelemetryActivity.ScheduledDownloadLimits),
-                Times.Once()
-            );
+            .Verify(x => x.CaptureErrors(commandResult, TelemetryActivity.ScheduledDownloadLimits), Times.Once());
     }
 
     [Test]

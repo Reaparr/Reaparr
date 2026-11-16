@@ -1,11 +1,7 @@
 namespace Reaparr.Application.UnitTests;
 
 public class CheckConnectionStatusByIdEndpointUnitTests
-    : BaseEndpointUnitTest<
-        CheckConnectionStatusByIdEndpoint,
-        CheckConnectionStatusByIdRequest,
-        PlexServerStatusDTO
-    >
+    : BaseEndpointUnitTest<CheckConnectionStatusByIdEndpoint, CheckConnectionStatusByIdRequest, PlexServerStatusDTO>
 {
     [Test]
     public async Task ShouldEmitConnectionTelemetryOnce_WhenManualCheckSucceeds()
@@ -24,9 +20,7 @@ public class CheckConnectionStatusByIdEndpointUnitTests
         };
         var result = Result.Ok(status);
 
-        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
-            .ReturnsAsync(result)
-            .Verifiable(Times.Once());
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>).ReturnsAsync(result).Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
             .Setup(x =>
                 x.ConnectionCheckFinished(
@@ -58,13 +52,17 @@ public class CheckConnectionStatusByIdEndpointUnitTests
         response.Value.ShouldNotBeNull();
         response.Value!.Id.ShouldBe(status.Id);
         response.Value.PlexServerConnectionId.ShouldBe(connectionId);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(
-                It.Is<CheckConnectionStatusByIdCommand>(command => command.PlexServerConnectionId == connectionId),
-                It.IsAny<CancellationToken>()
-            ),
-            Times.Once()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x =>
+                    x.Send(
+                        It.Is<CheckConnectionStatusByIdCommand>(command =>
+                            command.PlexServerConnectionId == connectionId
+                        ),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
@@ -79,9 +77,7 @@ public class CheckConnectionStatusByIdEndpointUnitTests
             .Fail<PlexServerStatus>("probe failed")
             .AddStatusCode(System.Net.HttpStatusCode.ServiceUnavailable, "probe failed");
 
-        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
-            .ReturnsAsync(result)
-            .Verifiable(Times.Once());
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>).ReturnsAsync(result).Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
             .Setup(x =>
                 x.ConnectionCheckFinished(
@@ -106,13 +102,17 @@ public class CheckConnectionStatusByIdEndpointUnitTests
         response.IsSuccess.ShouldBeFalse();
         response.Errors.Count.ShouldBe(2);
         response.Errors.Select(error => error.Message).ShouldBe(["probe failed", "probe failed"]);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(
-                It.Is<CheckConnectionStatusByIdCommand>(command => command.PlexServerConnectionId == connectionId),
-                It.IsAny<CancellationToken>()
-            ),
-            Times.Once()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x =>
+                    x.Send(
+                        It.Is<CheckConnectionStatusByIdCommand>(command =>
+                            command.PlexServerConnectionId == connectionId
+                        ),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<ITelemetry>().VerifyNoOtherCalls();

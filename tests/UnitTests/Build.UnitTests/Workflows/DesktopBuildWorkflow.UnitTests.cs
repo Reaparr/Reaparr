@@ -224,10 +224,7 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         // Arrange
         SetupFileSystem(system =>
         {
-            system.AddFile(
-                "/repo/.artifacts/win-x64/publish/Reaparr.AppHost.exe",
-                new MockFileData([0, 1, 255])
-            );
+            system.AddFile("/repo/.artifacts/win-x64/publish/Reaparr.AppHost.exe", new MockFileData([0, 1, 255]));
             system.AddFile("/repo/.artifacts/win-x64/publish/nested/config.json", new MockFileData("config"));
             if (customOutput)
                 system.AddFile("/repo/release-output/publish/stale.bin", new MockFileData("stale"));

@@ -11,9 +11,8 @@ public class SetServerAliasRequestUnitTests : BaseEndpointUnitTest<SetServerAlia
         var request = new SetServerAliasRequest { PlexServerId = 1, ServerAlias = string.Empty };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton(_ => Mock.Mock<IServerSettingsModule>().Object)
+        var result = await TestEndpointHandleAsync(request, services =>
+            services.AddSingleton(_ => Mock.Mock<IServerSettingsModule>().Object)
         );
 
         // Assert
@@ -30,9 +29,8 @@ public class SetServerAliasRequestUnitTests : BaseEndpointUnitTest<SetServerAlia
         var request = new SetServerAliasRequest { PlexServerId = 1, ServerAlias = "   " };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton(_ => Mock.Mock<IServerSettingsModule>().Object)
+        var result = await TestEndpointHandleAsync(request, services =>
+            services.AddSingleton(_ => Mock.Mock<IServerSettingsModule>().Object)
         );
 
         // Assert

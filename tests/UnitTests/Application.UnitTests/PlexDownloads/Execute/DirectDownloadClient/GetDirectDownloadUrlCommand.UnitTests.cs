@@ -8,15 +8,12 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     public async Task ShouldReturnUrlWithoutDownloadQuery_WhenInitialProbeSucceeds()
     {
         // Arrange
-        await SetupDatabase(
-            90201,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(90201, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         SetupHttpClientFactory(HttpStatusCode.OK);
@@ -39,15 +36,12 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     public async Task ShouldAppendDownloadQuery_WhenInitialProbeIsForbidden()
     {
         // Arrange
-        await SetupDatabase(
-            90202,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(90202, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         SetupHttpClientFactory(HttpStatusCode.Forbidden, HttpStatusCode.OK);
@@ -70,15 +64,12 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     public async Task ShouldReturnFailedResult_WhenForbiddenAndFallbackAlsoFails()
     {
         // Arrange
-        await SetupDatabase(
-            90203,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(90203, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         SetupHttpClientFactory(HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized);
@@ -100,15 +91,12 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     public async Task ShouldAdd404NotFoundError_WhenInitialProbeReturnsNotFound()
     {
         // Arrange
-        await SetupDatabase(
-            90207,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(90207, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         SetupHttpClientFactory(HttpStatusCode.NotFound, HttpStatusCode.NotFound);
@@ -132,15 +120,12 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     public async Task ShouldAdd404NotFoundError_WhenFallbackProbeReturnsNotFound()
     {
         // Arrange
-        await SetupDatabase(
-            90208,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(90208, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         SetupHttpClientFactory(HttpStatusCode.Forbidden, HttpStatusCode.NotFound);
@@ -164,15 +149,12 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     public async Task ShouldRetryTransientProbeFailuresAndReturnUrl_WhenProbeEventuallySucceeds()
     {
         // Arrange
-        await SetupDatabase(
-            90204,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(90204, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var handler = new DefaultProbeTransientSequenceHandler(
@@ -205,15 +187,12 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     public async Task ShouldReturnFailedResult_AfterConfiguredTransientRetriesAreExhausted()
     {
         // Arrange
-        await SetupDatabase(
-            90205,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(90205, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var handler = new ExhaustedTransientRetryHandler();
@@ -246,15 +225,12 @@ public class GetDirectDownloadUrlCommandUnitTests : BaseUnitTest<GetDirectDownlo
     public async Task ShouldStartDefaultAndFallbackProbeRequestsInParallel()
     {
         // Arrange
-        await SetupDatabase(
-            90206,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(90206, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var handler = new ParallelProbeHandler();

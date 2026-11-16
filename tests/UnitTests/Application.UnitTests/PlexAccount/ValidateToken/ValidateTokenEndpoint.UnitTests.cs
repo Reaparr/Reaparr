@@ -358,9 +358,14 @@ public class ValidatePlexTokenEndpointUnitTests
         );
 
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<ValidatePlexTokenCommand>(command => command.AuthenticationToken == testAccountDTO.AuthenticationToken),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<ValidatePlexTokenCommand>(command =>
+                        command.AuthenticationToken == testAccountDTO.AuthenticationToken
+                    ),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(commandResult)
             .Verifiable(Times.Once());
 

@@ -6,16 +6,13 @@ public class ReaparrDbContextExtensionsIncludeDownloadTasksUnitTests : BaseUnitT
     public async Task ShouldHaveAllMovieDownloadTaskChildrenIncluded_WhenDbContainsNestedDownloadTasks()
     {
         // Arrange
-        await SetupDatabase(
-            334734,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 10;
-                config.MovieDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(334734, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 10;
+            config.MovieDownloadTasksCount = 5;
+        });
 
         // Act
         var downloadTasks = IDbContext.DownloadTaskMovie.IncludeAll().ToList();
@@ -33,20 +30,17 @@ public class ReaparrDbContextExtensionsIncludeDownloadTasksUnitTests : BaseUnitT
     public async Task ShouldHaveAllTvShowDownloadTaskChildrenIncluded_WhenDbContainsNestedDownloadTasks()
     {
         // Arrange
-        await SetupDatabase(
-            93355,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.TvShowCount = 10;
-                config.TvShowSeasonCount = 10;
-                config.TvShowEpisodeCount = 10;
-                config.TvShowDownloadTasksCount = 5;
-                config.TvShowSeasonDownloadTasksCount = 5;
-                config.TvShowEpisodeDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(93355, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.TvShowCount = 10;
+            config.TvShowSeasonCount = 10;
+            config.TvShowEpisodeCount = 10;
+            config.TvShowDownloadTasksCount = 5;
+            config.TvShowSeasonDownloadTasksCount = 5;
+            config.TvShowEpisodeDownloadTasksCount = 5;
+        });
 
         // Act
         var downloadTasksDb = IDbContext.DownloadTaskTvShow.IncludeAll().ToList();
@@ -60,15 +54,12 @@ public class ReaparrDbContextExtensionsIncludeDownloadTasksUnitTests : BaseUnitT
     public async Task ShouldHaveAllNestedRelationshipsIncluded_WhenGivenTvShowDownloadTasks()
     {
         // Arrange
-        await SetupDatabase(
-            3882,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 5;
-                config.TvShowSeasonDownloadTasksCount = 5;
-                config.TvShowEpisodeDownloadTasksCount = 5;
-            }
-        );
+        await SetupDatabase(3882, config =>
+        {
+            config.TvShowDownloadTasksCount = 5;
+            config.TvShowSeasonDownloadTasksCount = 5;
+            config.TvShowEpisodeDownloadTasksCount = 5;
+        });
 
         // Act
         var downloadTaskTvShows = IDbContext.DownloadTaskTvShow.IncludeAll().ToList();

@@ -17,17 +17,14 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
     public async Task ShouldAcceptExplicitZeroWithoutFetchingPages_WhenLibraryIsConfirmedEmpty()
     {
         // Arrange
-        await SetupDatabase(
-            9203,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 0;
-                config.MovieCount = 0;
-            }
-        );
+        await SetupDatabase(9203, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 0;
+            config.MovieCount = 0;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var sectionId = long.Parse(library.Key);
@@ -86,17 +83,14 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
     public async Task ShouldRequestIndependentTotal_AndUpdateTheDenominatorWhenPlexChanges()
     {
         // Arrange
-        await SetupDatabase(
-            9206,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 0;
-                config.MovieCount = 0;
-            }
-        );
+        await SetupDatabase(9206, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 0;
+            config.MovieCount = 0;
+        });
         var library = await IDbContext.PlexLibraries.SingleAsync(CancellationToken);
         var items = new[] { CreateItem(1, "movie"), CreateItem(2, "movie"), CreateItem(3, "movie") };
         var requests = new List<IDictionary<string, string>>();
@@ -190,17 +184,14 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
     public async Task ShouldRetrieveMediaAcrossAllPages_WhenUsingRealSdk(PlexMediaType mediaType)
     {
         // Arrange
-        await SetupDatabase(
-            9204,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 0;
-                config.MovieCount = 0;
-            }
-        );
+        await SetupDatabase(9204, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 0;
+            config.MovieCount = 0;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
         var itemType = mediaType == PlexMediaType.OtherVideos ? "movie" : mediaType.ToPlexApiString();

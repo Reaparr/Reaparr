@@ -26,10 +26,7 @@ public class CompareTvShowPlexLibraryCommandHandler : ICommandHandler<CompareTvS
 
     public async Task<Result> ExecuteAsync(CompareTvShowPlexLibraryCommand command, CancellationToken cancellationToken)
     {
-        using var activity = _telemetry.StartTvShowComparison(
-            command.OwnedPlexLibraryId,
-            command.RemotePlexLibraryId
-        );
+        using var activity = _telemetry.StartTvShowComparison(command.OwnedPlexLibraryId, command.RemotePlexLibraryId);
         return await Result.Try(
             new Func<Task<Result>>(async () =>
             {

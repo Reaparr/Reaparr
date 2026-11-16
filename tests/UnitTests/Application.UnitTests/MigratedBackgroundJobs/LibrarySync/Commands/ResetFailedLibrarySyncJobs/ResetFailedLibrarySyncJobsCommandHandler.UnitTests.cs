@@ -6,14 +6,11 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
     public async Task ShouldResetFailedJobsToQueued_WhenFailedJobsExistForServer()
     {
         // Arrange
-        await SetupDatabase(
-            4001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(4001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.First();
@@ -90,14 +87,11 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
     public async Task ShouldKeepResetAdmission_WhenCheckerFails()
     {
         // Arrange
-        await SetupDatabase(
-            4008,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(4008, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.Single();
@@ -154,14 +148,11 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
     public async Task ShouldOnlyResetFailedJobsForSpecificServer_WhenMultipleServersExist()
     {
         // Arrange
-        await SetupDatabase(
-            4002,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(4002, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var servers = dbContext.PlexServers.ToList();
@@ -223,14 +214,11 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
     public async Task ShouldNotResetQueuedOrProcessingJobs_WhenOnlyFailedShouldBeReset()
     {
         // Arrange
-        await SetupDatabase(
-            4003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 3;
-            }
-        );
+        await SetupDatabase(4003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 3;
+        });
 
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.First();
@@ -296,14 +284,11 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
     public async Task ShouldCallCheckQueuedCommand_AfterResettingFailedJobs()
     {
         // Arrange
-        await SetupDatabase(
-            4004,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(4004, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.First();
@@ -344,14 +329,11 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
     public async Task ShouldNotCallCheckQueuedCommand_WhenNoFailedJobsExist()
     {
         // Arrange
-        await SetupDatabase(
-            4005,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(4005, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var server = IDbContext.PlexServers.First();
 
@@ -379,14 +361,11 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
     public async Task ShouldCheckQueuedJobs_WhenNoFailedJobsNeedReset()
     {
         // Arrange
-        await SetupDatabase(
-            4007,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(4007, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.Single();
@@ -426,14 +405,11 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
     public async Task ShouldClearErrorMessageAndTimestamps_WhenResettingFailedJobs()
     {
         // Arrange
-        await SetupDatabase(
-            4006,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(4006, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.First();

@@ -12,17 +12,14 @@ public class ProcessEpisodeMetadataCommandUnitTests : BaseCommandUnitTest<Proces
     )
     {
         // Arrange
-        var seed = await SetupDatabase(
-            771003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(771003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
 
         var dbContext = IDbContext;
         var targetServer = await dbContext.PlexServers.SingleAsync(CancellationToken);

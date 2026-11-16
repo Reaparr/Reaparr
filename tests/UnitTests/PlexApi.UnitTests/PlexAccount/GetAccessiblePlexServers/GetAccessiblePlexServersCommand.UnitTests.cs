@@ -108,24 +108,16 @@ public class GetAccessiblePlexServersUnitTests : BaseUnitTest<GetAccessiblePlexS
         plexAccount.ShouldNotBeNull();
 
         var serverCount = 5;
-        var response1 = FakePlexApiData.GetServerResourcesResponse(
-            HttpStatusCode.OK,
-            new Seed(939),
-            options: config =>
-            {
-                config.PlexServerAccessCount = serverCount;
-            }
-        );
+        var response1 = FakePlexApiData.GetServerResourcesResponse(HttpStatusCode.OK, new Seed(939), options: config =>
+        {
+            config.PlexServerAccessCount = serverCount;
+        });
 
-        var response2 = FakePlexApiData.GetServerResourcesResponse(
-            HttpStatusCode.OK,
-            new Seed(939),
-            options: config =>
-            {
-                config.PlexServerAccessCount = serverCount;
-                config.PlexServerAccessConnectionsIncludeHttps = true;
-            }
-        );
+        var response2 = FakePlexApiData.GetServerResourcesResponse(HttpStatusCode.OK, new Seed(939), options: config =>
+        {
+            config.PlexServerAccessCount = serverCount;
+            config.PlexServerAccessConnectionsIncludeHttps = true;
+        });
 
         response1.PlexDevices.ShouldNotBeNull();
 
@@ -223,15 +215,11 @@ public class GetAccessiblePlexServersUnitTests : BaseUnitTest<GetAccessiblePlexS
             ),
         };
 
-        var response2 = FakePlexApiData.GetServerResourcesResponse(
-            HttpStatusCode.OK,
-            new Seed(939),
-            options: config =>
-            {
-                config.PlexServerAccessCount = serverCount;
-                config.PlexServerAccessConnectionsIncludeHttps = true;
-            }
-        );
+        var response2 = FakePlexApiData.GetServerResourcesResponse(HttpStatusCode.OK, new Seed(939), options: config =>
+        {
+            config.PlexServerAccessCount = serverCount;
+            config.PlexServerAccessConnectionsIncludeHttps = true;
+        });
 
         SetCallMock(response1, response2);
 
@@ -253,24 +241,16 @@ public class GetAccessiblePlexServersUnitTests : BaseUnitTest<GetAccessiblePlexS
         plexAccount.ShouldNotBeNull();
 
         var serverCount = 5;
-        var response1 = FakePlexApiData.GetServerResourcesResponse(
-            HttpStatusCode.OK,
-            new Seed(940),
-            options: config =>
-            {
-                config.PlexServerAccessCount = serverCount;
-                config.PlexServerAccessConnectionsIncludeHttps = true;
-            }
-        );
+        var response1 = FakePlexApiData.GetServerResourcesResponse(HttpStatusCode.OK, new Seed(940), options: config =>
+        {
+            config.PlexServerAccessCount = serverCount;
+            config.PlexServerAccessConnectionsIncludeHttps = true;
+        });
 
-        var response2 = FakePlexApiData.GetServerResourcesResponse(
-            HttpStatusCode.OK,
-            new Seed(939),
-            options: config =>
-            {
-                config.PlexServerAccessCount = serverCount;
-            }
-        );
+        var response2 = FakePlexApiData.GetServerResourcesResponse(HttpStatusCode.OK, new Seed(939), options: config =>
+        {
+            config.PlexServerAccessCount = serverCount;
+        });
 
         SetCallMock(response1, response2);
 

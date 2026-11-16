@@ -16,11 +16,7 @@ public class CheckConnectionStatusByIdEndpoint : Endpoint<CheckConnectionStatusB
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
 
-    public CheckConnectionStatusByIdEndpoint(
-        ILogger log,
-        ICommandExecutor commandExecutor,
-        ITelemetry telemetry
-    )
+    public CheckConnectionStatusByIdEndpoint(ILogger log, ICommandExecutor commandExecutor, ITelemetry telemetry)
     {
         _log = log.ForContext<CheckConnectionStatusByIdEndpoint>();
         _commandExecutor = commandExecutor;

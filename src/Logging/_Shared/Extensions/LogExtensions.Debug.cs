@@ -87,20 +87,17 @@ public static partial class LogExtensions
     private static bool ShouldDestructureRequest(object request)
     {
         var requestType = request.GetType();
-        return _destructureCache.GetOrAdd(
-            requestType,
-            static t =>
-            {
-                // Moq/Castle proxy types frequently include deep/cyclic members and are unsafe to destructure.
-                if (string.Equals(t.Assembly.GetName().Name, "DynamicProxyGenAssembly2", StringComparison.Ordinal))
-                    return false;
+        return _destructureCache.GetOrAdd(requestType, static t =>
+        {
+            // Moq/Castle proxy types frequently include deep/cyclic members and are unsafe to destructure.
+            if (string.Equals(t.Assembly.GetName().Name, "DynamicProxyGenAssembly2", StringComparison.Ordinal))
+                return false;
 
-                if (t.Namespace?.StartsWith("Castle.Proxies", StringComparison.Ordinal) == true)
-                    return false;
+            if (t.Namespace?.StartsWith("Castle.Proxies", StringComparison.Ordinal) == true)
+                return false;
 
-                return !IsPotentiallyUnsafeForDestructuring(t, []);
-            }
-        );
+            return !IsPotentiallyUnsafeForDestructuring(t, []);
+        });
     }
 
     private static bool IsPotentiallyUnsafeForDestructuring(Type type, HashSet<Type> visitedTypes)

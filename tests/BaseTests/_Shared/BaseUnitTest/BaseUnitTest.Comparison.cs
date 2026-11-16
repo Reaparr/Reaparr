@@ -78,8 +78,7 @@ public partial class BaseUnitTest
             OwnedPlexMediaId = ownedPlexMediaId,
             HitState = hitState,
             RemoteQuality = VideoQuality.FullHD,
-            OwnedQuality =
-                ownedQuality
+            OwnedQuality = ownedQuality
                 ?? (hitState == PlexMediaComparisonHitState.HigherQuality ? VideoQuality.HD : VideoQuality.FullHD),
             MatchType = PlexMediaComparisonMatchType.TmdbGuid,
             ComparedAt = DateTime.UtcNow,
@@ -116,8 +115,7 @@ public partial class BaseUnitTest
             OwnedPlexMediaId = ownedPlexMediaId,
             HitState = hitState,
             RemoteQuality = VideoQuality.FullHD,
-            OwnedQuality =
-                ownedQuality
+            OwnedQuality = ownedQuality
                 ?? (hitState == PlexMediaComparisonHitState.HigherQuality ? VideoQuality.HD : VideoQuality.FullHD),
             MatchType = PlexMediaComparisonMatchType.TmdbGuid,
             ComparedAt = DateTime.UtcNow,
@@ -154,8 +152,7 @@ public partial class BaseUnitTest
             OwnedPlexMediaId = ownedPlexMediaId,
             HitState = hitState,
             RemoteQuality = VideoQuality.FullHD,
-            OwnedQuality =
-                ownedQuality
+            OwnedQuality = ownedQuality
                 ?? (hitState == PlexMediaComparisonHitState.HigherQuality ? VideoQuality.HD : VideoQuality.FullHD),
             MatchType = PlexMediaComparisonMatchType.ParentAndChildNumbers,
             ComparedAt = DateTime.UtcNow,
@@ -193,8 +190,7 @@ public partial class BaseUnitTest
             OwnedPlexMediaId = ownedPlexMediaId,
             HitState = hitState,
             RemoteQuality = VideoQuality.FullHD,
-            OwnedQuality =
-                ownedQuality
+            OwnedQuality = ownedQuality
                 ?? (hitState == PlexMediaComparisonHitState.HigherQuality ? VideoQuality.HD : VideoQuality.FullHD),
             MatchType = matchType,
             ComparedAt = DateTime.UtcNow,

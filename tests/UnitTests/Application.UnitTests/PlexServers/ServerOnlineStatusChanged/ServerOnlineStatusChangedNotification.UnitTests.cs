@@ -6,15 +6,12 @@ public class ServerOnlineStatusChangedHandlerUnitTests : BaseUnitTest<ServerOnli
     public async Task ShouldInvalidateServerLibraries_WhenServerGoesOffline()
     {
         // Arrange
-        await SetupDatabase(
-            91301,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-                config.PlexTvShowLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91301, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var targetServer = await dbContext.PlexServers.OrderBy(x => x.Id).FirstAsync(CancellationToken);
@@ -49,15 +46,12 @@ public class ServerOnlineStatusChangedHandlerUnitTests : BaseUnitTest<ServerOnli
     public async Task ShouldInvalidateServerLibrariesAndResumeQueues_WhenServerComesOnline()
     {
         // Arrange
-        await SetupDatabase(
-            91302,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-                config.PlexTvShowLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91302, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 2;
+        });
         var dbContext = IDbContext;
         var targetServer = await dbContext.PlexServers.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         Mock.Mock<IDownloadQueue>()

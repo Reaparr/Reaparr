@@ -7,15 +7,12 @@ public class GetPhotoDownloadPreviewCommandFolderSelectionUnitTests
     public async Task ShouldPreviewEveryDescendant_WhenPhysicalFolderIsSelected()
     {
         // Arrange
-        await SetupDatabase(
-            62409,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(62409, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var root = await dbContext.PlexPhotoFolders.SingleAsync(x => x.ParentId == null, CancellationToken);
         var media = await dbContext.PlexPhotoMediaData.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -79,15 +76,12 @@ public class GetPhotoDownloadPreviewCommandFolderSelectionUnitTests
     public async Task ShouldReturnSuccessfulEmptyPreview_WhenSelectedFolderHasNoAssets()
     {
         // Arrange
-        await SetupDatabase(
-            62410,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(62410, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var root = await dbContext.PlexPhotoFolders.SingleAsync(x => x.ParentId == null, CancellationToken);
         var empty = new PlexPhotoFolder

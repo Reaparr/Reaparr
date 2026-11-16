@@ -75,14 +75,11 @@ public class MediaNavigationIndexBuilderDatabaseUnitTests : BaseUnitTest
 
     private async Task<int> SetupSnapshotDatabaseAsync()
     {
-        await SetupDatabase(
-            90422,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 5;
-            }
-        );
+        await SetupDatabase(90422, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 5;
+        });
 
         using var dbContext = IDbContext;
         var libraryId = await dbContext

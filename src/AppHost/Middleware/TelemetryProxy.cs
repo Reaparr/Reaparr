@@ -157,29 +157,39 @@ public sealed class TelemetryProxy : HttpTransformer
         {
             return value.Count == 1
                 && AuthenticationHeaderValue.TryParse(value[0], out var authorization)
-                && string.Equals(authorization.Scheme, TelemetryProtocol.BearerScheme, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(
+                    authorization.Scheme,
+                    TelemetryProtocol.BearerScheme,
+                    StringComparison.OrdinalIgnoreCase
+                )
                 && authorization.Parameter == _projectToken;
         }
 
         if (string.Equals(name, _trustedHeaderName, StringComparison.OrdinalIgnoreCase))
             return false;
 
-        if (name.StartsWith("PostHog-", StringComparison.OrdinalIgnoreCase)
-            || name.StartsWith("X-PostHog-", StringComparison.OrdinalIgnoreCase))
+        if (
+            name.StartsWith("PostHog-", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("X-PostHog-", StringComparison.OrdinalIgnoreCase)
+        )
         {
             return true;
         }
 
-        if (string.Equals(name, HeaderNames.ContentType, StringComparison.OrdinalIgnoreCase)
+        if (
+            string.Equals(name, HeaderNames.ContentType, StringComparison.OrdinalIgnoreCase)
             || string.Equals(name, HeaderNames.ContentEncoding, StringComparison.OrdinalIgnoreCase)
             || string.Equals(name, HeaderNames.ContentLength, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, HeaderNames.UserAgent, StringComparison.OrdinalIgnoreCase))
+            || string.Equals(name, HeaderNames.UserAgent, StringComparison.OrdinalIgnoreCase)
+        )
         {
             return true;
         }
 
         return isAssetRequest
-            && (string.Equals(name, HeaderNames.Accept, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(name, HeaderNames.AcceptEncoding, StringComparison.OrdinalIgnoreCase));
+            && (
+                string.Equals(name, HeaderNames.Accept, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, HeaderNames.AcceptEncoding, StringComparison.OrdinalIgnoreCase)
+            );
     }
 }

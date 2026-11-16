@@ -15,36 +15,33 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         const int roleCount = 2;
         const int genreCount = 1;
         const int countryCount = 1;
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) =>
             {
-                config.HttpClientOptions = (x, _) =>
-                {
-                    x.SetupIdentityRequest(seed);
-                };
+                x.SetupIdentityRequest(seed);
+            };
 
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexMovieLibraryCount = 1;
-                    x.MovieCount = 0;
-                    x.RadarrIntegrationCount = 1;
-                };
+            config.DatabaseOptions = x =>
+            {
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexMovieLibraryCount = 1;
+                x.MovieCount = 0;
+                x.RadarrIntegrationCount = 1;
+            };
 
-                config.BaseMockHttpClientOptions = x =>
-                {
-                    x.GenerateFromDatabase = true;
-                    x.PlexServerAccessCount = serverCount;
-                    x.MovieLibraryCount = libraryCount;
-                    x.MoviesPerLibraryCount = movieCount;
-                    x.RolePerMediaItemCount = roleCount;
-                    x.CountriesPerMediaItemCount = countryCount;
-                    x.GenrePerMediaItemCount = genreCount;
-                };
-            }
-        );
+            config.BaseMockHttpClientOptions = x =>
+            {
+                x.GenerateFromDatabase = true;
+                x.PlexServerAccessCount = serverCount;
+                x.MovieLibraryCount = libraryCount;
+                x.MoviesPerLibraryCount = movieCount;
+                x.RolePerMediaItemCount = roleCount;
+                x.CountriesPerMediaItemCount = countryCount;
+                x.GenrePerMediaItemCount = genreCount;
+            };
+        });
 
         var plexLibrary = await container.DbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
@@ -137,35 +134,32 @@ public class RefreshLibraryMediaEndpointIntegrationTests : BaseIntegrationTests
         const int countryCount = 1;
         const int totalEpisodeCount = tvShowCount * seasonCount * episodeCount;
 
-        using var container = await CreateContainer(
-            seed,
-            config =>
+        using var container = await CreateContainer(seed, config =>
+        {
+            config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
+
+            config.DatabaseOptions = x =>
             {
-                config.HttpClientOptions = (x, _) => x.SetupIdentityRequest(seed);
+                x.PlexAccountCount = 1;
+                x.PlexServerCount = 1;
+                x.PlexTvShowLibraryCount = 1;
+                x.TvShowCount = 0;
+                x.SonarrIntegrationCount = 1;
+            };
 
-                config.DatabaseOptions = x =>
-                {
-                    x.PlexAccountCount = 1;
-                    x.PlexServerCount = 1;
-                    x.PlexTvShowLibraryCount = 1;
-                    x.TvShowCount = 0;
-                    x.SonarrIntegrationCount = 1;
-                };
-
-                config.BaseMockHttpClientOptions = x =>
-                {
-                    x.GenerateFromDatabase = true;
-                    x.PlexServerAccessCount = serverCount;
-                    x.TvShowLibraryCount = libraryCount;
-                    x.TvShowsPerLibraryCount = tvShowCount;
-                    x.SeasonsPerTvShowCount = seasonCount;
-                    x.EpisodesPerSeasonCount = episodeCount;
-                    x.RolePerMediaItemCount = roleCount;
-                    x.CountriesPerMediaItemCount = countryCount;
-                    x.GenrePerMediaItemCount = genreCount;
-                };
-            }
-        );
+            config.BaseMockHttpClientOptions = x =>
+            {
+                x.GenerateFromDatabase = true;
+                x.PlexServerAccessCount = serverCount;
+                x.TvShowLibraryCount = libraryCount;
+                x.TvShowsPerLibraryCount = tvShowCount;
+                x.SeasonsPerTvShowCount = seasonCount;
+                x.EpisodesPerSeasonCount = episodeCount;
+                x.RolePerMediaItemCount = roleCount;
+                x.CountriesPerMediaItemCount = countryCount;
+                x.GenrePerMediaItemCount = genreCount;
+            };
+        });
 
         var plexLibrary = await container.DbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();

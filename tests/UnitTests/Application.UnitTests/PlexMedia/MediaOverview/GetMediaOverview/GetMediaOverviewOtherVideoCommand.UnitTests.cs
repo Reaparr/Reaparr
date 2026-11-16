@@ -50,14 +50,11 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
 
     private async Task<OtherVideoOverviewFixture> ArrangeFilteredOtherVideoPageAsync()
     {
-        await SetupDatabase(
-            84203,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 2;
-                config.OtherVideoCount = 4;
-            }
-        );
+        await SetupDatabase(84203, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 2;
+            config.OtherVideoCount = 4;
+        });
         var dbContext = IDbContext;
         var libraryIds = await dbContext
             .PlexLibraries.OrderBy(x => x.Id)
@@ -225,15 +222,12 @@ public class GetMediaOverviewOtherVideoCommandUnitTests : BaseCommandUnitTest<Ge
         var libraryId = 0;
         if (snapshotMissing)
         {
-            await SetupDatabase(
-                84210,
-                config =>
-                {
-                    config.PlexServerCount = 1;
-                    config.PlexOtherVideoLibraryCount = 1;
-                    config.OtherVideoCount = 1;
-                }
-            );
+            await SetupDatabase(84210, config =>
+            {
+                config.PlexServerCount = 1;
+                config.PlexOtherVideoLibraryCount = 1;
+                config.OtherVideoCount = 1;
+            });
             var dbContext = IDbContext;
             libraryId = await dbContext.PlexOtherVideos.Select(x => x.PlexLibraryId).SingleAsync(CancellationToken);
             (await dbContext.MediaOverviewOtherVideoSnapshots.CountAsync(CancellationToken)).ShouldBe(0);

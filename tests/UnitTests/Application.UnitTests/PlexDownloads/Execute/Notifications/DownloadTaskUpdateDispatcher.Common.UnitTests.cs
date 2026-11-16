@@ -64,15 +64,12 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
     public async Task ShouldPersistTerminalProgressAfterBufferedEstimate_WhenFinalProgressArrives()
     {
         // Arrange
-        await SetupDatabase(
-            84332,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84332, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var key = downloadTask.ToKey();
@@ -152,15 +149,12 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
     public async Task ShouldPublishTransferProgressAfterTerminalProgress_WhenLateDownloadEstimateArrives()
     {
         // Arrange
-        await SetupDatabase(
-            84333,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84333, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var key = downloadTask.ToKey();
@@ -207,19 +201,16 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         );
         var patchCountBeforeTransfer = capturedPatches.Count;
         sut.NotifyFileTransferProgress(key);
-        await WaitUntilAsync(
-            () =>
-                Task.FromResult(
-                    capturedPatches.Skip(patchCountBeforeTransfer).Any(batch =>
-                        batch.Any(
-                            x =>
-                                x.Id == key.Id
-                                && x.DataTotal == 4_321
-                                && x.DataReceived == 4_321
-                                && x.Percentage == 100m
+        await WaitUntilAsync(() =>
+            Task.FromResult(
+                capturedPatches
+                    .Skip(patchCountBeforeTransfer)
+                    .Any(batch =>
+                        batch.Any(x =>
+                            x.Id == key.Id && x.DataTotal == 4_321 && x.DataReceived == 4_321 && x.Percentage == 100m
                         )
                     )
-                )
+            )
         );
         await sut.StopAsync(CancellationToken.None);
 
@@ -308,7 +299,6 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             if (snapshotTask is not null)
                 await snapshotTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
         }
-
     }
 
     [Test]
@@ -460,7 +450,6 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             if (patchTask is not null)
                 await patchTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
         }
-
     }
 
     [Test]
@@ -529,7 +518,6 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
             if (snapshotTask is not null)
                 await snapshotTask.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken);
         }
-
     }
 
     [Test]
@@ -543,18 +531,15 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         failingContext.Setup(x => x.Dispose()).Verifiable(Times.Once());
         var succeedingContext = IDbContext;
         var factory = new Mock<IReaparrDbContextFactory>(MockBehavior.Strict);
-        factory
-            .SetupSequence(x => x.CreateAsync())
-            .ReturnsAsync(failingContext.Object)
-            .ReturnsAsync(succeedingContext);
+        factory.SetupSequence(x => x.CreateAsync()).ReturnsAsync(failingContext.Object).ReturnsAsync(succeedingContext);
         SetupDependencies(builder =>
             builder.RegisterInstance(factory.Object).As<IReaparrDbContextFactory>().SingleInstance()
         );
         var sut = Sut;
 
         // Act
-        var exception = await Should.ThrowAsync<InvalidOperationException>(
-            () => sut.GetSnapshotAsync(CancellationToken.None)
+        var exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            sut.GetSnapshotAsync(CancellationToken.None)
         );
         var snapshot = await sut.GetSnapshotAsync(CancellationToken.None);
 
@@ -589,7 +574,13 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         // Act
         var result = await sut.PersistProgressAsync(
             key,
-            new DownloadTaskProgress { DataTotal = 100, DataReceived = 25, Percentage = 25, DownloadSpeed = 5 },
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                Percentage = 25,
+                DownloadSpeed = 5,
+            },
             cancellationToken: CancellationToken.None
         );
         var snapshot = await sut.GetSnapshotAsync(CancellationToken.None);
@@ -627,7 +618,13 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         // Act
         var result = await sut.PersistProgressAsync(
             key,
-            new DownloadTaskProgress { DataTotal = 100, DataReceived = 25, Percentage = 25, DownloadSpeed = 5 },
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                Percentage = 25,
+                DownloadSpeed = 5,
+            },
             cancellationToken: CancellationToken.None
         );
         var snapshot = await sut.GetSnapshotAsync(CancellationToken.None);
@@ -637,6 +634,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         snapshot.PatchSequenceByServer.ShouldBe(new Dictionary<int, long> { [key.PlexServerId] = 1 });
         Mock.Mock<IDownloadHubService>().Verify();
     }
+
     [Test]
     public async Task ShouldTrackOnlyCommittedRootLifecycleTransition_AndIgnoreDuplicateStatusRequests()
     {

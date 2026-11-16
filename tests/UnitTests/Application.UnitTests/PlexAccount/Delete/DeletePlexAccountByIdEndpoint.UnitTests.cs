@@ -7,17 +7,14 @@ public class DeletePlexAccountByIdEndpointUnitTests
     public async Task ShouldDeleteAllRelatedDataWhenAccountIsDeleted()
     {
         // Arrange
-        await SetupDatabase(
-            1223,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 5;
-                config.PlexMovieLibraryCount = 3;
-                config.MovieCount = 10;
-                config.TvShowCount = 10;
-            }
-        );
+        await SetupDatabase(1223, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 5;
+            config.PlexMovieLibraryCount = 3;
+            config.MovieCount = 10;
+            config.TvShowCount = 10;
+        });
 
         var testAccount = IDbContext.PlexAccounts.IncludeServerAccess().IncludeLibraryAccess().FirstOrDefault();
         testAccount.ShouldNotBeNull();
@@ -31,7 +28,6 @@ public class DeletePlexAccountByIdEndpointUnitTests
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-
 
         // Act
         var result = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(testAccount.Id));
@@ -55,21 +51,18 @@ public class DeletePlexAccountByIdEndpointUnitTests
                     ),
                 Times.Once()
             );
-
     }
+
     [Test]
     public async Task ShouldDeleteOnlyUnreferencedServersAndLibraries_AfterRemovingDeletedAccountAccess()
     {
         // Arrange
-        await SetupDatabase(
-            91102,
-            config =>
-            {
-                config.PlexAccountCount = 2;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91102, config =>
+        {
+            config.PlexAccountCount = 2;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -157,7 +150,6 @@ public class DeletePlexAccountByIdEndpointUnitTests
         Mock.SetupCommand(() => new QueueMediaOverviewRebuildCommand())
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
-
 
         // Act
         var endpoint = await TestEndpointHandleAsync(new DeletePlexAccountByIdRequest(deleteAccountId));

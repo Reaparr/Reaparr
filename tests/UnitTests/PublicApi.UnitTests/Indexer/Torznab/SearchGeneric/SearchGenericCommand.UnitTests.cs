@@ -8,21 +8,18 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
     public async Task ShouldReturnSingleGloballyOrderedPageAndExactCombinedTotal_WhenBothMediaTypesMatch()
     {
         // Arrange
-        await SetupDatabase(
-            47301,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 3;
-                config.IncludeMultiPartMovies = false;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(47301, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.IncludeMultiPartMovies = false;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var dbContext = IDbContext;
         var movieRows = await dbContext.PlexMovieData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -79,21 +76,18 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
     public async Task ShouldExcludeEpisodeBranch_WhenMovieCategoryIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            47302,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = false;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(47302, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = false;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var expectedMovieCount = await IDbContext.PlexMovieData.CountAsync(CancellationToken);
         expectedMovieCount.ShouldBeGreaterThan(0);
@@ -117,21 +111,18 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
     public async Task ShouldExcludeMediaFromRevokedLibraryAccess_WhenGenericSearchIncludesBothMediaTypes()
     {
         // Arrange
-        await SetupDatabase(
-            47303,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = false;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 2;
-            }
-        );
+        await SetupDatabase(47303, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = false;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 2;
+        });
 
         var dbContext = IDbContext;
         var revokedLibraryId = await dbContext
@@ -163,21 +154,18 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
     public async Task ShouldReturnNoItemsWithExactTotal_WhenLimitIsZeroOrOffsetIsOutOfRange()
     {
         // Arrange
-        await SetupDatabase(
-            47304,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-                config.IncludeMultiPartMovies = false;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(47304, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+            config.IncludeMultiPartMovies = false;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
 
         var dbContext = IDbContext;
         var expectedTotal =
@@ -207,21 +195,18 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
     public async Task ShouldReturnExactCrossMediaMatches_WhenTitlePrefixIsProvided()
     {
         // Arrange
-        await SetupDatabase(
-            47305,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = false;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(47305, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = false;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var movies = await dbContext.PlexMovies.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var tvShows = await dbContext.PlexTvShows.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -272,18 +257,15 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
     public async Task ShouldReturnExactTvShowEpisodes_WhenTvdbSelectorIsProvided()
     {
         // Arrange
-        await SetupDatabase(
-            47306,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(47306, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var dbContext = IDbContext;
         var target = await dbContext.PlexTvShows.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         var expectedTitles = await dbContext
@@ -310,17 +292,14 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
     public async Task ShouldReturnExactMovie_WhenTmdbAndImdbSelectorsAgree(bool includeImdbPrefix)
     {
         // Arrange
-        await SetupDatabase(
-            includeImdbPrefix ? 47307 : 47308,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = false;
-            }
-        );
+        await SetupDatabase(includeImdbPrefix ? 47307 : 47308, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = false;
+        });
         var dbContext = IDbContext;
         var target = await dbContext
             .PlexMovies.OrderBy(x => x.Id)
@@ -347,17 +326,14 @@ public class SearchGenericCommandUnitTests : BaseCommandUnitTest<SearchGenericCo
     public async Task ShouldReturnEmpty_WhenGenericExternalIdsConflict()
     {
         // Arrange
-        await SetupDatabase(
-            47309,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-                config.IncludeMultiPartMovies = false;
-            }
-        );
+        await SetupDatabase(47309, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+            config.IncludeMultiPartMovies = false;
+        });
         var movies = await IDbContext
             .PlexMovies.Where(x => x.Guid_IMDB != null && x.Guid_TMDB != null)
             .OrderBy(x => x.Id)

@@ -29,7 +29,6 @@ public static partial class Startup
         app.UseCors(CorsConfiguration);
         app.MapTelemetryProxy();
 
-
         app.Use(
             async (ctx, next) =>
             {
@@ -130,12 +129,10 @@ public static partial class Startup
     /// </summary>
     internal static void MapTelemetryProxy(this IApplicationBuilder app)
     {
-        app.Map(
-            TelemetryProtocol.ProxyPath,
-            static branch =>
-                branch.Run(static context =>
-                    context.RequestServices.GetRequiredService<TelemetryProxy>().InvokeAsync(context)
-                )
+        app.Map(TelemetryProtocol.ProxyPath, static branch =>
+            branch.Run(static context =>
+                context.RequestServices.GetRequiredService<TelemetryProxy>().InvokeAsync(context)
+            )
         );
     }
 }

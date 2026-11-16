@@ -139,7 +139,10 @@ public class PlexLibraryComparisonJob : IJob
                 );
                 break;
             default:
-                result = Result.Fail("Library comparisons are not supported for media type {RemoteLibraryType}", remoteLibrary.Type);
+                result = Result.Fail(
+                    "Library comparisons are not supported for media type {RemoteLibraryType}",
+                    remoteLibrary.Type
+                );
                 break;
         }
 
@@ -179,5 +182,4 @@ public class PlexLibraryComparisonJob : IJob
         context.SetResult(JobStatus.Completed);
         _telemetry.LibraryComparisonFinished(ownedLibrary.Id, remoteLibrary.Id, remoteLibrary.Type, result);
     }
-
 }

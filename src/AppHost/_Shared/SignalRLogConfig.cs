@@ -43,10 +43,8 @@ public class SignalRLogConfig : LogConfig, ILogEventSink, IDisposable
     public void AttachSignalR(WebApplication app, LogEventLevel minimumLogLevel) =>
         _signalRLogger = new LoggerConfiguration()
             .MinimumLevel.Is(minimumLogLevel)
-            .WriteTo.SignalR<LogHub>(
-                app.Services,
-                (context, _, logEvent) =>
-                    context.Clients.All.SendAsync(nameof(ILogHub.LogEvent), logEvent.ToLiveLogEvent())
+            .WriteTo.SignalR<LogHub>(app.Services, (context, _, logEvent) =>
+                context.Clients.All.SendAsync(nameof(ILogHub.LogEvent), logEvent.ToLiveLogEvent())
             )
             .CreateLogger();
 

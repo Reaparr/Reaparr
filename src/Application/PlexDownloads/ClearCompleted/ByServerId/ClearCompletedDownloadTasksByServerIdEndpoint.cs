@@ -55,5 +55,5 @@ public class ClearCompletedDownloadTasksByServerIdEndpoint
 
         await _notificationHubService.SendRefreshNotificationAsync(RefreshDataType.DownloadTasks);
         await Send.FluentResult(Result.Ok(new CountResponseDTO(result.Value)), ct);
-}
+    }
 }

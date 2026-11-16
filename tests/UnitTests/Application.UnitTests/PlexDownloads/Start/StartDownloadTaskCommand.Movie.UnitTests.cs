@@ -20,13 +20,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldHaveFailedResult_WhenServerIsPausedByUser()
     {
         // Arrange
-        await SetupDatabase(
-            55109,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(55109, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieTask = await dbContext.DownloadTaskMovie.FirstAsync(CancellationToken);
@@ -66,13 +63,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldStartMoveJob_WhenDownloadTaskIsInDownloadFinishedStatus()
     {
         // Arrange
-        await SetupDatabase(
-            11234,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(11234, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieDownloadTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -128,13 +122,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldHaveFailedResult_WhenStartMoveDownloadFileJobFails()
     {
         // Arrange
-        await SetupDatabase(
-            11235,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(11235, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieDownloadTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -217,13 +208,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldStartMoveJob_WhenDownloadTaskIsInMoveErrorStatus()
     {
         // Arrange
-        await SetupDatabase(
-            55678,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(55678, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieDownloadTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -275,13 +263,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldHaveFailedResult_WhenNoDownloadableChildTasksExist()
     {
         // Arrange — seed two movies; delete all file tasks of the first so its downloadable child list is empty
-        await SetupDatabase(
-            11101,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(11101, x =>
+        {
+            x.MovieDownloadTasksCount = 2;
+        });
 
         var dbContext = IDbContext;
         var movieTasks = await dbContext.DownloadTaskMovie.ToListAsync(CancellationToken);
@@ -324,13 +309,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldHaveFailedResult_WhenSelectedChildIsInCompletedPhase()
     {
         // Arrange
-        await SetupDatabase(
-            11102,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(11102, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFileTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -371,13 +353,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldHaveFailedResult_WhenStartDownloadTaskJobFails()
     {
         // Arrange
-        await SetupDatabase(
-            11103,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(11103, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var movieTask = await IDbContext.DownloadTaskMovie.FirstAsync(CancellationToken);
 
@@ -465,13 +444,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldSkipStartDownloadJob_WhenTaskIsAlreadyDownloading()
     {
         // Arrange
-        await SetupDatabase(
-            11104,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(11104, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFileTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -513,13 +489,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldSkipStartMoveJob_WhenFileIsAlreadyMoving()
     {
         // Arrange
-        await SetupDatabase(
-            11105,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(11105, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFileTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);
@@ -561,13 +534,10 @@ public class StartDownloadTaskCommandMovieUnitTests : BaseUnitTest<StartDownload
     public async Task ShouldStartDownloadJob_WhenMovieTaskIsPaused()
     {
         // Arrange
-        await SetupDatabase(
-            11106,
-            x =>
-            {
-                x.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(11106, x =>
+        {
+            x.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieFileTasks = await dbContext.DownloadTaskMovieFile.AsTracking().ToListAsync(CancellationToken);

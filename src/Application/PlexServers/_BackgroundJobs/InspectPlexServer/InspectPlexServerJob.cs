@@ -12,6 +12,7 @@ public class InspectPlexServerJob : IJob
     private readonly ILogger _log;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
+
     public static JobKey GetJobKey(int plexServerId) =>
         new($"{nameof(InspectPlexServerJob)}_{plexServerId}", nameof(InspectPlexServerJob));
 
@@ -40,10 +41,7 @@ public class InspectPlexServerJob : IJob
         var payloadResult = context.GetRequiredPayload<InspectPlexServerJobPayload>();
         if (payloadResult.IsCancelledOrFailed)
         {
-            context.SetResult(
-                payloadResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
-                payloadResult
-            );
+            context.SetResult(payloadResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, payloadResult);
             payloadResult.LogIfFailed();
             _telemetry.CaptureErrors(payloadResult, TelemetryActivity.ServerInspection);
             return;
@@ -80,8 +78,7 @@ public class InspectPlexServerJob : IJob
                 }
                 else
                 {
-                    var terminalResult =
-                        terminalResults.FirstOrDefault(x => x.IsCancelled) ?? terminalResults.First();
+                    var terminalResult = terminalResults.FirstOrDefault(x => x.IsCancelled) ?? terminalResults.First();
                     context.SetResult(
                         terminalResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
                         terminalResult.Errors.FirstOrDefault()?.Message
@@ -101,10 +98,7 @@ public class InspectPlexServerJob : IJob
 
         if (executionResult.IsCancelledOrFailed)
         {
-            context.SetResult(
-                executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
-                executionResult
-            );
+            context.SetResult(executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, executionResult);
             executionResult.LogIfFailed();
             _telemetry.CaptureErrors(executionResult, TelemetryActivity.ServerInspection);
         }
@@ -141,7 +135,6 @@ public class InspectPlexServerJob : IJob
         _telemetry.ServerInspectionFinished(plexServerId, result);
         return result;
     }
-
 
     private async Task<Result> RefreshAndSyncLibraries(
         IReaparrDbContext dbContext,

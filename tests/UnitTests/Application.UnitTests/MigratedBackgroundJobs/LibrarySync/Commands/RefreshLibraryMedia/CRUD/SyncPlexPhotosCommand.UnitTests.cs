@@ -663,8 +663,8 @@ public class SyncPlexPhotosCommandUnitTests : BaseCommandUnitTest<SyncPlexPhotos
                 PlexLibraryId = library.Id,
                 ParentId = null,
                 RelativePath = string.Empty,
-                Title =
-                    rootInput.Path.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? rootInput.Path,
+                Title = rootInput.Path.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()
+                    ?? rootInput.Path,
                 RootIdentityKey = rootInput.LocationId is > 0
                     ? $"id:{rootInput.LocationId}"
                     : $"path:posix:{rootInput.Path}",

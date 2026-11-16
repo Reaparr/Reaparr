@@ -1,8 +1,8 @@
 using System.IO.Abstractions;
 using FastEndpoints;
 using FluentValidation;
-using Reaparr.Logging;
 using Reaparr.Environment;
+using Reaparr.Logging;
 
 namespace Reaparr.Build;
 
@@ -69,10 +69,7 @@ internal sealed class DesktopPublishBuildCommandHandler : ICommandHandler<Deskto
             if (ShouldInstallFrontendDependencies(_paths.ClientAppDirectory))
             {
                 _log.Here()
-                    .Information(
-                        "Installing frontend dependencies in {ClientAppDirectory}",
-                        _paths.ClientAppDirectory
-                    );
+                    .Information("Installing frontend dependencies in {ClientAppDirectory}", _paths.ClientAppDirectory);
                 if (!settings.DryRun)
                     await _commandRunner.RunCommandAsync(
                         "bun",

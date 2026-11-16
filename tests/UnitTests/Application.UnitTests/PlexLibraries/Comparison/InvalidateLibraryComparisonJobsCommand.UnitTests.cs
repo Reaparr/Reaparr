@@ -67,15 +67,12 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
     public async Task ShouldInvalidateComparisonsAfterRunningJobIsRemoved_WhenBatchDeletionReportsMissingKey()
     {
         // Arrange
-        await SetupDatabase(
-            91115,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(91115, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -163,15 +160,12 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
     public async Task ShouldPreserveComparisonResults_WhenRunningJobCannotBeCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            91116,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(91116, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
         var ownedLibrary = libraries[1];
@@ -223,15 +217,12 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
     public async Task ShouldPreserveComparisonResults_WhenSchedulerDeletionFails(bool throws)
     {
         // Arrange
-        await SetupDatabase(
-            91117,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(91117, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];
@@ -291,15 +282,12 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
     public async Task ShouldDeleteOnlyAffectedComparisonResults_WhenCancellationAlreadyDeletedTheQuartzJob()
     {
         // Arrange
-        await SetupDatabase(
-            91118,
-            config =>
-            {
-                config.PlexServerCount = 4;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 1;
-            }
-        );
+        await SetupDatabase(91118, config =>
+        {
+            config.PlexServerCount = 4;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remoteLibrary = libraries[0];

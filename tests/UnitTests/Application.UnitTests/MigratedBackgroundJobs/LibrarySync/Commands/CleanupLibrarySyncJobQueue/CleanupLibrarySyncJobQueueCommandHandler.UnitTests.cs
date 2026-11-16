@@ -9,14 +9,11 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldDeleteStaleJobsAndRequeueInterruptedRows_WhenRecoveringAtStartup()
     {
         // Arrange
-        await SetupDatabase(
-            2001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 5;
-            }
-        );
+        await SetupDatabase(2001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 5;
+        });
 
         // Use a single context instance to ensure data is saved and visible
         var dbContext = IDbContext;
@@ -236,14 +233,11 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldReturnFailureAndLeaveQueueUnchanged_WhenDeletingStaleJobsReturnsFalse()
     {
         // Arrange
-        await SetupDatabase(
-            2002,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(2002, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
 
         // Use a single context instance to ensure data is saved and visible
         var dbContext = IDbContext;
@@ -357,14 +351,11 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnit
     public async Task ShouldNotifyAndLeaveQueueEmpty_WhenNoRowsOrStaleJobsExist()
     {
         // Arrange
-        await SetupDatabase(
-            2003,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(2003, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var scheduler = Mock.Mock<IScheduler>();
         scheduler

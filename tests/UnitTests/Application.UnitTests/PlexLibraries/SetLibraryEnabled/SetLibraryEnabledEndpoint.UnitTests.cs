@@ -178,6 +178,7 @@ public class SetLibraryEnabledEndpointUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<INotificationHubService>().Verify();
     }
+
     [Test]
     public async Task ShouldPreserveAlreadyEnabledLibrarySideEffectsWithoutChangeEvent()
     {
@@ -228,12 +229,13 @@ public class SetLibraryEnabledEndpointUnitTests
         Mock.Mock<INotificationHubService>().Verify();
         Mock.Mock<ITelemetry>()
             .Verify(
-                x => x.PlexLibraryChanged(
-                    It.IsAny<PlexLibrary>(),
-                    It.IsAny<TelemetryAction>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<int?>()
-                ),
+                x =>
+                    x.PlexLibraryChanged(
+                        It.IsAny<PlexLibrary>(),
+                        It.IsAny<TelemetryAction>(),
+                        It.IsAny<bool>(),
+                        It.IsAny<int?>()
+                    ),
                 Times.Never()
             );
     }

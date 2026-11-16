@@ -26,9 +26,7 @@ public class SetNotificationVisibilityEndpointUnitTests
             }
         );
         await db.SaveChangesAsync(CancellationToken);
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.NotificationVisibilityProcessed(9001, true, 1))
-            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.NotificationVisibilityProcessed(9001, true, 1)).Verifiable(Times.Once());
 
         // Act
         var outcome = await TestEndpointHandleAsync(new SetNotificationVisibilityEndpointRequest { Id = 9001 });
@@ -37,11 +35,11 @@ public class SetNotificationVisibilityEndpointUnitTests
         outcome.IsValid.ShouldBeTrue();
         var response = outcome.Response.ShouldNotBeNull();
         (response.IsSuccess, response.Errors.Count).ShouldBe((true, 0));
-        var after = await db.Notifications.OrderBy(x => x.Id).Select(x => new { x.Id, x.Hidden }).ToListAsync(CancellationToken);
-        after.ShouldBe([
-            new { Id = 9001, Hidden = true },
-            new { Id = 9002, Hidden = false },
-        ]);
+        var after = await db
+            .Notifications.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.Hidden })
+            .ToListAsync(CancellationToken);
+        after.ShouldBe([new { Id = 9001, Hidden = true }, new { Id = 9002, Hidden = false }]);
         Mock.Mock<ITelemetry>().Verify();
     }
 
@@ -61,9 +59,7 @@ public class SetNotificationVisibilityEndpointUnitTests
             }
         );
         await db.SaveChangesAsync(CancellationToken);
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.NotificationVisibilityProcessed(9003, true, 1))
-            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.NotificationVisibilityProcessed(9003, true, 1)).Verifiable(Times.Once());
 
         // Act
         var outcome = await TestEndpointHandleAsync(new SetNotificationVisibilityEndpointRequest { Id = 9003 });
@@ -81,9 +77,7 @@ public class SetNotificationVisibilityEndpointUnitTests
     {
         // Arrange
         await SetupDatabase(53105);
-        Mock.Mock<ITelemetry>()
-            .Setup(x => x.NotificationVisibilityProcessed(9006, true, 0))
-            .Verifiable(Times.Once());
+        Mock.Mock<ITelemetry>().Setup(x => x.NotificationVisibilityProcessed(9006, true, 0)).Verifiable(Times.Once());
 
         // Act
         var outcome = await TestEndpointHandleAsync(new SetNotificationVisibilityEndpointRequest { Id = 9006 });

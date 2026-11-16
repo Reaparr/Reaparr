@@ -22,6 +22,7 @@ public class SetServerEnabledEndpoint : Endpoint<SetServerEnabledRequest, Result
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
+
     public SetServerEnabledEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,

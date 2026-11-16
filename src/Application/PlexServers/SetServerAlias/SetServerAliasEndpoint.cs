@@ -23,6 +23,7 @@ public class SetServerAlias : Endpoint<SetServerAliasRequest, BaseResultDTO>
     private readonly IReaparrDbContext _dbContext;
     private readonly IServerSettingsModule _serverSettingsModule;
     private readonly ITelemetry _telemetry;
+
     public SetServerAlias(
         ILogger log,
         IReaparrDbContext dbContext,
@@ -63,6 +64,5 @@ public class SetServerAlias : Endpoint<SetServerAliasRequest, BaseResultDTO>
         if (!string.Equals(previousAlias, alias, StringComparison.Ordinal))
             _telemetry.PlexServerAliasChanged(req.PlexServerId, machineIdentifier, alias);
         await Send.FluentResult(Result.Ok(), ct);
-
     }
 }

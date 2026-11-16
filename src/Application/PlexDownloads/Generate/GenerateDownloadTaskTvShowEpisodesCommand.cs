@@ -189,10 +189,10 @@ public class GenerateDownloadTaskTvShowEpisodesCommandHandler
                 Message = $"DownloadTask {downloadTaskTvShowEpisodeFile.FileName} was queued for downloading",
                 DownloadTaskFileId = downloadTaskTvShowEpisodeFile.Id,
                 DownloadTaskTvShowEpisodeId = downloadTaskTvShowEpisodeFile.ParentId,
-                DownloadTaskTvShowSeasonId =
-                    downloadTaskTvShowEpisodeFile.Parent?.Parent?.Id ?? throw new ArgumentNullException(),
-                DownloadTaskTvShowId =
-                    downloadTaskTvShowEpisodeFile.Parent?.Parent?.Parent?.Id ?? throw new ArgumentNullException(),
+                DownloadTaskTvShowSeasonId = downloadTaskTvShowEpisodeFile.Parent?.Parent?.Id
+                    ?? throw new ArgumentNullException(),
+                DownloadTaskTvShowId = downloadTaskTvShowEpisodeFile.Parent?.Parent?.Parent?.Id
+                    ?? throw new ArgumentNullException(),
                 CreatedAt = DateTime.UtcNow,
             })
         );

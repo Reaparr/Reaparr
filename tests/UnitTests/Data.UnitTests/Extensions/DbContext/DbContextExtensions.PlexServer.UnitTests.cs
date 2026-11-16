@@ -6,13 +6,10 @@ public class DbContextExtensionsPlexServerUnitTests : BaseUnitTest
     public async Task ShouldReturnServerName_WhenPlexServerExists()
     {
         // Arrange
-        await SetupDatabase(
-            12001,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(12001, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+        });
 
         var server = IDbContext.PlexServers.FirstOrDefault();
         server.ShouldNotBeNull();
@@ -41,13 +38,10 @@ public class DbContextExtensionsPlexServerUnitTests : BaseUnitTest
     public async Task ShouldReturnMachineIdentifier_WhenPlexServerExists()
     {
         // Arrange
-        await SetupDatabase(
-            12003,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(12003, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+        });
 
         var server = IDbContext.PlexServers.FirstOrDefault();
         server.ShouldNotBeNull();
@@ -76,13 +70,10 @@ public class DbContextExtensionsPlexServerUnitTests : BaseUnitTest
     public async Task ShouldReturnTrueForIsServerOnline_WhenThereIsASuccessfulStatus()
     {
         // Arrange
-        await SetupDatabase(
-            12005,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(12005, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+        });
         var server = IDbContext.PlexServers.FirstOrDefault();
         server.ShouldNotBeNull();
 
@@ -97,13 +88,10 @@ public class DbContextExtensionsPlexServerUnitTests : BaseUnitTest
     public async Task ShouldReturnFalseForIsServerOnline_WhenThereAreNoStatuses()
     {
         // Arrange
-        await SetupDatabase(
-            12006,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-            }
-        );
+        await SetupDatabase(12006, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+        });
         var server = IDbContext.PlexServers.FirstOrDefault();
         server.ShouldNotBeNull();
 
@@ -120,13 +108,10 @@ public class DbContextExtensionsPlexServerUnitTests : BaseUnitTest
     public async Task ShouldReturnOnlyEnabledUnpausedServersWithSuccessfulStatuses_WhenGettingDownloadableServerIds()
     {
         // Arrange
-        await SetupDatabase(
-            12010,
-            cfg =>
-            {
-                cfg.PlexServerCount = 4;
-            }
-        );
+        await SetupDatabase(12010, cfg =>
+        {
+            cfg.PlexServerCount = 4;
+        });
 
         var dbContext = IDbContext;
         var servers = await dbContext

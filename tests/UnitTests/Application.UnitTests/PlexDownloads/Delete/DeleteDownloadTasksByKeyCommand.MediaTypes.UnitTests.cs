@@ -19,29 +19,26 @@ public class DeleteDownloadTasksByKeyCommandMediaTypesUnitTests : BaseCommandUni
     )
     {
         // Arrange
-        await SetupDatabase(
-            88400,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowDownloadTasksCount = 2;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoFolderDownloadTasksCount = 2;
-                config.PhotoImageDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 2;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88400, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowDownloadTasksCount = 2;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoFolderDownloadTasksCount = 2;
+            config.PhotoImageDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 2;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var before = await dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken);
         before.Count.ShouldBe(10);
@@ -91,15 +88,12 @@ public class DeleteDownloadTasksByKeyCommandMediaTypesUnitTests : BaseCommandUni
     [Test]
     public async Task ShouldDeletePhotoFolderRootAndNotifyItsKey()
     {
-        await SetupDatabase(
-            88401,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoFolderDownloadTasksCount = 1;
-                config.PhotoImageDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88401, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoFolderDownloadTasksCount = 1;
+            config.PhotoImageDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var root = (await dbContext.GetAllDownloadTasksByServerAsync(cancellationToken: CancellationToken)).Single();
         root.DownloadTaskType.ShouldBe(DownloadTaskType.PhotoFolder);

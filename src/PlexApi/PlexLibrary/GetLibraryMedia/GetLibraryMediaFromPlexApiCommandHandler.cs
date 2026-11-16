@@ -216,7 +216,9 @@ public class GetLibraryMediaFromPlexApiCommandHandler
 
         var duplicatePart = state.Assets.Values.GroupBy(x => x.Entity.PlexApiPartId).FirstOrDefault(x => x.Count() > 1);
         if (duplicatePart is not null)
-            return Result.Fail("Plex returned duplicate photo part identity {PlexApiPartId}", duplicatePart.Key).LogError();
+            return Result
+                .Fail("Plex returned duplicate photo part identity {PlexApiPartId}", duplicatePart.Key)
+                .LogError();
 
         foreach (var asset in state.Assets.Values)
         {
@@ -383,7 +385,10 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         else if (!AreEquivalentPhotoAssets(state.Entity, item))
         {
             return Result
-                .Fail("Plex returned conflicting single-file representations for photo asset {PlexApiRatingKey}", ratingKey)
+                .Fail(
+                    "Plex returned conflicting single-file representations for photo asset {PlexApiRatingKey}",
+                    ratingKey
+                )
                 .LogError();
         }
 

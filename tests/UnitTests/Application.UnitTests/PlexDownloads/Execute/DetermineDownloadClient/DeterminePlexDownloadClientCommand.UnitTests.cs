@@ -6,14 +6,11 @@ public class DeterminePlexDownloadClientCommandUnitTests : BaseCommandUnitTest<D
     public async Task ShouldReturnDirect_WhenStreamDownloaderIsDisabled()
     {
         // Arrange
-        await SetupDatabase(
-            91101,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(91101, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = IDbContext.DownloadTaskMovieFile.First();
 
@@ -47,14 +44,11 @@ public class DeterminePlexDownloadClientCommandUnitTests : BaseCommandUnitTest<D
     public async Task ShouldReturnDirect_WhenTranscodeUrlSuggestsDirect()
     {
         // Arrange
-        await SetupDatabase(
-            91102,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(91102, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = IDbContext.DownloadTaskMovieFile.First();
         var expectedPath = $"/library/metadata/{downloadTask.PlexApiRatingKey}";
@@ -108,14 +102,11 @@ public class DeterminePlexDownloadClientCommandUnitTests : BaseCommandUnitTest<D
     public async Task ShouldReturnDash_WhenTranscodeUrlDoesNotSuggestDirect()
     {
         // Arrange
-        await SetupDatabase(
-            91103,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(91103, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = IDbContext.DownloadTaskMovieFile.First();
         var expectedPath = $"/library/metadata/{downloadTask.PlexApiRatingKey}";
@@ -169,14 +160,11 @@ public class DeterminePlexDownloadClientCommandUnitTests : BaseCommandUnitTest<D
     public async Task ShouldReturnFailure_WhenTranscodeDecisionFails()
     {
         // Arrange
-        await SetupDatabase(
-            91104,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(91104, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var downloadTask = IDbContext.DownloadTaskMovieFile.First();
         var expectedPath = $"/library/metadata/{downloadTask.PlexApiRatingKey}";

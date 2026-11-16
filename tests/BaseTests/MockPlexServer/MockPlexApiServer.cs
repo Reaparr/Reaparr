@@ -96,13 +96,10 @@ public class MockPlexApiServer : IMockPlexApiServer
 
             var plexServerWithNonHttps = FakePlexApiData.GetServerResource(tempSeed).Generate();
             var plexServerWithHttps = FakePlexApiData
-                .GetServerResource(
-                    tempSeed,
-                    y =>
-                    {
-                        y.PlexServerAccessConnectionsIncludeHttps = true;
-                    }
-                )
+                .GetServerResource(tempSeed, y =>
+                {
+                    y.PlexServerAccessConnectionsIncludeHttps = true;
+                })
                 .Generate();
 
             plexServerWithNonHttps.Connections.AddRange(plexServerWithHttps.Connections);
@@ -250,15 +247,12 @@ public class MockPlexApiServer : IMockPlexApiServer
             {
                 var uriBuilder = new UriBuilder(connection.Uri) { Path = "/library/sections/all" };
                 handler
-                    .SetupRequest(
-                        HttpMethod.Get,
-                        request =>
-                            request.RequestUri!.GetLeftPart(UriPartial.Path)
-                                == uriBuilder.Uri.GetLeftPart(UriPartial.Path)
-                            || request.RequestUri.GetLeftPart(UriPartial.Path)
-                                == new Uri(new UriBuilder(connection.Uri).Uri, "/library/sections").GetLeftPart(
-                                    UriPartial.Path
-                                )
+                    .SetupRequest(HttpMethod.Get, request =>
+                        request.RequestUri!.GetLeftPart(UriPartial.Path) == uriBuilder.Uri.GetLeftPart(UriPartial.Path)
+                        || request.RequestUri.GetLeftPart(UriPartial.Path)
+                            == new Uri(new UriBuilder(connection.Uri).Uri, "/library/sections").GetLeftPart(
+                                UriPartial.Path
+                            )
                     )
                     .ReturnsAsync(
                         (HttpRequestMessage req, CancellationToken _) =>
@@ -558,11 +552,9 @@ public class MockPlexApiServer : IMockPlexApiServer
 
                     // Mock the metadata retrieval for specific items
                     handler
-                        .SetupRequest(
-                            HttpMethod.Get,
-                            uri =>
-                                uri.RequestUri!.AbsolutePath.StartsWith("/library/metadata/")
-                                && !uri.RequestUri.AbsolutePath.EndsWith("/children", StringComparison.Ordinal)
+                        .SetupRequest(HttpMethod.Get, uri =>
+                            uri.RequestUri!.AbsolutePath.StartsWith("/library/metadata/")
+                            && !uri.RequestUri.AbsolutePath.EndsWith("/children", StringComparison.Ordinal)
                         )
                         .ReturnsAsync(
                             (HttpRequestMessage request, CancellationToken _) =>
@@ -598,19 +590,17 @@ public class MockPlexApiServer : IMockPlexApiServer
                     if (library.Type.ToPlexMediaType() == PlexMediaType.PhotoAlbum)
                     {
                         handler
-                            .SetupRequest(
-                                HttpMethod.Get,
-                                request =>
-                                    request.RequestUri!.GetLeftPart(UriPartial.Authority)
-                                        == new UriBuilder(connection.Uri).Uri.GetLeftPart(UriPartial.Authority)
-                                    && (
-                                        IsPhotoFolderRequest(request, library.Key)
-                                        || _photoAlbums[library.Uuid]
-                                            .Any(album =>
-                                                request.RequestUri.AbsolutePath
-                                                == $"/library/metadata/{album.RatingKey}/children"
-                                            )
-                                    )
+                            .SetupRequest(HttpMethod.Get, request =>
+                                request.RequestUri!.GetLeftPart(UriPartial.Authority)
+                                    == new UriBuilder(connection.Uri).Uri.GetLeftPart(UriPartial.Authority)
+                                && (
+                                    IsPhotoFolderRequest(request, library.Key)
+                                    || _photoAlbums[library.Uuid]
+                                        .Any(album =>
+                                            request.RequestUri.AbsolutePath
+                                            == $"/library/metadata/{album.RatingKey}/children"
+                                        )
+                                )
                             )
                             .ReturnsAsync(
                                 (HttpRequestMessage request, CancellationToken _) =>
@@ -630,8 +620,7 @@ public class MockPlexApiServer : IMockPlexApiServer
                                         var parent = query.TryGetValue("parent", out var parentKey)
                                             ? parentKey
                                             : "root";
-                                        metadata =
-                                            _photoFolderMembers[library.Uuid].GetValueOrDefault(parent)
+                                        metadata = _photoFolderMembers[library.Uuid].GetValueOrDefault(parent)
                                             ?? _photoFolderMembers[library.Uuid].GetValueOrDefault("root")
                                             ?? [];
                                     }

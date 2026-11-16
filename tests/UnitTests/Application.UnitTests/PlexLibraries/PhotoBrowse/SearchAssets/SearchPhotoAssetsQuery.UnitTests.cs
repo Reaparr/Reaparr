@@ -8,16 +8,13 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
     public async Task ShouldSearchAcrossAllEligibleLibrariesWithoutDuplicateRows()
     {
         // Arrange
-        await SetupDatabase(
-            71007,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 2;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-                config.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(71007, config =>
+        {
+            config.PlexPhotoLibraryCount = 2;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+            config.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         assets.Count.ShouldBeGreaterThan(1);
@@ -103,15 +100,12 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
     public async Task ShouldNormalizeUnicodePunctuationAndRejectQueriesWithOnlyShortTerms()
     {
         // Arrange
-        await SetupDatabase(
-            71015,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 3;
-            }
-        );
+        await SetupDatabase(71015, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 3;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var matchingIds = assets.Take(2).Select(x => x.Id).ToArray();
@@ -125,11 +119,12 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
             .PlexPhotoMediaData.Where(x => x.Id == assets[2].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.SearchTitle, "unrelated"), CancellationToken);
 
-        var telemetryCalls = new List<(
-            PhotoSearchTelemetryDTO Query,
-            IReadOnlyList<string> SearchTerms,
-            Result<PhotoAssetPageDTO> Result
-        )>();
+        var telemetryCalls =
+            new List<(
+                PhotoSearchTelemetryDTO Query,
+                IReadOnlyList<string> SearchTerms,
+                Result<PhotoAssetPageDTO> Result
+            )>();
         Mock.Mock<ITelemetry>()
             .Setup(x =>
                 x.PhotoSearchFinished(
@@ -185,15 +180,12 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
     public async Task ShouldPreserveSubstringAllTermAndTwoCharacterSearchSemantics()
     {
         // Arrange
-        await SetupDatabase(
-            71016,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 4;
-            }
-        );
+        await SetupDatabase(71016, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 4;
+        });
         var dbContext = IDbContext;
         var assets = await dbContext.PlexPhotoMediaData.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var searchTitles = new[] { "alpha beta gamma", "alphabet betamax", "alpha only", "cafe resume" };
@@ -208,13 +200,9 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
 
         // Act
         var substring = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("pha"));
-        var allTerms = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("alpha beta")
-        );
+        var allTerms = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("alpha beta"));
         var twoCharacter = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("ha"));
-        var punctuation = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("Café, résumé!")
-        );
+        var punctuation = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("Café, résumé!"));
 
         // Assert
         substring.IsSuccess.ShouldBeTrue();

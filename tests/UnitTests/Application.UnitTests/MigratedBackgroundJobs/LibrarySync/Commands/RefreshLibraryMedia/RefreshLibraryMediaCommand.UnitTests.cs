@@ -39,13 +39,10 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     public async Task ShouldReturnFailedResult_WhenPlexLibraryNotFound()
     {
         // Arrange
-        await SetupDatabase(
-            1337,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 0;
-            }
-        );
+        await SetupDatabase(1337, config =>
+        {
+            config.PlexMovieLibraryCount = 0;
+        });
 
         // Act
         var command = new RefreshLibraryMediaCommand(PlexLibraryId: 1);
@@ -63,14 +60,11 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     public async Task ShouldReturnFailedResult_WhenSyncLibraryMediaFails(PlexMediaType libraryType)
     {
         // Arrange
-        await SetupDatabase(
-            1338,
-            config =>
-            {
-                config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
-                config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
-            }
-        );
+        await SetupDatabase(1338, config =>
+        {
+            config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
+            config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
+        });
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
         var before = (plexLibrary.SyncedAt, plexLibrary.SyncedContentChangedAt, plexLibrary.Outdated);
@@ -108,16 +102,13 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     public async Task ShouldReturnOkResult_WhenLibraryIsSynced(PlexMediaType libraryType, bool forceMediaRefresh)
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1339,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
-                config.PlexTvShowLibraryCount = libraryType == PlexMediaType.TvShow ? 1 : 0;
-                config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
-            }
-        );
+        var seed = await SetupDatabase(1339, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
+            config.PlexTvShowLibraryCount = libraryType == PlexMediaType.TvShow ? 1 : 0;
+            config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
+        });
 
         var updatedLibrary = await GetUpdatedLibrary(seed, libraryType);
         var previousContentVersion = await IDbContext
@@ -230,14 +221,11 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     public async Task ShouldReturnPersistedPhotoCompletionState_WhenTrackedLibraryIsStale()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1340,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(1340, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+        });
         var updatedLibrary = await GetUpdatedLibrary(seed, PlexMediaType.PhotoAlbum);
         var trackedContext = IDbContext;
         var staleLibrary = await trackedContext.PlexLibraries.GetAsync(updatedLibrary.Id, CancellationToken.None);
@@ -330,15 +318,12 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     )
     {
         // Arrange
-        await SetupDatabase(
-            1440,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
-                config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
-            }
-        );
+        await SetupDatabase(1440, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
+            config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
+        });
         var plexLibrary = await IDbContext.PlexLibraries.FirstOrDefaultAsync(CancellationToken);
         plexLibrary.ShouldNotBeNull();
         var before = (plexLibrary.SyncedAt, plexLibrary.SyncedContentChangedAt, plexLibrary.Outdated);
@@ -384,15 +369,12 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     public async Task ShouldNotAdvanceSync_WhenTypedLibraryRefreshFails(PlexMediaType libraryType)
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1441,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
-                config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
-            }
-        );
+        var seed = await SetupDatabase(1441, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = libraryType == PlexMediaType.Movie ? 1 : 0;
+            config.PlexPhotoLibraryCount = libraryType == PlexMediaType.PhotoAlbum ? 1 : 0;
+        });
         var updatedLibrary = await GetUpdatedLibrary(seed, libraryType);
         var before = await IDbContext
             .PlexLibraries.Where(x => x.Id == updatedLibrary.Id)
@@ -450,14 +432,11 @@ public class RefreshLibraryMediaCommandUnitTests : BaseCommandUnitTest<RefreshLi
     public async Task ShouldReturnFailedResult_WhenTvShowLibraryCommandFails()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            1442,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 3;
-            }
-        );
+        var seed = await SetupDatabase(1442, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 3;
+        });
         var updatedLibrary = await GetUpdatedLibrary(seed, PlexMediaType.TvShow);
 
         Mock.SetupCommand(It.IsAny<GetLibraryMediaFromPlexApiCommand>)

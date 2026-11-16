@@ -56,24 +56,21 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
         const string photosPath = "/migration/photos";
         const string controlPath = "/migration/control";
 
-        await SetupDatabase(
-            59305,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.MovieCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(59305, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.MovieCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         using var dbContext = IDbContext;
         var database = ((DbContext)dbContext).Database;

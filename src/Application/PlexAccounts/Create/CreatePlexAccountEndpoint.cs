@@ -80,6 +80,7 @@ public class CreatePlexAccountEndpoint : Endpoint<CreatePlexAccountEndpointReque
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
+
     public CreatePlexAccountEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,

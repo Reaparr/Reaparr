@@ -218,15 +218,12 @@ public class SetServerOwnedEndpointUnitTests
     public async Task ShouldInvalidateServerLibraries_WhenChangingOwnedOverride()
     {
         // Arrange
-        await SetupDatabase(
-            91116,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 2;
-                config.PlexTvShowLibraryCount = 2;
-            }
-        );
+        await SetupDatabase(91116, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 2;
+            config.PlexTvShowLibraryCount = 2;
+        });
 
         var dbContext = IDbContext;
         var server = await dbContext

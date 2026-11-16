@@ -6,14 +6,11 @@ public class GetMovieDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMo
     public async Task ShouldReturnMoviePreviewWithSelectedQualities()
     {
         // Arrange
-        await SetupDatabase(
-            23456,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(23456, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
         var movies = await IDbContext
             .PlexMovies.Include(x => x.MediaDataList)
             .AsNoTracking()
@@ -55,19 +52,14 @@ public class GetMovieDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMo
     [Test]
     [Arguments(DownloadStatus.Queued)]
     [Arguments(DownloadStatus.Completed)]
-    public async Task ShouldReturnSelectedMoviesWithExactSizes_WhenMatchingTaskHasStatus(
-        DownloadStatus status
-    )
+    public async Task ShouldReturnSelectedMoviesWithExactSizes_WhenMatchingTaskHasStatus(DownloadStatus status)
     {
         // Arrange
-        await SetupDatabase(
-            23457,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-                config.MovieCount = 2;
-            }
-        );
+        await SetupDatabase(23457, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 2;
+        });
         var dbContext = IDbContext;
         var movies = await dbContext
             .PlexMovies.Include(x => x.MediaDataList)
@@ -93,7 +85,8 @@ public class GetMovieDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMo
         created.Value.Movies.ShouldBe(1);
 
         var queuedTask = await dbContext
-            .DownloadTaskMovie.IncludeAll().AsTracking()
+            .DownloadTaskMovie.IncludeAll()
+            .AsTracking()
             .SingleAsync(x => x.PlexApiRatingKey == targetMovie.PlexApiRatingKey, CancellationToken);
         queuedTask.Children.Count.ShouldBe(1);
         queuedTask.Children.Single().DownloadStatus.ShouldBe(DownloadStatus.Queued);
@@ -138,11 +131,12 @@ public class GetMovieDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetMo
         foreach (var movie in expectedMovies)
         {
             var preview = previews.Single(x => x.Id == movie.Id);
-            preview.Qualities.OrderBy(x => x.DataId)
+            preview
+                .Qualities.OrderBy(x => x.DataId)
                 .Select(x => (x.DataId, x.MediaId, x.VideoQuality, x.MediaDataType))
                 .ShouldBe(
-                    movie.MediaDataList
-                        .OrderBy(x => x.Id)
+                    movie
+                        .MediaDataList.OrderBy(x => x.Id)
                         .Select(x => (x.Id, movie.Id, x.VideoQuality, x.Type))
                         .ToList()
                 );

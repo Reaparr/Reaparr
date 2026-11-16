@@ -13,15 +13,12 @@ public class DownloadTaskUpdateDispatcherOtherVideoUnitTests : BaseUnitTest<Down
     )
     {
         // Arrange
-        await SetupDatabase(
-            88003,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 2;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88003, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 2;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var files = await dbContext
             .DownloadTaskOtherVideoFiles.OrderBy(x => x.PlexApiRatingKey)

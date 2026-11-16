@@ -6,21 +6,18 @@ public class RestartDownloadTaskCommandSourceScopeUnitTests : BaseCommandUnitTes
     public async Task ShouldKeepDistinctGeneratedPartName_WhenMultipartEpisodeRestarts()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            88402,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 0;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(88402, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 0;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var source = await dbContext
             .PlexTvShowEpisodeData.AsTracking()
@@ -138,23 +135,20 @@ public class RestartDownloadTaskCommandSourceScopeUnitTests : BaseCommandUnitTes
     )
     {
         // Arrange
-        await SetupDatabase(
-            88401,
-            config =>
-            {
-                config.PlexServerCount = differingScope == "server" ? 2 : 1;
-                config.PlexMovieLibraryCount = family == PlexMediaType.Movie && differingScope == "library" ? 2 : 0;
-                config.PlexTvShowLibraryCount = family == PlexMediaType.Episode && differingScope == "library" ? 2 : 0;
-                config.MovieCount = family == PlexMediaType.Movie ? (differingScope == "media" ? 2 : 1) : 0;
-                config.TvShowCount = family == PlexMediaType.Episode ? (differingScope == "media" ? 2 : 1) : 0;
-                config.TvShowSeasonCount = family == PlexMediaType.Episode ? 1 : 0;
-                config.TvShowEpisodeCount = family == PlexMediaType.Episode ? 1 : 0;
-                config.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
-                config.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
-                config.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-                config.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
-            }
-        );
+        await SetupDatabase(88401, config =>
+        {
+            config.PlexServerCount = differingScope == "server" ? 2 : 1;
+            config.PlexMovieLibraryCount = family == PlexMediaType.Movie && differingScope == "library" ? 2 : 0;
+            config.PlexTvShowLibraryCount = family == PlexMediaType.Episode && differingScope == "library" ? 2 : 0;
+            config.MovieCount = family == PlexMediaType.Movie ? (differingScope == "media" ? 2 : 1) : 0;
+            config.TvShowCount = family == PlexMediaType.Episode ? (differingScope == "media" ? 2 : 1) : 0;
+            config.TvShowSeasonCount = family == PlexMediaType.Episode ? 1 : 0;
+            config.TvShowEpisodeCount = family == PlexMediaType.Episode ? 1 : 0;
+            config.MovieDownloadTasksCount = family == PlexMediaType.Movie ? 2 : 0;
+            config.TvShowDownloadTasksCount = family == PlexMediaType.Episode ? 2 : 0;
+            config.TvShowSeasonDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+            config.TvShowEpisodeDownloadTasksCount = family == PlexMediaType.Episode ? 1 : 0;
+        });
         var dbContext = IDbContext;
         BasePlexMediaData source;
         BasePlexMediaData competingSource;

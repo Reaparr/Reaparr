@@ -7,15 +7,12 @@ public class StopDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StopDownloadT
     {
         // Arrange
 
-        await SetupDatabase(
-            81582,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 2;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(81582, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 2;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
         var testDownloadTask = await IDbContext.DownloadTaskTvShow.FirstAsync(CancellationToken);
         var downloadableTasks = await IDbContext.GetDownloadableChildTaskKeys(
             testDownloadTask.ToKey(),
@@ -128,15 +125,12 @@ public class StopDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StopDownloadT
     public async Task ShouldOnlyStopActiveSeasonChildren_WhenStoppingSeason()
     {
         // Arrange
-        await SetupDatabase(
-            52814,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(52814, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
 
         var seasonTask = await IDbContext.DownloadTaskTvShowSeason.FirstAsync(CancellationToken);
         var seasonChildTasks = await IDbContext.GetDownloadableChildTaskKeys(seasonTask.ToKey(), CancellationToken);
@@ -221,15 +215,12 @@ public class StopDownloadTaskCommandTvShowUnitTests : BaseUnitTest<StopDownloadT
     {
         // Arrange
 
-        await SetupDatabase(
-            72956,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(72956, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
 
         var tvShow = await IDbContext.DownloadTaskTvShow.FirstAsync(CancellationToken);
         var childKeys = await IDbContext.GetDownloadableChildTaskKeys(tvShow.ToKey(), CancellationToken);

@@ -42,11 +42,7 @@ public partial interface ITelemetry
     /// <summary>
     /// Records completion of an application update download.
     /// </summary>
-    void UpdateDownloadFinished(
-        ResultBase result,
-        string? targetVersion = null,
-        bool? pendingRestart = null
-    );
+    void UpdateDownloadFinished(ResultBase result, string? targetVersion = null, bool? pendingRestart = null);
 
     /// <summary>
     /// Records acceptance of an application update.

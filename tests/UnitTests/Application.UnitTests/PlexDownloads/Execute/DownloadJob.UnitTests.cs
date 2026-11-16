@@ -99,10 +99,7 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
         Mock.Mock<ITelemetry>()
-            .Verify(
-                x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.Download),
-                Times.Once()
-            );
+            .Verify(x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.Download), Times.Once());
     }
 
     [Test]
@@ -150,12 +147,8 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
         Mock.Mock<ITelemetry>()
-            .Verify(
-                x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.Download),
-                Times.Once()
-            );
+            .Verify(x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.Download), Times.Once());
     }
-
 
     [Test]
     public async Task ShouldCaptureDisposeExceptionAfterSuccessfulClientStartAtWorkerBoundary()
@@ -190,10 +183,7 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
         Mock.Mock<ITelemetry>()
-            .Verify(
-                x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.Download),
-                Times.Once()
-            );
+            .Verify(x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.Download), Times.Once());
     }
 
     [Test]
@@ -243,11 +233,9 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
         Mock.Mock<ITelemetry>()
-            .Verify(
-                x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.Download),
-                Times.Once()
-            );
+            .Verify(x => x.CaptureErrors(It.Is<ResultBase>(r => r.IsFailed), TelemetryActivity.Download), Times.Once());
     }
+
     [Test]
     public async Task ShouldNotDispatchDuplicateFailureStatus_WhenDownloadClientAlreadyPersistedIt()
     {
@@ -358,13 +346,10 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
     public async Task ShouldSetDownloadAndDestinationPath_WhenDownloadTaskIsStarted()
     {
         // Arrange
-        await SetupDatabase(
-            39394,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(39394, config =>
+        {
+            config.MovieDownloadTasksCount = 2;
+        });
         var dbContext = IDbContext;
         var testDownloadTask = dbContext.DownloadTaskMovieFile.First();
         var expectedDestinationRootPath = testDownloadTask.DirectoryMeta.DestinationRootPath;
@@ -435,13 +420,10 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
     public async Task ShouldDisposeDownloadClient_WhenJobExecutionCompletes()
     {
         // Arrange
-        await SetupDatabase(
-            39395,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(39395, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var testDownloadTask = IDbContext.DownloadTaskMovieFile.First();
         var context = SetupJobContext(testDownloadTask.ToKey());
@@ -484,13 +466,10 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
     public async Task ShouldSetSourceUnavailableStatus_WhenClientStartFailsWithNotFound()
     {
         // Arrange
-        await SetupDatabase(
-            39396,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(39396, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var testDownloadTask = IDbContext.DownloadTaskMovieFile.First();
         testDownloadTask.DownloadStatus = DownloadStatus.SourceUnavailable;
@@ -570,13 +549,10 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
     public async Task ShouldSetAuthErrorStatus_WhenClientStartFailsWithoutAuthenticationToken()
     {
         // Arrange
-        await SetupDatabase(
-            39397,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(39397, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var testDownloadTask = IDbContext.DownloadTaskMovieFile.First();
         var context = SetupJobContext(testDownloadTask.ToKey());
@@ -657,13 +633,10 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
     public async Task ShouldSetDownloadClientErrorStatus_WhenClientStartFailsWithoutSpecificError()
     {
         // Arrange
-        await SetupDatabase(
-            39397,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(39397, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var testDownloadTask = IDbContext.DownloadTaskMovieFile.First();
         var context = SetupJobContext(testDownloadTask.ToKey());

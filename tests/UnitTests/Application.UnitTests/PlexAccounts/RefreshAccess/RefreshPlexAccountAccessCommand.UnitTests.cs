@@ -10,15 +10,12 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
     public async Task ShouldReportFailureAndPreserveAccess_WhenRevocationTransactionFails()
     {
         // Arrange
-        await SetupDatabase(
-            77606,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(77606, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var account = await dbContext.PlexAccounts.SingleAsync(CancellationToken);
         var beforeServers = await dbContext
@@ -326,14 +323,11 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
             build.TelemetryHost = "https://telemetry.example.test";
             build.TelemetryProjectToken = "phc_test";
         });
-        await SetupDatabase(
-            77607,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-            }
-        );
+        await SetupDatabase(77607, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+        });
 
         var account = await IDbContext.PlexAccounts.SingleAsync(CancellationToken);
         var servers = await IDbContext.PlexServers.OrderBy(x => x.Id).Take(2).ToListAsync(CancellationToken);
@@ -350,15 +344,13 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
                 .As<ActivitySource>()
                 .SingleInstance();
             builder
-                .Register(ctx =>
-                    new Telemetry(
-                        client.Object,
-                        ctx.Resolve<IAppBuildInfo>(),
-                        user.Object,
-                        ctx.Resolve<ActivitySource>(),
-                        new UserSettings()
-                    )
-                )
+                .Register(ctx => new Telemetry(
+                    client.Object,
+                    ctx.Resolve<IAppBuildInfo>(),
+                    user.Object,
+                    ctx.Resolve<ActivitySource>(),
+                    new UserSettings()
+                ))
                 .As<ITelemetry>()
                 .SingleInstance();
         });
@@ -462,15 +454,12 @@ public class RefreshPlexAccountAccessCommandUnitTests : BaseCommandUnitTest<Refr
     public async Task ShouldRemoveLibraryAccessForRevokedServer_WhenOtherServerAccessRemains()
     {
         // Arrange
-        await SetupDatabase(
-            77603,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(77603, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = 1;
+        });
 
         var plexAccount = await IDbContext.PlexAccounts.FirstAsync(CancellationToken);
         var plexServers = await IDbContext.PlexServers.OrderBy(x => x.Id).Take(2).ToListAsync(CancellationToken);

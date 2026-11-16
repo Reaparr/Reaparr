@@ -114,24 +114,33 @@ public class GetDownloadPreviewEndpointUnitTests
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.Capture(
-                identity,
-                TelemetryProtocol.ProfileEvent,
-                It.IsAny<Dictionary<string, object>>(),
-                null,
-                null,
-                null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        client.Setup(x => x.Capture(
-                identity,
-                nameof(TelemetryEvent.DownloadPreviewFinished),
-                It.IsAny<Dictionary<string, object>>(),
-                null,
-                null,
-                null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    nameof(TelemetryEvent.DownloadPreviewFinished),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
-                (_, name, properties, _, _, _) => events.Add((name, properties!)))
+                (_, name, properties, _, _, _) => events.Add((name, properties!))
+            )
             .Returns(true)
             .Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
@@ -140,45 +149,53 @@ public class GetDownloadPreviewEndpointUnitTests
             Mock.Container.Resolve<IAppBuildInfo>(),
             user.Object,
             source,
-            new UserSettings());
+            new UserSettings()
+        );
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<GetDownloadPreviewQuery>(query => ReferenceEquals(query.Request, request)),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetDownloadPreviewQuery>(query => ReferenceEquals(query.Request, request)),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(commandResult)
             .Verifiable(Times.Once());
         await telemetry.InitializeAsync();
 
         // Act
-        var outcome = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton<ITelemetry>(telemetry));
+        var outcome = await TestEndpointHandleAsync(request, services => services.AddSingleton<ITelemetry>(telemetry));
 
         // Assert
         outcome.IsValid.ShouldBeTrue();
         outcome.StatusCode.ShouldBe(StatusCodes.Status200OK);
-        var response = (await JsonSerializer.DeserializeAsync<ResultDTO<DownloadPreviewContainerDTO>>(
-            outcome.Endpoint.HttpContext.Response.Body,
-            DefaultJsonSerializerOptions.ConfigStandard,
-            CancellationToken
-        )).ShouldNotBeNull();
+        var response = (
+            await JsonSerializer.DeserializeAsync<ResultDTO<DownloadPreviewContainerDTO>>(
+                outcome.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         var value = response.Value.ShouldNotBeNull();
         value.TotalSize.ShouldBe(movie.Size + show.Size);
-        value.Previews.Select(x => (x.Title, x.Type, x.Size, x.Children.Count)).ShouldBe([
-            (movie.Title, PlexMediaType.Movie, movie.Size, 0),
-            (show.Title, PlexMediaType.TvShow, show.Size, 1),
-        ]);
+        value
+            .Previews.Select(x => (x.Title, x.Type, x.Size, x.Children.Count))
+            .ShouldBe([
+                (movie.Title, PlexMediaType.Movie, movie.Size, 0),
+                (show.Title, PlexMediaType.TvShow, show.Size, 1),
+            ]);
         var responseShow = value.Previews[1];
         responseShow.Children[0].Title.ShouldBe(season.Title);
         responseShow.Children[0].Type.ShouldBe(PlexMediaType.Season);
-        responseShow.Children[0].Children.Select(x => (x.Title, x.Type, x.Size)).ShouldBe([
-            (episode.Title, PlexMediaType.Episode, episode.Size),
-        ]);
-        value.Previews[0].Qualities.Select(x => (x.MediaDataType, x.VideoQuality, x.MediaId, x.DataId)).ShouldBe([
-            (PlexMediaType.Movie, VideoQuality.FullHD, 101, 301),
-        ]);
+        responseShow
+            .Children[0]
+            .Children.Select(x => (x.Title, x.Type, x.Size))
+            .ShouldBe([(episode.Title, PlexMediaType.Episode, episode.Size)]);
+        value
+            .Previews[0]
+            .Qualities.Select(x => (x.MediaDataType, x.VideoQuality, x.MediaId, x.DataId))
+            .ShouldBe([(PlexMediaType.Movie, VideoQuality.FullHD, 101, 301)]);
         value.Expanded.Count.ShouldBe(2);
         value.Previews.Select(x => value.Expanded[x.Key]).ShouldBe([true, true]);
 
@@ -196,27 +213,38 @@ public class GetDownloadPreviewEndpointUnitTests
         properties[TelemetryProperty.Downloads.PreviewCount].ShouldBe(2);
         properties[TelemetryProperty.Downloads.PreviewTotalSize].ShouldBe(movie.Size + show.Size);
         properties[TelemetryProperty.Downloads.PreviewTotalChildren].ShouldBe(movie.ChildCount + show.ChildCount);
-        var report = ((IEnumerable<Dictionary<string, object>>)properties[TelemetryProperty.Downloads.Report]).ToArray();
-        report.Select(x => (
-            (int)x[TelemetryProperty.Downloads.ReportId],
-            (string)x[TelemetryProperty.Downloads.ReportTitle],
-            (long)x[TelemetryProperty.Downloads.ReportSize],
-            (int)x[TelemetryProperty.Downloads.ReportChildCount],
-            (string)x[TelemetryProperty.Downloads.ReportMediaType]
-        )).ShouldBe([
-            (movie.Id, movie.Title, movie.Size, movie.ChildCount, movie.MediaType.ToString()),
-            (show.Id, show.Title, show.Size, show.ChildCount, show.MediaType.ToString()),
-        ]);
+        var report = (
+            (IEnumerable<Dictionary<string, object>>)properties[TelemetryProperty.Downloads.Report]
+        ).ToArray();
+        report
+            .Select(x =>
+                (
+                    (int)x[TelemetryProperty.Downloads.ReportId],
+                    (string)x[TelemetryProperty.Downloads.ReportTitle],
+                    (long)x[TelemetryProperty.Downloads.ReportSize],
+                    (int)x[TelemetryProperty.Downloads.ReportChildCount],
+                    (string)x[TelemetryProperty.Downloads.ReportMediaType]
+                )
+            )
+            .ShouldBe([
+                (movie.Id, movie.Title, movie.Size, movie.ChildCount, movie.MediaType.ToString()),
+                (show.Id, show.Title, show.Size, show.ChildCount, show.MediaType.ToString()),
+            ]);
         Mock.Mock<ICommandExecutor>().Verify();
         user.Verify();
         client.Verify();
-        client.Verify(x => x.CaptureException(
-            It.IsAny<Exception>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
-            null,
-            null,
-            null), Times.Never());
+        client.Verify(
+            x =>
+                x.CaptureException(
+                    It.IsAny<Exception>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                ),
+            Times.Never()
+        );
     }
 
     [Test]
@@ -249,24 +277,33 @@ public class GetDownloadPreviewEndpointUnitTests
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.Capture(
-                identity,
-                TelemetryProtocol.ProfileEvent,
-                It.IsAny<Dictionary<string, object>>(),
-                null,
-                null,
-                null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        client.Setup(x => x.Capture(
-                identity,
-                nameof(TelemetryEvent.DownloadPreviewFinished),
-                It.IsAny<Dictionary<string, object>>(),
-                null,
-                null,
-                null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    nameof(TelemetryEvent.DownloadPreviewFinished),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
-                (_, name, properties, _, _, _) => events.Add((name, properties!)))
+                (_, name, properties, _, _, _) => events.Add((name, properties!))
+            )
             .Returns(true)
             .Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
@@ -275,28 +312,32 @@ public class GetDownloadPreviewEndpointUnitTests
             Mock.Container.Resolve<IAppBuildInfo>(),
             user.Object,
             source,
-            new UserSettings());
+            new UserSettings()
+        );
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<GetDownloadPreviewQuery>(query => ReferenceEquals(query.Request, request)),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetDownloadPreviewQuery>(query => ReferenceEquals(query.Request, request)),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(commandResult)
             .Verifiable(Times.Once());
         await telemetry.InitializeAsync();
 
         // Act
-        var outcome = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton<ITelemetry>(telemetry));
+        var outcome = await TestEndpointHandleAsync(request, services => services.AddSingleton<ITelemetry>(telemetry));
 
         // Assert
         outcome.IsValid.ShouldBeTrue();
         outcome.StatusCode.ShouldBe(StatusCodes.Status200OK);
-        var response = (await JsonSerializer.DeserializeAsync<ResultDTO<DownloadPreviewContainerDTO>>(
-            outcome.Endpoint.HttpContext.Response.Body,
-            DefaultJsonSerializerOptions.ConfigStandard,
-            CancellationToken
-        )).ShouldNotBeNull();
+        var response = (
+            await JsonSerializer.DeserializeAsync<ResultDTO<DownloadPreviewContainerDTO>>(
+                outcome.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         var value = response.Value.ShouldNotBeNull();
@@ -321,13 +362,18 @@ public class GetDownloadPreviewEndpointUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
         user.Verify();
         client.Verify();
-        client.Verify(x => x.CaptureException(
-            It.IsAny<Exception>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
-            null,
-            null,
-            null), Times.Never());
+        client.Verify(
+            x =>
+                x.CaptureException(
+                    It.IsAny<Exception>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                ),
+            Times.Never()
+        );
     }
 
     [Test]
@@ -357,31 +403,41 @@ public class GetDownloadPreviewEndpointUnitTests
                 },
             ],
         };
-        var commandResult = expectedOutcome == TelemetryOutcome.Rejected
-            ? ResultExtensions.Create400BadRequestResult("Preview rejected").ToResult<List<DownloadPreview>>()
-            : ResultExtensions.TaskIsCancelled("Preview generation").ToResult<List<DownloadPreview>>();
+        var commandResult =
+            expectedOutcome == TelemetryOutcome.Rejected
+                ? ResultExtensions.Create400BadRequestResult("Preview rejected").ToResult<List<DownloadPreview>>()
+                : ResultExtensions.TaskIsCancelled("Preview generation").ToResult<List<DownloadPreview>>();
         var events = new List<(string Name, Dictionary<string, object> Properties)>();
         var user = new Mock<IUserService>(MockBehavior.Strict);
         user.Setup(x => x.GetTelemetryId()).ReturnsAsync(identity).Verifiable(Times.Once());
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
-        client.Setup(x => x.Capture(
-                identity,
-                TelemetryProtocol.ProfileEvent,
-                It.IsAny<Dictionary<string, object>>(),
-                null,
-                null,
-                null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    TelemetryProtocol.ProfileEvent,
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Returns(true)
             .Verifiable(Times.Once());
-        client.Setup(x => x.Capture(
-                identity,
-                nameof(TelemetryEvent.DownloadPreviewFinished),
-                It.IsAny<Dictionary<string, object>>(),
-                null,
-                null,
-                null))
+        client
+            .Setup(x =>
+                x.Capture(
+                    identity,
+                    nameof(TelemetryEvent.DownloadPreviewFinished),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                )
+            )
             .Callback<string, string, Dictionary<string, object>?, GroupCollection?, object?, DateTimeOffset?>(
-                (_, name, properties, _, _, _) => events.Add((name, properties!)))
+                (_, name, properties, _, _, _) => events.Add((name, properties!))
+            )
             .Returns(true)
             .Verifiable(Times.Once());
         using var source = new ActivitySource(TelemetryProtocol.ActivitySourceName);
@@ -390,31 +446,36 @@ public class GetDownloadPreviewEndpointUnitTests
             Mock.Container.Resolve<IAppBuildInfo>(),
             user.Object,
             source,
-            new UserSettings());
+            new UserSettings()
+        );
         Mock.Mock<ICommandExecutor>()
-            .Setup(x => x.Send(
-                It.Is<GetDownloadPreviewQuery>(query => ReferenceEquals(query.Request, request)),
-                CancellationToken))
+            .Setup(x =>
+                x.Send(
+                    It.Is<GetDownloadPreviewQuery>(query => ReferenceEquals(query.Request, request)),
+                    CancellationToken
+                )
+            )
             .ReturnsAsync(commandResult)
             .Verifiable(Times.Once());
         await telemetry.InitializeAsync();
 
         // Act
-        var outcome = await TestEndpointHandleAsync(
-            request,
-            services => services.AddSingleton<ITelemetry>(telemetry));
+        var outcome = await TestEndpointHandleAsync(request, services => services.AddSingleton<ITelemetry>(telemetry));
 
         // Assert
         outcome.IsValid.ShouldBeTrue();
         outcome.StatusCode.ShouldBe(
             expectedOutcome == TelemetryOutcome.Rejected
                 ? StatusCodes.Status400BadRequest
-                : StatusCodes.Status500InternalServerError);
-        var response = (await JsonSerializer.DeserializeAsync<ResultDTO<DownloadPreviewContainerDTO>>(
-            outcome.Endpoint.HttpContext.Response.Body,
-            DefaultJsonSerializerOptions.ConfigStandard,
-            CancellationToken
-        )).ShouldNotBeNull();
+                : StatusCodes.Status500InternalServerError
+        );
+        var response = (
+            await JsonSerializer.DeserializeAsync<ResultDTO<DownloadPreviewContainerDTO>>(
+                outcome.Endpoint.HttpContext.Response.Body,
+                DefaultJsonSerializerOptions.ConfigStandard,
+                CancellationToken
+            )
+        ).ShouldNotBeNull();
         response.IsSuccess.ShouldBeFalse();
         response.Errors.Count.ShouldBe(1);
         response.Value.ShouldBeNull();
@@ -434,13 +495,18 @@ public class GetDownloadPreviewEndpointUnitTests
         Mock.Mock<ICommandExecutor>().Verify();
         user.Verify();
         client.Verify();
-        client.Verify(x => x.CaptureException(
-            It.IsAny<Exception>(),
-            It.IsAny<string>(),
-            It.IsAny<Dictionary<string, object>>(),
-            null,
-            null,
-            null), Times.Never());
+        client.Verify(
+            x =>
+                x.CaptureException(
+                    It.IsAny<Exception>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Dictionary<string, object>>(),
+                    null,
+                    null,
+                    null
+                ),
+            Times.Never()
+        );
     }
 
     [Test]
@@ -458,14 +524,25 @@ public class GetDownloadPreviewEndpointUnitTests
         outcome.ValidationErrors.Select(x => x.PropertyName).ShouldBe([nameof(DownloadPreviewRequest.DownloadMedias)]);
         outcome.Response.ShouldBeNull();
         outcome.Endpoint.HttpContext.Response.Body.Length.ShouldBe(0);
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(It.IsAny<GetDownloadPreviewQuery>(), It.IsAny<CancellationToken>()),
-            Times.Never());
-        Mock.Mock<ITelemetry>().Verify(
-            x => x.DownloadPreviewFinished(
-                It.IsAny<DownloadPreviewRequest>(),
-                It.IsAny<ResultBase>(),
-                It.IsAny<IReadOnlyCollection<(int Id, string Title, long Size, int ChildCount, PlexMediaType MediaType)>>()),
-            Times.Never());
+        Mock.Mock<ICommandExecutor>()
+            .Verify(x => x.Send(It.IsAny<GetDownloadPreviewQuery>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<ITelemetry>()
+            .Verify(
+                x =>
+                    x.DownloadPreviewFinished(
+                        It.IsAny<DownloadPreviewRequest>(),
+                        It.IsAny<ResultBase>(),
+                        It.IsAny<
+                            IReadOnlyCollection<(
+                                int Id,
+                                string Title,
+                                long Size,
+                                int ChildCount,
+                                PlexMediaType MediaType
+                            )>
+                        >()
+                    ),
+                Times.Never()
+            );
     }
 }

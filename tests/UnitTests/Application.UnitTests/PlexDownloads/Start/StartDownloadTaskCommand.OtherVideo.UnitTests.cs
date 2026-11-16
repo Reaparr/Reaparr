@@ -13,15 +13,12 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
     )
     {
         // Arrange
-        await SetupDatabase(
-            88200,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 1;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88200, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 1;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskOtherVideoFiles.Include(x => x.Parent).SingleAsync(CancellationToken);
         DownloadTaskBase node = selection == DownloadTaskType.OtherVideo ? target.Parent! : target;
@@ -86,15 +83,12 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
     public async Task ShouldResumeOnlyNextOtherVideoMoveAndRestoreRejectedMove_WhenContinuing(bool failMove)
     {
         // Arrange
-        await SetupDatabase(
-            88330,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 4;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88330, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 4;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var files = (
             await dbContext
@@ -111,10 +105,7 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
             var fileId = files[index].Id;
             await dbContext
                 .DownloadTaskOtherVideoFiles.Where(x => x.Id == fileId)
-                .ExecuteUpdateAsync(
-                    p => p.SetProperty(x => x.ParentId, parentId),
-                    CancellationToken
-                );
+                .ExecuteUpdateAsync(p => p.SetProperty(x => x.ParentId, parentId), CancellationToken);
         }
         var node = ((DownloadTaskOtherVideoFile)download).Parent!;
         DownloadStatus[] statuses =
@@ -189,15 +180,12 @@ public class StartDownloadTaskCommandOtherVideoUnitTests : BaseCommandUnitTest<S
     public async Task ShouldRestorePausedOtherVideoAndPropagateCancellation_WhenStartIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            88340,
-            c =>
-            {
-                c.PlexOtherVideoLibraryCount = 1;
-                c.OtherVideoDownloadTasksCount = 1;
-                c.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(88340, c =>
+        {
+            c.PlexOtherVideoLibraryCount = 1;
+            c.OtherVideoDownloadTasksCount = 1;
+            c.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskOtherVideoFiles.SingleAsync(CancellationToken);
         await dbContext.SetDownloadStatus(file.ToKey(), DownloadStatus.AutoPaused);

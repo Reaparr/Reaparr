@@ -17,14 +17,11 @@ public class RefreshPlexServerAccountsAccessEndpointUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            77605,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = cancelled ? 1 : 2;
-            }
-        );
+        await SetupDatabase(77605, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = cancelled ? 1 : 2;
+        });
         var dbContext = IDbContext;
         var serverId = await dbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
         var accounts = await dbContext.PlexAccounts.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -84,7 +81,10 @@ public class RefreshPlexServerAccountsAccessEndpointUnitTests
         // Assert
         response.ValidationResult!.IsValid.ShouldBeTrue();
         capturedResult.ShouldNotBeNull();
-        capturedResult.Errors.OfType<ExceptionalError>().Any(error => error.Exception is OperationCanceledException).ShouldBe(cancelled);
+        capturedResult
+            .Errors.OfType<ExceptionalError>()
+            .Any(error => error.Exception is OperationCanceledException)
+            .ShouldBe(cancelled);
         capturedResult.IsFailed.ShouldBe(failed);
         capturedResult.Errors.Count.ShouldBe(failed ? 1 : 0);
         response.Response.ShouldNotBeNull();

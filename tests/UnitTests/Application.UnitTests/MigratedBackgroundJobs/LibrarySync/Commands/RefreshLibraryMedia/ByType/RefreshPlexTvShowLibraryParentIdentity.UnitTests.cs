@@ -12,16 +12,13 @@ public class RefreshPlexTvShowLibraryParentIdentityUnitTests : BaseCommandUnitTe
     )
     {
         // Arrange
-        var seed = await SetupDatabase(
-            625850,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 2;
-                config.TvShowSeasonCount = 0;
-            }
-        );
+        var seed = await SetupDatabase(625850, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 2;
+            config.TvShowSeasonCount = 0;
+        });
         var dbContext = IDbContext;
         var library = await dbContext.PlexLibraries.Include(x => x.TvShows).SingleAsync(CancellationToken);
         var shows = library.TvShows.OrderBy(x => x.PlexApiRatingKey).ToList();

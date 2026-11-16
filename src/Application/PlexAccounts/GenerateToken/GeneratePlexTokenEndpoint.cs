@@ -40,6 +40,7 @@ public class GeneratePlexTokenEndpoint
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
+
     public GeneratePlexTokenEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,

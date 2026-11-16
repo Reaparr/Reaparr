@@ -183,22 +183,22 @@ public sealed partial class Telemetry
     /// <inheritdoc/>
     public Activity? StartDirectDownload(DownloadTaskFileBase downloadTask, int segments) =>
         StartActivityCore(
-        TelemetryActivity.DirectDownload,
-        tags: new Dictionary<string, object?>
-        {
-            [TelemetryProperty.TaskId] = downloadTask.Id,
-            [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
-            [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
-            [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-            [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Direct.ToString(),
-            [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Direct.ToString(),
-            [TelemetryProperty.Downloads.DownloadFileNameTag] = downloadTask.FileName,
-            [TelemetryProperty.Downloads.DownloadSourcePathTag] = downloadTask.FileLocationUrl,
-            [TelemetryProperty.Downloads.DownloadPathTag] = downloadTask.DownloadFilePath,
-            [TelemetryProperty.Downloads.DestinationPathTag] = downloadTask.DestinationFilePath,
-            [TelemetryProperty.Downloads.SegmentsTag] = segments,
-        }
-    );
+            TelemetryActivity.DirectDownload,
+            tags: new Dictionary<string, object?>
+            {
+                [TelemetryProperty.TaskId] = downloadTask.Id,
+                [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
+                [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
+                [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
+                [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Direct.ToString(),
+                [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Direct.ToString(),
+                [TelemetryProperty.Downloads.DownloadFileNameTag] = downloadTask.FileName,
+                [TelemetryProperty.Downloads.DownloadSourcePathTag] = downloadTask.FileLocationUrl,
+                [TelemetryProperty.Downloads.DownloadPathTag] = downloadTask.DownloadFilePath,
+                [TelemetryProperty.Downloads.DestinationPathTag] = downloadTask.DestinationFilePath,
+                [TelemetryProperty.Downloads.SegmentsTag] = segments,
+            }
+        );
 
     /// <inheritdoc/>
     public Activity? StartDirectDownloadAttempt(
@@ -207,70 +207,73 @@ public sealed partial class Telemetry
         int configuredSegments,
         int segments,
         long effectiveSpeedLimitBytes
-    ) => StartActivityCore(
-        TelemetryActivity.DirectDownloadAttempt,
-        tags: new Dictionary<string, object?>
-        {
-            [TelemetryProperty.TaskId] = downloadTask.Id,
-            [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
-            [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
-            [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-            [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Direct.ToString(),
-            [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Direct.ToString(),
-            [TelemetryProperty.Downloads.Attempt] = attempt,
-            [TelemetryProperty.Downloads.ConfiguredSegments] = configuredSegments,
-            [TelemetryProperty.Downloads.Segments] = segments,
-            [TelemetryProperty.Downloads.DownloadPath] = downloadTask.DownloadFilePath,
-            [TelemetryProperty.Downloads.EffectiveSpeedLimitBytes] = effectiveSpeedLimitBytes,
-        }
-    );
+    ) =>
+        StartActivityCore(
+            TelemetryActivity.DirectDownloadAttempt,
+            tags: new Dictionary<string, object?>
+            {
+                [TelemetryProperty.TaskId] = downloadTask.Id,
+                [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
+                [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
+                [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
+                [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Direct.ToString(),
+                [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Direct.ToString(),
+                [TelemetryProperty.Downloads.Attempt] = attempt,
+                [TelemetryProperty.Downloads.ConfiguredSegments] = configuredSegments,
+                [TelemetryProperty.Downloads.Segments] = segments,
+                [TelemetryProperty.Downloads.DownloadPath] = downloadTask.DownloadFilePath,
+                [TelemetryProperty.Downloads.EffectiveSpeedLimitBytes] = effectiveSpeedLimitBytes,
+            }
+        );
 
     /// <inheritdoc/>
     public Activity? StartDashDownload(
         DownloadTaskFileBase downloadTask,
         VideoQuality outputQuality,
         string normalizedFileName
-    ) => StartActivityCore(
-        TelemetryActivity.DashDownload,
-        tags: new Dictionary<string, object?>
-        {
-            [TelemetryProperty.TaskId] = downloadTask.Id,
-            [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
-            [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
-            [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-            [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Dash.ToString(),
-            [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Dash.ToString(),
-            [TelemetryProperty.Downloads.DownloadFileNameTag] = downloadTask.FileName,
-            [TelemetryProperty.Downloads.DownloadSourcePathTag] = downloadTask.FileLocationUrl,
-            [TelemetryProperty.Downloads.DownloadPathTag] = downloadTask.DownloadFilePath,
-            [TelemetryProperty.Downloads.DestinationPathTag] = downloadTask.DestinationFilePath,
-            [TelemetryProperty.Downloads.OutputQualityTag] = outputQuality.ToString(),
-            [TelemetryProperty.Downloads.NormalizedFileNameTag] = normalizedFileName,
-        }
-    );
+    ) =>
+        StartActivityCore(
+            TelemetryActivity.DashDownload,
+            tags: new Dictionary<string, object?>
+            {
+                [TelemetryProperty.TaskId] = downloadTask.Id,
+                [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
+                [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
+                [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
+                [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Dash.ToString(),
+                [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Dash.ToString(),
+                [TelemetryProperty.Downloads.DownloadFileNameTag] = downloadTask.FileName,
+                [TelemetryProperty.Downloads.DownloadSourcePathTag] = downloadTask.FileLocationUrl,
+                [TelemetryProperty.Downloads.DownloadPathTag] = downloadTask.DownloadFilePath,
+                [TelemetryProperty.Downloads.DestinationPathTag] = downloadTask.DestinationFilePath,
+                [TelemetryProperty.Downloads.OutputQualityTag] = outputQuality.ToString(),
+                [TelemetryProperty.Downloads.NormalizedFileNameTag] = normalizedFileName,
+            }
+        );
 
     /// <inheritdoc/>
     public Activity? StartDashDownloadAttempt(
         DownloadTaskFileBase downloadTask,
         string outputPath,
         long effectiveSpeedLimitBytes
-    ) => StartActivityCore(
-        TelemetryActivity.DashDownloadAttempt,
-        tags: new Dictionary<string, object?>
-        {
-            [TelemetryProperty.TaskId] = downloadTask.Id,
-            [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
-            [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
-            [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-            [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Dash.ToString(),
-            [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Dash.ToString(),
-            [TelemetryProperty.Downloads.NormalizedFileName] = downloadTask.FileName,
-            [TelemetryProperty.Downloads.OutputPath] = outputPath,
-            [TelemetryProperty.Downloads.DownloadPath] = downloadTask.DownloadFilePath,
-            [TelemetryProperty.Downloads.DestinationPath] = downloadTask.DestinationFilePath,
-            [TelemetryProperty.Downloads.EffectiveSpeedLimitBytes] = effectiveSpeedLimitBytes,
-        }
-    );
+    ) =>
+        StartActivityCore(
+            TelemetryActivity.DashDownloadAttempt,
+            tags: new Dictionary<string, object?>
+            {
+                [TelemetryProperty.TaskId] = downloadTask.Id,
+                [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
+                [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
+                [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
+                [TelemetryProperty.Downloads.Client] = PlexDownloadClientType.Dash.ToString(),
+                [TelemetryProperty.Downloads.Source] = PlexDownloadClientType.Dash.ToString(),
+                [TelemetryProperty.Downloads.NormalizedFileName] = downloadTask.FileName,
+                [TelemetryProperty.Downloads.OutputPath] = outputPath,
+                [TelemetryProperty.Downloads.DownloadPath] = downloadTask.DownloadFilePath,
+                [TelemetryProperty.Downloads.DestinationPath] = downloadTask.DestinationFilePath,
+                [TelemetryProperty.Downloads.EffectiveSpeedLimitBytes] = effectiveSpeedLimitBytes,
+            }
+        );
 
     /// <inheritdoc/>
     public Activity? StartMoveDownloadFile(
@@ -279,21 +282,22 @@ public sealed partial class Telemetry
         string destinationPath,
         bool keepInDownloads,
         TelemetryRetentionReason retentionReason
-    ) => StartActivityCore(
-        TelemetryActivity.MoveDownloadFile,
-        tags: new Dictionary<string, object?>
-        {
-            [TelemetryProperty.TaskId] = downloadTask.Id,
-            [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
-            [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
-            [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
-            [TelemetryProperty.Downloads.SourcePath] = sourcePath,
-            [TelemetryProperty.Downloads.DestinationPath] = destinationPath,
-            [TelemetryProperty.Downloads.DataTotal] = downloadTask.DataTotal,
-            [TelemetryProperty.Downloads.KeepInDownloads] = keepInDownloads,
-            [TelemetryProperty.Downloads.RetentionReason] = retentionReason.ToString(),
-        }
-    );
+    ) =>
+        StartActivityCore(
+            TelemetryActivity.MoveDownloadFile,
+            tags: new Dictionary<string, object?>
+            {
+                [TelemetryProperty.TaskId] = downloadTask.Id,
+                [TelemetryProperty.Downloads.TaskType] = downloadTask.DownloadTaskType.ToString(),
+                [TelemetryProperty.ServerId] = downloadTask.PlexServerId,
+                [TelemetryProperty.LibraryId] = downloadTask.PlexLibraryId,
+                [TelemetryProperty.Downloads.SourcePath] = sourcePath,
+                [TelemetryProperty.Downloads.DestinationPath] = destinationPath,
+                [TelemetryProperty.Downloads.DataTotal] = downloadTask.DataTotal,
+                [TelemetryProperty.Downloads.KeepInDownloads] = keepInDownloads,
+                [TelemetryProperty.Downloads.RetentionReason] = retentionReason.ToString(),
+            }
+        );
 
     /// <inheritdoc/>
     public void SetMoveDownloadFileSourcePath(Activity? activity, string sourcePath) =>

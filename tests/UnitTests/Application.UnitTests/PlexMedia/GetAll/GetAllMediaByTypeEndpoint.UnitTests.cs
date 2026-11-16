@@ -173,8 +173,9 @@ public class GetAllMediaByTypeEndpointUnitTests
         response.ShouldNotBeNull().IsSuccess.ShouldBeTrue();
         response.Errors.Count.ShouldBe(0);
         var value = response.Value.ShouldNotBeNull();
-        (value.Page, value.PageSize, value.TotalCount, value.MediaCount, value.TotalMediaSize)
-            .ShouldBe((2, 30, 2, 2, 4096L));
+        (value.Page, value.PageSize, value.TotalCount, value.MediaCount, value.TotalMediaSize).ShouldBe(
+            (2, 30, 2, 2, 4096L)
+        );
         telemetryRequest.ShouldNotBeNull();
         telemetryRequest.MediaType.ShouldBe(PlexMediaType.Movie);
         telemetryRequest.PlexLibraryId.ShouldBe(17);

@@ -8,16 +8,13 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
     public async Task ShouldRunMusicWriterAndPublishScope_WhenEligibleMusicPairExecutes()
     {
         // Arrange
-        await SetupDatabase(
-            963520,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 0;
-            }
-        );
+        await SetupDatabase(963520, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 0;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];
@@ -108,14 +105,11 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
     )
     {
         // Arrange
-        await SetupDatabase(
-            963521,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(963521, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -178,16 +172,13 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
     )
     {
         // Arrange
-        await SetupDatabase(
-            963522,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMovieLibraryCount = mediaType == PlexMediaType.Movie ? 1 : 0;
-                config.PlexTvShowLibraryCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
-                config.PlexMusicLibraryCount = mediaType == PlexMediaType.MusicArtist ? 1 : 0;
-            }
-        );
+        await SetupDatabase(963522, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMovieLibraryCount = mediaType == PlexMediaType.Movie ? 1 : 0;
+            config.PlexTvShowLibraryCount = mediaType == PlexMediaType.TvShow ? 1 : 0;
+            config.PlexMusicLibraryCount = mediaType == PlexMediaType.MusicArtist ? 1 : 0;
+        });
         var libraries = await IDbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];
         var owned = libraries[1];

@@ -18,6 +18,7 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
         context.SetupGet(x => x.CancellationToken).Returns(cancellationToken);
         return context.Object;
     }
+
     private void SetupBeginJob()
     {
         Mock.Mock<ITelemetry>()
@@ -106,10 +107,9 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
     {
         // Arrange
         var context = SetupJobContext();
-        var cancellation =
-            ResultExtensions
-                .TaskIsCancelled(nameof(RefreshPlexAccountAccessJob))
-                .ToResult<List<RefreshPlexAccountAccessRapportDTO>>();
+        var cancellation = ResultExtensions
+            .TaskIsCancelled(nameof(RefreshPlexAccountAccessJob))
+            .ToResult<List<RefreshPlexAccountAccessRapportDTO>>();
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(
@@ -251,6 +251,4 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
     }
-
-
 }

@@ -6,14 +6,11 @@ public class AddOrUpdatePlexServerCommandUnitTests : BaseUnitTest<AddOrUpdatePle
     public async Task ShouldPreserveCustomOwnership_WhenPlexAdvertisesThenOmitsSameConnection()
     {
         // Arrange
-        await SetupDatabase(
-            23725,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 2;
-            }
-        );
+        await SetupDatabase(23725, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.Include(x => x.PlexServerConnections).SingleAsync(CancellationToken);
         var connections = server.PlexServerConnections.OrderBy(x => x.Id).ToArray();
@@ -228,14 +225,11 @@ public class AddOrUpdatePlexServerCommandUnitTests : BaseUnitTest<AddOrUpdatePle
     public async Task ShouldSyncConnectionsAndKeepTheSameServerConnectionIds_WhenSomeHaveConnectionHaveChanged()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            23724,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 5;
-            }
-        );
+        var seed = await SetupDatabase(23724, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 5;
+        });
 
         var plexServer = IDbContext.PlexServers.Include(x => x.PlexServerConnections).FirstOrDefault();
         plexServer.ShouldNotBeNull();
@@ -274,14 +268,11 @@ public class AddOrUpdatePlexServerCommandUnitTests : BaseUnitTest<AddOrUpdatePle
     public async Task ShouldKeepCustomConnections_WhenSomeConnectionHaveChanged()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            233324,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 5;
-            }
-        );
+        var seed = await SetupDatabase(233324, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 5;
+        });
 
         var dbContext = IDbContext;
         var plexServer = IDbContext.PlexServers.Include(x => x.PlexServerConnections).FirstOrDefault();

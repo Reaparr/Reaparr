@@ -8,17 +8,14 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRemoveOnlyEmptyMediaFolder_WhenCleaningCompletedMusic(bool containsFile)
     {
         // Arrange
-        await SetupDatabase(
-            65001,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(65001, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var file = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         var paths = Mock.Container.Resolve<IPathProvider>();
@@ -56,18 +53,15 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectMovieSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            65002,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(65002, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
@@ -118,20 +112,17 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectEpisodeSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            65003,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(65003, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
@@ -185,18 +176,15 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectPhotoSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            65004,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-            }
-        );
+        await SetupDatabase(65004, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
@@ -261,17 +249,14 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectMusicSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            65005,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 3;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(65005, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 3;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
@@ -321,20 +306,17 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldRespectOtherVideoSiblingStatusWhenCleaningMusic(DownloadStatus siblingStatus)
     {
         // Arrange
-        await SetupDatabase(
-            65006,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 2;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoDownloadTasksCount = 1;
-                config.OtherVideoFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(65006, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 2;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoDownloadTasksCount = 1;
+            config.OtherVideoFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var musicFiles = await dbContext
             .DownloadTaskMusicTrackFiles.OrderBy(x => x.PlexApiRatingKey)
@@ -384,17 +366,14 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldReturnFailedResult_WhenSecondCleanupPathResolutionFails()
     {
         // Arrange
-        await SetupDatabase(
-            65007,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(65007, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock
@@ -435,17 +414,14 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldReturnFailedResult_WhenSecondCleanupDirectoryEntriesCannotBeRead()
     {
         // Arrange
-        await SetupDatabase(
-            65008,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(65008, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock
@@ -491,17 +467,14 @@ public class CleanUpDownloadTaskFoldersMusicUnitTests : BaseCommandUnitTest<Clea
     public async Task ShouldReturnFailedResult_WhenSecondCleanupDirectoryCannotBeDeleted()
     {
         // Arrange
-        await SetupDatabase(
-            65009,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistDownloadTasksCount = 1;
-                config.MusicAlbumDownloadTasksCount = 1;
-                config.MusicTrackDownloadTasksCount = 1;
-                config.MusicTrackFileDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(65009, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistDownloadTasksCount = 1;
+            config.MusicAlbumDownloadTasksCount = 1;
+            config.MusicTrackDownloadTasksCount = 1;
+            config.MusicTrackFileDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var target = await dbContext.DownloadTaskMusicTrackFiles.SingleAsync(CancellationToken);
         target.DirectoryMeta.DownloadRootPath = Mock

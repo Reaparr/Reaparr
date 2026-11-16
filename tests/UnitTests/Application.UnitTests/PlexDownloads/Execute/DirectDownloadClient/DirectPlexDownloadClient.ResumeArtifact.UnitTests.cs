@@ -68,9 +68,9 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
             .ShouldBe(snapshot.Chunks.Select(x => (x.Start, x.End, x.Position)));
         fileSystem.File.Exists(partialPath).ShouldBe(partialLength >= 0);
         if (partialLength >= 0)
-            (await fileSystem.File.ReadAllBytesAsync(partialPath, CancellationToken)).ShouldBe(
-                [.. Enumerable.Repeat((byte)7, partialLength)]
-            );
+            (await fileSystem.File.ReadAllBytesAsync(partialPath, CancellationToken)).ShouldBe([
+                .. Enumerable.Repeat((byte)7, partialLength),
+            ]);
         fileSystem.File.Exists(snapshot.FileName).ShouldBeFalse();
         downloader.Verify(
             x => x.DownloadFileTaskAsync(It.IsAny<DownloadPackage>(), It.IsAny<CancellationToken>()),
@@ -116,10 +116,7 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
             secondPosition
         );
         if (renamed)
-            await fileSystem.File.WriteAllBytesAsync(
-                snapshot.FileName,
-                [.. Enumerable.Repeat((byte)7, 31)]
-            );
+            await fileSystem.File.WriteAllBytesAsync(snapshot.FileName, [.. Enumerable.Repeat((byte)7, 31)]);
         var remainingBytes = renamed ? 32 : 32 - firstPosition - secondPosition;
         var directoryHandler = new EnsureDownloadDirectoryCommandHandler(fileSystem.Path, fileSystem.Directory);
         Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(1);
@@ -219,8 +216,12 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        (await fileSystem.File.ReadAllBytesAsync(renamed ? snapshot.FileName : task.DownloadFilePath, CancellationToken))
-            .ShouldBe(output);
+        (
+            await fileSystem.File.ReadAllBytesAsync(
+                renamed ? snapshot.FileName : task.DownloadFilePath,
+                CancellationToken
+            )
+        ).ShouldBe(output);
         if (renamed)
             fileSystem.File.Exists(snapshot.FileName + snapshot.DownloadingFileExtension).ShouldBeFalse();
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
@@ -318,10 +319,12 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Single().Message.ShouldContain("not enough space");
-        (await fileSystem.File.ReadAllBytesAsync(
-            snapshot.FileName + snapshot.DownloadingFileExtension,
-            CancellationToken
-        )).ShouldBe(before);
+        (
+            await fileSystem.File.ReadAllBytesAsync(
+                snapshot.FileName + snapshot.DownloadingFileExtension,
+                CancellationToken
+            )
+        ).ShouldBe(before);
         fileSystem.File.Exists(snapshot.FileName).ShouldBeFalse();
         var persisted = await dbContext.GetDownloadTaskFileAsync(key, CancellationToken);
         persisted.ShouldNotBeNull();
@@ -373,15 +376,12 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
         IFileSystem FileSystem
     )> CreateScenario(int partialLength, long availableSpace = 1024, long firstPosition = 8, long secondPosition = 4)
     {
-        await SetupDatabase(
-            51001,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(51001, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         SetupFileSystem(fs =>
             fs.AddDrive(
                 "/",

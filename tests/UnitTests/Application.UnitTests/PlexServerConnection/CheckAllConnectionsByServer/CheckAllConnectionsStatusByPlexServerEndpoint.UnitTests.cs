@@ -65,13 +65,17 @@ public class CheckAllConnectionsStatusByPlexServerEndpointUnitTests
         response.Value!.Count.ShouldBe(1);
         response.Value![0].PlexServerId.ShouldBe(serverId);
         response.Value![0].IsSuccessful.ShouldBeTrue();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(
-                It.Is<CheckAllConnectionsStatusByPlexServerCommand>(command => command.PlexServerId == serverId),
-                It.IsAny<CancellationToken>()
-            ),
-            Times.Once()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x =>
+                    x.Send(
+                        It.Is<CheckAllConnectionsStatusByPlexServerCommand>(command =>
+                            command.PlexServerId == serverId
+                        ),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
@@ -82,7 +86,8 @@ public class CheckAllConnectionsStatusByPlexServerEndpointUnitTests
     {
         // Arrange
         const int serverId = 8;
-        var result = Result.Ok(
+        var result = Result
+            .Ok(
                 new List<PlexServerStatus>
                 {
                     new()
@@ -133,13 +138,17 @@ public class CheckAllConnectionsStatusByPlexServerEndpointUnitTests
         response.IsSuccess.ShouldBeFalse();
         response.Errors.Count.ShouldBe(1);
         response.Errors.Any(error => error.Message == "all connections failed").ShouldBeTrue();
-        Mock.Mock<ICommandExecutor>().Verify(
-            x => x.Send(
-                It.Is<CheckAllConnectionsStatusByPlexServerCommand>(command => command.PlexServerId == serverId),
-                It.IsAny<CancellationToken>()
-            ),
-            Times.Once()
-        );
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x =>
+                    x.Send(
+                        It.Is<CheckAllConnectionsStatusByPlexServerCommand>(command =>
+                            command.PlexServerId == serverId
+                        ),
+                        It.IsAny<CancellationToken>()
+                    ),
+                Times.Once()
+            );
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>().Verify();
         Mock.Mock<ITelemetry>().VerifyNoOtherCalls();

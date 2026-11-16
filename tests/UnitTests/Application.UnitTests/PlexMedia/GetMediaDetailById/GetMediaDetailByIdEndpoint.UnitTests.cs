@@ -14,16 +14,13 @@ public class GetMediaDetailByIdEndpointUnitTests
     {
         // Arrange
         var movieCount = 10;
-        await SetupDatabase(
-            45588,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.MovieCount = movieCount;
-            }
-        );
+        await SetupDatabase(45588, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.MovieCount = movieCount;
+        });
 
         var testMovie = IDbContext.PlexMovies.FirstOrDefault(x => x.HasThumb);
         testMovie.ShouldNotBeNull();
@@ -51,18 +48,15 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldHavePlexMediaData_WhenValidMediaIdAndPlexMediaTypeTvShowIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            53442,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 10;
-                config.TvShowSeasonCount = 3;
-                config.TvShowEpisodeCount = 5;
-            }
-        );
+        await SetupDatabase(53442, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 10;
+            config.TvShowSeasonCount = 3;
+            config.TvShowEpisodeCount = 5;
+        });
 
         var testTvShow = IDbContext.PlexTvShows.FirstOrDefault(x => x.HasThumb);
         testTvShow.ShouldNotBeNull();
@@ -106,16 +100,13 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldReturnDirectPhotoFilesWithoutAlbumOwnership_WhenPhotoAlbumDetailIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            62307,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 2;
-                config.PhotoCount = 2;
-            }
-        );
+        await SetupDatabase(62307, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 2;
+            config.PhotoCount = 2;
+        });
         var dbContext = IDbContext;
         var album = await dbContext
             .PlexPhotoAlbums.Include(x => x.Memberships)
@@ -169,16 +160,13 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldReturnMusicHierarchyWithStoredDiscAndTrackNumbers_WhenArtistDetailIsRequested()
     {
         // Arrange
-        await SetupDatabase(
-            62503,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 2;
-                config.MusicAlbumCount = 2;
-                config.MusicTrackCount = 3;
-            }
-        );
+        await SetupDatabase(62503, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 2;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 3;
+        });
         var dbContext = IDbContext;
         var artist = await dbContext
             .PlexMusicArtists.AsTracking()
@@ -324,14 +312,11 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldReturnOtherVideoOriginalPartsAndVersionSelectors_WhenDetailIsRequested()
     {
         // Arrange
-        var seed = await SetupDatabase(
-            62504,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        var seed = await SetupDatabase(62504, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         using var dbContext = IDbContext;
         var video = await dbContext.PlexOtherVideos.Include(x => x.MediaDataList).SingleAsync(CancellationToken);
         var original = video.MediaDataList.Single();
@@ -388,18 +373,15 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldReturnRootWithoutChildren_WhenHierarchyIsEmpty(PlexMediaType type)
     {
         // Arrange
-        await SetupDatabase(
-            62308,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 0;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 0;
-            }
-        );
+        await SetupDatabase(62308, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 0;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 0;
+        });
         var dbContext = IDbContext;
         var root =
             type == PlexMediaType.MusicArtist
@@ -548,18 +530,15 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldProjectEpisodeComparisonStates_WhenRemoteTvShowDetailHasCurrentOwnedComparisonScope()
     {
         // Arrange
-        await SetupDatabase(
-            53443,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(53443, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -653,18 +632,15 @@ public class GetMediaDetailByIdEndpointUnitTests
     public async Task ShouldProjectShowHigherQualityAndEpisodesOwned_WhenRemoteTvShowDetailHasUpgradeAvailableButAllEpisodesMatched()
     {
         // Arrange
-        await SetupDatabase(
-            53444,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexTvShowLibraryCount = 1;
-                config.PlexAccountCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(53444, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexTvShowLibraryCount = 1;
+            config.PlexAccountCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 3;
+        });
 
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
@@ -755,17 +731,14 @@ public class GetMediaDetailByIdMusicComparisonEndpointUnitTests
     public async Task ShouldMapActualMusicCoverageByTypedIdentity_WhenArtistAlbumAndTrackIdsCollide()
     {
         // Arrange
-        await SetupDatabase(
-            963530,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 2;
-            }
-        );
+        await SetupDatabase(963530, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 2;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];
@@ -938,10 +911,7 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
                         .Subscribe(command => commands.Enqueue(command.Command.CommandText))
                 )
             );
-        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
-            listeners,
-            commandSubscriptions
-        );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(listeners, commandSubscriptions);
         if (type == PlexMediaType.MusicArtist)
         {
             var expectedIds = new[] { fixture.Id }.Concat(fixture.ChildIds).Concat(fixture.GrandchildIds).ToArray();
@@ -1011,25 +981,22 @@ public class GetMediaDetailByIdConnectionIndependenceUnitTests
 
     private async Task<DetailFixture> ArrangeDetailAsync(PlexMediaType type, bool online, bool hasToken)
     {
-        await SetupDatabase(
-            62510,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 1;
-                config.PlexAccountCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-                config.PhotoClipCount = 1;
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 1;
-            }
-        );
+        await SetupDatabase(62510, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+            config.PlexAccountCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+            config.PhotoClipCount = 1;
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 1;
+        });
         var dbContext = IDbContext;
         await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
             setters => setters.SetProperty(x => x.IsSuccessful, online),

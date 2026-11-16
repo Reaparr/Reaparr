@@ -532,9 +532,7 @@ public class TelemetryUnitTests : BaseUnitTest
         await using var logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .Enrich.FromLogContext()
-            .Filter.ByIncludingOnly(entry =>
-                entry.MessageTemplate.Text is requestLogMessage or jobLogMessage
-            )
+            .Filter.ByIncludingOnly(entry => entry.MessageTemplate.Text is requestLogMessage or jobLogMessage)
             .WriteTo.Sink(sink.Object)
             .CreateLogger();
         var client = new Mock<IPostHogClient>(MockBehavior.Strict);
@@ -618,10 +616,7 @@ public class TelemetryUnitTests : BaseUnitTest
                     },
                 },
             },
-            NetworkSettings =
-            {
-                ReverseProxyUrl = "http://192.168.4.20:5000/reaparr",
-            },
+            NetworkSettings = { ReverseProxyUrl = "http://192.168.4.20:5000/reaparr" },
         };
         var first = new TaskCompletionSource<Dictionary<string, object>>(
             TaskCreationOptions.RunContinuationsAsynchronously
@@ -823,9 +818,7 @@ public class TelemetryUnitTests : BaseUnitTest
         await using var logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .Enrich.FromLogContext()
-            .Filter.ByIncludingOnly(entry =>
-                entry.MessageTemplate.Text is capturedLogMessage or restoredLogMessage
-            )
+            .Filter.ByIncludingOnly(entry => entry.MessageTemplate.Text is capturedLogMessage or restoredLogMessage)
             .WriteTo.Sink(sink.Object)
             .CreateLogger();
         var loggerForCallback = logger;
@@ -1092,13 +1085,11 @@ public class TelemetryUnitTests : BaseUnitTest
         // Assert
         events
             .Select(x => x.Name)
-            .ShouldBe(
-                [
-                    nameof(TelemetryEvent.IntegrationConnectionTestFinished),
-                    nameof(TelemetryEvent.IntegrationConnectionTestFinished),
-                    nameof(TelemetryEvent.IntegrationConnectionTestFinished),
-                ]
-            );
+            .ShouldBe([
+                nameof(TelemetryEvent.IntegrationConnectionTestFinished),
+                nameof(TelemetryEvent.IntegrationConnectionTestFinished),
+                nameof(TelemetryEvent.IntegrationConnectionTestFinished),
+            ]);
         var stored = events[0].Properties;
         stored[TelemetryProperty.Mode].ShouldBe(nameof(TelemetryMode.Stored));
         stored[TelemetryProperty.IntegrationId].ShouldBe(integrationId);
@@ -1273,12 +1264,10 @@ public class TelemetryUnitTests : BaseUnitTest
         // Assert
         events
             .Select(x => x.Name)
-            .ShouldBe(
-                [
-                    nameof(TelemetryEvent.ExternalIndexerQueryFinished),
-                    nameof(TelemetryEvent.ExternalIndexerQueryFinished),
-                ]
-            );
+            .ShouldBe([
+                nameof(TelemetryEvent.ExternalIndexerQueryFinished),
+                nameof(TelemetryEvent.ExternalIndexerQueryFinished),
+            ]);
         var rss = events[0].Properties;
         rss[TelemetryProperty.Mode].ShouldBe(nameof(TelemetryMode.Rss));
         rss[TelemetryProperty.Integrations.QueryType].ShouldBe(queryType.ToString());
@@ -1380,13 +1369,11 @@ public class TelemetryUnitTests : BaseUnitTest
         // Assert
         events
             .Select(x => x.Name)
-            .ShouldBe(
-                [
-                    nameof(TelemetryEvent.IntegrationChanged),
-                    nameof(TelemetryEvent.IntegrationChanged),
-                    nameof(TelemetryEvent.IntegrationSetupFinished),
-                ]
-            );
+            .ShouldBe([
+                nameof(TelemetryEvent.IntegrationChanged),
+                nameof(TelemetryEvent.IntegrationChanged),
+                nameof(TelemetryEvent.IntegrationSetupFinished),
+            ]);
         var changed = events[0].Properties;
         changed[TelemetryProperty.Provider].ShouldBe(nameof(IntegrationType.Sonarr));
         changed[TelemetryProperty.Configuration.Name].ShouldBe("Sonarr");
@@ -1529,18 +1516,16 @@ public class TelemetryUnitTests : BaseUnitTest
         // Assert
         events
             .Select(x => x.Name)
-            .ShouldBe(
-                [
-                    nameof(TelemetryEvent.MediaQueryFinished),
-                    nameof(TelemetryEvent.PhotoSearchFinished),
-                    nameof(TelemetryEvent.LibraryRefreshRequested),
-                    nameof(TelemetryEvent.ServerMediaSyncRequested),
-                    nameof(TelemetryEvent.LibrarySyncQueued),
-                    nameof(TelemetryEvent.LibrarySyncFinished),
-                    nameof(TelemetryEvent.LibrarySyncCancellationProcessed),
-                    nameof(TelemetryEvent.PhotoSearchFinished),
-                ]
-            );
+            .ShouldBe([
+                nameof(TelemetryEvent.MediaQueryFinished),
+                nameof(TelemetryEvent.PhotoSearchFinished),
+                nameof(TelemetryEvent.LibraryRefreshRequested),
+                nameof(TelemetryEvent.ServerMediaSyncRequested),
+                nameof(TelemetryEvent.LibrarySyncQueued),
+                nameof(TelemetryEvent.LibrarySyncFinished),
+                nameof(TelemetryEvent.LibrarySyncCancellationProcessed),
+                nameof(TelemetryEvent.PhotoSearchFinished),
+            ]);
         var media = events[0].Properties;
         media[TelemetryProperty.MediaType].ShouldBe(nameof(PlexMediaType.Movie));
         media[TelemetryProperty.Libraries.Search].ShouldBe("alpha beta");
@@ -2543,5 +2528,4 @@ public class TelemetryUnitTests : BaseUnitTest
             PlexServerId = 77,
             PlexServerConnectionId = 88,
         };
-
 }

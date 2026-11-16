@@ -124,18 +124,18 @@ public sealed class GetPhotoAlbumsQueryCommandHandler
     )
     {
         return await context
-                .PlexPhotoMediaData.Where(x =>
-                    allowedLibraryIds.Contains(x.PlexLibraryId)
-                    && x.AlbumMemberships.Any(membership =>
-                        albums.Any(album =>
-                            album.Id == membership.PlexPhotoAlbumId
-                            && album.PlexLibraryId == x.PlexLibraryId
-                            && album.PlexServerId == x.PlexServerId
-                        )
+            .PlexPhotoMediaData.Where(x =>
+                allowedLibraryIds.Contains(x.PlexLibraryId)
+                && x.AlbumMemberships.Any(membership =>
+                    albums.Any(album =>
+                        album.Id == membership.PlexPhotoAlbumId
+                        && album.PlexLibraryId == x.PlexLibraryId
+                        && album.PlexServerId == x.PlexServerId
                     )
                 )
-                .Select(x => (long?)x.Size)
-                .SumAsync(cancellationToken)
+            )
+            .Select(x => (long?)x.Size)
+            .SumAsync(cancellationToken)
             ?? 0L;
     }
 

@@ -57,8 +57,8 @@ public sealed class QuartzSqliteConnectionProvider : IDbProvider
     /// <inheritdoc />
     public DbCommand CreateCommand()
     {
-        var cmd =
-            _factory.CreateCommand() ?? throw new InvalidOperationException("SqliteFactory returned null command");
+        var cmd = _factory.CreateCommand()
+            ?? throw new InvalidOperationException("SqliteFactory returned null command");
 
         return cmd;
     }
@@ -66,8 +66,7 @@ public sealed class QuartzSqliteConnectionProvider : IDbProvider
     /// <inheritdoc />
     public DbConnection CreateConnection()
     {
-        var conn =
-            _factory.CreateConnection()
+        var conn = _factory.CreateConnection()
             ?? throw new InvalidOperationException("SqliteFactory returned null connection");
 
         if (string.IsNullOrWhiteSpace(_connectionString))

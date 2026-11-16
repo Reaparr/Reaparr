@@ -247,8 +247,7 @@ public class GetMusicMediaComparisonDetailsCommandHandler
                         RemotePlexMediaDataId = remoteFile?.Id ?? hit?.RemotePlexMediaDataId,
                         OwnedPlexMediaDataId = ownedFile?.Id ?? hit?.OwnedPlexMediaDataId,
                         RemoteLocation = remoteFile?.GetFileName ?? GetFirstFileName(track),
-                        OwnedLocation =
-                            ownedFile?.GetFileName
+                        OwnedLocation = ownedFile?.GetFileName
                             ?? (ownedTrack is null ? string.Empty : GetFirstFileName(ownedTrack)),
                         RemotePlexLibraryId = track.PlexLibraryId,
                         RemotePlexServerId = track.PlexServerId,

@@ -186,10 +186,7 @@ public class DownloadJob : IJob
 
         if (executionResult.IsCancelledOrFailed)
         {
-            context.SetResult(
-                executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed,
-                executionResult
-            );
+            context.SetResult(executionResult.IsCancelled ? JobStatus.Cancelled : JobStatus.Failed, executionResult);
             executionResult.LogIfFailed();
             _telemetry.CaptureErrors(executionResult, TelemetryActivity.Download);
         }

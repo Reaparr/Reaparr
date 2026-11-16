@@ -14,15 +14,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldReturnOk_WhenValidTorrentFileIsUploaded()
     {
         // Arrange
-        await SetupDatabase(
-            1234,
-            config =>
-            {
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1234, config =>
+        {
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
@@ -84,10 +81,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldRejectScalarValidTorrent_WhenDataAndPartIdsDiffer()
     {
         // Arrange
-        var invalidMetadata = CreateValidTorrentMetadata() with
-        {
-            DataId = 2,
-        };
+        var invalidMetadata = CreateValidTorrentMetadata() with { DataId = 2 };
         var (torrentFile, torrentFileMock) = CreateMockTorrentFile(invalidMetadata, "mismatched.torrent");
         var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
 
@@ -147,15 +141,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldReturnRecognizedFailureAndPreserveHashes_WhenCreateDownloadTasksCommandFails()
     {
         // Arrange
-        await SetupDatabase(
-            1235,
-            config =>
-            {
-                config.MovieCount = 1;
-                config.RadarrIntegrationCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(1235, config =>
+        {
+            config.MovieCount = 1;
+            config.RadarrIntegrationCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
@@ -216,15 +207,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldHandleTaskCreationCancellation_WhenCommandReturnsCancellation(bool cancelExecutionToken)
     {
         // Arrange
-        await SetupDatabase(
-            1235,
-            config =>
-            {
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1235, config =>
+        {
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
@@ -368,14 +356,11 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldReturnRecognizedFailure_WhenValidatedTorrentHasNoOwnedHashTarget()
     {
         // Arrange
-        await SetupDatabase(
-            1236,
-            config =>
-            {
-                config.MovieCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1236, config =>
+        {
+            config.MovieCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
@@ -425,15 +410,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldReturnInternalServerErrorAndPreserveCommittedTask_WhenHashAssociationThrows()
     {
         // Arrange
-        await SetupDatabase(
-            1238,
-            config =>
-            {
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1238, config =>
+        {
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
@@ -577,15 +559,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldReportCancellationAndPreserveCommittedTask_WhenHashAssociationIsCancelled()
     {
         // Arrange
-        await SetupDatabase(
-            1239,
-            config =>
-            {
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1239, config =>
+        {
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
@@ -713,20 +692,17 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldRejectMixedMediaIdentityBeforeCreatingTasks_WhenTorrentIsUploaded()
     {
         // Arrange
-        await SetupDatabase(
-            1237,
-            config =>
-            {
-                config.PlexMovieLibraryCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1237, config =>
+        {
+            config.PlexMovieLibraryCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integration = await dbContext.RadarrIntegrations.SingleAsync(CancellationToken);
         var movieData = await dbContext.PlexMovieData.SingleAsync(CancellationToken);
@@ -797,15 +773,12 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     )
     {
         // Arrange
-        await SetupDatabase(
-            88390,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.SonarrIntegrationCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(88390, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.SonarrIntegrationCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var dbContext = IDbContext;
         var integrationId =
             integrationType == IntegrationType.Sonarr
@@ -863,16 +836,13 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldSetHashIdOnMovieDownloadTask_WhenTorrentIsMovieType()
     {
         // Setup database with movie download tasks that match the metadata
-        await SetupDatabase(
-            1234,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-                config.RadarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(1234, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+            config.RadarrIntegrationCount = 1;
+        });
         var integration = await IDbContext.RadarrIntegrations.SingleAsync(CancellationToken);
 
         using var movieContext = IDbContext;
@@ -932,19 +902,16 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
     public async Task ShouldSetHashIdOnEpisodeDownloadTask_WhenTorrentIsEpisodeType()
     {
         // Setup database with TV show download tasks that match the metadata
-        await SetupDatabase(
-            5678,
-            config =>
-            {
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-                config.SonarrIntegrationCount = 1;
-            }
-        );
+        await SetupDatabase(5678, config =>
+        {
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+            config.SonarrIntegrationCount = 1;
+        });
         var integration = await IDbContext.SonarrIntegrations.SingleAsync(CancellationToken);
 
         using var episodeContext = IDbContext;

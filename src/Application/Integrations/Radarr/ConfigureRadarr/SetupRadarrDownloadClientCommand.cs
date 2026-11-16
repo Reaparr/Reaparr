@@ -123,8 +123,7 @@ public class SetupRadarrDownloadClientCommandHandler
             var list = result.Value;
             var resource = BuildDownloadClientResource(_networkSettings.Uri, integration);
 
-            var currentDownloadClient =
-                list.FirstOrDefault(d => d.Id == integration.ExternalDownloadClientId)
+            var currentDownloadClient = list.FirstOrDefault(d => d.Id == integration.ExternalDownloadClientId)
                 ?? list.FirstOrDefault(d =>
                     string.Equals(d.Name, DOWNLOAD_CLIENT_NAME, StringComparison.OrdinalIgnoreCase)
                 );

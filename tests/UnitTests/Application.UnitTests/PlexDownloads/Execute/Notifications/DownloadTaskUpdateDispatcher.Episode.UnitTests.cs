@@ -7,15 +7,12 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
     {
         // Arrange - regression for completed TV episode files where the DB row still holds a stale
         // download-phase percentage (for example 2%), but the completed patch must still report 100%.
-        await SetupDatabase(
-            84331,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84331, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var episodeFile = await IDbContext.DownloadTaskTvShowEpisodeFile.AsNoTracking().FirstAsync(CancellationToken);
 
@@ -72,15 +69,12 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
     public async Task ShouldIncludeSeasonAndTvShowInPatch_WhenEpisodeProgressIsUpdated()
     {
         // Arrange
-        await SetupDatabase(
-            84321,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84321, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var episodeFile = await IDbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
 
@@ -161,15 +155,12 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
     [Test]
     public async Task ShouldPersistCompletedEpisodeSnapshot_WhenSiblingEpisodeProgressArrivesBeforeFlush()
     {
-        await SetupDatabase(
-            84335,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(84335, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
 
         var episodeFiles = await IDbContext
             .DownloadTaskTvShowEpisodeFile.AsNoTracking()
@@ -298,15 +289,12 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
     [Test]
     public async Task ShouldPersistCompletedEpisodeProgress_WhenSiblingEpisodeProgressArrivesBeforeFlush()
     {
-        await SetupDatabase(
-            84333,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 2;
-            }
-        );
+        await SetupDatabase(84333, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 2;
+        });
 
         var episodeFiles = await IDbContext
             .DownloadTaskTvShowEpisodeFile.AsNoTracking()
@@ -444,15 +432,12 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
     [Test]
     public async Task ShouldIncludeSeasonAndTvShowInPatch_WhenEpisodeStatusChanges()
     {
-        await SetupDatabase(
-            84324,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84324, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var episodeFile = await IDbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
 
@@ -498,15 +483,12 @@ public class DownloadTaskUpdateDispatcherEpisodeUnitTests : BaseUnitTest<Downloa
     [Test]
     public async Task ShouldSendOnlyLatestProgress_WhenMultipleUpdatesAreBufferedBeforeFlush()
     {
-        await SetupDatabase(
-            84322,
-            config =>
-            {
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(84322, config =>
+        {
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var episodeFile = await IDbContext.DownloadTaskTvShowEpisodeFile.FirstAsync(CancellationToken);
 

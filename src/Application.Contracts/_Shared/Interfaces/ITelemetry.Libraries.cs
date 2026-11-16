@@ -7,11 +7,7 @@ public partial interface ITelemetry
     /// <summary>
     /// Records completion of a media query.
     /// </summary>
-    void MediaQueryFinished(
-        MediaQueryTelemetryDTO request,
-        string? filter,
-        Result<PlexMediaStatisticsDTO> result
-    );
+    void MediaQueryFinished(MediaQueryTelemetryDTO request, string? filter, Result<PlexMediaStatisticsDTO> result);
 
     /// <summary>
     /// Records completion of a photo search.
@@ -81,11 +77,7 @@ public partial interface ITelemetry
     /// <summary>
     /// Records a library access change.
     /// </summary>
-    void LibraryAccessChanged(
-        int accountId,
-        Guid refreshRunId,
-        IReadOnlyCollection<PlexLibraryAccessRapport> reports
-    );
+    void LibraryAccessChanged(int accountId, Guid refreshRunId, IReadOnlyCollection<PlexLibraryAccessRapport> reports);
 
     /// <summary>
     /// Records completion of metadata synchronization.
@@ -95,12 +87,7 @@ public partial interface ITelemetry
     /// <summary>
     /// Records a Plex library change.
     /// </summary>
-    void PlexLibraryChanged(
-        PlexLibrary library,
-        TelemetryAction action,
-        bool isEnabled,
-        int? purgedMediaCount = null
-    );
+    void PlexLibraryChanged(PlexLibrary library, TelemetryAction action, bool isEnabled, int? purgedMediaCount = null);
 
     /// <summary>
     /// Records a Plex library change.

@@ -256,11 +256,10 @@ public class SyncPlexPhotosCommandHandler : ICommandHandler<SyncPlexPhotosComman
             ct
         );
         var albumCount = await context.PlexPhotoAlbums.CountAsync(x => x.PlexLibraryId == library.Id, ct);
-        var totalMediaSize =
-            await context
-                .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
-                .Select(x => (long?)x.Size)
-                .SumAsync(ct)
+        var totalMediaSize = await context
+            .PlexPhotoMediaData.Where(x => x.PlexLibraryId == library.Id)
+            .Select(x => (long?)x.Size)
+            .SumAsync(ct)
             ?? 0;
         // Catalog metrics and shared sync completion must commit with photo reconciliation.
         var syncedAt = DateTime.UtcNow;

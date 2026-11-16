@@ -22,6 +22,7 @@ public class SetServerOwnedEndpoint : Endpoint<SetServerOwnedRequest, ResultDTO<
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
     private readonly ITelemetry _telemetry;
+
     public SetServerOwnedEndpoint(
         ILogger log,
         IReaparrDbContext dbContext,

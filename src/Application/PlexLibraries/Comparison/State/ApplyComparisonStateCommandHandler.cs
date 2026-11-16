@@ -1,4 +1,3 @@
-
 namespace Reaparr.Application;
 
 public class ApplyComparisonStateCommandValidator : AbstractValidator<ApplyComparisonStateCommand>

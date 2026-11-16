@@ -7,17 +7,14 @@ public class DeleteDownloadTaskEndpointUnitTests
     public async Task ShouldDispatchDeleteCommand_WhenDownloadTaskIdIsGiven()
     {
         // Arrange
-        await SetupDatabase(
-            45210,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(45210, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var episodeFileId = await dbContext
@@ -99,15 +96,12 @@ public class DeleteDownloadTaskEndpointUnitTests
     public async Task ShouldStopDownloadingAndDispatchDelete_WhenTaskIsActivelyDownloading()
     {
         // Arrange
-        await SetupDatabase(
-            45211,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.MovieCount = 1;
-                config.MovieDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(45211, config =>
+        {
+            config.PlexServerCount = 1;
+            config.MovieCount = 1;
+            config.MovieDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var movieId = await dbContext.DownloadTaskMovie.Select(x => x.Id).SingleAsync(CancellationToken);

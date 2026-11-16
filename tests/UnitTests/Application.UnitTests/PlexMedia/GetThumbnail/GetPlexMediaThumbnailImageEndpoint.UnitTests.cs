@@ -134,13 +134,10 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
     public async Task ShouldReturnNotFound_WhenPlexThumbnailIsMissing()
     {
         // Arrange
-        await SetupDatabase(
-            1001,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(1001, config =>
+        {
+            config.PlexAccountCount = 1;
+        });
         var plexServerId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.NotFound),
@@ -164,15 +161,12 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
         };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services =>
-            {
-                services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
-                services.AddSingleton<IMemoryCache>(cache);
-                services.AddSingleton(clientFactory.Object);
-            }
-        );
+        var result = await TestEndpointHandleAsync(request, services =>
+        {
+            services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
+            services.AddSingleton<IMemoryCache>(cache);
+            services.AddSingleton(clientFactory.Object);
+        });
 
         // Assert
         result.IsValid.ShouldBeTrue();

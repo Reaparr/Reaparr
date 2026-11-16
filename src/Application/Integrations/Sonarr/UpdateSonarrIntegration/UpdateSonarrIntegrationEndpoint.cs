@@ -99,8 +99,7 @@ public class UpdateSonarrIntegrationEndpoint : Endpoint<UpdateSonarrIntegrationR
             ApiKey = integration.SonarrApiKey.Trim(),
         };
 
-        var connectionIdentityChanged =
-            originalConfiguration.Url != url || originalConfiguration.ApiKey != apiKey;
+        var connectionIdentityChanged = originalConfiguration.Url != url || originalConfiguration.ApiKey != apiKey;
 
         if (
             integration.ProvisioningState == IntegrationProvisioningState.Configured
@@ -132,5 +131,4 @@ public class UpdateSonarrIntegrationEndpoint : Endpoint<UpdateSonarrIntegrationR
 
         await Send.FluentResult(Result.Ok(updatedConfiguration), ct);
     }
-
 }

@@ -11,14 +11,11 @@ public class SetPreferredPlexServerConnectionEndpointUnitTests
     public async Task ShouldReportSuccessfulSelection_WhenConnectionIsAlreadyPreferred()
     {
         // Arrange
-        await SetupDatabase(
-            44806,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 2;
-            }
-        );
+        await SetupDatabase(44806, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
 
         var dbContext = IDbContext;
         var server = await dbContext.PlexServers.IgnoreIsEnabledFilter().AsTracking().SingleAsync(CancellationToken);

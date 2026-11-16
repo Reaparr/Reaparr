@@ -986,10 +986,8 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
                 (x.RemotePlexLibraryId, x.OwnedPlexLibraryId, x.RemotePlexMediaId, x.OwnedPlexMediaId, x.MatchType)
             )
             .ShouldBe(
-                remoteTracks.Zip(
-                    ownedTracks,
-                    (remoteTrack, ownedTrack) =>
-                        (remote.Id, owned.Id, remoteTrack.Id, ownedTrack.Id, PlexMediaComparisonMatchType.PlexTrackGuid)
+                remoteTracks.Zip(ownedTracks, (remoteTrack, ownedTrack) =>
+                    (remote.Id, owned.Id, remoteTrack.Id, ownedTrack.Id, PlexMediaComparisonMatchType.PlexTrackGuid)
                 )
             );
     }
@@ -1265,18 +1263,15 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
         int tracks = 2
     )
     {
-        await SetupDatabase(
-            76201,
-            config =>
-            {
-                config.PlexServerCount = servers;
-                config.PlexAccountCount = 1;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = artists;
-                config.MusicAlbumCount = albums;
-                config.MusicTrackCount = tracks;
-            }
-        );
+        await SetupDatabase(76201, config =>
+        {
+            config.PlexServerCount = servers;
+            config.PlexAccountCount = 1;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = artists;
+            config.MusicAlbumCount = albums;
+            config.MusicTrackCount = tracks;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];

@@ -123,9 +123,7 @@ internal sealed class DesktopLaunchBuildCommandHandler : ICommandHandler<Desktop
         {
             if (!appImages.MoveNext())
             {
-                return Result.Fail<int>(
-                    $"No packaged Linux artifact (*.AppImage) was found in '{artifactDirectory}'."
-                );
+                return Result.Fail<int>($"No packaged Linux artifact (*.AppImage) was found in '{artifactDirectory}'.");
             }
 
             appImage = appImages.Current;

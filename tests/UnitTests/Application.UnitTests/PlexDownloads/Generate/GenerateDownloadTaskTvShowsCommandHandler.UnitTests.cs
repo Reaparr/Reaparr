@@ -22,17 +22,14 @@ public class GenerateDownloadTaskTvShowsCommandHandlerUnitTests
     public async Task ShouldHaveInsertedValidDownloadTaskTvShowsInDatabase_WhenGivenValidPlexTvShows()
     {
         // Arrange
-        await SetupDatabase(
-            5954,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 5;
-                config.TvShowSeasonCount = 3;
-                config.TvShowEpisodeCount = 3;
-            }
-        );
+        await SetupDatabase(5954, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 5;
+            config.TvShowSeasonCount = 3;
+            config.TvShowEpisodeCount = 3;
+        });
         var plexTvShows = await IDbContext.PlexTvShows.IncludeAll().ToListAsync(CancellationToken);
         plexTvShows.ShouldNotBeEmpty();
 
@@ -95,17 +92,14 @@ public class GenerateDownloadTaskTvShowsCommandHandlerUnitTests
     public async Task ShouldForwardCustomDestinationFolderPath_WhenCreatingSeasonsCommand()
     {
         // Arrange
-        await SetupDatabase(
-            5955,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(5955, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var plexTvShows = await IDbContext.PlexTvShows.IncludeAll().ToListAsync(CancellationToken);
         plexTvShows.ShouldNotBeEmpty();
 
@@ -153,17 +147,14 @@ public class GenerateDownloadTaskTvShowsCommandHandlerUnitTests
     public async Task ShouldHaveFailedResult_WhenCreatingSeasonDownloadTasksFails()
     {
         // Arrange
-        await SetupDatabase(
-            5956,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexTvShowLibraryCount = 1;
-                config.TvShowCount = 1;
-                config.TvShowSeasonCount = 1;
-                config.TvShowEpisodeCount = 1;
-            }
-        );
+        await SetupDatabase(5956, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexTvShowLibraryCount = 1;
+            config.TvShowCount = 1;
+            config.TvShowSeasonCount = 1;
+            config.TvShowEpisodeCount = 1;
+        });
         var plexTvShows = await IDbContext.PlexTvShows.IncludeAll().ToListAsync(CancellationToken);
         plexTvShows.ShouldNotBeEmpty();
 

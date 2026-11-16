@@ -41,17 +41,14 @@ public class GetPhotoAlbumMediaByTypeCommandUnitTests : BaseCommandUnitTest<GetP
     )
     {
         // Arrange
-        await SetupDatabase(
-            73101,
-            cfg =>
-            {
-                cfg.PlexServerCount = 1;
-                cfg.PlexPhotoLibraryCount = 2;
-                cfg.PhotoAlbumCount = 6;
-                cfg.PhotoCount = 2;
-                cfg.PhotoClipCount = 1;
-            }
-        );
+        await SetupDatabase(73101, cfg =>
+        {
+            cfg.PlexServerCount = 1;
+            cfg.PlexPhotoLibraryCount = 2;
+            cfg.PhotoAlbumCount = 6;
+            cfg.PhotoCount = 2;
+            cfg.PhotoClipCount = 1;
+        });
         var dbContext = IDbContext;
         var libraryIds = await dbContext
             .PlexLibraries.OrderBy(x => x.Id)

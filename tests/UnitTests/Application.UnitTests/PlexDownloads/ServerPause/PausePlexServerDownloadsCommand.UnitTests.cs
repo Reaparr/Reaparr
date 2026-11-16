@@ -6,16 +6,13 @@ public class PausePlexServerDownloadsCommandUnitTests : BaseUnitTest<PausePlexSe
     public async Task ShouldPauseServerAndStopAllActiveJobs()
     {
         // Arrange
-        await SetupDatabase(
-            42213,
-            config =>
-            {
-                config.MovieDownloadTasksCount = 1;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(42213, config =>
+        {
+            config.MovieDownloadTasksCount = 1;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
 
         var dbContext = IDbContext;
         var plexServerId = (await dbContext.PlexServers.FirstAsync(CancellationToken)).Id;

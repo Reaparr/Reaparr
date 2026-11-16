@@ -123,12 +123,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         result.Value.ShouldBe(0);
-        (
-            await fileSystem.File.ReadAllTextAsync(
-                publishedIndex,
-                CancellationToken
-            )
-        ).ShouldBe("frontend");
+        (await fileSystem.File.ReadAllTextAsync(publishedIndex, CancellationToken)).ShouldBe("frontend");
         (
             await fileSystem.File.ReadAllTextAsync(
                 "/repo/src/AppHost/ClientApp/.output/public/index.html",
@@ -185,9 +180,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
             .Setup(x =>
                 x.RunCommandAsync(
                     "bun",
-                    It.Is<IReadOnlyList<string>>(arguments =>
-                        arguments.SequenceEqual(_generateArguments)
-                    ),
+                    It.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(_generateArguments)),
                     "/repo/src/AppHost/ClientApp",
                     It.Is<IReadOnlyDictionary<string, string?>?>(environment =>
                         environment != null
@@ -640,8 +633,7 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
     public async Task ShouldApplyFrontendEnvironmentOnlyToTheChildBuildProcess()
     {
         // Arrange
-        var cancellationToken =
-            TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
+        var cancellationToken = TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
         await using var container = CreateSdkFixture();
         var paths = container.Resolve<BuildPaths>();
         var outputPath = Path.Combine(paths.RootDirectory, "frontend-telemetry.txt");
@@ -688,7 +680,9 @@ internal class DesktopPublishWorkflowUnitTests : BaseUnitTest<DesktopPublishBuil
                 );
 
             // Assert
-            (await File.ReadAllLinesAsync(outputPath, cancellationToken)).ShouldBe(["https://frontend.example.test|phc_frontend"]);
+            (await File.ReadAllLinesAsync(outputPath, cancellationToken)).ShouldBe([
+                "https://frontend.example.test|phc_frontend",
+            ]);
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpHost).ShouldBe("inherited-stale-host");
             System.Environment.GetEnvironmentVariable(EnvKeys.NuxtPublicRpKey).ShouldBe("inherited-stale-key");
 

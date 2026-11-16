@@ -266,14 +266,11 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
 
     private async Task ArrangeMusicSnapshotsAsync()
     {
-        await SetupDatabase(
-            84207,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 3;
-            }
-        );
+        await SetupDatabase(84207, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 3;
+        });
         var dbContext = IDbContext;
         var artists = await dbContext
             .PlexMusicArtists.OrderBy(x => x.Id)
@@ -311,14 +308,11 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
 
     private async Task ArrangeOtherVideoSnapshotsAsync()
     {
-        await SetupDatabase(
-            84205,
-            config =>
-            {
-                config.PlexOtherVideoLibraryCount = 1;
-                config.OtherVideoCount = 3;
-            }
-        );
+        await SetupDatabase(84205, config =>
+        {
+            config.PlexOtherVideoLibraryCount = 1;
+            config.OtherVideoCount = 3;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.OtherVideos)
@@ -397,15 +391,12 @@ public class MediaOverviewSnapshotQueryExtensionsUnitTests : BaseUnitTest
 
     private async Task ArrangePhotoSnapshotsAsync()
     {
-        await SetupDatabase(
-            84206,
-            config =>
-            {
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 3;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84206, config =>
+        {
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 3;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var libraryId = await dbContext
             .PlexLibraries.Where(x => x.Type == PlexMediaType.PhotoAlbum)

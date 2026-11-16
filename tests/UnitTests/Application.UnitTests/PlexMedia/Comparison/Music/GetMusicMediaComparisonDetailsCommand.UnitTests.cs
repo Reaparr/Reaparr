@@ -10,17 +10,14 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
     public async Task ShouldReturnPartialHierarchyWithMissingEmptyAlbum_WhenOnlySomeTracksAreOwned(bool ownedView)
     {
         // Arrange
-        await SetupDatabase(
-            963501,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 2;
-                config.MusicTrackCount = 3;
-            }
-        );
+        await SetupDatabase(963501, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 2;
+            config.MusicTrackCount = 3;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         var remote = libraries[0];
@@ -115,10 +112,11 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
             )
             .Returns<ICommand<Result>, CancellationToken>(
                 (cmd, ct) =>
-                    new ApplyComparisonStateCommandHandler(IDbContext, executor.Object, Mock.Mock<ITelemetry>().Object).ExecuteAsync(
-                        (ApplyComparisonStateCommand)cmd,
-                        ct
-                    )
+                    new ApplyComparisonStateCommandHandler(
+                        IDbContext,
+                        executor.Object,
+                        Mock.Mock<ITelemetry>().Object
+                    ).ExecuteAsync((ApplyComparisonStateCommand)cmd, ct)
             )
             .Verifiable(Times.Once());
         executor
@@ -212,16 +210,13 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
     )
     {
         // Arrange
-        await SetupDatabase(
-            963502,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 0;
-            }
-        );
+        await SetupDatabase(963502, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 0;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -304,14 +299,11 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
     public async Task ShouldRejectInvalidOrMissingArtistWithoutProjection_WhenArtistCannotBeLoaded(int id)
     {
         // Arrange
-        await SetupDatabase(
-            963504,
-            config =>
-            {
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 0;
-            }
-        );
+        await SetupDatabase(963504, config =>
+        {
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 0;
+        });
 
         // Act
         var result = await TestHandlerExecuteAsync<PlexMediaComparisonDetailsDTO>(
@@ -329,17 +321,14 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
     public async Task ShouldSelectHigherQualityHitAndExplainingFiles_WhenLowerIdHitIsOnlyMatched()
     {
         // Arrange
-        await SetupDatabase(
-            963505,
-            config =>
-            {
-                config.PlexServerCount = 3;
-                config.PlexMusicLibraryCount = 1;
-                config.MusicArtistCount = 1;
-                config.MusicAlbumCount = 1;
-                config.MusicTrackCount = 1;
-            }
-        );
+        await SetupDatabase(963505, config =>
+        {
+            config.PlexServerCount = 3;
+            config.PlexMusicLibraryCount = 1;
+            config.MusicArtistCount = 1;
+            config.MusicAlbumCount = 1;
+            config.MusicTrackCount = 1;
+        });
         var dbContext = IDbContext;
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
         await SetOwnedOverrideAsync(libraries[0].PlexServerId, false);
@@ -431,10 +420,11 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
             )
             .Returns<ICommand<Result>, CancellationToken>(
                 (cmd, ct) =>
-                    new ApplyComparisonStateCommandHandler(IDbContext, executor.Object, Mock.Mock<ITelemetry>().Object).ExecuteAsync(
-                        (ApplyComparisonStateCommand)cmd,
-                        ct
-                    )
+                    new ApplyComparisonStateCommandHandler(
+                        IDbContext,
+                        executor.Object,
+                        Mock.Mock<ITelemetry>().Object
+                    ).ExecuteAsync((ApplyComparisonStateCommand)cmd, ct)
             )
             .Verifiable(Times.Once());
         executor

@@ -14,15 +14,17 @@ public static partial class Startup
         IAppRuntimeInfo appRuntimeInfo
     )
     {
-        services.AddOptions<PostHogOptions>().Configure(options =>
-        {
-            options.Disabled = !appBuildInfo.HasValidTelemetry;
-            if (!appBuildInfo.HasValidTelemetry)
-                return;
+        services
+            .AddOptions<PostHogOptions>()
+            .Configure(options =>
+            {
+                options.Disabled = !appBuildInfo.HasValidTelemetry;
+                if (!appBuildInfo.HasValidTelemetry)
+                    return;
 
-            options.HostUrl = new Uri(appBuildInfo.TelemetryHost, UriKind.Absolute);
-            options.ProjectToken = appBuildInfo.TelemetryProjectToken;
-        });
+                options.HostUrl = new Uri(appBuildInfo.TelemetryHost, UriKind.Absolute);
+                options.ProjectToken = appBuildInfo.TelemetryProjectToken;
+            });
         services.AddPostHog();
 
         if (!appBuildInfo.HasValidTelemetry)
@@ -30,19 +32,27 @@ public static partial class Startup
 
         var ingestionHost = new Uri(appBuildInfo.TelemetryHost, UriKind.Absolute);
         var assetOrigin = TelemetryProxy.GetAssetOrigin(ingestionHost);
-        services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource
-                .AddService(TelemetryProtocol.Service, serviceVersion: appBuildInfo.InformationalVersion)
-                .AddAttributes(new Dictionary<string, object>
-                {
-                    [TelemetryProtocol.ReleaseChannel] = appBuildInfo.IsDevRelease ? TelemetryProtocol.DevelopmentEnvironment : TelemetryProtocol.StableEnvironment,
-                    [TelemetryProtocol.OperatingSystem] = appBuildInfo.CurrentOS.ToString(),
-                    [TelemetryProtocol.RuntimePlatform] = appBuildInfo.RuntimeMode,
-                    [TelemetryProtocol.RuntimeEnvironment] = appRuntimeInfo.DotnetEnvironment,
-                    [TelemetryProtocol.RuntimeIdentifier] = appBuildInfo.RuntimeIdentifier,
-                    [TelemetryProtocol.ApplicationId] = appRuntimeInfo.AppRunId,
-                }))
-                .WithTracing(tracing => tracing
+        services
+            .AddOpenTelemetry()
+            .ConfigureResource(resource =>
+                resource
+                    .AddService(TelemetryProtocol.Service, serviceVersion: appBuildInfo.InformationalVersion)
+                    .AddAttributes(
+                        new Dictionary<string, object>
+                        {
+                            [TelemetryProtocol.ReleaseChannel] = appBuildInfo.IsDevRelease
+                                ? TelemetryProtocol.DevelopmentEnvironment
+                                : TelemetryProtocol.StableEnvironment,
+                            [TelemetryProtocol.OperatingSystem] = appBuildInfo.CurrentOS.ToString(),
+                            [TelemetryProtocol.RuntimePlatform] = appBuildInfo.RuntimeMode,
+                            [TelemetryProtocol.RuntimeEnvironment] = appRuntimeInfo.DotnetEnvironment,
+                            [TelemetryProtocol.RuntimeIdentifier] = appBuildInfo.RuntimeIdentifier,
+                            [TelemetryProtocol.ApplicationId] = appRuntimeInfo.AppRunId,
+                        }
+                    )
+            )
+            .WithTracing(tracing =>
+                tracing
                     .SetSampler(new ParentBasedSampler(new AlwaysOnSampler()))
                     .AddSource(TelemetryProtocol.ActivitySourceName)
                     .AddAspNetCoreInstrumentation(options =>
@@ -58,11 +68,15 @@ public static partial class Startup
                             request.RequestUri is not { } target
                             || !TelemetryProxy.IsTelemetryDestination(target, ingestionHost, assetOrigin);
                     })
-                .AddOtlpExporter(options =>
-                {
-                    options.Endpoint = new Uri($"{appBuildInfo.TelemetryHost.TrimEnd('/')}{TelemetryProtocol.TracesPath}");
-                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
-                    options.Headers = $"{TelemetryProtocol.AuthorizationHeader}={TelemetryProtocol.BearerScheme} {appBuildInfo.TelemetryProjectToken}";
-                }));
+                    .AddOtlpExporter(options =>
+                    {
+                        options.Endpoint = new Uri(
+                            $"{appBuildInfo.TelemetryHost.TrimEnd('/')}{TelemetryProtocol.TracesPath}"
+                        );
+                        options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                        options.Headers =
+                            $"{TelemetryProtocol.AuthorizationHeader}={TelemetryProtocol.BearerScheme} {appBuildInfo.TelemetryProjectToken}";
+                    })
+            );
     }
 }

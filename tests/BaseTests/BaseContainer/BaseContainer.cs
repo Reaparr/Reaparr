@@ -77,15 +77,6 @@ public class BaseContainer : IDisposable
             useTestAuthentication
         );
 
-        await container.BackgroundJobScheduler.AddJob(
-            JobBuilder
-                .Create<MediaOverviewSnapshotJob>()
-                .WithIdentity(MediaOverviewSnapshotJob.GetJobKey())
-                .StoreDurably()
-                .Build(),
-            replace: true,
-            CancellationToken.None
-        );
         if (config.FileSystemOptions is not null)
         {
             var fileSystem = container.Resolve<IFileSystem>();

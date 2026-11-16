@@ -15,19 +15,15 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
     public async Task ShouldFilterAuthenticatedTorrentHashesWithoutChangingWireFieldsOrTasks()
     {
         // Arrange
-        using var container = await CreateContainer(
-            new Seed(8641),
-            config =>
-                config.DatabaseOptions = database =>
-                {
-                    database.PlexServerCount = 1;
-                    database.MovieDownloadTasksCount = 2;
-                    database.TvShowDownloadTasksCount = 2;
-                    database.TvShowSeasonDownloadTasksCount = 1;
-                    database.TvShowEpisodeDownloadTasksCount = 1;
-                    database.RadarrIntegrationCount = 2;
-                }
-        );
+        using var container = await CreateContainer(new Seed(8641), config => config.DatabaseOptions = database =>
+            {
+                database.PlexServerCount = 1;
+                database.MovieDownloadTasksCount = 2;
+                database.TvShowDownloadTasksCount = 2;
+                database.TvShowSeasonDownloadTasksCount = 1;
+                database.TvShowEpisodeDownloadTasksCount = 1;
+                database.RadarrIntegrationCount = 2;
+            });
         using var db = container.DbContext;
         var integrations = await db.RadarrIntegrations.AsTracking().OrderBy(x => x.Id).ToListAsync(CancellationToken);
         integrations.Select(x => x.Id).Distinct().Count().ShouldBe(2);
@@ -95,34 +91,12 @@ public class TorrentHashFiltersIntegrationTests : BaseIntegrationTests
                 .OrderBy(x => x.Hash, StringComparer.Ordinal)
                 .ToArray();
             actual
-                .Select(
-                    x =>
-                        (
-                            x.Hash,
-                            x.State,
-                            x.CategoryValue,
-                            x.SavePath,
-                            x.ContentPath,
-                            x.Name,
-                            x.Size
-                        )
-                )
-                .ShouldBe(
-                    [
-                        .. request.Expected.Select(
-                            x =>
-                                (
-                                    x.Hash,
-                                    x.State,
-                                    x.CategoryValue,
-                                    x.SavePath,
-                                    x.ContentPath,
-                                    x.Name,
-                                    x.Size
-                                )
-                        ),
-                    ]
-                );
+                .Select(x => (x.Hash, x.State, x.CategoryValue, x.SavePath, x.ContentPath, x.Name, x.Size))
+                .ShouldBe([
+                    .. request.Expected.Select(x =>
+                        (x.Hash, x.State, x.CategoryValue, x.SavePath, x.ContentPath, x.Name, x.Size)
+                    ),
+                ]);
         }
         using var afterContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
         var movies = await afterContext.DownloadTaskMovieFile.ToListAsync(CancellationToken);

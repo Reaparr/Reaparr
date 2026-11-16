@@ -9,18 +9,15 @@ public class ScheduledDownloadMembershipUnitTests : BaseUnitTest<DownloadTaskUpd
     public async Task ShouldReallocateAfterDownloadingTransitions_WhenMoviesAndEpisodesShareAServer()
     {
         // Arrange
-        await SetupDatabase(
-            85311,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexMovieLibraryCount = 1;
-                config.MovieDownloadTasksCount = 2;
-                config.TvShowDownloadTasksCount = 1;
-                config.TvShowSeasonDownloadTasksCount = 1;
-                config.TvShowEpisodeDownloadTasksCount = 1;
-            }
-        );
+        await SetupDatabase(85311, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieDownloadTasksCount = 2;
+            config.TvShowDownloadTasksCount = 1;
+            config.TvShowSeasonDownloadTasksCount = 1;
+            config.TvShowEpisodeDownloadTasksCount = 1;
+        });
         using var dbContext = IDbContext;
         await dbContext.DownloadTaskMovieFile.ExecuteUpdateAsync(
             setters => setters.SetProperty(x => x.DownloadStatus, DownloadStatus.Queued),

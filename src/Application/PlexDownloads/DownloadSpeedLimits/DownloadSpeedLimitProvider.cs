@@ -32,18 +32,16 @@ public sealed class DownloadSpeedLimitProvider : IDownloadSpeedLimitProvider
     /// <inheritdoc />
     public IObservable<long> GetEffectiveDownloadSpeedLimitObservable(string machineIdentifier) =>
         _userSettings
-            .ServerSettings.HasChanged.CombineLatest(
-                _scheduledLimits,
-                (_, limits) => GetEffectiveLimit(machineIdentifier, limits)
+            .ServerSettings.HasChanged.CombineLatest(_scheduledLimits, (_, limits) =>
+                GetEffectiveLimit(machineIdentifier, limits)
             )
             .DistinctUntilChanged();
 
     private long GetEffectiveLimit(string machineIdentifier, IReadOnlyDictionary<string, long> scheduledLimits)
     {
-        var manualLimit =
-            _userSettings
-                .ServerSettings.Data.FirstOrDefault(x => x.MachineIdentifier == machineIdentifier)
-                ?.DownloadSpeedLimit
+        var manualLimit = _userSettings
+            .ServerSettings.Data.FirstOrDefault(x => x.MachineIdentifier == machineIdentifier)
+            ?.DownloadSpeedLimit
             ?? 0;
         var manualBytes = manualLimit > 0 ? (long)manualLimit * 1024 : 0;
         if (!scheduledLimits.TryGetValue(machineIdentifier, out var scheduledBytes))

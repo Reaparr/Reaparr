@@ -35,10 +35,7 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
                         .Subscribe(command => commands.Enqueue(command.Command.CommandText))
                 )
             );
-        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
-            listeners,
-            commandSubscriptions
-        );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(listeners, commandSubscriptions);
         SetupMusicComparison(expected);
 
         // Act
@@ -136,10 +133,7 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
                         .Subscribe(command => commands.Enqueue(command.Command.CommandText))
                 )
             );
-        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(
-            listeners,
-            commandSubscriptions
-        );
+        using var subscriptions = new System.Reactive.Disposables.CompositeDisposable(listeners, commandSubscriptions);
         SetupMusicComparison(small);
         SetupMusicComparison(large);
 
@@ -183,17 +177,14 @@ public class GetMediaDetailByIdMusicBatchingUnitTests
 
     private async Task<PlexMusicArtist> ArrangeBatchFixtureAsync(int albumCount, int trackLimit)
     {
-        await SetupDatabase(
-            62511,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexMusicLibraryCount = 2;
-                config.MusicArtistCount = 2;
-                config.MusicAlbumCount = 4;
-                config.MusicTrackCount = 3;
-            }
-        );
+        await SetupDatabase(62511, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexMusicLibraryCount = 2;
+            config.MusicArtistCount = 2;
+            config.MusicAlbumCount = 4;
+            config.MusicTrackCount = 3;
+        });
         var dbContext = IDbContext;
         var artist = await dbContext.PlexMusicArtists.OrderBy(x => x.Id).FirstAsync(CancellationToken);
         await dbContext

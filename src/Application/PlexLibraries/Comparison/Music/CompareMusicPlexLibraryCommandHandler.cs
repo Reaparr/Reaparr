@@ -180,18 +180,12 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         {
             IEnumerable<PlexMusicArtist> matches;
             PlexMediaComparisonMatchType matchType;
-            if (
-                remote.PlexApiIdentityId is { } nativeId
-                && byNativeId.Contains(nativeId)
-            )
+            if (remote.PlexApiIdentityId is { } nativeId && byNativeId.Contains(nativeId))
             {
                 matches = byNativeId[nativeId];
                 matchType = PlexMediaComparisonMatchType.PlexArtistGuid;
             }
-            else if (
-                remote.MusicBrainzArtistId is { } artistId
-                && byId.Contains(artistId)
-            )
+            else if (remote.MusicBrainzArtistId is { } artistId && byId.Contains(artistId))
             {
                 matches = byId[artistId];
                 matchType = PlexMediaComparisonMatchType.MusicBrainzArtistId;
@@ -291,23 +285,16 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
             var releases = ownedAlbumsByArtist[ownedArtist.Id]
                 .Where(x => x.MusicBrainzReleaseId is not null)
                 .ToLookup(x => x.MusicBrainzReleaseId!, StringComparer.Ordinal);
-            var editionTitles = ownedAlbumsByArtist[ownedArtist.Id].ToLookup(
-                x => x.SearchTitle,
-                StringComparer.OrdinalIgnoreCase
-            );
-            var remoteEditionTitles = remoteAlbumsByArtist[remoteArtist.Id].ToLookup(
-                x => x.SearchTitle,
-                StringComparer.OrdinalIgnoreCase
-            );
+            var editionTitles = ownedAlbumsByArtist[ownedArtist.Id]
+                .ToLookup(x => x.SearchTitle, StringComparer.OrdinalIgnoreCase);
+            var remoteEditionTitles = remoteAlbumsByArtist[remoteArtist.Id]
+                .ToLookup(x => x.SearchTitle, StringComparer.OrdinalIgnoreCase);
             foreach (var remote in remoteAlbumsByArtist[remoteArtist.Id])
             {
                 ct.ThrowIfCancellationRequested();
                 IEnumerable<PlexMusicAlbum> matches;
                 PlexMediaComparisonMatchType matchType;
-                if (
-                    remote.PlexApiIdentityId is { } nativeId
-                    && nativeAlbums.Contains(nativeId)
-                )
+                if (remote.PlexApiIdentityId is { } nativeId && nativeAlbums.Contains(nativeId))
                 {
                     matches = nativeAlbums[nativeId];
                     matchType = PlexMediaComparisonMatchType.PlexAlbumGuid;
@@ -417,10 +404,7 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
         {
             IEnumerable<PlexMusicTrack> matches;
             PlexMediaComparisonMatchType matchType;
-            if (
-                remote.PlexApiIdentityId is { } nativeId
-                && ownedTracks.NativeIds.Contains(nativeId)
-            )
+            if (remote.PlexApiIdentityId is { } nativeId && ownedTracks.NativeIds.Contains(nativeId))
             {
                 matches = ownedTracks.NativeIds[nativeId];
                 matchType = PlexMediaComparisonMatchType.PlexTrackGuid;

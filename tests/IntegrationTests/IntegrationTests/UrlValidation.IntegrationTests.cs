@@ -48,22 +48,86 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
         {
             after
                 .Cast<PlexConnectionSnapshot>()
-                .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom, x.PlexServerId))
+                .Select(x =>
+                    (
+                        x.Id,
+                        x.Protocol,
+                        x.Address,
+                        x.Port,
+                        x.Url,
+                        x.Local,
+                        x.Relay,
+                        x.IPv4,
+                        x.IPv6,
+                        x.IsCustom,
+                        x.PlexServerId
+                    )
+                )
                 .ShouldBe(
                     before
                         .Cast<PlexConnectionSnapshot>()
-                        .Select(x => (x.Id, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom, x.PlexServerId))
+                        .Select(x =>
+                            (
+                                x.Id,
+                                x.Protocol,
+                                x.Address,
+                                x.Port,
+                                x.Url,
+                                x.Local,
+                                x.Relay,
+                                x.IPv4,
+                                x.IPv6,
+                                x.IsCustom,
+                                x.PlexServerId
+                            )
+                        )
                 );
         }
         else
         {
             after
                 .Cast<ArrSnapshot>()
-                .Select(x => (x.Id, x.DisplayName, x.BaseUrl, x.ApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category, x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus, x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId))
+                .Select(x =>
+                    (
+                        x.Id,
+                        x.DisplayName,
+                        x.BaseUrl,
+                        x.ApiKey,
+                        x.QBittorrentApiKey,
+                        x.TorznabApiKey,
+                        x.Category,
+                        x.ExternalDownloadClientId,
+                        x.ExternalIndexerId,
+                        x.ProvisioningState,
+                        x.LastConnectionTestStatus,
+                        x.LastConnectionTestHttpStatusCode,
+                        x.LastConnectionTestErrorMessage,
+                        x.LastConnectionTestedAt,
+                        x.DownloadFolderId
+                    )
+                )
                 .ShouldBe(
                     before
                         .Cast<ArrSnapshot>()
-                        .Select(x => (x.Id, x.DisplayName, x.BaseUrl, x.ApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category, x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus, x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId))
+                        .Select(x =>
+                            (
+                                x.Id,
+                                x.DisplayName,
+                                x.BaseUrl,
+                                x.ApiKey,
+                                x.QBittorrentApiKey,
+                                x.TorznabApiKey,
+                                x.Category,
+                                x.ExternalDownloadClientId,
+                                x.ExternalIndexerId,
+                                x.ProvisioningState,
+                                x.LastConnectionTestStatus,
+                                x.LastConnectionTestHttpStatusCode,
+                                x.LastConnectionTestErrorMessage,
+                                x.LastConnectionTestedAt,
+                                x.DownloadFolderId
+                            )
+                        )
                 );
         }
     }
@@ -114,9 +178,45 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
                 ? before.Append(expected).OrderBy(x => x.Id).ToArray()
                 : before.Select(x => x.Id == original.Id ? expected : x).ToArray();
         after
-            .Select(x => (x.Id, x.DisplayName, x.BaseUrl, x.ApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category, x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus, x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId))
+            .Select(x =>
+                (
+                    x.Id,
+                    x.DisplayName,
+                    x.BaseUrl,
+                    x.ApiKey,
+                    x.QBittorrentApiKey,
+                    x.TorznabApiKey,
+                    x.Category,
+                    x.ExternalDownloadClientId,
+                    x.ExternalIndexerId,
+                    x.ProvisioningState,
+                    x.LastConnectionTestStatus,
+                    x.LastConnectionTestHttpStatusCode,
+                    x.LastConnectionTestErrorMessage,
+                    x.LastConnectionTestedAt,
+                    x.DownloadFolderId
+                )
+            )
             .ShouldBe(
-                expectedRows.Select(x => (x.Id, x.DisplayName, x.BaseUrl, x.ApiKey, x.QBittorrentApiKey, x.TorznabApiKey, x.Category, x.ExternalDownloadClientId, x.ExternalIndexerId, x.ProvisioningState, x.LastConnectionTestStatus, x.LastConnectionTestHttpStatusCode, x.LastConnectionTestErrorMessage, x.LastConnectionTestedAt, x.DownloadFolderId))
+                expectedRows.Select(x =>
+                    (
+                        x.Id,
+                        x.DisplayName,
+                        x.BaseUrl,
+                        x.ApiKey,
+                        x.QBittorrentApiKey,
+                        x.TorznabApiKey,
+                        x.Category,
+                        x.ExternalDownloadClientId,
+                        x.ExternalIndexerId,
+                        x.ProvisioningState,
+                        x.LastConnectionTestStatus,
+                        x.LastConnectionTestHttpStatusCode,
+                        x.LastConnectionTestErrorMessage,
+                        x.LastConnectionTestedAt,
+                        x.DownloadFolderId
+                    )
+                )
             );
         if (operation == SaveOperation.Create)
         {
@@ -205,22 +305,19 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
     private Task<BaseContainer> CreateUrlContainerAsync(UrlTarget target, SaveOperation operation)
     {
         var seed = target == UrlTarget.Plex ? _plexScenarios[operation].Seed : _arrScenarios[(target, operation)].Seed;
-        return CreateContainer(
-            seed,
-            config =>
+        return CreateContainer(seed, config =>
+        {
+            config.DatabaseOptions = data =>
             {
-                config.DatabaseOptions = data =>
-                {
-                    data.PlexServerCount = target == UrlTarget.Plex ? 1 : 0;
-                    data.PlexServerConnectionPerServerCount = 1;
-                    data.RadarrIntegrationCount = target == UrlTarget.Radarr ? 1 : 0;
-                    data.SonarrIntegrationCount = target == UrlTarget.Sonarr ? 1 : 0;
-                };
-                // Startup Arr probing is outside these save requests and must not contact a real service.
-                config.OverrideServices = builder =>
-                    builder.RegisterInstance(new SaveEndpointCommandExecutor()).As<ICommandExecutor>();
-            }
-        );
+                data.PlexServerCount = target == UrlTarget.Plex ? 1 : 0;
+                data.PlexServerConnectionPerServerCount = 1;
+                data.RadarrIntegrationCount = target == UrlTarget.Radarr ? 1 : 0;
+                data.SonarrIntegrationCount = target == UrlTarget.Sonarr ? 1 : 0;
+            };
+            // Startup Arr probing is outside these save requests and must not contact a real service.
+            config.OverrideServices = builder =>
+                builder.RegisterInstance(new SaveEndpointCommandExecutor()).As<ICommandExecutor>();
+        });
     }
 
     private static HttpRequestMessage BuildInvalidRequest(

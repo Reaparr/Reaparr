@@ -10,39 +10,34 @@ public class CreateAccountIntegrationTests : BaseIntegrationTests
         var serverCount = 1;
         var libraryCount = 3;
 
-        using var container = await CreateContainer(
-            seed.Next(),
-            config =>
+        using var container = await CreateContainer(seed.Next(), config =>
+        {
+            config.DatabaseOptions = x =>
             {
-                config.DatabaseOptions = x =>
-                {
-                    // Start from an empty database
-                    x.PlexServerCount = 0;
-                    x.PlexMovieLibraryCount = 0;
-                    x.PlexAccountCount = 0;
-                    x.PlexServerConnectionPerServerCount = 1;
-                };
+                // Start from an empty database
+                x.PlexServerCount = 0;
+                x.PlexMovieLibraryCount = 0;
+                x.PlexAccountCount = 0;
+                x.PlexServerConnectionPerServerCount = 1;
+            };
 
-                config.BaseMockHttpClientOptions = x =>
-                {
-                    x.PlexServerAccessCount = serverCount;
-                    x.MovieLibraryCount = libraryCount;
-                    x.MoviesPerLibraryCount = 25;
-                };
+            config.BaseMockHttpClientOptions = x =>
+            {
+                x.PlexServerAccessCount = serverCount;
+                x.MovieLibraryCount = libraryCount;
+                x.MoviesPerLibraryCount = 25;
+            };
 
-                config.OverrideServices = builder =>
-                    builder
-                        .Register(_ =>
-                            new FakeCommandExecutor()
-                                .Intercept<QueueLibrarySyncJobCommand, Result>((_, _) => Task.FromResult(Result.Ok()))
-                                .Intercept<QueueMediaOverviewRebuildCommand, Result>(
-                                    (_, _) => Task.FromResult(Result.Ok())
-                                )
-                        )
-                        .As<ICommandExecutor>()
-                        .InstancePerDependency();
-            }
-        );
+            config.OverrideServices = builder =>
+                builder
+                    .Register(_ =>
+                        new FakeCommandExecutor()
+                            .Intercept<QueueLibrarySyncJobCommand, Result>((_, _) => Task.FromResult(Result.Ok()))
+                            .Intercept<QueueMediaOverviewRebuildCommand, Result>((_, _) => Task.FromResult(Result.Ok()))
+                    )
+                    .As<ICommandExecutor>()
+                    .InstancePerDependency();
+        });
 
         var plexAccount = FakeData.GetPlexAccount(4347564).Generate();
         var plexAccountDTO = new CreatePlexAccountEndpointRequest

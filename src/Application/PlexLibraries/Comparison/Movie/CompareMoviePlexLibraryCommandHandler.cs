@@ -25,10 +25,7 @@ public class CompareMoviePlexLibraryCommandHandler : ICommandHandler<CompareMovi
 
     public async Task<Result> ExecuteAsync(CompareMoviePlexLibraryCommand command, CancellationToken cancellationToken)
     {
-        using var activity = _telemetry.StartMovieComparison(
-            command.OwnedPlexLibraryId,
-            command.RemotePlexLibraryId
-        );
+        using var activity = _telemetry.StartMovieComparison(command.OwnedPlexLibraryId, command.RemotePlexLibraryId);
         return await Result.Try(
             new Func<Task<Result>>(async () =>
             {

@@ -9,14 +9,11 @@ public class DeletePlexServerConnectionByIdUnitTests
     public async Task ShouldRejectRequest_WhenConnectionIdIsNonPositive(int invalidConnectionId)
     {
         // Arrange
-        await SetupDatabase(
-            44901,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 2;
-            }
-        );
+        await SetupDatabase(44901, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
 
         var dbContext = IDbContext;
         var connectionsBefore = await dbContext
@@ -75,9 +72,37 @@ public class DeletePlexServerConnectionByIdUnitTests
             .PropertyName.ShouldBe(nameof(DeletePlexServerConnectionByIdRequest.PlexServerConnectionId));
         endpointResult.Response.ShouldBeNull();
         connectionsAfter
-            .Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x =>
+                (
+                    x.Id,
+                    x.PlexServerId,
+                    x.Protocol,
+                    x.Address,
+                    x.Port,
+                    x.Url,
+                    x.Local,
+                    x.Relay,
+                    x.IPv4,
+                    x.IPv6,
+                    x.IsCustom
+                )
+            )
             .ShouldBe(
-                connectionsBefore.Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+                connectionsBefore.Select(x =>
+                    (
+                        x.Id,
+                        x.PlexServerId,
+                        x.Protocol,
+                        x.Address,
+                        x.Port,
+                        x.Url,
+                        x.Local,
+                        x.Relay,
+                        x.IPv4,
+                        x.IPv6,
+                        x.IsCustom
+                    )
+                )
             );
         serversAfter.ShouldBe(serversBefore);
     }
@@ -86,14 +111,11 @@ public class DeletePlexServerConnectionByIdUnitTests
     public async Task ShouldReturnNotFoundAndPreserveRows_WhenConnectionDoesNotExist()
     {
         // Arrange
-        await SetupDatabase(
-            44902,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexServerConnectionPerServerCount = 2;
-            }
-        );
+        await SetupDatabase(44902, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
 
         var dbContext = IDbContext;
         var connectionsBefore = await dbContext
@@ -156,9 +178,37 @@ public class DeletePlexServerConnectionByIdUnitTests
         response.IsSuccess.ShouldBeFalse();
         response.Errors.Count.ShouldBe(1);
         connectionsAfter
-            .Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x =>
+                (
+                    x.Id,
+                    x.PlexServerId,
+                    x.Protocol,
+                    x.Address,
+                    x.Port,
+                    x.Url,
+                    x.Local,
+                    x.Relay,
+                    x.IPv4,
+                    x.IPv6,
+                    x.IsCustom
+                )
+            )
             .ShouldBe(
-                connectionsBefore.Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+                connectionsBefore.Select(x =>
+                    (
+                        x.Id,
+                        x.PlexServerId,
+                        x.Protocol,
+                        x.Address,
+                        x.Port,
+                        x.Url,
+                        x.Local,
+                        x.Relay,
+                        x.IPv4,
+                        x.IPv6,
+                        x.IsCustom
+                    )
+                )
             );
         serversAfter.ShouldBe(serversBefore);
     }
@@ -167,14 +217,11 @@ public class DeletePlexServerConnectionByIdUnitTests
     public async Task ShouldRejectDeletionAndPreserveRows_WhenConnectionWasGenerated()
     {
         // Arrange
-        await SetupDatabase(
-            44903,
-            config =>
-            {
-                config.PlexServerCount = 2;
-                config.PlexServerConnectionPerServerCount = 2;
-            }
-        );
+        await SetupDatabase(44903, config =>
+        {
+            config.PlexServerCount = 2;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
 
         var dbContext = IDbContext;
         var generatedConnections = await dbContext
@@ -242,9 +289,37 @@ public class DeletePlexServerConnectionByIdUnitTests
         response.IsSuccess.ShouldBeFalse();
         response.Errors.Count.ShouldBe(1);
         connectionsAfter
-            .Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+            .Select(x =>
+                (
+                    x.Id,
+                    x.PlexServerId,
+                    x.Protocol,
+                    x.Address,
+                    x.Port,
+                    x.Url,
+                    x.Local,
+                    x.Relay,
+                    x.IPv4,
+                    x.IPv6,
+                    x.IsCustom
+                )
+            )
             .ShouldBe(
-                connectionsBefore.Select(x => (x.Id, x.PlexServerId, x.Protocol, x.Address, x.Port, x.Url, x.Local, x.Relay, x.IPv4, x.IPv6, x.IsCustom))
+                connectionsBefore.Select(x =>
+                    (
+                        x.Id,
+                        x.PlexServerId,
+                        x.Protocol,
+                        x.Address,
+                        x.Port,
+                        x.Url,
+                        x.Local,
+                        x.Relay,
+                        x.IPv4,
+                        x.IPv6,
+                        x.IsCustom
+                    )
+                )
             );
         serversAfter.ShouldBe(serversBefore);
     }
@@ -253,14 +328,11 @@ public class DeletePlexServerConnectionByIdUnitTests
     public async Task ShouldDeleteCustomConnectionAndClearPreferredConnection_WhenConnectionIsPreferred()
     {
         // Arrange
-        await SetupDatabase(
-            44904,
-            config =>
-            {
-                config.PlexServerCount = 1;
-                config.PlexServerConnectionPerServerCount = 1;
-            }
-        );
+        await SetupDatabase(44904, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
         var dbContext = IDbContext;
         var server = await dbContext
             .PlexServers.AsTracking()
