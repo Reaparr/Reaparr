@@ -4,7 +4,9 @@
     "reaparr-autofix-pr": "symlink",
     "reaparr-backend": "symlink",
     "reaparr-backend-integration-tests": "symlink",
+    "reaparr-backend-telemetry": "symlink",
     "reaparr-backend-unit-tests": "symlink",
+    "reaparr-backend-warnings-autofix": "symlink",
     "reaparr-codebase-improvements": "symlink",
     "reaparr-coderabbit-autofix": "symlink",
     "reaparr-command-handler-patterns": "symlink",
@@ -20,5 +22,5 @@
     "reaparr-radarr-integration": "symlink",
     "reaparr-sonarr-integration": "symlink"
   },
-  "updated_at": "2026-10-18T04:16:42.88185789+02:00"
+  "updated_at": "2026-11-16T12:34:05.70437155+01:00"
 }
