@@ -94,7 +94,8 @@
 			<!--	Directory Browser	-->
 			<q-markup-table
 				class="directory-browser-table"
-				data-cy="directory-browser-rows">
+				data-cy="directory-browser-rows"
+				tabindex="0">
 				<tbody class="scroll">
 					<tr
 						v-for="(row, index) in items"
