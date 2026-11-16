@@ -59,7 +59,7 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title)
+            new SearchPhotoAssetsQuery("cross-library-search")
         );
         var descending = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
             new SearchPhotoAssetsQuery("cross-library-search", 1, 100, SortType.Title, SortDirection.Desc)
@@ -145,10 +145,10 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
 
         // Act
         var normalized = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("The Café, résumé!", 1, 100)
+            new SearchPhotoAssetsQuery("The Café, résumé!")
         );
-        var accentTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("résumé", 1, 100));
-        var shortTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("a", 1, 100));
+        var accentTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("résumé"));
+        var shortTerm = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("a"));
 
         // Assert
         normalized.IsSuccess.ShouldBeTrue();
@@ -207,13 +207,13 @@ public class SearchPhotoAssetsQueryUnitTests : BaseCommandUnitTest<SearchPhotoAs
         }
 
         // Act
-        var substring = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("pha", 1, 100));
+        var substring = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("pha"));
         var allTerms = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("alpha beta", 1, 100)
+            new SearchPhotoAssetsQuery("alpha beta")
         );
-        var twoCharacter = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("ha", 1, 100));
+        var twoCharacter = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(new SearchPhotoAssetsQuery("ha"));
         var punctuation = await TestHandlerExecuteAsync<PhotoAssetPageDTO>(
-            new SearchPhotoAssetsQuery("Café, résumé!", 1, 100)
+            new SearchPhotoAssetsQuery("Café, résumé!")
         );
 
         // Assert

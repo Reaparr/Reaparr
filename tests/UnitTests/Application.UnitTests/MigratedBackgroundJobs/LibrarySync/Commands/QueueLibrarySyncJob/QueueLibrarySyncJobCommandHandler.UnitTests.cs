@@ -1535,10 +1535,11 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
         var queueTableName = ((DbContext)dbContext).Model.FindEntityType(typeof(LibrarySyncJobQueue))!.GetTableName()!;
         var writeCounter = new QueueResetWriteCounter(queueTableName);
         await using var commandContext = CreateContext(dbContext.DatabaseName, writeCounter);
+        var commandContextRegistration = commandContext;
         SetupDependencies(builder =>
         {
             builder
-                .RegisterInstance(commandContext)
+                .RegisterInstance(commandContextRegistration)
                 .As<IReaparrDbContext>()
                 .ExternallyOwned();
             builder.RegisterType<QueueLibrarySyncJobCommandHandler>().InstancePerDependency();
@@ -1642,11 +1643,13 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
         await using var firstContext = CreateContext(dbContext.DatabaseName, updateGate);
         await using var secondContext = CreateContext(dbContext.DatabaseName);
         var contextNumber = 0;
+        var firstContextRegistration = firstContext;
+        var secondContextRegistration = secondContext;
         SetupDependencies(builder =>
         {
             builder
                 .Register((_, _) =>
-                    Interlocked.Increment(ref contextNumber) == 1 ? firstContext : secondContext
+                    Interlocked.Increment(ref contextNumber) == 1 ? firstContextRegistration : secondContextRegistration
                 )
                 .As<IReaparrDbContext>()
                 .ExternallyOwned();
@@ -1782,11 +1785,13 @@ public class QueueLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<Qu
         await using var firstContext = CreateContext(dbContext.DatabaseName, updateGate);
         await using var secondContext = CreateContext(dbContext.DatabaseName);
         var contextNumber = 0;
+        var firstContextRegistration = firstContext;
+        var secondContextRegistration = secondContext;
         SetupDependencies(builder =>
         {
             builder
                 .Register((_, _) =>
-                    Interlocked.Increment(ref contextNumber) == 1 ? firstContext : secondContext
+                    Interlocked.Increment(ref contextNumber) == 1 ? firstContextRegistration : secondContextRegistration
                 )
                 .As<IReaparrDbContext>()
                 .ExternallyOwned();

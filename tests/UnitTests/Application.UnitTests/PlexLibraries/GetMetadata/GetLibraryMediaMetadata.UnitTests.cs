@@ -1,4 +1,4 @@
-namespace Reaparr.Application.UnitTests;
+namespace Reaparr.Application.UnitTests.GetMetadata;
 
 public class GetLibraryMediaMetadataUnitTests
     : BaseEndpointUnitTest<GetLibraryMediaMetadata, GetLibraryMediaMetadataRequest, PlexMediaMetadataDTO>
@@ -34,7 +34,7 @@ public class GetLibraryMediaMetadataUnitTests
         originals
             .Select(x => x.PlexLibraryId)
             .Order()
-            .ShouldBe(new[] { libraryIds[0], libraryIds[0], libraryIds[1], libraryIds[1] });
+            .ShouldBe([libraryIds[0], libraryIds[0], libraryIds[1], libraryIds[1]]);
         await dbContext.PlexOtherVideoData.ExecuteUpdateAsync(
             x =>
                 x.SetProperty(
@@ -429,7 +429,7 @@ public class GetLibraryMediaMetadataUnitTests
     private async Task<ResultDTO<PlexMediaMetadataDTO>?> ReadMetadataResponseAsync(Stream body)
     {
         body.Position = 0;
-        return await System.Text.Json.JsonSerializer.DeserializeAsync<ResultDTO<PlexMediaMetadataDTO>>(
+        return await JsonSerializer.DeserializeAsync<ResultDTO<PlexMediaMetadataDTO>>(
             body,
             DefaultJsonSerializerOptions.ConfigStandard,
             CancellationToken

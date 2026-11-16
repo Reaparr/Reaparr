@@ -28,7 +28,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
                 x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
                 Times.Never()
             );
-        context.Verify(x => x.Put(JobStatus.Completed.ToString(), It.IsAny<object>()), Times.Never());
+        context.Verify(x => x.Put(nameof(JobStatus.Completed), It.IsAny<object>()), Times.Never());
     }
 
     [Test]
@@ -48,7 +48,7 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
                         command.MediaTypes != null
                         && command.MediaTypes.SequenceEqual(new[] { PlexMediaType.PhotoAlbum })
                     ),
-                    System.Threading.CancellationToken.None
+                    CancellationToken.None
                 )
             )
             .ReturnsAsync(Result.Ok())
@@ -160,7 +160,11 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<ITelemetry>()
             .Verify(
-                x => x.CaptureErrors(It.Is<ResultBase>(result => result.IsFailed), TelemetryActivity.MediaOverviewSnapshot),
+                x =>
+                    x.CaptureErrors(
+                        It.Is<ResultBase>(result => result.IsFailed),
+                        TelemetryActivity.MediaOverviewSnapshot
+                    ),
                 Times.Once()
             );
     }
@@ -234,32 +238,27 @@ public class MediaOverviewSnapshotJobUnitTests : BaseUnitTest<MediaOverviewSnaps
         terminalResult.Status.ShouldBe(JobStatus.Completed);
         terminalResult.ErrorSummary.ShouldBeNull();
         context.VerifySet(
-            x => x.Result = It.Is<BackgroundJobResult>(
-                result => result.Status == JobStatus.Completed && result.ErrorSummary == null
-            ),
+            x =>
+                x.Result = It.Is<BackgroundJobResult>(result =>
+                    result.Status == JobStatus.Completed && result.ErrorSummary == null
+                ),
             Times.Once()
         );
         Mock.Mock<ICommandExecutor>()
-            .Verify(
-                x => x.Send(It.IsAny<RebuildMediaOverviewCommand>(), It.IsAny<CancellationToken>()),
-                Times.Never()
-            );
+            .Verify(x => x.Send(It.IsAny<RebuildMediaOverviewCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
             .Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<ITelemetry>().Verify();
         telemetryScope.Verify();
-
     }
 
     private static Mock<IJobExecutionContext> CreateJobContext()
     {
         var context = new Mock<IJobExecutionContext>(MockBehavior.Loose);
-        context.SetupGet(x => x.JobDetail)
+        context
+            .SetupGet(x => x.JobDetail)
             .Returns(
-                JobBuilder
-                    .Create<MediaOverviewSnapshotJob>()
-                    .WithIdentity(MediaOverviewSnapshotJob.GetJobKey())
-                    .Build()
+                JobBuilder.Create<MediaOverviewSnapshotJob>().WithIdentity(MediaOverviewSnapshotJob.GetJobKey()).Build()
             );
         context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken.None);

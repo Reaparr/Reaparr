@@ -51,7 +51,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
         };
         settings.ServerSettings.SetDownloadSpeedLimit(servers[0].MachineIdentifier, 100);
         settings.ServerSettings.SetDownloadSpeedLimit(servers[3].MachineIdentifier, 200);
@@ -72,7 +72,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         // Assert
         servers
             .Select(x => speedLimits.GetEffectiveDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe(new long[] { 102400, 460800, 460800, 204800 });
+            .ShouldBe([102400, 460800, 460800, 204800]);
         settings
             .ServerSettings.Data.Single(x => x.MachineIdentifier == servers[0].MachineIdentifier)
             .DownloadSpeedLimit.ShouldBe(100);
@@ -157,11 +157,19 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             CancellationToken
         );
 
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 3_000 } },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["00:00"] = 3_000 },
+                    },
+                },
+            },
         };
         using var speedLimits = new DownloadSpeedLimitProvider(settings);
         SetupDependencies(builder =>
@@ -179,7 +187,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         result.IsSuccess.ShouldBeTrue();
         servers
             .Select(x => speedLimits.GetEffectiveDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe(new long[] { 1_024_000, 1_024_000, 1_024_000 });
+            .ShouldBe([1_024_000, 1_024_000, 1_024_000]);
     }
 
     [Test]
@@ -221,7 +229,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1 } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1 } },
         };
         SetupDependencies(builder =>
         {
@@ -235,7 +243,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         );
 
         // Assert
-        servers.Select(speedLimits.GetEffectiveDownloadSpeedLimit).ShouldBe(new long[] { 341, 341, 342 });
+        servers.Select(speedLimits.GetEffectiveDownloadSpeedLimit).ShouldBe([341, 341, 342]);
         settings.ServerSettings.Data.ShouldBeEmpty();
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
@@ -282,7 +290,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = invalidLimit } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = invalidLimit } },
         };
         speedLimits.SetScheduledDownloadSpeedLimits(new Dictionary<string, long> { ["retained"] = 12345 });
         SetupDependencies(builder =>
@@ -342,7 +350,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
         };
         settings.ServerSettings.SetDownloadSpeedLimit(servers[0].MachineIdentifier, 100);
         settings.ServerSettings.SetDownloadSpeedLimit(servers[1].MachineIdentifier, 200);
@@ -360,10 +368,10 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         // Assert
         servers
             .Select(x => speedLimits.GetEffectiveDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe(new long[] { 102400, 204800 });
+            .ShouldBe([102400, 204800]);
         servers
             .Select(x => settings.ServerSettings.GetDownloadSpeedLimit(x.MachineIdentifier))
-            .ShouldBe(new[] { 100, 200 });
+            .ShouldBe([100, 200]);
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
     }
@@ -390,7 +398,7 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
         {
             Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+            Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = 1000 } },
         };
         settings.ServerSettings.SetDownloadSpeedLimit(machineIdentifier, 100);
         speedLimits.SetScheduledDownloadSpeedLimits(
@@ -442,19 +450,24 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
         var machineIdentifier = await dbContext
             .PlexServers.Select(x => x.MachineIdentifier)
             .SingleAsync(CancellationToken);
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new()
+            DownloadManagerSettings =
             {
-                ["Monday"] = new()
+                DownloadSchedule = new DownloadSchedule
                 {
-                    ["17:30"] = null,
-                    ["09:30"] = 400,
-                    ["09:00"] = 200,
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new()
+                        {
+                            ["17:30"] = null,
+                            ["09:30"] = 400,
+                            ["09:00"] = 200,
+                        },
+                        ["Sunday"] = new() { ["23:30"] = 800 },
+                    },
                 },
-                ["Sunday"] = new() { ["23:30"] = 800 },
             },
         };
         using var speedLimits = new DownloadSpeedLimitProvider(settings);
@@ -498,15 +511,20 @@ public class UpdateScheduledDownloadLimitsCommandUnitTests : BaseCommandUnitTest
             CancellationToken
         );
         var machineIdentifier = await dbContext.PlexServers.Select(x => x.MachineIdentifier).SingleAsync();
-        var settings = new UserSettings();
-        settings.DateTimeSettings.TimeZone = timeZone;
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new()
+            DateTimeSettings = { TimeZone = timeZone },
+            DownloadManagerSettings =
             {
-                ["Monday"] = new() { ["00:00"] = 1000, ["00:30"] = 2000 },
-                ["Sunday"] = new() { ["01:00"] = 3000, ["02:00"] = 4000 },
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["00:00"] = 1000, ["00:30"] = 2000 },
+                        ["Sunday"] = new() { ["01:00"] = 3000, ["02:00"] = 4000 },
+                    },
+                },
             },
         };
         using var speedLimits = new DownloadSpeedLimitProvider(settings);

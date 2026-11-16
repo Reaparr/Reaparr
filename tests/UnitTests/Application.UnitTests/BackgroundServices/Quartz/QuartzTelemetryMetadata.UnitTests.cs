@@ -45,8 +45,8 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         var result = await scheduler.Object.ExecuteJob<LibrarySyncJob, LibrarySyncJobPayload>(
             jobKey,
             payload,
-            CancellationToken,
-            scheduledAt
+            executeAt: scheduledAt,
+            cancellationToken: CancellationToken
         );
 
         // Assert
@@ -58,12 +58,12 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
 
         var serializer = new SystemTextJsonObjectSerializer();
         serializer.Initialize();
-        var serializedMap = serializer.Serialize(capturedJob!.JobDataMap);
-        var restoredMap = serializer.DeSerialize<JobDataMap>(serializedMap)!;
+        var serializedMap = serializer.Serialize(capturedJob.JobDataMap);
+        var restoredMap = serializer.DeSerialize<JobDataMap>(serializedMap).ShouldNotBeNull();
 
-        restoredMap[TelemetryProtocol.TraceParentMetadata].GetType().ShouldBe(typeof(string));
-        restoredMap[TelemetryProtocol.TraceStateMetadata].GetType().ShouldBe(typeof(string));
-        restoredMap[TelemetryProtocol.SessionIdMetadata].GetType().ShouldBe(typeof(string));
+        restoredMap[TelemetryProtocol.TraceParentMetadata].ShouldBeOfType<string>();
+        restoredMap[TelemetryProtocol.TraceStateMetadata].ShouldBeOfType<string>();
+        restoredMap[TelemetryProtocol.SessionIdMetadata].ShouldBeOfType<string>();
         restoredMap[TelemetryProtocol.TraceParentMetadata].ShouldBe(parentActivity.Id);
         restoredMap[TelemetryProtocol.TraceStateMetadata].ShouldBe(traceState);
         restoredMap[TelemetryProtocol.SessionIdMetadata].ShouldBe(sessionId);
@@ -72,17 +72,17 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         restoredMap.Keys.ShouldContain(TelemetryProtocol.SessionIdMetadata);
         restoredMap
             .Keys.Where(key => key.StartsWith(TelemetryProtocol.MetadataPrefix, StringComparison.Ordinal))
-            .OrderBy(key => key)
+            .OrderBy(key => key, StringComparer.Ordinal)
             .ShouldBe(
                 new[]
                 {
                     TelemetryProtocol.SessionIdMetadata,
                     TelemetryProtocol.TraceParentMetadata,
                     TelemetryProtocol.TraceStateMetadata,
-                }.OrderBy(key => key)
+                }.OrderBy(key => key, StringComparer.Ordinal)
             );
         restoredMap.Keys.ShouldNotContain(TelemetryProtocol.DistinctIdTag);
-        restoredMap.Values.Select(value => value?.ToString()).ShouldNotContain(distinctId);
+        restoredMap.Values.Select(value => value.ToString()).ShouldNotContain(distinctId);
 
         var context = new Mock<IJobExecutionContext>();
         var jobDetail = new Mock<IJobDetail>();
@@ -91,16 +91,15 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         context.SetupGet(x => x.MergedJobDataMap).Returns(restoredMap);
         context.SetupGet(x => x.FireInstanceId).Returns("library-sync-fire");
 
-        var nativeContext = context.Object.GetTelemetryContext();
-        var parsedParent = nativeContext.Parent;
+        var (parsedParent, parsedSessionId, parsedJobKey, parsedFireInstanceId) = context.Object.GetTelemetryContext();
         parsedParent.TraceId.ShouldBe(parentActivity.TraceId);
         parsedParent.SpanId.ShouldBe(parentActivity.SpanId);
         parsedParent.TraceState.ShouldBe(traceState);
         parsedParent.TraceFlags.ShouldBe(parentActivity.ActivityTraceFlags);
         parsedParent.IsRemote.ShouldBeTrue();
-        nativeContext.SessionId.ShouldBe(sessionId);
-        nativeContext.JobKey.ShouldBe(jobKey.ToString());
-        nativeContext.FireInstanceId.ShouldBe("library-sync-fire");
+        parsedSessionId.ShouldBe(sessionId);
+        parsedJobKey.ShouldBe(jobKey.ToString());
+        parsedFireInstanceId.ShouldBe("library-sync-fire");
         restoredMap.GetPayload<LibrarySyncJobPayload>().ShouldBe(payload);
 
         var uiPayloadJson = context.Object.GetPayloadAsJson();
@@ -130,7 +129,7 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         originalActivity.TraceStateString = originalTraceState;
         originalActivity.Start();
         originalActivity.SetTag(TelemetryProtocol.SessionIdTag, originalSessionId);
-        var originalTraceParent = originalActivity.Id!;
+        var originalTraceParent = originalActivity.Id.ShouldNotBeNull();
         originalActivity.Stop();
 
         dataMap[TelemetryProtocol.TraceParentMetadata] = originalTraceParent;
@@ -164,7 +163,7 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         // Act
         var result = await scheduler.Object.ExecuteJobs<LibrarySyncJob>(
             [(Key: jobKey, DataMap: dataMap)],
-            CancellationToken
+            cancellationToken: CancellationToken
         );
 
         // Assert
@@ -175,8 +174,8 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
 
         var serializer = new SystemTextJsonObjectSerializer();
         serializer.Initialize();
-        var serializedMap = serializer.Serialize(capturedJobs!.Keys.Single().JobDataMap);
-        var restoredMap = serializer.DeSerialize<JobDataMap>(serializedMap)!;
+        var serializedMap = serializer.Serialize(capturedJobs.Keys.Single().JobDataMap);
+        var restoredMap = serializer.DeSerialize<JobDataMap>(serializedMap).ShouldNotBeNull();
 
         restoredMap[TelemetryProtocol.TraceParentMetadata].ShouldBe(originalTraceParent);
         restoredMap[TelemetryProtocol.TraceStateMetadata].ShouldBe(originalTraceState);
@@ -185,7 +184,7 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         restoredMap[TelemetryProtocol.TraceStateMetadata].ShouldNotBe(unrelatedTraceState);
         restoredMap[TelemetryProtocol.SessionIdMetadata].ShouldNotBe(unrelatedSessionId);
         restoredMap.Keys.ShouldNotContain(TelemetryProtocol.DistinctIdTag);
-        restoredMap.Values.Select(value => value?.ToString()).ShouldNotContain(unrelatedDistinctId);
+        restoredMap.Values.Select(value => value.ToString()).ShouldNotContain(unrelatedDistinctId);
         restoredMap.GetPayload<LibrarySyncJobPayload>().ShouldBe(new LibrarySyncJobPayload(serverId, libraryId, true));
     }
 
@@ -194,6 +193,7 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
     {
         // Arrange
         using var unrelatedActivity = new Activity("unrelated-request");
+        _ = CancellationToken;
         unrelatedActivity.SetIdFormat(ActivityIdFormat.W3C);
         unrelatedActivity.Start();
         (JobDataMap Data, string? ExpectedSessionId)[] maps =
@@ -220,15 +220,14 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
             context.SetupGet(x => x.FireInstanceId).Returns("test-fire");
 
             // Act
-            var nativeContext = context.Object.GetTelemetryContext();
-            var parent = nativeContext.Parent;
+            var (parent, parsedSessionId, _, _) = context.Object.GetTelemetryContext();
 
             // Assert
             parent.TraceId.ShouldBe(default);
             parent.SpanId.ShouldBe(default);
             parent.TraceState.ShouldBeNull();
             parent.IsRemote.ShouldBeFalse();
-            nativeContext.SessionId.ShouldBe(expectedSessionId);
+            parsedSessionId.ShouldBe(expectedSessionId);
         }
     }
 }

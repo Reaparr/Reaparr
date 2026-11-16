@@ -30,7 +30,7 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAssetInspectionDTO>(
-            new GetPhotoAssetInspectionQuery(asset.PlexLibraryId, asset.Id, 1, 100)
+            new GetPhotoAssetInspectionQuery(asset.PlexLibraryId, asset.Id)
         );
 
         // Assert
@@ -47,7 +47,7 @@ public class GetPhotoAssetInspectionQueryUnitTests : BaseCommandUnitTest<GetPhot
         result.Value.Breadcrumbs.ShouldBeEmpty();
         result.Value.RelativeFolderPath.ShouldBeNull();
         result.Value.SourceRootTitle.ShouldBeNull();
-        var serialized = System.Text.Json.JsonSerializer.Serialize(result.Value);
+        var serialized = JsonSerializer.Serialize(result.Value);
         asset.SourcePath.ShouldNotBeNull();
         serialized.ShouldNotContain(asset.SourcePath);
         serialized.ShouldNotContain(asset.Key);

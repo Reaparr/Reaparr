@@ -148,11 +148,12 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
         var connectionString = ((DbContext)dbContext).Database.GetConnectionString();
         var commands = new ConcurrentQueue<string>();
         using var commandSubscriptions = new System.Reactive.Disposables.CompositeDisposable();
+        var subscriptions = commandSubscriptions;
         using var listeners = DiagnosticListener.AllListeners.Subscribe(listener =>
         {
             if (listener.Name != "Microsoft.EntityFrameworkCore")
                 return;
-            commandSubscriptions.Add(
+            subscriptions.Add(
                 listener.Subscribe(entry =>
                 {
                     if (
@@ -166,16 +167,16 @@ public class GetPhotoSourceRootsQueryUnitTests : BaseCommandUnitTest<GetPhotoSou
 
         // Act
         var smallPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 1, SortType.Title)
+            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 1)
         );
         var smallPageQueryCount = commands.Count;
         commands.Clear();
         var firstPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, SortType.Title)
+            new GetPhotoSourceRootsQueryCommand(library.Id)
         );
         var largePageQueryCount = commands.Count;
         var secondPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
-            new GetPhotoSourceRootsQueryCommand(library.Id, 2, 100, SortType.Title)
+            new GetPhotoSourceRootsQueryCommand(library.Id, 2)
         );
         var descendingPage = await TestHandlerExecuteAsync<PhotoFolderPageDTO>(
             new GetPhotoSourceRootsQueryCommand(library.Id, 1, 100, SortType.Title, SortDirection.Desc)

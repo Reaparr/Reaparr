@@ -54,7 +54,8 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
             x.TelemetryHost = string.Empty;
             x.TelemetryProjectToken = string.Empty;
         });
-        SetAppRuntimeInfo(x => x.SEQ_Url = enableSeq ? app.Urls.Single() : string.Empty);
+        var seqUrl = enableSeq ? app.Urls.Single() : string.Empty;
+        SetAppRuntimeInfo(x => x.SEQ_Url = seqUrl);
         var pathProvider = new Mock<IPathProvider>();
         pathProvider.SetupGet(x => x.LogsDirectory).Returns(directory.FullName);
         var buffer = new LogBufferService();
@@ -64,7 +65,7 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
             buffer,
             Mock.Container.Resolve<IAppBuildInfo>()
         );
-        using var logger = config.GetLogger(LogEventLevel.Debug);
+        await using var logger = config.GetLogger();
         var contextualLogger = logger.ForContext("Regression", true);
         contextualLogger.Debug("Before SignalR attachment");
 
@@ -73,7 +74,6 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
             // Act
             config.AttachSignalR(app, LogEventLevel.Debug);
             contextualLogger.Debug("After SignalR attachment");
-            logger.Dispose();
             if (enableSeq)
                 await seqReceived.Task.WaitAsync(TimeSpan.FromSeconds(10));
 

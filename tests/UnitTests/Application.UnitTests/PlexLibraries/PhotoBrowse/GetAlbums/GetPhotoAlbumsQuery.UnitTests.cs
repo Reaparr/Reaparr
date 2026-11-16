@@ -37,7 +37,7 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
 
         // Act
         var result = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
-            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title)
+            new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2)
         );
         var descending = await TestHandlerExecuteAsync<PhotoAlbumPageDTO>(
             new GetPhotoAlbumsQueryCommand(libraries[0].Id, 1, 2, SortType.Title, SortDirection.Desc)
@@ -149,8 +149,10 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
         for (var index = 0; index < albums.Count; index++)
         {
             var value = values[index];
+            var albumId = albums[index].Id;
+            var assetId = assets[index].Id;
             await dbContext
-                .PlexPhotoAlbums.Where(x => x.Id == albums[index].Id)
+                .PlexPhotoAlbums.Where(x => x.Id == albumId)
                 .ExecuteUpdateAsync(
                     setters =>
                         setters
@@ -160,7 +162,7 @@ public class GetPhotoAlbumsQueryUnitTests : BaseCommandUnitTest<GetPhotoAlbumsQu
                     CancellationToken
                 );
             await dbContext
-                .PlexPhotoMediaData.Where(x => x.Id == assets[index].Id)
+                .PlexPhotoMediaData.Where(x => x.Id == assetId)
                 .ExecuteUpdateAsync(
                     setters =>
                         setters.SetProperty(x => x.Duration, value.Duration).SetProperty(x => x.Size, value.Size),

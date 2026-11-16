@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Reaparr.BaseTests;
 
 public static class GlobalTestHooks
@@ -5,6 +7,9 @@ public static class GlobalTestHooks
     [Before(TestSession)]
     public static async Task SetupTestSession()
     {
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
         var appRuntimeInfo = new MockAppRuntimeInfo { IsUnmasked = true };
         var pathProvider = new MockPathProvider(MockDatabase.GetMemoryDatabaseName());
         var testLogConfig = new TestLogConfig(appRuntimeInfo, pathProvider, new MockAppBuildInfo());

@@ -30,15 +30,23 @@ public class UpdateUserSettingsEndpointUnitTests
     public async Task ShouldRetainCurrentPolicy_WhenAChangePointLimitIsNonPositive(int invalidLimit)
     {
         // Arrange
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 100 } },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["00:00"] = 100 },
+                    },
+                },
+            },
         };
         settings.ServerSettings.SetDownloadSpeedLimit("retained", 200);
         var dto = settings.ToDTO();
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new() { ["Monday"] = new() { ["09:30"] = invalidLimit } };
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["00:00"] = invalidLimit } };
 
         // Act
         var result = await TestEndpointHandleAsync(
@@ -71,7 +79,7 @@ public class UpdateUserSettingsEndpointUnitTests
         var settings = new UserSettings();
         var dto = settings.ToDTO();
         dto.DownloadManagerSettings.DownloadSchedule.Enabled = true;
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new() { [day] = new() { [time] = 100 } };
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>> { [day] = new() { [time] = 100 } };
 
         // Act
         var result = await TestEndpointHandleAsync(
@@ -120,7 +128,7 @@ public class UpdateUserSettingsEndpointUnitTests
         var dto = settings.ToDTO();
         dto.DateTimeSettings.TimeZone = "Asia/Kathmandu";
         dto.DownloadManagerSettings.DownloadSchedule.Enabled = true;
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new()
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
         {
             ["Tuesday"] = new() { ["09:30"] = 123, ["17:00"] = null },
         };
@@ -143,7 +151,7 @@ public class UpdateUserSettingsEndpointUnitTests
             .ShouldBe(new Dictionary<string, int?> { ["09:30"] = 123, ["17:00"] = null }, ignoreOrder: true);
         settings.ServerSettings.GetDownloadSpeedLimit("retained").ShouldBe(200);
         settings.AuthenticationSettings.HeaderAuthentication.Enabled.ShouldBeTrue();
-        settings.AuthenticationSettings.HeaderAuthentication.TrustedProxies.ShouldBe(new[] { "10.100.0.4" });
+        settings.AuthenticationSettings.HeaderAuthentication.TrustedProxies.ShouldBe(["10.100.0.4"]);
     }
 
     [Test]
@@ -191,11 +199,19 @@ public class UpdateUserSettingsEndpointUnitTests
     public async Task ShouldRetainTheCurrentBudget_WhenScheduleDataIsMissing(bool missingSchedule)
     {
         // Arrange
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 100 } },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["00:00"] = 100 },
+                    },
+                },
+            },
         };
         var dto = settings.ToDTO();
         if (missingSchedule)
@@ -227,11 +243,17 @@ public class UpdateUserSettingsEndpointUnitTests
     public async Task ShouldRefreshDownloadScheduling_WhenRelevantSettingsChange(string change)
     {
         // Arrange
-        var settings = new UserSettings { DateTimeSettings = { TimeZone = "UTC" } };
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["09:30"] = 100 } },
+            DateTimeSettings = { TimeZone = "UTC" },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["09:30"] = 100 } },
+                },
+            },
         };
         var dto = settings.ToDTO();
         switch (change)
@@ -240,13 +262,13 @@ public class UpdateUserSettingsEndpointUnitTests
                 dto.DateTimeSettings.TimeZone = "Asia/Kathmandu";
                 break;
             case "limit":
-                dto.DownloadManagerSettings.DownloadSchedule.Days = new() { ["Monday"] = new() { ["09:30"] = 200 } };
+                dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>> { ["Monday"] = new() { ["09:30"] = 200 } };
                 break;
             case "enabled":
                 dto.DownloadManagerSettings.DownloadSchedule.Enabled = false;
                 break;
             case "removed-day":
-                dto.DownloadManagerSettings.DownloadSchedule.Days = new();
+                dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>();
                 break;
         }
 
@@ -314,19 +336,24 @@ public class UpdateUserSettingsEndpointUnitTests
     public async Task ShouldLeaveQuartzUnchanged_WhenOnlyUnrelatedSettingsAndPointOrderChange()
     {
         // Arrange
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new()
+            DownloadManagerSettings =
             {
-                ["Monday"] = new() { ["09:00"] = 100, ["17:00"] = null },
-                ["Tuesday"] = new() { ["12:00"] = 200 },
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["09:00"] = 100, ["17:00"] = null },
+                        ["Tuesday"] = new() { ["12:00"] = 200 },
+                    },
+                },
             },
         };
         var dto = settings.ToDTO();
         dto.GeneralSettings.DisableAnimatedBackground = !settings.GeneralSettings.DisableAnimatedBackground;
-        dto.DownloadManagerSettings.DownloadSchedule.Days = new()
+        dto.DownloadManagerSettings.DownloadSchedule.Days = new Dictionary<string, Dictionary<string, int?>>
         {
             ["Tuesday"] = new() { ["12:00"] = 200 },
             ["Monday"] = new() { ["17:00"] = null, ["09:00"] = 100 },
@@ -413,7 +440,7 @@ public class UpdateUserSettingsEndpointUnitTests
                 x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
                 Times.Never()
             );
-    }
+        }
 
     [Test]
     [Arguments(100, 0, false, 500)]
@@ -436,16 +463,24 @@ public class UpdateUserSettingsEndpointUnitTests
                 .Distinct()
                 .OrderBy(x => x)
                 .ToArrayAsync(CancellationToken)
-        ).ShouldBe(machines.Order().ToArray());
+        ).ShouldBe([.. machines.Order()]);
         var beforeFiles = await dbContext
             .DownloadTaskMovieFile.OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.DownloadStatus })
             .ToArrayAsync(CancellationToken);
-        var settings = new UserSettings();
-        settings.DownloadManagerSettings.DownloadSchedule = new DownloadSchedule
+        var settings = new UserSettings
         {
-            Enabled = true,
-            Days = new() { ["Monday"] = new() { ["00:00"] = 1000 } },
+            DownloadManagerSettings =
+            {
+                DownloadSchedule = new DownloadSchedule
+                {
+                    Enabled = true,
+                    Days = new Dictionary<string, Dictionary<string, int?>>
+                    {
+                        ["Monday"] = new() { ["00:00"] = 1000 },
+                    },
+                },
+            },
         };
         if (oldCap > 0)
             settings.ServerSettings.SetDownloadSpeedLimit(machines[0], oldCap);
@@ -457,7 +492,9 @@ public class UpdateUserSettingsEndpointUnitTests
             limits,
             TimeProvider.System
         );
-        var command = new UpdateScheduledDownloadLimitsCommand(DateTimeOffset.Parse("2026-10-05T12:00:00Z"));
+        var command = new UpdateScheduledDownloadLimitsCommand(
+            DateTimeOffset.Parse("2026-10-05T12:00:00Z")
+        );
         var initial = await allocator.ExecuteAsync(command, CancellationToken);
         initial.IsSuccess.ShouldBeTrue();
         initial.Errors.Count.ShouldBe(0);
@@ -524,7 +561,7 @@ public class UpdateUserSettingsEndpointUnitTests
         // Arrange
         var settings = new UserSettings();
         settings.ServerSettings.SetDownloadSpeedLimit("limited", 100);
-        settings.ServerSettings.SetDownloadSpeedLimit("unlimited", 0);
+        settings.ServerSettings.SetDownloadSpeedLimit("unlimited");
         var dto = new UserSettings
         {
             ServerSettings = new PlexServerSettingsModule
@@ -709,13 +746,12 @@ public class UpdateUserSettingsEndpointUnitTests
             (await second).StatusCode.ShouldBe(200);
             settings.DateTimeSettings.TimeZone.ShouldBe("America/New_York");
             calls.ShouldBe(
-                new[]
-                {
+                [
                     "reschedule Asia/Kathmandu",
                     "trigger Asia/Kathmandu",
                     "reschedule America/New_York",
                     "trigger America/New_York",
-                }
+                ]
             );
             scheduler.Verify();
         }

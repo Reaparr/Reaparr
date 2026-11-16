@@ -1,4 +1,5 @@
 using System.Net;
+using MediaTypeHeaderValue = System.Net.Http.Headers.MediaTypeHeaderValue;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
@@ -35,7 +36,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         handler.Responses[0].Content.Headers.ContentLength = payload.Length + 100;
         var clientFactory = CreateClientFactory(handler);
 
@@ -47,7 +48,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -104,7 +105,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/png");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         var clientFactory = CreateClientFactory(handler);
 
         // Act
@@ -117,7 +118,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 Width = 320,
                 Height = 240,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -178,7 +179,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
 
         // Act
@@ -191,7 +192,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 Width = 320,
                 Height = 240,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -252,7 +253,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = clip.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         var foreignScope = await TestEndpointHandleAsync(
             new GetPhotoAssetImageRequest
@@ -261,7 +262,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = foreignAsset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -306,7 +307,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -355,7 +356,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 AssetId = asset.Id,
                 Representation = PhotoImageRepresentation.Original,
             },
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -386,8 +387,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         // Act
         var result = await TestEndpointHandleAsync(
             request,
-            services =>
-                services.AddMemoryCache().AddSingleton<IHttpClientFactory>(Mock.Mock<IHttpClientFactory>().Object)
+            services => services.AddMemoryCache().AddSingleton(Mock.Mock<IHttpClientFactory>().Object)
         );
 
         // Assert
@@ -419,7 +419,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         // Act
         var result = await TestEndpointHandleAsync(
             request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
 
         // Assert
@@ -452,7 +452,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         var request = new GetPhotoAssetImageRequest
         {
@@ -462,7 +462,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
         var initial = await TestEndpointHandleAsync(
             request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var etag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
@@ -475,7 +475,7 @@ public class GetPhotoAssetImageEndpointUnitTests
 
         // Assert
         endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status304NotModified);
-        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe(Array.Empty<byte>());
+        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe([]);
         endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBe(etag);
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.Private.ShouldBeTrue();
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.MaxAge.ShouldBe(TimeSpan.FromDays(3));
@@ -513,7 +513,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([3, 4]) }
         );
         foreach (var response in handler.Responses)
-            response.Content.Headers.ContentType = new("image/jpeg");
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler, expectedCalls: 2);
         var request = new GetPhotoAssetImageRequest
         {
@@ -523,7 +523,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
         var initial = await TestEndpointHandleAsync(
             request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var originalETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
@@ -572,7 +572,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         var request = new GetPhotoAssetImageRequest
         {
@@ -584,7 +584,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
         var initial = await TestEndpointHandleAsync(
             request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var etag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
@@ -597,7 +597,7 @@ public class GetPhotoAssetImageEndpointUnitTests
 
         // Assert
         endpoint.HttpContext.Response.StatusCode.ShouldBe(StatusCodes.Status304NotModified);
-        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe(Array.Empty<byte>());
+        ((MemoryStream)endpoint.HttpContext.Response.Body).ToArray().ShouldBe([]);
         endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldBe(etag);
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.Private.ShouldBeTrue();
         endpoint.HttpContext.Response.GetTypedHeaders().CacheControl!.MaxAge.ShouldBe(TimeSpan.FromDays(3));
@@ -626,7 +626,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([3, 4]) }
         );
         foreach (var response in handler.Responses)
-            response.Content.Headers.ContentType = new("image/jpeg");
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler, expectedCalls: 2);
         var request = new GetPhotoAssetImageRequest
         {
@@ -638,7 +638,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
         var initial = await TestEndpointHandleAsync(
             request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var firstETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
@@ -685,7 +685,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2]) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         var request = new GetPhotoAssetImageRequest
         {
@@ -695,7 +695,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
         var initial = await TestEndpointHandleAsync(
             request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var etag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();
@@ -750,7 +750,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([3]) }
         );
         foreach (var response in handler.Responses)
-            response.Content.Headers.ContentType = new("image/jpeg");
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler, expectedCalls: 3);
         var request = new GetPhotoAssetImageRequest
         {
@@ -760,8 +760,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
         var initial = await TestEndpointHandleAsync(
             request,
-            services =>
-                services.AddSingleton<IMemoryCache>(cache).AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddSingleton<IMemoryCache>(cache).AddSingleton(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         await dbContext
@@ -815,7 +814,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([7, 8]) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         var request = new GetPhotoAssetImageRequest
         {
@@ -825,7 +824,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
         var unavailable = await TestEndpointHandleAsync(
             request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+            services => services.AddMemoryCache().AddSingleton(clientFactory.Object)
         );
         unavailable.StatusCode.ShouldBe(StatusCodes.Status504GatewayTimeout);
         unavailable.Endpoint.HttpContext.Response.Headers.CacheControl.ToString().ShouldBe("no-store");
@@ -867,7 +866,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new UnreadableImageContent(failure) }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         using var logContext = TestCorrelator.CreateContext();
 
@@ -882,8 +881,8 @@ public class GetPhotoAssetImageEndpointUnitTests
             services =>
                 services
                     .AddMemoryCache()
-                    .AddSingleton<IHttpClientFactory>(clientFactory.Object)
-                    .AddSingleton<ILogger>(Serilog.Log.Logger)
+                    .AddSingleton(clientFactory.Object)
+                    .AddSingleton(Serilog.Log.Logger)
         );
 
         // Assert
@@ -925,7 +924,7 @@ public class GetPhotoAssetImageEndpointUnitTests
                 Content = new StreamContent(new FailingImageStream(payload, failure)),
             }
         );
-        handler.Responses[0].Content.Headers.ContentType = new("image/jpeg");
+        handler.Responses[0].Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         var clientFactory = CreateClientFactory(handler);
         using var body = new MemoryStream();
         var lifetime = new Mock<IHttpRequestLifetimeFeature>(MockBehavior.Strict);
@@ -933,8 +932,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         var endpoint = SetupEndpointUnitTest<GetPhotoAssetImageEndpoint>(services =>
             services
                 .AddMemoryCache()
-                .AddSingleton<IHttpClientFactory>(clientFactory.Object)
-                .AddSingleton<ILogger>(Serilog.Log.Logger)
+                .AddSingleton(clientFactory.Object)
+                .AddSingleton(Serilog.Log.Logger)
         );
         endpoint.HttpContext.Features.Set<IHttpResponseFeature>(new StreamingResponseFeature(body));
         endpoint.HttpContext.Response.Body = body;
@@ -1036,7 +1035,7 @@ public class GetPhotoAssetImageEndpointUnitTests
         private readonly Queue<HttpResponseMessage> _responses = new(responses);
 
         public List<Uri> RequestUris { get; } = [];
-        public IReadOnlyList<HttpResponseMessage> Responses { get; } = responses;
+        public HttpResponseMessage[] Responses { get; } = responses;
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,

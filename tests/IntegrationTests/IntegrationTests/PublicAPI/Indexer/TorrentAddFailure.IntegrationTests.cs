@@ -136,12 +136,12 @@ public class TorrentAddFailureIntegrationTests : BaseIntegrationTests
         {
             using var document = JsonDocument.Parse(body);
             nativeEvents.AddRange(
-                document.RootElement.GetProperty("batch").EnumerateArray().Select(item => item.Clone())
+                document.RootElement.GetProperty("batch").EnumerateArray().Select(batchItem => batchItem.Clone())
             );
         }
         var submissions = nativeEvents
-            .Where(item =>
-                item.GetProperty("event").GetString() == TelemetryEvent.ExternalDownloadSubmissionProcessed.ToString()
+            .Where(eventItem =>
+                eventItem.GetProperty("event").GetString() == nameof(TelemetryEvent.ExternalDownloadSubmissionProcessed)
             )
             .ToArray();
         submissions.Length.ShouldBe(1);
@@ -149,11 +149,11 @@ public class TorrentAddFailureIntegrationTests : BaseIntegrationTests
         submissionProperties
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
-            .ShouldBe(TelemetryOutcome.Rejected.ToString());
+            .ShouldBe(nameof(TelemetryOutcome.Rejected));
         submissionProperties
             .GetProperty(TelemetryProperty.Stage)
             .GetString()
-            .ShouldBe(TelemetryStage.SourceValidation.ToString());
+            .ShouldBe(nameof(TelemetryStage.SourceValidation));
         submissionProperties.GetProperty(TelemetryProperty.HashId).GetString().ShouldBe(torrentHash);
         submissionProperties.GetProperty(TelemetryProperty.MediaId).GetInt32().ShouldBe(movie.Id);
         submissionProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(movie.PlexLibraryId);

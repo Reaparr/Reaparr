@@ -34,7 +34,8 @@ public class ResultExtensionsGeneralTests
     public void ShouldFindStatusCode_WhenMatchingStatusIsOnLaterReason()
     {
         // Arrange
-        var result = Result.Ok()
+        var result = Result
+            .Ok()
             .WithSuccess(new Success("first reason"))
             .WithSuccess(new Success("later reason").WithMetadata(ResultExtensions.StatusCodeName, 418));
 
@@ -52,7 +53,7 @@ public class ResultExtensionsGeneralTests
         var result = Result.Ok().WithSuccess(new Success("status").WithMetadata(ResultExtensions.StatusCodeName, 418));
 
         // Act
-        var hasStatusCode = result.HasStatusCode(0);
+        var hasStatusCode = result.HasStatusCode();
 
         // Assert
         hasStatusCode.ShouldBeTrue();
@@ -75,9 +76,11 @@ public class ResultExtensionsGeneralTests
     public void ShouldFindStatusCode_WhenMatchingStatusIsOnSuccessReason()
     {
         // Arrange
-        var result = Result.Ok().WithSuccess(
-            new Success("created").WithMetadata(ResultExtensions.StatusCodeName, (int)HttpStatusCode.Created)
-        );
+        var result = Result
+            .Ok()
+            .WithSuccess(
+                new Success("created").WithMetadata(ResultExtensions.StatusCodeName, (int)HttpStatusCode.Created)
+            );
 
         // Act
         var hasStatusCode = result.HasStatusCode((int)HttpStatusCode.Created);
@@ -90,7 +93,10 @@ public class ResultExtensionsGeneralTests
     public void ShouldNotFindStatusCode_WhenStatusCodeExistsOnlyOnNestedReason()
     {
         // Arrange
-        var nestedReason = new Error("nested").WithMetadata(ResultExtensions.StatusCodeName, HttpCodes.Status404NotFound);
+        var nestedReason = new Error("nested").WithMetadata(
+            ResultExtensions.StatusCodeName,
+            HttpCodes.Status404NotFound
+        );
         var result = Result.Fail(new Error("outer").CausedBy(nestedReason));
 
         // Act

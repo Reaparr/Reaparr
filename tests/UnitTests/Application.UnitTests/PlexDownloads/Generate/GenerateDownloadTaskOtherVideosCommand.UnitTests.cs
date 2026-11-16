@@ -50,7 +50,7 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         {
             DestinationFolderPathId = folder.Id,
         };
-        var downloadRoot = (await dbContext.GetDownloadFolder(null)).DirectoryPath;
+        var downloadRoot = (await dbContext.GetDownloadFolder()).DirectoryPath;
 
         // Act
         var result = await TestHandlerExecuteAsync<DownloadTaskCreationReport>(
@@ -319,14 +319,18 @@ public class GenerateDownloadTaskOtherVideosCommandUnitTests
         {
             Type = PlexMediaType.OtherVideos,
             SelectionKind = null,
-            PlexServerId =
-                mismatch == 0 ? foreignServerId
-                : mismatch == 2 ? movieLibrary.PlexServerId
-                : source.PlexServerId,
-            PlexLibraryId =
-                mismatch == 1 ? otherLibrary.Id
-                : mismatch == 2 ? movieLibrary.Id
-                : source.PlexLibraryId,
+            PlexServerId = mismatch switch
+            {
+                0 => foreignServerId,
+                2 => movieLibrary.PlexServerId,
+                _ => source.PlexServerId,
+            },
+            PlexLibraryId = mismatch switch
+            {
+                1 => otherLibrary.Id,
+                2 => movieLibrary.Id,
+                _ => source.PlexLibraryId,
+            },
             MediaIds = [source.Id],
             Qualities = [],
         };
