@@ -44,9 +44,11 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
         app.Run(async context =>
         {
             using var reader = new StreamReader(context.Request.Body);
-            seqBodies.Enqueue(await reader.ReadToEndAsync());
+            var body = await reader.ReadToEndAsync();
+            seqBodies.Enqueue(body);
+            if (body.Contains("After SignalR attachment", StringComparison.Ordinal))
+                seqReceived.TrySetResult();
             context.Response.StatusCode = StatusCodes.Status201Created;
-            seqReceived.TrySetResult();
         });
         await app.StartAsync();
         SetAppBuildInfo(x =>
@@ -65,7 +67,7 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
             buffer,
             Mock.Container.Resolve<IAppBuildInfo>()
         );
-        await using var logger = config.GetLogger();
+        using var logger = config.GetLogger(LogEventLevel.Debug);
         var contextualLogger = logger.ForContext("Regression", true);
         contextualLogger.Debug("Before SignalR attachment");
 
@@ -74,6 +76,7 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
             // Act
             config.AttachSignalR(app, LogEventLevel.Debug);
             contextualLogger.Debug("After SignalR attachment");
+            logger.Dispose();
             if (enableSeq)
                 await seqReceived.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
