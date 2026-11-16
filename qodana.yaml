@@ -2,6 +2,9 @@ version: '1.0'
 
 linter: qodana-cdnet
 withinDocker: true
+bootstrap: |+
+    set -eu
+    dotnet restore Reaparr.sln --locked-mode
 
 dotnet:
     solution: Reaparr.sln
