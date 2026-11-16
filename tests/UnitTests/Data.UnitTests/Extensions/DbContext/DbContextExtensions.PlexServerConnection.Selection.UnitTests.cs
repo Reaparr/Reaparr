@@ -5,63 +5,84 @@ public class PlexServerConnectionSelectionUnitTests
     public static IEnumerable<Func<(PlexServer, int)>> SelectionCases()
     {
         // An online preference outranks HTTPS and local connections.
-        yield return SelectionCase(101, 101,
-        [
-            (102, "https://secure.example.com:32400", false, true),
-            (103, "http://127.0.0.1:32400", true, true),
-            (101, "http://preferred.example.com:32400", false, true),
-        ]);
+        yield return SelectionCase(
+            101,
+            101,
+            [
+                (102, "https://secure.example.com:32400", false, true),
+                (103, "http://127.0.0.1:32400", true, true),
+                (101, "http://preferred.example.com:32400", false, true),
+            ]
+        );
         // An offline preference must not be selected.
-        yield return SelectionCase(202, 201,
-        [
-            (201, "https://offline.example.com:32400", false, false),
-            (202, "https://online.example.com:32400", false, true),
-        ]);
+        yield return SelectionCase(
+            202,
+            201,
+            [
+                (201, "https://offline.example.com:32400", false, false),
+                (202, "https://online.example.com:32400", false, true),
+            ]
+        );
         // A missing preference falls through to the normal priority order.
-        yield return SelectionCase(302, 999,
-        [
-            (301, "http://127.0.0.1:32400", true, true),
-            (302, "https://online.example.com:32400", false, true),
-        ]);
+        yield return SelectionCase(
+            302,
+            999,
+            [(301, "http://127.0.0.1:32400", true, true), (302, "https://online.example.com:32400", false, true)]
+        );
         // HTTPS outranks local and other direct connections; offline HTTPS is ignored.
-        yield return SelectionCase(402, 0,
-        [
-            (400, "https://offline.example.com:32400", false, false),
-            (401, "http://127.0.0.1:32400", true, true),
-            (402, "https://online.example.com:32400", false, true),
-            (403, "http://direct.example.com:32400", false, true),
-        ]);
+        yield return SelectionCase(
+            402,
+            0,
+            [
+                (400, "https://offline.example.com:32400", false, false),
+                (401, "http://127.0.0.1:32400", true, true),
+                (402, "https://online.example.com:32400", false, true),
+                (403, "http://direct.example.com:32400", false, true),
+            ]
+        );
         // Local outranks the public-address match and other direct connections.
-        yield return SelectionCase(503, 0,
-        [
-            (500, "http://127.0.0.2:32400", true, false),
-            (501, "http://other.example.com:32400", false, true),
-            (502, "http://public.example.com:32400", false, true),
-            (503, "http://127.0.0.1:32400", true, true),
-        ]);
+        yield return SelectionCase(
+            503,
+            0,
+            [
+                (500, "http://127.0.0.2:32400", true, false),
+                (501, "http://other.example.com:32400", false, true),
+                (502, "http://public.example.com:32400", false, true),
+                (503, "http://127.0.0.1:32400", true, true),
+            ]
+        );
         // A public-address match outranks other direct connections.
-        yield return SelectionCase(602, 0,
-        [
-            (600, "http://public.example.com:32400", false, false),
-            (601, "http://other.example.com:32400", false, true),
-            (602, "http://public.example.com:32400", false, true),
-            (603, "http://relay.plex.direct:32400", false, true),
-        ]);
+        yield return SelectionCase(
+            602,
+            0,
+            [
+                (600, "http://public.example.com:32400", false, false),
+                (601, "http://other.example.com:32400", false, true),
+                (602, "http://public.example.com:32400", false, true),
+                (603, "http://relay.plex.direct:32400", false, true),
+            ]
+        );
         // An online direct connection outranks an earlier PlexTv connection.
-        yield return SelectionCase(703, 0,
-        [
-            (701, "http://first.plex.direct:32400", false, true),
-            (702, "http://offline.example.com:32400", false, false),
-            (703, "http://direct.example.com:32400", false, true),
-            (704, "http://second.plex.direct:32400", false, true),
-        ]);
+        yield return SelectionCase(
+            703,
+            0,
+            [
+                (701, "http://first.plex.direct:32400", false, true),
+                (702, "http://offline.example.com:32400", false, false),
+                (703, "http://direct.example.com:32400", false, true),
+                (704, "http://second.plex.direct:32400", false, true),
+            ]
+        );
         // With no direct connection, preserve the first-online fallback.
-        yield return SelectionCase(801, 0,
-        [
-            (800, "http://offline.plex.direct:32400", false, false),
-            (801, "http://first.plex.direct:32400", false, true),
-            (802, "http://second.plex.direct:32400", false, true),
-        ]);
+        yield return SelectionCase(
+            801,
+            0,
+            [
+                (800, "http://offline.plex.direct:32400", false, false),
+                (801, "http://first.plex.direct:32400", false, true),
+                (802, "http://second.plex.direct:32400", false, true),
+            ]
+        );
     }
 
     [Test]
@@ -74,7 +95,9 @@ public class PlexServerConnectionSelectionUnitTests
         var beforeStatusState = beforeStatuses
             .Select(x => (x?.IsSuccessful, x?.StatusCode, x?.StatusMessage, x?.LastChecked))
             .ToArray();
-        var expectedStatus = server.PlexServerConnections.Single(x => x.Id == expectedConnectionId).LatestConnectionStatus;
+        var expectedStatus = server
+            .PlexServerConnections.Single(x => x.Id == expectedConnectionId)
+            .LatestConnectionStatus;
         var beforePreferredId = server.PreferredConnectionId;
 
         // Act
@@ -86,8 +109,8 @@ public class PlexServerConnectionSelectionUnitTests
         result.Value.Id.ShouldBe(expectedConnectionId);
         server.PlexServerConnections.Select(x => x.Id).ShouldBe(beforeOrder);
         server.PlexServerConnections.Select(x => x.LatestConnectionStatus).ShouldBe(beforeStatuses);
-        server.PlexServerConnections
-            .Select(x => x.LatestConnectionStatus)
+        server
+            .PlexServerConnections.Select(x => x.LatestConnectionStatus)
             .Select(x => (x?.IsSuccessful, x?.StatusCode, x?.StatusMessage, x?.LastChecked))
             .ShouldBe(beforeStatusState);
         result.Value.LatestConnectionStatus.ShouldBeSameAs(expectedStatus);
@@ -181,7 +204,7 @@ public class PlexServerConnectionSelectionUnitTests
             IPv6 = uri.HostNameType == UriHostNameType.IPv6,
             IsCustom = false,
             PlexServerId = 0,
-            LatestConnectionStatus = online is bool isSuccessful
+            LatestConnectionStatus = online is { } isSuccessful
                 ? new PlexServerStatus
                 {
                     Id = id + 10000,

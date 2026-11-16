@@ -354,7 +354,7 @@ public static partial class DbContextExtensions
         var hasLinkedAccounts = await dbContext.PlexAccounts.AnyAsync(cancellationToken);
         var allowedLibraryIds = await ResolveEligibleLibraryIdsAsync(dbContext, hasLinkedAccounts, cancellationToken);
 
-        if (plexLibraryId is not int requestedLibraryId)
+        if (plexLibraryId is not { } requestedLibraryId)
             return Result.Ok(new PhotoBrowseScope(allowedLibraryIds));
 
         return await ResolveExplicitLibraryAsync(dbContext, requestedLibraryId, allowedLibraryIds, cancellationToken);

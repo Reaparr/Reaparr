@@ -581,7 +581,7 @@ public class GetPhotoDownloadPreviewCommandUnitTests : BaseCommandUnitTest<GetPh
             .Select(x =>
                 (
                     x.RelativePath,
-                    ParentPath: x.ParentId is Guid parentId
+                    ParentPath: x.ParentId is { } parentId
                         ? folders.Single(parent => parent.Id == parentId).RelativePath
                         : null
                 )

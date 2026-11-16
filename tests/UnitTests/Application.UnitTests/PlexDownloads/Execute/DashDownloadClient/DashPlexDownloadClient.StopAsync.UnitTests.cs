@@ -126,12 +126,12 @@ public class DashPlexDownloadClientStopAsyncUnitTests : BaseUnitTest<DashPlexDow
             await startTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
             stopTask = sut.StopAsync();
             await runnerStopEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
-            stopTask!.IsCompleted.ShouldBeFalse();
+            stopTask.IsCompleted.ShouldBeFalse();
             runnerStopRelease.TrySetResult();
             await stoppedWriteEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
-            stopTask!.IsCompleted.ShouldBeFalse();
+            stopTask.IsCompleted.ShouldBeFalse();
             stoppedWriteRelease.TrySetResult();
-            var stopResult = await stopTask!.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
+            var stopResult = await stopTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
             var startResult = await startTask.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken);
 
             stopResult.IsSuccess.ShouldBeTrue();

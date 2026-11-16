@@ -256,25 +256,4 @@ public class PathProvider : IPathProvider
     }
 
     #endregion
-
-    private string GetDestinationFolder(string? overridePath, string folderName, bool useDataPath = true)
-    {
-        if (overridePath is not null)
-            return overridePath;
-
-        if (useDataPath)
-        {
-            var dataPath = _appRuntimeInfo.DataPath;
-            if (dataPath is not null)
-                return Path.Combine(dataPath, folderName);
-        }
-
-        if (_appBuildInfo.IsDockerMode)
-            return Path.Combine("/", folderName);
-
-        if (_appBuildInfo.IsDesktopMode)
-            return Path.Combine(DataDirectory, folderName);
-
-        throw new PlatformNotSupportedException($"Platform: {_appBuildInfo.CurrentOS} is not supported");
-    }
 }

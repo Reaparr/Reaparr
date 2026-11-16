@@ -330,7 +330,9 @@ public class GetLibraryMediaFromPlexApiCommandHandler
         if (state.CompletedFolderParents.Contains(identity))
             return Result.Ok();
         if (!state.ActiveFolderParents.Add(identity))
-            return Result.Fail($"Plex returned a cyclic photo folder navigation path at '{identity}'").LogError();
+            return Result
+                .Fail("Plex returned a cyclic photo folder navigation path at '{Identity}'", identity)
+                .LogError();
 
         var pageResult = await client.GetPhotoFolderItemsAsync(
             sectionId,

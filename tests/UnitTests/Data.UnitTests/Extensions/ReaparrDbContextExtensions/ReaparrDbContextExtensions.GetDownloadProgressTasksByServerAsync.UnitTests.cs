@@ -86,7 +86,7 @@ public class ReaparrDbContextExtensionsGetDownloadProgressTasksByServerAsyncUnit
         ];
         var expectedRootTypes = includeAdditionalPhotoRoot ? rootTypes.Append(DownloadTaskType.PhotoFolder) : rootTypes;
         allTasks.Select(x => x.DownloadTaskType).Order().ShouldBe(expectedRootTypes.Order());
-        if (additionalPhotoRootId is Guid rootId)
+        if (additionalPhotoRootId is { } rootId)
         {
             var additionalRoot = allTasks.Single(x => x.Id == rootId);
             additionalRoot.ParentId.ShouldBe(Guid.Empty);

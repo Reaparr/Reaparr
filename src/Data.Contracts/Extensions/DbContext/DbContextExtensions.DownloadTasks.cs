@@ -1998,7 +1998,7 @@ public static partial class DbContextExtensions
         foreach (var selectedFolderId in photoSelectedFolderIds.Distinct())
         {
             var currentId = selectedFolderId;
-            while (photoParentsById.TryGetValue(currentId, out var parentId) && parentId is Guid parent)
+            while (photoParentsById.TryGetValue(currentId, out var parentId) && parentId is { } parent)
                 currentId = parent;
             rootIds.Add(currentId);
         }
@@ -2294,7 +2294,7 @@ public static partial class DbContextExtensions
 
         foreach (var folder in folders)
         {
-            if (folder.ParentId is Guid parentId && byId.TryGetValue(parentId, out var parent))
+            if (folder.ParentId is { } parentId && byId.TryGetValue(parentId, out var parent))
                 parent.Children.Add(folder);
         }
 
@@ -2329,7 +2329,7 @@ public static partial class DbContextExtensions
             return null;
 
         var rootId = key.Id;
-        while (parentById.TryGetValue(rootId, out var parentId) && parentId is Guid parent)
+        while (parentById.TryGetValue(rootId, out var parentId) && parentId is { } parent)
             rootId = parent;
 
         return new DownloadTaskKey

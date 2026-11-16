@@ -41,7 +41,9 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
         var context = SetupJobContext(CancellationToken);
         var notificationCount = updateAvailable ? 1 : 0;
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.BeginJob(TelemetryActivity.UpdateCheck, It.IsAny<(ActivityContext, string?, string, string)>()))
+            .Setup(x =>
+                x.BeginJob(TelemetryActivity.UpdateCheck, It.IsAny<(ActivityContext, string?, string, string)>())
+            )
             .Returns((IDisposable?)null)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -77,7 +79,9 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
         InvalidOperationException? commandException = null;
         Result<AppUpdateCheckResult>? returnedFailure = null;
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.BeginJob(TelemetryActivity.UpdateCheck, It.IsAny<(ActivityContext, string?, string, string)>()))
+            .Setup(x =>
+                x.BeginJob(TelemetryActivity.UpdateCheck, It.IsAny<(ActivityContext, string?, string, string)>())
+            )
             .Returns((IDisposable?)null)
             .Verifiable(Times.Once());
         var commandSetup = Mock.Mock<ICommandExecutor>()
@@ -93,7 +97,7 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
                 expectedStatus == JobStatus.Cancelled
                     ? ResultExtensions.TaskIsCancelled(nameof(CheckForUpdatesCommand)).ToResult<AppUpdateCheckResult>()
                     : Result.Fail<AppUpdateCheckResult>("Update check failed");
-            commandSetup.ReturnsAsync(returnedFailure!).Verifiable(Times.Once());
+            commandSetup.ReturnsAsync(returnedFailure).Verifiable(Times.Once());
         }
 
         if (expectedStatus == JobStatus.Failed)
@@ -101,17 +105,17 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
             Mock.Mock<ITelemetry>()
                 .Setup(x =>
                     x.CaptureErrors(
-                        It.Is<ResultBase>(
-                            result =>
-                                result.IsFailed
-                                && result.Errors.Count == 1
-                                && (
-                                    commandThrows
-                                        ? result.Errors.OfType<ExceptionalError>()
-                                            .Any(error => ReferenceEquals(error.Exception, commandException))
-                                        : ReferenceEquals(result.Errors.Single(), returnedFailure!.Errors.Single())
-                                            && result.Errors.Single().Message == "Update check failed"
-                                )
+                        It.Is<ResultBase>(result =>
+                            result.IsFailed
+                            && result.Errors.Count == 1
+                            && (
+                                commandThrows
+                                    ? result
+                                        .Errors.OfType<ExceptionalError>()
+                                        .Any(error => ReferenceEquals(error.Exception, commandException))
+                                    : ReferenceEquals(result.Errors.Single(), returnedFailure!.Errors.Single())
+                                        && result.Errors.Single().Message == "Update check failed"
+                            )
                         ),
                         TelemetryActivity.UpdateCheck
                     )
@@ -140,7 +144,9 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
         var context = SetupJobContext(CancellationToken);
         var notificationException = new InvalidOperationException("Update notification failed");
         Mock.Mock<ITelemetry>()
-            .Setup(x => x.BeginJob(TelemetryActivity.UpdateCheck, It.IsAny<(ActivityContext, string?, string, string)>()))
+            .Setup(x =>
+                x.BeginJob(TelemetryActivity.UpdateCheck, It.IsAny<(ActivityContext, string?, string, string)>())
+            )
             .Returns((IDisposable?)null)
             .Verifiable(Times.Once());
         Mock.Mock<ICommandExecutor>()
@@ -154,12 +160,12 @@ public class CheckForUpdateJobUnitTests : BaseUnitTest<CheckForUpdateJob>
         Mock.Mock<ITelemetry>()
             .Setup(x =>
                 x.CaptureErrors(
-                    It.Is<ResultBase>(
-                        result =>
-                            result.IsFailed
-                            && result.Errors.Count == 1
-                            && result.Errors.OfType<ExceptionalError>()
-                                .Any(error => ReferenceEquals(error.Exception, notificationException))
+                    It.Is<ResultBase>(result =>
+                        result.IsFailed
+                        && result.Errors.Count == 1
+                        && result
+                            .Errors.OfType<ExceptionalError>()
+                            .Any(error => ReferenceEquals(error.Exception, notificationException))
                     ),
                     TelemetryActivity.UpdateCheck
                 )

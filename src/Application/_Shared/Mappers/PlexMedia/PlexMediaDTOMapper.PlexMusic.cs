@@ -144,7 +144,7 @@ public static partial class PlexMediaDTOMapper
             AudioQuality = source.AudioQuality,
         };
 
-    private static PlexMediaQualityDTO ToMusicQuality(int trackId, IEnumerable<PlexMusicTrackMediaData> files)
+    private static PlexMediaQualityDTO ToMusicQuality(int trackId, ICollection<PlexMusicTrackMediaData> files)
     {
         var (representative, quality) = files.PickAudioQuality();
 

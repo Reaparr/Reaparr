@@ -17,11 +17,7 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
     private readonly ILogger _log;
     private readonly ITelemetry _telemetry;
 
-    public CompareMusicPlexLibraryCommandHandler(
-        IReaparrDbContext dbContext,
-        ILogger log,
-        ITelemetry telemetry
-    )
+    public CompareMusicPlexLibraryCommandHandler(IReaparrDbContext dbContext, ILogger log, ITelemetry telemetry)
     {
         _dbContext = dbContext;
         _log = log.ForContext<CompareMusicPlexLibraryCommandHandler>();
@@ -30,10 +26,7 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
 
     public async Task<Result> ExecuteAsync(CompareMusicPlexLibraryCommand command, CancellationToken cancellationToken)
     {
-        using var activity = _telemetry.StartMusicComparison(
-            command.OwnedPlexLibraryId,
-            command.RemotePlexLibraryId
-        );
+        using var activity = _telemetry.StartMusicComparison(command.OwnedPlexLibraryId, command.RemotePlexLibraryId);
         var result = await _dbContext.ExecuteTransactionAsync(
             async (ctx, ct) =>
             {
@@ -350,17 +343,7 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
                             MatchType = matchType,
                         }
                     );
-                    WriteTracks(
-                        ctx,
-                        command,
-                        remote,
-                        owned,
-                        Tracks(remote),
-                        Tracks(owned),
-                        audioSelections,
-                        comparedAt,
-                        ct
-                    );
+                    WriteTracks(ctx, command, Tracks(remote), Tracks(owned), audioSelections, comparedAt);
                 }
             }
         }
@@ -414,13 +397,10 @@ public class CompareMusicPlexLibraryCommandHandler : ICommandHandler<CompareMusi
     private static void WriteTracks(
         IReaparrDbContext ctx,
         CompareMusicPlexLibraryCommand command,
-        PlexMusicAlbum remoteAlbum,
-        PlexMusicAlbum ownedAlbum,
         AlbumTracks remoteTracks,
         AlbumTracks ownedTracks,
         Dictionary<int, (PlexMusicTrackMediaData? File, AudioQuality audioQuality)> audioSelections,
-        DateTime comparedAt,
-        CancellationToken ct
+        DateTime comparedAt
     )
     {
         var singleDisc = SingleDisc(remoteTracks, ownedTracks);

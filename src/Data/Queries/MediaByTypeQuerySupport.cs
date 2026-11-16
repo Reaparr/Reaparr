@@ -62,10 +62,10 @@ internal static class MediaByTypeQuerySupport
         if (projection.IsCancelledOrFailed)
             return projection.ToResult<List<PlexMediaSlimDTO>>();
 
-        if (filter.ComparisonState is PlexMediaComparisonState comparisonState)
+        if (filter.ComparisonState is { } comparisonState)
             candidates.RemoveAll(item => item.ComparisonId != comparisonState.ToComparisonId());
 
-        if (!options.Sort.Any(sort => sort.Field.ToSortType() == SortType.ComparisonState))
+        if (options.Sort.All(sort => sort.Field.ToSortType() != SortType.ComparisonState))
             return Result.Ok(candidates);
 
         var sorts = options
