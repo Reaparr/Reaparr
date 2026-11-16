@@ -41,7 +41,7 @@ public class GenerateDownloadTaskMusicAlbumsCommandHandler
     )
     {
         var request = command.Request;
-        var downloadMedias = request.DownloadMedias.MergeAndGroupList();
+        var downloadMedias = request.DownloadMedias.MergeMusicSelections();
         var albumSelections = downloadMedias.FindAll(x => x.Type == PlexMediaType.MusicAlbum);
         if (albumSelections.Count == 0)
             return ResultExtensions.IsEmpty(nameof(albumSelections)).LogWarning();

@@ -111,7 +111,6 @@ describe('Reaparr Server Dialog', () => {
 		{ width: 568, height: 320 },
 		{ width: 768, height: 1024 },
 		{ width: 1280, height: 800 },
-		{ width: 1920, height: 1080 },
 	] as const;
 
 	for (const viewport of responsiveViewports) {

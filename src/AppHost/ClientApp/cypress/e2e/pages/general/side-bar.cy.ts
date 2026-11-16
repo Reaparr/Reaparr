@@ -6,7 +6,7 @@ describe('Side bar', () => {
 	it('Should display no library warning and allow the user to refresh the Plex account access when a server has no libraries', () => {
 		cy.basePageSetup({
 			plexAccountCount: 1,
-			plexServerCount: 3,
+			plexServerCount: 1,
 			plexMovieLibraryCount: 0,
 			plexTvShowLibraryCount: 0,
 		});

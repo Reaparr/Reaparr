@@ -117,6 +117,27 @@ Deferred proposals, requests for details, and unanswered questions do not belong
 - **Affected code:** `src/AppHost/ClientApp/src/store/libraryStore.ts`; `src/AppHost/ClientApp/src/components/Dialogs/ServerDialog/Tabs/ServerLibrariesTabContent.vue`; destination-save regression tests.
 - **Reason:** Not provided.
 
+## I114 — 2026-11-05 — Preserve active settings after a partial write failure
+
+- **Problem:** Writing directly to the active config can truncate it before an I/O failure, leaving malformed settings that reset to defaults on the next load.
+- **Proposed fix:** Write a separate adjacent temporary file, replace active config only after a successful write, and clean up this operation's failed temporary file while preserving the existing settings format and reset policy.
+- **Affected code:** `src/Settings/ConfigManager.cs`, especially `WriteToConfigFile`, `SaveConfig` and `LoadConfig`; settings save/load regression tests.
+- **Reason:** Not provided.
+
+## I115 — 2026-11-05 — Stop logging raw malformed configuration contents
+
+- **Problem:** Malformed legacy configuration containing integration credentials is logged as an entire scalar string, which bypasses normal named-property credential masking.
+- **Proposed fix:** Remove the raw configuration-content log while retaining filename/exception diagnostics and existing reset behavior.
+- **Affected code:** `src/Settings/ConfigManager.cs`, especially the `LoadConfig` parse-failure handler; settings/logging regression tests.
+- **Reason:** Not provided.
+
+## I123 — 2026-11-05 — Exclude draft releases from update checks
+
+- **Problem:** A configured GitHub token with repository push access can return newer unpublished drafts, which Reaparr can advertise as available updates and include in release notes.
+- **Proposed fix:** Exclude draft releases at GitHub ingestion while preserving published prereleases, version/channel filtering and existing update behavior.
+- **Affected code:** `src/Application/Update/_BackgroundJobs/CheckForUpdateJob/Commands/GetGitHubReleasesCommand.cs`; `CheckForUpdatesCommandHandler` fallback and update-check regression tests.
+- **Reason:** Not provided.
+
 ## Record format
 
 For each denial, record:

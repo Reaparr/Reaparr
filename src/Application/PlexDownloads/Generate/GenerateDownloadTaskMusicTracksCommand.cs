@@ -43,7 +43,7 @@ public class GenerateDownloadTaskMusicTracksCommandHandler
     {
         var request = command.Request;
         var trackSelections = request
-            .DownloadMedias.MergeAndGroupList()
+            .DownloadMedias.MergeMusicSelections()
             .FindAll(x => x.Type == PlexMediaType.MusicTrack);
         if (trackSelections.Count == 0)
             return ResultExtensions.IsEmpty(nameof(trackSelections)).LogWarning();

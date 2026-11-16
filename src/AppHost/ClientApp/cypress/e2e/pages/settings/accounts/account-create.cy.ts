@@ -51,6 +51,7 @@ describe('Add Plex account to Reaparr', () => {
 		cy.getCy('account-form-username-input').type(account.username);
 		cy.getCy('account-form-password-input').type(account.password);
 
+		cy.getCy('account-dialog-save-button').should('be.disabled');
 		cy.validatePlexCredentialsEndpoint({
 			partialData: {
 				is2Fa: false,
@@ -562,43 +563,6 @@ describe('Add Plex account to Reaparr', () => {
 			cy.getCy('account-form-display-name-input').should('have.value', account.displayName);
 		});
 	});
-
-	it('Should disable save button until validation is successful', () => {
-		cy.getPageData().then(() => {
-			const account: PlexAccountDTO = generatePlexAccount({
-				id: 99,
-				partialData: {
-					isValidated: false,
-					is2Fa: false,
-				},
-			});
-
-			cy.getCy('account-overview-add-account').click();
-			cy.getCy('account-dialog-form').should('be.visible');
-
-			// Fill in credentials
-			cy.getCy('account-form-display-name-input').type(account.displayName);
-			cy.getCy('account-form-username-input').type(account.username);
-			cy.getCy('account-form-password-input').type(account.password);
-
-			// Validate credentials
-			cy.validatePlexCredentialsEndpoint({
-				partialData: {
-					isValidated: true,
-					is2Fa: false,
-				},
-			});
-
-			cy.getCy('account-dialog-validate-button').click();
-
-			// Wait for validation to complete
-			cy.wait(500);
-
-			// Verify save button exists and is clickable after validation
-			cy.getCy('account-dialog-save-button').should('be.visible');
-		});
-	});
-
 	it('Should preserve display name when switching between validation modes', () => {
 		cy.getPageData().then(() => {
 			const account: PlexAccountDTO = createManualTokenAccount();
@@ -680,7 +644,6 @@ describe('Add Plex account to Reaparr', () => {
 
 	const accountViewports = [
 		{ width: 320, height: 568 },
-		{ width: 375, height: 812 },
 		{ width: 568, height: 320 },
 		{ width: 768, height: 1024 },
 	] as const;

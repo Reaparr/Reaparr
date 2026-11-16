@@ -3,7 +3,6 @@ name: Execute Tests
 on:
     workflow_dispatch:
     pull_request:
-        branches: [ dev ]
         types: [ opened, ready_for_review, reopened, synchronize ]
         paths-ignore:
             - '.ai/**'
@@ -27,6 +26,44 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
+    Pipeline-Deadline:
+        name: Pipeline deadline
+        if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository)
+        runs-on: ubuntu-latest
+        timeout-minutes: 16
+        permissions:
+            actions: write
+        steps:
+            -   name: Cancel unfinished tests after 15 minutes
+                uses: actions/github-script@v8
+                with:
+                    script: |
+                        const run = { ...context.repo, run_id: context.runId };
+                        const { data } = await github.rest.actions.getWorkflowRun(run);
+                        const deadline = Date.parse(data.run_started_at) + 15 * 60 * 1000;
+                        while (true) {
+                            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                                ...run,
+                                filter: 'latest',
+                                per_page: 100,
+                            });
+                            const testJobs = jobs.filter(job =>
+                                job.name !== 'Pipeline deadline'
+                                && !job.name.startsWith('Test-Docker-Build / ')
+                                && !job.name.startsWith('Test-Desktop-Build / '));
+                            if (testJobs.length > 0 && testJobs.every(job => job.status === 'completed')) {
+                                core.info('All test/check jobs finished before the deadline; packaging may continue.');
+                                return;
+                            }
+                            const remaining = deadline - Date.now();
+                            if (remaining <= 0) {
+                                core.warning('Cancelling the workflow: test/check jobs exceeded the 15-minute deadline.');
+                                await github.rest.actions.cancelWorkflowRun(run);
+                                return;
+                            }
+                            await new Promise(resolve => setTimeout(resolve, Math.min(15000, remaining)));
+                        }
+
     # Check if PR is in draft
     Check-PR-Status:
         runs-on: ubuntu-latest
@@ -187,11 +224,20 @@ jobs:
         needs: [ Check-Frontend-Changes, Check-PR-Status ]
         if: needs.Check-Frontend-Changes.outputs.should_run == 'true' && (needs.Check-PR-Status.result == 'success' || github.event_name == 'workflow_dispatch')
         runs-on: ubuntu-latest
+        timeout-minutes: 15
         strategy:
-            # https://github.com/cypress-io/github-action/issues/48
+            # Shard locally while Cypress Cloud scheduling is unavailable.
             fail-fast: false
             matrix:
-                containers: [ 1, 2 ] # Uses 2 parallel instances
+                include:
+                    -   containers: 1
+                        spec: 'cypress/e2e/pages/+(library|responsive)/**/*.cy.{js,jsx,ts,tsx}'
+                    -   containers: 2
+                        spec: 'cypress/e2e/pages/+(media-families|authentication|photos)/**/*.cy.{js,jsx,ts,tsx}'
+                    -   containers: 3
+                        spec: 'cypress/e2e/pages/+(general|dialogs)/**/*.cy.{js,jsx,ts,tsx}'
+                    -   containers: 4
+                        spec: 'cypress/e2e/pages/!(library|responsive|media-families|authentication|photos|general|dialogs)/**/*.cy.{js,jsx,ts,tsx}'
         steps:
             -   uses: actions/checkout@v7
                 with:
@@ -213,16 +259,14 @@ jobs:
                 uses: cypress-io/github-action@v7.4.4
                 with:
                     install: false
-                    record: true
+                    record: false
                     browser: ${{ steps.chrome.outputs.chrome-path }}
                     start: bun run static-server
-                    parallel: true
+                    spec: ${{ matrix.spec }}
                     working-directory: ./src/AppHost/ClientApp/
                     wait-on: 'http://localhost:${{ env.PORT }}'
                 env:
                     CYPRESS_NODE_ENV: development
-                    CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-                    GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
                     PORT: 3035
                     CYPRESS_WEB_PORT: 3035
                     CYPRESS_API_PORT: 3035

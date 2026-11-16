@@ -11,7 +11,7 @@ public class TorznabRequestUnitTests
             Type = "tvsearch",
             Query = "Silo",
             Season = 2,
-            Episode = 3,
+            Episode = "3",
             TvdbId = 123,
             ApiKey = "key",
             Categories = [5030],
@@ -30,6 +30,82 @@ public class TorznabRequestUnitTests
         request.Offset.ShouldBe(0);
         request.Categories.ShouldBe([5030]);
         request.Mode.ShouldBe(TorznabRequestMode.ActiveSearch);
+    }
+
+    [Test]
+    [Arguments(null, TorznabRequestMode.Rss)]
+    [Arguments(0, TorznabRequestMode.ActiveSearch)]
+    [Arguments(1, TorznabRequestMode.ActiveSearch)]
+    public void ShouldSelectRssOnlyWhenSeasonIsOmitted(int? season, TorznabRequestMode expectedMode)
+    {
+        // Arrange
+        var endpointRequest = new TorznabEndpointRequest
+        {
+            Type = "tvsearch",
+            ApiKey = "key",
+            Season = season,
+        };
+
+        // Act
+        var request = endpointRequest.ToTorznabRequest(new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty));
+
+        // Assert
+        request.Mode.ShouldBe(expectedMode);
+    }
+
+    [Test]
+    public void ShouldInterpretDailySelectorsAsAirDates()
+    {
+        // Arrange
+        var endpointRequest = new TorznabEndpointRequest
+        {
+            Type = "tvsearch",
+            ApiKey = "key",
+            Season = 2024,
+            Episode = "02/29",
+        };
+
+        // Act
+        var request = endpointRequest.ToTorznabRequest(new IntegrationIdentity(IntegrationType.Sonarr, Guid.Empty));
+
+        // Assert
+        request.AirDate.ShouldBe(new DateOnly(2024, 2, 29));
+        request.Season.ShouldBeNull();
+        request.Episode.ShouldBe(0);
+        request.Mode.ShouldBe(TorznabRequestMode.ActiveSearch);
+    }
+
+    [Test]
+    [Arguments(2024, "02/29", true)]
+    [Arguments(2023, "02/29", false)]
+    [Arguments(2024, "13/01", false)]
+    [Arguments(null, "02/29", false)]
+    [Arguments(0, "01/01", false)]
+    [Arguments(10000, "01/01", false)]
+    [Arguments(2024, "2/29", false)]
+    [Arguments(2024, "01-01", false)]
+    [Arguments(1, "0", true)]
+    [Arguments(1, "+2", true)]
+    [Arguments(1, "-1", false)]
+    [Arguments(1, "2147483648", false)]
+    [Arguments(1, null, true)]
+    public void ShouldValidateEpisodeSelectorShapes(int? season, string? episode, bool expectedValid)
+    {
+        // Arrange
+        var endpointRequest = new TorznabEndpointRequest
+        {
+            Type = "tvsearch",
+            ApiKey = "key",
+            Season = season,
+            Episode = episode,
+        };
+        var validator = new TorznabEndpointRequestValidator();
+
+        // Act
+        var result = validator.Validate(endpointRequest);
+
+        // Assert
+        result.IsValid.ShouldBe(expectedValid);
     }
 
     [Test]
@@ -144,7 +220,7 @@ public class TorznabRequestUnitTests
         {
             Type = queryType,
             Query = string.Empty,
-            Season = 0,
+            Season = null,
             Episode = 0,
             TvdbId = 0,
             ImdbId = string.Empty,
@@ -160,9 +236,9 @@ public class TorznabRequestUnitTests
         {
             Query = "The Matrix",
             ImdbId = "tt0133093",
+            Season = 2,
             TmdbId = 603,
             TvdbId = 456,
-            Season = 2,
             Episode = 3,
         };
         var response = Result.Ok(

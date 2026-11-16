@@ -8,6 +8,8 @@ namespace Reaparr.Build;
 
 internal interface IDesktopCommandRunner
 {
+    void LogCommand(string fileName, IReadOnlyList<string> arguments);
+
     Task RunCommandAsync(
         string fileName,
         IReadOnlyList<string> arguments,
@@ -174,7 +176,7 @@ internal sealed class DesktopCommandRunner : IDesktopCommandRunner
         return Task.FromResult(false);
     }
 
-    private void LogCommand(string fileName, IReadOnlyList<string> arguments) =>
+    public void LogCommand(string fileName, IReadOnlyList<string> arguments) =>
         _log.Here().Information("> {Command}", FormatCommand(fileName, arguments));
 
     private static string FormatCommand(string fileName, IReadOnlyList<string> arguments) =>

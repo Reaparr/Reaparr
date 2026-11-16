@@ -1,3 +1,5 @@
+using Semver;
+
 namespace Reaparr.Application;
 
 /// <summary>
@@ -21,6 +23,29 @@ public class CheckForUpdatesCommandHandler : ICommandHandler<CheckForUpdatesComm
             ReleaseNotes = [],
         };
 
+    private static IReadOnlyList<ReleaseNote> FilterReleaseNotes(
+        IReadOnlyList<ReleaseNote> releaseNotes,
+        string targetVersion
+    )
+    {
+        if (!TryParseSemVersion(targetVersion, out var parsedTargetVersion))
+            return [];
+
+        return releaseNotes
+            .Where(x =>
+                TryParseSemVersion(x.Version, out var parsedVersion)
+                && parsedVersion.ComparePrecedenceTo(parsedTargetVersion) <= 0
+            )
+            .ToList();
+    }
+
+    private static bool TryParseSemVersion(string version, out SemVersion semVersion)
+    {
+        var success = SemVersion.TryParse(version.TrimStart('v'), SemVersionStyles.Any, out var parsedVersion);
+        semVersion = parsedVersion ?? new SemVersion(0);
+        return success;
+    }
+
     public CheckForUpdatesCommandHandler(
         ILogger log,
         ICommandExecutor commandExecutor,
@@ -39,9 +64,6 @@ public class CheckForUpdatesCommandHandler : ICommandHandler<CheckForUpdatesComm
         CancellationToken cancellationToken
     )
     {
-        var releasesResult = await _commandExecutor.Send(new GetGitHubReleasesCommand(), cancellationToken);
-        var releases = releasesResult.IsSuccess ? releasesResult.Value : [];
-
         // Desktop mode
         if (_appBuildInfo.IsDesktopMode)
         {
@@ -110,16 +132,23 @@ public class CheckForUpdatesCommandHandler : ICommandHandler<CheckForUpdatesComm
                     _appBuildInfo.InformationalVersion
                 );
 
+            var desktopReleasesResult = await _commandExecutor.Send(new GetGitHubReleasesCommand(), cancellationToken);
+
             return Result.Ok(
                 new AppUpdateCheckResult
                 {
                     IsUpdateAvailable = true,
                     NewestVersion = targetVersion,
                     CurrentVersion = _appBuildInfo.InformationalVersion,
-                    ReleaseNotes = releases,
+                    ReleaseNotes = desktopReleasesResult.IsSuccess
+                        ? FilterReleaseNotes(desktopReleasesResult.Value, targetVersion)
+                        : [],
                 }
             );
         }
+
+        var releasesResult = await _commandExecutor.Send(new GetGitHubReleasesCommand(), cancellationToken);
+        var releases = releasesResult.IsSuccess ? releasesResult.Value : [];
 
         var nonDesktopUpdateResult = await Result.Try(() => _velopackManager.CheckForUpdatesAsync());
         if (nonDesktopUpdateResult.IsSuccess && nonDesktopUpdateResult.Value is not null)
