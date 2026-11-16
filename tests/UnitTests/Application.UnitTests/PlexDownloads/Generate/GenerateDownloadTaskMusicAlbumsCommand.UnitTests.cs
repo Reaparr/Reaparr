@@ -101,12 +101,12 @@ public partial class GenerateDownloadTaskMusicAlbumsCommandUnitTests
             .Setup(x =>
                 x.Send(
                     It.Is<GenerateDownloadTaskMusicTracksCommand>(c =>
-                        c.Request.DownloadMedias.SelectMany(x => x.MediaIds)
-                            .SequenceEqual(album.Tracks.Select(x => x.Id))
-                        && c.Request.DownloadMedias.All(x =>
-                            x.Type == PlexMediaType.MusicTrack
-                            && x.PlexServerId == album.PlexServerId
-                            && x.PlexLibraryId == album.PlexLibraryId
+                        c.Request.DownloadMedias.SelectMany(media => media.MediaIds)
+                            .SequenceEqual(album.Tracks.Select(track => track.Id))
+                        && c.Request.DownloadMedias.All(downloadMedia =>
+                            downloadMedia.Type == PlexMediaType.MusicTrack
+                            && downloadMedia.PlexServerId == album.PlexServerId
+                            && downloadMedia.PlexLibraryId == album.PlexLibraryId
                         )
                     ),
                     CancellationToken
