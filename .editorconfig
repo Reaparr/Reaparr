@@ -42,6 +42,10 @@ resharper_suggest_var_or_type_simple_types_highlighting = suggestion
 resharper_convert_to_extension_block_highlighting = none
 resharper_move_to_extension_block_highlighting = none
 
+# Do not suggest converting existing code to collection expressions.
+resharper_use_collection_expression_highlighting = none
+dotnet_style_prefer_collection_expression = never
+
 # Prefer Any()/!Any() for existence checks, not Count() comparisons.
 resharper_use_method_any_0_highlighting = warning
 resharper_use_method_any_1_highlighting = warning
