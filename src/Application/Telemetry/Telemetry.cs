@@ -6,8 +6,10 @@ namespace Reaparr.Application;
 
 public sealed partial class Telemetry : ITelemetry, IDisposable
 {
-    private static readonly Dictionary<string, object> EmptyProperties = [];
-    private static readonly JsonSerializerOptions SettingsJsonOptions = new(DefaultJsonSerializerOptions.ConfigStandard)
+    private static readonly Dictionary<string, object> _emptyProperties = [];
+    private static readonly JsonSerializerOptions _settingsJsonOptions = new(
+        DefaultJsonSerializerOptions.ConfigStandard
+    )
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
@@ -300,10 +302,10 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
                     eventName,
                     properties,
                     personPropertiesToSet: personProperties,
-                    personPropertiesToSetOnce: EmptyProperties
+                    personPropertiesToSetOnce: _emptyProperties
                 );
         });
-        return captureResult.IsSuccess && captureResult.Value;
+        return captureResult is { IsSuccess: true, Value: true };
     }
 
     /// <summary>
@@ -318,7 +320,7 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
         // Serialization belongs here too: an observer failure must not terminate SettingsUpdated.
         var settingsResult = Result.Try(() =>
         {
-            var settings = JsonSerializer.SerializeToElement(_settings.ToDTO(), SettingsJsonOptions);
+            var settings = JsonSerializer.SerializeToElement(_settings.ToDTO(), _settingsJsonOptions);
             var properties = new Dictionary<string, object>();
             foreach (var module in settings.EnumerateObject())
             foreach (var property in module.Value.EnumerateObject())
@@ -335,10 +337,10 @@ public sealed partial class Telemetry : ITelemetry, IDisposable
                     header.MaxHeaderLength,
                     header.RequireHttps,
                 },
-                SettingsJsonOptions
+                _settingsJsonOptions
             );
             return Capture(
-                changed ? TelemetryEvent.SettingsChanged.ToString() : TelemetryProtocol.ProfileEvent,
+                changed ? nameof(TelemetryEvent.SettingsChanged) : TelemetryProtocol.ProfileEvent,
                 new Dictionary<string, object>(properties),
                 properties
             );

@@ -36,9 +36,9 @@ public class RefreshPlexServerConnectionsEndpoint : Endpoint<RefreshPlexServerCo
         Get(ApiRoutes.PlexServerController + "/{PlexServerId}/refresh");
 
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<PlexServerDTO>))
-                .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
+            x.Produces<ResultDTO<PlexServerDTO>>()
+                .Produces<BaseResultDTO>(StatusCodes.Status404NotFound)
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError)
         );
     }
 
@@ -59,7 +59,7 @@ public class RefreshPlexServerConnectionsEndpoint : Endpoint<RefreshPlexServerCo
         }
 
         var refreshResult = await _commandExecutor.Send(
-            new RefreshPlexAccountAccessCommand(plexAccountResult.Value.Id, TelemetryTrigger.Manual),
+            new RefreshPlexAccountAccessCommand(plexAccountResult.Value.Id),
             ct
         );
         _telemetry.PlexAccessRefreshRequested(

@@ -18,13 +18,11 @@ public class RefreshLibraryMediaCommandValidator : AbstractValidator<RefreshLibr
 
 public class RefreshLibraryMediaCommandHandler : ICommandHandler<RefreshLibraryMediaCommand, Result<PlexLibrary>>
 {
-    private readonly ILogger _log;
     private readonly IReaparrDbContext _dbContext;
     private readonly ICommandExecutor _commandExecutor;
 
-    public RefreshLibraryMediaCommandHandler(ILogger log, IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
+    public RefreshLibraryMediaCommandHandler(IReaparrDbContext dbContext, ICommandExecutor commandExecutor)
     {
-        _log = log.ForContext<RefreshLibraryMediaCommandHandler>();
         _dbContext = dbContext;
         _commandExecutor = commandExecutor;
     }

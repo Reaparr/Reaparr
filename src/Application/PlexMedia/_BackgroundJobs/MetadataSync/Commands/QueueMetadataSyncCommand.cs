@@ -33,7 +33,7 @@ public class QueueMetadataSyncCommandHandler : ICommandHandler<QueueMetadataSync
         var schedulingResult = await _scheduler.ExecuteJob<MetadataSyncJob, MetadataSyncJobPayload>(
             jobKey,
             new MetadataSyncJobPayload(command.ServerId),
-            cancellationToken
+            cancellationToken: cancellationToken
         );
 
         if (schedulingResult.IsFailed)

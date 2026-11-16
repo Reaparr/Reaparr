@@ -153,7 +153,7 @@ public sealed partial class Telemetry
         var properties = new Dictionary<string, object>
         {
             [TelemetryProperty.Scope] = scope.ToString(),
-            [TelemetryProperty.Trigger] = TelemetryTrigger.Manual.ToString(),
+            [TelemetryProperty.Trigger] = nameof(TelemetryTrigger.Manual),
             [TelemetryProperty.Outcome] = outcome.ToString(),
             [TelemetryProperty.AccountId] = accountId!,
             [TelemetryProperty.ServerId] = serverId!,
@@ -259,7 +259,7 @@ public sealed partial class Telemetry
             TelemetryEvent.PlexServerChanged,
             new Dictionary<string, object>
             {
-                [TelemetryProperty.Action] = TelemetryAction.Alias.ToString(),
+                [TelemetryProperty.Action] = nameof(TelemetryAction.Alias),
                 [TelemetryProperty.ServerId] = serverId,
                 [TelemetryProperty.Accounts.MachineIdentifier] = machineIdentifier,
                 [TelemetryProperty.Accounts.Alias] = alias,
@@ -289,7 +289,7 @@ public sealed partial class Telemetry
             new Dictionary<string, object>
             {
                 [TelemetryProperty.ServerId] = serverId,
-                [TelemetryProperty.Outcome] = TelemetryOutcome.Succeeded.ToString(),
+                [TelemetryProperty.Outcome] = nameof(TelemetryOutcome.Succeeded),
             }
         );
 
@@ -317,7 +317,7 @@ public sealed partial class Telemetry
                 [TelemetryProperty.Action] = action.ToString(),
                 [TelemetryProperty.ServerId] = serverId,
                 [TelemetryProperty.Accounts.IsDownloadsPausedByUser] = isPaused,
-                [TelemetryProperty.Outcome] = TelemetryOutcome.Succeeded.ToString(),
+                [TelemetryProperty.Outcome] = nameof(TelemetryOutcome.Succeeded),
             }
         );
 

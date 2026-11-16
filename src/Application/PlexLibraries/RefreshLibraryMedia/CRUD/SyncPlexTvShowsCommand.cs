@@ -141,15 +141,14 @@ public class SyncPlexTvShowsCommandHandler : ICommandHandler<SyncPlexTvShowsComm
                 SyncTvShowCountries(changedShows, countryDict, plexLibraryId, plexLibraryName, CancellationToken.None),
                 SyncTvShowActors(changedShows, actorDict, plexLibraryId, plexLibraryName, CancellationToken.None)
             );
-            var mergeResult = Result.Merge(results);
+            var mergeResult = results.Merge();
             if (mergeResult.IsFailed)
                 return mergeResult.LogError();
         }
 
         stopWatch.StopAndLog($"Finished media syncing plexLibrary: {plexLibraryName} with id: {plexLibraryId}");
 
-        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        _log.Here().Debug(bulkInsertRapport.ToString());
+        _log.Here().Debug("Bulk insert report: {@BulkInsertRapport}", bulkInsertRapport);
 
         return Result.Ok(bulkInsertRapport);
     }

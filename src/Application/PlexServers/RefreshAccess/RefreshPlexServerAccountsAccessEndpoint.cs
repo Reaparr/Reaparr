@@ -37,9 +37,9 @@ public class RefreshPlexServerAccountsAccessEndpoint
         Post(ApiRoutes.PlexServerController + "/{PlexServerId}/refresh-access");
 
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<List<RefreshPlexAccountAccessRapportDTO>>))
-                .Produces(StatusCodes.Status404NotFound, typeof(BaseResultDTO))
-                .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
+            x.Produces<ResultDTO<List<RefreshPlexAccountAccessRapportDTO>>>()
+                .Produces<BaseResultDTO>(StatusCodes.Status404NotFound)
+                .Produces<BaseResultDTO>(StatusCodes.Status500InternalServerError)
         );
     }
 
@@ -77,7 +77,7 @@ public class RefreshPlexServerAccountsAccessEndpoint
         foreach (var accountId in accountIds)
         {
             var result = await _commandExecutor.Send(
-                new RefreshPlexAccountAccessCommand(accountId, TelemetryTrigger.Manual),
+                new RefreshPlexAccountAccessCommand(accountId),
                 ct
             );
 
