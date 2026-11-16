@@ -2,6 +2,7 @@ using System.Reflection;
 using FastEndpoints.OpenApi;
 using FastEndpoints.Security;
 using MessagePack;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -226,11 +227,16 @@ public static partial class Startup
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AuthDbContext>();
 
+        services.Configure<SecurityStampValidatorOptions>(options =>
+            options.ValidationInterval = TimeSpan.Zero
+        );
+
         services.AddAuthenticationCookie(validFor: TimeSpan.FromHours(6), c =>
         {
             c.Cookie.Name = DefaultUserAppCredentials.DefaultCookieName;
             c.LoginPath = ApiRoutes.LoginEndpoint;
             c.LogoutPath = ApiRoutes.LogOutEndpoint;
+            c.SlidingExpiration = true;
             c.AccessDeniedPath = "/api/access-denied";
 
             c.Events.OnRedirectToLogin = ctx =>
@@ -246,6 +252,12 @@ public static partial class Startup
                     ctx.Response.StatusCode = 403;
 
                 return Task.CompletedTask;
+            };
+            c.Events.OnValidatePrincipal = context =>
+            {
+                var signInManager = context.HttpContext.RequestServices.GetRequiredService<SignInManager<AppUser>>();
+                signInManager.AuthenticationScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                return SecurityStampValidator.ValidatePrincipalAsync(context);
             };
         });
     }
