@@ -36,14 +36,12 @@ jobs:
         needs: [ validate-source-map-publishing ]
         runs-on: ubuntu-latest
         permissions:
-            contents: write
-            issues: write
-            pull-requests: write
+            contents: read
         steps:
             -   name: Checkout source code
                 uses: actions/checkout@v7
                 with:
-                    token: ${{ secrets.GH_TOKEN }}
+                    persist-credentials: false
                     fetch-depth: 0
                     ref: dev
 
