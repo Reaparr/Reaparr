@@ -187,7 +187,7 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
                 x.ExecuteCommandAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>())
             )
             .Verifiable(Times.Never());
-        using var container = CreateBuildContainer(paths, fileSystem, runner.Object);
+        await using var container = CreateBuildContainer(paths, fileSystem, runner.Object);
 
         // Act
         var result = await container
@@ -198,9 +198,12 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         result.Errors[0].Message.ShouldContain("Multiple packaged Linux artifacts");
-        fileSystem
-            .File.ReadAllText(fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "wwwroot", "index.html"))
-            .ShouldBe("frontend");
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                fileSystem.Path.Combine(paths.PublishDirectory("linux-x64"), "wwwroot", "index.html"),
+                CancellationToken
+            )
+        ).ShouldBe("frontend");
         fileSystem
             .Directory.EnumerateFiles(artifacts, "*.AppImage", SearchOption.TopDirectoryOnly)
             .Order(StringComparer.Ordinal)
@@ -223,7 +226,7 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         {
             system.AddFile(
                 "/repo/.artifacts/win-x64/publish/Reaparr.AppHost.exe",
-                new MockFileData(new byte[] { 0, 1, 255 })
+                new MockFileData([0, 1, 255])
             );
             system.AddFile("/repo/.artifacts/win-x64/publish/nested/config.json", new MockFileData("config"));
             if (customOutput)
@@ -269,8 +272,8 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
-        using var container = CreateBuildContainer(paths, fileSystem, runner.Object);
-        using var scope = container.BeginLifetimeScope(builder =>
+        await using var container = CreateBuildContainer(paths, fileSystem, runner.Object);
+        await using var scope = container.BeginLifetimeScope(builder =>
         {
             builder.RegisterInstance(publisher.Object);
             builder.RegisterInstance(launcher.Object);
@@ -295,15 +298,36 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
                     fileSystem.Path.Combine(exportedPublish, "nested", "config.json"),
                 }.Order(StringComparer.Ordinal)
             );
-        fileSystem
-            .File.ReadAllBytes(fileSystem.Path.Combine(exportedPublish, "Reaparr.AppHost.exe"))
-            .ShouldBe([0, 1, 255]);
-        fileSystem
-            .File.ReadAllText(fileSystem.Path.Combine(exportedPublish, "nested", "config.json"))
-            .ShouldBe("config");
-        fileSystem.File.ReadAllBytes(fileSystem.Path.Combine(artifacts, "Reaparr.AppHost.exe")).ShouldBe([0, 1, 255]);
-        fileSystem.File.ReadAllBytes(fileSystem.Path.Combine(publish, "Reaparr.AppHost.exe")).ShouldBe([0, 1, 255]);
-        fileSystem.File.ReadAllText(fileSystem.Path.Combine(publish, "nested", "config.json")).ShouldBe("config");
+        (
+            await fileSystem.File.ReadAllBytesAsync(
+                fileSystem.Path.Combine(exportedPublish, "Reaparr.AppHost.exe"),
+                CancellationToken
+            )
+        ).ShouldBe([0, 1, 255]);
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                fileSystem.Path.Combine(exportedPublish, "nested", "config.json"),
+                CancellationToken
+            )
+        ).ShouldBe("config");
+        (
+            await fileSystem.File.ReadAllBytesAsync(
+                fileSystem.Path.Combine(artifacts, "Reaparr.AppHost.exe"),
+                CancellationToken
+            )
+        ).ShouldBe([0, 1, 255]);
+        (
+            await fileSystem.File.ReadAllBytesAsync(
+                fileSystem.Path.Combine(publish, "Reaparr.AppHost.exe"),
+                CancellationToken
+            )
+        ).ShouldBe([0, 1, 255]);
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                fileSystem.Path.Combine(publish, "nested", "config.json"),
+                CancellationToken
+            )
+        ).ShouldBe("config");
         publisher.Verify();
         launcher.Verify();
         runner.Verify();
@@ -321,8 +345,8 @@ internal class DesktopBuildWorkflowUnitTests : BaseUnitTest<DesktopRunBuildComma
         builder.RegisterInstance(fileSystem);
         builder.RegisterInstance(runner);
         builder
-            .Register(_ => new Serilog.LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
-            .As<Serilog.ILogger>()
+            .Register(_ => new LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
+            .As<ILogger>()
             .SingleInstance();
         return builder.Build();
     }

@@ -28,7 +28,7 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
             .Single(x => x.StartsWith(DefaultUserAppCredentials.DefaultCookieName + "=", StringComparison.Ordinal))
             .Split(';')[0];
         client.DefaultRequestHeaders.Add("Cookie", cookie);
-        using var beforeContext = container.Resolve<AuthDbContext>();
+        await using var beforeContext = container.Resolve<AuthDbContext>();
         var before = await beforeContext
             .Users.Select(x => new
             {
@@ -55,7 +55,7 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
         result.ShouldNotBeNull();
         result.IsSuccess.ShouldBeFalse();
         result.Errors.Count.ShouldBe(3);
-        using var afterContext = container.Resolve<AuthDbContext>();
+        await using var afterContext = container.Resolve<AuthDbContext>();
         var after = await afterContext
             .Users.Select(x => new
             {
@@ -109,7 +109,7 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
             .Single(x => x.StartsWith(DefaultUserAppCredentials.DefaultCookieName + "=", StringComparison.Ordinal))
             .Split(';')[0];
         client.DefaultRequestHeaders.Add("Cookie", cookie);
-        using var beforeContext = container.Resolve<AuthDbContext>();
+        await using var beforeContext = container.Resolve<AuthDbContext>();
         var before = await beforeContext
             .Users.Select(x => new
             {
@@ -137,7 +137,7 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
         result.ShouldNotBeNull();
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        using var afterContext = container.Resolve<AuthDbContext>();
+        await using var afterContext = container.Resolve<AuthDbContext>();
         var after = await afterContext.Users.SingleAsync();
         after.Id.ShouldBe(before.Id);
         after.UserName.ShouldBe(username);
@@ -173,12 +173,10 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
 
     private static async Task<HttpResponseMessage> LoginAsync(HttpClient client, string username, string password)
     {
-        using var form = new MultipartFormDataContent
-        {
-            { new StringContent(username), "Username" },
-            { new StringContent(password), "Password" },
-            { new StringContent("false"), "RememberMe" },
-        };
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent(username), "Username");
+        form.Add(new StringContent(password), "Password");
+        form.Add(new StringContent("false"), "RememberMe");
         return await client.PostAsync(ApiRoutes.LoginEndpoint, form);
     }
 }

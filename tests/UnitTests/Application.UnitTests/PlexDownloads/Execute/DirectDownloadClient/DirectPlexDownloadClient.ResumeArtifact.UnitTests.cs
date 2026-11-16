@@ -68,7 +68,9 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
             .ShouldBe(snapshot.Chunks.Select(x => (x.Start, x.End, x.Position)));
         fileSystem.File.Exists(partialPath).ShouldBe(partialLength >= 0);
         if (partialLength >= 0)
-            fileSystem.File.ReadAllBytes(partialPath).ShouldBe(Enumerable.Repeat((byte)7, partialLength).ToArray());
+            (await fileSystem.File.ReadAllBytesAsync(partialPath, CancellationToken)).ShouldBe(
+                [.. Enumerable.Repeat((byte)7, partialLength)]
+            );
         fileSystem.File.Exists(snapshot.FileName).ShouldBeFalse();
         downloader.Verify(
             x => x.DownloadFileTaskAsync(It.IsAny<DownloadPackage>(), It.IsAny<CancellationToken>()),
@@ -114,7 +116,10 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
             secondPosition
         );
         if (renamed)
-            fileSystem.File.WriteAllBytes(snapshot.FileName, Enumerable.Repeat((byte)7, 31).ToArray());
+            await fileSystem.File.WriteAllBytesAsync(
+                snapshot.FileName,
+                [.. Enumerable.Repeat((byte)7, 31)]
+            );
         var remainingBytes = renamed ? 32 : 32 - firstPosition - secondPosition;
         var directoryHandler = new EnsureDownloadDirectoryCommandHandler(fileSystem.Path, fileSystem.Directory);
         Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(1);
@@ -175,35 +180,30 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
                 )
             )
             .Returns<DownloadPackage, CancellationToken>(
-                (package, _) =>
+                async (package, _) =>
                 {
-                    fileSystem.File.WriteAllBytes(task.DownloadFilePath, output);
+                    await fileSystem.File.WriteAllBytesAsync(task.DownloadFilePath, output, CancellationToken);
                     downloader.Raise(
                         x => x.DownloadFileCompleted += null,
                         downloader.Object,
                         new AsyncCompletedEventArgs(null, false, package)
                     );
-                    return Task.FromResult(Stream.Null);
+                    return Stream.Null;
                 }
             )
             .Verifiable(renamed ? Times.Never() : Times.Once());
         if (renamed)
             downloader
                 .Setup(x => x.DownloadFileTaskAsync("http://plex/resume.mkv", snapshot.FileName, CancellationToken))
-                .Returns(() =>
+                .Returns(async () =>
                 {
-                    fileSystem.File.WriteAllBytes(snapshot.FileName, output);
-                    var package = new DownloadPackage
-                    {
-                        FileName = snapshot.FileName,
-                        TotalFileSize = output.Length,
-                    };
+                    await fileSystem.File.WriteAllBytesAsync(snapshot.FileName, output, CancellationToken);
+                    var package = new DownloadPackage { FileName = snapshot.FileName, TotalFileSize = output.Length };
                     downloader.Raise(
                         x => x.DownloadFileCompleted += null,
                         downloader.Object,
                         new AsyncCompletedEventArgs(null, false, package)
                     );
-                    return Task.CompletedTask;
                 })
                 .Verifiable(Times.Once());
         await using var sut = Mock.Create<DirectPlexDownloadClient>(
@@ -219,7 +219,8 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        fileSystem.File.ReadAllBytes(renamed ? snapshot.FileName : task.DownloadFilePath).ShouldBe(output);
+        (await fileSystem.File.ReadAllBytesAsync(renamed ? snapshot.FileName : task.DownloadFilePath, CancellationToken))
+            .ShouldBe(output);
         if (renamed)
             fileSystem.File.Exists(snapshot.FileName + snapshot.DownloadingFileExtension).ShouldBeFalse();
         Mock.Mock<IDownloadTaskUpdateDispatcher>()
@@ -260,11 +261,15 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
         var (task, snapshot, fileSystem) = await CreateScenario(32, availableSpace);
         var key = task.ToKey();
         var dbContext = IDbContext;
+        var taskId = task.Id;
         var savedSnapshot = CreateSpaceSnapshot(snapshot, scenario);
         await dbContext
-            .DownloadTaskMovieFile.Where(x => x.Id == task.Id)
+            .DownloadTaskMovieFile.Where(x => x.Id == taskId)
             .ExecuteUpdateAsync(x => x.SetProperty(p => p.DirectDownloadSnapshot, savedSnapshot), CancellationToken);
-        var before = fileSystem.File.ReadAllBytes(snapshot.FileName + snapshot.DownloadingFileExtension);
+        var before = await fileSystem.File.ReadAllBytesAsync(
+            snapshot.FileName + snapshot.DownloadingFileExtension,
+            CancellationToken
+        );
         var directoryHandler = new EnsureDownloadDirectoryCommandHandler(fileSystem.Path, fileSystem.Directory);
         var downloader = new Mock<IDownloadService>(MockBehavior.Strict);
         downloader.As<IAsyncDisposable>().Setup(x => x.DisposeAsync()).Returns(ValueTask.CompletedTask);
@@ -312,15 +317,15 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
 
         // Assert
         result.IsFailed.ShouldBeTrue();
-        result.Errors.Count.ShouldBe(1);
         result.Errors.Single().Message.ShouldContain("not enough space");
-        fileSystem.File.ReadAllBytes(snapshot.FileName + snapshot.DownloadingFileExtension).ShouldBe(before);
+        (await fileSystem.File.ReadAllBytesAsync(
+            snapshot.FileName + snapshot.DownloadingFileExtension,
+            CancellationToken
+        )).ShouldBe(before);
         fileSystem.File.Exists(snapshot.FileName).ShouldBeFalse();
         var persisted = await dbContext.GetDownloadTaskFileAsync(key, CancellationToken);
         persisted.ShouldNotBeNull();
-        System
-            .Text.Json.JsonSerializer.Serialize(persisted.DirectDownloadSnapshot)
-            .ShouldBe(System.Text.Json.JsonSerializer.Serialize(savedSnapshot));
+        JsonSerializer.Serialize(persisted.DirectDownloadSnapshot).ShouldBe(JsonSerializer.Serialize(savedSnapshot));
         downloader.Verify(
             x => x.DownloadFileTaskAsync(It.IsAny<DownloadPackage>(), It.IsAny<CancellationToken>()),
             Times.Never()
@@ -405,7 +410,7 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
             IsSupportDownloadInRange = true,
             Chunks =
             [
-                new()
+                new DirectDownloadSnapshotChunk
                 {
                     Id = "first",
                     Start = 0,
@@ -414,7 +419,7 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
                     MaxTryAgainOnFailure = 3,
                     Timeout = 1000,
                 },
-                new()
+                new DirectDownloadSnapshotChunk
                 {
                     Id = "second",
                     Start = 16,
@@ -425,8 +430,9 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
                 },
             ],
         };
+        var taskId = task.Id;
         await dbContext
-            .DownloadTaskMovieFile.Where(x => x.Id == task.Id)
+            .DownloadTaskMovieFile.Where(x => x.Id == taskId)
             .ExecuteUpdateAsync(
                 x => x.SetProperty(p => p.DirectDownloadSnapshot, snapshot).SetProperty(p => p.DataTotal, 32),
                 CancellationToken
@@ -434,9 +440,9 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
         task = await dbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
         fileSystem.Directory.CreateDirectory(task.DownloadDirectory);
         if (partialLength >= 0)
-            fileSystem.File.WriteAllBytes(
+            await fileSystem.File.WriteAllBytesAsync(
                 snapshot.FileName + snapshot.DownloadingFileExtension,
-                Enumerable.Repeat((byte)7, partialLength).ToArray()
+                [.. Enumerable.Repeat((byte)7, partialLength)]
             );
         return (task, snapshot, fileSystem);
     }

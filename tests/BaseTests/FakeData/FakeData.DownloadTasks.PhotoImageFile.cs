@@ -31,7 +31,7 @@ public static partial class FakeData
             )
             .RuleFor(
                 x => x.DirectoryMeta,
-                (_, x) =>
+                (_, _) =>
                     new DownloadTaskDirectory
                     {
                         DownloadRootPath = "/Downloads",

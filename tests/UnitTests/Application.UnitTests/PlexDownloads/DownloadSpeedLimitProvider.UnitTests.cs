@@ -134,7 +134,7 @@ public class DownloadSpeedLimitProviderUnitTests : BaseUnitTest
         // Arrange
         var settings = new UserSettings();
         settings.ServerSettings.SetDownloadSpeedLimit("limited", int.MaxValue);
-        settings.ServerSettings.SetDownloadSpeedLimit("unlimited", 0);
+        settings.ServerSettings.SetDownloadSpeedLimit("unlimited");
         using var sut = new DownloadSpeedLimitProvider(settings);
 
         // Act

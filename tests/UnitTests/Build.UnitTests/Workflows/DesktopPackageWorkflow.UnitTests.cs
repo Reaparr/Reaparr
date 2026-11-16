@@ -52,15 +52,18 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
                 )
             )
             .Callback(() =>
-                filesAtPack = fileSystem
-                    .Directory.EnumerateFiles("/repo/.artifacts", "*", SearchOption.AllDirectories)
-                    .Order(StringComparer.Ordinal)
-                    .Select(file => (file, fileSystem.File.ReadAllText(file)))
-                    .ToArray()
-            )
+            {
+                filesAtPack =
+                [
+                    .. fileSystem
+                        .Directory.EnumerateFiles("/repo/.artifacts", "*", SearchOption.AllDirectories)
+                        .Order(StringComparer.Ordinal)
+                        .Select(file => (file, fileSystem.File.ReadAllText(file))),
+                ];
+            })
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
-        using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
+        await using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
 
         // Act
         var result = await container
@@ -75,7 +78,12 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             (fileSystem.Path.Combine(publish, "Reaparr.AppHost"), "binary"),
             (fileSystem.Path.Combine(paths.ArtifactDirectory("win-x64"), "keep.bin"), "control"),
         ]);
-        fileSystem.File.ReadAllText(fileSystem.Path.Combine(publish, "Reaparr.AppHost")).ShouldBe("binary");
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                fileSystem.Path.Combine(publish, "Reaparr.AppHost"),
+                CancellationToken
+            )
+        ).ShouldBe("binary");
         fileSystem.Directory.EnumerateDirectories(artifacts).ShouldBe([publish]);
         runner.Verify();
         publisher.Verify();
@@ -115,11 +123,13 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             ? paths.ArtifactDirectory("linux-x64")
             : fileSystem.Path.GetFullPath(artifactOverride, paths.RootDirectory);
         var packArguments = ExpectedPackArguments(paths.PublishDirectory("linux-x64"), artifacts);
-        var before = fileSystem
-            .Directory.EnumerateFiles("/repo", "*", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal)
-            .Select(file => (file, fileSystem.File.ReadAllText(file)))
-            .ToArray();
+        (string Path, string Content)[] before =
+        [
+            .. fileSystem
+                .Directory.EnumerateFiles("/repo", "*", SearchOption.AllDirectories)
+                .Order(StringComparer.Ordinal)
+                .Select(file => (file, fileSystem.File.ReadAllText(file))),
+        ];
 
         var publisher = new Mock<ICommandHandler<DesktopPublishBuildCommand, Result<int>>>(MockBehavior.Strict);
         publisher
@@ -147,7 +157,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             )
             .Returns(Task.CompletedTask)
             .Verifiable(dryRun ? Times.Never() : Times.Once());
-        using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
+        await using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
 
         // Act
         var result = await container
@@ -200,7 +210,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             .Setup(x => x.RunCommandAsync("vpk", It.IsAny<IReadOnlyList<string>>(), It.IsAny<string?>(), null))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never());
-        using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
+        await using var container = CreateBuildContainer(paths, fileSystem, runner.Object, publisher.Object);
 
         // Act
         var result = await container
@@ -210,7 +220,12 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
-        fileSystem.File.ReadAllText("/repo/.artifacts/linux-x64/old.AppImage").ShouldBe("old");
+        (
+            await fileSystem.File.ReadAllTextAsync(
+                "/repo/.artifacts/linux-x64/old.AppImage",
+                CancellationToken
+            )
+        ).ShouldBe("old");
         fileSystem
             .Directory.EnumerateFiles("/repo", "*", SearchOption.AllDirectories)
             .ShouldBe(["/repo/.artifacts/linux-x64/old.AppImage"]);
@@ -232,8 +247,8 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         builder.RegisterInstance(runner);
         builder.RegisterInstance(publisher);
         builder
-            .Register(_ => new Serilog.LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
-            .As<Serilog.ILogger>()
+            .Register(_ => new LoggerConfiguration().MinimumLevel.Warning().CreateLogger())
+            .As<ILogger>()
             .SingleInstance();
         return builder.Build();
     }

@@ -32,8 +32,8 @@ public class CreateDownloadTasksEndpointRawSelectionIntegrationTests : BaseInteg
         result.Value.TotalSize.ShouldBe(selected.Sum(x => x.Size));
         var root = result.Value.Previews.Single();
         (root.Title, root.Type, root.Size).ShouldBe((fixture.RootName, PlexMediaType.PhotoAlbum, selected.Sum(x => x.Size)));
-        root.Children.Select(x => (x.Title, x.Type, x.Size, QualityCount: x.Qualities.Count)).OrderBy(x => x.Title)
-            .ShouldBe(selected.Select(x => (x.OriginalFilename, PlexMediaType.PhotoImage, x.Size, 0)).OrderBy(x => x.OriginalFilename));
+        root.Children.Select(x => (x.Title, x.Type, x.Size, QualityCount: x.Qualities.Count)).OrderBy(x => x.Title, StringComparer.Ordinal)
+            .ShouldBe(selected.Select(x => (x.OriginalFilename, PlexMediaType.PhotoImage, x.Size, 0)).OrderBy(x => x.OriginalFilename, StringComparer.Ordinal));
         using var context = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
         (await context.DownloadTaskPhotoFolders.CountAsync(CancellationToken)).ShouldBe(0);
         (await context.DownloadTaskPhotoImageFiles.CountAsync(CancellationToken)).ShouldBe(0);
@@ -146,7 +146,7 @@ public class CreateDownloadTasksEndpointRawSelectionIntegrationTests : BaseInteg
         var preview = result.Value.Previews.Single();
         (preview.Title, preview.Type, preview.Size, preview.Children.Count).ShouldBe((movie.Title, PlexMediaType.Movie, media.Size, 0));
         preview.Qualities.Select(x => (x.MediaDataType, x.MediaId, x.DataId, x.VideoQuality))
-            .ShouldBe(new[] { (PlexMediaType.Movie, movie.Id, media.Id, media.VideoQuality) });
+            .ShouldBe([(PlexMediaType.Movie, movie.Id, media.Id, media.VideoQuality)]);
         (await context.DownloadTaskMovie.CountAsync(CancellationToken)).ShouldBe(0);
         (await context.DownloadTaskMovieFile.CountAsync(CancellationToken)).ShouldBe(0);
     }
@@ -183,7 +183,7 @@ public class CreateDownloadTasksEndpointRawSelectionIntegrationTests : BaseInteg
         file.DownloadFilePath.ShouldBe(Path.Combine(downloadRoot, IPathProvider.DefaultMovieFolderName,
             movie.Title.SanitizeFolderName(), media.GetFileName.AddReaparrTempSuffixToFileName()));
         var logs = await finalContext.DownloadTaskMovieFileLogs.Select(x => new { x.DownloadTaskFileId, x.Status }).ToListAsync(CancellationToken);
-        logs.Select(x => (x.DownloadTaskFileId, x.Status)).ShouldBe(new[] { (file.Id, DownloadStatus.Queued) });
+        logs.Select(x => (x.DownloadTaskFileId, x.Status)).ShouldBe([(file.Id, DownloadStatus.Queued)]);
         var fileSystem = container.Resolve<IFileSystem>();
         new[] { file.DownloadFilePath, file.DownloadFilePath.RemoveReapTempSuffix(), file.DestinationFilePath }
             .ShouldAllBe(x => !fileSystem.File.Exists(x));
