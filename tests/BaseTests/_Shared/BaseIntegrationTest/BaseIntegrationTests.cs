@@ -7,7 +7,7 @@ public abstract class BaseIntegrationTests
 {
     private readonly ILogger _log = LogFactory.Create<BaseIntegrationTests>();
 
-    protected CancellationToken CancellationToken =>
+    protected static CancellationToken CancellationToken =>
         TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
 
     protected static async Task WaitForDatabaseConditionAsync(

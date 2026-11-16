@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Velopack;
 
 namespace Reaparr.AppHost;
@@ -8,13 +9,23 @@ namespace Reaparr.AppHost;
 /// </summary>
 public class Program
 {
-    private static readonly AppRuntimeInfo _appRuntimeInfo = new();
-    private static readonly AppBuildInfo _appBuildInfo = new();
+    private static readonly AppRuntimeInfo _appRuntimeInfo;
+    private static readonly AppBuildInfo _appBuildInfo;
     private static PathProvider? _pathProvider;
     private static DesktopStartupFailureDialog? _failureDialog;
 
+    static Program()
+    {
+        // Program type initialization runs before Main, so configure backend culture before constructing startup metadata.
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
+        _appRuntimeInfo = new AppRuntimeInfo();
+        _appBuildInfo = new AppBuildInfo();
+    }
+
     // ReSharper disable once InconsistentNaming
-    private static Serilog.ILogger _log => Log.ForContext(typeof(Program));
+    private static Serilog.ILogger _log => Log.ForContext<Program>();
 
     /// <summary>
     ///  The main method entry point for the application.
@@ -109,8 +120,8 @@ public class Program
 
     internal static async Task<Result> RunDesktopLifecycleAsync(
         WebApplication app,
-        CancellationToken cancellationToken = default,
-        Action<Uri>? openBrowser = null
+        Action<Uri>? openBrowser = null,
+        CancellationToken cancellationToken = default
     )
     {
         var services = app.Services;

@@ -7,7 +7,7 @@ public partial class BaseUnitTest
     // Use loose behavior here to avoid Dispose() not mocked exception
     protected Mock<HttpMessageHandler> HttpHandlerMock = new(MockBehavior.Loose);
 
-    protected CancellationToken CancellationToken =>
+    protected static CancellationToken CancellationToken =>
         TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
 
     /// <summary>
