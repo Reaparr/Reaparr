@@ -32,7 +32,11 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
     }
 
     [Test]
-    public async Task ShouldValidateHeaderCookieAndRevokeIt_WhenPasswordIsUpdated()
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldKeepIssuedCookieUsableAndRevokeItAfterPasswordChange_WhenHeaderAssertionsStop(
+        bool disableHeaderAuthentication
+    )
     {
         // Arrange
         using var container = await CreateRealAuthenticationContainer(17020, ["127.0.0.1", "::1"]);
@@ -42,12 +46,28 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
         headerResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var setCookie = GetAuthenticationCookies(headerResponse).Single();
         var headerCookie = setCookie[..setCookie.IndexOf(';')];
+        var ticket = UnprotectCookie(container, setCookie);
+        ticket.Properties.IsPersistent.ShouldBeTrue();
+        ticket.Principal.FindFirst("HeaderAuth")!.Value.ShouldBe("true");
+        ticket.Principal.Identity!.Name.ShouldBe(DefaultUserAppCredentials.DefaultUsername);
+        var userService = container.Resolve<IUserService>();
+        var before = (await userService.FindByNameAsync(DefaultUserAppCredentials.DefaultUsername)).ShouldNotBeNull();
+        var originalSecurityStamp = before.SecurityStamp;
+        container.Resolve<IAuthenticationSettings>().HeaderAuthentication.Enabled = !disableHeaderAuthentication;
 
         using var cookieClient = CreateUnauthenticatedClient(container);
         cookieClient.DefaultRequestHeaders.Add("Cookie", headerCookie);
 
         // Act
         var cookieResponse = await cookieClient.GetAsync(ApiRoutes.SettingsController + "/");
+        using var statusResponse = await cookieClient.GetAsync(ApiRoutes.AuthenticatedController + "/status", CancellationToken);
+        statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var status = (await statusResponse.Content.ReadFromJsonAsync<ResultDTO<UserClaimsDTO>>(CancellationToken)).ShouldNotBeNull();
+        status.IsSuccess.ShouldBeTrue();
+        status.Errors.Count.ShouldBe(0);
+        var claims = status.Value.ShouldNotBeNull();
+        claims.IsLoggedIn.ShouldBeTrue();
+        claims.UserName.ShouldBe(DefaultUserAppCredentials.DefaultUsername);
         var updateResponse = await cookieClient.PutAsJsonAsync(
             ApiRoutes.AuthenticatedController,
             new UpdateCredentialsEndpointRequest
@@ -79,6 +99,12 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
             }
         );
         staleMutationResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        var after = (await userService.FindByNameAsync(DefaultUserAppCredentials.DefaultUsername)).ShouldNotBeNull();
+        after.Id.ShouldBe(before.Id);
+        after.SecurityStamp.ShouldNotBe(originalSecurityStamp);
+        using var anonymousClient = CreateUnauthenticatedClient(container);
+        using var anonymousResponse = await anonymousClient.GetAsync(ApiRoutes.SettingsController + "/", CancellationToken);
+        anonymousResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
         using var freshLoginClient = CreateUnauthenticatedClient(container);
         using var freshFormData = new MultipartFormDataContent
