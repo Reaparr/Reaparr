@@ -166,6 +166,13 @@ Deferred proposals, requests for details, and unanswered questions do not belong
 - **Affected code:** `.github/workflows/dev-release.yml`; `.github/workflows/stable-release.yml`; `.github/workflows/desktop-build.yml`; release Docker build callers; `release.config.mjs`; provenance regression checks.
 - **Reason:** Not provided.
 
+## Security proposal 14 — 2026-11-17 — Require fresh authentication for credential replacement
+
+- **Problem:** An authenticated session can replace local application credentials without fresh authentication; external-provider step-up would require a provider-specific integration absent from the current trusted-header contract.
+- **Proposed fix:** Require current-password verification for local users and verified external-provider reauthentication for proxy users before either username or password replacement.
+- **Affected code:** `src/Application/Authentication/UpdateCredentials/UpdateCredentialsEndpoint.cs`; local sign-in and trusted-header authentication; frontend credential form and API callers; authentication regression tests.
+- **Reason:** The user asked to skip this fix because its scope had grown beyond their expectations: "skip this fix, i didnt go it would go this far".
+
 ## Security proposal 15 — 2026-11-16 — Give native media subprocesses an explicit environment
 
 - **Problem:** The DASH subprocess inherits the application environment because configured temporary-directory values overlay rather than replace parent variables; no code execution or secret theft is established.
