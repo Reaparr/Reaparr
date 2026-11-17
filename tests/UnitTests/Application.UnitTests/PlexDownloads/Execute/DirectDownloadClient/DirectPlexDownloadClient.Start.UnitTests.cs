@@ -2185,6 +2185,17 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once());
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .Setup(x =>
+                x.OnStatusChangedAsync(
+                    It.Is<DownloadTaskKey>(key => key == downloadTask.ToKey()),
+                    expectedStatus,
+                    It.Is<Result>(failure => failure.IsFailed && failure.ToString().Contains(exception.Message)),
+                    CancellationToken.None
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
         downloadServiceMock.Setup(x => x.Clear()).Returns(Task.CompletedTask);
         downloadServiceMock.Setup(x => x.CancelTaskAsync()).Returns(Task.CompletedTask);
         downloadServiceMock
