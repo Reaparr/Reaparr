@@ -26,9 +26,9 @@ public class GetServerStatusCommandHandler : ICommandHandler<GetServerStatusComm
                 RetryProgressAction = command.ProgressAction,
                 Timeout = command.Timeout,
                 RetryCount = 0,
-            }
+            },
+            cancellationToken: ct
         );
-
         var responseResult = await client.General.GetIdentityAsync().ToResponse(ct);
 
         if (responseResult.IsCancelled)

@@ -117,7 +117,8 @@ public class GetAccessiblePlexServersCommandHandler
     {
         var plexTvClient = _plexApiClientFactory.CreateTvClient(
             plexToken,
-            new PlexApiClientOptions { ConnectionUrl = string.Empty, Timeout = 15 }
+            new PlexApiClientOptions { ConnectionUrl = string.Empty, Timeout = 15 },
+            cancellationToken: cancellationToken
         );
         var result = await Task.WhenAll(
             plexTvClient

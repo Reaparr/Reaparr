@@ -20,12 +20,6 @@ public class GetLibraryMediaTotalsCommandHandler
         CancellationToken ct
     )
     {
-        var clientResult = await _plexApiClientFactory.CreateClientAsync(command.PlexLibrary.PlexServerId);
-        if (clientResult.IsFailed)
-            return clientResult.ToResult().LogIfFailed();
-
-        var client = clientResult.Value;
-
         if (!long.TryParse(command.PlexLibrary.Key, out var libraryKey))
         {
             _log.Here()
@@ -36,6 +30,12 @@ public class GetLibraryMediaTotalsCommandHandler
                 );
             return Result.Ok<IReadOnlyDictionary<PlexMediaType, int>>(new Dictionary<PlexMediaType, int>());
         }
+
+        var clientResult = await _plexApiClientFactory.CreateClientAsync(command.PlexLibrary.PlexServerId, cancellationToken: ct);
+        if (clientResult.IsFailed)
+            return clientResult.ToResult().LogIfFailed();
+
+        var client = clientResult.Value;
 
         var totals = new Dictionary<PlexMediaType, int>();
         foreach (var mediaType in command.PlexLibrary.Type.GetFamilyTypes())

@@ -79,7 +79,7 @@ public class GetLibraryMediaFromPlexApiCommandHandler
             var mediaType = command.MediaType ?? library.Type;
             if (command.MediaType is null && mediaType == PlexMediaType.PhotoAlbum)
             {
-                var clientResult = await _plexApiClientFactory.CreateClientAsync(library.PlexServerId, 30, 3);
+                var clientResult = await _plexApiClientFactory.CreateClientAsync(library.PlexServerId, 30, 3, cancellationToken: ct);
                 if (clientResult.IsFailed)
                     return clientResult.ToResult().LogIfFailed();
 

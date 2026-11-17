@@ -46,15 +46,12 @@ public class GetDashTranscodeDecisionCommandHandler
         if (connectionResult.IsFailed)
             return connectionResult.ToResult();
 
-        var client = _plexApiClientFactory.CreateClient(
-            tokenResult.Value,
-            new PlexApiClientOptions
-            {
-                ConnectionUrl = connectionResult.Value.Url,
-                Timeout = 30,
-                RetryCount = 3,
-            }
-        );
+        var options = new PlexApiClientOptions
+        {
+            ConnectionUrl = connectionResult.Value.Url,
+            Timeout = 30,
+            RetryCount = 0,
+        };
 
         var decisionRequest = command.DecisionRequest;
 
@@ -65,11 +62,12 @@ public class GetDashTranscodeDecisionCommandHandler
 
         _log.Here().Information("Requesting Plex transcode decision URL: {Url}", debugDecisionUrl);
 
-        var decisionResponse = await client
-            .Transcoder.MakeDecisionAsync(decisionRequest.ToMakeDecisionRequest())
+        var client = _plexApiClientFactory.CreateClient(tokenResult.Value, options, cancellationToken);
+        var decisionResponse = await client.Transcoder
+            .MakeDecisionAsync(decisionRequest.ToMakeDecisionRequest())
             .ToResponse(cancellationToken);
 
-        if (decisionResponse.IsFailed)
+        if (decisionResponse.IsCancelledOrFailed)
             return decisionResponse.ToResult();
 
         var mediaContainer = decisionResponse.Value.MediaContainerWithDecision?.MediaContainer;

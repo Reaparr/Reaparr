@@ -18,7 +18,10 @@ public class AppHostModule : Module
             .As<IPostHogClient>()
             .SingleInstance()
             .WithParameter(new TypedParameter(typeof(ILoggerFactory), NullLoggerFactory.Instance));
-        builder.Register(c => c.Resolve<IHttpClientFactory>().CreateClient()).As<HttpClient>().InstancePerDependency();
+        builder
+            .Register(c => c.Resolve<IHttpClientFactory>().CreateClient())
+            .As<HttpClient>()
+            .InstancePerDependency();
         builder
             .Register(_ =>
             {
