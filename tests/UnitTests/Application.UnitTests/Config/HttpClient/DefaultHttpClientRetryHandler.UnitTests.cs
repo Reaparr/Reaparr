@@ -37,8 +37,8 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
         // Arrange
         var bufferingStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var bufferingCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var terminal = new SequenceTerminalHandler(
-            () => new HttpResponseMessage(HttpStatusCode.OK)
+        var terminal = new SequenceTerminalHandler(() =>
+            new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new SlowContent(bufferingStarted, bufferingCancelled),
             }
@@ -64,8 +64,8 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
         // Arrange
         var bufferingStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var bufferingCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var terminal = new SequenceTerminalHandler(
-            () => new HttpResponseMessage(HttpStatusCode.OK)
+        var terminal = new SequenceTerminalHandler(() =>
+            new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new SlowContent(bufferingStarted, bufferingCancelled),
             }
@@ -92,10 +92,11 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
     {
         // Arrange
         var terminal = new SequenceTerminalHandler(
-            () => new HttpResponseMessage(HttpStatusCode.InternalServerError)
-            {
-                Content = new StringContent("post failed"),
-            },
+            () =>
+                new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent("post failed"),
+                },
             () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("unexpected retry") }
         );
         using var client = CreateClient(terminal);
@@ -121,8 +122,8 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
     {
         // Arrange
         var content = new TrackingContent("streamed payload");
-        var terminal = new SequenceTerminalHandler(
-            () => new HttpResponseMessage(HttpStatusCode.OK) { Content = content }
+        var terminal = new SequenceTerminalHandler(() =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = content }
         );
         using var client = CreateClient(terminal);
         using var request = new HttpRequestMessage(HttpMethod.Get, "http://plex.test/stream");
@@ -164,19 +165,21 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
         terminal.RequestCount.ShouldBe(4);
         progressA.Count.ShouldBe(2);
         progressB.Count.ShouldBe(2);
-        progressA.ShouldAllBe(progress => progress.RequestUri.StartsWith("http://plex-a.test/", StringComparison.Ordinal));
-        progressB.ShouldAllBe(progress => progress.RequestUri.StartsWith("http://plex-b.test/", StringComparison.Ordinal));
+        progressA.ShouldAllBe(progress =>
+            progress.RequestUri.StartsWith("http://plex-a.test/", StringComparison.Ordinal)
+        );
+        progressB.ShouldAllBe(progress =>
+            progress.RequestUri.StartsWith("http://plex-b.test/", StringComparison.Ordinal)
+        );
         progressA.ShouldContain(progress => progress.Completed);
         progressA.ShouldContain(progress => !progress.Completed);
         progressB.ShouldContain(progress => progress.Completed);
         progressB.ShouldContain(progress => !progress.Completed);
     }
+
     private HttpClient CreateClient(HttpMessageHandler terminal)
     {
-        var retryHandler = new DefaultHttpClientRetryHandler(Log)
-        {
-            InnerHandler = terminal,
-        };
+        var retryHandler = new DefaultHttpClientRetryHandler(Log) { InnerHandler = terminal };
         return new HttpClient(retryHandler);
     }
 

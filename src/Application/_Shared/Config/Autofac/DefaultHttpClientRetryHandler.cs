@@ -15,8 +15,9 @@ internal sealed class DefaultHttpClientRetryHandler(ILogger log) : DelegatingHan
         ResiliencePipeline<HttpResponseMessage>
     > _pipelines = new();
 
-    private static readonly ResiliencePropertyKey<Action<HttpRequestRetryProgress>?> _progressCallbackKey =
-        new("RetryProgressCallback");
+    private static readonly ResiliencePropertyKey<Action<HttpRequestRetryProgress>?> _progressCallbackKey = new(
+        "RetryProgressCallback"
+    );
     private static readonly ResiliencePropertyKey<string> _requestUriKey = new("RequestUri");
     private static readonly ResiliencePropertyKey<string> _requestMethodKey = new("RequestMethod");
     private static readonly ResiliencePropertyKey<int> _retryCountKey = new("RetryCount");
@@ -35,9 +36,8 @@ internal sealed class DefaultHttpClientRetryHandler(ILogger log) : DelegatingHan
         var retryCount = Math.Max(request.GetRetryCount() ?? MAX_RETRY_ATTEMPTS, 0);
         var bufferTimeout = request.GetResponseBufferingTimeout();
         var progressCallback = request.GetRetryProgressCallback();
-        var pipeline = _pipelines.GetOrAdd(
-            (retryCount, bufferTimeout),
-            static key => CreateRetryPipeline(key.RetryCount, key.BufferTimeout)
+        var pipeline = _pipelines.GetOrAdd((retryCount, bufferTimeout), static key =>
+            CreateRetryPipeline(key.RetryCount, key.BufferTimeout)
         );
         var context = ResilienceContextPool.Shared.Get(cancellationToken);
         context.Properties.Set(_progressCallbackKey, progressCallback);
@@ -52,8 +52,7 @@ internal sealed class DefaultHttpClientRetryHandler(ILogger log) : DelegatingHan
         {
             var response = await pipeline
                 .ExecuteAsync(
-                    static (executionContext, state) =>
-                        ExecuteAttemptAsync(executionContext, state),
+                    static (executionContext, state) => ExecuteAttemptAsync(executionContext, state),
                     context,
                     (Handler: this, Request: request)
                 )
@@ -96,8 +95,8 @@ internal sealed class DefaultHttpClientRetryHandler(ILogger log) : DelegatingHan
         (DefaultHttpClientRetryHandler Handler, HttpRequestMessage Request) state
     )
     {
-        var response = await state.Handler
-            .SendAttemptAsync(state.Request, context.CancellationToken)
+        var response = await state
+            .Handler.SendAttemptAsync(state.Request, context.CancellationToken)
             .ConfigureAwait(false);
 
         if (!context.Properties.GetValue(_bufferingEnabledKey, false))
@@ -115,10 +114,7 @@ internal sealed class DefaultHttpClientRetryHandler(ILogger log) : DelegatingHan
         }
     }
 
-    private static ResiliencePipeline<HttpResponseMessage> CreateRetryPipeline(
-        int retryCount,
-        TimeSpan? bufferTimeout
-    )
+    private static ResiliencePipeline<HttpResponseMessage> CreateRetryPipeline(int retryCount, TimeSpan? bufferTimeout)
     {
         var builder = new ResiliencePipelineBuilder<HttpResponseMessage>();
 

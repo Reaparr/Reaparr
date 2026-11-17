@@ -12,13 +12,13 @@ internal sealed class PlexApiHttpClientFixture(ILogger log) : IDisposable
         var services = new ServiceCollection();
         services.AddSingleton<ILogger>(log);
         services.RegisterDefaultHttpClient();
-        services
-            .AddHttpClient(HttpClientModule.DefaultClientName)
-            .ConfigurePrimaryHttpMessageHandler(() => transport);
+        services.AddHttpClient(HttpClientModule.DefaultClientName).ConfigurePrimaryHttpMessageHandler(() => transport);
 
         var serviceProvider = services.BuildServiceProvider();
         _serviceProviders.Add(serviceProvider);
-        return serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(HttpClientModule.DefaultClientName);
+        return serviceProvider
+            .GetRequiredService<IHttpClientFactory>()
+            .CreateClient(HttpClientModule.DefaultClientName);
     }
 
     public void Dispose()

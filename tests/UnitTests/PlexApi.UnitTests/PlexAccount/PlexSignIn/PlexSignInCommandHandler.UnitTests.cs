@@ -11,6 +11,7 @@ public class PlexSignInCommandHandlerUnitTests : BaseUnitTest<PlexSignInCommandH
     public async Task ShouldUseConfiguredAbsoluteServerUrl_WhenSigningInThroughGeneratedSdk()
     {
         // Arrange
+        using var cancellation = new CancellationTokenSource();
         HttpRequestMessage? capturedRequest = null;
         var transport = new Mock<IPlexApiClient>(MockBehavior.Strict);
         transport
@@ -20,20 +21,17 @@ public class PlexSignInCommandHandlerUnitTests : BaseUnitTest<PlexSignInCommandH
             .Setup(x => x.SendAsync(It.IsAny<HttpRequestMessage>()))
             .Callback<HttpRequestMessage>(request => capturedRequest = request)
             .ReturnsAsync(
-                (HttpRequestMessage request) => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
-                {
-                    RequestMessage = request,
-                    Content = new StringContent("{\"error\":\"offline\"}"),
-                }
+                (HttpRequestMessage request) =>
+                    new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                    {
+                        RequestMessage = request,
+                        Content = new StringContent("{\"error\":\"offline\"}"),
+                    }
             );
-        var sdk = new PlexAPI(
-            client: transport.Object,
-            serverUrl: "https://plex.tv/api/v2",
-            token: string.Empty
-        );
+        var sdk = new PlexAPI(client: transport.Object, serverUrl: "https://plex.tv/api/v2", token: string.Empty);
 
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateTvClient(string.Empty, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CreateTvClient(string.Empty, null, cancellation.Token))
             .Returns<string, PlexApiClientOptions?, CancellationToken>((_, _, _) => sdk)
             .Verifiable(Times.Once());
 
@@ -46,7 +44,7 @@ public class PlexSignInCommandHandlerUnitTests : BaseUnitTest<PlexSignInCommandH
                 Password = "password",
                 VerificationCode = string.Empty,
             },
-            CancellationToken
+            cancellation.Token
         );
 
         // Assert

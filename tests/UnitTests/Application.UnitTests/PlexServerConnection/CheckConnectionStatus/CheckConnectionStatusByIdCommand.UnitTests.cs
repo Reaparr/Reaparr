@@ -134,8 +134,7 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
         transactionContext
             .Setup(x =>
                 x.ExecuteTransactionAsync(
-                    It.IsAny<Func<IReaparrDbContext, CancellationToken, Task<PlexServerStatus?>>>(
-                    ),
+                    It.IsAny<Func<IReaparrDbContext, CancellationToken, Task<PlexServerStatus?>>>(),
                     It.IsAny<CancellationToken>()
                 )
             )
@@ -145,18 +144,15 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
                     CancellationToken token
                 ) =>
                 {
-                    await dbContext.PlexServerConnections
-                        .Where(x => x.Id == plexServerConnection.Id)
+                    await dbContext
+                        .PlexServerConnections.Where(x => x.Id == plexServerConnection.Id)
                         .ExecuteDeleteAsync(token);
                     return Result.Ok(await operation(transactionContext.Object, token));
                 }
             )
             .Verifiable(Times.Once);
         var factory = new Mock<IReaparrDbContextFactory>(MockBehavior.Strict);
-        factory
-            .Setup(x => x.CreateAsync())
-            .ReturnsAsync(transactionContext.Object)
-            .Verifiable(Times.Once);
+        factory.Setup(x => x.CreateAsync()).ReturnsAsync(transactionContext.Object).Verifiable(Times.Once);
         SetupDependencies(builder =>
             builder.RegisterInstance(factory.Object).As<IReaparrDbContextFactory>().SingleInstance()
         );
@@ -185,10 +181,13 @@ public class CheckConnectionStatusByIdCommandUnitTests : BaseCommandUnitTest<Che
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         factory.Verify();
-        (await IDbContext.PlexServerStatuses.AnyAsync(x => x.PlexServerConnectionId == plexServerConnection.Id, CancellationToken))
-            .ShouldBeFalse();
+        (
+            await IDbContext.PlexServerStatuses.AnyAsync(
+                x => x.PlexServerConnectionId == plexServerConnection.Id,
+                CancellationToken
+            )
+        ).ShouldBeFalse();
         transactionContext.Verify();
         Mock.Mock<ICommandExecutor>().Verify();
     }
-
 }

@@ -13,7 +13,9 @@ public class GetAccessiblePlexServersUnitTests : BaseUnitTest<GetAccessiblePlexS
     private void SetCallMock(GetServerResourcesResponse response1, GetServerResourcesResponse response2)
     {
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateTvClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions?>(), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.CreateTvClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions?>(), It.IsAny<CancellationToken>())
+            )
             .Returns<string, PlexApiClientOptions?, CancellationToken>(
                 (_, _, _) =>
                 {
@@ -64,7 +66,9 @@ public class GetAccessiblePlexServersUnitTests : BaseUnitTest<GetAccessiblePlexS
         plexAccount.ShouldNotBeNull();
 
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateTvClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions?>(), It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.CreateTvClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions?>(), It.IsAny<CancellationToken>())
+            )
             .Returns<string, PlexApiClientOptions?, CancellationToken>(
                 (_, _, _) =>
                 {

@@ -1,6 +1,6 @@
-using System.Text.Json;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Moq.Contrib.HttpClient;
 using Moq.Protected;
 using Reaparr.Application.Contracts;
@@ -11,6 +11,7 @@ namespace Reaparr.PlexApi.UnitTests;
 public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, PlexApiClient>>
 {
     private readonly PlexApiHttpClientFixture _httpClientFixture;
+
     [After(Test)]
     public void CleanupHttpClientFixture() => _httpClientFixture.Dispose();
 
@@ -18,15 +19,15 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
     {
         _httpClientFixture = new PlexApiHttpClientFixture(Log);
     }
+
     private PlexApiClient CreateClient(PlexApiClientOptions options) =>
         new(_httpClientFixture.Create(HttpHandlerMock.Object), options);
-
-
 
     [Test]
     public async Task ShouldNormalize401HtmlError_WhenPlexApiReturns401HtmlResponse()
     {
-        const string expectedHtml = "<html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>";
+        const string expectedHtml =
+            "<html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>";
         HttpHandlerMock
             .SetupAnyRequest()
             .ReturnsResponse(HttpStatusCode.Unauthorized, x =>
@@ -35,7 +36,14 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
             });
 
         // Arrange
-        var client = CreateClient(new PlexApiClientOptions { ConnectionUrl = "http://localhost", RetryProgressAction = null, RetryCount = 0 });
+        var client = CreateClient(
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://localhost",
+                RetryProgressAction = null,
+                RetryCount = 0,
+            }
+        );
 
         // Act
         var responseMessage = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "http://localhost"));
@@ -60,7 +68,14 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
         // Arrange
         var originalTimeoutException = new TaskCanceledException("Request timed out");
         HttpHandlerMock.SetupAnyRequest().ThrowsAsync(originalTimeoutException);
-        var client = CreateClient(new PlexApiClientOptions { ConnectionUrl = "http://localhost", RetryProgressAction = null, RetryCount = 0 });
+        var client = CreateClient(
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://localhost",
+                RetryProgressAction = null,
+                RetryCount = 0,
+            }
+        );
 
         // Act
         await Should.ThrowAsync<TaskCanceledException>(() =>
@@ -69,13 +84,19 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
 
         HttpHandlerMock
             .Protected()
-            .Verify("SendAsync", Times.Once(), ItExpr.Is<HttpRequestMessage>(x => x.RequestUri == new Uri("http://localhost")), ItExpr.IsAny<CancellationToken>());
+            .Verify(
+                "SendAsync",
+                Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(x => x.RequestUri == new Uri("http://localhost")),
+                ItExpr.IsAny<CancellationToken>()
+            );
     }
 
     [Test]
     public async Task ShouldNormalize500HtmlError_WhenInternalServerErrorOccurs()
     {
-        const string expectedHtml = "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>";
+        const string expectedHtml =
+            "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>";
         HttpHandlerMock
             .SetupAnyRequest()
             .ReturnsResponse(HttpStatusCode.InternalServerError, x =>
@@ -83,7 +104,14 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
                 x.Content = new StringContent(expectedHtml, Encoding.UTF8, ContentType.TextHtml);
             });
 
-        var client = CreateClient(new PlexApiClientOptions { ConnectionUrl = "http://localhost", RetryProgressAction = null, RetryCount = 0 });
+        var client = CreateClient(
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://localhost",
+                RetryProgressAction = null,
+                RetryCount = 0,
+            }
+        );
         var responseMessage = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "http://localhost"));
 
         // Assert
@@ -109,7 +137,14 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
             .ReturnsResponse(HttpStatusCode.OK, x => x.Content = "{ \"message\": \"Success\" }".ToStringContent());
 
         // Arrange
-        var client = CreateClient(new PlexApiClientOptions { ConnectionUrl = "http://localhost", RetryProgressAction = null, RetryCount = 0 });
+        var client = CreateClient(
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://localhost",
+                RetryProgressAction = null,
+                RetryCount = 0,
+            }
+        );
 
         // Act
         var responseMessage = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "http://localhost"));
@@ -129,7 +164,14 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
     {
         HttpHandlerMock.SetupAnyRequest().ReturnsResponse(HttpStatusCode.ServiceUnavailable);
 
-        var client = CreateClient(new PlexApiClientOptions { ConnectionUrl = "http://localhost", RetryProgressAction = null, RetryCount = 0 });
+        var client = CreateClient(
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://localhost",
+                RetryProgressAction = null,
+                RetryCount = 0,
+            }
+        );
         // Act
         var responseMessage = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "http://localhost"));
 
@@ -152,7 +194,12 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
         // Arrange
         var progressUpdates = new List<HttpRequestRetryProgress>();
         var client = CreateClient(
-            new PlexApiClientOptions { ConnectionUrl = "http://localhost", RetryProgressAction = progressUpdates.Add, RetryCount = 0 }
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://localhost",
+                RetryProgressAction = progressUpdates.Add,
+                RetryCount = 0,
+            }
         );
 
         // Act
@@ -164,6 +211,11 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
         exception.Message.ShouldBe("Network error");
         HttpHandlerMock
             .Protected()
-            .Verify("SendAsync", Times.Once(), ItExpr.Is<HttpRequestMessage>(x => x.RequestUri == new Uri("http://localhost")), ItExpr.IsAny<CancellationToken>());
+            .Verify(
+                "SendAsync",
+                Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(x => x.RequestUri == new Uri("http://localhost")),
+                ItExpr.IsAny<CancellationToken>()
+            );
     }
 }

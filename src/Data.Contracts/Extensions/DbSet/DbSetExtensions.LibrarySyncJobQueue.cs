@@ -4,6 +4,7 @@ public static class DbSetExtensionsLibrarySyncJobQueue
 {
     public static IQueryable<LibrarySyncJobQueue> IgnoreIsEnabledFilter(this IQueryable<LibrarySyncJobQueue> query) =>
         query.IgnoreQueryFilters(["IsEnabled"]);
+
     /// <summary>
     /// Resets completed, failed, or cancelled library sync jobs to queued for the specified library IDs.
     /// </summary>

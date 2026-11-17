@@ -40,6 +40,7 @@ public static class HttpRequestMessageRetryProgressExtensions
 
         return request.Options.TryGetValue(new("RetryCountKey"), out int retryCount) ? retryCount : null;
     }
+
     public static void SetResponseBufferingTimeout(this HttpRequestMessage request, TimeSpan timeout)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -51,7 +52,10 @@ public static class HttpRequestMessageRetryProgressExtensions
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return request.Options.TryGetValue(new HttpRequestOptionsKey<TimeSpan>("ResponseBufferingTimeoutKey"), out var timeout)
+        return request.Options.TryGetValue(
+            new HttpRequestOptionsKey<TimeSpan>("ResponseBufferingTimeoutKey"),
+            out var timeout
+        )
             ? timeout
             : null;
     }

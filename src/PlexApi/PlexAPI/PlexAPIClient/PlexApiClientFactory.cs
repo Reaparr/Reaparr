@@ -29,7 +29,10 @@ public class PlexApiClientFactory : IPlexApiClientFactory
         CancellationToken cancellationToken = default
     )
     {
-        var resolvedOptions = options with { CancellationToken = cancellationToken };
+        var resolvedOptions = options with
+        {
+            CancellationToken = cancellationToken.CanBeCanceled ? cancellationToken : options.CancellationToken,
+        };
         return new PlexAPI(
             client: _clientFactory(resolvedOptions),
             serverUrl: resolvedOptions.ConnectionUrl,

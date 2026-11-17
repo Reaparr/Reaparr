@@ -47,10 +47,10 @@ public class GetDetailMetadataByRatingKeysCommandHandler
                 RetryCount = 3,
             },
             ct
-        );  
+        );
         // Fetch detailed metadata
-        var response = await client.Content
-            .GetMetadataItemAsync(new GetMetadataItemRequest { Ids = command.RatingKeys.ToList() })
+        var response = await client
+            .Content.GetMetadataItemAsync(new GetMetadataItemRequest { Ids = command.RatingKeys.ToList() })
             .ToResponse(ct);
 
         if (response.IsCancelledOrFailed)

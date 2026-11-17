@@ -37,7 +37,11 @@ public class GetAllMediaByTypeFromPlexApiCommandHandler
         var batchSize = command.BatchSize;
 
         var clientResult = await _plexApiClientFactory.CreateClientAsync(
-            plexLibrary.PlexServerId, 30, 3, cancellationToken: ct);
+            plexLibrary.PlexServerId,
+            30,
+            3,
+            cancellationToken: ct
+        );
         if (clientResult.IsCancelledOrFailed)
             return clientResult.ToResult().LogIfFailed();
         var client = clientResult.Value;

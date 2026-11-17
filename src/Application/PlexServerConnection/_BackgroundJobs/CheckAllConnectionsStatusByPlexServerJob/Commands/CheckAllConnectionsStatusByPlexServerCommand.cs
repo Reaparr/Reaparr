@@ -106,23 +106,18 @@ public class CheckAllConnectionsStatusByPlexServerHandler
                 .ToListAsync(cancellationToken);
 
             var currentConnectionIds = reconciledConnections.Select(x => x.Id).ToHashSet();
-            var removedConnectionIds = notFoundResults
+            var removedConnectionIds = connectionResults
                 .Where(x => !currentConnectionIds.Contains(x.ConnectionId))
                 .Select(x => x.ConnectionId)
                 .ToHashSet();
-            connectionResults = connectionResults
-                .Where(x => !removedConnectionIds.Contains(x.ConnectionId))
-                .ToArray();
+            connectionResults = connectionResults.Where(x => !removedConnectionIds.Contains(x.ConnectionId)).ToArray();
             combinedResults = Result.Merge(connectionResults.Select(x => x.Result).ToArray());
         }
 
         if (combinedResults.IsFailed)
             return combinedResults.ToResult().LogError();
 
-        var statuses = connectionResults
-            .Select(x => x.Result.ValueOrDefault)
-            .OfType<PlexServerStatus>()
-            .ToList();
+        var statuses = connectionResults.Select(x => x.Result.ValueOrDefault).OfType<PlexServerStatus>().ToList();
 
         if (reconciledConnections is not null)
         {

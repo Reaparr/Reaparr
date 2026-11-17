@@ -79,7 +79,11 @@ public class LibrarySyncJob : IJob
                     .FirstOrDefaultAsync(CancellationToken.None);
                 var queueStatus = queueItem?.Status ?? LibrarySyncJobStatus.Unknown;
                 var parentServerDisabled = queueItem?.PlexServer?.IsEnabled == false;
-                if (queueStatus != LibrarySyncJobStatus.Processing || queueItem?.PlexLibrary?.IsEnabled != true || parentServerDisabled)
+                if (
+                    queueStatus != LibrarySyncJobStatus.Processing
+                    || queueItem?.PlexLibrary?.IsEnabled != true
+                    || parentServerDisabled
+                )
                 {
                     shouldDispatch = false;
                     context.SetResult(JobStatus.Cancelled);
@@ -109,10 +113,7 @@ public class LibrarySyncJob : IJob
                 using var syncLease = await _mediaOverviewRebuildCoordinator.AcquireLibrarySyncLeaseAsync(
                     cancellationToken
                 );
-                var claimed = await UpdateQueueItemAsync(
-                    LibrarySyncJobStatus.Processing,
-                    requireEnabledServer: true
-                );
+                var claimed = await UpdateQueueItemAsync(LibrarySyncJobStatus.Processing, requireEnabledServer: true);
                 if (claimed != 1)
                 {
                     shouldDispatch = false;
@@ -133,7 +134,7 @@ public class LibrarySyncJob : IJob
                     ? new Error(exception.Message).CausedBy(exception)
                     : new ExceptionalError(exception)
         );
-        if (!shouldDispatch)
+        if (!shouldDispatch && result.IsSuccess)
             return;
 
         LibrarySyncJobStatus status;
@@ -225,11 +226,17 @@ public class LibrarySyncJob : IJob
         bool requireEnabledServer = false
     )
     {
-        var query = _dbContext.LibrarySyncJobQueues.IgnoreIsEnabledFilter().Where(x =>
-            x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId && x.Status == LibrarySyncJobStatus.Processing
-        );
+        var query = _dbContext
+            .LibrarySyncJobQueues.IgnoreIsEnabledFilter()
+            .Where(x =>
+                x.PlexServerId == _serverId
+                && x.PlexLibraryId == _libraryId
+                && x.Status == LibrarySyncJobStatus.Processing
+            );
         if (requireEnabledServer)
-            query = query.Where(x => _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId && server.IsEnabled));
+            query = query.Where(x =>
+                _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId && server.IsEnabled)
+            );
 
         return status switch
         {

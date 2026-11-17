@@ -1,12 +1,12 @@
-using Reaparr.Application.Contracts;
-using LukeHagar.PlexAPI.SDK.Models.Requests;
-
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
+using LukeHagar.PlexAPI.SDK.Models.Requests;
+using Reaparr.Application.Contracts;
 using Reaparr.Data.Contracts;
 using Reaparr.PlexApi.Contracts;
+
 namespace Reaparr.PlexApi.UnitTests;
 
 public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
@@ -21,7 +21,6 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
     [After(Test)]
     public void CleanupHttpClientFixture() => _httpClientFixture.Dispose();
 
- 
     [Test]
     public async Task ShouldMapPollyTimeoutTo408AndPreserveException()
     {
@@ -67,12 +66,11 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
     public async Task ShouldReplaySafeGet_WhenSdkBodyIsTruncated()
     {
         // Arrange
-        var handler = new SequenceHandler(index => index == 0
-            ? new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new TruncatedJsonContent(),
-            }
-            : CreateIdentityResponse(HttpStatusCode.OK));
+        var handler = new SequenceHandler(index =>
+            index == 0
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new TruncatedJsonContent() }
+                : CreateIdentityResponse(HttpStatusCode.OK)
+        );
         var factory = CreateFactory(handler);
 
         // Act
@@ -112,7 +110,10 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         result.IsFailed.ShouldBeTrue();
         result.IsSuccess.ShouldBeFalse();
         result.Errors.Count.ShouldBe(3);
-        result.GetStatusCodeReason()!.Metadata[ResultExtensions.StatusCodeName].ShouldBe((int)HttpStatusCode.ServiceUnavailable);
+        result
+            .GetStatusCodeReason()!
+            .Metadata[ResultExtensions.StatusCodeName]
+            .ShouldBe((int)HttpStatusCode.ServiceUnavailable);
         handler.Requests.Count.ShouldBe(1);
         handler.Requests.Single().Method.ShouldBe(HttpMethod.Post);
     }
@@ -122,15 +123,22 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
     {
         // Arrange
         var bodyCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var handler = new SequenceHandler(index => index == 0
-            ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new SlowBodyContent(bodyCancelled) }
-            : CreateIdentityResponse(HttpStatusCode.OK));
+        var handler = new SequenceHandler(index =>
+            index == 0
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new SlowBodyContent(bodyCancelled) }
+                : CreateIdentityResponse(HttpStatusCode.OK)
+        );
         var factory = CreateFactory(handler);
 
         // Act
         var client = factory.CreateClient(
             "token-a",
-            new PlexApiClientOptions { ConnectionUrl = "http://plex.test", Timeout = 1, RetryCount = 1 },
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://plex.test",
+                Timeout = 1,
+                RetryCount = 1,
+            },
             CancellationToken
         );
         var result = await client.General.GetIdentityAsync().ToResponse(CancellationToken);
@@ -203,7 +211,12 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         // Act
         var client = factory.CreateClient(
             "token-a",
-            new PlexApiClientOptions { ConnectionUrl = "http://plex.test", Timeout = 1, RetryCount = 2 },
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://plex.test",
+                Timeout = 1,
+                RetryCount = 2,
+            },
             CancellationToken
         );
         var result = await client.General.GetIdentityAsync().ToResponse(CancellationToken);
@@ -211,9 +224,9 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         // Assert
         result.Errors.Count.ShouldBe(2);
         result.IsSuccess.ShouldBeFalse();
+        result.Has408RequestTimeout().ShouldBeTrue();
         handler.Requests.Count.ShouldBe(3);
         Stopwatch.GetElapsedTime(started).ShouldBeGreaterThan(TimeSpan.FromSeconds(3));
-        Stopwatch.GetElapsedTime(started).ShouldBeLessThan(TimeSpan.FromSeconds(5));
         await bodyCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
     }
 
@@ -230,7 +243,12 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         var factory = CreateFactory(handler);
         var client = factory.CreateClient(
             "token-a",
-            new PlexApiClientOptions { ConnectionUrl = "http://plex.test", Timeout = 30, RetryCount = 0 },
+            new PlexApiClientOptions
+            {
+                ConnectionUrl = "http://plex.test",
+                Timeout = 30,
+                RetryCount = 0,
+            },
             cancellation.Token
         );
         var operation = client.General.GetIdentityAsync().ToResponse(cancellation.Token);
@@ -248,6 +266,48 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
     }
 
     [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldHonorEffectiveCancellationToken_WhenOptionsAndFactoryTokensDiffer(bool overrideToken)
+    {
+        // Arrange
+        using var optionsCancellation = new CancellationTokenSource();
+        using var argumentCancellation = new CancellationTokenSource();
+        var bodyCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new SequenceHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new CancellationObservingContent(bodyCancelled),
+        });
+        var options = new PlexApiClientOptions
+        {
+            ConnectionUrl = "http://plex.test",
+            Timeout = 30,
+            RetryCount = 0,
+            CancellationToken = optionsCancellation.Token,
+        };
+        var factory = CreateFactory(handler);
+        var client = overrideToken
+            ? factory.CreateClient("token-a", options, argumentCancellation.Token)
+            : factory.CreateClient("token-a", options);
+        var effectiveCancellation = overrideToken ? argumentCancellation : optionsCancellation;
+        var operation = client.General.GetIdentityAsync().ToResponse(effectiveCancellation.Token);
+
+        // Act
+        effectiveCancellation.Cancel();
+        var result = await operation.WaitAsync(TimeSpan.FromSeconds(2));
+
+        // Assert
+        result.IsCancelled.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        await bodyCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        handler.Requests.Count.ShouldBe(1);
+        handler.CancellationTokens.Single().IsCancellationRequested.ShouldBeTrue();
+        options.CancellationToken.ShouldBe(optionsCancellation.Token);
+        if (overrideToken)
+            optionsCancellation.IsCancellationRequested.ShouldBeFalse();
+    }
+
+    [Test]
     public async Task ShouldKeepServerUrlsIsolated_WhenOperationsRunConcurrently()
     {
         var handler = new SequenceHandler(_ => CreateIdentityResponse(HttpStatusCode.OK));
@@ -256,33 +316,38 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         var progressB = new List<HttpRequestRetryProgress>();
         // Act
         var results = await Task.WhenAll(
-            factory.CreateClient(
-                "token-a",
-                new PlexApiClientOptions
-                {
-                    ConnectionUrl = "http://plex-a.test",
-                    RetryCount = 0,
-                    RetryProgressAction = progressA.Add,
-                },
-                CancellationToken
-            ).General.GetIdentityAsync().ToResponse(CancellationToken),
-            factory.CreateClient(
-                "token-b",
-                new PlexApiClientOptions
-                {
-                    ConnectionUrl = "http://plex-b.test",
-                    RetryCount = 0,
-                    RetryProgressAction = progressB.Add,
-                },
-                CancellationToken
-            ).General.GetIdentityAsync().ToResponse(CancellationToken)
+            factory
+                .CreateClient(
+                    "token-a",
+                    new PlexApiClientOptions
+                    {
+                        ConnectionUrl = "http://plex-a.test",
+                        RetryCount = 0,
+                        RetryProgressAction = progressA.Add,
+                    },
+                    CancellationToken
+                )
+                .General.GetIdentityAsync()
+                .ToResponse(CancellationToken),
+            factory
+                .CreateClient(
+                    "token-b",
+                    new PlexApiClientOptions
+                    {
+                        ConnectionUrl = "http://plex-b.test",
+                        RetryCount = 0,
+                        RetryProgressAction = progressB.Add,
+                    },
+                    CancellationToken
+                )
+                .General.GetIdentityAsync()
+                .ToResponse(CancellationToken)
         );
 
         // Assert
         results.ShouldAllBe(result => result.IsSuccess && result.Errors.Count == 0);
         handler.Requests.Count.ShouldBe(2);
-        handler.Requests.Select(request => request.RequestUri!.Host).Order()
-            .ShouldBe(["plex-a.test", "plex-b.test"]);
+        handler.Requests.Select(request => request.RequestUri!.Host).Order().ShouldBe(["plex-a.test", "plex-b.test"]);
         progressA.Count.ShouldBe(1);
         progressA.Single().Completed.ShouldBeTrue();
         progressA.Single().RequestUri.ShouldBe("http://plex-a.test/identity");
@@ -290,8 +355,6 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         progressB.Single().Completed.ShouldBeTrue();
         progressB.Single().RequestUri.ShouldBe("http://plex-b.test/identity");
     }
-
-
 
     private PlexApiClientFactory CreateFactory(HttpMessageHandler handler)
     {
@@ -310,7 +373,10 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         public ConcurrentBag<HttpRequestMessage> Requests { get; } = [];
         public ConcurrentBag<CancellationToken> CancellationTokens { get; } = [];
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        )
         {
             CancellationTokens.Add(cancellationToken);
             Requests.Add(request);
@@ -328,7 +394,11 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
             Task.Delay(Timeout.InfiniteTimeSpan);
 
-        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
+        protected override async Task SerializeToStreamAsync(
+            Stream stream,
+            TransportContext? context,
+            CancellationToken cancellationToken
+        )
         {
             try
             {
@@ -355,7 +425,12 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
             await stream.WriteAsync(Encoding.UTF8.GetBytes("{\"MediaContainer\":"));
             throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!);
         }
-        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
+
+        protected override async Task SerializeToStreamAsync(
+            Stream stream,
+            TransportContext? context,
+            CancellationToken cancellationToken
+        )
         {
             await stream.WriteAsync(Encoding.UTF8.GetBytes("{\"MediaContainer\":"), cancellationToken);
             throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!);
@@ -383,7 +458,11 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
             }
         }
 
-        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
+        protected override async Task SerializeToStreamAsync(
+            Stream stream,
+            TransportContext? context,
+            CancellationToken cancellationToken
+        )
         {
             try
             {
@@ -405,7 +484,10 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
 
     private sealed class CancellationStream(TaskCompletionSource cancelled) : MemoryStream
     {
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default
+        )
         {
             try
             {

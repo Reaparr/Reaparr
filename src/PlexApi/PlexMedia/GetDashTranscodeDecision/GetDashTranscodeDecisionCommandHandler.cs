@@ -63,8 +63,8 @@ public class GetDashTranscodeDecisionCommandHandler
         _log.Here().Information("Requesting Plex transcode decision URL: {Url}", debugDecisionUrl);
 
         var client = _plexApiClientFactory.CreateClient(tokenResult.Value, options, cancellationToken);
-        var decisionResponse = await client.Transcoder
-            .MakeDecisionAsync(decisionRequest.ToMakeDecisionRequest())
+        var decisionResponse = await client
+            .Transcoder.MakeDecisionAsync(decisionRequest.ToMakeDecisionRequest())
             .ToResponse(cancellationToken);
 
         if (decisionResponse.IsCancelledOrFailed)

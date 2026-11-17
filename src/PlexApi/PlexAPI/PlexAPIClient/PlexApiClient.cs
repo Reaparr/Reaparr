@@ -23,23 +23,29 @@ public sealed class PlexApiClient : IPlexApiClient
         request.SetRetryProgressCallback(_options.RetryProgressAction);
         request.SetResponseBufferingTimeout(TimeSpan.FromSeconds(Math.Max(_options.Timeout, 1)));
         var response = await _httpClient.SendAsync(
-            request, HttpCompletionOption.ResponseContentRead, _options.CancellationToken);
+            request,
+            HttpCompletionOption.ResponseContentRead,
+            _options.CancellationToken
+        );
         if (!response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType == ContentType.TextHtml)
         {
             var originalContent = response.Content;
-            response.Content = JsonSerializer.Serialize(
-                new
-                {
-                    errors = new[]
+            response.Content = JsonSerializer
+                .Serialize(
+                    new
                     {
-                        new PlexError(response.ReasonPhrase ?? "Unknown Reason")
+                        errors = new[]
                         {
-                            Code = (int)response.StatusCode,
-                            Status = (int)response.StatusCode,
+                            new PlexError(response.ReasonPhrase ?? "Unknown Reason")
+                            {
+                                Code = (int)response.StatusCode,
+                                Status = (int)response.StatusCode,
+                            },
                         },
                     },
-                },
-                DefaultJsonSerializerOptions.ConfigStandard).ToStringContent();
+                    DefaultJsonSerializerOptions.ConfigStandard
+                )
+                .ToStringContent();
             originalContent.Dispose();
         }
         return response;
@@ -54,7 +60,9 @@ public sealed class PlexApiClient : IPlexApiClient
         };
         if (request.Content is not null)
         {
-            clone.Content = new ByteArrayContent(await request.Content.ReadAsByteArrayAsync(_options.CancellationToken));
+            clone.Content = new ByteArrayContent(
+                await request.Content.ReadAsByteArrayAsync(_options.CancellationToken)
+            );
             foreach (var header in request.Content.Headers)
                 clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }

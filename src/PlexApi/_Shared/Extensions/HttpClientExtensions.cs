@@ -14,7 +14,7 @@ public static class HttpClientExtensions
     /// Converts a generated Plex SDK operation into a Result while preserving its raw response and exception.
     /// </summary>
     /// <param name="operation"> The SpeakEasy Plex SDK endpoint method to convert the result for </param>
-    /// <param name="cancellationToken">A token that cancels the HTTP call.</param>
+    /// <param name="cancellationToken">A token used to classify caller-requested cancellation; HTTP request cancellation is bound when the client is created.</param>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     public static async Task<Result<T>> ToResponse<T>(
@@ -33,24 +33,24 @@ public static class HttpClientExtensions
         }
         catch (SDKException sdkException)
         {
-            return sdkException.RawResponse
-                .FromSdkExceptionToResult<T>()
-                .WithError(new ExceptionalError(sdkException));
+            return sdkException.RawResponse.FromSdkExceptionToResult<T>().WithError(new ExceptionalError(sdkException));
         }
         catch (ResponseValidationException responseValidationException)
         {
             return Result
                 .Fail<T>(
-                    new ExceptionalError(responseValidationException)
-                        .WithMetadata("json body", responseValidationException.Body)
+                    new ExceptionalError(responseValidationException).WithMetadata(
+                        "json body",
+                        responseValidationException.Body
+                    )
                 )
                 .LogError();
         }
         catch (PlexAPIError plexApiError)
         {
             var errors = GetPlexErrors(plexApiError);
-            return plexApiError.RawResponse
-                .FromSdkExceptionToResult<T>(errors)
+            return plexApiError
+                .RawResponse.FromSdkExceptionToResult<T>(errors)
                 .WithError(new ExceptionalError(plexApiError));
         }
         catch (JsonSerializationException jsonSerializationException)
@@ -59,9 +59,7 @@ public static class HttpClientExtensions
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return Result.Fail<T>(
-                (FluentResults.Error)ResultExtensions.TaskIsCancelled(nameof(ToResponse)).Errors[0]
-            );
+            return Result.Fail<T>((FluentResults.Error)ResultExtensions.TaskIsCancelled(nameof(ToResponse)).Errors[0]);
         }
         catch (TaskCanceledException taskCanceledException)
         {
@@ -69,7 +67,10 @@ public static class HttpClientExtensions
         }
         catch (Polly.Timeout.TimeoutRejectedException timeoutRejectedException)
         {
-            return Result.Fail<T>(new ExceptionalError(timeoutRejectedException)).Add408RequestTimeoutError().LogWarning();
+            return Result
+                .Fail<T>(new ExceptionalError(timeoutRejectedException))
+                .Add408RequestTimeoutError()
+                .LogWarning();
         }
         catch (HttpRequestException httpRequestException)
         {
@@ -77,7 +78,8 @@ public static class HttpClientExtensions
         }
         catch (Exception exception)
         {
-            var rawResponse = exception.GetType().GetProperty(nameof(PostUsersSignInDataResponse.RawResponse))?.GetValue(exception)
+            var rawResponse =
+                exception.GetType().GetProperty(nameof(PostUsersSignInDataResponse.RawResponse))?.GetValue(exception)
                 as HttpResponseMessage;
             var errorsValue = exception.GetType().GetProperty("Errors")?.GetValue(exception);
             if (rawResponse is not null)
@@ -85,9 +87,7 @@ public static class HttpClientExtensions
                 var errors = errorsValue is null
                     ? null
                     : JsonSerializer.Deserialize<List<PlexError>>(JsonSerializer.Serialize(errorsValue));
-                return rawResponse
-                    .FromSdkExceptionToResult<T>(errors)
-                    .WithError(new ExceptionalError(exception));
+                return rawResponse.FromSdkExceptionToResult<T>(errors).WithError(new ExceptionalError(exception));
             }
 
             return Result.Fail<T>(new ExceptionalError(exception)).LogError();
@@ -99,9 +99,7 @@ public static class HttpClientExtensions
         var payload = exception.GetType().GetProperty("Payload")?.GetValue(exception);
         var errors = payload?.GetType().GetProperty("Errors")?.GetValue(payload)
             ?? exception.GetType().GetProperty("Errors")?.GetValue(exception);
-        return errors is null
-            ? null
-            : JsonSerializer.Deserialize<List<PlexError>>(JsonSerializer.Serialize(errors));
+        return errors is null ? null : JsonSerializer.Deserialize<List<PlexError>>(JsonSerializer.Serialize(errors));
     }
 
     public static Result<TResult> ToApiResult<TResponse, TResult>(
@@ -139,7 +137,8 @@ public static class HttpClientExtensions
 
         // Weird case where the status code is 200 but the content is "Bad Gateway"
         if (response.IsSuccessStatusCode && response.Content.ToString()!.Contains("Bad Gateway"))
-            return Result.Fail<TResult>("Server responded with Bad Gateway")
+            return Result
+                .Fail<TResult>("Server responded with Bad Gateway")
                 .Add502BadGatewayError()
                 .WithErrors(errors ?? []);
 
@@ -166,7 +165,10 @@ public static class HttpClientExtensions
         // Check if the content indicates a file download via Content-Disposition header.
         if (
             content.Headers.ContentDisposition is not null
-            && content.Headers.ContentDisposition.DispositionType.Equals("attachment", StringComparison.OrdinalIgnoreCase)
+            && content.Headers.ContentDisposition.DispositionType.Equals(
+                "attachment",
+                StringComparison.OrdinalIgnoreCase
+            )
         )
             return $"Content is a file download. Filename: {content.Headers.ContentDisposition.FileName}";
 
