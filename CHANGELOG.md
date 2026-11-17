@@ -1,5 +1,77 @@
 Reaparr Changelog
 
+# [0.41.0-dev.11](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.10...v0.41.0-dev.11) (2026-11-17)
+
+
+### Bug Fixes
+
+* **WebAPI:** Address downloader review findings and regression coverage ([f33e1f4](https://github.com/Reaparr/Reaparr/commit/f33e1f49d6a49a09d62fa80b6659808af087f3ca))
+* **WebAPI:** Await complete Seq export in SignalR regression ([1216d30](https://github.com/Reaparr/Reaparr/commit/1216d30d82144deb0e42ac55928df6b93458e91c))
+* **WebAPI:** Await persisted library refresh convergence ([b1d3c9f](https://github.com/Reaparr/Reaparr/commit/b1d3c9fb7e730e731a8ab3a1f8ef5e1185107ee4))
+* **WebAPI:** Block active content in proxied Plex image responses ([2269299](https://github.com/Reaparr/Reaparr/commit/226929998ec51d67ab19f3dde0a3966cd62125a6))
+* **WebAPI:** Bound test pipeline and shard Cypress locally ([0c97d3c](https://github.com/Reaparr/Reaparr/commit/0c97d3cd57dae98cda7f030626a9b78dc9f77645))
+* **WebAPI:** Configure logging sinks independently of telemetry ([9bdb2e9](https://github.com/Reaparr/Reaparr/commit/9bdb2e9127b4fa0b563570ae5db6d56aeeb254e9))
+* **Web-UI:** Correct directory browser lint indentation ([9497035](https://github.com/Reaparr/Reaparr/commit/949703562d3fc05813a262bc8e60082689a340a3))
+* **WebAPI:** Disable forwarded headers when the proxy allowlist has no valid entries ([1eefa70](https://github.com/Reaparr/Reaparr/commit/1eefa70eff6ffad96abb5fc69238632157b7d0f8))
+* **WebAPI:** Distinguish HTTP interruptions from storage failures ([c4a94a0](https://github.com/Reaparr/Reaparr/commit/c4a94a003eecc4f586851a73896043e77b425467))
+* **Web-UI:** Enable keyboard directory navigation ([8c7e033](https://github.com/Reaparr/Reaparr/commit/8c7e033299c167307cb1eb39373818f9926ee558))
+* **WebAPI:** Exclude disabled libraries from sync recovery ([9920ef5](https://github.com/Reaparr/Reaparr/commit/9920ef5d98b454bf47dda9f4277afe00c28f4275))
+* **WebAPI:** Gate desktop initialization on instance ownership ([aab653a](https://github.com/Reaparr/Reaparr/commit/aab653a1c88baa27abd49d1b3154a895db50430d))
+* **Web-UI:** Handle confirm button keyboard activation ([4701417](https://github.com/Reaparr/Reaparr/commit/470141722cd33bd19b1af412601994e66164bf81))
+* **Web-UI:** Handle directory navigation keyboard events ([8524cda](https://github.com/Reaparr/Reaparr/commit/8524cda57f98f7ffaa9e7ffb15279cdf3b5e70d1))
+* **WebAPI:** Harden authentication, image responses and release credentials ([#719](https://github.com/Reaparr/Reaparr/issues/719)) ([9429846](https://github.com/Reaparr/Reaparr/commit/942984600ea2b99023819a57275d3adee7123eef))
+* **WebAPI:** Hide explicit media from disabled servers ([ef1be32](https://github.com/Reaparr/Reaparr/commit/ef1be32d66bddb2f9e2c056882d794244c3c41e5))
+* **WebAPI:** Improve reliability, update handling and UI workflows ([#713](https://github.com/Reaparr/Reaparr/issues/713)) ([8659b1d](https://github.com/Reaparr/Reaparr/commit/8659b1deaaf9a1dac2526729a053ba3304136e2b))
+* **WebAPI:** Initialize integration test culture invariantly ([fe729c8](https://github.com/Reaparr/Reaparr/commit/fe729c871c35b1d42a1f395ae89956e26d1bcfa5))
+* **WebAPI:** Invalidate connection health when its URL changes ([e12ca51](https://github.com/Reaparr/Reaparr/commit/e12ca517bb44720dfa9d898d87acfc0c2279a6ec))
+* **WebAPI:** Keep authenticated thumbnails out of shared caches ([d401fb2](https://github.com/Reaparr/Reaparr/commit/d401fb2373490bfd824731907b8c67de7412a7be))
+* **Web-UI:** Keep destination selection available after preview failure ([b50e132](https://github.com/Reaparr/Reaparr/commit/b50e132e4e7e9630f0a3acd1823968ee24b920b6))
+* **Web-UI:** Keep download details scoped to each dialog opening ([6f2b238](https://github.com/Reaparr/Reaparr/commit/6f2b238544a76931d991e13de2b285261f82acdb))
+* **Web-UI:** Keep viewport test resize handlers synchronous ([da6653d](https://github.com/Reaparr/Reaparr/commit/da6653d92b959a952b3f2367433f9b23d413a5c1))
+* **WebAPI:** Limit pipeline deadline to test jobs ([272d8dc](https://github.com/Reaparr/Reaparr/commit/272d8dccf0e2feaf2175e2048c74d79ce57aa5ef))
+* **WebAPI:** Limit publishing credentials to semantic release steps ([bed0c75](https://github.com/Reaparr/Reaparr/commit/bed0c754d3005ffad977e5cdcba41545fdd65f6e))
+* **WebAPI:** Log truthful desktop dry-run plans ([e0910a4](https://github.com/Reaparr/Reaparr/commit/e0910a4469d71d6e153b79fcc455b3f561a27f31))
+* **WebAPI:** Log truthful desktop dry-run plans ([9001165](https://github.com/Reaparr/Reaparr/commit/900116519a1d2f78305e3d0df1582f1bb0030110))
+* **WebAPI:** Match daily episode searches by air date ([7eb19b2](https://github.com/Reaparr/Reaparr/commit/7eb19b22d22d79ba57b6a422be0a9064ede1e820))
+* **WebAPI:** Match daily episode searches by air date ([011ce32](https://github.com/Reaparr/Reaparr/commit/011ce32b9be9eee01f89d5c1fa4c65b5f3928c25))
+* **WebAPI:** Match daily episode searches by air date ([2fb1ad6](https://github.com/Reaparr/Reaparr/commit/2fb1ad648d805cfe281040a18e7bfdd68651e810))
+* **Web-UI:** Name the download log toolbar controls ([8ee8afd](https://github.com/Reaparr/Reaparr/commit/8ee8afd3d7dc8f83906e71f26ab7cd8836273067))
+* **WebAPI:** Normalize media search queries consistently ([47736bb](https://github.com/Reaparr/Reaparr/commit/47736bb891c33b022aaa03fd98e16fb133400fed))
+* **WebAPI:** Persist the submitted disclaimer choice ([046b329](https://github.com/Reaparr/Reaparr/commit/046b329453e35719175e091193700c07bfa17943))
+* **Web-UI:** Preserve account dialog ownership during saves ([3b7502e](https://github.com/Reaparr/Reaparr/commit/3b7502eb74abc3bb26aa973893a727a7f3c452c0))
+* **WebAPI:** Preserve DASH cancellation result ([4fff125](https://github.com/Reaparr/Reaparr/commit/4fff1257060e037c1a5d511bfb7ce6edf4a1cc3c))
+* **WebAPI:** Preserve explicit season zero in Torznab searches ([6dd43e7](https://github.com/Reaparr/Reaparr/commit/6dd43e75503b0c26474622f2cdc4ed7a952a3a9b))
+* **WebAPI:** Preserve logger lifecycle and existing sinks ([6906137](https://github.com/Reaparr/Reaparr/commit/690613751a644e0d30125cc9be3e78ead50006b4))
+* **Web-UI:** Preserve notification recovery and directory focus ([6304543](https://github.com/Reaparr/Reaparr/commit/630454309dea39c700aea816bf758061c41b23c5))
+* **WebAPI:** Preserve per-track music download placement ([df93325](https://github.com/Reaparr/Reaparr/commit/df933257a62b7a4c569560c987928f5e0cbba437))
+* **WebAPI:** Preserve queue admission ownership ([03f929f](https://github.com/Reaparr/Reaparr/commit/03f929f2756b76ddc9f4d6026e5aa2aacb29b8e0))
+* **data:** prevent music comparison inspection stalls ([7374c38](https://github.com/Reaparr/Reaparr/commit/7374c3817c38e62b20a83efa800d96452b09dc68))
+* **WebAPI:** Prevent sync execution for disabled servers ([f1228e9](https://github.com/Reaparr/Reaparr/commit/f1228e983da30eb114c277e5bf72e380e61f2993))
+* **WebAPI:** Read all GitHub release pages ([e417a53](https://github.com/Reaparr/Reaparr/commit/e417a53c21f0668efdbac206c555c487dcc1c734))
+* **WebAPI:** Recheck connections within status persistence transaction ([20fbd75](https://github.com/Reaparr/Reaparr/commit/20fbd75c47f15856978e5db40384758cb1531861))
+* **WebAPI:** Reconcile removed connections during server health checks ([617d4d0](https://github.com/Reaparr/Reaparr/commit/617d4d07b957990c1bd3cbd88eb2dedb0beb3d16))
+* **Web-UI:** Restore directory browser keyboard focus ([8b10c5f](https://github.com/Reaparr/Reaparr/commit/8b10c5f09bb663956a0a8c03d5768b76d937c244))
+* **Web-UI:** Restore notification history after reconnect ([ecda170](https://github.com/Reaparr/Reaparr/commit/ecda170a7a1d77d7ef3453f13be04ef4909eabf8))
+* **WebAPI:** Restore Plex SDK HTML error compatibility ([64e8cdc](https://github.com/Reaparr/Reaparr/commit/64e8cdc3d2d14f1e1046d111f4505d7a84b7e438))
+* **WebAPI:** Revoke stale authentication cookies after credential changes ([a90a374](https://github.com/Reaparr/Reaparr/commit/a90a374e67a16560223ae3da2ed800347cc93a9c))
+* **WebAPI:** Skip no-op database migrations ([0438a70](https://github.com/Reaparr/Reaparr/commit/0438a705828eeaba68b54bb3f69ff70ead989b41))
+* **WebAPI:** Split Cypress tests across four workers ([bd1cabb](https://github.com/Reaparr/Reaparr/commit/bd1cabb1ad10f92033d587961a330b92e62eb150))
+* **WebAPI:** Wake download queue when retry cooldown expires ([7d56c73](https://github.com/Reaparr/Reaparr/commit/7d56c7389040a72c16292fbc0623ac67ff4d70e6))
+
+
+### Features
+
+* **WebAPI:** Add database migration progress logging ([70df793](https://github.com/Reaparr/Reaparr/commit/70df793be62428c10e170ee7e4b7ebc83a8c6d27))
+* **WebAPI:** Implement telemetry configuration and integration ([9f48b64](https://github.com/Reaparr/Reaparr/commit/9f48b641598aca114de4ef87a69afcf54248823d))
+
+
+### Performance Improvements
+
+* **WebAPI:** Defer desktop release notes until an update is available ([6ed5788](https://github.com/Reaparr/Reaparr/commit/6ed5788bcd89354b7b7461b7ef20ea0b71e9bcb9))
+* **Web-UI:** Filter access history without redundant reloads ([291566b](https://github.com/Reaparr/Reaparr/commit/291566be0a221152597c86f7796363d27714a0c7))
+* **WebAPI:** Filter excluded directories before permission probes ([6cdc181](https://github.com/Reaparr/Reaparr/commit/6cdc18124757910c24876adc4f8fdba3b446405c))
+* **WebAPI:** Remove unused media detail connection reads ([0db41d2](https://github.com/Reaparr/Reaparr/commit/0db41d2050f75a7fe801f6175b673a258637c223))
+
 # [0.41.0-dev.10](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.9...v0.41.0-dev.10) (2026-11-01)
 
 
