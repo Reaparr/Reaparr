@@ -451,6 +451,7 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
         updatedItem.ErrorMessage.ShouldBeNull();
         updatedItem.IsServerOffline.ShouldBeFalse();
     }
+
     [Test]
     public async Task ShouldNotResetFailedJob_WhenLibraryIsDisabled()
     {
@@ -463,8 +464,8 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
         var dbContext = IDbContext;
         var server = dbContext.PlexServers.Single();
         var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
-        await dbContext.PlexLibraries
-            .Where(x => x.Id == libraries[1].Id)
+        await dbContext
+            .PlexLibraries.Where(x => x.Id == libraries[1].Id)
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
         dbContext.LibrarySyncJobQueues.AddRange(
             new LibrarySyncJobQueue
@@ -499,15 +500,99 @@ public class ResetFailedLibrarySyncJobsCommandHandlerUnitTests : BaseUnitTest<Re
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         var after = await dbContext
-            .LibrarySyncJobQueues.IgnoreQueryFilters().OrderBy(x => x.PlexLibraryId)
-            .Select(x => new { x.PlexLibraryId, x.Status, x.ErrorMessage })
+            .LibrarySyncJobQueues.IgnoreQueryFilters()
+            .OrderBy(x => x.PlexLibraryId)
+            .Select(x => new
+            {
+                x.PlexLibraryId,
+                x.Status,
+                x.ErrorMessage,
+            })
             .ToListAsync(CancellationToken);
-        after.ShouldBe(
-        [
-            new { PlexLibraryId = libraries[0].Id, Status = LibrarySyncJobStatus.Queued, ErrorMessage = (string?)null },
-            new { PlexLibraryId = libraries[1].Id, Status = LibrarySyncJobStatus.Failed, ErrorMessage = (string?)"disabled failure" },
-        ]
-        );
+        after.ShouldBe([
+            new
+            {
+                PlexLibraryId = libraries[0].Id,
+                Status = LibrarySyncJobStatus.Queued,
+                ErrorMessage = (string?)null,
+            },
+            new
+            {
+                PlexLibraryId = libraries[1].Id,
+                Status = LibrarySyncJobStatus.Failed,
+                ErrorMessage = (string?)"disabled failure",
+            },
+        ]);
         Mock.Mock<ICommandExecutor>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldNotResetFailedJobs_WhenParentServerIsDisabled()
+    {
+        // Arrange
+        await SetupDatabase(4010, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
+        var dbContext = IDbContext;
+        var server = dbContext.PlexServers.Single();
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        await dbContext
+            .PlexServers.Where(x => x.Id == server.Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        dbContext.LibrarySyncJobQueues.AddRange(
+            libraries.Select(
+                (library, index) =>
+                    new LibrarySyncJobQueue
+                    {
+                        PlexServerId = server.Id,
+                        PlexLibraryId = library.Id,
+                        Priority = index + 1,
+                        Status = index == 0 ? LibrarySyncJobStatus.Failed : LibrarySyncJobStatus.Queued,
+                        CreatedAt = DateTime.UtcNow,
+                        ErrorMessage = index == 0 ? "disabled failure" : null,
+                    }
+            )
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+
+        // Act
+        var result = await Sut.ExecuteAsync(new ResetFailedLibrarySyncJobsCommand(server.Id), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var after = await dbContext
+            .LibrarySyncJobQueues.IgnoreQueryFilters()
+            .OrderBy(x => x.PlexLibraryId)
+            .Select(x => new
+            {
+                x.PlexLibraryId,
+                x.Status,
+                x.ErrorMessage,
+            })
+            .ToListAsync(CancellationToken);
+        after.ShouldBe([
+            new
+            {
+                PlexLibraryId = libraries[0].Id,
+                Status = LibrarySyncJobStatus.Failed,
+                ErrorMessage = (string?)"disabled failure",
+            },
+            new
+            {
+                PlexLibraryId = libraries[1].Id,
+                Status = LibrarySyncJobStatus.Queued,
+                ErrorMessage = (string?)null,
+            },
+        ]);
+        Mock.Mock<ICommandExecutor>()
+            .Verify(
+                x => x.Send(It.IsAny<CheckQueuedPlexLibraryToSyncCommand>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<INotificationHubService>()
+            .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Never());
     }
 }

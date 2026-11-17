@@ -74,31 +74,70 @@ public class CheckAllConnectionsStatusByPlexServerHandler
 
         var previousResult = await _dbContext.IsServerOnline(plexServerId);
 
-        // Create connection check tasks for all connections
+        // Retain the snapshotted connection id with each result so a result for a removed
+        // connection can be reconciled without affecting results for surviving connections.
         var connectionTasks = connections.Select(async plexServerConnection =>
-            await _commandExecutor.Send(
-                new CheckConnectionStatusByIdCommand(plexServerConnection.Id, command.Timeout),
-                cancellationToken
+            (
+                ConnectionId: plexServerConnection.Id,
+                Result: await _commandExecutor.Send(
+                    new CheckConnectionStatusByIdCommand(plexServerConnection.Id, command.Timeout),
+                    cancellationToken
+                )
             )
         );
 
-        var tasksResult = await Task.WhenAll(connectionTasks);
+        var connectionResults = await Task.WhenAll(connectionTasks);
+        var tasksResult = connectionResults.Select(x => x.Result).ToArray();
         var combinedResults = Result.Merge(tasksResult);
 
         if (tasksResult.Any(x => x.IsCancelled))
             return combinedResults.ToResult();
 
+        var notFoundResults = connectionResults
+            .Where(x => x.Result.IsFailed && x.Result.Errors.Count == 1 && x.Result.Has404NotFoundError())
+            .ToArray();
+        List<PlexServerConnection>? reconciledConnections = null;
+        if (notFoundResults.Length > 0)
+        {
+            reconciledConnections = await _dbContext
+                .PlexServerConnections.AsNoTracking()
+                .Include(x => x.LatestConnectionStatus)
+                .Where(x => x.PlexServerId == plexServerId)
+                .ToListAsync(cancellationToken);
+
+            var currentConnectionIds = reconciledConnections.Select(x => x.Id).ToHashSet();
+            var removedConnectionIds = connectionResults
+                .Where(x => !currentConnectionIds.Contains(x.ConnectionId))
+                .Select(x => x.ConnectionId)
+                .ToHashSet();
+            connectionResults = connectionResults.Where(x => !removedConnectionIds.Contains(x.ConnectionId)).ToArray();
+            combinedResults = Result.Merge(connectionResults.Select(x => x.Result).ToArray());
+        }
+
         if (combinedResults.IsFailed)
             return combinedResults.ToResult().LogError();
 
+        var statuses = connectionResults.Select(x => x.Result.ValueOrDefault).OfType<PlexServerStatus>().ToList();
+
+        if (reconciledConnections is not null)
+        {
+            var snapshottedConnectionIds = connections.Select(x => x.Id).ToHashSet();
+            statuses.AddRange(
+                reconciledConnections
+                    .Where(x => !snapshottedConnectionIds.Contains(x.Id))
+                    .Select(x => x.LatestConnectionStatus)
+                    .OfType<PlexServerStatus>()
+            );
+        }
+
         await _notificationHubService.SendRefreshNotificationAsync([RefreshDataType.PlexServerConnection]);
 
-        // Compare previous and current online status
-        var currentOnlineStatus = tasksResult.Any(statusResult =>
-            statusResult is { IsSuccess: true, ValueOrDefault.IsSuccessful: true }
-        );
+        // Compare previous and current online status. If every snapshotted connection was
+        // removed, there was no current probe to justify publishing an offline transition.
+        var currentOnlineStatus = statuses.Any(status => status.IsSuccessful);
+        var hasCurrentProbeResult = connectionResults.Any(x => x.Result.IsSuccess);
 
-        if (previousResult != currentOnlineStatus)
+        if (hasCurrentProbeResult && previousResult != currentOnlineStatus)
         {
             await _eventPublisher.PublishAsync(
                 new ServerOnlineStatusChangedNotification(plexServerId, currentOnlineStatus),
@@ -106,8 +145,8 @@ public class CheckAllConnectionsStatusByPlexServerHandler
             );
         }
 
-        if (currentOnlineStatus)
-            return Result.Ok(combinedResults.Value.ToList());
+        if (currentOnlineStatus || !hasCurrentProbeResult)
+            return Result.Ok(statuses);
 
         var warningResult = _log.Here()
             .WarningResult(
@@ -115,6 +154,6 @@ public class CheckAllConnectionsStatusByPlexServerHandler
                 plexServerName,
                 plexServerId
             );
-        return Result.Ok(combinedResults.Value.ToList()).WithReasons(warningResult.Reasons);
+        return Result.Ok(statuses).WithReasons(warningResult.Reasons);
     }
 }

@@ -24,9 +24,9 @@ public class ValidatePlexConnectionUrlHandler
                 ConnectionUrl = command.PlexConnectionUrl,
                 Timeout = 5,
                 RetryCount = 0,
-            }
+            },
+            cancellationToken: ct
         );
-
         var response = await client.General.GetIdentityAsync().ToResponse(ct);
         if (response.IsFailed)
             return response.ToResult();

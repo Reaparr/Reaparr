@@ -39,9 +39,9 @@ public class GetLibrarySectionsCommandHandler : ICommandHandler<GetLibrarySectio
 
         var client = _plexApiClientFactory.CreateClient(
             tokenResult.Value,
-            new PlexApiClientOptions { ConnectionUrl = connection.Url }
+            new PlexApiClientOptions { ConnectionUrl = connection.Url },
+            cancellationToken: ct
         );
-
         var response = await client.Library.GetSectionsAsync().ToResponse(ct);
         if (response.IsFailed)
             return response.ToResult();

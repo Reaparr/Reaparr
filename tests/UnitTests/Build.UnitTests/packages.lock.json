@@ -1628,6 +1628,7 @@
           "Autofac": "[9.1.0, )",
           "FastEndpoints": "[8.3.0, )",
           "HttpClientToCurl": "[2.1.1, )",
+          "Polly.Core": "[8.6.6, )",
           "Reaparr.Application.Contracts": "[1.0.0, )",
           "Reaparr.Data.Contracts": "[1.0.0, )",
           "Reaparr.PlexApi.Contracts": "[1.0.0, )",

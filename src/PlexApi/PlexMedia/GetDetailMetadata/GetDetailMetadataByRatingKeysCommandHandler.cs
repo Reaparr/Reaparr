@@ -45,15 +45,15 @@ public class GetDetailMetadataByRatingKeysCommandHandler
                 ConnectionUrl = connectionResult.Value.Url,
                 Timeout = 30,
                 RetryCount = 3,
-            }
+            },
+            ct
         );
-
         // Fetch detailed metadata
         var response = await client
             .Content.GetMetadataItemAsync(new GetMetadataItemRequest { Ids = command.RatingKeys.ToList() })
             .ToResponse(ct);
 
-        if (response.IsFailed)
+        if (response.IsCancelledOrFailed)
         {
             _log.Here()
                 .Error(

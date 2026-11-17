@@ -359,4 +359,319 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
                 Times.Once()
             );
     }
+
+    [Test]
+    public async Task ShouldIgnoreRemovedConnection404_WhenSurvivingConnectionIsHealthy()
+    {
+        // Arrange
+        await SetupDatabase(523190, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
+
+        var dbContext = IDbContext;
+        var connections = dbContext.PlexServerConnections.OrderBy(x => x.Id).ToList();
+        var removedId = connections[0].Id;
+        var survivorId = connections[1].Id;
+        Mock.Mock<INotificationHubService>()
+            .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once);
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
+            .Returns(
+                (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                {
+                    if (request.PlexServerConnectionId == removedId)
+                    {
+                        dbContext.PlexServerConnections.Where(x => x.Id == removedId).ExecuteDelete();
+                        return Task.FromResult(
+                            ResultExtensions
+                                .EntityNotFound(nameof(PlexServerConnection), removedId)
+                                .ToResult<PlexServerStatus>()
+                        );
+                    }
+
+                    return Task.FromResult(
+                        Result.Ok(FakeData.GetPlexServerStatus(new Seed(523190), true, 1, survivorId).Generate())
+                    );
+                }
+            )
+            .Verifiable(Times.Exactly(2));
+
+        // Act
+        var result = await Sut.ExecuteAsync(new CheckAllConnectionsStatusByPlexServerCommand(1), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Select(x => x.PlexServerConnectionId).ShouldBe([survivorId]);
+        result.Value.Single().IsSuccessful.ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldUsePersistedStatusForReplacementConnection_WhenSnapshottedConnectionIsRemoved()
+    {
+        // Arrange
+        await SetupDatabase(523191, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
+
+        var dbContext = IDbContext;
+        var original = dbContext.PlexServerConnections.Single();
+        var replacement = FakeData.GetPlexServerConnections(new Seed(523192), plexServerId: 1).Generate();
+
+        Mock.Mock<INotificationHubService>()
+            .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once);
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
+            .Returns(
+                async (CheckConnectionStatusByIdCommand request, CancellationToken token) =>
+                {
+                    await dbContext.PlexServerConnections.Where(x => x.Id == original.Id).ExecuteDeleteAsync(token);
+                    dbContext.PlexServerConnections.Add(replacement);
+                    await dbContext.SaveChangesAsync(token);
+                    dbContext.PlexServerStatuses.Add(
+                        FakeData.GetPlexServerStatus(new Seed(523193), true, 1, replacement.Id).Generate()
+                    );
+                    await dbContext.SaveChangesAsync(token);
+                    return ResultExtensions
+                        .EntityNotFound(nameof(PlexServerConnection), request.PlexServerConnectionId)
+                        .ToResult<PlexServerStatus>();
+                }
+            )
+            .Verifiable(Times.Once);
+
+        // Act
+        var result = await Sut.ExecuteAsync(new CheckAllConnectionsStatusByPlexServerCommand(1), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.Select(x => x.PlexServerConnectionId).ShouldBe([replacement.Id]);
+        result.Value.Single().IsSuccessful.ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldPropagateFailureFromCurrentConnection_WhenAnotherSnapshottedConnectionWasRemoved()
+    {
+        // Arrange
+        await SetupDatabase(523194, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
+
+        var dbContext = IDbContext;
+        var connections = dbContext.PlexServerConnections.OrderBy(x => x.Id).ToList();
+        var removedId = connections[0].Id;
+        var failure = Result.Fail<PlexServerStatus>("current connection failed");
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
+            .Returns(
+                async (CheckConnectionStatusByIdCommand request, CancellationToken token) =>
+                {
+                    if (request.PlexServerConnectionId == removedId)
+                    {
+                        await dbContext.PlexServerConnections.Where(x => x.Id == removedId).ExecuteDeleteAsync(token);
+                        return ResultExtensions
+                            .EntityNotFound(nameof(PlexServerConnection), removedId)
+                            .ToResult<PlexServerStatus>();
+                    }
+
+                    return failure;
+                }
+            )
+            .Verifiable(Times.Exactly(2));
+
+        // Act
+        var result = await Sut.ExecuteAsync(new CheckAllConnectionsStatusByPlexServerCommand(1), CancellationToken);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Errors.Single().Message.ShouldBe("current connection failed");
+    }
+
+    [Test]
+    public async Task ShouldPropagateCancellation_WhenConnectionCheckIsCancelled()
+    {
+        // Arrange
+        await SetupDatabase(523195, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
+        using var cancellation = new CancellationTokenSource();
+        var observedToken = CancellationToken.None;
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
+            .ReturnsAsync(
+                (CheckConnectionStatusByIdCommand _, CancellationToken token) =>
+                {
+                    observedToken = token;
+                    return ResultExtensions
+                        .TaskIsCancelled(nameof(CheckConnectionStatusByIdCommand))
+                        .ToResult<PlexServerStatus>();
+                }
+            )
+            .Verifiable(Times.AtLeastOnce);
+
+        // Act
+        var result = await Sut.ExecuteAsync(new CheckAllConnectionsStatusByPlexServerCommand(1), cancellation.Token);
+
+        // Assert
+        result.IsCancelled.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        observedToken.ShouldBe(cancellation.Token);
+    }
+
+    [Test]
+    public async Task ShouldNotPublishOnlineStatus_WhenAllSnapshottedConnectionsWereRemoved()
+    {
+        // Arrange
+        await SetupDatabase(523196, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
+
+        var dbContext = IDbContext;
+        var connectionIds = dbContext.PlexServerConnections.Select(x => x.Id).ToList();
+        Mock.Mock<INotificationHubService>()
+            .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once);
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
+            .Returns(
+                (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                {
+                    dbContext.PlexServerConnections.Where(x => x.Id == request.PlexServerConnectionId).ExecuteDelete();
+                    return Task.FromResult(
+                        ResultExtensions
+                            .EntityNotFound(nameof(PlexServerConnection), request.PlexServerConnectionId)
+                            .ToResult<PlexServerStatus>()
+                    );
+                }
+            )
+            .Verifiable(Times.Exactly(connectionIds.Count));
+
+        // Act
+        var result = await Sut.ExecuteAsync(new CheckAllConnectionsStatusByPlexServerCommand(1), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.ShouldBeEmpty();
+        Mock.Mock<IEventPublisher>()
+            .Verify(
+                x => x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>()),
+                Times.Never
+            );
+    }
+
+    [Test]
+    public async Task ShouldPropagateNotFound_WhenConnectionStillExistsAfterReconciliation()
+    {
+        // Arrange
+        await SetupDatabase(523197, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 1;
+        });
+
+        var connectionId = IDbContext.PlexServerConnections.Single().Id;
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
+            .ReturnsAsync(
+                ResultExtensions.EntityNotFound(nameof(PlexServerConnection), connectionId).ToResult<PlexServerStatus>()
+            )
+            .Verifiable(Times.Once);
+
+        // Act
+        var result = await Sut.ExecuteAsync(new CheckAllConnectionsStatusByPlexServerCommand(1), CancellationToken);
+
+        // Assert
+        result.IsFailed.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(1);
+        result.Has404NotFoundError().ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task ShouldExcludeSuccessfulProbe_WhenConnectionIsRemovedBeforeReconciliation()
+    {
+        // Arrange
+        await SetupDatabase(523198, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexServerConnectionPerServerCount = 2;
+        });
+
+        var dbContext = IDbContext;
+        await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
+            p => p.SetProperty(x => x.IsSuccessful, false),
+            CancellationToken
+        );
+
+        var connections = dbContext.PlexServerConnections.OrderBy(x => x.Id).ToList();
+
+        var removedConnectionIds = connections.Select(x => x.Id).ToHashSet();
+        Mock.Mock<INotificationHubService>()
+            .Setup(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once);
+        Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
+            .Returns(
+                (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                {
+                    dbContext.PlexServerConnections.Where(x => x.Id == request.PlexServerConnectionId).ExecuteDelete();
+
+                    if (request.PlexServerConnectionId == connections[0].Id)
+                    {
+                        return Task.FromResult(
+                            ResultExtensions
+                                .EntityNotFound(nameof(PlexServerConnection), request.PlexServerConnectionId)
+                                .ToResult<PlexServerStatus>()
+                        );
+                    }
+
+                    return Task.FromResult(
+                        Result.Ok(
+                            FakeData
+                                .GetPlexServerStatus(
+                                    new Seed(523198),
+                                    isSuccessful: true,
+                                    plexServerId: 1,
+                                    plexServerConnectionId: request.PlexServerConnectionId
+                                )
+                                .Generate()
+                        )
+                    );
+                }
+            )
+            .Verifiable(Times.Exactly(removedConnectionIds.Count));
+
+        Mock.Mock<IEventPublisher>()
+            .Setup(x =>
+                x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>())
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Never);
+
+        // Act
+        var result = await Sut.ExecuteAsync(new CheckAllConnectionsStatusByPlexServerCommand(1), CancellationToken);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        result.Value.ShouldBeEmpty();
+        Mock.Mock<ICommandExecutor>().Verify();
+        Mock.Mock<INotificationHubService>()
+            .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Once);
+        Mock.Mock<IEventPublisher>()
+            .Verify(
+                x => x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>()),
+                Times.Never
+            );
+    }
 }

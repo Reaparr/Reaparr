@@ -72,14 +72,23 @@ public class LibrarySyncJob : IJob
             async Task<Result> () =>
             {
                 queueItem = await _dbContext
-                    .LibrarySyncJobQueues.Include(x => x.PlexLibrary)
+                    .LibrarySyncJobQueues.IgnoreIsEnabledFilter()
+                    .Include(x => x.PlexLibrary)
+                    .Include(x => x.PlexServer)
                     .Where(x => x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId)
                     .FirstOrDefaultAsync(CancellationToken.None);
                 var queueStatus = queueItem?.Status ?? LibrarySyncJobStatus.Unknown;
-                if (queueStatus != LibrarySyncJobStatus.Processing || queueItem?.PlexLibrary?.IsEnabled != true)
+                var parentServerDisabled = queueItem?.PlexServer?.IsEnabled == false;
+                if (
+                    queueStatus != LibrarySyncJobStatus.Processing
+                    || queueItem?.PlexLibrary?.IsEnabled != true
+                    || parentServerDisabled
+                )
                 {
                     shouldDispatch = false;
                     context.SetResult(JobStatus.Cancelled);
+                    if (queueStatus == LibrarySyncJobStatus.Processing && parentServerDisabled)
+                        await UpdateQueueItemAsync(LibrarySyncJobStatus.Queued);
                     _log.Here()
                         .Information(
                             "Skipping library sync job for server {ServerId}, library {LibraryId} because its queue status is {QueueStatus}",
@@ -104,11 +113,12 @@ public class LibrarySyncJob : IJob
                 using var syncLease = await _mediaOverviewRebuildCoordinator.AcquireLibrarySyncLeaseAsync(
                     cancellationToken
                 );
-                var claimed = await UpdateQueueItemAsync(LibrarySyncJobStatus.Processing);
+                var claimed = await UpdateQueueItemAsync(LibrarySyncJobStatus.Processing, requireEnabledServer: true);
                 if (claimed != 1)
                 {
                     shouldDispatch = false;
                     context.SetResult(JobStatus.Cancelled);
+                    await UpdateQueueItemAsync(LibrarySyncJobStatus.Queued);
                     return Result.Ok();
                 }
 
@@ -124,7 +134,7 @@ public class LibrarySyncJob : IJob
                     ? new Error(exception.Message).CausedBy(exception)
                     : new ExceptionalError(exception)
         );
-        if (!shouldDispatch)
+        if (!shouldDispatch && result.IsSuccess)
             return;
 
         LibrarySyncJobStatus status;
@@ -212,12 +222,21 @@ public class LibrarySyncJob : IJob
     private async Task<int> UpdateQueueItemAsync(
         LibrarySyncJobStatus status,
         string? errorMessage = null,
-        bool isServerOffline = false
+        bool isServerOffline = false,
+        bool requireEnabledServer = false
     )
     {
-        var query = _dbContext.LibrarySyncJobQueues.Where(x =>
-            x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId && x.Status == LibrarySyncJobStatus.Processing
-        );
+        var query = _dbContext
+            .LibrarySyncJobQueues.IgnoreIsEnabledFilter()
+            .Where(x =>
+                x.PlexServerId == _serverId
+                && x.PlexLibraryId == _libraryId
+                && x.Status == LibrarySyncJobStatus.Processing
+            );
+        if (requireEnabledServer)
+            query = query.Where(x =>
+                _dbContext.PlexServers.Any(server => server.Id == x.PlexServerId && server.IsEnabled)
+            );
 
         return status switch
         {

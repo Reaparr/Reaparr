@@ -46,8 +46,10 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
             .ReturnsAsync(CreateResponse(0, 0))
             .Verifiable(Times.Once());
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClientAsync(library.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok(sdk.Object))
+            .Setup(x => x.CreateClientAsync(library.PlexServerId, 30, 3, null, It.IsAny<CancellationToken>()))
+            .Returns<int, int, int, Action<HttpRequestRetryProgress>?, CancellationToken>(
+                (_, _, _, _, _) => Task.FromResult(Result.Ok<IPlexAPI>(sdk.Object))
+            )
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>
@@ -131,8 +133,10 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
             )
             .Verifiable(Times.Exactly(3));
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClientAsync(library.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk))
+            .Setup(x => x.CreateClientAsync(library.PlexServerId, 30, 3, null, It.IsAny<CancellationToken>()))
+            .Returns<int, int, int, Action<HttpRequestRetryProgress>?, CancellationToken>(
+                (_, _, _, _, _) => Task.FromResult(Result.Ok<IPlexAPI>(sdk))
+            )
             .Verifiable(Times.Once());
         var progress = new LibraryProgress
         {
@@ -241,8 +245,10 @@ public class GetAllMediaByTypeFromPlexApiCommandHandlerUnitTests
             )
             .Verifiable(Times.Exactly(3));
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClientAsync(library.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk))
+            .Setup(x => x.CreateClientAsync(library.PlexServerId, 30, 3, null, It.IsAny<CancellationToken>()))
+            .Returns<int, int, int, Action<HttpRequestRetryProgress>?, CancellationToken>(
+                (_, _, _, _, _) => Task.FromResult(Result.Ok<IPlexAPI>(sdk))
+            )
             .Verifiable(Times.Once());
         Mock.Mock<ILibrarySyncProgressStore>()
             .Setup(x =>

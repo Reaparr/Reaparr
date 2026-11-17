@@ -2190,7 +2190,11 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                 x.OnStatusChangedAsync(
                     It.Is<DownloadTaskKey>(key => key == downloadTask.ToKey()),
                     expectedStatus,
-                    It.Is<Result>(failure => failure.IsFailed && failure.ToString().Contains(exception.Message)),
+                    It.Is<Result>(errorResult =>
+                        errorResult.IsFailed
+                        && errorResult.Errors.Count == 1
+                        && errorResult.Errors.OfType<ExceptionalError>().Single().Exception == exception
+                    ),
                     CancellationToken.None
                 )
             )
@@ -2216,7 +2220,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
 
         // Assert
         result.IsFailed.ShouldBeTrue();
-        result.Errors.ShouldNotBeEmpty();
+        result.Errors.Count.ShouldBe(1);
         result.ToString().ShouldContain(exception.Message);
         Mock.Mock<IDownloadTaskUpdateDispatcher>().Verify();
         Mock.Mock<IDownloadTaskUpdateDispatcher>()

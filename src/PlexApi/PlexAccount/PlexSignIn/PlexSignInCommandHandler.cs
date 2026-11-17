@@ -30,8 +30,7 @@ public class PlexSignInCommandHandler : ICommandHandler<PlexSignInCommand, Resul
     public async Task<Result<PlexSignInCommandResult>> ExecuteAsync(PlexSignInCommand command, CancellationToken ct)
     {
         _log.Here().Debug("Requesting PlexToken for account {UserName}", command.Username);
-
-        var plexTvClient = _plexApiClientFactory.CreateTvClient();
+        var plexTvClient = _plexApiClientFactory.CreateTvClient(cancellationToken: ct);
         var response = await plexTvClient
             .Authentication.PostUsersSignInDataAsync(
                 new PostUsersSignInDataRequest
@@ -48,8 +47,8 @@ public class PlexSignInCommandHandler : ICommandHandler<PlexSignInCommand, Resul
             )
             .ToResponse(ct);
 
-        if (response.IsFailed)
-            return response.ToResult().LogError();
+        if (response.IsCancelledOrFailed)
+            return response.ToResult().LogIfFailed();
 
         var isValid = response.Value.RawResponse.IsSuccessStatusCode;
         var result = response.ToApiResult(x => new PlexSignInCommandResult

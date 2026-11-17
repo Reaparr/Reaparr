@@ -29,11 +29,9 @@ public class ValidatePlexTvTokenCommandHandler
     )
     {
         var clientId = Guid.NewGuid().ToString();
-
-        var client = _plexApiClientFactory.CreateTvClient(command.AuthenticationToken);
-
+        var client = _plexApiClientFactory.CreateTvClient(command.AuthenticationToken, cancellationToken: ct);
         var response = await client.Authentication.GetTokenDetailsAsync(new GetTokenDetailsRequest()).ToResponse(ct);
-        if (response.IsCancelled || response.IsFailed)
+        if (response.IsCancelledOrFailed)
             return response.ToResult();
 
         var isValid = response.Value.RawResponse.IsSuccessStatusCode;

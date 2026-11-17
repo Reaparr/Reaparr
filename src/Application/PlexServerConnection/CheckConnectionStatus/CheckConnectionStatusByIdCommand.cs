@@ -101,21 +101,19 @@ public class CheckConnectionStatusByIdCommandHandler
         // Store the latest Plex server status for this connection.
         var plexServerStatus = serverStatusResult.Value;
 
-        var relationExists = await dbContext.PlexServerConnections.AnyAsync(
-            x => x.Id == plexServerStatus.PlexServerConnectionId && x.PlexServerId == plexServerStatus.PlexServerId,
-            cancellationToken
-        );
-
-        if (!relationExists)
-        {
-            return ResultExtensions
-                .EntityNotFound(nameof(PlexServerConnection), plexServerStatus.PlexServerConnectionId)
-                .LogWarning();
-        }
-
-        var upsertResult = await dbContext.ExecuteTransactionAsync(
+        var upsertResult = await dbContext.ExecuteTransactionAsync<PlexServerStatus?>(
             async (transactionContext, ct) =>
             {
+                var relationExists = await transactionContext.PlexServerConnections.AnyAsync(
+                    x =>
+                        x.Id == plexServerStatus.PlexServerConnectionId
+                        && x.PlexServerId == plexServerStatus.PlexServerId,
+                    ct
+                );
+
+                if (!relationExists)
+                    return null;
+
                 var existingCount = await transactionContext
                     .PlexServerStatuses.Where(x => x.PlexServerConnectionId == plexServerStatus.PlexServerConnectionId)
                     .ExecuteUpdateAsync(
@@ -140,6 +138,16 @@ public class CheckConnectionStatusByIdCommandHandler
             cancellationToken
         );
 
-        return upsertResult.LogIfFailed();
+        if (upsertResult.IsFailed)
+            return upsertResult.ToResult<PlexServerStatus>().LogIfFailed();
+
+        if (upsertResult.ValueOrDefault is null)
+        {
+            return ResultExtensions
+                .EntityNotFound(nameof(PlexServerConnection), plexServerStatus.PlexServerConnectionId)
+                .LogWarning();
+        }
+
+        return Result.Ok(upsertResult.ValueOrDefault);
     }
 }

@@ -2,6 +2,8 @@ using System.Net;
 using LukeHagar.PlexAPI.SDK;
 using LukeHagar.PlexAPI.SDK.Models.Components;
 using LukeHagar.PlexAPI.SDK.Models.Requests;
+using Reaparr.Application.Contracts;
+using Reaparr.PlexApi.Contracts;
 
 namespace Reaparr.PlexApi.UnitTests;
 
@@ -49,8 +51,10 @@ public class GetLibraryMediaTotalsCommandUnitTests : BaseUnitTest<GetLibraryMedi
         }
 
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClientAsync(library.PlexServerId, 10, 1, null))
-            .ReturnsAsync(Result.Ok(sdk.Object))
+            .Setup(x => x.CreateClientAsync(library.PlexServerId, 10, 1, null, It.IsAny<CancellationToken>()))
+            .Returns<int, int, int, Action<HttpRequestRetryProgress>?, CancellationToken>(
+                (_, _, _, _, _) => Task.FromResult(Result.Ok<IPlexAPI>(sdk.Object))
+            )
             .Verifiable(Times.Once());
 
         // Act

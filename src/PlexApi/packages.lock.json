@@ -37,6 +37,12 @@
           "Microsoft.Extensions.Options.ConfigurationExtensions": "9.0.10"
         }
       },
+      "Polly.Core": {
+        "type": "Direct",
+        "requested": "[8.6.6, )",
+        "resolved": "8.6.6",
+        "contentHash": "lCBL9mmhF9TZxHG3beVRkyjlLohkIC464xIAq7J7Y59C+z42hmsdUaeCKl2SIAYertOUU5TeBXyQDLDQGIKePQ=="
+      },
       "ByteSize": {
         "type": "Transitive",
         "resolved": "2.1.2",
