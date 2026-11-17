@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Net;
 using System.Text;
 using Moq.Contrib.HttpClient;
@@ -23,7 +24,7 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
 
 
     [Test]
-    public async Task ShouldPreserveOriginal401HtmlResponse_WhenPlexApiReturns401HtmlResponse()
+    public async Task ShouldNormalize401HtmlError_WhenPlexApiReturns401HtmlResponse()
     {
         const string expectedHtml = "<html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>";
         HttpHandlerMock
@@ -42,9 +43,12 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
         // Assert
         responseMessage.ShouldNotBeNull();
         responseMessage.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        responseMessage.Content.Headers.ContentType!.MediaType.ShouldBe(ContentType.TextHtml);
-        var html = await responseMessage.Content.ReadAsStringAsync(CancellationToken);
-        html.ShouldBe(expectedHtml);
+        responseMessage.Content.Headers.ContentType!.MediaType.ShouldBe(ContentType.ApplicationJson);
+        using var body = JsonDocument.Parse(await responseMessage.Content.ReadAsStringAsync(CancellationToken));
+        var error = body.RootElement.GetProperty("errors").EnumerateArray().Single();
+        error.GetProperty("code").GetInt32().ShouldBe(401);
+        error.GetProperty("status").GetInt32().ShouldBe(401);
+        error.GetProperty("message").GetString().ShouldBe("Unauthorized");
         HttpHandlerMock
             .Protected()
             .Verify("SendAsync", Times.Once(), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());
@@ -69,7 +73,7 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
     }
 
     [Test]
-    public async Task ShouldPreserveOriginal500HtmlResponse_WhenInternalServerErrorOccurs()
+    public async Task ShouldNormalize500HtmlError_WhenInternalServerErrorOccurs()
     {
         const string expectedHtml = "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>";
         HttpHandlerMock
@@ -85,9 +89,12 @@ public class PlexApiClientUnitTests : BaseUnitTest<Func<PlexApiClientOptions?, P
         // Assert
         responseMessage.ShouldNotBeNull();
         responseMessage.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
-        responseMessage.Content.Headers.ContentType!.MediaType.ShouldBe(ContentType.TextHtml);
-        var html = await responseMessage.Content.ReadAsStringAsync(CancellationToken);
-        html.ShouldBe(expectedHtml);
+        responseMessage.Content.Headers.ContentType!.MediaType.ShouldBe(ContentType.ApplicationJson);
+        using var body = JsonDocument.Parse(await responseMessage.Content.ReadAsStringAsync(CancellationToken));
+        var error = body.RootElement.GetProperty("errors").EnumerateArray().Single();
+        error.GetProperty("code").GetInt32().ShouldBe(500);
+        error.GetProperty("status").GetInt32().ShouldBe(500);
+        error.GetProperty("message").GetString().ShouldBe("Internal Server Error");
         HttpHandlerMock
             .Protected()
             .Verify("SendAsync", Times.Once(), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());

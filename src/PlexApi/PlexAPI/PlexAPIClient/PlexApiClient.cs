@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Reaparr.PlexApi;
 
 public sealed class PlexApiClient : IPlexApiClient
@@ -15,12 +17,32 @@ public sealed class PlexApiClient : IPlexApiClient
         _httpClient.DefaultRequestHeaders.Accept.Add(ContentType.ApplicationJsonHeaderValue);
     }
 
-    public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)
+    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)
     {
         request.SetRetryCount(_options.RetryCount);
         request.SetRetryProgressCallback(_options.RetryProgressAction);
         request.SetResponseBufferingTimeout(TimeSpan.FromSeconds(Math.Max(_options.Timeout, 1)));
-        return _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, _options.CancellationToken);
+        var response = await _httpClient.SendAsync(
+            request, HttpCompletionOption.ResponseContentRead, _options.CancellationToken);
+        if (!response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType == ContentType.TextHtml)
+        {
+            var originalContent = response.Content;
+            response.Content = JsonSerializer.Serialize(
+                new
+                {
+                    errors = new[]
+                    {
+                        new PlexError(response.ReasonPhrase ?? "Unknown Reason")
+                        {
+                            Code = (int)response.StatusCode,
+                            Status = (int)response.StatusCode,
+                        },
+                    },
+                },
+                DefaultJsonSerializerOptions.ConfigStandard).ToStringContent();
+            originalContent.Dispose();
+        }
+        return response;
     }
 
     public async Task<HttpRequestMessage> CloneAsync(HttpRequestMessage request)
