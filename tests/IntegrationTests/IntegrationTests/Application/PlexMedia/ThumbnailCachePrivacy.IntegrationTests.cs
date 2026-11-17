@@ -151,13 +151,17 @@ public class ThumbnailCachePrivacyIntegrationTests : BaseIntegrationTests
     }
 
     [Test]
-    [Arguments(200, "image/svg+xml", 502)]
-    [Arguments(404, "image/png", 404)]
-    [Arguments(401, "image/png", 601)]
+    [Arguments(200, "image/svg+xml", 502, false)]
+    [Arguments(200, "image/svg+xml", 502, true)]
+    [Arguments(404, "image/png", 404, false)]
+    [Arguments(404, "image/png", 404, true)]
+    [Arguments(401, "image/png", 601, false)]
+    [Arguments(401, "image/png", 601, true)]
     public async Task ShouldKeepThumbnailFailuresNonCacheable_WhenPlexRejectsTheImage(
         int upstreamStatus,
         string upstreamContentType,
-        int expectedStatus
+        int expectedStatus,
+        bool useCookieAuthentication
     )
     {
         // Arrange
@@ -188,18 +192,21 @@ public class ThumbnailCachePrivacyIntegrationTests : BaseIntegrationTests
                         });
                 };
             },
-            useTestAuthentication: false
+            useTestAuthentication: !useCookieAuthentication
         );
         var serverId = await container.DbContext.PlexServers.Select(server => server.Id).SingleAsync(CancellationToken);
         using var browser = container.GetApiClient();
-        browser.DefaultRequestHeaders.Remove("Authorization");
-        using var login = new MultipartFormDataContent
+        if (useCookieAuthentication)
         {
-            { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
-            { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
-        };
-        using var loginResponse = await browser.PostAsync(ApiRoutes.LoginEndpoint, login, CancellationToken);
-        loginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+            browser.DefaultRequestHeaders.Remove("Authorization");
+            using var login = new MultipartFormDataContent
+            {
+                { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
+                { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
+            };
+            using var loginResponse = await browser.PostAsync(ApiRoutes.LoginEndpoint, login, CancellationToken);
+            loginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
 
         // Act
         using var response = await browser.GetAsync(
