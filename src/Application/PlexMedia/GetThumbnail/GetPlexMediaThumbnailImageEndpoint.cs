@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Mime;
 using System.Net.Sockets;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Net.Http.Headers;
 
 namespace Reaparr.Application;
 
@@ -38,7 +40,7 @@ public class GetPlexMediaThumbnailImageEndpointRequestValidator : Validator<GetP
 
 /// <summary>
 /// High-performance thumbnail proxy endpoint with streaming response and in-memory caching
-/// for database lookups. Response caching is enabled for downstream caches (3 days).
+/// for database lookups. Browser-only response caching is enabled for 3 days.
 /// </summary>
 public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaThumbnailImageEndpointRequest, byte[]>
 {
@@ -69,9 +71,14 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
     {
         Get(ApiRoutes.PlexMediaController + "/thumbnail");
 
-        // Enable response caching headers for downstream caches (proxies, CDNs, browsers)
-        // 3 days = 259200 seconds, varied by query parameters
-        ResponseCache(259200, varyByQueryKeys: ["plexServerId", "plexKey", "metaDataKey", "width", "height"]);
+        // Authenticated images may be cached by the browser, never by shared proxies or CDNs.
+        // Preserve the 3-day lifetime and vary cached responses by session and thumbnail parameters.
+        ResponseCache(
+            259200,
+            ResponseCacheLocation.Client,
+            varyByHeader: HeaderNames.Cookie,
+            varyByQueryKeys: ["plexServerId", "plexKey", "metaDataKey", "width", "height"]
+        );
 
         Summary(s =>
         {
@@ -100,6 +107,8 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
 
     public override async Task HandleAsync(GetPlexMediaThumbnailImageEndpointRequest req, CancellationToken ct)
     {
+        HttpContext.Response.Headers[HeaderNames.XContentTypeOptions] = "nosniff";
+
 #pragma warning disable ASP0015
         HttpContext.Response.Headers.AccessControlAllowOrigin = "*";
         HttpContext.Response.Headers.AccessControlAllowMethods = "GET, OPTIONS";
@@ -107,14 +116,14 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
 #pragma warning restore ASP0015
 
         // Generate ETag based on the unique thumbnail parameters
-        var etag = $"\"{req.PlexServerId}-{req.PlexKey}-{req.MetaDataKey}-{req.Width}x{req.Height}\"";
+        var etag = $"\"v2-{req.PlexServerId}-{req.PlexKey}-{req.MetaDataKey}-{req.Width}x{req.Height}\"";
         HttpContext.Response.Headers.ETag = etag;
 
         // Check If-None-Match header for conditional request (304 Not Modified)
         var ifNoneMatch = HttpContext.Request.Headers.IfNoneMatch.ToString();
         if (!string.IsNullOrEmpty(ifNoneMatch) && ifNoneMatch == etag)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status304NotModified;
+            await Send.NotModifiedAsync(ct);
             return;
         }
 
@@ -217,7 +226,18 @@ public sealed class GetPlexMediaThumbnailImageEndpoint : Endpoint<GetPlexMediaTh
                 return;
             }
 
-            var contentType = response.Content.Headers.ContentType?.ToString() ?? "image/jpeg";
+            var contentType = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant()
+                ?? MediaTypeNames.Image.Jpeg;
+            if (!Domain.ContentType.IsPassiveImage(contentType))
+            {
+                HttpContext.Response.Headers.CacheControl = "no-store";
+                await Send.FluentResult(
+                    Result.Fail("Plex returned an unsupported image content type").Add502BadGatewayError(),
+                    ct
+                );
+                return;
+            }
+
             var contentLength = response.Content.Headers.ContentLength;
 
             if (contentLength.HasValue)

@@ -82,6 +82,84 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
     }
 
     [Test]
+    public async Task ShouldRejectOldCookieAndProtectedMutation_WhenPasswordIsUpdated()
+    {
+        // Arrange
+        using var container = await BaseContainer.Create(
+            LogFactory.Create<CredentialUpdatesIntegrationTests>(),
+            new Seed(17433),
+            useTestAuthentication: false
+        );
+        using var loginClient = container.GetApiClient();
+        loginClient.DefaultRequestHeaders.Remove("Authorization");
+        var loginResponse = await LoginAsync(
+            loginClient,
+            DefaultUserAppCredentials.DefaultUsername,
+            DefaultUserAppCredentials.DefaultPassword
+        );
+        loginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var oldCookie = loginResponse.Headers.GetValues("Set-Cookie")
+            .Single(x => x.StartsWith(DefaultUserAppCredentials.DefaultCookieName + "=", StringComparison.Ordinal))
+            .Split(';')[0];
+
+        using var authenticatedClient = container.GetApiClient();
+        authenticatedClient.DefaultRequestHeaders.Remove("Authorization");
+        authenticatedClient.DefaultRequestHeaders.Add("Cookie", oldCookie);
+        var updateRequest = new UpdateCredentialsEndpointRequest
+        {
+            Username = null,
+            Password = "Replacement-password-43!",
+        };
+
+        // Act
+        var updateResponse = await authenticatedClient.PutAsJsonAsync(
+            ApiRoutes.AuthenticatedController,
+            updateRequest
+        );
+
+        // Assert
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var updateResult = await updateResponse.Content.ReadFromJsonAsync<BaseResultDTO>();
+        updateResult.ShouldNotBeNull();
+        updateResult.IsSuccess.ShouldBeTrue();
+        updateResult.Errors.Count.ShouldBe(0);
+
+        using var staleSessionClient = container.GetApiClient();
+        staleSessionClient.DefaultRequestHeaders.Remove("Authorization");
+        staleSessionClient.DefaultRequestHeaders.Add("Cookie", oldCookie);
+        var staleProtectedResponse = await staleSessionClient.GetAsync(ApiRoutes.SettingsController + "/");
+        staleProtectedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        var staleMutationResponse = await staleSessionClient.PutAsJsonAsync(
+            ApiRoutes.AuthenticatedController,
+            new UpdateCredentialsEndpointRequest
+            {
+                Username = null,
+                Password = "Another-password-54!",
+            }
+        );
+        staleMutationResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        using var freshLoginClient = container.GetApiClient();
+        freshLoginClient.DefaultRequestHeaders.Remove("Authorization");
+        var freshLoginResponse = await LoginAsync(
+            freshLoginClient,
+            DefaultUserAppCredentials.DefaultUsername,
+            "Replacement-password-43!"
+        );
+        freshLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var freshCookie = freshLoginResponse.Headers.GetValues("Set-Cookie")
+            .Single(x => x.StartsWith(DefaultUserAppCredentials.DefaultCookieName + "=", StringComparison.Ordinal))
+            .Split(';')[0];
+
+        using var freshSessionClient = container.GetApiClient();
+        freshSessionClient.DefaultRequestHeaders.Remove("Authorization");
+        freshSessionClient.DefaultRequestHeaders.Add("Cookie", freshCookie);
+        var freshProtectedResponse = await freshSessionClient.GetAsync(ApiRoutes.SettingsController + "/");
+        freshProtectedResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
     [Arguments(true, false)]
     [Arguments(false, true)]
     [Arguments(true, true)]

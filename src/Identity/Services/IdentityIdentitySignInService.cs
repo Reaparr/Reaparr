@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FastEndpoints.Security;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 
@@ -27,13 +26,9 @@ public class IdentityIdentitySignInService : IIdentitySignInService
     ) => await _signInManager.PasswordSignInAsync(userName, password, isPersistent, lockoutOnFailure);
 
     /// <inheritdoc/>
-    public async Task SignInAsync(IEnumerable<Claim> claims, IEnumerable<string> roles)
+    public async Task SignInAsync(AppUser user, IEnumerable<Claim> claims)
     {
-        await CookieAuth.SignInAsync(u =>
-        {
-            u.Claims.AddRange(claims);
-            u.Roles.AddRange(roles);
-        });
+        await _signInManager.SignInWithClaimsAsync(user, isPersistent: true, additionalClaims: claims);
     }
 
     /// <inheritdoc/>

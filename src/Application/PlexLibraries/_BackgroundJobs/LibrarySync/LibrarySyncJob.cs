@@ -76,7 +76,7 @@ public class LibrarySyncJob : IJob
                     .Where(x => x.PlexServerId == _serverId && x.PlexLibraryId == _libraryId)
                     .FirstOrDefaultAsync(CancellationToken.None);
                 var queueStatus = queueItem?.Status ?? LibrarySyncJobStatus.Unknown;
-                if (queueStatus != LibrarySyncJobStatus.Processing)
+                if (queueStatus != LibrarySyncJobStatus.Processing || queueItem?.PlexLibrary?.IsEnabled != true)
                 {
                     shouldDispatch = false;
                     context.SetResult(JobStatus.Cancelled);

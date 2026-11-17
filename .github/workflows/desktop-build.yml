@@ -148,7 +148,7 @@ jobs:
 
             -   name: Install Velopack CLI
                 shell: bash
-                run: dotnet tool install -g vpk
+                run: dotnet tool install -g vpk --version 1.2.161
 
             -   name: Derive Velopack channel
                 shell: bash
@@ -256,7 +256,7 @@ jobs:
                     dotnet-version: 9.0.x
 
             -   name: Install Velopack CLI
-                run: dotnet tool install -g vpk
+                run: dotnet tool install -g vpk --version 1.2.161
 
             -   name: Derive Velopack channel
                 shell: bash

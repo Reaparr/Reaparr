@@ -281,7 +281,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
         builder.RegisterInstance(fileSystem);
         builder.RegisterInstance(runner.Object).As<IDesktopCommandRunner>();
         builder.RegisterInstance(logger).As<ILogger>();
-        using var container = builder.Build();
+        await using var container = builder.Build();
         var beforeFiles = fileSystem
             .Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
             .Order(StringComparer.Ordinal)
@@ -345,6 +345,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             .Order(StringComparer.Ordinal)
             .ShouldBe(beforeDirectories);
     }
+
 
     private static IContainer CreateBuildContainer(
         BuildPaths paths,

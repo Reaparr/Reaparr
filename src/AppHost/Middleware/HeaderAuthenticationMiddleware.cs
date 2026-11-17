@@ -1,6 +1,5 @@
 using System.Net;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Reaparr.Identity.Contracts;
 using Reaparr.Settings.Contracts;
 
@@ -136,18 +135,8 @@ public class HeaderAuthenticationMiddleware
             return;
         }
 
-        // Allow sign-in
-        var claims = await CreateUserClaims(user);
-        await _signInService.SignInAsync(claims, claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value));
-
-        context.User = new ClaimsPrincipal(
-            new ClaimsIdentity(
-                claims,
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                ClaimTypes.Name,
-                ClaimTypes.Role
-            )
-        );
+        var claims = new[] { new Claim("HeaderAuth", "true") };
+        await _signInService.SignInAsync(user, claims);
 
         if (_headerAuthentication.EnableLogging)
             _log.Here()
@@ -294,27 +283,4 @@ public class HeaderAuthenticationMiddleware
         };
     }
 
-    private async Task<List<Claim>> CreateUserClaims(AppUser user)
-    {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.Name, user.UserName ?? string.Empty),
-            new(ClaimTypes.NameIdentifier, user.Id),
-            new("HeaderAuth", "true"),
-        };
-
-        if (!string.IsNullOrEmpty(user.Email))
-        {
-            claims.Add(new Claim(ClaimTypes.Email, user.Email));
-        }
-
-        // Add role claims
-        var roles = await _userService.GetRolesAsync(user);
-        foreach (var role in roles)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, role));
-        }
-
-        return claims;
-    }
 }

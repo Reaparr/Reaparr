@@ -667,4 +667,140 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
                 Times.Never()
             );
     }
+    [Test]
+    public async Task ShouldNotClaimDisabledLibrary_WhenEnabledLibraryIsQueued()
+    {
+        // Arrange
+        await SetupDatabase(55208, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
+        var dbContext = IDbContext;
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        await dbContext.PlexLibraries
+            .Where(x => x.Id == libraries[1].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        dbContext.LibrarySyncJobQueues.AddRange(
+            libraries.Select(
+                (library, index) => new LibrarySyncJobQueue
+                {
+                    PlexServerId = library.PlexServerId,
+                    PlexLibraryId = library.Id,
+                    Priority = index == 1 ? 1 : 2,
+                    Status = LibrarySyncJobStatus.Queued,
+                    CreatedAt = DateTime.UtcNow,
+                }
+            )
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.IsSuccessful, true),
+            CancellationToken
+        );
+        var enabledKey = LibrarySyncJob.GetJobKey(libraries[0].PlexServerId, libraries[0].Id);
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.CheckExists(enabledKey, CancellationToken))
+            .ReturnsAsync(false)
+            .Verifiable(Times.Exactly(2));
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.ScheduleJob(
+                It.Is<IJobDetail>(job => job.Key.Equals(enabledKey)),
+                It.Is<ITrigger>(trigger => trigger.JobKey.Equals(enabledKey)),
+                CancellationToken))
+            .ReturnsAsync(DateTimeOffset.UtcNow)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync(new CheckQueuedPlexLibraryToSyncCommand());
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var after = await dbContext
+            .LibrarySyncJobQueues.IgnoreQueryFilters().OrderBy(x => x.PlexLibraryId)
+            .Select(x => new { x.PlexLibraryId, x.Status, x.StartedAt })
+            .ToListAsync(CancellationToken);
+        after.Select(x => new { x.PlexLibraryId, x.Status }).ShouldBe([
+            new { PlexLibraryId = libraries[0].Id, Status = LibrarySyncJobStatus.Processing },
+            new { PlexLibraryId = libraries[1].Id, Status = LibrarySyncJobStatus.Queued },
+        ]);
+        after[0].StartedAt.ShouldNotBeNull();
+        after[1].StartedAt.ShouldBeNull();
+        Mock.Mock<IScheduler>().Verify();
+        Mock.Mock<IScheduler>().Verify(
+            x => x.CheckExists(LibrarySyncJob.GetJobKey(libraries[1].PlexServerId, libraries[1].Id), It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+    }
+    [Test]
+    public async Task ShouldNotLetDisabledProcessingLibraryBlockEnabledQueueWork()
+    {
+        // Arrange
+        await SetupDatabase(55209, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 2;
+        });
+        var dbContext = IDbContext;
+        var libraries = await dbContext.PlexLibraries.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        await dbContext.PlexLibraries
+            .Where(x => x.Id == libraries[1].Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        var startedAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
+        dbContext.LibrarySyncJobQueues.AddRange(
+            new LibrarySyncJobQueue
+            {
+                PlexServerId = libraries[0].PlexServerId,
+                PlexLibraryId = libraries[0].Id,
+                Priority = 1,
+                Status = LibrarySyncJobStatus.Queued,
+                CreatedAt = startedAt,
+            },
+            new LibrarySyncJobQueue
+            {
+                PlexServerId = libraries[1].PlexServerId,
+                PlexLibraryId = libraries[1].Id,
+                Priority = 2,
+                Status = LibrarySyncJobStatus.Processing,
+                CreatedAt = startedAt,
+                StartedAt = startedAt,
+            }
+        );
+        await dbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.PlexServerStatuses.ExecuteUpdateAsync(
+            setters => setters.SetProperty(x => x.IsSuccessful, true),
+            CancellationToken
+        );
+        var enabledKey = LibrarySyncJob.GetJobKey(libraries[0].PlexServerId, libraries[0].Id);
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.CheckExists(enabledKey, CancellationToken))
+            .ReturnsAsync(false)
+            .Verifiable(Times.Exactly(2));
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.ScheduleJob(
+                It.Is<IJobDetail>(job => job.Key.Equals(enabledKey)),
+                It.Is<ITrigger>(trigger => trigger.JobKey.Equals(enabledKey)),
+                CancellationToken))
+            .ReturnsAsync(DateTimeOffset.UtcNow)
+            .Verifiable(Times.Once());
+
+        // Act
+        var result = await TestHandlerExecuteAsync(new CheckQueuedPlexLibraryToSyncCommand());
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var after = await dbContext
+            .LibrarySyncJobQueues.IgnoreQueryFilters().OrderBy(x => x.PlexLibraryId)
+            .Select(x => new { x.PlexLibraryId, x.Status, x.StartedAt })
+            .ToListAsync(CancellationToken);
+        after.Select(x => new { x.PlexLibraryId, x.Status }).ShouldBe([
+            new { PlexLibraryId = libraries[0].Id, Status = LibrarySyncJobStatus.Processing },
+            new { PlexLibraryId = libraries[1].Id, Status = LibrarySyncJobStatus.Processing },
+        ]);
+        after[0].StartedAt.ShouldNotBeNull();
+        after[1].StartedAt.ShouldBe(startedAt);
+        Mock.Mock<IScheduler>().Verify();
+    }
 }

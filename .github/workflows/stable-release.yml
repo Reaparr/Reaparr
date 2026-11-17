@@ -27,14 +27,12 @@ jobs:
         needs: [ validate-source-map-publishing ]
         runs-on: ubuntu-latest
         permissions:
-            contents: write # to be able to publish a GitHub release
-            issues: write # to be able to comment on released issues
-            pull-requests: write # to be able to comment on released pull requests
+            contents: read
         steps:
             -   name: Checkout source code
                 uses: actions/checkout@v7
                 with:
-                    token: ${{ secrets.GH_TOKEN }}
+                    persist-credentials: false
                     fetch-depth: 0
                     ref: dev
 

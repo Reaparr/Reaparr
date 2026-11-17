@@ -82,6 +82,65 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    [Test]
+    public async Task ShouldRejectCookie_WhenUserIsDeletedAndRecreated()
+    {
+        // Arrange
+        using var container = await CreateRealAuthenticationContainer(17019);
+        using var loginClient = CreateUnauthenticatedClient(container);
+        using var formData = new MultipartFormDataContent
+        {
+            { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
+            { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
+            { new StringContent("false"), "RememberMe" },
+        };
+        var loginResponse = await loginClient.PostAsync(ApiRoutes.LoginEndpoint, formData);
+        loginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var oldCookie = GetCookiePair(GetSingleAuthenticationCookie(loginResponse));
+
+        var userService = container.Resolve<IUserService>();
+        var existingUser = await userService.FindByNameAsync(DefaultUserAppCredentials.DefaultUsername);
+        existingUser.ShouldNotBeNull();
+        var existingUserId = existingUser!.Id;
+
+        // Act
+        var deleteResult = await userService.DeleteAsync(existingUser!);
+        var recreatedUser = new AppUser { UserName = DefaultUserAppCredentials.DefaultUsername };
+        var createResult = await userService.CreateAsync(recreatedUser, DefaultUserAppCredentials.DefaultPassword);
+
+        // Assert
+        deleteResult.Succeeded.ShouldBeTrue();
+        createResult.Succeeded.ShouldBeTrue();
+        recreatedUser.Id.ShouldNotBe(existingUserId);
+
+        using var staleClient = CreateUnauthenticatedClient(container);
+        staleClient.DefaultRequestHeaders.Add("Cookie", oldCookie);
+        var staleResponse = await staleClient.GetAsync(ApiRoutes.SettingsController + "/");
+        staleResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        var staleDeletedHeader = Microsoft.Net.Http.Headers.SetCookieHeaderValue.Parse(
+            GetSingleAuthenticationCookie(staleResponse)
+        );
+        staleDeletedHeader.Value.ToString().ShouldBeEmpty();
+        staleDeletedHeader.Expires.ShouldNotBeNull();
+        staleDeletedHeader.Expires.Value.ShouldBeLessThan(DateTimeOffset.UtcNow);
+
+        using var freshLoginClient = CreateUnauthenticatedClient(container);
+        using var freshFormData = new MultipartFormDataContent
+        {
+            { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
+            { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
+            { new StringContent("false"), "RememberMe" },
+        };
+        var freshLoginResponse = await freshLoginClient.PostAsync(ApiRoutes.LoginEndpoint, freshFormData);
+        freshLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var freshCookie = GetCookiePair(GetSingleAuthenticationCookie(freshLoginResponse));
+
+        using var freshClient = CreateUnauthenticatedClient(container);
+        freshClient.DefaultRequestHeaders.Add("Cookie", freshCookie);
+        var freshResponse = await freshClient.GetAsync(ApiRoutes.SettingsController + "/");
+        freshResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
     private static async Task<BaseContainer> CreateRealAuthenticationContainer(int seed) =>
         await BaseContainer.Create(
             LogFactory.Create<AuthenticationCookiePipelineIntegrationTests>(),

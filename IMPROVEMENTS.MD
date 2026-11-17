@@ -138,6 +138,69 @@ Deferred proposals, requests for details, and unanswered questions do not belong
 - **Affected code:** `src/Application/Update/_BackgroundJobs/CheckForUpdateJob/Commands/GetGitHubReleasesCommand.cs`; `CheckForUpdatesCommandHandler` fallback and update-check regression tests.
 - **Reason:** Not provided.
 
+## Security proposal 8 — 2026-11-16 — Replace the shared bootstrap administrator password
+
+- **Problem:** Fresh or locally reset installations create an unrestricted administrator using publicly knowable compile-time credentials until the owner changes them.
+- **Proposed fix:** Use installation-specific bootstrap credentials delivered through an owner-only provisioning channel, remove password logging, and preserve enrolled credentials across restarts.
+- **Affected code:** `src/Application/Authentication/CreateDefaultAppUser/CreateDefaultAppUserCommand.cs`; `src/Application.Contracts/Authentication/DefaultUserAppCredentials.cs`; bootstrap and reset regression tests.
+- **Reason:** Not provided.
+
+## Security proposal 9 — 2026-11-16 — Stop credentials leaking through diagnostic logs
+
+- **Problem:** DASH argument logging at Information level can disclose `X-Plex-Token`; raw curl, response-body, and malformed configuration logging can bypass named-property and whole-URL masking for embedded secrets.
+- **Proposed fix:** Replace secret-bearing raw diagnostic payloads with safe metadata and redact structured fields before serialization wherever payload diagnostics remain necessary; add logging-pipeline regression coverage.
+- **Affected code:** `src/External/DashMpdCliDownloader/DashMpdCliWrapper.cs`; `src/External/_Shared/Extensions/DashMpdCliOptionsExtensions.cs`; `PlexApiClient`; `ConfigManager`; `src/Logging/LogConfig.cs`; diagnostic logging regressions.
+- **Reason:** Not provided.
+
+## Security proposal 10 — 2026-11-16 — Constrain credential-bearing HTTP redirects
+
+- **Problem:** Automatically followed redirects can send requests, custom credential headers, and preserved write bodies to an origin other than the configured server; useful downstream exploit impact is not established.
+- **Proposed fix:** Disable automatic redirects on affected credential-bearing clients unless required by a supported flow, and approve any required redirect destination before issuing the next request while preserving approved LAN servers.
+- **Affected code:** `src/Application/_Shared/Config/Autofac/HttpClientModule.cs`; Radarr and Sonarr HTTP client factories; isolated redirect regression tests.
+- **Reason:** Not provided.
+
+## Security proposal 11 — 2026-11-16 — Bind release artifacts to the exact released commit
+
+- **Problem:** Moving-branch and default-ref checkouts combined with version-only downstream inputs do not enforce that tags, frontend, desktop binaries, and Docker images come from the same source commit.
+- **Proposed fix:** Resolve the immutable commit behind the release tag, pass that SHA through every contributing checkout, and make initial source selection explicit.
+- **Affected code:** `.github/workflows/dev-release.yml`; `.github/workflows/stable-release.yml`; `.github/workflows/desktop-build.yml`; release Docker build callers; `release.config.mjs`; provenance regression checks.
+- **Reason:** Not provided.
+
+## Security proposal 14 — 2026-11-17 — Require fresh authentication for credential replacement
+
+- **Problem:** An authenticated session can replace local application credentials without fresh authentication; external-provider step-up would require a provider-specific integration absent from the current trusted-header contract.
+- **Proposed fix:** Require current-password verification for local users and verified external-provider reauthentication for proxy users before either username or password replacement.
+- **Affected code:** `src/Application/Authentication/UpdateCredentials/UpdateCredentialsEndpoint.cs`; local sign-in and trusted-header authentication; frontend credential form and API callers; authentication regression tests.
+- **Reason:** The user asked to skip this fix because its scope had grown beyond their expectations: "skip this fix, i didnt go it would go this far".
+
+## Security proposal 15 — 2026-11-16 — Give native media subprocesses an explicit environment
+
+- **Problem:** The DASH subprocess inherits the application environment because configured temporary-directory values overlay rather than replace parent variables; no code execution or secret theft is established.
+- **Proposed fix:** Start native media tools with an empty environment and allowlist only demonstrated operational variables, preserving supported proxy, certificate, locale, helper-path, and temporary-directory behavior.
+- **Affected code:** `src/Application/PlexDownloads/_BackgroundJobs/DownloadJob/DashDownloadClient/DashPlexDownloadClient.cs`; `src/External/DashMpdCliDownloader/DashMpdCliWrapper.cs`; subprocess environment regressions.
+- **Reason:** Not provided.
+
+## Security proposal 18 — 2026-11-16 — Validate imported Plex destination approval requirements
+
+- **Problem:** Discovery-supplied server URLs are persisted and probed, but whether a remote server owner can supply a recipient-private destination through Plex discovery remains unverified; no exploitable SSRF is established.
+- **Proposed fix:** First validate the discovery contract using primary sources and safe local fixtures; only if the boundary is proven, propose approval before first contact and identity consistency checks before credential-bearing use while preserving intended LAN servers.
+- **Affected code:** `src/PlexApi/PlexAccount/GetAccessiblePlexServers/GetAccessiblePlexServersCommandHandler.cs`; `src/PlexApi/PlexServer/GetServerStatus/GetServerStatusCommandHandler.cs`; discovery persistence and probe callers.
+- **Reason:** Not provided.
+
+## Security proposal 19 — 2026-11-16 — Validate shared-download link substitution risk
+
+- **Problem:** The move copier follows pathname links and validates size after copying; cross-principal disclosure requires unverified shared-directory permissions, a replaceable source, a readable destination, and the copy branch.
+- **Proposed fix:** First establish those conditions using source and an adequate separate-identity sandbox with dummy files; only if proven, propose root-bound, link-safe file opening with retained handles, without reopening destination staging or filename collision proposals.
+- **Affected code:** `src/Application/PlexDownloads/_BackgroundJobs/MoveDownloadFileJob/Commands/MoveFileWithResumeCommand.cs`; move callers and deployment filesystem permissions.
+- **Reason:** Not provided.
+
+## Security proposal 20 — 2026-11-16 — Establish desktop updater publisher authentication
+
+- **Problem:** Velopack package size and checksum verification is established, but independent publisher authentication across native updater and operating-system signing enforcement remains unverified.
+- **Proposed fix:** First trace the pinned library, native updater, packaging settings, and supported platform signing rules; validate safe dummy-package rejection where possible, and seek approval before adding any signing or publisher-verification mechanism.
+- **Affected code:** `src/Application/_Shared/Config/Autofac/ApplicationModule.cs`; `tools/Build/Workflows/DesktopPackageWorkflow.cs`; pinned Velopack library and native updater; supported-platform signing configuration.
+- **Reason:** Not provided.
+
 ## Record format
 
 For each denial, record:

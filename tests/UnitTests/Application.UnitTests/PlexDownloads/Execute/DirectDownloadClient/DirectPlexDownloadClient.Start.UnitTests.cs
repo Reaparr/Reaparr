@@ -15,6 +15,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         Storage,
         UnauthorizedStorage,
         HttpRequest,
+        HttpIOException,
         Argument,
         NotSupported,
         Format,
@@ -2130,6 +2131,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
     [Arguments(CompletionFailureKind.Storage, DomainDownloadStatus.StorageError)]
     [Arguments(CompletionFailureKind.UnauthorizedStorage, DomainDownloadStatus.StorageError)]
     [Arguments(CompletionFailureKind.HttpRequest, DomainDownloadStatus.Error)]
+    [Arguments(CompletionFailureKind.HttpIOException, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.Argument, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.NotSupported, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.Format, DomainDownloadStatus.Error)]
@@ -2160,6 +2162,11 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             CompletionFailureKind.Storage => new IOException("Disk write failed."),
             CompletionFailureKind.UnauthorizedStorage => new UnauthorizedAccessException("Access denied."),
             CompletionFailureKind.HttpRequest => new HttpRequestException("Connection reset."),
+            CompletionFailureKind.HttpIOException => new HttpIOException(
+                HttpRequestError.ResponseEnded,
+                "The response ended prematurely.",
+                null!
+            ),
             CompletionFailureKind.Argument => new ArgumentException("Invalid downloader argument."),
             CompletionFailureKind.NotSupported => new NotSupportedException("Unsupported operation."),
             CompletionFailureKind.Format => new FormatException("Malformed response."),
@@ -2174,6 +2181,17 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                     It.IsAny<DownloadTaskKey>(),
                     DomainDownloadStatus.Downloading,
                     It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once());
+        Mock.Mock<IDownloadTaskUpdateDispatcher>()
+            .Setup(x =>
+                x.OnStatusChangedAsync(
+                    It.Is<DownloadTaskKey>(key => key == downloadTask.ToKey()),
+                    expectedStatus,
+                    It.Is<Result>(failure => failure.IsFailed && failure.ToString().Contains(exception.Message)),
+                    CancellationToken.None
                 )
             )
             .Returns(Task.CompletedTask)

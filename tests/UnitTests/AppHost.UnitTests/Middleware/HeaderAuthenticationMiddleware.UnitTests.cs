@@ -790,7 +790,6 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
 
         // Configure UserService mock in AutoMock
         Mock.Mock<IUserService>().Setup(x => x.FindByNameAsync(TEST_USERNAME)).ReturnsAsync(testUser);
-        Mock.Mock<IUserService>().Setup(x => x.GetRolesAsync(testUser)).ReturnsAsync(["User"]);
 
         SetupAuthenticationSettings(authSettings.HeaderAuthentication);
 
@@ -842,7 +841,6 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
 
         // Configure UserService mock in AutoMock
         Mock.Mock<IUserService>().Setup(x => x.FindByEmailAsync(TEST_EMAIL)).ReturnsAsync(testUser);
-        Mock.Mock<IUserService>().Setup(x => x.GetRolesAsync(testUser)).ReturnsAsync(["User"]);
 
         SetupAuthenticationSettings(authSettings.HeaderAuthentication);
 
@@ -1058,10 +1056,10 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
 
     #endregion
 
-    #region Claims Creation Tests
+    #region Header Sign-In Tests
 
     [Test]
-    public async Task ShouldCreateCorrectClaims_WhenUserAuthenticatedSuccessfully()
+    public async Task ShouldSignInMappedUserWithHeaderMarker_WhenUserAuthenticatedSuccessfully()
     {
         // Arrange
         var context = CreateHttpContext();
@@ -1094,19 +1092,18 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
 
         // Configure UserService mock in AutoMock
         Mock.Mock<IUserService>().Setup(x => x.FindByNameAsync(TEST_USERNAME)).ReturnsAsync(testUser);
-        Mock.Mock<IUserService>().Setup(x => x.GetRolesAsync(testUser)).ReturnsAsync(["User", "Admin"]);
 
         SetupAuthenticationSettings(authSettings.HeaderAuthentication);
 
+        var signedInUser = (AppUser?)null;
         var signedInClaims = new List<Claim>();
-        var signedInRoles = new List<string>();
         Mock.Mock<IIdentitySignInService>()
-            .Setup(x => x.SignInAsync(It.IsAny<IEnumerable<Claim>>(), It.IsAny<IEnumerable<string>>()))
-            .Callback<IEnumerable<Claim>, IEnumerable<string>>(
-                (claims, roles) =>
+            .Setup(x => x.SignInAsync(testUser, It.IsAny<IEnumerable<Claim>>()))
+            .Callback<AppUser, IEnumerable<Claim>>(
+                (user, claims) =>
                 {
+                    signedInUser = user;
                     signedInClaims.AddRange(claims);
-                    signedInRoles.AddRange(roles);
                 }
             )
             .Returns(Task.CompletedTask)
@@ -1120,186 +1117,11 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
         nextCalled.ShouldBeTrue();
         next.Verify(x => x(context), Times.Once);
         Mock.Mock<IUserService>().Verify(x => x.FindByNameAsync(TEST_USERNAME), Times.Once);
-        Mock.Mock<IUserService>().Verify(x => x.GetRolesAsync(testUser), Times.Once);
-        context.User.Identity.ShouldNotBeNull();
-        context.User.Identity.IsAuthenticated.ShouldBeTrue();
-        context.User.Identity.Name.ShouldBe(TEST_USERNAME);
-        var nameIdentifierClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
-        nameIdentifierClaim.ShouldNotBeNull();
-        nameIdentifierClaim.Value.ShouldBe(TEST_USER_ID);
-        var headerAuthClaim = context.User.FindFirst("HeaderAuth");
-        headerAuthClaim.ShouldNotBeNull();
-        headerAuthClaim.Value.ShouldBe("true");
-        var emailClaim = context.User.FindFirst(ClaimTypes.Email);
-        emailClaim.ShouldNotBeNull();
-        emailClaim.Value.ShouldBe(TEST_EMAIL);
-        context.User.IsInRole("User").ShouldBeTrue();
-        context.User.IsInRole("Admin").ShouldBeTrue();
-        signedInClaims.Select(x => (x.Type, x.Value)).ShouldBe(context.User.Claims.Select(x => (x.Type, x.Value)));
-        signedInRoles.ShouldBe(["User", "Admin"]);
+        signedInUser.ShouldBeSameAs(testUser);
+        signedInClaims.Count.ShouldBe(1);
+        signedInClaims[0].Type.ShouldBe("HeaderAuth");
+        signedInClaims[0].Value.ShouldBe("true");
         Mock.Mock<IIdentitySignInService>().Verify();
-    }
-
-    [Test]
-    public async Task ShouldCreateClaimsWithoutEmail_WhenUserHasNoEmail()
-    {
-        // Arrange
-        var context = CreateHttpContext();
-        context.Request.Headers[TEST_HEADER_NAME] = TEST_USERNAME;
-        context.Connection.RemoteIpAddress = IPAddress.Parse("192.168.1.1");
-
-        var nextCalled = false;
-        var next = new Mock<RequestDelegate>();
-        next.Setup(x => x(context))
-            .Returns(() =>
-            {
-                nextCalled = true;
-                return Task.CompletedTask;
-            });
-
-        var headerAuthSettings = new HeaderAuthenticationSettings
-        {
-            Enabled = true,
-            MappingType = HeaderMappingType.Username,
-            TrustedProxies = ["192.168.1.0/24"],
-            EnableLogging = false,
-            MaxHeaderLength = 100,
-            RequireHttps = false,
-        };
-
-        var authSettings = AuthenticationModule.Create();
-        authSettings.HeaderAuthentication = headerAuthSettings;
-
-        var testUser = new AppUser
-        {
-            Id = TEST_USER_ID,
-            UserName = TEST_USERNAME,
-            Email = null, // No email
-        };
-
-        // Configure UserService mock in AutoMock
-        Mock.Mock<IUserService>().Setup(x => x.FindByNameAsync(TEST_USERNAME)).ReturnsAsync(testUser);
-        Mock.Mock<IUserService>().Setup(x => x.GetRolesAsync(testUser)).ReturnsAsync(["User"]);
-
-        SetupAuthenticationSettings(authSettings.HeaderAuthentication);
-
-        // Act
-        var sut = Mock.Create<HeaderAuthenticationMiddleware>(new TypedParameter(typeof(RequestDelegate), next.Object));
-        await sut.InvokeAsync(context);
-
-        // Assert
-        nextCalled.ShouldBeTrue();
-        next.Verify(x => x(context), Times.Once);
-        Mock.Mock<IUserService>().Verify(x => x.FindByNameAsync(TEST_USERNAME), Times.Once);
-        Mock.Mock<IUserService>().Verify(x => x.GetRolesAsync(testUser), Times.Once);
-    }
-
-    [Test]
-    public async Task ShouldCreateClaimsWithEmptyEmail_WhenUserHasEmptyEmail()
-    {
-        // Arrange
-        var context = CreateHttpContext();
-        context.Request.Headers[TEST_HEADER_NAME] = TEST_USERNAME;
-        context.Connection.RemoteIpAddress = IPAddress.Parse("192.168.1.1");
-
-        var nextCalled = false;
-        var next = new Mock<RequestDelegate>();
-        next.Setup(x => x(context))
-            .Returns(() =>
-            {
-                nextCalled = true;
-                return Task.CompletedTask;
-            });
-
-        var headerAuthSettings = new HeaderAuthenticationSettings
-        {
-            Enabled = true,
-            MappingType = HeaderMappingType.Username,
-            TrustedProxies = ["192.168.1.0/24"],
-            EnableLogging = false,
-            MaxHeaderLength = 100,
-            RequireHttps = false,
-        };
-
-        var authSettings = AuthenticationModule.Create();
-        authSettings.HeaderAuthentication = headerAuthSettings;
-
-        var testUser = new AppUser
-        {
-            Id = TEST_USER_ID,
-            UserName = TEST_USERNAME,
-            Email = "", // Empty email
-        };
-
-        // Configure UserService mock in AutoMock
-        Mock.Mock<IUserService>().Setup(x => x.FindByNameAsync(TEST_USERNAME)).ReturnsAsync(testUser);
-        Mock.Mock<IUserService>().Setup(x => x.GetRolesAsync(testUser)).ReturnsAsync(["User"]);
-
-        SetupAuthenticationSettings(authSettings.HeaderAuthentication);
-
-        // Act
-        var sut = Mock.Create<HeaderAuthenticationMiddleware>(new TypedParameter(typeof(RequestDelegate), next.Object));
-        await sut.InvokeAsync(context);
-
-        // Assert
-        nextCalled.ShouldBeTrue();
-        next.Verify(x => x(context), Times.Once);
-        Mock.Mock<IUserService>().Verify(x => x.FindByNameAsync(TEST_USERNAME), Times.Once);
-        Mock.Mock<IUserService>().Verify(x => x.GetRolesAsync(testUser), Times.Once);
-    }
-
-    [Test]
-    public async Task ShouldCreateClaimsWithEmptyUsername_WhenUserHasNullUsername()
-    {
-        // Arrange
-        var context = CreateHttpContext();
-        context.Request.Headers[TEST_HEADER_NAME] = TEST_USERNAME;
-        context.Connection.RemoteIpAddress = IPAddress.Parse("192.168.1.1");
-
-        var nextCalled = false;
-        var next = new Mock<RequestDelegate>();
-        next.Setup(x => x(context))
-            .Returns(() =>
-            {
-                nextCalled = true;
-                return Task.CompletedTask;
-            });
-
-        var headerAuthSettings = new HeaderAuthenticationSettings
-        {
-            Enabled = true,
-            MappingType = HeaderMappingType.Username,
-            TrustedProxies = ["192.168.1.0/24"],
-            EnableLogging = false,
-            MaxHeaderLength = 100,
-            RequireHttps = false,
-        };
-
-        var authSettings = AuthenticationModule.Create();
-        authSettings.HeaderAuthentication = headerAuthSettings;
-
-        var testUser = new AppUser
-        {
-            Id = TEST_USER_ID,
-            UserName = null, // Null username
-            Email = TEST_EMAIL,
-        };
-
-        // Configure UserService mock in AutoMock
-        Mock.Mock<IUserService>().Setup(x => x.FindByNameAsync(TEST_USERNAME)).ReturnsAsync(testUser);
-        Mock.Mock<IUserService>().Setup(x => x.GetRolesAsync(testUser)).ReturnsAsync(["User"]);
-
-        SetupAuthenticationSettings(authSettings.HeaderAuthentication);
-
-        // Act
-        var sut = Mock.Create<HeaderAuthenticationMiddleware>(new TypedParameter(typeof(RequestDelegate), next.Object));
-        await sut.InvokeAsync(context);
-
-        // Assert
-        nextCalled.ShouldBeTrue();
-        next.Verify(x => x(context), Times.Once);
-        Mock.Mock<IUserService>().Verify(x => x.FindByNameAsync(TEST_USERNAME), Times.Once);
-        Mock.Mock<IUserService>().Verify(x => x.GetRolesAsync(testUser), Times.Once);
     }
 
     #endregion
@@ -1899,41 +1721,6 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
         await Should.ThrowAsync<InvalidOperationException>(async () => await Sut.InvokeAsync(context));
     }
 
-    [Test]
-    public async Task ShouldHandleRoleServiceException_WhenRoleServiceThrows()
-    {
-        // Arrange
-        var context = CreateHttpContext();
-        context.Request.Headers[TEST_HEADER_NAME] = TEST_USERNAME;
-        context.Connection.RemoteIpAddress = IPAddress.Parse("192.168.1.1");
-
-        var headerAuthSettings = new HeaderAuthenticationSettings
-        {
-            Enabled = true,
-            MappingType = HeaderMappingType.Username,
-            TrustedProxies = ["192.168.1.0/24"],
-            EnableLogging = false,
-            MaxHeaderLength = 100,
-            RequireHttps = false,
-        };
-
-        var authSettings = AuthenticationModule.Create();
-        authSettings.HeaderAuthentication = headerAuthSettings;
-
-        var testUser = CreateTestUser();
-
-        // Configure UserService mock in AutoMock
-        Mock.Mock<IUserService>().Setup(x => x.FindByNameAsync(TEST_USERNAME)).ReturnsAsync(testUser);
-        Mock.Mock<IUserService>()
-            .Setup(x => x.GetRolesAsync(testUser))
-            .ThrowsAsync(new InvalidOperationException("Role service unavailable"));
-
-        SetupAuthenticationSettings(authSettings.HeaderAuthentication);
-
-        // Act & Assert
-        await Should.ThrowAsync<InvalidOperationException>(async () => await Sut.InvokeAsync(context));
-    }
-
     #endregion
 
     #region Boundary Value Tests
@@ -2100,7 +1887,6 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
 
         // Configure UserService mock in AutoMock
         Mock.Mock<IUserService>().Setup(x => x.FindByNameAsync(TEST_USERNAME)).ReturnsAsync(testUser);
-        Mock.Mock<IUserService>().Setup(x => x.GetRolesAsync(testUser)).ReturnsAsync(["User", "Admin"]);
 
         SetupAuthenticationSettings(authSettings.HeaderAuthentication);
 
@@ -2114,7 +1900,6 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
         nextCalled.ShouldBeTrue();
         next.Verify(x => x(context), Times.Once);
         Mock.Mock<IUserService>().Verify(x => x.FindByNameAsync(TEST_USERNAME), Times.Once);
-        Mock.Mock<IUserService>().Verify(x => x.GetRolesAsync(testUser), Times.Once);
 
         var logEvents = TestCorrelator.GetLogEventsFromCurrentContext();
         logEvents.ShouldContain(e => e.MessageTemplate.Text.Contains("User authenticated via header"));
@@ -2213,7 +1998,7 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
 
         // Configure IdentitySignInService mock in AutoMock
         Mock.Mock<IIdentitySignInService>()
-            .Setup(x => x.SignInAsync(It.IsAny<IEnumerable<Claim>>(), It.IsAny<IEnumerable<string>>()))
+            .Setup(x => x.SignInAsync(It.IsAny<AppUser>(), It.IsAny<IEnumerable<Claim>>()))
             .Returns(Task.CompletedTask);
     }
 
@@ -2223,7 +2008,7 @@ public class HeaderAuthenticationMiddlewareUnitTests : BaseUnitTest<HeaderAuthen
 
         // Ensure IIdentitySignInService is always mocked for tests that might reach authentication
         Mock.Mock<IIdentitySignInService>()
-            .Setup(x => x.SignInAsync(It.IsAny<IEnumerable<Claim>>(), It.IsAny<IEnumerable<string>>()))
+            .Setup(x => x.SignInAsync(It.IsAny<AppUser>(), It.IsAny<IEnumerable<Claim>>()))
             .Returns(Task.CompletedTask);
     }
 

@@ -17,5 +17,5 @@ public interface IIdentitySignInService
     /// </summary>
     Task SignOutAsync();
 
-    Task SignInAsync(IEnumerable<Claim> claims, IEnumerable<string> roles);
+    Task SignInAsync(AppUser user, IEnumerable<Claim> claims);
 }

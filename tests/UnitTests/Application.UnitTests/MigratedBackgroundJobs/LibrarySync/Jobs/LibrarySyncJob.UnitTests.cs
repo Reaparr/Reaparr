@@ -791,4 +791,49 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         await Sut.Execute(context);
         await Mock.Create<LibrarySyncJobListener>().JobWasExecuted(context, null, CancellationToken);
     }
+    [Test]
+    public async Task ShouldCancelWithoutSyncing_WhenLibraryIsDisabledAfterScheduling()
+    {
+        // Arrange
+        await SetupDatabase(55109, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+        });
+        var dbContext = IDbContext;
+        var library = await dbContext.PlexLibraries.SingleAsync(CancellationToken);
+        var startedAt = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);
+        dbContext.LibrarySyncJobQueues.Add(new LibrarySyncJobQueue
+        {
+            PlexServerId = library.PlexServerId,
+            PlexLibraryId = library.Id,
+            Priority = 1,
+            Status = LibrarySyncJobStatus.Processing,
+            CreatedAt = startedAt,
+            StartedAt = startedAt,
+        });
+        await dbContext.SaveChangesAsync(CancellationToken);
+        await dbContext.PlexLibraries
+            .Where(x => x.Id == library.Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
+        var context = SetupJobContext(library.PlexServerId, library.Id);
+        SetupBeginJob();
+
+        // Act
+        await Sut.Execute(context.Object);
+
+        // Assert
+        var after = await dbContext.LibrarySyncJobQueues.IgnoreQueryFilters().SingleAsync(CancellationToken);
+        after.Status.ShouldBe(LibrarySyncJobStatus.Processing);
+        after.StartedAt.ShouldBe(startedAt);
+        context.Object.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);
+        Mock.Mock<ICommandExecutor>().Verify(
+            x => x.Send(It.IsAny<RefreshLibraryMediaCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never());
+        Mock.Mock<IMediaOverviewRebuildCoordinator>().Verify(
+            x => x.AcquireLibrarySyncLeaseAsync(It.IsAny<CancellationToken>()),
+            Times.Never()
+        );
+        Mock.Mock<ITelemetry>().Verify();
+    }
 }
