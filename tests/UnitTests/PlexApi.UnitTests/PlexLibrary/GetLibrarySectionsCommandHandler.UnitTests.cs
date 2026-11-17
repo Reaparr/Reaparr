@@ -108,8 +108,8 @@ public class GetLibrarySectionsCommandHandlerUnitTests : BaseUnitTest<GetLibrary
             )
             .Verifiable(Times.Once());
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
-            .Returns(sdk.Object)
+            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>(), It.IsAny<CancellationToken>()))
+            .Returns<string, PlexApiClientOptions, CancellationToken>((_, _, _) => sdk.Object)
             .Verifiable(Times.Once());
 
         // Act

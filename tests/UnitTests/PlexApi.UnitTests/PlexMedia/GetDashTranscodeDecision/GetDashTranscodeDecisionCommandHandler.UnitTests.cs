@@ -10,6 +10,13 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
 {
     private static GetDashTranscodeDecisionCommand CreateCommand(int plexServerId) =>
         new(plexServerId, new TranscodeDecisionRequest("/library/metadata/56828"));
+    private void SetupFactory(Mock<IPlexAPI> plexApiMock)
+    {
+        Mock.Mock<IPlexApiClientFactory>()
+            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>(), It.IsAny<CancellationToken>()))
+            .Returns<string, PlexApiClientOptions, CancellationToken>((_, _, _) => plexApiMock.Object)
+            .Verifiable(Times.Once());
+    }
 
     [Test]
     public async Task ShouldReturnFailedResult_WhenPlexServerHasNoToken()
@@ -24,7 +31,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
         var command = CreateCommand(plexServer.Id);
 
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
+            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>(), It.IsAny<CancellationToken>()))
             .Returns(new Mock<IPlexAPI>().Object)
             .Verifiable(Times.Never);
 
@@ -36,7 +43,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
         result.Errors.ShouldContain(x => x.Message.Contains("authenticationToken"));
 
         Mock.Mock<IPlexApiClientFactory>()
-            .Verify(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()), Times.Never());
+            .Verify(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -65,10 +72,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
             .ReturnsAsync(decisionResponse)
             .Verifiable(Times.Once);
 
-        Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
-            .Returns(plexApiMock.Object)
-            .Verifiable(Times.Once);
+        SetupFactory(plexApiMock);
 
         var command = CreateCommand(plexServer.Id);
 
@@ -105,10 +109,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
             .ReturnsAsync(decisionResponse)
             .Verifiable(Times.Once);
 
-        Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
-            .Returns(plexApiMock.Object)
-            .Verifiable(Times.Once);
+        SetupFactory(plexApiMock);
 
         var command = CreateCommand(plexServer.Id);
 
@@ -156,10 +157,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
             .ReturnsAsync(decisionResponse)
             .Verifiable(Times.Once);
 
-        Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
-            .Returns(plexApiMock.Object)
-            .Verifiable(Times.Once);
+        SetupFactory(plexApiMock);
 
         var command = CreateCommand(plexServer.Id);
 
@@ -301,10 +299,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
             .ReturnsAsync(decisionResponse)
             .Verifiable(Times.Once);
 
-        Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
-            .Returns(plexApiMock.Object)
-            .Verifiable(Times.Once);
+        SetupFactory(plexApiMock);
 
         var command = CreateCommand(plexServer.Id);
 
@@ -377,10 +372,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
             .ReturnsAsync(decisionResponse)
             .Verifiable(Times.Once);
 
-        Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
-            .Returns(plexApiMock.Object)
-            .Verifiable(Times.Once);
+        SetupFactory(plexApiMock);
 
         var command = CreateCommand(plexServer.Id);
 
@@ -422,10 +414,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
             .ReturnsAsync(decisionResponse)
             .Verifiable(Times.Once);
 
-        Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
-            .Returns(plexApiMock.Object)
-            .Verifiable(Times.Once);
+        SetupFactory(plexApiMock);
 
         var command = CreateCommand(plexServer.Id);
 
@@ -471,10 +460,7 @@ public class GetDashTranscodeDecisionCommandHandlerUnitTests : BaseUnitTest<GetD
             .ReturnsAsync(decisionResponse)
             .Verifiable(Times.Once);
 
-        Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions>()))
-            .Returns(plexApiMock.Object)
-            .Verifiable(Times.Once);
+        SetupFactory(plexApiMock);
 
         var command = CreateCommand(plexServer.Id);
 

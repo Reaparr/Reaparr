@@ -11,7 +11,7 @@ namespace Reaparr.PlexApi;
 public static class HttpClientExtensions
 {
     /// <summary>
-    /// This will convert from SpeakEasy exceptions to the use of FluentResults
+    /// Converts a generated Plex SDK operation into a Result while preserving its raw response and exception.
     /// </summary>
     /// <param name="operation"> The SpeakEasy Plex SDK endpoint method to convert the result for </param>
     /// <param name="cancellationToken">A token that cancels the HTTP call.</param>
@@ -25,70 +25,83 @@ public static class HttpClientExtensions
     {
         try
         {
-            if (cancellationToken.IsCancellationRequested)
-                return ResultExtensions.TaskIsCancelled(nameof(ToResponse)).LogWarning();
-
-            var response = await operation.WaitAsync(cancellationToken);
-
-            var httpResponseMessage = response.GetHttpResponseMessage();
-
-            if (!httpResponseMessage.IsSuccessStatusCode)
-                return httpResponseMessage.FromSdkExceptionToResult<T>();
-
-            return Result.Ok(response);
+            var response = await operation.ConfigureAwait(false);
+            var httpResponse = response.GetHttpResponseMessage();
+            return httpResponse.IsSuccessStatusCode
+                ? Result.Ok(response).AddStatusCode(httpResponse.StatusCode)
+                : httpResponse.FromSdkExceptionToResult<T>();
         }
-        catch (SDKException e)
+        catch (SDKException sdkException)
         {
-            return e.RawResponse.FromSdkExceptionToResult<T>();
+            return sdkException.RawResponse
+                .FromSdkExceptionToResult<T>()
+                .WithError(new ExceptionalError(sdkException));
         }
-        catch (JsonSerializationException e)
+        catch (ResponseValidationException responseValidationException)
         {
-            return Result.Fail(new ExceptionalError(e)).LogError();
+            return Result
+                .Fail<T>(
+                    new ExceptionalError(responseValidationException)
+                        .WithMetadata("json body", responseValidationException.Body)
+                )
+                .LogError();
         }
-        catch (ResponseValidationException e)
+        catch (PlexAPIError plexApiError)
         {
-            return Result.Fail(new ExceptionalError(e).WithMetadata("json body", e.Body)).LogError();
+            var errors = GetPlexErrors(plexApiError);
+            return plexApiError.RawResponse
+                .FromSdkExceptionToResult<T>(errors)
+                .WithError(new ExceptionalError(plexApiError));
+        }
+        catch (JsonSerializationException jsonSerializationException)
+        {
+            return Result.Fail<T>(new ExceptionalError(jsonSerializationException)).LogError();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return ResultExtensions.TaskIsCancelled(nameof(ToResponse)).LogWarning();
+            return Result.Fail<T>(
+                (FluentResults.Error)ResultExtensions.TaskIsCancelled(nameof(ToResponse)).Errors[0]
+            );
         }
-        catch (TaskCanceledException e)
+        catch (TaskCanceledException taskCanceledException)
         {
-            return ResultExtensions.Create408RequestTimeoutError().WithError(new ExceptionalError(e)).LogWarning();
+            return Result.Fail<T>(new ExceptionalError(taskCanceledException)).Add408RequestTimeoutError().LogWarning();
         }
-        catch (HttpRequestException e)
+        catch (Polly.Timeout.TimeoutRejectedException timeoutRejectedException)
         {
-            return ResultExtensions.Create502BadGatewayResult().WithError(new ExceptionalError(e)).LogWarning();
+            return Result.Fail<T>(new ExceptionalError(timeoutRejectedException)).Add408RequestTimeoutError().LogWarning();
         }
-        catch (Exception e)
+        catch (HttpRequestException httpRequestException)
         {
-            var errorsProperty = e.GetType().GetProperty("Errors");
-            var rawResponseProperty = e.GetType().GetProperty("RawResponse");
-
-            if (errorsProperty != null && rawResponseProperty != null)
+            return Result.Fail<T>(new ExceptionalError(httpRequestException)).Add502BadGatewayError().LogWarning();
+        }
+        catch (Exception exception)
+        {
+            var rawResponse = exception.GetType().GetProperty(nameof(PostUsersSignInDataResponse.RawResponse))?.GetValue(exception)
+                as HttpResponseMessage;
+            var errorsValue = exception.GetType().GetProperty("Errors")?.GetValue(exception);
+            if (rawResponse is not null)
             {
-                var rawResponse = rawResponseProperty.GetValue(e);
-                if (rawResponse is null)
-                    return Result.Fail(new ExceptionalError(e)).LogError();
-
-                var errors = errorsProperty.GetValue(e);
-                var parsedErrors = JsonSerializer.Deserialize<List<PlexError>>(JsonSerializer.Serialize(errors));
-
-                return ((HttpResponseMessage)rawResponse).FromSdkExceptionToResult<T>(parsedErrors);
+                var errors = errorsValue is null
+                    ? null
+                    : JsonSerializer.Deserialize<List<PlexError>>(JsonSerializer.Serialize(errorsValue));
+                return rawResponse
+                    .FromSdkExceptionToResult<T>(errors)
+                    .WithError(new ExceptionalError(exception));
             }
 
-            if (rawResponseProperty != null)
-            {
-                var rawResponse = rawResponseProperty.GetValue(e);
-                if (rawResponse is null)
-                    return Result.Fail(new ExceptionalError(e)).LogError();
-
-                return ((HttpResponseMessage)rawResponse).FromSdkExceptionToResult<T>();
-            }
-
-            return Result.Fail(new ExceptionalError(e)).LogError();
+            return Result.Fail<T>(new ExceptionalError(exception)).LogError();
         }
+    }
+
+    private static List<PlexError>? GetPlexErrors(PlexAPIError exception)
+    {
+        var payload = exception.GetType().GetProperty("Payload")?.GetValue(exception);
+        var errors = payload?.GetType().GetProperty("Errors")?.GetValue(payload)
+            ?? exception.GetType().GetProperty("Errors")?.GetValue(exception);
+        return errors is null
+            ? null
+            : JsonSerializer.Deserialize<List<PlexError>>(JsonSerializer.Serialize(errors));
     }
 
     public static Result<TResult> ToApiResult<TResponse, TResult>(
@@ -117,21 +130,23 @@ public static class HttpClientExtensions
         {
             // In case of unauthorized
             case HttpStatusCode.Unauthorized:
-                return Result.Fail("Unauthorized").AddPlex401UnauthorizedError().WithErrors(errors ?? []);
+                return Result.Fail<TResult>("Unauthorized").AddPlex401UnauthorizedError().WithErrors(errors ?? []);
 
             // In case of timeout
             case HttpStatusCode.RequestTimeout:
-                return Result.Fail("Request timed out").Add408RequestTimeoutError().WithErrors(errors ?? []);
+                return Result.Fail<TResult>("Request timed out").Add408RequestTimeoutError().WithErrors(errors ?? []);
         }
 
         // Weird case where the status code is 200 but the content is "Bad Gateway"
         if (response.IsSuccessStatusCode && response.Content.ToString()!.Contains("Bad Gateway"))
-            return Result.Fail("Server responded with Bad Gateway").Add502BadGatewayError().WithErrors(errors ?? []);
+            return Result.Fail<TResult>("Server responded with Bad Gateway")
+                .Add502BadGatewayError()
+                .WithErrors(errors ?? []);
 
-        return Result.Fail("Request failed").AddStatusCode(response.StatusCode).WithErrors(errors ?? []);
+        return Result.Fail<TResult>("Request failed").AddStatusCode(response.StatusCode).WithErrors(errors ?? []);
     }
 
-    private static HttpResponseMessage GetHttpResponseMessage<T>(this T response) =>
+    internal static HttpResponseMessage GetHttpResponseMessage<T>(this T response) =>
         (
             typeof(T).GetProperty(nameof(PostUsersSignInDataResponse.RawResponse))!.GetValue(response)
             as HttpResponseMessage
@@ -142,7 +157,7 @@ public static class HttpClientExtensions
         CancellationToken cancellationToken = default
     )
     {
-        if (content == null)
+        if (content is null)
             return "HttpContent is null.";
 
         var contentType = content.Headers.ContentType?.MediaType;
@@ -150,15 +165,10 @@ public static class HttpClientExtensions
 
         // Check if the content indicates a file download via Content-Disposition header.
         if (
-            content.Headers.ContentDisposition != null
-            && content.Headers.ContentDisposition.DispositionType.Equals(
-                "attachment",
-                StringComparison.OrdinalIgnoreCase
-            )
+            content.Headers.ContentDisposition is not null
+            && content.Headers.ContentDisposition.DispositionType.Equals("attachment", StringComparison.OrdinalIgnoreCase)
         )
-        {
             return $"Content is a file download. Filename: {content.Headers.ContentDisposition.FileName}";
-        }
 
         // Only process JSON content types
         if (contentType?.Contains("json", StringComparison.OrdinalIgnoreCase) != true)
@@ -168,13 +178,9 @@ public static class HttpClientExtensions
         }
 
         // Check content length to avoid buffer overflow for large JSON responses
-        const long maxReadContentSize = 1024 * 1024; // 1MB limit for reading JSON content as string
-
-        if (contentLength.HasValue && contentLength.Value > maxReadContentSize)
-        {
-            var sizeInfo = $"{contentLength.Value:N0} bytes";
-            return $"Large JSON content ({sizeInfo}) - not reading to avoid buffer overflow.";
-        }
+        const long maxReadContentSize = 1024 * 1024;
+        if (contentLength is > maxReadContentSize)
+            return $"Large JSON content ({contentLength.Value:N0} bytes) - not reading to avoid buffer overflow.";
 
         try
         {

@@ -12,4 +12,6 @@ public record PlexApiClientOptions
     public int RetryCount { get; init; } = 1;
 
     public Action<HttpRequestRetryProgress>? RetryProgressAction { get; init; }
+
+    public CancellationToken CancellationToken { get; init; }
 }

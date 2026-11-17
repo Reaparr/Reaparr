@@ -62,8 +62,10 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             )
             .Verifiable(Times.Exactly(expectedRequestCount));
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk))
+            .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null, It.IsAny<CancellationToken>()))
+            .Returns<int, int, int, Action<HttpRequestRetryProgress>?, CancellationToken>(
+                (_, _, _, _, _) => Task.FromResult(Result.Ok<IPlexAPI>(sdk))
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -267,8 +269,10 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             )
             .Verifiable(Times.Exactly(expectedRequestCount));
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk))
+            .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null, It.IsAny<CancellationToken>()))
+            .Returns<int, int, int, Action<HttpRequestRetryProgress>?, CancellationToken>(
+                (_, _, _, _, _) => Task.FromResult(Result.Ok<IPlexAPI>(sdk))
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -359,8 +363,10 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
             .ReturnsAsync((HttpRequestMessage request) => CreateResponse(request, original.Key, mode, requests))
             .Verifiable(Times.Exactly(expectedRequestCount));
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null))
-            .ReturnsAsync(Result.Ok<IPlexAPI>(sdk))
+            .Setup(x => x.CreateClientAsync(original.PlexServerId, 30, 3, null, It.IsAny<CancellationToken>()))
+            .Returns<int, int, int, Action<HttpRequestRetryProgress>?, CancellationToken>(
+                (_, _, _, _, _) => Task.FromResult(Result.Ok<IPlexAPI>(sdk))
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -636,7 +642,7 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
     }
 
     private static void SetHistoricalPhotoPage(
-        MediaContainerWithMetadataMediaContainer container,
+        LukeHagar.PlexAPI.SDK.Models.Components.MediaContainerWithMetadataMediaContainer container,
         IReadOnlyList<Metadata> all,
         int offset
     )
@@ -648,7 +654,7 @@ public sealed class GetLibraryMediaPhotoGraphUnitTests : BaseUnitTest<GetLibrary
     }
 
     private static void SetHistoricalMixedPage(
-        MediaContainerWithMetadataMediaContainer container,
+        LukeHagar.PlexAPI.SDK.Models.Components.MediaContainerWithMetadataMediaContainer container,
         IReadOnlyList<Metadata> all,
         int offset
     )

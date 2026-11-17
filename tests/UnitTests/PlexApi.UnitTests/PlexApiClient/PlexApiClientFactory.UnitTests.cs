@@ -21,7 +21,7 @@ public class PlexApiClientFactoryUnitTests : BaseUnitTest
         var clientFactory = new PlexApiClientFactory(_ => Moq.Mock.Of<IPlexApiClient>(), dbContextFactory.Object);
 
         // Act
-        var result = await clientFactory.CreateClientAsync(serverId);
+        var result = await clientFactory.CreateClientAsync(serverId, cancellationToken: CancellationToken);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -53,7 +53,7 @@ public class PlexApiClientFactoryUnitTests : BaseUnitTest
         var clientFactory = new PlexApiClientFactory(_ => Moq.Mock.Of<IPlexApiClient>(), dbContextFactory.Object);
 
         // Act
-        var result = await clientFactory.CreateClientAsync(serverId);
+        var result = await clientFactory.CreateClientAsync(serverId, cancellationToken: CancellationToken);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -88,7 +88,12 @@ public class PlexApiClientFactoryUnitTests : BaseUnitTest
         );
 
         // Act
-        var result = await clientFactory.CreateClientAsync(serverId, timeout: 27, retryCount: 4);
+        var result = await clientFactory.CreateClientAsync(
+            serverId,
+            timeout: 27,
+            retryCount: 4,
+            cancellationToken: CancellationToken
+        );
 
         // Assert
         result.IsSuccess.ShouldBeTrue();

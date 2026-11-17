@@ -13,9 +13,9 @@ public class GetAccessiblePlexServersUnitTests : BaseUnitTest<GetAccessiblePlexS
     private void SetCallMock(GetServerResourcesResponse response1, GetServerResourcesResponse response2)
     {
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateTvClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions?>()))
-            .Returns<string, PlexApiClientOptions?>(
-                (_, _) =>
+            .Setup(x => x.CreateTvClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions?>(), It.IsAny<CancellationToken>()))
+            .Returns<string, PlexApiClientOptions?, CancellationToken>(
+                (_, _, _) =>
                 {
                     var plexApiMock = new Mock<IPlexAPI>();
                     var plexApiMockIPlex = new Mock<IPlex>();
@@ -64,9 +64,9 @@ public class GetAccessiblePlexServersUnitTests : BaseUnitTest<GetAccessiblePlexS
         plexAccount.ShouldNotBeNull();
 
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateTvClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions?>()))
-            .Returns<string, PlexApiClientOptions?>(
-                (_, _) =>
+            .Setup(x => x.CreateTvClient(It.IsAny<string>(), It.IsAny<PlexApiClientOptions?>(), It.IsAny<CancellationToken>()))
+            .Returns<string, PlexApiClientOptions?, CancellationToken>(
+                (_, _, _) =>
                 {
                     var plexApiMock = new Mock<IPlexAPI>();
                     var plexApiMockIPlex = new Mock<IPlex>();
@@ -75,6 +75,7 @@ public class GetAccessiblePlexServersUnitTests : BaseUnitTest<GetAccessiblePlexS
                         HttpStatusCode.Unauthorized,
                         new Seed(939)
                     );
+
                     plexApiMockIPlex
                         .Setup(x =>
                             x.GetServerResourcesAsync(It.IsAny<GetServerResourcesRequest>(), It.IsAny<string>())
