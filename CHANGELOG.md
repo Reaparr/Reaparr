@@ -1,5 +1,12 @@
 Reaparr Changelog
 
+# [0.41.0-dev.12](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.11...v0.41.0-dev.12) (2026-11-18)
+
+
+### Bug Fixes
+
+* ensure verify-release job runs before parallel uploads ([dc8233f](https://github.com/Reaparr/Reaparr/commit/dc8233fd0edbaf23cbc9b5b203bd1b45ffd99c90))
+
 # [0.41.0-dev.11](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.10...v0.41.0-dev.11) (2026-11-17)
 
 
