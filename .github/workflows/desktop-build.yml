@@ -159,7 +159,7 @@ jobs:
                     case "$VELOPACK_CHANNEL_INPUT" in
                         stable|dev)
                             echo "VELOPACK_CHANNEL=$RID-$VELOPACK_CHANNEL_INPUT" >> "$GITHUB_ENV"
-                            ;;;
+                            ;;
                         *)
                             echo "Unsupported Velopack channel: $VELOPACK_CHANNEL_INPUT" >&2
                             exit 1
@@ -267,7 +267,7 @@ jobs:
                     case "$VELOPACK_CHANNEL_INPUT" in
                         stable|dev)
                             echo "VELOPACK_CHANNEL=$RID-$VELOPACK_CHANNEL_INPUT" >> "$GITHUB_ENV"
-                            ;;;
+                            ;;
                         *)
                             echo "Unsupported Velopack channel: $VELOPACK_CHANNEL_INPUT" >&2
                             exit 1
@@ -331,6 +331,7 @@ jobs:
                             echo "::error::Release $RELEASE_TAG is missing desktop assets for $rid." >&2
                             exit 1
                         fi
+                    done
             -   name: Publish GitHub Release after asset verification
                 shell: bash
                 env:
