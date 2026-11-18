@@ -210,7 +210,7 @@ jobs:
         if: inputs.push
         runs-on: ubuntu-latest
         permissions:
-            contents: read
+            contents: write
 
         steps:
             -   name: Verify release exists before parallel uploads
