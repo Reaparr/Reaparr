@@ -1,5 +1,12 @@
 Reaparr Changelog
 
+# [0.41.0-dev.5](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.4...v0.41.0-dev.5) (2026-11-18)
+
+
+### Bug Fixes
+
+* **WebAPI:** Allow draft release verification ([9c82446](https://github.com/Reaparr/Reaparr/commit/9c824461bd26164e5fc192151df6c3c2211ccc9d))
+
 # [0.41.0-dev.4](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.3...v0.41.0-dev.4) (2026-11-18)
 
 
