@@ -10,7 +10,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="FastEndpoints" Version="8.3.0" />
+        <PackageReference Include="FastEndpoints" Version="9.0.0" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Application.Contracts\Application.Contracts.csproj" />
