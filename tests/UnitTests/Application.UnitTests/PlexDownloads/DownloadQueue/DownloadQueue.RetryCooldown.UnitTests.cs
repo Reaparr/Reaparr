@@ -520,8 +520,10 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
         Result restarted;
         try
         {
+            var idleCleanupTimer = await _clock.NextTimerAsync();
             restarted = await Mock.Create<RestartDownloadTaskCommandHandler>()
                 .ExecuteAsync(new RestartDownloadTaskCommand(root.Id), CancellationToken);
+            await idleCleanupTimer.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(5));
             var timer = await _clock.NextTimerAsync();
             timer.DueTime.ShouldBe(TimeSpan.FromSeconds(60));
             var refreshed = await IDbContext.DownloadTaskMovieFile.SingleAsync(CancellationToken);
@@ -546,6 +548,87 @@ public class DownloadQueueRetryCooldownUnitTests : BaseUnitTest<DownloadQueue>
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IDownloadTaskUpdateDispatcher>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ShouldSweepExpiredCooldownForCompletedOrDeletedTask_AndRetainLaterCooldown(
+        bool deleteHistoricalTask
+    )
+    {
+        // Arrange
+        await SetupDatabase(58129, config =>
+        {
+            config.PlexServerCount = 1;
+            config.PlexMovieLibraryCount = 1;
+            config.MovieCount = 3;
+            config.MovieDownloadTasksCount = 3;
+        });
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.GetCurrentlyDownloadingKeysByServer(It.IsAny<int>()))
+            .ReturnsAsync([]);
+        Mock.Mock<IDownloadTaskScheduler>()
+            .Setup(x => x.StartDownloadTaskJob(It.IsAny<DownloadTaskKey>(), It.IsAny<CancellationToken>()))
+            .ReturnOk();
+        var queue = Sut;
+        var firstResult = await queue.CheckDownloadQueueServer(1, CancellationToken);
+        firstResult.IsSuccess.ShouldBeTrue();
+        var historicalTaskId = firstResult.Value.Id;
+        _clock.Advance(TimeSpan.FromSeconds(20));
+        var secondResult = await queue.CheckDownloadQueueServer(1, CancellationToken);
+        secondResult.IsSuccess.ShouldBeTrue();
+        var retainedTaskId = secondResult.Value.Id;
+        retainedTaskId.ShouldNotBe(historicalTaskId);
+
+        if (deleteHistoricalTask)
+        {
+            await IDbContext
+                .DownloadTaskMovieFile.Where(x => x.Id == historicalTaskId)
+                .ExecuteDeleteAsync(CancellationToken);
+        }
+        else
+        {
+            await IDbContext
+                .DownloadTaskMovieFile.Where(x => x.Id == historicalTaskId)
+                .ExecuteUpdateAsync(
+                    update => update.SetProperty(x => x.DownloadStatus, DownloadStatus.DownloadFinished),
+                    CancellationToken
+                );
+        }
+
+        var retryCooldownUntil =
+            (ConcurrentDictionary<Guid, DateTimeOffset>)
+                typeof(DownloadQueue)
+                    .GetField(
+                        "_retryCooldownUntil",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .GetValue(queue)!;
+        retryCooldownUntil.Keys.Order().ShouldBe(new[] { historicalTaskId, retainedTaskId }.Order());
+        using var workerCancellation = new CancellationTokenSource();
+
+        // Act
+        queue.Setup(workerCancellation.Token);
+        try
+        {
+            var firstTimer = await _clock.NextTimerAsync();
+            firstTimer.DueTime.ShouldBe(TimeSpan.FromSeconds(40));
+            _clock.Advance(TimeSpan.FromSeconds(40));
+            firstTimer.Fire();
+            var secondTimer = await _clock.NextTimerAsync();
+            secondTimer.DueTime.ShouldBe(TimeSpan.FromSeconds(20));
+            retryCooldownUntil.Keys.ShouldBe([retainedTaskId]);
+            _clock.Advance(TimeSpan.FromSeconds(19));
+            retryCooldownUntil.Keys.ShouldBe([retainedTaskId]);
+        }
+        finally
+        {
+            await StopQueueAsync(queue, workerCancellation);
+        }
+
+        // Assert
+        retryCooldownUntil.Keys.ShouldBe([retainedTaskId]);
     }
 
     private static async Task StopQueueAsync(DownloadQueue queue, CancellationTokenSource cancellation)
