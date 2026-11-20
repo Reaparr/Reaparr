@@ -19,7 +19,7 @@ public sealed partial class Telemetry
             [TelemetryProperty.Downloads.SelectedMediaTypes] = request
                 .DownloadMedias.Select(x => x.Type.ToString())
                 .Distinct()
-                .Order(StringComparer.Ordinal)
+                .Order()
                 .ToArray(),
             [TelemetryProperty.Downloads.CustomDestinationFolderPath] = request.CustomDestinationFolderPath,
         };
@@ -58,7 +58,7 @@ public sealed partial class Telemetry
             [TelemetryProperty.Downloads.SelectedMediaTypes] = request
                 .DownloadMedias.Select(x => x.Type.ToString())
                 .Distinct()
-                .Order(StringComparer.Ordinal)
+                .Order()
                 .ToArray(),
         };
 

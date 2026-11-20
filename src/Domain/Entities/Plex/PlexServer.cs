@@ -172,19 +172,19 @@ public class PlexServer : BaseEntity
     public override int GetHashCode()
     {
         var hashCode = default(HashCode);
-        hashCode.Add(Name, StringComparer.Ordinal);
+        hashCode.Add(Name);
         hashCode.Add(OwnerId);
-        hashCode.Add(PlexServerOwnerUsername, StringComparer.Ordinal);
-        hashCode.Add(Device, StringComparer.Ordinal);
-        hashCode.Add(Platform, StringComparer.Ordinal);
-        hashCode.Add(PlatformVersion, StringComparer.Ordinal);
-        hashCode.Add(Product, StringComparer.Ordinal);
-        hashCode.Add(ProductVersion, StringComparer.Ordinal);
-        hashCode.Add(Provides, StringComparer.Ordinal);
+        hashCode.Add(PlexServerOwnerUsername);
+        hashCode.Add(Device);
+        hashCode.Add(Platform);
+        hashCode.Add(PlatformVersion);
+        hashCode.Add(Product);
+        hashCode.Add(ProductVersion);
+        hashCode.Add(Provides);
         hashCode.Add(CreatedAt);
         hashCode.Add(LastSeenAt);
-        hashCode.Add(MachineIdentifier, StringComparer.Ordinal);
-        hashCode.Add(PublicAddress, StringComparer.Ordinal);
+        hashCode.Add(MachineIdentifier);
+        hashCode.Add(PublicAddress);
         hashCode.Add(PreferredConnectionId);
         hashCode.Add(OwnedOverride);
         hashCode.Add(Synced);

@@ -133,7 +133,7 @@ public class ThumbnailCachePrivacyIntegrationTests : BaseIntegrationTests
             using var secondLogin = new MultipartFormDataContent
             {
                 { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
-                { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" }
+                { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
             };
             using var secondLoginResponse = await secondBrowser.PostAsync(
                 ApiRoutes.LoginEndpoint,

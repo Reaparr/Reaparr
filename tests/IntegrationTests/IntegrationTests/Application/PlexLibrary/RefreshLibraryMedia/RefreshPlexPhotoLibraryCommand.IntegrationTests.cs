@@ -250,10 +250,7 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             .ShouldBe(nameof(PlexMediaType.PhotoAlbum));
         queuedProperties.GetProperty(TelemetryProperty.Libraries.ForceLibrarySync).GetBoolean().ShouldBeFalse();
         queuedProperties.GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh).GetBoolean().ShouldBeFalse();
-        queuedProperties
-            .GetProperty(TelemetryProperty.Trigger)
-            .GetString()
-            .ShouldBe(nameof(TelemetryTrigger.Manual));
+        queuedProperties.GetProperty(TelemetryProperty.Trigger).GetString().ShouldBe(nameof(TelemetryTrigger.Manual));
         var admissionCreatedAt = queuedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString();
         admissionCreatedAt.ShouldNotBeNullOrWhiteSpace();
         var finishedEvents = firstNativeEvents
@@ -780,10 +777,7 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             .ToArray();
         enabledEvents.Length.ShouldBe(1);
         var enabledProperties = enabledEvents.Single().GetProperty("properties");
-        enabledProperties
-            .GetProperty(TelemetryProperty.Action)
-            .GetString()
-            .ShouldBe(nameof(TelemetryAction.Enabled));
+        enabledProperties.GetProperty(TelemetryProperty.Action).GetString().ShouldBe(nameof(TelemetryAction.Enabled));
         enabledProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
         enabledProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
         enabledProperties

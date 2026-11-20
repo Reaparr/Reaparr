@@ -1,4 +1,5 @@
 using FlexQuery.NET.Models;
+using NaturalSort.Extension;
 using Reaparr.Application.Contracts;
 
 namespace Reaparr.Data;
@@ -149,7 +150,12 @@ internal static class MediaByTypeQuerySupport
         if (requestedSort.All(sort => sort.Field != SortType.Title))
         {
             if (allLibraries)
-                ordered = ApplyOrder(ordered, static item => item.SearchTitle, false, StringComparer.Ordinal);
+                ordered = ApplyOrder(
+                    ordered,
+                    static item => item.SearchTitle,
+                    false,
+                    StringComparison.OrdinalIgnoreCase.WithNaturalSort()
+                );
             else
                 ordered = ApplyOrder(ordered, static item => item.SortIndex, false);
         }
@@ -167,7 +173,12 @@ internal static class MediaByTypeQuerySupport
         if (sort.Field == SortType.Title)
         {
             if (allLibraries)
-                return ApplyOrder(source, static item => item.SearchTitle, descending, StringComparer.Ordinal);
+                return ApplyOrder(
+                    source,
+                    static item => item.SearchTitle,
+                    descending,
+                    StringComparison.OrdinalIgnoreCase.WithNaturalSort()
+                );
 
             return ApplyOrder(source, static item => item.SortIndex, descending);
         }
