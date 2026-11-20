@@ -10,7 +10,7 @@ internal sealed class PlexApiHttpClientFixture(ILogger log) : IDisposable
     public HttpClient Create(HttpMessageHandler transport)
     {
         var services = new ServiceCollection();
-        services.AddSingleton<ILogger>(log);
+        services.AddSingleton(log);
         services.RegisterDefaultHttpClient();
         services.AddHttpClient(HttpClientModule.DefaultClientName).ConfigurePrimaryHttpMessageHandler(() => transport);
 

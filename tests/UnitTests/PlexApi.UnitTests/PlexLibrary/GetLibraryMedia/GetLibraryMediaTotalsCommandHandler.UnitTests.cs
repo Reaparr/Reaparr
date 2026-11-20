@@ -52,7 +52,7 @@ public class GetLibraryMediaTotalsCommandUnitTests : BaseUnitTest<GetLibraryMedi
         Mock.Mock<IPlexApiClientFactory>()
             .Setup(x => x.CreateClientAsync(library.PlexServerId, 10, 1, null, It.IsAny<CancellationToken>()))
             .Returns<int, int, int, Action<HttpRequestRetryProgress>?, CancellationToken>(
-                (_, _, _, _, _) => Task.FromResult(Result.Ok<IPlexAPI>(sdk.Object))
+                (_, _, _, _, _) => Task.FromResult(Result.Ok(sdk.Object))
             )
             .Verifiable(Times.Once());
 

@@ -61,8 +61,9 @@ public class HttpClientExtensionsSdkErrorsUnitTests : BaseUnitTest
         var terminal = new HtmlResponseHandler(status);
         var progress = new List<HttpRequestRetryProgress>();
         using var fixture = new PlexApiHttpClientFixture(Log);
+        var httpClient = fixture.Create(terminal);
         var factory = new PlexApiClientFactory(
-            options => new PlexApiClient(fixture.Create(terminal), options!),
+            options => new PlexApiClient(httpClient, options!),
             Moq.Mock.Of<Reaparr.Data.Contracts.IReaparrDbContextFactory>()
         );
         var client = factory.CreateTvClient(

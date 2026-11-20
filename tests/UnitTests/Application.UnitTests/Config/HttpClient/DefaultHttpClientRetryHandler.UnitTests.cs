@@ -51,7 +51,7 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
         // Act
         var sendTask = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
         await bufferingStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        var exception = await Should.ThrowAsync<Polly.Timeout.TimeoutRejectedException>(() => sendTask);
+        await Should.ThrowAsync<Polly.Timeout.TimeoutRejectedException>(() => sendTask);
         await bufferingCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         // Assert
@@ -80,7 +80,7 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
         var sendTask = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation.Token);
         await bufferingStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
         await cancellation.CancelAsync();
-        var exception = await Should.ThrowAsync<OperationCanceledException>(() => sendTask);
+        await Should.ThrowAsync<OperationCanceledException>(() => sendTask);
         await bufferingCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         // Assert
@@ -100,10 +100,8 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
             () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("unexpected retry") }
         );
         using var client = CreateClient(terminal);
-        using var request = new HttpRequestMessage(HttpMethod.Post, "http://plex.test/unsafe")
-        {
-            Content = new StringContent("request body"),
-        };
+        using var request = new HttpRequestMessage(HttpMethod.Post, "http://plex.test/unsafe");
+        request.Content = new StringContent("request body");
         request.SetRetryCount(2);
         request.SetResponseBufferingTimeout(TimeSpan.FromSeconds(1));
 

@@ -15,7 +15,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         Storage,
         UnauthorizedStorage,
         HttpRequest,
-        HttpIOException,
+        HttpIoException,
         Argument,
         NotSupported,
         Format,
@@ -2131,7 +2131,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
     [Arguments(CompletionFailureKind.Storage, DomainDownloadStatus.StorageError)]
     [Arguments(CompletionFailureKind.UnauthorizedStorage, DomainDownloadStatus.StorageError)]
     [Arguments(CompletionFailureKind.HttpRequest, DomainDownloadStatus.Error)]
-    [Arguments(CompletionFailureKind.HttpIOException, DomainDownloadStatus.Error)]
+    [Arguments(CompletionFailureKind.HttpIoException, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.Argument, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.NotSupported, DomainDownloadStatus.Error)]
     [Arguments(CompletionFailureKind.Format, DomainDownloadStatus.Error)]
@@ -2162,7 +2162,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             CompletionFailureKind.Storage => new IOException("Disk write failed."),
             CompletionFailureKind.UnauthorizedStorage => new UnauthorizedAccessException("Access denied."),
             CompletionFailureKind.HttpRequest => new HttpRequestException("Connection reset."),
-            CompletionFailureKind.HttpIOException => new HttpIOException(
+            CompletionFailureKind.HttpIoException => new HttpIOException(
                 HttpRequestError.ResponseEnded,
                 "The response ended prematurely."
             ),

@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Reaparr.PublicAPI;
 
 public sealed record GetTorrentFileRequest

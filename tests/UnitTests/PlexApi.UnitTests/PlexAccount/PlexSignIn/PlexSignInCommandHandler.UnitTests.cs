@@ -11,6 +11,7 @@ public class PlexSignInCommandHandlerUnitTests : BaseUnitTest<PlexSignInCommandH
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
         HttpRequestMessage? capturedRequest = null;
         var transport = new Mock<IPlexApiClient>(MockBehavior.Strict);
         transport
@@ -30,7 +31,7 @@ public class PlexSignInCommandHandlerUnitTests : BaseUnitTest<PlexSignInCommandH
         var sdk = new PlexAPI(client: transport.Object, serverUrl: "https://plex.tv/api/v2", token: string.Empty);
 
         Mock.Mock<IPlexApiClientFactory>()
-            .Setup(x => x.CreateTvClient(string.Empty, null, cancellation.Token))
+            .Setup(x => x.CreateTvClient(string.Empty, null, cancellationToken))
             .Returns<string, PlexApiClientOptions?, CancellationToken>((_, _, _) => sdk)
             .Verifiable(Times.Once());
 
@@ -43,7 +44,7 @@ public class PlexSignInCommandHandlerUnitTests : BaseUnitTest<PlexSignInCommandH
                 Password = "password",
                 VerificationCode = string.Empty,
             },
-            cancellation.Token
+            cancellationToken
         );
 
         // Assert

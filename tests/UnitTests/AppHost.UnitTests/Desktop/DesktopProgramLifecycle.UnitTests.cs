@@ -232,7 +232,7 @@ public class DesktopProgramLifecycleUnitTests : BaseUnitTest
         secondaryCoordinator.Setup(x => x.TryAcquirePrimaryOwnership()).Returns(false).Verifiable(Times.Once());
         secondaryCoordinator
             .Setup(x => x.SignalPrimaryInstanceAsync(cancellationToken))
-            .Returns(() => pipe.SignalPrimaryInstanceAsync(cancellationToken))
+            .Returns(pipe.SignalPrimaryInstanceAsync)
             .Verifiable(Times.Once());
 
         // Act

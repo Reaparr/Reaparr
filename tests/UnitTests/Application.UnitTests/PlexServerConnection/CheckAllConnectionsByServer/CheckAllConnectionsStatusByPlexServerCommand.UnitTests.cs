@@ -415,11 +415,13 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             .Verifiable(Times.Once);
         Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
             .Returns(
-                async (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                async (CheckConnectionStatusByIdCommand request, CancellationToken cancellationToken) =>
                 {
                     if (request.PlexServerConnectionId == removedId)
                     {
-                        await dbContext.PlexServerConnections.Where(x => x.Id == removedId).ExecuteDeleteAsync(_);
+                        await dbContext
+                            .PlexServerConnections.Where(x => x.Id == removedId)
+                            .ExecuteDeleteAsync(cancellationToken);
                         return ResultExtensions
                             .EntityNotFound(nameof(PlexServerConnection), removedId)
                             .ToResult<PlexServerStatus>();
@@ -576,11 +578,11 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             .Verifiable(Times.Once);
         Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
             .Returns(
-                async (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                async (CheckConnectionStatusByIdCommand request, CancellationToken cancellationToken) =>
                 {
                     await dbContext
                         .PlexServerConnections.Where(x => x.Id == request.PlexServerConnectionId)
-                        .ExecuteDeleteAsync(_);
+                        .ExecuteDeleteAsync(cancellationToken);
                     return ResultExtensions
                         .EntityNotFound(nameof(PlexServerConnection), request.PlexServerConnectionId)
                         .ToResult<PlexServerStatus>();
@@ -658,11 +660,11 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             .Verifiable(Times.Once);
         Mock.SetupCommand(It.IsAny<CheckConnectionStatusByIdCommand>)
             .Returns(
-                async (CheckConnectionStatusByIdCommand request, CancellationToken _) =>
+                async (CheckConnectionStatusByIdCommand request, CancellationToken cancellationToken) =>
                 {
                     await dbContext
                         .PlexServerConnections.Where(x => x.Id == request.PlexServerConnectionId)
-                        .ExecuteDeleteAsync(_);
+                        .ExecuteDeleteAsync(cancellationToken);
 
                     if (request.PlexServerConnectionId == connections[0].Id)
                     {

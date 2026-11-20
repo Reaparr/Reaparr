@@ -564,23 +564,23 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                 )
             )
             .ShouldBe(
-                new[]
+                new (int, DownloadStatus, long, long, long, decimal, int)[]
                 {
                     (
                         aFile.PlexApiRatingKey,
                         DownloadStatus.MoveFinished,
-                        (long)aBytes.Length,
-                        (long)aBytes.Length,
-                        (long)aBytes.Length,
+                        aBytes.Length,
+                        aBytes.Length,
+                        aBytes.Length,
                         100m,
                         0
                     ),
                     (
                         bFile.PlexApiRatingKey,
                         DownloadStatus.MoveFinished,
-                        (long)bBytes.Length,
-                        (long)bBytes.Length,
-                        (long)bBytes.Length,
+                        bBytes.Length,
+                        bBytes.Length,
+                        bBytes.Length,
                         100m,
                         0
                     ),

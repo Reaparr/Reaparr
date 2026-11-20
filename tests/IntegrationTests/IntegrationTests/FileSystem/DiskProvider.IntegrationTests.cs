@@ -4,8 +4,6 @@ namespace Reaparr.IntegrationTests;
 
 public class DiskProviderIntegrationTests : BaseIntegrationTests
 {
-    public DiskProviderIntegrationTests() { }
-
     [Test]
     public async Task ShouldLeaveExcludedDirectoriesUntouched_WhenListingVisibleDirectories()
     {

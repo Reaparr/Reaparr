@@ -176,7 +176,7 @@ public class TorznabEndpointIntegrationTests : BaseIntegrationTests
             .Elements("item")
             .Select(item =>
             {
-                var attributes = item.Elements().Where(x => x.Name.LocalName == "attr");
+                var attributes = item.Elements().Where(x => x.Name.LocalName == "attr").ToArray();
                 var season = attributes.Single(x => x.Attribute("name")!.Value == "season").Attribute("value")!.Value;
                 var episode = attributes.Single(x => x.Attribute("name")!.Value == "episode").Attribute("value")!.Value;
                 return $"{season}:{episode}";

@@ -883,6 +883,8 @@ public class CheckQueuedPlexLibraryToSyncCommandUnitTests : BaseCommandUnitTest<
 
         // Act
         var result = await TestHandlerExecuteAsync(new CheckQueuedPlexLibraryToSyncCommand());
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
         var after = await dbContext
             .LibrarySyncJobQueues.IgnoreQueryFilters()
             .OrderBy(x => x.PlexServerId)

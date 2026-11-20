@@ -37,6 +37,7 @@ resharper_csharp_prefer_explicit_discard_declaration = true
 resharper_enforce_if_statement_braces_highlighting = suggestion
 # Allow ordinary .NET culture-sensitive sorting without requiring comparer arguments at every call site.
 resharper_invocation_is_culture_sensitive_highlighting = none
+resharper_default_string_comparer_usage_highlighting = none
 resharper_stylecop_sa1101_highlighting = none
 resharper_stylecop_sa1642_highlighting = none
 resharper_suggest_var_or_type_built_in_types_highlighting = suggestion
@@ -81,6 +82,10 @@ dotnet_diagnostic.IDE0049.severity = none
 # Blocking style/readability rules.
 # MA0071 reports an unnecessary else after a branch that unconditionally exits.
 dotnet_diagnostic.MA0071.severity = warning
+# MA0037 reports empty statements, including stray semicolons after control flow headers.
+dotnet_diagnostic.MA0037.severity = warning
+# MA0090 reports empty else or finally blocks without comments or directives.
+dotnet_diagnostic.MA0090.severity = warning
 # MA0100 reports a returned task that can outlive a disposable resource used by its operation.
 dotnet_diagnostic.MA0100.severity = warning
 # MA0129 reports using a task as a disposable instead of awaiting the disposable resource it produces.
@@ -115,6 +120,8 @@ dotnet_diagnostic.MA0022.severity = warning
 dotnet_diagnostic.MA0054.severity = warning
 # RCS1075 reports empty catch clauses that silently swallow System.Exception.
 dotnet_diagnostic.RCS1075.severity = warning
+# MA0085 reports event unsubscriptions that use an anonymous delegate instead of the subscribed handler.
+dotnet_diagnostic.MA0085.severity = warning
 # MA0010 requires custom attribute classes to declare their supported targets with AttributeUsage.
 dotnet_diagnostic.MA0010.severity = warning
 # MA0047 reports types declared outside a named namespace.
