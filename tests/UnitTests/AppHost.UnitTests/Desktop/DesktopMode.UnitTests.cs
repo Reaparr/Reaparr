@@ -17,7 +17,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
 
         var windowFactory = new FakeDesktopWindowFactory(new MockDesktopWindow());
         var server = CreateServer(null);
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         // Act
         var result = await sut.StartAsync(CancellationToken);
@@ -39,7 +39,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
 
         var windowFactory = new FakeDesktopWindowFactory(new MockDesktopWindow());
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         // Act
         var startResult = await sut.StartAsync(CancellationToken);
@@ -61,7 +61,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var window = new MockDesktopWindow();
         var windowFactory = new FakeDesktopWindowFactory(window);
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         await sut.StartAsync(CancellationToken);
         var waitForExitTask = sut.WaitForExitAsync(CancellationToken);
@@ -90,7 +90,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var window = new MockDesktopWindow();
         var windowFactory = new FakeDesktopWindowFactory(window);
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         // Act
         var startResult = await sut.StartAsync(CancellationToken);
@@ -116,7 +116,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var window = new MockDesktopWindow();
         var windowFactory = new FakeDesktopWindowFactory(window);
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         await sut.StartAsync(CancellationToken);
 
@@ -138,7 +138,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var window = new MockDesktopWindow();
         var windowFactory = new FakeDesktopWindowFactory(window);
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         // Act
         var result = await sut.StartAsync(CancellationToken);
@@ -158,7 +158,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var window = new MockDesktopWindow();
         var windowFactory = new FakeDesktopWindowFactory(window);
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         await sut.StartAsync(CancellationToken);
 
@@ -185,7 +185,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var window = new MockDesktopWindow();
         var windowFactory = new FakeDesktopWindowFactory(window);
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         await sut.StartAsync(CancellationToken);
 
@@ -208,7 +208,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var window = new MockDesktopWindow();
         var windowFactory = new FakeDesktopWindowFactory(window);
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         // Act
         var startResult = await sut.StartAsync(CancellationToken);
@@ -232,7 +232,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
         var secondWindow = new MockDesktopWindow();
         var windowFactory = new FakeDesktopWindowFactory(firstWindow, secondWindow);
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         await sut.StartAsync(CancellationToken);
         await sut.CloseMainWindowAsync(CancellationToken);
@@ -262,7 +262,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
 
         var windowFactory = new FakeDesktopWindowFactory(new MockDesktopWindow());
         var server = CreateServer("http://localhost:5000");
-        var sut = CreateSut(server, windowFactory.Create);
+        var sut = CreateSut(server, _ => windowFactory.Create());
 
         await sut.StartAsync(CancellationToken);
         var waitForExitTask = sut.WaitForExitAsync(CancellationToken);
@@ -308,7 +308,7 @@ public class DesktopModeUnitTests : BaseUnitTest<DesktopMode>
 
         public int CreateCalls { get; private set; }
 
-        public IDesktopWindow Create(Uri uri)
+        public IDesktopWindow Create()
         {
             CreateCalls++;
             return _windows.Dequeue();
