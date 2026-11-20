@@ -75,187 +75,28 @@ on:
                 required: false
 
 jobs:
-    prepare-frontend:
-        name: Prepare frontend assets
-        if: inputs.build
-        runs-on: ubuntu-latest
-        steps:
-            -   name: Checkout source code
-                uses: actions/checkout@v7
-                with:
-                    persist-credentials: false
-                    ref: ${{ github.sha }}
-
-            -   name: Client App Install
-                uses: ./.github/actions/client-app-install/
-
-            -   name: Generate frontend
-                shell: bash
-                working-directory: src/AppHost/ClientApp/
-                env:
-                    NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
-                    NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
-                    NUXT_SOURCEMAP_CLIENT: ${{ (inputs.upload_artifacts || inputs.upload_source_maps || inputs.push || inputs.publish_release) && 'hidden' || '' }}
-                run: bun run generate --fail-on-error
-
-            -   name: Inject metadata for deferred source maps
-                if: inputs.upload_artifacts && !(inputs.upload_source_maps || inputs.push || inputs.publish_release)
-                working-directory: src/AppHost/ClientApp/
-                env:
-                    RELEASE_VERSION: ${{ inputs.informational_version }}
-                run: bunx --no-install posthog-cli sourcemap inject --directory .output/public --release-name reaparr --release-version "$RELEASE_VERSION"
-
-            -   name: Archive deferred source maps
-                if: inputs.upload_artifacts && !(inputs.upload_source_maps || inputs.push || inputs.publish_release)
-                run: tar -cf "${{ runner.temp }}/frontend-source-maps-desktop.tar" -C src/AppHost/ClientApp/.output/public .
-
-            -   name: Retain deferred source maps
-                if: inputs.upload_artifacts && !(inputs.upload_source_maps || inputs.push || inputs.publish_release)
-                uses: actions/upload-artifact@v7
-                with:
-                    name: frontend-source-maps-desktop
-                    path: ${{ runner.temp }}/frontend-source-maps-desktop.tar
-                    if-no-files-found: error
-                    retention-days: 1
-
-            -   name: Upload private source maps
-                if: inputs.upload_source_maps || inputs.push || inputs.publish_release
-                uses: ./.github/actions/posthog-source-maps/
-                with:
-                    directory: .output/public
-                    project-id: ${{ inputs.posthog_cli_project_id }}
-                    api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
-                    host: ${{ inputs.posthog_cli_host }}
-                    ingestion-host: ${{ inputs.telemetry_host }}
-                    release-version: ${{ inputs.informational_version }}
-
-            -   name: Package frontend without source maps
-                run: tar --exclude='*.map' -cf "${{ runner.temp }}/frontend-public-desktop.tar" -C src/AppHost/ClientApp/.output/public .
-
-            -   name: Upload generated frontend artifact
-                uses: actions/upload-artifact@v7
-                with:
-                    name: frontend-public
-                    path: ${{ runner.temp }}/frontend-public-desktop.tar
-                    if-no-files-found: error
-                    retention-days: 1
-
     build:
         if: inputs.build
-        name: Build ${{ matrix.rid }}
-        needs: [ prepare-frontend ]
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    -   rid: win-x64
-                        runner: windows-latest
-                    -   rid: win-arm64
-                        runner: windows-11-arm
-                    -   rid: linux-x64
-                        runner: ubuntu-latest
-                    -   rid: linux-arm64
-                        runner: ubuntu-24.04-arm
-                    -   rid: osx-x64
-                        runner: macos-15-intel
-                    -   rid: osx-arm64
-                        runner: macos-15
-
-        runs-on: ${{ matrix.runner }}
+        name: Build desktop installers
+        uses: ./.github/workflows/desktop-validate.yml
         permissions:
             contents: read
-
-        steps:
-            -   name: Checkout source code
-                uses: actions/checkout@v7
-                with:
-                    persist-credentials: false
-                    ref: ${{ github.sha }}
-
-            -   name: Download generated frontend artifact
-                uses: actions/download-artifact@v8
-                with:
-                    name: frontend-public
-                    path: .tmp/frontend-public-archive
-
-            -   name: Extract generated frontend
-                shell: bash
-                run: mkdir -p .tmp/frontend-public && tar -xf .tmp/frontend-public-archive/frontend-public-desktop.tar -C .tmp/frontend-public
-
-            -   name: Dotnet Setup (Restore only)
-                uses: ./.github/actions/dotnet-setup/
-                with:
-                    project-path: src/AppHost/AppHost.csproj
-                    restore: true
-                    build: false
-                    # No --locked-mode: the lock file targets the framework-dependent Docker build.
-                    # Self-contained desktop builds need RID-specific native packages.
-                    locked-mode: false
-                    runtime: ${{ matrix.rid }}
-
-            -   name: Setup .NET 9 runtime for vpk
-                uses: actions/setup-dotnet@v6
-                with:
-                    dotnet-version: 9.0.x
-
-            -   name: Install Velopack CLI
-                shell: bash
-                run: dotnet tool install -g vpk --version 1.2.161
-
-            -   name: Derive Velopack channel
-                shell: bash
-                env:
-                    RID: ${{ matrix.rid }}
-                    VELOPACK_CHANNEL_INPUT: ${{ inputs.velopack_channel }}
-                run: |
-                    case "$VELOPACK_CHANNEL_INPUT" in
-                        stable|dev)
-                            echo "VELOPACK_CHANNEL=$RID-$VELOPACK_CHANNEL_INPUT" >> "$GITHUB_ENV"
-                            ;;
-                        *)
-                            echo "Unsupported Velopack channel: $VELOPACK_CHANNEL_INPUT" >&2
-                            exit 1
-                            ;;
-                    esac
-
-            -   name: Download previous release (for delta packages)
-                if: inputs.download_previous_release || inputs.push
-                shell: bash
-                run: |
-                    mkdir -p Releases
-                    vpk download github \
-                        --repoUrl https://github.com/${{ github.repository }} \
-                        --channel "$VELOPACK_CHANNEL" \
-                        --token ${{ secrets.RELEASE_GITHUB_TOKEN }}
-
-            -   name: Package installer via shared CLI
-                shell: bash
-                env:
-                    INFORMATIONAL_VERSION: ${{ inputs.informational_version }}
-                    TELEMETRY_HOST: ${{ inputs.telemetry_host }}
-                    TELEMETRY_PROJECT_TOKEN: ${{ inputs.telemetry_project_token }}
-                    RID: ${{ matrix.rid }}
-                    VERSION: ${{ inputs.version }}
-                run: |
-                    dotnet run --project tools/Build -- desktop ci-package \
-                        --rid "$RID" \
-                        --version "$VERSION" \
-                        --informational-version "$INFORMATIONAL_VERSION" \
-                        --telemetry-host "$TELEMETRY_HOST" \
-                        --telemetry-project-token "$TELEMETRY_PROJECT_TOKEN" \
-                        --channel "$VELOPACK_CHANNEL" \
-                        --frontend-public-dir .tmp/frontend-public \
-                        --artifact-dir Releases \
-                        --preserve-existing-artifacts
-
-            -   name: Upload packed installer artifact
-                if: inputs.upload_artifacts || inputs.push
-                uses: actions/upload-artifact@v7
-                with:
-                    name: desktop-${{ matrix.rid }}
-                    path: Releases/
-                    if-no-files-found: error
-                    retention-days: 1
+        with:
+            version: ${{ inputs.version }}
+            informational_version: ${{ inputs.informational_version }}
+            telemetry_host: ${{ inputs.telemetry_host }}
+            telemetry_project_token: ${{ inputs.telemetry_project_token }}
+            posthog_cli_project_id: ${{ inputs.posthog_cli_project_id }}
+            posthog_cli_host: ${{ inputs.posthog_cli_host }}
+            upload_artifacts: ${{ inputs.upload_artifacts }}
+            download_previous_release: ${{ inputs.download_previous_release }}
+            upload_source_maps: ${{ inputs.upload_source_maps }}
+            push: ${{ inputs.push }}
+            publish_release: ${{ inputs.publish_release }}
+            velopack_channel: ${{ inputs.velopack_channel }}
+        secrets:
+            RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+            POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
 
     publish-source-maps:
         name: Publish retained desktop source maps
