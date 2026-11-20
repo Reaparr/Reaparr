@@ -34,6 +34,16 @@ on:
                 required: false
                 type: string
                 default: ''
+            build:
+                description: 'Run Docker image build jobs'
+                required: false
+                type: boolean
+                default: true
+            export_images:
+                description: 'Export architecture images as workflow artifacts'
+                required: false
+                type: boolean
+                default: false
             push:
                 description: 'Push images and create manifests'
                 required: false
@@ -54,6 +64,7 @@ on:
 
 jobs:
     prepare-frontend:
+        if: inputs.build
         name: Prepare Docker frontend assets
         runs-on: ubuntu-latest
         steps:
@@ -61,6 +72,7 @@ jobs:
               uses: actions/checkout@v7
               with:
                   persist-credentials: false
+                  ref: ${{ github.sha }}
 
             - name: Client App Install
               uses: ./.github/actions/client-app-install/
@@ -73,8 +85,17 @@ jobs:
                   NUXT_PUBLIC_VERSION: ${{ inputs.version }}
                   NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
                   NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
-                  NUXT_SOURCEMAP_CLIENT: ${{ inputs.push && 'hidden' || '' }}
+                  NUXT_SOURCEMAP_CLIENT: ${{ inputs.export_images && 'hidden' || inputs.push && 'hidden' || '' }}
               run: bun run generate --fail-on-error
+
+            - name: Inject source-map metadata for deferred upload
+              if: inputs.export_images && !inputs.push
+              working-directory: src/AppHost/ClientApp/
+              run: bunx --no-install posthog-cli sourcemap inject --directory .output/public --release-name reaparr --release-version "${{ inputs.informational_version }}"
+
+            - name: Archive injected frontend source maps
+              if: inputs.export_images && !inputs.push
+              run: tar -cf "${{ runner.temp }}/frontend-source-maps-docker.tar" -C src/AppHost/ClientApp/.output/public .
 
             - name: Upload private source maps
               if: inputs.push
@@ -87,15 +108,29 @@ jobs:
                   ingestion-host: ${{ inputs.telemetry_host }}
                   release-version: ${{ inputs.informational_version }}
 
+            - name: Package processed frontend assets
+              run: tar --exclude='*.map' -cf "${{ runner.temp }}/frontend-public-docker.tar" -C src/AppHost/ClientApp/.output/public .
+
+            - name: Upload deferred frontend source maps
+              if: inputs.export_images && !inputs.push
+              uses: actions/upload-artifact@v7
+              with:
+                  name: frontend-source-maps-docker
+                  path: ${{ runner.temp }}/frontend-source-maps-docker.tar
+                  if-no-files-found: error
+                  retention-days: 1
+
             - name: Upload processed frontend artifact
               uses: actions/upload-artifact@v7
               with:
                   name: frontend-public-docker
-                  path: src/AppHost/ClientApp/.output/public
+                  path: ${{ runner.temp }}/frontend-public-docker.tar
+                  if-no-files-found: error
                   retention-days: 1
 
     # Build both architectures natively in parallel
     build-images:
+        if: inputs.build
         name: Build ${{ matrix.arch }} Image
         needs: [prepare-frontend]
         strategy:
@@ -113,12 +148,16 @@ jobs:
               uses: actions/checkout@v7
               with:
                   persist-credentials: false
+                  ref: ${{ github.sha }}
 
             - name: Download processed frontend artifact
               uses: actions/download-artifact@v8
               with:
                   name: frontend-public-docker
                   path: .tmp/frontend-public-docker
+
+            - name: Extract packaged frontend assets
+              run: mkdir -p .tmp/frontend-public && tar -xf .tmp/frontend-public-docker/frontend-public-docker.tar -C .tmp/frontend-public
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
@@ -147,10 +186,11 @@ jobs:
                   file: docker/Dockerfile
                   platforms: linux/${{ matrix.arch }}
                   push: ${{ inputs.push }}
+                  outputs: ${{ inputs.export_images && format('type=docker,dest=/tmp/reaparr-{0}.tar', matrix.arch) || '' }}
                   tags: reaparr/reaparr:${{ inputs.version }}-${{ matrix.arch }}
                   labels: ${{ steps.metadata.outputs.labels }}
                   build-contexts: |
-                      frontend-public=./.tmp/frontend-public-docker
+                      frontend-public=./.tmp/frontend-public
                   build-args: |
                       VERSION=${{ inputs.version }}
                       INFORMATIONAL_VERSION=${{ inputs.informational_version }}
@@ -165,13 +205,81 @@ jobs:
                   cache-to: |
                       type=gha,scope=reaparr-${{ matrix.arch }},mode=max,ignore-error=true
                       ${{ inputs.push && format('type=registry,ref=reaparr/reaparr:buildcache-{0},mode=max', matrix.arch) || '' }}
-                  load: ${{ !inputs.push }}
+                  load: ${{ !inputs.push && !inputs.export_images }}
+            - name: Upload exported image archive
+              if: inputs.export_images
+              uses: actions/upload-artifact@v7
+              with:
+                  name: docker-image-${{ matrix.arch }}
+                  path: /tmp/reaparr-${{ matrix.arch }}.tar
+                  if-no-files-found: error
+                  retention-days: 1
+
+    publish-source-maps:
+        name: Publish retained Docker source maps
+        if: inputs.push && !inputs.build
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+                  ref: ${{ github.sha }}
+            - name: Client App Install
+              uses: ./.github/actions/client-app-install/
+            - name: Download retained source maps
+              uses: actions/download-artifact@v8
+              with:
+                  name: frontend-source-maps-docker
+                  path: .tmp/frontend-source-maps-docker
+            - name: Extract retained source maps
+              run: |
+                  mkdir -p src/AppHost/ClientApp/.output/public
+                  tar -xf .tmp/frontend-source-maps-docker/frontend-source-maps-docker.tar -C src/AppHost/ClientApp/.output/public
+            - name: Upload retained source maps
+              uses: ./.github/actions/posthog-source-maps/
+              with:
+                  directory: .output/public
+                  project-id: ${{ inputs.posthog_cli_project_id }}
+                  api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+                  host: ${{ inputs.posthog_cli_host }}
+                  ingestion-host: ${{ inputs.telemetry_host }}
+                  release-version: ${{ inputs.informational_version }}
+                  inject: 'false'
+
+    publish-images:
+        name: Publish ${{ matrix.arch }} Image
+        if: ${{ !cancelled() && inputs.push && !inputs.build && needs.publish-source-maps.result == 'success' }}
+        needs: [publish-source-maps]
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                arch: [amd64, arm64]
+        steps:
+            - name: Download exported image archive
+              uses: actions/download-artifact@v8
+              with:
+                  name: docker-image-${{ matrix.arch }}
+                  path: /tmp
+
+            - name: Load exported image
+              run: docker load --input "/tmp/reaparr-${{ matrix.arch }}.tar"
+
+            - name: Login to Docker Hub
+              uses: docker/login-action@v4
+              with:
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Push architecture image
+              run: docker push "reaparr/reaparr:${{ inputs.version }}-${{ matrix.arch }}"
 
     # Create multi-arch manifests (only if push=true)
     create-manifest:
         name: Create Multi-Arch Manifest
-        if: inputs.push
-        needs: [build-images]
+        if: ${{ !cancelled() && inputs.push && ((inputs.build && needs.build-images.result == 'success') || (!inputs.build && needs.publish-images.result == 'success')) }}
+        needs: [build-images, publish-images]
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -180,6 +288,7 @@ jobs:
               uses: actions/checkout@v7
               with:
                   persist-credentials: false
+                  ref: ${{ github.sha }}
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
