@@ -90,6 +90,121 @@ namespace Reaparr.Data.Migrations
                     b.ToTable("QRTZ_CRON_TRIGGERS", (string)null);
                 });
 
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzExecutionHistory", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("SCHED_NAME");
+
+                    b.Property<string>("EntryId")
+                        .HasColumnType("text")
+                        .HasColumnName("ENTRY_ID");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("ERROR_MESSAGE");
+
+                    b.Property<string>("ExecutionLog")
+                        .HasColumnType("text")
+                        .HasColumnName("EXECUTION_LOG");
+
+                    b.Property<string>("FireInstanceId")
+                        .HasColumnType("nvarchar(140)")
+                        .HasColumnName("FIRE_INSTANCE_ID");
+
+                    b.Property<long>("FiredTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("FIRED_TIME");
+
+                    b.Property<string>("InstanceName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("INSTANCE_NAME");
+
+                    b.Property<string>("JobGroup")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("JOB_GROUP");
+
+                    b.Property<string>("JobInput")
+                        .HasColumnType("text")
+                        .HasColumnName("JOB_INPUT");
+
+                    b.Property<bool?>("JobInputTooLarge")
+                        .HasColumnType("bit")
+                        .HasColumnName("JOB_INPUT_TOO_LARGE");
+
+                    b.Property<string>("JobName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("JOB_NAME");
+
+                    b.Property<bool?>("Manual")
+                        .HasColumnType("bit")
+                        .HasColumnName("MANUAL");
+
+                    b.Property<string>("Metrics")
+                        .HasColumnType("text")
+                        .HasColumnName("METRICS");
+
+                    b.Property<int?>("Result")
+                        .HasColumnType("integer")
+                        .HasColumnName("RESULT");
+
+                    b.Property<int>("RetryAttempt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("RETRY_ATTEMPT");
+
+                    b.Property<bool>("RetryScheduled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("RETRY_SCHEDULED");
+
+                    b.Property<long>("RunTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("RUN_TIME");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("bit")
+                        .HasColumnName("SUCCEEDED");
+
+                    b.Property<string>("Summary")
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("SUMMARY");
+
+                    b.Property<string>("TriggerGroup")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("TRIGGER_GROUP");
+
+                    b.Property<string>("TriggerName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("TRIGGER_NAME");
+
+                    b.HasKey("SchedulerName", "EntryId");
+
+                    b.HasIndex("SchedulerName", "FireInstanceId")
+                        .HasDatabaseName("IDX_QRTZ_EH_FIRE_INST");
+
+                    b.HasIndex("SchedulerName", "FiredTime")
+                        .HasDatabaseName("IDX_QRTZ_EH_FIRED_TIME");
+
+                    b.HasIndex("SchedulerName", "InstanceName")
+                        .HasDatabaseName("IDX_QRTZ_EH_INST");
+
+                    b.HasIndex("SchedulerName", "JobGroup", "JobName", "FiredTime")
+                        .HasDatabaseName("IDX_QRTZ_EH_JOB_TIME");
+
+                    b.HasIndex("SchedulerName", "TriggerGroup", "TriggerName", "FiredTime")
+                        .HasDatabaseName("IDX_QRTZ_EH_TRIG_TIME");
+
+                    b.ToTable("QRTZ_EXECUTION_HISTORY", (string)null);
+                });
+
             modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzFiredTrigger", b =>
                 {
                     b.Property<string>("SchedulerName")
@@ -100,6 +215,10 @@ namespace Reaparr.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("ENTRY_ID");
 
+                    b.Property<string>("ExecutionGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("EXECUTION_GROUP");
+
                     b.Property<long>("FiredTime")
                         .HasColumnType("bigint")
                         .HasColumnName("FIRED_TIME");
@@ -108,6 +227,10 @@ namespace Reaparr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("INSTANCE_NAME");
+
+                    b.Property<long?>("InterruptRequestedTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("INTERRUPT_REQUESTED_TIME");
 
                     b.Property<bool>("IsNonConcurrent")
                         .HasColumnType("bool")
@@ -124,6 +247,14 @@ namespace Reaparr.Data.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer")
                         .HasColumnName("PRIORITY");
+
+                    b.Property<int?>("Progress")
+                        .HasColumnType("integer")
+                        .HasColumnName("PROGRESS");
+
+                    b.Property<string>("ProgressMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("PROGRESS_MESSAGE");
 
                     b.Property<bool?>("RequestsRecovery")
                         .HasColumnType("bool")
@@ -150,26 +281,14 @@ namespace Reaparr.Data.Migrations
 
                     b.HasKey("SchedulerName", "EntryId");
 
-                    b.HasIndex("InstanceName")
-                        .HasDatabaseName("IDX_QRTZ_FT_TRIG_INST_NAME");
+                    b.HasIndex("SchedulerName", "InstanceName", "RequestsRecovery")
+                        .HasDatabaseName("IDX_QRTZ_FT_INST_JOB_REQ_RCVRY");
 
-                    b.HasIndex("JobGroup")
-                        .HasDatabaseName("IDX_QRTZ_FT_JOB_GROUP");
-
-                    b.HasIndex("JobName")
-                        .HasDatabaseName("IDX_QRTZ_FT_JOB_NAME");
-
-                    b.HasIndex("RequestsRecovery")
-                        .HasDatabaseName("IDX_QRTZ_FT_JOB_REQ_RECOVERY");
-
-                    b.HasIndex("TriggerGroup")
-                        .HasDatabaseName("IDX_QRTZ_FT_TRIG_GROUP");
-
-                    b.HasIndex("TriggerName")
-                        .HasDatabaseName("IDX_QRTZ_FT_TRIG_NAME");
+                    b.HasIndex("SchedulerName", "JobName", "JobGroup")
+                        .HasDatabaseName("IDX_QRTZ_FT_J_G");
 
                     b.HasIndex("SchedulerName", "TriggerName", "TriggerGroup")
-                        .HasDatabaseName("IDX_QRTZ_FT_TRIG_NM_GP");
+                        .HasDatabaseName("IDX_QRTZ_FT_T_G");
 
                     b.ToTable("QRTZ_FIRED_TRIGGERS", (string)null);
                 });
@@ -219,10 +338,88 @@ namespace Reaparr.Data.Migrations
 
                     b.HasKey("SchedulerName", "JobName", "JobGroup");
 
-                    b.HasIndex("RequestsRecovery")
-                        .HasDatabaseName("IDX_QRTZ_J_REQ_RECOVERY");
+                    b.HasIndex("SchedulerName", "JobGroup", "JobName")
+                        .HasDatabaseName("IDX_QRTZ_J_G_N");
 
                     b.ToTable("QRTZ_JOB_DETAILS", (string)null);
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzJobStatus", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("nvarchar(120)")
+                        .HasColumnName("SCHED_NAME");
+
+                    b.Property<string>("JobGroup")
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("JOB_GROUP");
+
+                    b.Property<string>("JobName")
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("JOB_NAME");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("CONSECUTIVE_FAILURES");
+
+                    b.Property<long>("FailureCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("FAILURE_COUNT");
+
+                    b.Property<long>("FirstFiredTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("FIRST_FIRED_TIME");
+
+                    b.Property<string>("LastEntryId")
+                        .HasColumnType("nvarchar(140)")
+                        .HasColumnName("LAST_ENTRY_ID");
+
+                    b.Property<string>("LastFailureMessage")
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("LAST_FAILURE_MESSAGE");
+
+                    b.Property<long?>("LastFailureTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("LAST_FAILURE_TIME");
+
+                    b.Property<long>("LastFiredTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("LAST_FIRED_TIME");
+
+                    b.Property<string>("LastInstanceName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("LAST_INSTANCE_NAME");
+
+                    b.Property<int>("LastResult")
+                        .HasColumnType("integer")
+                        .HasColumnName("LAST_RESULT");
+
+                    b.Property<long>("LastRunTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("LAST_RUN_TIME");
+
+                    b.Property<long?>("LastSuccessTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("LAST_SUCCESS_TIME");
+
+                    b.Property<string>("LastSummary")
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("LAST_SUMMARY");
+
+                    b.Property<long>("RunCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("RUN_COUNT");
+
+                    b.HasKey("SchedulerName", "JobGroup", "JobName");
+
+                    b.ToTable("QRTZ_JOB_STATUS", (string)null);
                 });
 
             modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzLock", b =>
@@ -240,6 +437,89 @@ namespace Reaparr.Data.Migrations
                     b.ToTable("QRTZ_LOCKS", (string)null);
                 });
 
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzMisfireHistory", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("SCHED_NAME");
+
+                    b.Property<string>("EntryId")
+                        .HasColumnType("text")
+                        .HasColumnName("ENTRY_ID");
+
+                    b.Property<string>("InstanceName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("INSTANCE_NAME");
+
+                    b.Property<string>("JobGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("JOB_GROUP");
+
+                    b.Property<string>("JobName")
+                        .HasColumnType("text")
+                        .HasColumnName("JOB_NAME");
+
+                    b.Property<long>("MisfireTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("MISFIRE_TIME");
+
+                    b.Property<int?>("Reason")
+                        .HasColumnType("integer")
+                        .HasColumnName("REASON");
+
+                    b.Property<long?>("ScheduledTime")
+                        .HasColumnType("bigint")
+                        .HasColumnName("SCHED_TIME");
+
+                    b.Property<string>("TriggerGroup")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("TRIGGER_GROUP");
+
+                    b.Property<string>("TriggerName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("TRIGGER_NAME");
+
+                    b.HasKey("SchedulerName", "EntryId");
+
+                    b.HasIndex("SchedulerName", "InstanceName")
+                        .HasDatabaseName("IDX_QRTZ_MH_INST");
+
+                    b.HasIndex("SchedulerName", "MisfireTime")
+                        .HasDatabaseName("IDX_QRTZ_MH_MISFIRE_TIME");
+
+                    b.ToTable("QRTZ_MISFIRE_HISTORY", (string)null);
+                });
+
+            modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzPausedJobGroup", b =>
+                {
+                    b.Property<string>("SchedulerName")
+                        .HasColumnType("text")
+                        .HasColumnName("SCHED_NAME");
+
+                    b.Property<string>("JobGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("JOB_GROUP");
+
+                    b.Property<string>("PauseReason")
+                        .HasColumnType("text")
+                        .HasColumnName("PAUSE_REASON");
+
+                    b.Property<long?>("PausedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("PAUSED_AT");
+
+                    b.Property<string>("PausedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("PAUSED_BY");
+
+                    b.HasKey("SchedulerName", "JobGroup");
+
+                    b.ToTable("QRTZ_PAUSED_JOB_GRPS", (string)null);
+                });
+
             modelBuilder.Entity("AppAny.Quartz.EntityFrameworkCore.Migrations.QuartzPausedTriggerGroup", b =>
                 {
                     b.Property<string>("SchedulerName")
@@ -249,6 +529,18 @@ namespace Reaparr.Data.Migrations
                     b.Property<string>("TriggerGroup")
                         .HasColumnType("text")
                         .HasColumnName("TRIGGER_GROUP");
+
+                    b.Property<string>("PauseReason")
+                        .HasColumnType("text")
+                        .HasColumnName("PAUSE_REASON");
+
+                    b.Property<long?>("PausedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("PAUSED_AT");
+
+                    b.Property<string>("PausedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("PAUSED_BY");
 
                     b.HasKey("SchedulerName", "TriggerGroup");
 
@@ -272,6 +564,10 @@ namespace Reaparr.Data.Migrations
                     b.Property<long>("LastCheckInTime")
                         .HasColumnType("bigint")
                         .HasColumnName("LAST_CHECKIN_TIME");
+
+                    b.Property<string>("QuartzVersion")
+                        .HasColumnType("text")
+                        .HasColumnName("QUARTZ_VERSION");
 
                     b.HasKey("SchedulerName", "InstanceName");
 
@@ -394,6 +690,18 @@ namespace Reaparr.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("CALENDAR_NAME");
 
+                    b.Property<int?>("ContinuationCondition")
+                        .HasColumnType("integer")
+                        .HasColumnName("CONTINUATION_CONDITION");
+
+                    b.Property<string>("ContinuesTriggerGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("CONTINUES_TRIGGER_GROUP");
+
+                    b.Property<string>("ContinuesTriggerName")
+                        .HasColumnType("text")
+                        .HasColumnName("CONTINUES_TRIGGER_NAME");
+
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("DESCRIPTION");
@@ -401,6 +709,14 @@ namespace Reaparr.Data.Migrations
                     b.Property<long?>("EndTime")
                         .HasColumnType("bigint")
                         .HasColumnName("END_TIME");
+
+                    b.Property<string>("ExecutionGroup")
+                        .HasColumnType("text")
+                        .HasColumnName("EXECUTION_GROUP");
+
+                    b.Property<bool?>("FixedDelay")
+                        .HasColumnType("bit")
+                        .HasColumnName("FIXED_DELAY");
 
                     b.Property<byte[]>("JobData")
                         .HasColumnType("bytea")
@@ -424,9 +740,39 @@ namespace Reaparr.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("MISFIRE_ORIG_FIRE_TIME");
 
+                    b.Property<long?>("MisfireThreshold")
+                        .HasColumnType("bigint")
+                        .HasColumnName("MISFIRE_THRESHOLD");
+
                     b.Property<long?>("NextFireTime")
                         .HasColumnType("bigint")
                         .HasColumnName("NEXT_FIRE_TIME");
+
+                    b.Property<int?>("OverlapPolicy")
+                        .HasColumnType("integer")
+                        .HasColumnName("OVERLAP_POLICY");
+
+                    b.Property<string>("PauseReason")
+                        .HasColumnType("text")
+                        .HasColumnName("PAUSE_REASON");
+
+                    b.Property<long?>("PausedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("PAUSED_AT");
+
+                    b.Property<string>("PausedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("PAUSED_BY");
+
+                    b.Property<string>("PreferredNode")
+                        .HasColumnType("text")
+                        .HasColumnName("PREFERRED_NODE");
+
+                    b.Property<bool>("PreferredNodeAuto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("PREFERRED_NODE_AUTO");
 
                     b.Property<long?>("PreviousFireTime")
                         .HasColumnType("bigint")
@@ -435,6 +781,14 @@ namespace Reaparr.Data.Migrations
                     b.Property<int?>("Priority")
                         .HasColumnType("integer")
                         .HasColumnName("PRIORITY");
+
+                    b.Property<int?>("RetryAttempt")
+                        .HasColumnType("integer")
+                        .HasColumnName("RETRY_ATTEMPT");
+
+                    b.Property<string>("RetryPolicy")
+                        .HasColumnType("text")
+                        .HasColumnName("RETRY_POLICY");
 
                     b.Property<long>("StartTime")
                         .HasColumnType("bigint")
@@ -452,16 +806,18 @@ namespace Reaparr.Data.Migrations
 
                     b.HasKey("SchedulerName", "TriggerName", "TriggerGroup");
 
-                    b.HasIndex("NextFireTime")
-                        .HasDatabaseName("IDX_QRTZ_T_NEXT_FIRE_TIME");
+                    b.HasIndex("SchedulerName", "CalendarName")
+                        .HasDatabaseName("IDX_QRTZ_T_C");
 
-                    b.HasIndex("TriggerState")
-                        .HasDatabaseName("IDX_QRTZ_T_STATE");
+                    b.HasIndex("SchedulerName", "JobName", "JobGroup")
+                        .HasDatabaseName("IDX_QRTZ_T_J");
 
-                    b.HasIndex("NextFireTime", "TriggerState")
+                    b.HasIndex("SchedulerName", "TriggerGroup", "TriggerName")
+                        .HasDatabaseName("IDX_QRTZ_T_G_N");
+
+                    b.HasIndex("SchedulerName", "TriggerState", "NextFireTime", "Priority", "MisfireInstruction")
+                        .IsDescending(false, false, false, true, false)
                         .HasDatabaseName("IDX_QRTZ_T_NFT_ST");
-
-                    b.HasIndex("SchedulerName", "JobName", "JobGroup");
 
                     b.ToTable("QRTZ_TRIGGERS", (string)null);
                 });
