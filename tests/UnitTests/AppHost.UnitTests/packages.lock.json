@@ -1229,8 +1229,8 @@
       },
       "Quartz": {
         "type": "Transitive",
-        "resolved": "4.5.1",
-        "contentHash": "vexFR5Z/Sbu0um75NOhjhinOEB4Acb/HAK6Q90EpGV44/YBxfchatXWoKJDOtYu8UtodBm6rs5GVtfM7TfUmsg==",
+        "resolved": "4.7.3",
+        "contentHash": "/eX2Xo6eJAfupXGRjmcCy5Jpn/6NOBXDuUKTK2tY228yQ23tYUv0eeejwEbNlyxEJITIv1ajddTmYib+mMBxmQ==",
         "dependencies": {
           "Microsoft.Extensions.Configuration.Binder": "10.0.0",
           "Microsoft.Extensions.DependencyInjection": "10.0.0",
@@ -1632,7 +1632,7 @@
           "Polly": "[8.6.5, )",
           "Polly.Core": "[8.6.6, )",
           "PostHog": "[2.18.1, )",
-          "Quartz": "[4.5.1, )",
+          "Quartz": "[4.7.3, )",
           "Reaparr.Application.Contracts": "[1.0.0, )",
           "Reaparr.Data.Contracts": "[1.0.0, )",
           "Reaparr.Domain": "[1.0.0, )",
