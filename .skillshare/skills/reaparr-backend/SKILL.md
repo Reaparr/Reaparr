@@ -19,6 +19,13 @@ Backend work includes code, tests, configuration, plans, reviews, debugging, and
 
 Do not use this skill for frontend-only work under `src/AppHost/ClientApp/`; use the Reaparr frontend skills instead.
 
+## String ordering
+
+- Leave ordinary LINQ sorting and string equality on their established .NET defaults; do not scatter explicit comparers merely to silence culture-sensitive warnings.
+- Use the existing `OrderByNatural` / `OrderByNaturalDesc` helpers for media-title ordering that needs case-insensitive numeric-aware sorting; these centrally use `StringComparison.OrdinalIgnoreCase.WithNaturalSort()`. Use that comparer directly only for a specialized ordering chain that the helpers do not cover, such as `ThenBy`.
+- Preserve deliberate canonical identity/fingerprint ordering and existing equality/hash semantics. Keep database `IQueryable` ordering provider-translatable and reuse established natural-sort collation where the query contract requires it; do not materialize early just to apply a comparer.
+- Keep MA0002 disabled and culture-sensitive ordering inspections off under this policy; EditorConfig configures diagnostics, not a process-wide runtime comparer. Do not introduce analyzer projects or wrappers to manufacture a global default.
+
 ## Vertical-slice structure
 
 Application endpoints are organized by operation, not grouped into product-level aggregate files.

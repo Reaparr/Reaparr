@@ -35,12 +35,15 @@ resharper_csharp_prefer_explicit_discard_declaration = true
 
 # Rider inspection severities
 resharper_enforce_if_statement_braces_highlighting = suggestion
+# Allow ordinary .NET culture-sensitive sorting without requiring comparer arguments at every call site.
 resharper_invocation_is_culture_sensitive_highlighting = none
 resharper_stylecop_sa1101_highlighting = none
 resharper_stylecop_sa1642_highlighting = none
 resharper_suggest_var_or_type_built_in_types_highlighting = suggestion
 resharper_suggest_var_or_type_elsewhere_highlighting = suggestion
 resharper_suggest_var_or_type_simple_types_highlighting = suggestion
+# Preserve explicit anonymous-object property names so source member changes do not rename the projected properties.
+resharper_redundant_anonymous_type_property_name_highlighting = none
 
 # Keep traditional extension methods instead of C# 14 extension blocks.
 resharper_convert_to_extension_block_highlighting = none
@@ -86,6 +89,18 @@ dotnet_diagnostic.MA0129.severity = warning
 dotnet_diagnostic.RCS1151.severity = warning
 # RCS1238 reports nested ternary operators, but is disabled because those expressions are an accepted readability choice.
 dotnet_diagnostic.RCS1238.severity = none
+# RCS1015 recommends nameof for symbol-name strings and equivalent constant enum member ToString calls.
+dotnet_diagnostic.RCS1015.severity = warning
+# RCS1172 recommends an is type test instead of an as cast used only for a null check.
+dotnet_diagnostic.RCS1172.severity = warning
+# RCS1113 recommends string.IsNullOrEmpty for equivalent combined null and empty checks.
+dotnet_diagnostic.RCS1113.severity = warning
+# RCS1032 reports parentheses that are unnecessary for the expression's syntax and precedence.
+dotnet_diagnostic.RCS1032.severity = warning
+# RCS1163 reports parameters that are unused by their implementation.
+dotnet_diagnostic.RCS1163.severity = warning
+# RCS1199 reports redundant null checks that can be simplified without changing the result.
+dotnet_diagnostic.RCS1199.severity = warning
 
 # Approved blocking correctness targets.
 # CA1828 reports CountAsync or LongCountAsync calls used only to test whether any results exist.
@@ -94,6 +109,18 @@ dotnet_diagnostic.CA1828.severity = warning
 dotnet_diagnostic.CA2012.severity = warning
 # MA0042 reports synchronous operations in async-capable code when an asynchronous alternative is available.
 dotnet_diagnostic.MA0042.severity = warning
+# MA0022 reports null task returns and recommends returning a completed task containing the intended result.
+dotnet_diagnostic.MA0022.severity = warning
+# MA0054 reports newly thrown exceptions that discard the caught exception instead of preserving it as an inner exception.
+dotnet_diagnostic.MA0054.severity = warning
+# RCS1075 reports empty catch clauses that silently swallow System.Exception.
+dotnet_diagnostic.RCS1075.severity = warning
+# MA0010 requires custom attribute classes to declare their supported targets with AttributeUsage.
+dotnet_diagnostic.MA0010.severity = warning
+# MA0047 reports types declared outside a named namespace.
+dotnet_diagnostic.MA0047.severity = warning
+# MA0002 is disabled to avoid requiring explicit comparers on ordinary sorting and equality assertions.
+dotnet_diagnostic.MA0002.severity = none
 
 # Approved advisory targets.
 # CA1508 reports conditions that dataflow analysis determines are always true or false.
@@ -104,6 +131,8 @@ dotnet_diagnostic.CA2000.severity = suggestion
 dotnet_diagnostic.MA0134.severity = suggestion
 # MA0140 reports conditional branches that execute identical code.
 dotnet_diagnostic.MA0140.severity = suggestion
+# MA0024 recommends explicit StringComparer instances instead of default string equality or ordering comparers.
+dotnet_diagnostic.MA0024.severity = suggestion
 
 dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary:none
 dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:none
