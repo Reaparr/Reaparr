@@ -62,7 +62,7 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
     }
 
     [Test]
-    public async Task ShouldPublishOnlineStatusChange_WhenConnectionsBecomeHealthyWithoutProductTelemetry()
+    public async Task ShouldAwaitOnlineStatusChangePublication_WhenConnectionsBecomeHealthyWithoutProductTelemetry()
     {
         // Arrange
         await SetupDatabase(54231, config =>
@@ -112,16 +112,27 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             )
             .Verifiable(Times.AtLeastOnce);
 
+        var publishStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var publishCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock.Mock<IEventPublisher>()
             .Setup(x =>
-                x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>())
+                x.PublishAsync(
+                    It.IsAny<ServerOnlineStatusChangedNotification>(),
+                    Mode.WaitForAll,
+                    It.IsAny<CancellationToken>()
+                )
             )
-            .Returns(Task.CompletedTask)
+            .Callback(() => publishStarted.TrySetResult(true))
+            .Returns(publishCompleted.Task)
             .Verifiable(Times.Once);
-
         // Act
         var request = new CheckAllConnectionsStatusByPlexServerCommand(1);
-        var result = await Sut.ExecuteAsync(request, CancellationToken);
+        var execution = Sut.ExecuteAsync(request, CancellationToken);
+        var firstCompletedTask = await Task.WhenAny(publishStarted.Task, execution);
+        firstCompletedTask.ShouldBe(publishStarted.Task);
+        execution.IsCompleted.ShouldBeFalse();
+        publishCompleted.SetResult(true);
+        var result = await execution;
 
         // Assert
         result.ShouldNotBeNull();
@@ -149,7 +160,12 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
         Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
         Mock.Mock<IEventPublisher>()
             .Verify(
-                x => x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>()),
+                x =>
+                    x.PublishAsync(
+                        It.IsAny<ServerOnlineStatusChangedNotification>(),
+                        Mode.WaitForAll,
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Once()
             );
     }
@@ -207,7 +223,11 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
 
         Mock.Mock<IEventPublisher>()
             .Setup(x =>
-                x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>())
+                x.PublishAsync(
+                    It.IsAny<ServerOnlineStatusChangedNotification>(),
+                    Mode.WaitForAll,
+                    It.IsAny<CancellationToken>()
+                )
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never);
@@ -221,7 +241,12 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
         result.IsSuccess.ShouldBeTrue();
         Mock.Mock<IEventPublisher>()
             .Verify(
-                x => x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>()),
+                x =>
+                    x.PublishAsync(
+                        It.IsAny<ServerOnlineStatusChangedNotification>(),
+                        Mode.WaitForAll,
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Never()
             );
     }
@@ -278,7 +303,12 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
         Mock.Mock<ITelemetry>().VerifyNoOtherCalls();
         Mock.Mock<IEventPublisher>()
             .Verify(
-                x => x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>()),
+                x =>
+                    x.PublishAsync(
+                        It.IsAny<ServerOnlineStatusChangedNotification>(),
+                        Mode.WaitForAll,
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Never()
             );
     }
@@ -335,7 +365,11 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
 
         Mock.Mock<IEventPublisher>()
             .Setup(x =>
-                x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>())
+                x.PublishAsync(
+                    It.IsAny<ServerOnlineStatusChangedNotification>(),
+                    Mode.WaitForAll,
+                    It.IsAny<CancellationToken>()
+                )
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once);
@@ -354,6 +388,7 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
                         It.Is<ServerOnlineStatusChangedNotification>(notification =>
                             notification.PlexServerId == 1 && !notification.IsOnline
                         ),
+                        Mode.WaitForAll,
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Once()
@@ -566,7 +601,12 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
         result.Value.ShouldBeEmpty();
         Mock.Mock<IEventPublisher>()
             .Verify(
-                x => x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>()),
+                x =>
+                    x.PublishAsync(
+                        It.IsAny<ServerOnlineStatusChangedNotification>(),
+                        Mode.WaitForAll,
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Never
             );
     }
@@ -653,7 +693,11 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
 
         Mock.Mock<IEventPublisher>()
             .Setup(x =>
-                x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>())
+                x.PublishAsync(
+                    It.IsAny<ServerOnlineStatusChangedNotification>(),
+                    Mode.WaitForAll,
+                    It.IsAny<CancellationToken>()
+                )
             )
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Never);
@@ -670,7 +714,12 @@ public class CheckAllConnectionsStatusByPlexServerCommandUnitTests
             .Verify(x => x.SendRefreshNotificationAsync(It.IsAny<List<RefreshDataType>>()), Times.Once);
         Mock.Mock<IEventPublisher>()
             .Verify(
-                x => x.PublishAsync(It.IsAny<ServerOnlineStatusChangedNotification>(), It.IsAny<CancellationToken>()),
+                x =>
+                    x.PublishAsync(
+                        It.IsAny<ServerOnlineStatusChangedNotification>(),
+                        Mode.WaitForAll,
+                        It.IsAny<CancellationToken>()
+                    ),
                 Times.Never
             );
     }
