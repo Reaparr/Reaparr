@@ -107,7 +107,10 @@ public class DownloadJob : IJob
                     clientTypeResult.ToResult(),
                     cancellationToken
                 );
-                await _eventPublisher.PublishAsync(new SendNotificationResult(clientTypeResult.ToResult()), cancellationToken);
+                await _eventPublisher.PublishAsync(
+                    new SendNotificationResult(clientTypeResult.ToResult()),
+                    cancellationToken
+                );
                 return clientTypeResult.ToResult();
             }
 

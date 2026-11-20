@@ -79,12 +79,14 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
         );
 
     public async Task<bool> IsAnyMoveDownloadFileJobRunning() =>
-        (await _scheduler.QueryRunningJobs()).Any(x => x.JobKey?.Group == nameof(JobTypes.MoveDownloadFileJob));
+        (await _scheduler.GetLocalExecutingFireInstances()).Any(x =>
+            x.JobKey?.Group == nameof(JobTypes.MoveDownloadFileJob)
+        );
 
     public async Task<List<DownloadTaskKey>> GetCurrentlyMovingKeysByServer(int plexServerId)
     {
         var keysById = new Dictionary<Guid, DownloadTaskKey>();
-        var runningJobKeys = (await _scheduler.QueryRunningJobs(CancellationToken.None))
+        var runningJobKeys = (await _scheduler.GetLocalExecutingFireInstances(CancellationToken.None))
             .Where(x => x.JobKey?.Group == nameof(JobTypes.MoveDownloadFileJob))
             .Select(x => x.JobKey!)
             .ToHashSet();

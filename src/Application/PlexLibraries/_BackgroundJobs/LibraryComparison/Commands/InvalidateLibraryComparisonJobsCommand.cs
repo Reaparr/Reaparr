@@ -56,7 +56,7 @@ public class InvalidateLibraryComparisonJobsCommandHandler
             .Select(x => x.JobKey)
             .ToList();
 
-        var executingJobKeys = (await _scheduler.QueryRunningJobs(cancellationToken))
+        var executingJobKeys = (await _scheduler.GetLocalExecutingFireInstances(cancellationToken))
             .Where(x => x.JobKey is not null)
             .Select(x => x.JobKey!)
             .ToHashSet();

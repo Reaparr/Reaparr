@@ -73,7 +73,7 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
     public async Task<List<DownloadTaskKey>> GetCurrentlyDownloadingKeysByServer(int plexServerId)
     {
         var keysById = new Dictionary<Guid, DownloadTaskKey>();
-        var runningJobKeys = (await _scheduler.QueryRunningJobs(CancellationToken.None))
+        var runningJobKeys = (await _scheduler.GetLocalExecutingFireInstances(CancellationToken.None))
             .Where(x => x.JobKey?.Group == nameof(JobTypes.DownloadJob))
             .Select(x => x.JobKey!)
             .ToHashSet();
