@@ -458,7 +458,6 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                         bufferedProgress.Key
                     );
                 flushResult.LogError();
-                _progressByNodeId.AddOrUpdate(bufferedProgress.NodeId, _ => bufferedProgress, (_, current) => current);
             }
         }
 
@@ -542,10 +541,12 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         await progressGate.WaitAsync(cancellationToken);
         try
         {
-            return await Result.Try(async Task () =>
+            BufferedProgressUpdate? claimedProgress = null;
+            var result = await Result.Try(async Task () =>
             {
                 if (!_progressByNodeId.TryRemove(bufferedProgress.NodeId, out var latestBufferedProgress))
                     return;
+                claimedProgress = latestBufferedProgress;
                 bufferedProgress = latestBufferedProgress;
                 if (
                     _finalizedProgressNodes.ContainsKey(bufferedProgress.NodeId)
@@ -602,6 +603,11 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
 
                 bufferedEntries.Add(bufferedProgress);
             });
+            if (result.IsFailed && claimedProgress is not null)
+            {
+                _progressByNodeId.AddOrUpdate(claimedProgress.NodeId, _ => claimedProgress, (_, current) => current);
+            }
+            return result;
         }
         finally
         {

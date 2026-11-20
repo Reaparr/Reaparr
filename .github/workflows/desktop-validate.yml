@@ -88,6 +88,7 @@ jobs:
                 env:
                     NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
                     NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
+                    NUXT_PUBLIC_VERSION: ${{ inputs.version }}
                     NUXT_SOURCEMAP_CLIENT: ${{ (inputs.upload_artifacts || inputs.upload_source_maps || inputs.push || inputs.publish_release) && 'hidden' || '' }}
                 run: bun run generate --fail-on-error
 

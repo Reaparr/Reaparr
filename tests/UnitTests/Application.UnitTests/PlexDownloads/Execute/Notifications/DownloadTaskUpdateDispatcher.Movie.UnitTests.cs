@@ -591,6 +591,88 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     }
 
     [Test]
+    public async Task ShouldRequeueClaimedProgress_WhenBufferedFlushFailsAfterNewerUpdateArrives()
+    {
+        // Arrange
+        await SetupDatabase(84348, config => config.MovieDownloadTasksCount = 1);
+        var movieFile = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
+        var key = movieFile.ToKey();
+        var queryFailure = new InvalidOperationException("simulated flush failure");
+        var failingContext = new Mock<IReaparrDbContext>(MockBehavior.Strict);
+        failingContext.SetupGet(x => x.DownloadTaskMovieFile).Throws(queryFailure);
+        failingContext.Setup(x => x.Dispose());
+        var factory = new Mock<IReaparrDbContextFactory>(MockBehavior.Strict);
+        factory.Setup(x => x.CreateAsync()).ReturnsAsync(failingContext.Object).Verifiable(Times.Once());
+        var sut = new DownloadTaskUpdateDispatcher(
+            Mock.Container.Resolve<ILogger>(),
+            factory.Object,
+            Mock.Container.Resolve<IDownloadHubService>(),
+            Mock.Container.Resolve<ICommandExecutor>(),
+            Mock.Container.Resolve<IDownloadTaskScheduler>(),
+            Mock.Container.Resolve<ITelemetry>()
+        );
+        var gates = (SemaphoreSlim[])
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetField(
+                    "_progressGates",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .GetValue(sut)!;
+        var gate = gates[(int)((uint)key.Id.GetHashCode() % (uint)gates.Length)];
+        await gate.WaitAsync(CancellationToken);
+        sut.OnProgressUpdated(
+            key,
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                Percentage = 25,
+                DownloadSpeed = 10,
+            }
+        );
+
+        // Act
+        var flush = (Task)
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetMethod(
+                    "FlushProgressAsync",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .Invoke(sut, [CancellationToken])!;
+        try
+        {
+            flush.IsCompleted.ShouldBeFalse();
+            sut.OnProgressUpdated(
+                key,
+                new DownloadTaskProgress
+                {
+                    DataTotal = 100,
+                    DataReceived = 50,
+                    Percentage = 50,
+                    DownloadSpeed = 10,
+                }
+            );
+        }
+        finally
+        {
+            gate.Release();
+            await flush.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        // Assert
+        var buffered =
+            (ConcurrentDictionary<Guid, BufferedProgressUpdate>)
+                typeof(DownloadTaskUpdateDispatcher)
+                    .GetField(
+                        "_progressByNodeId",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .GetValue(sut)!;
+        buffered[key.Id].Progress!.DataReceived.ShouldBe(50);
+        factory.Verify();
+    }
+
+    [Test]
     public async Task ShouldRetryBufferedProgress_WhenFirstPatchSendFails()
     {
         await SetupDatabase(84325, config => config.MovieDownloadTasksCount = 1);
