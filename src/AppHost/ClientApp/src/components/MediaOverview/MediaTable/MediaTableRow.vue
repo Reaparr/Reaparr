@@ -24,7 +24,7 @@
 						class="media-table-row--column"
 						cols="auto"
 						style="min-width: 50px">
-						<QText>{{ `#${n(row[column.field])}` }}</QText>
+						<QText>{{ `#${n(row.sortIndex)}` }}</QText>
 					</QCol>
 				</template>
 				<!-- Title -->
@@ -37,7 +37,7 @@
 						]"
 						:data-label="column.label"
 						@click.stop="!disableHoverClick ? onRowAction({ command: 'open-details' }) : () => {}">
-						<QText :value="row[column.field]" />
+						<QText :value="row.title" />
 					</QCol>
 				</template>
 				<!-- Quality -->
@@ -57,7 +57,7 @@
 						cols="1">
 						<QDuration
 							align="center"
-							:value="row[column.field]"
+							:value="row.duration"
 							short />
 					</QCol>
 				</template>
@@ -69,7 +69,7 @@
 						cols="1">
 						<QDateTime
 							align="center"
-							:text="row[column.field]"
+							:text="(column.field === 'addedAt' ? row.addedAt : row.updatedAt) ?? undefined"
 							short-date />
 					</QCol>
 				</template>
@@ -81,7 +81,7 @@
 						cols="1">
 						<QFileSize
 							align="center"
-							:size="row[column.field]" />
+							:size="row.mediaSize" />
 					</QCol>
 				</template>
 				<!-- Actions -->

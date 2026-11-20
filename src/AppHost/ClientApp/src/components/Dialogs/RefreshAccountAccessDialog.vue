@@ -133,7 +133,7 @@ const refreshRapports = ref<RefreshPlexAccountAccessRapportDTO[]>([]);
 const expanded = ref<number[]>([]);
 const tab = ref(0);
 
-function sortState(x) {
+function sortState(x: IAccessNode): number {
 	switch (x.state) {
 		case PlexAccessState.Granted:
 			return 0;

@@ -408,8 +408,9 @@ export const useAccountDialogStore = defineStore(StoreNames.AccountDialogStore, 
 				return state.displayName !== '' && hasCurrentValidation();
 			}
 			const original = get(originalAuthentication);
+			const hasCredentialsChanged = !state.isNewAccount && original !== null && !isEqual(original.input, getAuthenticationInput());
 			return original !== null && (hasCurrentValidation()
-				|| (!original.isValidated && !get(getters.hasCredentialsChanged)));
+				|| (!original.isValidated && !hasCredentialsChanged));
 		}),
 		getAccountData: computed((): PlexAccountDTO => {
 			return {

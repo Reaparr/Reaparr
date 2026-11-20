@@ -4,22 +4,20 @@ import { reactive, computed, toRefs } from 'vue';
 import { concatMap, finalize, map, switchMap, tap } from 'rxjs/operators';
 import type { Observable } from 'rxjs';
 import { defer, of } from 'rxjs';
-import { clone, cloneDeep, flatMapDeep, keyBy, merge, sum, values } from 'lodash-es';
-import {
-	type BaseResultDTO,
-	type CreateDownloadTasksRequest,
-	DownloadActions,
-	type DownloadPreviewContainerDTO,
-	type DownloadPreviewRequest,
-	type DownloadPatchMessagePackDTO,
-	type DownloadProgressDTO,
-	type DownloadSnapshotDTO,
-	DownloadStatus,
-	type PlexServerDTO,
-	type ServerDownloadProgressDTO,
-	RefreshDataType,
-} from '@dto';
+import { clone, cloneDeep, keyBy, merge, sum, values } from 'lodash-es';
 import { StoreNames, type IDownloadsSelection, type IPTreeTableSelectionKeys, type ISetupResult } from '@interfaces';
+import type {
+	BaseResultDTO,
+	CreateDownloadTasksRequest,
+	DownloadPreviewContainerDTO,
+	DownloadPreviewRequest,
+	DownloadPatchMessagePackDTO,
+	DownloadProgressDTO,
+	DownloadSnapshotDTO,
+	PlexServerDTO,
+	ServerDownloadProgressDTO,
+} from '@dto';
+import { DownloadActions, DownloadStatus, RefreshDataType } from '@dto';
 import { downloadApi } from '@api';
 import { translateDownloadNotification } from '@composables';
 import { useServerStore, useSignalrStore } from '@store';
@@ -193,14 +191,14 @@ export const useDownloadStore = defineStore(StoreNames.DownloadStore, () => {
 		},
 		setupSelection(serverId: number): void {
 			const downloads = getters.getDownloadsByServerId(serverId);
-			const getLeafs = (x) => {
+			const getLeafs = (x: DownloadProgressDTO): DownloadProgressDTO[] => {
 				if (!x.children || !x.children.length) {
-					return x;
+					return [x];
 				}
-				return [x, flatMapDeep(x.children, getLeafs)];
+				return [x, ...x.children.flatMap(getLeafs)];
 			};
 
-			const allSelection: IPTreeTableSelectionKeys = flatMapDeep(downloads, getLeafs).reduce((a, v) => ({
+			const allSelection: IPTreeTableSelectionKeys = downloads.flatMap(getLeafs).reduce((a, v) => ({
 				...a, [v.id]: {
 					checked: true, partialChecked: false,
 				},

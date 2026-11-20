@@ -39,7 +39,7 @@
 					justify="between"
 					class="media-selection-adjustments">
 					<QCol
-						v-for="column in ['min', 'max']"
+						v-for="column in rangeFields"
 						:key="column"
 						cols="auto"
 						class="media-selection-adjustment q-mx-xs">
@@ -105,6 +105,9 @@ import { clamp } from 'lodash-es';
 
 const mediaOverviewStore = useMediaOverviewStore();
 
+const rangeFields = ['min', 'max'] as const;
+type RangeField = typeof rangeFields[number];
+
 const selectedRange = ref({
 	min: 1,
 	max: 1,
@@ -118,7 +121,7 @@ const numberInput = computed({
 	},
 });
 
-function adjustValue(type: string, value: number) {
+function adjustValue(type: RangeField, value: number) {
 	let minValue = 1;
 	let maxValue = mediaOverviewStore.itemsLength;
 	switch (type) {

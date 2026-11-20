@@ -412,8 +412,7 @@ function toggleMusicSelection(rows: IComparisonDetailsRow[], checked: boolean) {
 	const tracks = getActionableMusicTracks(rows);
 	const keys = checked ? { ...get(selectedRows) } : omit(get(selectedRows), tracks.map((track) => track.key));
 	if (checked) {
-		for (const track of tracks)
-			keys[track.key] = { checked: true, partialChecked: false };
+		Object.assign(keys, Object.fromEntries(tracks.map((track) => [track.key, { checked: true, partialChecked: false }])));
 	}
 	set(selectedRows, keys);
 	const mediaItem = get(selectedMediaItem);

@@ -388,7 +388,7 @@ public static partial class DbContextExtensions
             .Select(x => (bool?)x.IsEnabled)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (requestedLibrary.IsEnabled == false || serverEnabled == false)
+        if (!requestedLibrary.IsEnabled || serverEnabled == false)
             return ResultExtensions.Create400BadRequestResult("The requested photo library or server is disabled.");
 
         if (serverEnabled is null || !requestedLibrary.HasServer)

@@ -508,7 +508,7 @@ public class DeleteTorrentEndpointUnitTests : BaseEndpointUnitTest<DeleteTorrent
                 x =>
                     x.Send(
                         It.Is<StopDownloadTaskCommand>(cmd =>
-                            cmd.DownloadTaskGuid == movieFile.Id && cmd.DeleteFiles == false
+                            cmd.DownloadTaskGuid == movieFile.Id && !cmd.DeleteFiles
                         ),
                         It.IsAny<CancellationToken>()
                     ),

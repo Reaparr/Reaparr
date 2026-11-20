@@ -3,8 +3,7 @@
 	"extends": "./.nuxt/tsconfig.json",
 	"compilerOptions": {
 			"sourceMap": true,
-		// TODO This might be better to enable
-		"noImplicitAny": false,
+		"noImplicitAny": true,
 		// Fix: https://github.com/mammadataei/cypress-vite/issues/13#issuecomment-1288454576
 		"esModuleInterop": true,
 		"composite": true,

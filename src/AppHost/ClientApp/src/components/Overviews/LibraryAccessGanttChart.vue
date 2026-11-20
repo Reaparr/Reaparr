@@ -10,7 +10,7 @@ import { get } from '@vueuse/core';
 import dayjs from 'dayjs';
 import 'jsgantt-improved/dist/jsgantt.css';
 import JSGantt from 'jsgantt-improved';
-import type { GanttChartFormat } from 'jsgantt-improved';
+import type { GanttChartFormat, GanttTask, GanttTaskInput } from 'jsgantt-improved';
 import type { LibraryAccessTimelineInterval, LibraryAccessTimelineZoomPreset } from '@store';
 
 const props = withDefaults(defineProps<{
@@ -287,7 +287,7 @@ function applyVisibleRangePadding(
 
 function buildChartTasks(intervals: LibraryAccessTimelineInterval[]) {
 	const serverGroups = groupIntervalsByServer(intervals);
-	const tasks: Record<string, unknown>[] = [];
+	const tasks: GanttTaskInput[] = [];
 
 	for (const serverGroup of serverGroups) {
 		tasks.push(buildServerGroupTask(serverGroup));
@@ -331,7 +331,7 @@ function groupIntervalsByServer(intervals: LibraryAccessTimelineInterval[]) {
 	return Array.from(groups.values()).sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
 }
 
-function buildServerGroupTask(serverGroup: { id: string; name: string; min: Date; max: Date }) {
+function buildServerGroupTask(serverGroup: { id: string; name: string; min: Date; max: Date }): GanttTaskInput {
 	return {
 		pID: serverGroup.id,
 		pName: serverGroup.name,
@@ -351,7 +351,7 @@ function buildServerGroupTask(serverGroup: { id: string; name: string; min: Date
 	};
 }
 
-function mapIntervalToLibraryTask(interval: LibraryAccessTimelineInterval, parentServerId: string) {
+function mapIntervalToLibraryTask(interval: LibraryAccessTimelineInterval, parentServerId: string): GanttTaskInput {
 	const isSelected = interval.rowId === props.selectedRowId;
 	const isActive = interval.revokedAt === null;
 
@@ -555,19 +555,13 @@ function alignCurrentTimeMarkerToActiveBars(ganttContainer: HTMLElement) {
 		grid.classList.remove('has-library-access-current-time-marker');
 		return;
 	}
-
 	grid.style.setProperty('--library-access-current-day-left', `${markerLeft}px`);
 	grid.classList.add('has-library-access-current-time-marker');
 }
 
-type GanttTask = {
-	getOriginalID(): string;
-	getListChildRow(): HTMLTableRowElement | null;
-};
-
 function bindTaskSelection() {
 	const tasksById = new Map<string, GanttTask>(
-		ganttChart!.getList().map((task) => [task.getOriginalID(), task as GanttTask] as const),
+		ganttChart!.getList().map((task) => [task.getOriginalID(), task] as const),
 	);
 	for (const interval of get(sortedIntervals)) {
 		const taskElement = tasksById.get(interval.id)?.getListChildRow();

@@ -35,6 +35,7 @@ import { DialogType } from '@enums';
 import { useI18n } from 'vue-i18n';
 import VueMarkdown from 'vue-markdown-render';
 import type MarkdownIt from 'markdown-it';
+import type { Token } from 'markdown-it';
 
 const { t } = useI18n();
 const helpTitle = ref('');
@@ -59,12 +60,13 @@ function markdownItTargetBlank(md: MarkdownIt): void {
 	if (!d) {
 		return;
 	}
-	md.renderer.rules.link_open = (t, i, o, e, s) => {
-		const a = t[i].attrIndex('target');
-		if (a < 0) t[i].attrPush(['target', '_blank']);
-		else t[i].attrs[a][1] = '_blank';
-		t[i].attrPush(['rel', 'noopener noreferrer']);
-		return d(t, i, o, e, s);
+	md.renderer.rules.link_open = (tokens: Token[], index: number, options, env, renderer) => {
+		const token = tokens[index]!;
+		const targetIndex = token.attrIndex('target');
+		if (targetIndex < 0) token.attrPush(['target', '_blank']);
+		else token.attrs![targetIndex]![1] = '_blank';
+		token.attrPush(['rel', 'noopener noreferrer']);
+		return d(tokens, index, options, env, renderer);
 	};
 }
 </script>
