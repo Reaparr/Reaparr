@@ -55,7 +55,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
 
         SetupBeginJob();
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
@@ -93,7 +93,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         SetupBeginJob();
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
@@ -147,7 +147,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         SetupBeginJob();
 
         // Act
-        var action = () => Sut.Execute(context.Object);
+        Func<Task> action = async () => await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         await action.ShouldNotThrowAsync();
@@ -188,7 +188,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         SetupBeginJob();
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         Mock.Mock<ITelemetry>().Verify();
@@ -209,7 +209,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
 
         SetupBeginJob();
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();

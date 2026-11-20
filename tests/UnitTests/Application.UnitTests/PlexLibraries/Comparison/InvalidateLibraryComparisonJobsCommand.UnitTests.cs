@@ -1,5 +1,4 @@
 using Quartz;
-using Quartz.Impl.Matchers;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -30,17 +29,71 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
             .SetupGet(x => x.JobDataMap)
             .Returns(new PlexLibraryComparisonJobPayload(7, 8).ToJobDataMap());
 
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         scheduler
             .Setup(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibraryComparisonJob)), CancellationToken)
+                x.QueryJobs(
+                    It.Is<JobQuery>(query =>
+                        query.Group != null
+                        && query.Group.CompareToValue == JobTypes.LibraryComparisonJob.ToString()
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    CancellationToken
+                )
             )
-            .ReturnsAsync([ownedJobKey, remoteJobKey, unaffectedJobKey]);
+            .ReturnsAsync(
+                new PagedResult<JobHeader>(
+                    [
+                        new JobHeader(
+                            ownedJobKey,
+                            null,
+                            typeof(PlexLibraryComparisonJob).FullName!,
+                            false,
+                            true,
+                            false,
+                            true
+                        ),
+                        new JobHeader(
+                            remoteJobKey,
+                            null,
+                            typeof(PlexLibraryComparisonJob).FullName!,
+                            false,
+                            true,
+                            false,
+                            true
+                        ),
+                        new JobHeader(
+                            unaffectedJobKey,
+                            null,
+                            typeof(PlexLibraryComparisonJob).FullName!,
+                            false,
+                            true,
+                            false,
+                            true
+                        ),
+                    ],
+                    false
+                )
+            );
         scheduler.Setup(x => x.GetJobDetail(ownedJobKey, CancellationToken)).ReturnsAsync(ownedJobDetail.Object);
         scheduler.Setup(x => x.GetJobDetail(remoteJobKey, CancellationToken)).ReturnsAsync(remoteJobDetail.Object);
         scheduler
             .Setup(x => x.GetJobDetail(unaffectedJobKey, CancellationToken))
             .ReturnsAsync(unaffectedJobDetail.Object);
-        scheduler.Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]);
+        scheduler
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query =>
+                        query.SchedulerInstanceId == "test-scheduler"
+                        && query.State == FireInstanceState.Executing
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    CancellationToken
+                )
+            )
+            .ReturnsAsync(new PagedResult<FireInstance>([], false));
         scheduler
             .Setup(x =>
                 x.DeleteJobs(
@@ -50,7 +103,7 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
                     CancellationToken
                 )
             )
-            .ReturnsAsync(true);
+            .ReturnsAsync([ownedJobKey, remoteJobKey]);
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -118,10 +171,10 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
             () => isExecuting = false,
             interruptSucceeds: true
         );
-        scheduler.Setup(x => x.CheckExists(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(() => isExecuting);
+        scheduler.Setup(x => x.Exists(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(() => isExecuting);
         scheduler
             .Setup(x => x.DeleteJobs(It.IsAny<IReadOnlyCollection<JobKey>>(), CancellationToken))
-            .ReturnsAsync(false);
+            .ReturnsAsync(new List<JobKey>());
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -153,7 +206,7 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
                 ),
             Times.Once
         );
-        scheduler.Verify(x => x.CheckExists(jobKey, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        scheduler.Verify(x => x.Exists(jobKey, It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Test]
@@ -255,7 +308,7 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
         if (throws)
             deletion.ThrowsAsync(new InvalidOperationException("Scheduler deletion unavailable"));
         else
-            deletion.ReturnsAsync(false);
+            deletion.ReturnsAsync(new List<JobKey>());
 
         // Act
         var result = await Sut.ExecuteAsync(
@@ -313,7 +366,6 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
         dbContext.PlexMovieComparisons.AddRange(affectedComparison, controlComparison);
         await dbContext.SaveChangesAsync(CancellationToken);
         (await dbContext.PlexMovieComparisons.CountAsync(CancellationToken)).ShouldBe(2);
-        (await dbContext.PlexComparisonScopes.CountAsync(CancellationToken)).ShouldBe(2);
         var retainedScopeIds = await dbContext
             .PlexComparisonScopes.Where(x => x.OwnedPlexLibraryId == controlOwnedLibrary.Id)
             .Select(x => x.Id)
@@ -333,7 +385,7 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
             interruptSucceeds: true
         );
         scheduler
-            .Setup(x => x.CheckExists(jobKey, CancellationToken))
+            .Setup(x => x.Exists(jobKey, CancellationToken))
             .ReturnsAsync(() => jobExists)
             .Verifiable(Times.Exactly(2));
         scheduler
@@ -353,7 +405,7 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
                     CancellationToken
                 )
             )
-            .ReturnsAsync(false)
+            .ReturnsAsync(new List<JobKey>())
             .Verifiable(Times.Once());
 
         // Act
@@ -402,31 +454,94 @@ public class InvalidateLibraryComparisonJobsCommandUnitTests
         bool interruptSucceeds
     )
     {
+        const string schedulerInstanceId = "test-scheduler";
         var jobDetail = new Mock<IJobDetail>();
         jobDetail.SetupGet(x => x.JobDataMap).Returns(payload.ToJobDataMap());
-        var executionContext = new Mock<IJobExecutionContext>();
-        var executingJobDetail = new Mock<IJobDetail>();
-        executingJobDetail.SetupGet(x => x.Key).Returns(jobKey);
-        executionContext.SetupGet(x => x.JobDetail).Returns(executingJobDetail.Object);
-
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns(schedulerInstanceId);
         scheduler
-            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([jobKey]);
+            .Setup(x =>
+                x.QueryJobs(
+                    It.Is<JobQuery>(query =>
+                        query.Group != null
+                        && query.Group.CompareToValue == JobTypes.LibraryComparisonJob.ToString()
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                new PagedResult<JobHeader>(
+                    [new JobHeader(jobKey, null, typeof(PlexLibraryComparisonJob).FullName!, false, true, false, true)],
+                    false
+                )
+            );
         scheduler.Setup(x => x.GetJobDetail(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(jobDetail.Object);
         scheduler
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query =>
+                        query.SchedulerInstanceId == schedulerInstanceId
+                        && query.State == FireInstanceState.Executing
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync(() =>
-                isExecuting()
-                    ? new List<IJobExecutionContext> { executionContext.Object }
-                    : new List<IJobExecutionContext>()
+                new PagedResult<FireInstance>(
+                    isExecuting()
+                        ?
+                        [
+                            new FireInstance(
+                                $"fire-{jobKey.Name}",
+                                new TriggerKey(jobKey.Name, jobKey.Group),
+                                jobKey,
+                                schedulerInstanceId,
+                                FireInstanceState.Executing,
+                                DateTimeOffset.UnixEpoch,
+                                DateTimeOffset.UnixEpoch,
+                                null
+                            ),
+                        ]
+                        : [],
+                    false
+                )
             );
-        scheduler.Setup(x => x.CheckExists(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        var trigger = new Mock<ITrigger>();
-        trigger.SetupGet(x => x.Key).Returns(new TriggerKey("comparison-trigger", "test"));
-        scheduler.Setup(x => x.GetTriggersOfJob(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync([trigger.Object]);
+        scheduler.Setup(x => x.Exists(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         scheduler
-            .Setup(x => x.GetTriggerState(trigger.Object.Key, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TriggerState.Normal);
+            .Setup(x =>
+                x.QueryTriggers(
+                    It.Is<TriggerQuery>(query =>
+                        query.Job == jobKey && query.Skip == 0 && query.Take == PagedQuery.DefaultTake
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                new PagedResult<TriggerHeader>(
+                    [
+                        new TriggerHeader(
+                            new TriggerKey("comparison-trigger", "test"),
+                            jobKey,
+                            null,
+                            "SIMPLE",
+                            TriggerState.Normal,
+                            DateTimeOffset.UnixEpoch,
+                            null,
+                            DateTimeOffset.UnixEpoch,
+                            null,
+                            null,
+                            5,
+                            null,
+                            null,
+                            0
+                        ),
+                    ],
+                    false
+                )
+            );
         scheduler.Setup(x => x.DeleteJob(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         scheduler
             .Setup(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))

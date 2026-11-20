@@ -533,7 +533,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
 
         SetupBeginJob();
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.SingleAsync(CancellationToken);
@@ -788,7 +788,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
         await Mock.Create<LibrarySyncJobListener>().JobWasExecuted(context, null, CancellationToken);
     }
 
@@ -823,7 +823,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         SetupBeginJob();
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.IgnoreQueryFilters().SingleAsync(CancellationToken);
@@ -868,7 +868,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         SetupBeginJob();
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.IgnoreQueryFilters().SingleAsync(CancellationToken);
@@ -928,7 +928,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Task execution;
         using (await coordinator.AcquireRebuildLeaseAsync(CancellationToken))
         {
-            execution = Sut.Execute(context.Object);
+            execution = Sut.Execute(context.Object, context.Object.CancellationToken);
             await dbContext
                 .PlexServers.Where(x => x.Id == library.PlexServerId)
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.IsEnabled, false), CancellationToken);
@@ -1015,7 +1015,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         SetupBeginJob();
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var after = await dbContext.LibrarySyncJobQueues.IgnoreQueryFilters().SingleAsync(CancellationToken);
@@ -1115,7 +1115,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         Task execution;
         using (await coordinator.AcquireRebuildLeaseAsync(CancellationToken))
         {
-            execution = Sut.Execute(context.Object);
+            execution = Sut.Execute(context.Object, context.Object.CancellationToken);
             await leaseRequested.Task;
             await dbContext
                 .PlexServers.Where(x => x.Id == library.PlexServerId)

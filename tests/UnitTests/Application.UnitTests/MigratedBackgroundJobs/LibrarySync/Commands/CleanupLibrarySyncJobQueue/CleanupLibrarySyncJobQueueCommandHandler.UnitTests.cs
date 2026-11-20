@@ -1,5 +1,4 @@
 using Quartz;
-using Quartz.Impl.Matchers;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -122,10 +121,23 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnit
         };
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
-            .Setup(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)), CancellationToken)
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(
+                new PagedResult<JobHeader>(
+                    staleJobKeys
+                        .Select(key => new JobHeader(
+                            key,
+                            null,
+                            typeof(LibrarySyncJob).FullName!,
+                            false,
+                            true,
+                            false,
+                            true
+                        ))
+                        .ToArray(),
+                    false
+                )
             )
-            .ReturnsAsync(staleJobKeys)
             .Verifiable(Times.Once());
         scheduler
             .Setup(x =>
@@ -134,7 +146,7 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnit
                     CancellationToken
                 )
             )
-            .ReturnsAsync(true)
+            .ReturnsAsync(staleJobKeys.ToList())
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x =>
@@ -276,10 +288,13 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnit
         var staleJobKey = LibrarySyncJob.GetJobKey(server.Id, libraries[0].Id);
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
-            .Setup(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)), CancellationToken)
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(
+                new PagedResult<JobHeader>(
+                    [new JobHeader(staleJobKey, null, typeof(LibrarySyncJob).FullName!, false, true, false, true)],
+                    false
+                )
             )
-            .ReturnsAsync([staleJobKey])
             .Verifiable(Times.Once());
         scheduler
             .Setup(x =>
@@ -288,8 +303,9 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnit
                     CancellationToken
                 )
             )
-            .ReturnsAsync(false)
+            .ReturnsAsync(new List<JobKey>())
             .Verifiable(Times.Once());
+        scheduler.Setup(x => x.Exists(staleJobKey, CancellationToken)).ReturnsAsync(true).Verifiable(Times.Once());
 
         // Act
         var result = await TestHandlerExecuteAsync(new CleanupLibrarySyncJobQueueCommand());
@@ -359,10 +375,8 @@ public class CleanupLibrarySyncJobQueueCommandHandlerUnitTests : BaseCommandUnit
 
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
-            .Setup(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibrarySyncJob)), CancellationToken)
-            )
-            .ReturnsAsync([])
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<JobHeader>([], false))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x =>

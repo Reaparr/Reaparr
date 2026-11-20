@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Quartz;
-using Quartz.Impl.Matchers;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -54,26 +53,36 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
             .Setup(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibraryComparisonJob)), CancellationToken)
+                x.QueryJobs(
+                    It.Is<JobQuery>(query =>
+                        query.Group != null
+                        && query.Group.CompareToValue == JobTypes.LibraryComparisonJob.ToString()
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    CancellationToken
+                )
             )
-            .ReturnsAsync([])
+            .ReturnsAsync(new PagedResult<JobHeader>([], false))
             .Verifiable(Times.Once());
         scheduler
-            .Setup(x => x.CheckExists(It.Is<JobKey>(key => expectedKeys.Contains(key)), CancellationToken))
+            .Setup(x => x.Exists(It.Is<JobKey>(key => expectedKeys.Contains(key)), CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Exactly(2));
         scheduler
             .Setup(x =>
                 x.ScheduleJobs(
                     It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                    false,
+                    It.Is<ScheduleJobOptions>(options => !options.Replace),
                     CancellationToken
                 )
             )
-            .Callback<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>, bool, CancellationToken>(
-                (jobs, _, _) => scheduled = jobs
-            )
-            .Returns(Task.CompletedTask)
+            .Callback<
+                IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>,
+                ScheduleJobOptions,
+                CancellationToken
+            >((jobs, _, _) => scheduled = jobs)
+            .Returns(ValueTask.CompletedTask)
             .Verifiable(Times.Once());
 
         // Act
@@ -128,15 +137,14 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         Mock.Mock<IScheduler>()
-            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
-        Mock.Mock<IScheduler>()
-            .Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>().Verify(x => x.Exists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
             .Verify(
                 x =>
                     x.ScheduleJobs(
                         It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                        false,
+                        It.Is<ScheduleJobOptions>(options => !options.Replace),
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Never()
@@ -185,15 +193,14 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         result.IsFailed.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         Mock.Mock<IScheduler>()
-            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
-        Mock.Mock<IScheduler>()
-            .Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>().Verify(x => x.Exists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
             .Verify(
                 x =>
                     x.ScheduleJobs(
                         It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                        false,
+                        It.Is<ScheduleJobOptions>(options => !options.Replace),
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Never()
@@ -229,26 +236,36 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
             .Setup(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibraryComparisonJob)), CancellationToken)
+                x.QueryJobs(
+                    It.Is<JobQuery>(query =>
+                        query.Group != null
+                        && query.Group.CompareToValue == JobTypes.LibraryComparisonJob.ToString()
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    CancellationToken
+                )
             )
-            .ReturnsAsync([])
+            .ReturnsAsync(new PagedResult<JobHeader>([], false))
             .Verifiable(Times.Once());
         scheduler
-            .Setup(x => x.CheckExists(It.Is<JobKey>(key => expectedKeys.Contains(key)), CancellationToken))
+            .Setup(x => x.Exists(It.Is<JobKey>(key => expectedKeys.Contains(key)), CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Exactly(expectedKeys.Count));
         scheduler
             .Setup(x =>
                 x.ScheduleJobs(
                     It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                    false,
+                    It.Is<ScheduleJobOptions>(options => !options.Replace),
                     CancellationToken
                 )
             )
-            .Callback<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>, bool, CancellationToken>(
-                (jobs, _, _) => scheduled = jobs
-            )
-            .Returns(Task.CompletedTask)
+            .Callback<
+                IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>,
+                ScheduleJobOptions,
+                CancellationToken
+            >((jobs, _, _) => scheduled = jobs)
+            .Returns(ValueTask.CompletedTask)
             .Verifiable(Times.Once());
         var beforeScheduling = DateTimeOffset.UtcNow;
 
@@ -267,7 +284,7 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         triggers.Select(x => (x.Key.Name, x.Key.Group)).ShouldBe(expectedKeys.Select(x => (x.Name, x.Group)));
         triggers.Select(x => x.JobKey).ShouldBe(expectedKeys);
         triggers.ShouldAllBe(x => ((ISimpleTrigger)x).RepeatCount == 0);
-        triggers.ShouldAllBe(x => x.MisfireInstruction == MisfireInstruction.SimpleTrigger.FireNow);
+        triggers.ShouldAllBe(x => ((ISimpleTrigger)x).MisfireInstruction == SimpleTriggerMisfireInstruction.FireNow);
         triggers.ShouldAllBe(x => x.StartTimeUtc >= beforeScheduling.AddMinutes(1));
         triggers.ShouldAllBe(x => x.StartTimeUtc <= DateTimeOffset.UtcNow.AddMinutes(3));
         scheduled.Values.ShouldAllBe(x => x.Count == 1);
@@ -395,15 +412,14 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
                 )
             );
         Mock.Mock<IScheduler>()
-            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
-        Mock.Mock<IScheduler>()
-            .Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>().Verify(x => x.Exists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
             .Verify(
                 x =>
                     x.ScheduleJobs(
                         It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                        false,
+                        It.Is<ScheduleJobOptions>(options => !options.Replace),
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Never()
@@ -430,9 +446,22 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         var scheduler = Mock.Mock<IScheduler>();
         scheduler
             .Setup(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibraryComparisonJob)), CancellationToken)
+                x.QueryJobs(
+                    It.Is<JobQuery>(query =>
+                        query.Group != null
+                        && query.Group.CompareToValue == JobTypes.LibraryComparisonJob.ToString()
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    CancellationToken
+                )
             )
-            .ReturnsAsync([key])
+            .ReturnsAsync(
+                new PagedResult<JobHeader>(
+                    [new JobHeader(key, null, typeof(PlexLibraryComparisonJob).FullName!, false, true, false, true)],
+                    false
+                )
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -446,7 +475,7 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
             x =>
                 x.ScheduleJobs(
                     It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                    false,
+                    It.Is<ScheduleJobOptions>(options => !options.Replace),
                     It.IsAny<CancellationToken>()
                 ),
             Times.Never()
@@ -478,13 +507,13 @@ public class ScheduleAffectedLibraryComparisonJobsCommandUnitTests
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         Mock.Mock<IScheduler>()
-            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
             .Verify(
                 x =>
                     x.ScheduleJobs(
                         It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                        false,
+                        It.Is<ScheduleJobOptions>(options => !options.Replace),
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Never()

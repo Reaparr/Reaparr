@@ -267,11 +267,32 @@ public class GetMusicMediaComparisonDetailsCommandUnitTests : BaseCommandUnitTes
                         )
             )
             .Verifiable(Times.Once());
-        Mock.Mock<IScheduler>().Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<FireInstance>([], false));
         var pairKey = PlexLibraryComparisonJob.GetJobKey(libraries[1].Id, libraries[0].Id);
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetJobKeys(Quartz.Impl.Matchers.GroupMatcher<JobKey>.AnyGroup(), CancellationToken))
-            .ReturnsAsync(pending ? [pairKey] : [])
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(
+                new PagedResult<JobHeader>(
+                    pending
+                        ?
+                        [
+                            new JobHeader(
+                                pairKey,
+                                null,
+                                typeof(PlexLibraryComparisonJob).FullName!,
+                                false,
+                                true,
+                                false,
+                                true
+                            ),
+                        ]
+                        : [],
+                    false
+                )
+            )
             .Verifiable(scopeExists ? Times.Never() : Times.Once());
 
         // Act

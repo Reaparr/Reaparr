@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using Quartz;
-using Quartz.Simpl;
+using Quartz.Impl;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -28,17 +28,18 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
 
         IJobDetail? capturedJob = null;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.Setup(x => x.CheckExists(jobKey, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
+        scheduler.Setup(x => x.Exists(jobKey, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.ScheduleJob(
                     It.Is<IJobDetail>(job => job.Key.Equals(jobKey)),
                     It.Is<ITrigger>(trigger => trigger.JobKey.Equals(jobKey)),
+                    It.IsAny<ScheduleJobOptions>(),
                     CancellationToken
                 )
             )
-            .Callback<IJobDetail, ITrigger, CancellationToken>((job, _, _) => capturedJob = job)
-            .ReturnsAsync(scheduledAt)
+            .Callback<IJobDetail, ITrigger, ScheduleJobOptions, CancellationToken>((job, _, _, _) => capturedJob = job)
+            .Returns(new ValueTask<DateTimeOffset>(scheduledAt))
             .Verifiable(Times.Once());
 
         // Act
@@ -57,9 +58,8 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         scheduler.Verify();
 
         var serializer = new SystemTextJsonObjectSerializer();
-        serializer.Initialize();
         var serializedMap = serializer.Serialize(capturedJob.JobDataMap);
-        var restoredMap = serializer.DeSerialize<JobDataMap>(serializedMap).ShouldNotBeNull();
+        var restoredMap = serializer.Deserialize<JobDataMap>(serializedMap).ShouldNotBeNull();
 
         restoredMap[TelemetryProtocol.TraceParentMetadata].ShouldBeOfType<string>();
         restoredMap[TelemetryProtocol.TraceStateMetadata].ShouldBeOfType<string>();
@@ -82,7 +82,7 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
                 }.OrderBy(key => key, StringComparer.Ordinal)
             );
         restoredMap.Keys.ShouldNotContain(TelemetryProtocol.DistinctIdTag);
-        restoredMap.Values.Select(value => value.ToString()).ShouldNotContain(distinctId);
+        restoredMap.Values.Select(value => value?.ToString()).ShouldNotContain(distinctId);
 
         var context = new Mock<IJobExecutionContext>();
         var jobDetail = new Mock<IJobDetail>();
@@ -145,19 +145,21 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
 
         IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>? capturedJobs = null;
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.Setup(x => x.CheckExists(jobKey, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
+        scheduler.Setup(x => x.Exists(jobKey, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.ScheduleJobs(
                     It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                    false,
+                    It.Is<ScheduleJobOptions>(options => !options.Replace),
                     CancellationToken
                 )
             )
-            .Callback<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>, bool, CancellationToken>(
-                (jobs, _, _) => capturedJobs = jobs
-            )
-            .Returns(Task.CompletedTask)
+            .Callback<
+                IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>,
+                ScheduleJobOptions,
+                CancellationToken
+            >((jobs, _, _) => capturedJobs = jobs)
+            .Returns(ValueTask.CompletedTask)
             .Verifiable(Times.Once());
 
         // Act
@@ -173,9 +175,8 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         scheduler.Verify();
 
         var serializer = new SystemTextJsonObjectSerializer();
-        serializer.Initialize();
         var serializedMap = serializer.Serialize(capturedJobs.Keys.Single().JobDataMap);
-        var restoredMap = serializer.DeSerialize<JobDataMap>(serializedMap).ShouldNotBeNull();
+        var restoredMap = serializer.Deserialize<JobDataMap>(serializedMap).ShouldNotBeNull();
 
         restoredMap[TelemetryProtocol.TraceParentMetadata].ShouldBe(originalTraceParent);
         restoredMap[TelemetryProtocol.TraceStateMetadata].ShouldBe(originalTraceState);
@@ -184,7 +185,7 @@ public class QuartzTelemetryMetadataUnitTests : BaseUnitTest
         restoredMap[TelemetryProtocol.TraceStateMetadata].ShouldNotBe(unrelatedTraceState);
         restoredMap[TelemetryProtocol.SessionIdMetadata].ShouldNotBe(unrelatedSessionId);
         restoredMap.Keys.ShouldNotContain(TelemetryProtocol.DistinctIdTag);
-        restoredMap.Values.Select(value => value.ToString()).ShouldNotContain(unrelatedDistinctId);
+        restoredMap.Values.Select(value => value?.ToString()).ShouldNotContain(unrelatedDistinctId);
         restoredMap.GetPayload<LibrarySyncJobPayload>().ShouldBe(new LibrarySyncJobPayload(serverId, libraryId, true));
     }
 

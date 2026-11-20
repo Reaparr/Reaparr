@@ -100,13 +100,14 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         await dbContext.SaveChangesAsync(CancellationToken);
         var jobKey = LibrarySyncJob.GetJobKey(library.PlexServerId, library.Id);
 
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
             .Setup(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([])
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x =>
@@ -170,13 +171,14 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         await dbContext.SaveChangesAsync(CancellationToken);
         var jobKey = LibrarySyncJob.GetJobKey(library.PlexServerId, library.Id);
 
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
             .Setup(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => throw new OperationCanceledException())
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns((FireInstanceQuery _, CancellationToken _) => throw new OperationCanceledException())
             .Verifiable(Times.Once());
 
         // Act
@@ -226,28 +228,31 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         await dbContext.SaveChangesAsync(CancellationToken);
         var jobKey = LibrarySyncJob.GetJobKey(library.PlexServerId, library.Id);
 
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
             .Setup(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-            {
-                dbContext
-                    .LibrarySyncJobQueues.Where(x =>
-                        x.PlexServerId == library.PlexServerId && x.PlexLibraryId == library.Id
-                    )
-                    .ExecuteUpdateAsync(
-                        s =>
-                            s.SetProperty(x => x.CreatedAt, successorCreatedAt)
-                                .SetProperty(x => x.StartedAt, successorStartedAt),
-                        CancellationToken.None
-                    )
-                    .GetAwaiter()
-                    .GetResult();
-                return new List<IJobExecutionContext>();
-            })
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(
+                (FireInstanceQuery _, CancellationToken _) =>
+                {
+                    dbContext
+                        .LibrarySyncJobQueues.Where(x =>
+                            x.PlexServerId == library.PlexServerId && x.PlexLibraryId == library.Id
+                        )
+                        .ExecuteUpdateAsync(
+                            s =>
+                                s.SetProperty(x => x.CreatedAt, successorCreatedAt)
+                                    .SetProperty(x => x.StartedAt, successorStartedAt),
+                            CancellationToken.None
+                        )
+                        .GetAwaiter()
+                        .GetResult();
+                    return new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false));
+                }
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -313,6 +318,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         );
         var command = new CancelLibrarySyncJobCommand(library.Id);
         var jobKey = LibrarySyncJob.GetJobKey(library.PlexServerId, library.Id);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
 
         Mock.Mock<IScheduler>()
             .Setup(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))
@@ -323,8 +329,8 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([])
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x =>
@@ -387,6 +393,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         await dbContext.SaveChangesAsync(CancellationToken);
         var jobKey = LibrarySyncJob.GetJobKey(library.PlexServerId, library.Id);
 
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
             .SetupSequence(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false)
@@ -396,23 +403,25 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-            {
-                dbContext
-                    .LibrarySyncJobQueues.Where(x =>
-                        x.PlexServerId == library.PlexServerId && x.PlexLibraryId == library.Id
-                    )
-                    .ExecuteUpdateAsync(
-                        s =>
-                            s.SetProperty(x => x.Status, LibrarySyncJobStatus.Processing)
-                                .SetProperty(x => x.StartedAt, startedAt),
-                        CancellationToken.None
-                    )
-                    .GetAwaiter()
-                    .GetResult();
-                return new List<IJobExecutionContext>();
-            })
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(
+                (FireInstanceQuery _, CancellationToken _) =>
+                {
+                    dbContext
+                        .LibrarySyncJobQueues.Where(x =>
+                            x.PlexServerId == library.PlexServerId && x.PlexLibraryId == library.Id
+                        )
+                        .ExecuteUpdateAsync(
+                            s =>
+                                s.SetProperty(x => x.Status, LibrarySyncJobStatus.Processing)
+                                    .SetProperty(x => x.StartedAt, startedAt),
+                            CancellationToken.None
+                        )
+                        .GetAwaiter()
+                        .GetResult();
+                    return new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false));
+                }
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -460,6 +469,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
         var command = new CancelLibrarySyncJobCommand(library.Id);
         var jobKey = LibrarySyncJob.GetJobKey(library.PlexServerId, library.Id);
 
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
             .SetupSequence(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false)
@@ -469,8 +479,8 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([])
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x =>
@@ -549,6 +559,7 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             new { PlexLibraryId = retainedLibrary.Id, Status = LibrarySyncJobStatus.Queued },
         ]);
         var jobKey = LibrarySyncJob.GetJobKey(targetLibrary.PlexServerId, targetLibrary.Id);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
             .Setup(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false)
@@ -558,8 +569,8 @@ public class CancelLibrarySyncJobCommandHandlerUnitTests : BaseCommandUnitTest<C
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([])
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
             .Verifiable(Times.Once());
         Mock.Mock<INotificationHubService>()
             .Setup(x =>

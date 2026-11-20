@@ -18,10 +18,11 @@ public class QueueMediaOverviewRebuildCommandUnitTests : BaseCommandUnitTest<Que
             .Setup(x =>
                 x.TriggerJob(
                     It.Is<JobKey>(key => key.Equals(MediaOverviewSnapshotJob.GetJobKey())),
+                    null,
                     It.IsAny<CancellationToken>()
                 )
             )
-            .Returns(Task.CompletedTask)
+            .Returns(ValueTask.CompletedTask)
             .Verifiable(Times.Once());
 
         // Act
@@ -46,10 +47,11 @@ public class QueueMediaOverviewRebuildCommandUnitTests : BaseCommandUnitTest<Que
             .Setup(x =>
                 x.TriggerJob(
                     It.Is<JobKey>(key => key.Equals(MediaOverviewSnapshotJob.GetJobKey())),
+                    null,
                     It.IsAny<CancellationToken>()
                 )
             )
-            .Returns(Task.CompletedTask)
+            .Returns(ValueTask.CompletedTask)
             .Verifiable(Times.Once());
 
         // Act
@@ -86,11 +88,12 @@ public class QueueMediaOverviewRebuildCommandUnitTests : BaseCommandUnitTest<Que
             .SetupSequence(x =>
                 x.TriggerJob(
                     It.Is<JobKey>(key => key.Equals(MediaOverviewSnapshotJob.GetJobKey())),
+                    null,
                     It.IsAny<CancellationToken>()
                 )
             )
             .ThrowsAsync(new InvalidOperationException("trigger failed"))
-            .Returns(Task.CompletedTask);
+            .Returns(ValueTask.CompletedTask);
 
         // Act
         var failedResult = await TestHandlerExecuteAsync(new QueueMediaOverviewRebuildCommand());
@@ -104,6 +107,7 @@ public class QueueMediaOverviewRebuildCommandUnitTests : BaseCommandUnitTest<Que
                 x =>
                     x.TriggerJob(
                         It.Is<JobKey>(key => key.Equals(MediaOverviewSnapshotJob.GetJobKey())),
+                        null,
                         It.IsAny<CancellationToken>()
                     ),
                 Times.Exactly(2)

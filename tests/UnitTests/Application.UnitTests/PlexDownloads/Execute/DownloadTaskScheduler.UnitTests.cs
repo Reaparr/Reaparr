@@ -4,9 +4,12 @@ namespace Reaparr.Application.UnitTests;
 
 public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler>
 {
+    private const string SchedulerInstanceId = "test-scheduler";
+
     [Test]
     public async Task ShouldSucceed_WhenJobCompletesBeforeInterrupt()
     {
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -16,18 +19,24 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
             PlexLibraryId = 1,
         };
         var jobKey = DownloadJob.GetJobKey(key.Id);
-        var jobDetail = new Mock<IJobDetail>();
-        jobDetail.SetupGet(x => x.Key).Returns(jobKey);
-        var context = new Mock<IJobExecutionContext>();
-        context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
+        var fire = CreateFireInstance(key);
         var runningChecks = 0;
 
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => runningChecks++ == 0 ? [context.Object] : [])
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query => IsRunningQuery(query, 0)),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(() =>
+                new ValueTask<PagedResult<FireInstance>>(
+                    new PagedResult<FireInstance>(runningChecks++ == 0 ? [fire] : [], false)
+                )
+            )
             .Verifiable(Times.Exactly(2));
         Mock.Mock<IScheduler>()
-            .Setup(x => x.CheckExists(jobKey, CancellationToken))
+            .Setup(x => x.Exists(jobKey, CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
@@ -47,6 +56,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldFail_WhenJobRemainsRunningAfterInterruptFails()
     {
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -56,17 +66,19 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
             PlexLibraryId = 1,
         };
         var jobKey = DownloadJob.GetJobKey(key.Id);
-        var jobDetail = new Mock<IJobDetail>();
-        jobDetail.SetupGet(x => x.Key).Returns(jobKey);
-        var context = new Mock<IJobExecutionContext>();
-        context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
+        var fire = CreateFireInstance(key);
 
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([context.Object])
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query => IsRunningQuery(query, 0)),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([fire], false)))
             .Verifiable(Times.Exactly(2));
         Mock.Mock<IScheduler>()
-            .Setup(x => x.CheckExists(jobKey, CancellationToken))
+            .Setup(x => x.Exists(jobKey, CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
@@ -87,6 +99,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldDeleteQueuedJob_WhenStoppingQueuedDownload()
     {
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -96,24 +109,31 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
             PlexLibraryId = 1,
         };
         var jobKey = DownloadJob.GetJobKey(key.Id);
-        var trigger = new Mock<ITrigger>();
-        trigger.SetupGet(x => x.Key).Returns(new TriggerKey(jobKey.Name, jobKey.Group));
+        var triggerKey = new TriggerKey(jobKey.Name, jobKey.Group);
 
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken))
-            .ReturnsAsync([])
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query => IsRunningQuery(query, 0)),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
             .Verifiable(Times.Exactly(2));
         Mock.Mock<IScheduler>()
-            .Setup(x => x.CheckExists(jobKey, CancellationToken))
+            .Setup(x => x.Exists(jobKey, CancellationToken))
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggersOfJob(jobKey, CancellationToken))
-            .ReturnsAsync([trigger.Object])
-            .Verifiable(Times.Once());
-        Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggerState(trigger.Object.Key, CancellationToken))
-            .ReturnsAsync(TriggerState.Normal)
+            .Setup(x => x.QueryTriggers(It.Is<TriggerQuery>(query => IsTriggerQuery(query, jobKey)), CancellationToken))
+            .Returns(
+                new ValueTask<PagedResult<TriggerHeader>>(
+                    new PagedResult<TriggerHeader>(
+                        [CreateTriggerHeader(triggerKey, jobKey, "SIMPLE", TriggerState.Normal)],
+                        false
+                    )
+                )
+            )
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
             .Setup(x => x.DeleteJob(jobKey, CancellationToken))
@@ -134,6 +154,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldReturnCancelledResult_WhenCompletionWaitIsCancelled()
     {
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -143,16 +164,22 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
             PlexLibraryId = 1,
         };
         var jobKey = DownloadJob.GetJobKey(key.Id);
-        var jobDetail = new Mock<IJobDetail>();
-        jobDetail.SetupGet(x => x.Key).Returns(jobKey);
-        var context = new Mock<IJobExecutionContext>();
-        context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
+        var fire = CreateFireInstance(key);
         var interrupted = false;
 
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => interrupted ? throw new OperationCanceledException() : [context.Object]);
-        Mock.Mock<IScheduler>().Setup(x => x.CheckExists(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query => IsRunningQuery(query, 0)),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(() =>
+                interrupted
+                    ? throw new OperationCanceledException()
+                    : new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([fire], false))
+            );
+        Mock.Mock<IScheduler>().Setup(x => x.Exists(jobKey, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         Mock.Mock<IScheduler>()
             .Setup(x => x.Interrupt(jobKey, It.IsAny<CancellationToken>()))
             .Callback(() => interrupted = true)
@@ -181,20 +208,22 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
             PlexLibraryId = 1,
         };
         var jobKey = DownloadJob.GetJobKey(key.Id);
-        var trigger = new Mock<ITrigger>();
-        trigger.SetupGet(x => x.Key).Returns(new TriggerKey(jobKey.Name, jobKey.Group));
+        var triggerKey = new TriggerKey(jobKey.Name, jobKey.Group);
 
         Mock.Mock<IScheduler>()
-            .Setup(x => x.CheckExists(jobKey, CancellationToken))
+            .Setup(x => x.Exists(jobKey, CancellationToken))
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggersOfJob(jobKey, CancellationToken))
-            .ReturnsAsync([trigger.Object])
-            .Verifiable(Times.Once());
-        Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggerState(trigger.Object.Key, CancellationToken))
-            .ReturnsAsync(TriggerState.Normal)
+            .Setup(x => x.QueryTriggers(It.Is<TriggerQuery>(query => IsTriggerQuery(query, jobKey)), CancellationToken))
+            .Returns(
+                new ValueTask<PagedResult<TriggerHeader>>(
+                    new PagedResult<TriggerHeader>(
+                        [CreateTriggerHeader(triggerKey, jobKey, "SIMPLE", TriggerState.Normal)],
+                        false
+                    )
+                )
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -208,6 +237,7 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
     [Test]
     public async Task ShouldReplaceInactiveJob_WhenStartingDownload()
     {
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
         // Arrange
         var key = new DownloadTaskKey
         {
@@ -219,25 +249,37 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
         var jobKey = DownloadJob.GetJobKey(key.Id);
 
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken))
-            .ReturnsAsync([])
-            .Verifiable(Times.Once());
-        Mock.Mock<IScheduler>()
-            .SetupSequence(x => x.CheckExists(jobKey, CancellationToken))
+            .SetupSequence(x => x.Exists(jobKey, CancellationToken))
             .ReturnsAsync(true)
             .ReturnsAsync(true)
             .ReturnsAsync(false);
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggersOfJob(jobKey, CancellationToken))
-            .ReturnsAsync([])
+            .Setup(x => x.QueryTriggers(It.Is<TriggerQuery>(query => IsTriggerQuery(query, jobKey)), CancellationToken))
+            .Returns(new ValueTask<PagedResult<TriggerHeader>>(new PagedResult<TriggerHeader>([], false)))
+            .Verifiable(Times.Once());
+        Mock.Mock<IScheduler>()
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query => IsRunningQuery(query, 0)),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
             .Setup(x => x.DeleteJob(jobKey, CancellationToken))
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.ScheduleJob(It.IsAny<IJobDetail>(), It.IsAny<ITrigger>(), CancellationToken))
-            .ReturnsAsync(DateTimeOffset.UtcNow)
+            .Setup(x =>
+                x.ScheduleJob(
+                    It.IsAny<IJobDetail>(),
+                    It.IsAny<ITrigger>(),
+                    It.IsAny<ScheduleJobOptions>(),
+                    CancellationToken
+                )
+            )
+            .Returns(new ValueTask<DateTimeOffset>(DateTimeOffset.UtcNow))
             .Verifiable(Times.Once());
 
         // Act
@@ -247,11 +289,13 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         Mock.Mock<IScheduler>().Verify();
+        Mock.Mock<IScheduler>().Verify(x => x.Exists(jobKey, CancellationToken), Times.Exactly(3));
     }
 
     [Test]
     public async Task ShouldReturnQueuedKeyForRequestedServer()
     {
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns(SchedulerInstanceId);
         // Arrange
         var targetKey = new DownloadTaskKey
         {
@@ -269,54 +313,86 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
         };
         var targetJobKey = DownloadJob.GetJobKey(targetKey.Id);
         var otherJobKey = DownloadJob.GetJobKey(otherKey.Id);
-        var targetTrigger = new Mock<ITrigger>();
-        targetTrigger.SetupGet(x => x.Key).Returns(new TriggerKey(targetJobKey.Name, targetJobKey.Group));
-        var otherTrigger = new Mock<ITrigger>();
-        otherTrigger.SetupGet(x => x.Key).Returns(new TriggerKey(otherJobKey.Name, otherJobKey.Group));
-        var targetJob = new Mock<IJobDetail>();
-        targetJob.SetupGet(x => x.JobDataMap).Returns(new DownloadJobPayload(targetKey).ToJobDataMap());
-        var otherJob = new Mock<IJobDetail>();
-        otherJob.SetupGet(x => x.JobDataMap).Returns(new DownloadJobPayload(otherKey).ToJobDataMap());
+        var targetTriggerKey = new TriggerKey(targetJobKey.Name, targetJobKey.Group);
+        var otherTriggerKey = new TriggerKey(otherJobKey.Name, otherJobKey.Group);
+        var targetJob = CreateJobDetail(targetKey);
+        var otherJob = CreateJobDetail(otherKey);
 
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken.None))
-            .ReturnsAsync([])
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query => IsRunningQuery(query, 0)),
+                    CancellationToken.None
+                )
+            )
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
             .Verifiable(Times.Exactly(2));
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetJobKeys(It.IsAny<Quartz.Impl.Matchers.GroupMatcher<JobKey>>(), CancellationToken.None))
-            .ReturnsAsync([targetJobKey, otherJobKey])
+            .Setup(x =>
+                x.GetJobDetails(It.Is<IReadOnlyCollection<JobKey>>(keys => keys.Count == 0), CancellationToken.None)
+            )
+            .ReturnsAsync([])
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.CheckExists(targetJobKey, CancellationToken.None))
+            .Setup(x =>
+                x.QueryJobs(
+                    It.Is<JobQuery>(query => IsJobQuery(query, JobTypes.DownloadJob, 0)),
+                    CancellationToken.None
+                )
+            )
+            .Returns(
+                new ValueTask<PagedResult<JobHeader>>(
+                    new PagedResult<JobHeader>([CreateJobHeader(targetJobKey), CreateJobHeader(otherJobKey)], false)
+                )
+            )
+            .Verifiable(Times.Once());
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.Exists(targetJobKey, CancellationToken.None))
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggersOfJob(targetJobKey, CancellationToken.None))
-            .ReturnsAsync([targetTrigger.Object])
+            .Setup(x =>
+                x.QueryTriggers(
+                    It.Is<TriggerQuery>(query => IsTriggerQuery(query, targetJobKey)),
+                    CancellationToken.None
+                )
+            )
+            .Returns(
+                new ValueTask<PagedResult<TriggerHeader>>(
+                    new PagedResult<TriggerHeader>(
+                        [CreateTriggerHeader(targetTriggerKey, targetJobKey, "SIMPLE", TriggerState.Normal)],
+                        false
+                    )
+                )
+            )
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggerState(targetTrigger.Object.Key, CancellationToken.None))
-            .ReturnsAsync(TriggerState.Normal)
-            .Verifiable(Times.Once());
-        Mock.Mock<IScheduler>()
-            .Setup(x => x.CheckExists(otherJobKey, CancellationToken.None))
+            .Setup(x => x.Exists(otherJobKey, CancellationToken.None))
             .ReturnsAsync(true)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggersOfJob(otherJobKey, CancellationToken.None))
-            .ReturnsAsync([otherTrigger.Object])
-            .Verifiable(Times.Once());
-        Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggerState(otherTrigger.Object.Key, CancellationToken.None))
-            .ReturnsAsync(TriggerState.Paused)
+            .Setup(x =>
+                x.QueryTriggers(
+                    It.Is<TriggerQuery>(query => IsTriggerQuery(query, otherJobKey)),
+                    CancellationToken.None
+                )
+            )
+            .Returns(
+                new ValueTask<PagedResult<TriggerHeader>>(
+                    new PagedResult<TriggerHeader>(
+                        [CreateTriggerHeader(otherTriggerKey, otherJobKey, "SIMPLE", TriggerState.Paused)],
+                        false
+                    )
+                )
+            )
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
             .Setup(x => x.GetJobDetail(targetJobKey, CancellationToken.None))
-            .ReturnsAsync(targetJob.Object)
+            .ReturnsAsync(targetJob)
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
             .Setup(x => x.GetJobDetail(otherJobKey, CancellationToken.None))
-            .ReturnsAsync(otherJob.Object)
+            .ReturnsAsync(otherJob)
             .Verifiable(Times.Never());
 
         // Act
@@ -328,5 +404,66 @@ public class DownloadTaskSchedulerUnitTests : BaseUnitTest<DownloadTaskScheduler
         keys.Single().PlexServerId.ShouldBe(targetKey.PlexServerId);
         keys.Single().PlexLibraryId.ShouldBe(targetKey.PlexLibraryId);
         Mock.Mock<IScheduler>().Verify();
+    }
+
+    private static bool IsRunningQuery(FireInstanceQuery query, int skip) =>
+        query.SchedulerInstanceId == SchedulerInstanceId
+        && query.State == FireInstanceState.Executing
+        && query.Skip == skip
+        && query.Take == PagedQuery.DefaultTake;
+
+    private static bool IsJobQuery(JobQuery query, JobTypes jobType, int skip) =>
+        query.Group?.CompareToValue == jobType.ToString() && query.Skip == skip && query.Take == PagedQuery.DefaultTake;
+
+    private static bool IsTriggerQuery(TriggerQuery query, JobKey jobKey) =>
+        query.Job == jobKey && query.Skip == 0 && query.Take == PagedQuery.DefaultTake;
+
+    private static TriggerHeader CreateTriggerHeader(
+        TriggerKey triggerKey,
+        JobKey jobKey,
+        string triggerType,
+        TriggerState state
+    ) =>
+        new(
+            triggerKey,
+            jobKey,
+            null,
+            triggerType,
+            state,
+            DateTimeOffset.UnixEpoch,
+            null,
+            DateTimeOffset.UnixEpoch,
+            null,
+            null,
+            5,
+            null,
+            null,
+            0
+        );
+
+    private static JobHeader CreateJobHeader(JobKey jobKey) =>
+        new(jobKey, null, typeof(DownloadJob).FullName!, false, true, false, true);
+
+    private static IJobDetail CreateJobDetail(DownloadTaskKey key, string? group = null)
+    {
+        var payload = new DownloadJobPayload(key).ToJobDataMap();
+        var jobKey = group is null ? DownloadJob.GetJobKey(key.Id) : new JobKey(key.Id.ToString(), group);
+        return JobBuilder.Create<DownloadJob>().WithIdentity(jobKey).UsingJobData(payload).Build();
+    }
+
+    private static FireInstance CreateFireInstance(DownloadTaskKey key, string? group = null)
+    {
+        var jobKey = group is null ? DownloadJob.GetJobKey(key.Id) : new JobKey(key.Id.ToString(), group);
+        var now = DateTimeOffset.UnixEpoch;
+        return new FireInstance(
+            $"fire-{key.Id}",
+            new TriggerKey(jobKey.Name, jobKey.Group),
+            jobKey,
+            SchedulerInstanceId,
+            FireInstanceState.Executing,
+            now,
+            now,
+            null
+        );
     }
 }
