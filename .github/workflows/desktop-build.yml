@@ -341,8 +341,6 @@ jobs:
         needs: [ upload-artifacts ]
         if: ${{ !cancelled() && inputs.push && needs.upload-artifacts.result == 'success' }}
         runs-on: ubuntu-latest
-        permissions:
-            contents: write
 
         steps:
             -   name: Verify release exists before parallel uploads
