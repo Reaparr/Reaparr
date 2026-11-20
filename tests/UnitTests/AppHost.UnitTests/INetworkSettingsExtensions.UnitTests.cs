@@ -82,18 +82,20 @@ public class INetworkSettingsExtensionsUnitTests : BaseUnitTest
             ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
         );
         options.ForwardLimit.ShouldBe(1);
-        options.KnownProxies.Select(ipAddress => ipAddress.ToString()).ShouldBe(
-            expectedDefaults.KnownProxies.Select(ipAddress => ipAddress.ToString())
-        );
-        options.KnownIPNetworks.Select(network => network.ToString()).ShouldBe(
-            expectedDefaults.KnownIPNetworks.Select(network => network.ToString())
-        );
+        options
+            .KnownProxies.Select(ipAddress => ipAddress.ToString())
+            .ShouldBe(expectedDefaults.KnownProxies.Select(ipAddress => ipAddress.ToString()));
+        options
+            .KnownIPNetworks.Select(network => network.ToString())
+            .ShouldBe(expectedDefaults.KnownIPNetworks.Select(network => network.ToString()));
     }
 
     [Test]
     [Arguments(false)]
     [Arguments(true)]
-    public void ShouldRetainValidProxyRestrictions_WhenAllowlistContainsOptionalInvalidEntries(bool includeInvalidEntries)
+    public void ShouldRetainValidProxyRestrictions_WhenAllowlistContainsOptionalInvalidEntries(
+        bool includeInvalidEntries
+    )
     {
         // Arrange
         var networkSettings = NetworkSettingsModule.Create();
@@ -113,5 +115,4 @@ public class INetworkSettingsExtensionsUnitTests : BaseUnitTest
         options.KnownProxies.Select(ipAddress => ipAddress.ToString()).ShouldBe(["192.0.2.10"]);
         options.KnownIPNetworks.Select(network => network.ToString()).ShouldBe(["192.0.2.0/24"]);
     }
-
 }

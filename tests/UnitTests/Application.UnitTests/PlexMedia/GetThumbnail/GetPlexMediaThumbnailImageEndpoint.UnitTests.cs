@@ -141,13 +141,10 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            1002,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(1002, config =>
+        {
+            config.PlexAccountCount = 1;
+        });
         var plexServerId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
         var payload = new byte[] { 1, 2, 3 };
         const long upstreamContentLength = 42;
@@ -173,15 +170,12 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
         };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services =>
-            {
-                services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
-                services.AddSingleton<IMemoryCache>(cache);
-                services.AddSingleton(clientFactory.Object);
-            }
-        );
+        var result = await TestEndpointHandleAsync(request, services =>
+        {
+            services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
+            services.AddSingleton<IMemoryCache>(cache);
+            services.AddSingleton(clientFactory.Object);
+        });
 
         // Assert
         result.IsValid.ShouldBeTrue();
@@ -198,13 +192,10 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
     public async Task ShouldUseJpegFallback_WhenUpstreamOmitsContentType()
     {
         // Arrange
-        await SetupDatabase(
-            1003,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(1003, config =>
+        {
+            config.PlexAccountCount = 1;
+        });
         var plexServerId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
         var payload = new byte[] { 4, 5, 6 };
         var handler = new StubHttpMessageHandler(
@@ -228,15 +219,12 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
         };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services =>
-            {
-                services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
-                services.AddSingleton<IMemoryCache>(cache);
-                services.AddSingleton(clientFactory.Object);
-            }
-        );
+        var result = await TestEndpointHandleAsync(request, services =>
+        {
+            services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
+            services.AddSingleton<IMemoryCache>(cache);
+            services.AddSingleton(clientFactory.Object);
+        });
 
         // Assert
         result.IsValid.ShouldBeTrue();
@@ -245,10 +233,9 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
         result.Endpoint.HttpContext.Response.ContentLength.ShouldBe(payload.Length);
         result.Endpoint.HttpContext.Response.Headers["X-Content-Type-Options"].ToString().ShouldBe("nosniff");
         ((MemoryStream)result.Endpoint.HttpContext.Response.Body).ToArray().ShouldBe(payload);
-        handler.RequestUris.Select(x => x.AbsolutePath).ShouldBe([
-            "/photo/:/transcode",
-            $"/library/metadata/{request.PlexKey}/thumb/{request.MetaDataKey}",
-        ]);
+        handler
+            .RequestUris.Select(x => x.AbsolutePath)
+            .ShouldBe(["/photo/:/transcode", $"/library/metadata/{request.PlexKey}/thumb/{request.MetaDataKey}"]);
         clientFactory.Verify();
     }
 
@@ -260,13 +247,10 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
     public async Task ShouldRejectUnsupportedUpstreamContentType_WhenTranscodeSucceeds(string upstreamContentType)
     {
         // Arrange
-        await SetupDatabase(
-            1004,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(1004, config =>
+        {
+            config.PlexAccountCount = 1;
+        });
         var plexServerId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
         var attackerPayload = System.Text.Encoding.UTF8.GetBytes("attacker");
         var handler = new StubHttpMessageHandler(
@@ -291,15 +275,12 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
         };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services =>
-            {
-                services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
-                services.AddSingleton<IMemoryCache>(cache);
-                services.AddSingleton(clientFactory.Object);
-            }
-        );
+        var result = await TestEndpointHandleAsync(request, services =>
+        {
+            services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
+            services.AddSingleton<IMemoryCache>(cache);
+            services.AddSingleton(clientFactory.Object);
+        });
 
         // Assert
         result.IsValid.ShouldBeTrue();
@@ -328,13 +309,10 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
     public async Task ShouldRejectUnsupportedContentType_WhenDirectThumbnailFallbackSucceeds()
     {
         // Arrange
-        await SetupDatabase(
-            1005,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(1005, config =>
+        {
+            config.PlexAccountCount = 1;
+        });
         var plexServerId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
         var attackerPayload = System.Text.Encoding.UTF8.GetBytes("attacker");
         var handler = new StubHttpMessageHandler(
@@ -360,15 +338,12 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
         };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services =>
-            {
-                services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
-                services.AddSingleton<IMemoryCache>(cache);
-                services.AddSingleton(clientFactory.Object);
-            }
-        );
+        var result = await TestEndpointHandleAsync(request, services =>
+        {
+            services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
+            services.AddSingleton<IMemoryCache>(cache);
+            services.AddSingleton(clientFactory.Object);
+        });
 
         // Assert
         result.IsValid.ShouldBeTrue();
@@ -389,10 +364,9 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
         failure.IsSuccess.ShouldBeFalse();
         failure.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
         failure.Errors.Count.ShouldBe(1);
-        handler.RequestUris.Select(x => x.AbsolutePath).ShouldBe([
-            "/photo/:/transcode",
-            $"/library/metadata/{request.PlexKey}/thumb/{request.MetaDataKey}",
-        ]);
+        handler
+            .RequestUris.Select(x => x.AbsolutePath)
+            .ShouldBe(["/photo/:/transcode", $"/library/metadata/{request.PlexKey}/thumb/{request.MetaDataKey}"]);
         clientFactory.Verify();
     }
 
@@ -400,13 +374,10 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
     public async Task ShouldFetchUpstream_WhenIfNoneMatchContainsPreVersionThumbnailETag()
     {
         // Arrange
-        await SetupDatabase(
-            1006,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-            }
-        );
+        await SetupDatabase(1006, config =>
+        {
+            config.PlexAccountCount = 1;
+        });
         var plexServerId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1]) },
@@ -429,17 +400,15 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
             Width = 300,
             Height = 450,
         };
-        var oldEtag = $"\"{request.PlexServerId}-{request.PlexKey}-{request.MetaDataKey}-{request.Width}x{request.Height}\"";
+        var oldEtag =
+            $"\"{request.PlexServerId}-{request.PlexKey}-{request.MetaDataKey}-{request.Width}x{request.Height}\"";
 
-        var initial = await TestEndpointHandleAsync(
-            request,
-            services =>
-            {
-                services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
-                services.AddSingleton<IMemoryCache>(cache);
-                services.AddSingleton(clientFactory.Object);
-            }
-        );
+        var initial = await TestEndpointHandleAsync(request, services =>
+        {
+            services.AddSingleton(Mock.Container.Resolve<IAppRuntimeInfo>());
+            services.AddSingleton<IMemoryCache>(cache);
+            services.AddSingleton(clientFactory.Object);
+        });
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         initial.Endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldContain("\"v2-");
         initial.Endpoint.HttpContext.Response.Headers.ETag.ToString().ShouldNotBe(oldEtag);

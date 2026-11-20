@@ -214,17 +214,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            84016,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84016, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         await dbContext
@@ -264,17 +261,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldStreamTiffWhenPlexReturnsPassiveTiff()
     {
         // Arrange
-        await SetupDatabase(
-            84021,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84021, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         byte[] payload = [21, 22, 23];
@@ -308,17 +302,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldConvertSvgAssetToPng_WhenPlexReturnsPassivePng()
     {
         // Arrange
-        await SetupDatabase(
-            84019,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84019, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         const string sourcePath = "/private/plex/photos/secret/vector.svg";
@@ -438,24 +429,18 @@ public class GetPhotoAssetImageEndpointUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            84017,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84017, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         byte[] attackerPayload = System.Text.Encoding.UTF8.GetBytes("<svg><script>alert('active')</script></svg>");
-        var response = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new ByteArrayContent(attackerPayload),
-        };
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(attackerPayload) };
         response.Content.Headers.ContentType = new(upstreamContentType);
         var handler = new StubHttpMessageHandler(response);
         var clientFactory = CreateClientFactory(handler);
@@ -469,9 +454,8 @@ public class GetPhotoAssetImageEndpointUnitTests
         };
 
         // Act
-        var result = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var result = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
         );
 
         // Assert
@@ -550,17 +534,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     )
     {
         // Arrange
-        await SetupDatabase(
-            84018,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84018, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         await dbContext
@@ -568,10 +549,7 @@ public class GetPhotoAssetImageEndpointUnitTests
             .ExecuteUpdateAsync(x => x.SetProperty(y => y.Container, container), CancellationToken);
         dbContext.ClearChangeTracker();
         byte[] attackerPayload = System.Text.Encoding.UTF8.GetBytes("<svg><script>alert('active')</script></svg>");
-        var response = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new ByteArrayContent(attackerPayload),
-        };
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(attackerPayload) };
         if (upstreamContentType is not null)
             response.Content.Headers.ContentType = new(upstreamContentType);
         var handler = new StubHttpMessageHandler(response);
@@ -775,17 +753,14 @@ public class GetPhotoAssetImageEndpointUnitTests
     public async Task ShouldFetchImage_WhenConditionalETagUsesPrePolicyUnversionedValue()
     {
         // Arrange
-        await SetupDatabase(
-            84020,
-            config =>
-            {
-                config.PlexAccountCount = 1;
-                config.PlexServerCount = 1;
-                config.PlexPhotoLibraryCount = 1;
-                config.PhotoAlbumCount = 1;
-                config.PhotoCount = 1;
-            }
-        );
+        await SetupDatabase(84020, config =>
+        {
+            config.PlexAccountCount = 1;
+            config.PlexServerCount = 1;
+            config.PlexPhotoLibraryCount = 1;
+            config.PhotoAlbumCount = 1;
+            config.PhotoCount = 1;
+        });
         var dbContext = IDbContext;
         var asset = await dbContext.PlexPhotoMediaData.SingleAsync(CancellationToken);
         var handler = new StubHttpMessageHandler(
@@ -801,9 +776,8 @@ public class GetPhotoAssetImageEndpointUnitTests
             AssetId = asset.Id,
             Representation = PhotoImageRepresentation.Original,
         };
-        var initial = await TestEndpointHandleAsync(
-            request,
-            services => services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
+        var initial = await TestEndpointHandleAsync(request, services =>
+            services.AddMemoryCache().AddSingleton<IHttpClientFactory>(clientFactory.Object)
         );
         initial.StatusCode.ShouldBe(StatusCodes.Status200OK);
         var versionedETag = initial.Endpoint.HttpContext.Response.Headers.ETag.ToString();

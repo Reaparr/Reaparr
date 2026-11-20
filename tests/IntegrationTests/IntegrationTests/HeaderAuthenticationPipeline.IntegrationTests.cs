@@ -60,9 +60,14 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
 
         // Act
         var cookieResponse = await cookieClient.GetAsync(ApiRoutes.SettingsController + "/");
-        using var statusResponse = await cookieClient.GetAsync(ApiRoutes.AuthenticatedController + "/status", CancellationToken);
+        using var statusResponse = await cookieClient.GetAsync(
+            ApiRoutes.AuthenticatedController + "/status",
+            CancellationToken
+        );
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var status = (await statusResponse.Content.ReadFromJsonAsync<ResultDTO<UserClaimsDTO>>(CancellationToken)).ShouldNotBeNull();
+        var status = (
+            await statusResponse.Content.ReadFromJsonAsync<ResultDTO<UserClaimsDTO>>(CancellationToken)
+        ).ShouldNotBeNull();
         status.IsSuccess.ShouldBeTrue();
         status.Errors.Count.ShouldBe(0);
         var claims = status.Value.ShouldNotBeNull();
@@ -70,11 +75,7 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
         claims.UserName.ShouldBe(DefaultUserAppCredentials.DefaultUsername);
         var updateResponse = await cookieClient.PutAsJsonAsync(
             ApiRoutes.AuthenticatedController,
-            new UpdateCredentialsEndpointRequest
-            {
-                Username = null,
-                Password = "Replacement-password-43!",
-            }
+            new UpdateCredentialsEndpointRequest { Username = null, Password = "Replacement-password-43!" }
         );
 
         // Assert
@@ -92,18 +93,17 @@ public class HeaderAuthenticationPipelineIntegrationTests : BaseIntegrationTests
 
         var staleMutationResponse = await staleCookieClient.PutAsJsonAsync(
             ApiRoutes.AuthenticatedController,
-            new UpdateCredentialsEndpointRequest
-            {
-                Username = null,
-                Password = "Another-password-54!",
-            }
+            new UpdateCredentialsEndpointRequest { Username = null, Password = "Another-password-54!" }
         );
         staleMutationResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var after = (await userService.FindByNameAsync(DefaultUserAppCredentials.DefaultUsername)).ShouldNotBeNull();
         after.Id.ShouldBe(before.Id);
         after.SecurityStamp.ShouldNotBe(originalSecurityStamp);
         using var anonymousClient = CreateUnauthenticatedClient(container);
-        using var anonymousResponse = await anonymousClient.GetAsync(ApiRoutes.SettingsController + "/", CancellationToken);
+        using var anonymousResponse = await anonymousClient.GetAsync(
+            ApiRoutes.SettingsController + "/",
+            CancellationToken
+        );
         anonymousResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
         using var freshLoginClient = CreateUnauthenticatedClient(container);

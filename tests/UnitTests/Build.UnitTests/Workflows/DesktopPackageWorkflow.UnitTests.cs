@@ -346,7 +346,6 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             .ShouldBe(beforeDirectories);
     }
 
-
     private static IContainer CreateBuildContainer(
         BuildPaths paths,
         IFileSystem fileSystem,

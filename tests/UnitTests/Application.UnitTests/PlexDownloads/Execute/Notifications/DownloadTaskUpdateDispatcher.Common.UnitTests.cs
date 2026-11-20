@@ -17,6 +17,157 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
     }
 
     [Test]
+    public async Task ShouldReleaseDeletedNodeTracking_WhenRootDeletionCascadesAndLateProgressArrives()
+    {
+        // Arrange
+        await SetupDatabase(84342, config => config.MovieDownloadTasksCount = 2);
+        var dbContext = IDbContext;
+        var roots = await dbContext.DownloadTaskMovie.OrderBy(x => x.Id).ToListAsync(CancellationToken);
+        var target = await dbContext.DownloadTaskMovieFile.FirstAsync(
+            x => x.ParentId == roots[0].Id,
+            CancellationToken
+        );
+        var control = await dbContext.DownloadTaskMovieFile.FirstAsync(
+            x => x.ParentId == roots[1].Id,
+            CancellationToken
+        );
+        var progress = new DownloadTaskProgress
+        {
+            DataTotal = 100,
+            DataReceived = 25,
+            Percentage = 25,
+        };
+        Mock.Mock<IDownloadHubService>()
+            .Setup(x =>
+                x.SendDownloadPatchAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<long>(),
+                    It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
+                    It.IsAny<IReadOnlyCollection<Guid>?>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.AtLeastOnce());
+        var sut = Sut;
+        (await sut.PersistProgressAsync(target.ToKey(), progress)).IsSuccess.ShouldBeTrue();
+        (await sut.PersistProgressAsync(control.ToKey(), progress)).IsSuccess.ShouldBeTrue();
+
+        // Act
+        await dbContext.DownloadTaskMovie.Where(x => x.Id == roots[0].Id).ExecuteDeleteAsync(CancellationToken);
+        await sut.OnStatusChangedAsync(roots[0].ToKey(), DownloadStatus.Deleted, CancellationToken);
+        var retainedAfterDeletion = (System.Collections.IDictionary)
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetField(
+                    "_finalizedProgressNodes",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .GetValue(sut)!;
+        retainedAfterDeletion.Contains(target.Id).ShouldBeFalse();
+        sut.OnProgressUpdated(target.ToKey(), progress);
+        var lateResult = await sut.PersistProgressAsync(target.ToKey(), progress);
+
+        // Assert
+        lateResult.IsSuccess.ShouldBeTrue();
+        lateResult.Errors.Count.ShouldBe(0);
+        (await dbContext.DownloadTaskMovieFile.AnyAsync(x => x.Id == target.Id, CancellationToken)).ShouldBeFalse();
+        (await dbContext.DownloadTaskMovieFile.AnyAsync(x => x.Id == control.Id, CancellationToken)).ShouldBeTrue();
+        foreach (
+            var name in new[]
+            {
+                "_progressByNodeId",
+                "_scopeByNodeId",
+                "_statusByNodeId",
+                "_finalizedProgressNodes",
+                "_lastProgressLogByNodeId",
+                "_seenProgressNodes",
+            }
+        )
+        {
+            var state = (System.Collections.IDictionary)
+                typeof(DownloadTaskUpdateDispatcher)
+                    .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                    .GetValue(sut)!;
+            state.Contains(target.Id).ShouldBeFalse(name);
+            state.Contains(roots[0].Id).ShouldBeFalse(name);
+        }
+        var finalized =
+            (ConcurrentDictionary<Guid, byte>)
+                typeof(DownloadTaskUpdateDispatcher)
+                    .GetField(
+                        "_finalizedProgressNodes",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .GetValue(sut)!;
+        finalized.Keys.ShouldBe([control.Id]);
+        Mock.Mock<IDownloadHubService>().Verify();
+    }
+
+    [Test]
+    public async Task ShouldWaitForInFlightProgressBeforeRetiringState_WhenDownloadIsDeleted()
+    {
+        // Arrange
+        await SetupDatabase(84343, config => config.MovieDownloadTasksCount = 1);
+        var dbContext = IDbContext;
+        var key = (await dbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock.Mock<IDownloadHubService>()
+            .Setup(x =>
+                x.SendDownloadPatchAsync(
+                    key.PlexServerId,
+                    It.IsAny<long>(),
+                    It.IsAny<IReadOnlyCollection<DownloadPatchDTO>>(),
+                    It.IsAny<IReadOnlyCollection<Guid>?>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns<int, long, IReadOnlyCollection<DownloadPatchDTO>, IReadOnlyCollection<Guid>?, CancellationToken>(
+                async (_, _, _, deleted, _) =>
+                {
+                    if (deleted is null)
+                    {
+                        entered.TrySetResult();
+                        await release.Task;
+                    }
+                }
+            )
+            .Verifiable(Times.Exactly(2));
+        var sut = Sut;
+
+        // Act
+        var persistence = sut.PersistProgressAsync(
+            key,
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                Percentage = 25,
+            }
+        );
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await dbContext.DownloadTaskMovieFile.Where(x => x.Id == key.Id).ExecuteDeleteAsync(CancellationToken);
+        var deletion = sut.OnStatusChangedAsync(key, DownloadStatus.Deleted, CancellationToken);
+        deletion.IsCompleted.ShouldBeFalse();
+        release.SetResult();
+        var result = await persistence;
+        await deletion;
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Errors.Count.ShouldBe(0);
+        var scopes = (System.Collections.IDictionary)
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetField(
+                    "_scopeByNodeId",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .GetValue(sut)!;
+        scopes.Contains(key.Id).ShouldBeFalse();
+        Mock.Mock<IDownloadHubService>().Verify();
+    }
+
+    [Test]
     public async Task ShouldNotSendPatch_WhenProgressIsUpdatedForUnknownKey()
     {
         var capturedPatches = new List<IReadOnlyCollection<DownloadPatchDTO>>();
