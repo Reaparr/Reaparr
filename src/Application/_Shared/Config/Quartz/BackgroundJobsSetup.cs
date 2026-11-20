@@ -218,7 +218,7 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
             shutdownTimeout.CancelAfter(TimeSpan.FromSeconds(30));
             await _scheduler.Standby(shutdownTimeout.Token);
 
-            foreach (var firing in await _scheduler.QueryRunningJobs(shutdownTimeout.Token))
+            foreach (var firing in await _scheduler.GetLocalExecutingFireInstances(shutdownTimeout.Token))
                 await _scheduler.InterruptFireInstance(firing.FireInstanceId, shutdownTimeout.Token);
 
             await _scheduler.Shutdown(waitForJobsToComplete: true, shutdownTimeout.Token);
