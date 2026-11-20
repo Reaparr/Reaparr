@@ -101,14 +101,14 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             );
         }
         var previewEvents = nativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.DownloadPreviewFinished.ToString())
+            .Where(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.DownloadPreviewFinished))
             .ToArray();
         previewEvents.Length.ShouldBe(1);
         var previewProperties = previewEvents.Single().GetProperty("properties");
         previewProperties
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
-            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+            .ShouldBe(nameof(TelemetryOutcome.Succeeded));
         previewProperties
             .GetProperty(TelemetryProperty.Downloads.SelectedCount)
             .GetInt32()
@@ -118,7 +118,7 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             .GetProperty(TelemetryProperty.Downloads.SelectedMediaTypes)
             .EnumerateArray()
             .Select(item => item.GetString())
-            .ShouldBe([PlexMediaType.PhotoImage.ToString()]);
+            .ShouldBe([nameof(PlexMediaType.PhotoImage)]);
         previewProperties
             .GetProperty(TelemetryProperty.Downloads.CustomDestinationFolderPath)
             .GetString()
@@ -137,16 +137,16 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
         previewReport
             .GetProperty(TelemetryProperty.Downloads.ReportMediaType)
             .GetString()
-            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+            .ShouldBe(nameof(PlexMediaType.PhotoAlbum));
         var creationEvents = nativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.DownloadCreationProcessed.ToString())
+            .Where(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.DownloadCreationProcessed))
             .ToArray();
         creationEvents.Length.ShouldBe(1);
         var creationProperties = creationEvents.Single().GetProperty("properties");
         creationProperties
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
-            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+            .ShouldBe(nameof(TelemetryOutcome.Succeeded));
         creationProperties
             .GetProperty(TelemetryProperty.Downloads.SelectedCount)
             .GetInt32()
@@ -156,7 +156,7 @@ public class CreateDownloadTasksEndpointPhotoSelectionIntegrationTests : BaseInt
             .GetProperty(TelemetryProperty.Downloads.SelectedMediaTypes)
             .EnumerateArray()
             .Select(item => item.GetString())
-            .ShouldBe([PlexMediaType.PhotoImage.ToString()]);
+            .ShouldBe([nameof(PlexMediaType.PhotoImage)]);
         creationProperties.GetProperty(TelemetryProperty.Downloads.CreatedTotal).GetInt32().ShouldBe(5);
         var createdReport = creationProperties.GetProperty(TelemetryProperty.Downloads.CreatedReport);
         createdReport.GetProperty(TelemetryProperty.Downloads.Movies).GetInt32().ShouldBe(0);

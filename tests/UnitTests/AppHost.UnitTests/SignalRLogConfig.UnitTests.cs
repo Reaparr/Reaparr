@@ -67,7 +67,7 @@ public class SignalRLogConfigUnitTests : BaseUnitTest
             buffer,
             Mock.Container.Resolve<IAppBuildInfo>()
         );
-        await using var logger = config.GetLogger(LogEventLevel.Debug);
+        await using var logger = config.GetLogger();
         var contextualLogger = logger.ForContext("Regression", true);
         contextualLogger.Debug("Before SignalR attachment");
 

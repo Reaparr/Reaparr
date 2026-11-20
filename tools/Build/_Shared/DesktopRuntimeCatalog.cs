@@ -15,7 +15,7 @@ internal static class DesktopRuntimeCatalog
         ["osx-arm64"] = new("osx-arm64", "Desktop-osx-arm64", "Reaparr.AppHost"),
     };
 
-    public static string SupportedRuntimeIdentifiers => string.Join(", ", _runtimes.Keys.Order());
+    public static string SupportedRuntimeIdentifiers => string.Join(", ", _runtimes.Keys.Order(StringComparer.Ordinal));
 
     public static bool TryGet(string runtimeIdentifier, out DesktopRuntime runtime) =>
         _runtimes.TryGetValue(runtimeIdentifier, out runtime!);

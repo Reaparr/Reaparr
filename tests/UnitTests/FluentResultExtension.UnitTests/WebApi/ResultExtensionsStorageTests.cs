@@ -7,9 +7,7 @@ public class ResultExtensionsStorageTests
     {
         // Arrange
         var result = Result.Fail(
-            new ExceptionalError(
-                new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!)
-            )
+            new ExceptionalError(new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely."))
         );
 
         // Act
@@ -25,7 +23,7 @@ public class ResultExtensionsStorageTests
         // Arrange
         var result = Result.Fail(
             new Error("HTTP response failed").CausedBy(
-                new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!)
+                new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.")
             )
         );
 
@@ -71,7 +69,7 @@ public class ResultExtensionsStorageTests
                 new[]
                 {
                     new ExceptionalError(
-                        new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!)
+                        new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.")
                     ),
                     new ExceptionalError(new IOException("Disk write failed.")),
                 }

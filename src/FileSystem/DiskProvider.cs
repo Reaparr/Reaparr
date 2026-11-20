@@ -51,7 +51,7 @@ public sealed class DiskProvider : IDiskProvider
         if (files.IsFailed)
             return files.ToResult();
 
-        return files.Value.OrderBy(x => x.Name).Select(x => x.ToModel()).ToList();
+        return files.Value.OrderBy(x => x.Name, StringComparer.Ordinal).Select(x => x.ToModel()).ToList();
     }
 
     public Result<List<FileSystemModel>> GetDirectories(string path)
@@ -63,7 +63,7 @@ public sealed class DiskProvider : IDiskProvider
         // Mapping probes write permission by creating a temporary file, so exclude hidden directories first.
         var list = directories
             .Value.Where(x => !_setToRemove.Contains(x.Name.ToLowerInvariant()))
-            .OrderBy(x => x.Name)
+            .OrderBy(x => x.Name, StringComparer.Ordinal)
             .Select(x => x.ToModel())
             .ToList();
 

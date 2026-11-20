@@ -13,6 +13,5 @@ public static partial class FakeData
         .Ignore(x => x.PlexMovieActors)
         .Ignore(x => x.PlexTvShowActors);
 
-    public static Faker<PlexActor> GetPlexActors(Seed seed, Action<FakeDataConfig>? options = null) =>
-        _plexActor.UseSeed(seed.Next());
+    public static Faker<PlexActor> GetPlexActors(Seed seed) => _plexActor.UseSeed(seed.Next());
 }

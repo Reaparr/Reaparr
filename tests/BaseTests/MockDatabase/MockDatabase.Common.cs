@@ -31,7 +31,7 @@ public static partial class MockDatabase
         // Generate fake servers
         for (var i = 0; i < config.PlexServerCount; i++)
         {
-            var plexServer = FakeData.GetPlexServer(seed, options).Generate();
+            var plexServer = FakeData.GetPlexServer(seed).Generate();
             context.PlexServers.Add(plexServer);
         }
 
@@ -733,7 +733,7 @@ public static partial class MockDatabase
             context.PlexPhotoFolders.Add(rootFolder);
             await context.SaveChangesAsync();
 
-            var albums = FakeData.GetPlexPhotoAlbums(seed, options).Generate(config.PhotoAlbumCount);
+            var albums = FakeData.GetPlexPhotoAlbums(seed).Generate(config.PhotoAlbumCount);
             List<PlexPhotoMediaData> files = [];
             Dictionary<PlexPhotoAlbum, List<PlexPhotoMediaData>> albumFiles = [];
             foreach (var album in albums)

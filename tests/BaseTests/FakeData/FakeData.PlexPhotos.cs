@@ -18,8 +18,7 @@ public static partial class FakeData
         .Ignore(x => x.PlexLibrary)
         .Ignore(x => x.Memberships);
 
-    public static Faker<PlexPhotoAlbum> GetPlexPhotoAlbums(Seed seed, Action<FakeDataConfig>? options = null) =>
-        _plexPhotoAlbum.Clone().UseSeed(seed.Next());
+    public static Faker<PlexPhotoAlbum> GetPlexPhotoAlbums(Seed seed) => _plexPhotoAlbum.Clone().UseSeed(seed.Next());
 
     private static readonly Faker<PlexPhotoMediaData> _plexPhotoMediaData = CreatePlexPhotoMediaDataFaker();
 

@@ -78,7 +78,7 @@ public class GetIntegrationsEndpoint : EndpointWithoutRequest<List<IntegrationSu
             .ToListAsync(ct);
 
         HttpContext.Response.Headers.CacheControl = "no-store";
-        var integrations = sonarr.Concat(radarr).OrderBy(x => x.Type).ThenBy(x => x.Name).ToList();
+        var integrations = sonarr.Concat(radarr).OrderBy(x => x.Type).ThenBy(x => x.Name, StringComparer.Ordinal).ToList();
         await Send.FluentResult(Result.Ok(integrations), ct);
     }
 }

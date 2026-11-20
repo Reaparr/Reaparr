@@ -67,7 +67,7 @@ public sealed partial class Telemetry
             new Dictionary<string, object>
             {
                 [TelemetryProperty.Action] = action.ToString(),
-                [TelemetryProperty.Outcome] = TelemetryOutcome.Succeeded.ToString(),
+                [TelemetryProperty.Outcome] = nameof(TelemetryOutcome.Succeeded),
                 [TelemetryProperty.FolderId] = folderPath.Id,
                 [TelemetryProperty.Actions.FolderType] = folderPath.FolderType.ToString(),
                 [TelemetryProperty.MediaType] = folderPath.MediaType.ToString(),
@@ -84,7 +84,7 @@ public sealed partial class Telemetry
             TelemetryEvent.FolderPathChanged,
             new Dictionary<string, object>
             {
-                [TelemetryProperty.Action] = TelemetryAction.Delete.ToString(),
+                [TelemetryProperty.Action] = nameof(TelemetryAction.Delete),
                 [TelemetryProperty.Outcome] = (
                     deletedCount == 0 ? TelemetryOutcome.NoOp : TelemetryOutcome.Succeeded
                 ).ToString(),
@@ -130,8 +130,8 @@ public sealed partial class Telemetry
     public void UpdateDownloadFinished(ResultBase result, string? targetVersion = null, bool? pendingRestart = null)
     {
         var outcome =
-            !_appBuildInfo.IsDesktopMode ? TelemetryOutcome.Unsupported.ToString()
-            : result.IsSuccess && targetVersion is null ? TelemetryOutcome.NoUpdate.ToString()
+            !_appBuildInfo.IsDesktopMode ? nameof(TelemetryOutcome.Unsupported)
+            : result.IsSuccess && targetVersion is null ? nameof(TelemetryOutcome.NoUpdate)
             : Outcome(result);
         var properties = new Dictionary<string, object> { [TelemetryProperty.Outcome] = outcome };
         if (targetVersion is not null)
@@ -149,7 +149,7 @@ public sealed partial class Telemetry
             TelemetryEvent.UpdateApplyAccepted,
             new Dictionary<string, object>
             {
-                [TelemetryProperty.Outcome] = TelemetryOutcome.Accepted.ToString(),
+                [TelemetryProperty.Outcome] = nameof(TelemetryOutcome.Accepted),
                 [TelemetryProperty.Actions.PackageId] = packageId,
                 [TelemetryProperty.Version] = version,
             }

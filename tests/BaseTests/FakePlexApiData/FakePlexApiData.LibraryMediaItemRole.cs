@@ -14,8 +14,6 @@ public partial class FakePlexApiData
             .RuleFor(x => x.Thumb, f => f.Image.PicsumUrl())
             .RuleFor(x => x.Key, f => f.Random.Hash(24));
 
-    public static Faker<LibraryMediaItemRoleDTO> GetLibraryMediaItemActorDTO(
-        Seed seed,
-        Action<FakeDataConfig>? options = null
-    ) => _libraryMediaItemActorDTO.UseSeed(seed.Next());
+    public static Faker<LibraryMediaItemRoleDTO> GetLibraryMediaItemActorDTO(Seed seed) =>
+        _libraryMediaItemActorDTO.UseSeed(seed.Next());
 }

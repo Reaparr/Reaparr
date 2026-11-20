@@ -2164,8 +2164,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
             CompletionFailureKind.HttpRequest => new HttpRequestException("Connection reset."),
             CompletionFailureKind.HttpIOException => new HttpIOException(
                 HttpRequestError.ResponseEnded,
-                "The response ended prematurely.",
-                null!
+                "The response ended prematurely."
             ),
             CompletionFailureKind.Argument => new ArgumentException("Invalid downloader argument."),
             CompletionFailureKind.NotSupported => new NotSupportedException("Unsupported operation."),

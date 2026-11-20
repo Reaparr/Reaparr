@@ -252,7 +252,7 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
             config.PlexAccountCount = 1;
         });
         var plexServerId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
-        var attackerPayload = System.Text.Encoding.UTF8.GetBytes("attacker");
+        var attackerPayload = "attacker"u8.ToArray();
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(attackerPayload) }
         );
@@ -314,7 +314,7 @@ public class GetPlexMediaThumbnailImageEndpointUnitTests
             config.PlexAccountCount = 1;
         });
         var plexServerId = await IDbContext.PlexServers.Select(x => x.Id).SingleAsync(CancellationToken);
-        var attackerPayload = System.Text.Encoding.UTF8.GetBytes("attacker");
+        var attackerPayload = "attacker"u8.ToArray();
         var handler = new StubHttpMessageHandler(
             new HttpResponseMessage(HttpStatusCode.InternalServerError),
             new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(attackerPayload) }

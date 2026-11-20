@@ -248,8 +248,8 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
             CancellationToken cancellationToken
         )
         {
-            await stream.WriteAsync(Encoding.UTF8.GetBytes("partial payload"), cancellationToken);
-            throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!);
+            await stream.WriteAsync("partial payload"u8.ToArray(), cancellationToken);
+            throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.");
         }
 
         protected override bool TryComputeLength(out long length)

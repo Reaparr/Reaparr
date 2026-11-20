@@ -297,7 +297,7 @@ public sealed partial class Telemetry
                 ? TelemetryOutcome.Succeeded
                 : TelemetryOutcome.Partial
             : remoteCleanupOutcome;
-        properties[TelemetryProperty.Action] = TelemetryAction.Delete.ToString();
+        properties[TelemetryProperty.Action] = nameof(TelemetryAction.Delete);
         properties[TelemetryProperty.Outcome] = outcome.ToString();
         properties[TelemetryProperty.Integrations.RemoteCleanupOutcome] = remoteCleanupOutcome.ToString();
         properties[TelemetryProperty.Integrations.LocalRemoved] = localRemoved;
@@ -321,7 +321,7 @@ public sealed partial class Telemetry
         var properties = new Dictionary<string, object>
         {
             [TelemetryProperty.IntegrationId] = integration.Id,
-            [TelemetryProperty.Provider] = IntegrationType.Sonarr.ToString(),
+            [TelemetryProperty.Provider] = nameof(IntegrationType.Sonarr),
             [TelemetryProperty.Configuration.Name] = integration.DisplayName,
             [TelemetryProperty.Configuration.Url] = integration.BaseUrl,
             [TelemetryProperty.Configuration.Category] = integration.Category,
@@ -342,7 +342,7 @@ public sealed partial class Telemetry
         var properties = new Dictionary<string, object>
         {
             [TelemetryProperty.IntegrationId] = integration.Id,
-            [TelemetryProperty.Provider] = IntegrationType.Radarr.ToString(),
+            [TelemetryProperty.Provider] = nameof(IntegrationType.Radarr),
             [TelemetryProperty.Configuration.Name] = integration.DisplayName,
             [TelemetryProperty.Configuration.Url] = integration.BaseUrl,
             [TelemetryProperty.Configuration.Category] = integration.Category,

@@ -142,9 +142,9 @@ public sealed partial class Telemetry
             [TelemetryProperty.Libraries.ForceMediaRefresh] = forceMediaRefresh,
             [TelemetryProperty.Outcome] = status switch
             {
-                LibrarySyncJobStatus.Completed => TelemetryOutcome.Succeeded.ToString(),
-                LibrarySyncJobStatus.Cancelled => TelemetryOutcome.Cancelled.ToString(),
-                _ => TelemetryOutcome.Failed.ToString(),
+                LibrarySyncJobStatus.Completed => nameof(TelemetryOutcome.Succeeded),
+                LibrarySyncJobStatus.Cancelled => nameof(TelemetryOutcome.Cancelled),
+                _ => nameof(TelemetryOutcome.Failed),
             },
         };
         if (mediaType.HasValue)
@@ -259,7 +259,7 @@ public sealed partial class Telemetry
                 [TelemetryProperty.Libraries.Access] = access,
                 [TelemetryProperty.Libraries.Granted] = granted,
                 [TelemetryProperty.Libraries.Revoked] = access.Count - granted,
-                [TelemetryProperty.Outcome] = TelemetryOutcome.Succeeded.ToString(),
+                [TelemetryProperty.Outcome] = nameof(TelemetryOutcome.Succeeded),
             }
         );
     }
@@ -296,7 +296,7 @@ public sealed partial class Telemetry
             [TelemetryProperty.LibraryId] = library.Id,
             [TelemetryProperty.MediaType] = library.Type.ToString(),
             [TelemetryProperty.Libraries.IsEnabled] = isEnabled,
-            [TelemetryProperty.Outcome] = TelemetryOutcome.Succeeded.ToString(),
+            [TelemetryProperty.Outcome] = nameof(TelemetryOutcome.Succeeded),
         };
         if (purgedMediaCount.HasValue)
             properties[TelemetryProperty.Libraries.PurgedMediaCount] = purgedMediaCount.Value;
@@ -311,7 +311,7 @@ public sealed partial class Telemetry
             TelemetryEvent.PlexLibraryChanged,
             new Dictionary<string, object>
             {
-                [TelemetryProperty.Action] = TelemetryAction.DefaultDestination.ToString(),
+                [TelemetryProperty.Action] = nameof(TelemetryAction.DefaultDestination),
                 [TelemetryProperty.ServerId] = serverId,
                 [TelemetryProperty.LibraryId] = libraryId,
                 [TelemetryProperty.MediaType] = mediaType.ToString(),
@@ -324,7 +324,7 @@ public sealed partial class Telemetry
                     [TelemetryProperty.DisplayName] = folder.DisplayName,
                     [TelemetryProperty.DirectoryPath] = folder.DirectoryPath,
                 },
-                [TelemetryProperty.Outcome] = TelemetryOutcome.Succeeded.ToString(),
+                [TelemetryProperty.Outcome] = nameof(TelemetryOutcome.Succeeded),
             }
         );
     }

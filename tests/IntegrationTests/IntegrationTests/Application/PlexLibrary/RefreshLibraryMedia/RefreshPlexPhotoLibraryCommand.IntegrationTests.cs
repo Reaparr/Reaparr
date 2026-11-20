@@ -219,7 +219,7 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             );
         }
         var firstRefreshRequests = firstNativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryRefreshRequested.ToString())
+            .Where(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.LibraryRefreshRequested))
             .ToArray();
         firstRefreshRequests.Length.ShouldBe(1);
         var refreshRequestProperties = firstRefreshRequests.Single().GetProperty("properties");
@@ -232,13 +232,13 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         refreshRequestProperties
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
-            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+            .ShouldBe(nameof(TelemetryOutcome.Succeeded));
         refreshRequestProperties
             .GetProperty(TelemetryProperty.Libraries.QueueStatus)
             .GetString()
             .ShouldBe(refreshQueue.Status.ToString());
         var queuedEvents = firstNativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibrarySyncQueued.ToString())
+            .Where(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.LibrarySyncQueued))
             .ToArray();
         queuedEvents.Length.ShouldBe(1);
         var queuedProperties = queuedEvents.Single().GetProperty("properties");
@@ -247,17 +247,17 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         queuedProperties
             .GetProperty(TelemetryProperty.MediaType)
             .GetString()
-            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+            .ShouldBe(nameof(PlexMediaType.PhotoAlbum));
         queuedProperties.GetProperty(TelemetryProperty.Libraries.ForceLibrarySync).GetBoolean().ShouldBeFalse();
         queuedProperties.GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh).GetBoolean().ShouldBeFalse();
         queuedProperties
             .GetProperty(TelemetryProperty.Trigger)
             .GetString()
-            .ShouldBe(TelemetryTrigger.Manual.ToString());
+            .ShouldBe(nameof(TelemetryTrigger.Manual));
         var admissionCreatedAt = queuedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString();
         admissionCreatedAt.ShouldNotBeNullOrWhiteSpace();
         var finishedEvents = firstNativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibrarySyncFinished.ToString())
+            .Where(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.LibrarySyncFinished))
             .ToArray();
         finishedEvents.Length.ShouldBe(1);
         var finishedProperties = finishedEvents.Single().GetProperty("properties");
@@ -266,15 +266,15 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         finishedProperties
             .GetProperty(TelemetryProperty.MediaType)
             .GetString()
-            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+            .ShouldBe(nameof(PlexMediaType.PhotoAlbum));
         finishedProperties.GetProperty(TelemetryProperty.Libraries.ForceMediaRefresh).GetBoolean().ShouldBeFalse();
         finishedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString().ShouldBe(admissionCreatedAt);
         finishedProperties
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
-            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+            .ShouldBe(nameof(TelemetryOutcome.Succeeded));
         firstNativeEvents
-            .Count(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryComparisonFinished.ToString())
+            .Count(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.LibraryComparisonFinished))
             .ShouldBe(0);
         telemetryBodies.Clear();
 
@@ -773,30 +773,30 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
             );
         }
         finalNativeEvents
-            .Count(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryRefreshRequested.ToString())
+            .Count(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.LibraryRefreshRequested))
             .ShouldBe(0);
         var enabledEvents = finalNativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.PlexLibraryChanged.ToString())
+            .Where(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.PlexLibraryChanged))
             .ToArray();
         enabledEvents.Length.ShouldBe(1);
         var enabledProperties = enabledEvents.Single().GetProperty("properties");
         enabledProperties
             .GetProperty(TelemetryProperty.Action)
             .GetString()
-            .ShouldBe(TelemetryAction.Enabled.ToString());
+            .ShouldBe(nameof(TelemetryAction.Enabled));
         enabledProperties.GetProperty(TelemetryProperty.ServerId).GetInt32().ShouldBe(photoLibrary.PlexServerId);
         enabledProperties.GetProperty(TelemetryProperty.LibraryId).GetInt32().ShouldBe(photoLibrary.Id);
         enabledProperties
             .GetProperty(TelemetryProperty.MediaType)
             .GetString()
-            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+            .ShouldBe(nameof(PlexMediaType.PhotoAlbum));
         enabledProperties.GetProperty(TelemetryProperty.Libraries.IsEnabled).GetBoolean().ShouldBeTrue();
         enabledProperties
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
-            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+            .ShouldBe(nameof(TelemetryOutcome.Succeeded));
         var finalQueuedEvents = finalNativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibrarySyncQueued.ToString())
+            .Where(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.LibrarySyncQueued))
             .ToArray();
         finalQueuedEvents.Length.ShouldBe(1);
         var finalQueuedProperties = finalQueuedEvents.Single().GetProperty("properties");
@@ -805,15 +805,15 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         finalQueuedProperties
             .GetProperty(TelemetryProperty.MediaType)
             .GetString()
-            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+            .ShouldBe(nameof(PlexMediaType.PhotoAlbum));
         finalQueuedProperties
             .GetProperty(TelemetryProperty.Trigger)
             .GetString()
-            .ShouldBe(TelemetryTrigger.Manual.ToString());
+            .ShouldBe(nameof(TelemetryTrigger.Manual));
         var finalAdmissionCreatedAt = finalQueuedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString();
         finalAdmissionCreatedAt.ShouldNotBeNullOrWhiteSpace();
         var finalFinishedEvents = finalNativeEvents
-            .Where(item => item.GetProperty("event").GetString() == TelemetryEvent.LibrarySyncFinished.ToString())
+            .Where(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.LibrarySyncFinished))
             .ToArray();
         finalFinishedEvents.Length.ShouldBe(1);
         var finalFinishedProperties = finalFinishedEvents.Single().GetProperty("properties");
@@ -822,14 +822,14 @@ public class RefreshPlexPhotoLibraryCommandIntegrationTests : BaseIntegrationTes
         finalFinishedProperties
             .GetProperty(TelemetryProperty.MediaType)
             .GetString()
-            .ShouldBe(PlexMediaType.PhotoAlbum.ToString());
+            .ShouldBe(nameof(PlexMediaType.PhotoAlbum));
         finalFinishedProperties.GetProperty(TelemetryProperty.CreatedAt).GetString().ShouldBe(finalAdmissionCreatedAt);
         finalFinishedProperties
             .GetProperty(TelemetryProperty.Outcome)
             .GetString()
-            .ShouldBe(TelemetryOutcome.Succeeded.ToString());
+            .ShouldBe(nameof(TelemetryOutcome.Succeeded));
         finalNativeEvents
-            .Count(item => item.GetProperty("event").GetString() == TelemetryEvent.LibraryComparisonFinished.ToString())
+            .Count(item => item.GetProperty("event").GetString() == nameof(TelemetryEvent.LibraryComparisonFinished))
             .ShouldBe(0);
 
         using var enabledContext = await factory.CreateAsync();

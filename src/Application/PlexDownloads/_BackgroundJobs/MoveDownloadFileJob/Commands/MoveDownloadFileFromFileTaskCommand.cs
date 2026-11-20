@@ -322,7 +322,7 @@ public class MoveDownloadFileFromFileTaskCommandHandler : ICommandHandler<MoveDo
                     destinationDirectoryPath
                 );
             var createDirectoryResult = Result
-                .Try((() => _directory.CreateDirectory(destinationDirectoryPath!)))
+                .Try(() => _directory.CreateDirectory(destinationDirectoryPath!))
                 .ToResult();
             if (createDirectoryResult.IsFailed)
                 return await ErrorDownloadTask(key, createDirectoryResult);

@@ -64,7 +64,7 @@ public class AddOrUpdatePlexAccountServersCommandHandler
         var plexServers = await _dbContext
             .PlexServers.IgnoreIsEnabledFilter()
             .Where(x => machineIdentifiers.Contains(x.MachineIdentifier))
-            .ToDictionaryAsync(x => x.MachineIdentifier, cancellationToken);
+            .ToDictionaryAsync(x => x.MachineIdentifier, StringComparer.Ordinal, cancellationToken);
 
         var newAccountServers = new List<PlexAccountServer>();
         var accessiblePlexServers = new List<int>();

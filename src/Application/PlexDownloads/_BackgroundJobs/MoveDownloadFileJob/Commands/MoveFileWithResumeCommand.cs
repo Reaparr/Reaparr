@@ -72,8 +72,8 @@ public class MoveFileWithResumeCommandHandler : ICommandHandler<MoveFileWithResu
         if (currentOffset > dataTotal)
             return CreateByteCountMismatchFailure(dataTotal, currentOffset, sourcePath, targetPath);
 
-        var inputStreamResult = Result.Try(
-            (() => _file.Open(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        var inputStreamResult = Result.Try(() =>
+            _file.Open(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
         );
         if (inputStreamResult.IsFailed)
             return inputStreamResult.ToResult().LogIfFailed();

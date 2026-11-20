@@ -37,7 +37,7 @@ public static partial class FakeData
         .Ignore(x => x.ServerStatus)
         .Ignore(x => x.PlexAccountServers);
 
-    public static Faker<PlexServer> GetPlexServer(Seed seed, Action<FakeDataConfig>? options = null) =>
+    public static Faker<PlexServer> GetPlexServer(Seed seed) =>
         // Note: Ensure all faker values are a lambda f => x,
         // otherwise Entity Framework will see differently generated values as the same object and mess up any database testing
         _plexServerFaker.UseSeed(seed.Next());
@@ -59,7 +59,6 @@ public static partial class FakeData
 
     public static Faker<PlexServerConnection> GetPlexServerConnections(
         Seed seed,
-        Action<FakeDataConfig>? options = null,
         bool isCustom = false,
         int plexServerId = 0
     )

@@ -301,7 +301,7 @@ public class GetTvShowMediaComparisonDetailsCommandHandler
                 })
                 .OrderBy(x => x.Key.EpisodeNumber < 0)
                 .ThenBy(x => x.Key.EpisodeNumber)
-                .ThenBy(x => x.First().Title)
+                .ThenBy(x => x.First().Title, StringComparer.Ordinal)
                 .ThenBy(x => x.Key.UnknownEpisodeId)
                 .Select(x =>
                     x.OrderByDescending(y => y.RemoteQuality.ToId())

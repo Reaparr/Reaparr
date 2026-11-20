@@ -657,7 +657,7 @@ public class DownloadJobUnitTests : BaseUnitTest<DownloadJob>
         {
             "http" => Result.Fail(
                 new ExceptionalError(
-                    new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.", null!)
+                    new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.")
                 )
             ),
             "disk" => Result.Fail(new ExceptionalError(new IOException("Disk write failed."))),

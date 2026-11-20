@@ -108,15 +108,15 @@ public static partial class FakeData
     {
         return _settingsModelFaker
             .RuleFor(x => x.AuthenticationSettings, _ => GetAuthenticationSettings(seed).Generate())
-            .RuleFor(x => x.GeneralSettings, _ => GetGeneralSettings(seed, options).Generate())
-            .RuleFor(x => x.ConfirmationSettings, _ => GetConfirmationSettings(seed, options).Generate())
-            .RuleFor(x => x.DateTimeSettings, _ => GetDateTimeSettings(seed, options).Generate())
-            .RuleFor(x => x.DisplaySettings, _ => GetDisplaySettings(seed, options).Generate())
-            .RuleFor(x => x.DownloadManagerSettings, _ => GetDownloadManagerSettings(seed, options).Generate())
-            .RuleFor(x => x.LanguageSettings, _ => GetLanguageSettings(seed, options).Generate())
-            .RuleFor(x => x.DebugSettings, _ => GetDebugSettings(seed, options).Generate())
+            .RuleFor(x => x.GeneralSettings, _ => GetGeneralSettings(seed).Generate())
+            .RuleFor(x => x.ConfirmationSettings, _ => GetConfirmationSettings(seed).Generate())
+            .RuleFor(x => x.DateTimeSettings, _ => GetDateTimeSettings(seed).Generate())
+            .RuleFor(x => x.DisplaySettings, _ => GetDisplaySettings(seed).Generate())
+            .RuleFor(x => x.DownloadManagerSettings, _ => GetDownloadManagerSettings(seed).Generate())
+            .RuleFor(x => x.LanguageSettings, _ => GetLanguageSettings(seed).Generate())
+            .RuleFor(x => x.DebugSettings, _ => GetDebugSettings(seed).Generate())
             .RuleFor(x => x.ServerSettings, _ => GetServerSettings(seed, options).Generate())
-            .RuleFor(x => x.NetworkSettings, _ => GetNetworkSettings(seed, options).Generate())
+            .RuleFor(x => x.NetworkSettings, _ => GetNetworkSettings(seed).Generate())
             .RuleFor(x => x.IntegrationsSettings, _ => IntegrationsSettings.Create())
             .UseSeed(seed.Next());
     }
@@ -124,38 +124,25 @@ public static partial class FakeData
     public static Faker<AuthenticationModule> GetAuthenticationSettings(Seed seed) =>
         _authenticationSettingsFaker.UseSeed(seed.Next());
 
-    public static Faker<GeneralSettingsModule> GetGeneralSettings(
-        Seed seed,
-        Action<UnitTestDataConfig>? options = null
-    ) => _generalSettingsFaker.UseSeed(seed.Next());
+    public static Faker<GeneralSettingsModule> GetGeneralSettings(Seed seed) =>
+        _generalSettingsFaker.UseSeed(seed.Next());
 
-    public static Faker<ConfirmationSettingsModule> GetConfirmationSettings(
-        Seed seed,
-        Action<UnitTestDataConfig>? options = null
-    ) => _confirmationSettingsFaker.UseSeed(seed.Next());
+    public static Faker<ConfirmationSettingsModule> GetConfirmationSettings(Seed seed) =>
+        _confirmationSettingsFaker.UseSeed(seed.Next());
 
-    public static Faker<DateTimeSettingsModule> GetDateTimeSettings(
-        Seed seed,
-        Action<UnitTestDataConfig>? options = null
-    ) => _dateTimeSettingsFaker.UseSeed(seed.Next());
+    public static Faker<DateTimeSettingsModule> GetDateTimeSettings(Seed seed) =>
+        _dateTimeSettingsFaker.UseSeed(seed.Next());
 
-    public static Faker<DisplaySettingsModule> GetDisplaySettings(
-        Seed seed,
-        Action<UnitTestDataConfig>? options = null
-    ) => _displaySettingsFaker.UseSeed(seed.Next());
+    public static Faker<DisplaySettingsModule> GetDisplaySettings(Seed seed) =>
+        _displaySettingsFaker.UseSeed(seed.Next());
 
-    public static Faker<DownloadManagerSettingsModule> GetDownloadManagerSettings(
-        Seed seed,
-        Action<UnitTestDataConfig>? options = null
-    ) => _downloadManagerSettingsFaker.UseSeed(seed.Next());
+    public static Faker<DownloadManagerSettingsModule> GetDownloadManagerSettings(Seed seed) =>
+        _downloadManagerSettingsFaker.UseSeed(seed.Next());
 
-    public static Faker<LanguageSettingsModule> GetLanguageSettings(
-        Seed seed,
-        Action<UnitTestDataConfig>? options = null
-    ) => _languageSettingsFaker.UseSeed(seed.Next());
+    public static Faker<LanguageSettingsModule> GetLanguageSettings(Seed seed) =>
+        _languageSettingsFaker.UseSeed(seed.Next());
 
-    public static Faker<DebugSettingsModule> GetDebugSettings(Seed seed, Action<UnitTestDataConfig>? options = null) =>
-        _debugSettingsFaker.UseSeed(seed.Next());
+    public static Faker<DebugSettingsModule> GetDebugSettings(Seed seed) => _debugSettingsFaker.UseSeed(seed.Next());
 
     public static Faker<PlexServerSettingsModule> GetServerSettings(
         Seed seed,
@@ -184,8 +171,6 @@ public static partial class FakeData
             .UseSeed(seed.Next());
     }
 
-    public static Faker<NetworkSettingsModule> GetNetworkSettings(
-        Seed seed,
-        Action<UnitTestDataConfig>? options = null
-    ) => _networkSettingsFaker.UseSeed(seed.Next());
+    public static Faker<NetworkSettingsModule> GetNetworkSettings(Seed seed) =>
+        _networkSettingsFaker.UseSeed(seed.Next());
 }

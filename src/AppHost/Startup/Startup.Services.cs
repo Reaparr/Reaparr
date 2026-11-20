@@ -227,9 +227,7 @@ public static partial class Startup
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AuthDbContext>();
 
-        services.Configure<SecurityStampValidatorOptions>(options =>
-            options.ValidationInterval = TimeSpan.Zero
-        );
+        services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.Zero);
 
         services.AddAuthenticationCookie(validFor: TimeSpan.FromHours(6), c =>
         {

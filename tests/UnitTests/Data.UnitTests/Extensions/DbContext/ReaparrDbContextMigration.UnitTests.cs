@@ -1177,11 +1177,9 @@ public class ReaparrDbContextMigrationUnitTests : BaseUnitTest
                             columnReader.GetString(1),
                             columnReader.GetString(2),
                             columnReader.GetInt32(3),
-                            (
-                                await columnReader.IsDBNullAsync(4, cancellationToken)
-                                    ? null
-                                    : columnReader.GetValue(4).ToString()
-                            ),
+                            await columnReader.IsDBNullAsync(4, cancellationToken)
+                                ? null
+                                : columnReader.GetValue(4).ToString(),
                             columnReader.GetInt32(5),
                             columnReader.GetInt32(6)
                         )

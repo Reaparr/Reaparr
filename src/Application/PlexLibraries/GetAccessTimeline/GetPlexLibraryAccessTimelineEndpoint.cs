@@ -76,9 +76,9 @@ public class GetPlexLibraryAccessTimelineEndpoint : EndpointWithoutRequest<PlexL
             {
                 PlexServerId = x.Key.PlexServerId,
                 PlexServerName = x.Key.PlexServerName,
-                Libraries = x.OrderBy(y => y.PlexLibraryName).ThenBy(y => y.PlexAccountName).ToList(),
+                Libraries = x.OrderBy(y => y.PlexLibraryName, StringComparer.Ordinal).ThenBy(y => y.PlexAccountName, StringComparer.Ordinal).ToList(),
             })
-            .OrderBy(x => x.PlexServerName)
+            .OrderBy(x => x.PlexServerName, StringComparer.Ordinal)
             .ToList();
     }
 

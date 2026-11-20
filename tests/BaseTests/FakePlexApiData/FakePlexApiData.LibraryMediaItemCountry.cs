@@ -10,8 +10,6 @@ public partial class FakePlexApiData
             .RuleFor(x => x.Key, (_, x) => x.Name.ToMd5Hash())
             .RuleFor(x => x.Filter, (_, x) => $"country={x.PlexId}");
 
-    public static Faker<LibraryMediaItemCountryDTO> GetLibraryMediaItemCountryDTO(
-        Seed seed,
-        Action<FakeDataConfig>? options = null
-    ) => _libraryMediaItemCountryDTO.UseSeed(seed.Next());
+    public static Faker<LibraryMediaItemCountryDTO> GetLibraryMediaItemCountryDTO(Seed seed) =>
+        _libraryMediaItemCountryDTO.UseSeed(seed.Next());
 }

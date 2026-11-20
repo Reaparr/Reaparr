@@ -39,7 +39,7 @@ public sealed class GetTorrentFileEndpoint : Endpoint<GetTorrentFileRequest>
 
         _log.Here().Warning("GetTorrentFileEndpoint called but not implemented");
 
-        var bytes = Encoding.UTF8.GetBytes("d8:announce0:e");
+        var bytes = "d8:announce0:e"u8.ToArray();
         HttpContext.Response.ContentType = "application/x-bittorrent";
         await HttpContext.Response.Body.WriteAsync(bytes, 0, bytes.Length, ct);
     }

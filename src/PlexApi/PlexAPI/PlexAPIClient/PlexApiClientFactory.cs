@@ -7,8 +7,7 @@ public class PlexApiClientFactory : IPlexApiClientFactory
 {
     private static readonly RetryConfig DisabledSdkRetry = new(
         RetryConfig.RetryStrategy.NONE,
-        new BackoffStrategy(1, 1, 1, 1, 0),
-        false
+        new BackoffStrategy(1, 1, 1, 1, 0)
     );
 
     private readonly Func<PlexApiClientOptions?, IPlexApiClient> _clientFactory;

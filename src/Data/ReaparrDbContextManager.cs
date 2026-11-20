@@ -327,7 +327,7 @@ public class ReaparrDbContextManager : IReaparrDbContextManager
 
                 var destinationPath = combineResult.Value;
 
-                var copyResult = Result.Try((() => _file.Copy(databaseFilePath, destinationPath)));
+                var copyResult = Result.Try(() => _file.Copy(databaseFilePath, destinationPath));
                 if (copyResult.IsFailed)
                 {
                     _log.Here()

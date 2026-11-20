@@ -4,10 +4,7 @@ namespace Reaparr.BaseTests;
 
 public partial class FakePlexApiData
 {
-    public static Faker<PostUsersSignInDataUserPlexAccount> GetPlexSignInResponse(
-        Seed seed,
-        Action<PlexApiDataConfig>? options = null
-    )
+    public static Faker<PostUsersSignInDataUserPlexAccount> GetPlexSignInResponse(Seed seed)
     {
         return new Faker<PostUsersSignInDataUserPlexAccount>()
             .StrictMode(true)
