@@ -1,5 +1,4 @@
 using Quartz;
-using Quartz.Impl.Matchers;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -15,19 +14,55 @@ public class GetAllBackgroundJobsEndpointUnitTests
 
     private void SetupScheduler(IEnumerable<IJobExecutionContext> executingJobs)
     {
-        Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(executingJobs.ToArray());
-        Mock.Mock<IScheduler>()
-            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<JobKey>());
+        var scheduler = Mock.Mock<IScheduler>();
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
+        var firingItems = executingJobs
+            .Select(context =>
+            {
+                var key = context.JobDetail.Key;
+                return new FireInstance(
+                    context.FireInstanceId ?? $"fire-{key.Name}",
+                    new TriggerKey(key.Name, key.Group),
+                    key,
+                    "test-scheduler",
+                    FireInstanceState.Executing,
+                    context.FireTimeUtc,
+                    context.ScheduledFireTimeUtc,
+                    null
+                );
+            })
+            .ToArray();
+        scheduler
+            .Setup(x =>
+                x.QueryFireInstances(
+                    It.Is<FireInstanceQuery>(query =>
+                        query.SchedulerInstanceId == "test-scheduler"
+                        && query.State == FireInstanceState.Executing
+                        && query.Skip == 0
+                        && query.Take == PagedQuery.DefaultTake
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>(firingItems, false)));
+        var details = executingJobs.Select(context => context.JobDetail).ToList();
+        scheduler
+            .Setup(x =>
+                x.GetJobDetails(
+                    It.Is<IReadOnlyCollection<JobKey>>(keys =>
+                        keys.SequenceEqual(details.Select(detail => detail.Key))
+                    ),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(new ValueTask<List<IJobDetail>>(details));
     }
 
     private static IJobExecutionContext CreateExecutingJob(JobStatusUpdate<string> update)
     {
         var jobDetail = new Mock<IJobDetail>();
         jobDetail.SetupGet(x => x.Key).Returns(new JobKey(update.Id, update.JobType.ToString()));
-
+        jobDetail.SetupGet(x => x.JobDataMap).Returns(CreateJobDataMap(update));
         var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.JobDetail).Returns(jobDetail.Object);
         context.SetupGet(x => x.MergedJobDataMap).Returns(CreateJobDataMap(update));

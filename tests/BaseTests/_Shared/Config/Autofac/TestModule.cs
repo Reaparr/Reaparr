@@ -1,5 +1,4 @@
-﻿using Autofac.Extras.Quartz;
-using Downloader;
+﻿using Downloader;
 using Moq.Contrib.HttpClient;
 using Reaparr.Settings.Contracts;
 
@@ -74,9 +73,6 @@ public class TestModule : Module
         builder.RegisterType<MockDownloadHubService>().As<IDownloadHubService>().SingleInstance();
         builder.RegisterType<MockNotificationHubService>().As<INotificationHubService>().SingleInstance();
         builder.RegisterType<MockPlexApiServer>().As<IMockPlexApiServer>().SingleInstance();
-        builder.RegisterModule(
-            new QuartzAutofacFactoryModule { ConfigurationProvider = _ => QuartzModule.TestQuartzConfiguration() }
-        );
 
         builder
             .Register(ctx => Config.MockDownloadServiceFactory(ctx.Resolve<IFileSystem>().File))

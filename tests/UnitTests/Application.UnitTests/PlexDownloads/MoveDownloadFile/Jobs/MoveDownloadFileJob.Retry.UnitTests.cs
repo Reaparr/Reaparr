@@ -59,15 +59,19 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(MoveDownloadFileJob.MaxRetryCount + 1));
         scheduler
-            .Setup(x =>
-                x.CheckExists(It.Is<TriggerKey>(triggerKey => triggerKey.Group == jobKey.Group), CancellationToken)
-            )
+            .Setup(x => x.Exists(It.Is<TriggerKey>(triggerKey => triggerKey.Group == jobKey.Group), CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Exactly(MoveDownloadFileJob.MaxRetryCount));
         scheduler
-            .Setup(x => x.ScheduleJob(It.Is<ITrigger>(trigger => trigger.JobKey.Equals(jobKey)), CancellationToken))
-            .Callback<ITrigger, CancellationToken>((trigger, _) => pending.Add(trigger))
-            .ReturnsAsync(DateTimeOffset.UtcNow)
+            .Setup(x =>
+                x.ScheduleJob(
+                    It.Is<ITrigger>(trigger => trigger.JobKey.Equals(jobKey)),
+                    It.IsAny<ScheduleJobOptions>(),
+                    CancellationToken
+                )
+            )
+            .Callback<ITrigger, ScheduleJobOptions, CancellationToken>((trigger, _, _) => pending.Add(trigger))
+            .Returns(new ValueTask<DateTimeOffset>(DateTimeOffset.UtcNow))
             .Verifiable(Times.Exactly(MoveDownloadFileJob.MaxRetryCount));
 
         var contexts = Enumerable
@@ -86,7 +90,7 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
 
         // Act
         foreach (var context in contexts)
-            await Sut.Execute(context.Object);
+            await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         foreach (var context in contexts)
@@ -102,7 +106,7 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
 
         pending.Count.ShouldBe(MoveDownloadFileJob.MaxRetryCount);
         pending
-            .Select(trigger => (int)trigger.JobDataMap[MoveDownloadFileJob.RetryCountKey])
+            .Select(trigger => trigger.JobDataMap.GetInt(MoveDownloadFileJob.RetryCountKey))
             .ShouldBe(Enumerable.Range(1, MoveDownloadFileJob.MaxRetryCount).ToArray());
         pending
             .Select(trigger => trigger.Key.Name)
@@ -117,7 +121,7 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             trigger.JobKey.ShouldBe(jobKey);
             trigger.StartTimeUtc.ShouldBeInRange(before.AddMinutes(1), DateTimeOffset.UtcNow.AddMinutes(1));
             ((ISimpleTrigger)trigger).RepeatCount.ShouldBe(0);
-            trigger.MisfireInstruction.ShouldBe(MisfireInstruction.SimpleTrigger.FireNow);
+            ((ISimpleTrigger)trigger).MisfireInstruction.ShouldBe(SimpleTriggerMisfireInstruction.FireNow);
         }
 
         (await dbContext.GetDownloadTaskStatusAsync(key, CancellationToken)).ShouldBe(DownloadStatus.MoveError);
@@ -125,7 +129,7 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
         Mock.Mock<IMoveDownloadFileQueue>().Verify();
         scheduler.Verify();
         scheduler.Verify(
-            x => x.ScheduleJob(It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
+            x => x.ScheduleJob(It.IsAny<ITrigger>(), It.IsAny<ScheduleJobOptions>(), It.IsAny<CancellationToken>()),
             Times.Exactly(MoveDownloadFileJob.MaxRetryCount)
         );
         Mock.Mock<ICommandExecutor>()
@@ -159,11 +163,11 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         scheduler
-            .Setup(x => x.CheckExists(It.IsAny<TriggerKey>(), CancellationToken))
+            .Setup(x => x.Exists(It.IsAny<TriggerKey>(), CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         scheduler
-            .Setup(x => x.ScheduleJob(It.IsAny<ITrigger>(), CancellationToken))
+            .Setup(x => x.ScheduleJob(It.IsAny<ITrigger>(), It.IsAny<ScheduleJobOptions>(), CancellationToken))
             .ThrowsAsync(schedulingException)
             .Verifiable(Times.Once());
         Mock.Mock<ITelemetry>()
@@ -172,7 +176,7 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         context.Object.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
@@ -218,16 +222,16 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Once());
         scheduler
-            .Setup(x => x.CheckExists(It.IsAny<TriggerKey>(), CancellationToken))
+            .Setup(x => x.Exists(It.IsAny<TriggerKey>(), CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Never());
         scheduler
-            .Setup(x => x.ScheduleJob(It.IsAny<ITrigger>(), CancellationToken))
-            .ReturnsAsync(DateTimeOffset.UtcNow)
+            .Setup(x => x.ScheduleJob(It.IsAny<ITrigger>(), It.IsAny<ScheduleJobOptions>(), CancellationToken))
+            .Returns(new ValueTask<DateTimeOffset>(DateTimeOffset.UtcNow))
             .Verifiable(Times.Never());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         var outcome = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
@@ -265,26 +269,31 @@ public class MoveDownloadFileJobRetryUnitTests : BaseUnitTest<MoveDownloadFileJo
             .ReturnsAsync(Result.Ok())
             .Verifiable(Times.Exactly(2));
         scheduler
-            .Setup(x => x.CheckExists(It.IsAny<TriggerKey>(), CancellationToken))
+            .Setup(x => x.Exists(It.IsAny<TriggerKey>(), CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         scheduler
-            .Setup(x => x.ScheduleJob(It.Is<ITrigger>(trigger => trigger.JobKey.Equals(jobKey)), CancellationToken))
-            .Callback<ITrigger, CancellationToken>((trigger, _) => pending.Add(trigger))
-            .ReturnsAsync(DateTimeOffset.UtcNow)
+            .Setup(x =>
+                x.ScheduleJob(
+                    It.Is<ITrigger>(trigger => trigger.JobKey.Equals(jobKey)),
+                    It.IsAny<ScheduleJobOptions>(),
+                    CancellationToken
+                )
+            )
+            .Callback<ITrigger, ScheduleJobOptions, CancellationToken>((trigger, _, _) => pending.Add(trigger))
+            .Returns(new ValueTask<DateTimeOffset>(DateTimeOffset.UtcNow))
             .Verifiable(Times.Once());
 
-        // Act
-        await Sut.Execute(
-            CreateContext(
-                key,
-                scheduler.Object,
-                CancellationToken,
-                "move-job-exhausted",
-                MoveDownloadFileJob.MaxRetryCount
-            ).Object
+        var exhaustedContext = CreateContext(
+            key,
+            scheduler.Object,
+            CancellationToken,
+            "move-job-exhausted",
+            MoveDownloadFileJob.MaxRetryCount
         );
-        await Sut.Execute(CreateContext(key, scheduler.Object, CancellationToken, "manual-restart").Object);
+        var restartContext = CreateContext(key, scheduler.Object, CancellationToken, "manual-restart");
+        await Sut.Execute(exhaustedContext.Object, exhaustedContext.Object.CancellationToken);
+        await Sut.Execute(restartContext.Object, restartContext.Object.CancellationToken);
 
         // Assert
         pending.ShouldHaveSingleItem();

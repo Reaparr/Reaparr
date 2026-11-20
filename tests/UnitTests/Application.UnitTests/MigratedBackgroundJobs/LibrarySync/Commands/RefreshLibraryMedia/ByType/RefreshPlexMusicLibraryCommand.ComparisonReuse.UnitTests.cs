@@ -1,5 +1,4 @@
 using Quartz;
-using Quartz.Impl.Matchers;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -230,14 +229,16 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
             .Verifiable(Times.Exactly(3));
 
         var scheduler = Mock.Mock<IScheduler>();
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         scheduler
-            .SetupSequence(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibraryComparisonJob)), CancellationToken)
-            )
-            .ThrowsAsync(new InvalidOperationException("comparison scheduler unavailable"))
-            .ReturnsAsync([])
-            .ReturnsAsync([]);
-        scheduler.Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]).Verifiable(Times.Once());
+            .SetupSequence(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .Throws(new InvalidOperationException("comparison scheduler unavailable"))
+            .Returns(new ValueTask<PagedResult<JobHeader>>(new PagedResult<JobHeader>([], false)))
+            .Returns(new ValueTask<PagedResult<JobHeader>>(new PagedResult<JobHeader>([], false)));
+        scheduler
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
+            .Verifiable(Times.Once());
         executor
             .Setup(x =>
                 x.Send(
@@ -326,21 +327,23 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
         IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>? scheduledJobs = null;
         var expectedJobKey = PlexLibraryComparisonJob.GetJobKey(fixture.Target.Id, fixture.Remote.Id);
         scheduler
-            .Setup(x => x.CheckExists(It.Is<JobKey>(key => key.Equals(expectedJobKey)), CancellationToken))
+            .Setup(x => x.Exists(It.Is<JobKey>(key => key.Equals(expectedJobKey)), CancellationToken))
             .ReturnsAsync(false)
             .Verifiable(Times.Once());
         scheduler
             .Setup(x =>
                 x.ScheduleJobs(
                     It.IsAny<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>>(),
-                    false,
+                    It.Is<ScheduleJobOptions>(options => !options.Replace),
                     CancellationToken
                 )
             )
-            .Callback<IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>, bool, CancellationToken>(
-                (jobs, _, _) => scheduledJobs = jobs
-            )
-            .Returns(Task.CompletedTask)
+            .Callback<
+                IReadOnlyDictionary<IJobDetail, IReadOnlyCollection<ITrigger>>,
+                ScheduleJobOptions,
+                CancellationToken
+            >((jobs, _, _) => scheduledJobs = jobs)
+            .Returns(ValueTask.CompletedTask)
             .Verifiable(Times.Once());
         var scheduleResult = await Mock.Create<ScheduleAffectedLibraryComparisonJobsCommandHandler>()
             .ExecuteAsync(new ScheduleAffectedLibraryComparisonJobsCommand(fixture.Target.Id), CancellationToken);
@@ -364,14 +367,16 @@ public class RefreshPlexMusicLibraryComparisonReuseCommandUnitTests
     )
     {
         var scheduler = Mock.Mock<IScheduler>();
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         var times = shouldInvalidate ? Times.Once() : Times.Never();
         scheduler
-            .Setup(x =>
-                x.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.LibraryComparisonJob)), CancellationToken)
-            )
-            .ReturnsAsync([])
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .Returns(new ValueTask<PagedResult<JobHeader>>(new PagedResult<JobHeader>([], false)))
             .Verifiable(times);
-        scheduler.Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]).Verifiable(times);
+        scheduler
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
+            .Verifiable(times);
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>
                 x.Send(

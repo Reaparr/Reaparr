@@ -1,5 +1,4 @@
 using Quartz;
-using Quartz.Impl.Matchers;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -127,7 +126,7 @@ public class ApplyOwnedMusicComparisonStateCommandUnitTests : BaseCommandUnitTes
                 }
             );
         Mock.Mock<IScheduler>()
-            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -246,8 +245,12 @@ public class ApplyOwnedMusicComparisonStateCommandUnitTests : BaseCommandUnitTes
                 }
             );
         Mock.Mock<IScheduler>()
-            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
-        Mock.Mock<IScheduler>().Verify(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
+        Mock.Mock<IScheduler>()
+            .Verify(
+                x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
     }
 
     [Test]
@@ -279,13 +282,35 @@ public class ApplyOwnedMusicComparisonStateCommandUnitTests : BaseCommandUnitTes
             },
         };
         var key = PlexLibraryComparisonJob.GetJobKey(libraries[1].Id, libraries[0].Id);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<IJobExecutionContext>())
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)))
             .Verifiable(Times.Once());
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(queued ? new[] { key } : Array.Empty<JobKey>())
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(
+                (JobQuery _, CancellationToken _) =>
+                    new ValueTask<PagedResult<JobHeader>>(
+                        new PagedResult<JobHeader>(
+                            queued
+                                ?
+                                [
+                                    new JobHeader(
+                                        key,
+                                        null,
+                                        typeof(PlexLibraryComparisonJob).FullName!,
+                                        false,
+                                        true,
+                                        false,
+                                        true
+                                    ),
+                                ]
+                                : [],
+                            false
+                        )
+                    )
+            )
             .Verifiable(Times.Once());
 
         // Act
@@ -424,8 +449,12 @@ public class ApplyOwnedMusicComparisonStateCommandUnitTests : BaseCommandUnitTes
                 (ownedAlbum.Id, PlexMediaType.MusicAlbum, PlexMediaComparisonState.HigherQuality.ToComparisonId()),
                 (ownedTrack.Id, PlexMediaType.MusicTrack, PlexMediaComparisonState.HigherQuality.ToComparisonId()),
             ]);
-        Mock.Mock<IScheduler>().Verify(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IScheduler>()
-            .Verify(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()), Times.Never());
+            .Verify(
+                x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()),
+                Times.Never()
+            );
+        Mock.Mock<IScheduler>()
+            .Verify(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 }

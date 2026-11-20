@@ -58,7 +58,7 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
                     It.Is<CompareMusicPlexLibraryCommand>(c =>
                         c.OwnedPlexLibraryId == owned.Id && c.RemotePlexLibraryId == remote.Id
                     ),
-                    CancellationToken
+                    context.Object.CancellationToken
                 )
             )
             .Returns<ICommand<Result>, CancellationToken>(
@@ -72,7 +72,7 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         ((BackgroundJobResult)context.Object.Result!).Status.ShouldBe(JobStatus.Completed);
@@ -137,8 +137,7 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
             );
         context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
 
-        // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         ((BackgroundJobResult)context.Object.Result!).Status.ShouldBe(JobStatus.Failed);
@@ -185,11 +184,11 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
         await SetOwnedOverrideAsync(remote.PlexServerId, false);
         await SetOwnedOverrideAsync(owned.PlexServerId, true);
         var payload = new PlexLibraryComparisonJobPayload(owned.Id, remote.Id);
-        var jobData = payload.ToJobDataMap();
+        var mockMergedJobDataMap = payload.ToJobDataMap();
         var context = new Mock<IJobExecutionContext>();
         context.SetupAllProperties();
         context.SetupGet(x => x.CancellationToken).Returns(CancellationToken);
-        context.SetupGet(x => x.MergedJobDataMap).Returns(jobData);
+        context.SetupGet(x => x.MergedJobDataMap).Returns(mockMergedJobDataMap);
         context
             .SetupGet(x => x.JobDetail)
             .Returns(
@@ -199,11 +198,6 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
                     .Build()
             );
         context.SetupGet(x => x.FireInstanceId).Returns("test-fire-instance");
-        var executionData = new Dictionary<object, object>();
-        context
-            .Setup(x => x.Put(It.IsAny<object>(), It.IsAny<object>()))
-            .Callback<object, object>((key, value) => executionData[key] = value);
-        context.Setup(x => x.Get(It.IsAny<object>())).Returns<object>(key => executionData.GetValueOrDefault(key));
         var writerResult = outcome switch
         {
             JobStatus.Failed => Result.Fail("Comparison writer failed"),
@@ -212,13 +206,13 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
         };
         var executor = Mock.Mock<ICommandExecutor>();
         executor
-            .Setup(x => x.Send(It.IsAny<CompareMoviePlexLibraryCommand>(), CancellationToken))
+            .Setup(x => x.Send(It.IsAny<CompareMoviePlexLibraryCommand>(), context.Object.CancellationToken))
             .ReturnsAsync(writerResult);
         executor
-            .Setup(x => x.Send(It.IsAny<CompareTvShowPlexLibraryCommand>(), CancellationToken))
+            .Setup(x => x.Send(It.IsAny<CompareTvShowPlexLibraryCommand>(), context.Object.CancellationToken))
             .ReturnsAsync(writerResult);
         executor
-            .Setup(x => x.Send(It.IsAny<CompareMusicPlexLibraryCommand>(), CancellationToken))
+            .Setup(x => x.Send(It.IsAny<CompareMusicPlexLibraryCommand>(), context.Object.CancellationToken))
             .ReturnsAsync(writerResult);
         var updates = new List<JobStatusUpdate<string>>();
         Mock.Mock<IProgressHubService>()
@@ -229,7 +223,7 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
 
         // Act
         await listener.JobToBeExecuted(context.Object, CancellationToken);
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
         await listener.JobWasExecuted(context.Object, null, CancellationToken);
 
         // Assert
@@ -252,6 +246,16 @@ public class PlexLibraryComparisonJobUnitTests : BaseUnitTest<PlexLibraryCompari
             json.RootElement.GetProperty("ownedPlexLibraryId").GetInt32().ShouldBe(owned.Id);
             json.RootElement.GetProperty("remotePlexLibraryId").GetInt32().ShouldBe(remote.Id);
         }
-        jobData.GetPayload<PlexLibraryComparisonJobPayload>().ShouldBe(payload);
+        if (outcome == JobStatus.Completed)
+        {
+            var completionPayload = mockMergedJobDataMap[nameof(LibraryComparisonCompletedDTO)]
+                .ShouldBeOfType<LibraryComparisonCompletedDTO>();
+            completionPayload.AffectedLibraryIds.ShouldBe([owned.Id, remote.Id]);
+            completionPayload.MediaType.ShouldBe(mediaType);
+        }
+        else
+        {
+            mockMergedJobDataMap.ContainsKey(nameof(LibraryComparisonCompletedDTO)).ShouldBeFalse();
+        }
     }
 }

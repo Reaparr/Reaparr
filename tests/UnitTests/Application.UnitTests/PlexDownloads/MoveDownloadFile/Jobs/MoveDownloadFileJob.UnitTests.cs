@@ -308,7 +308,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         if (scenario == "cleanup-failure")
@@ -552,7 +552,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             .Verifiable(scenario == "cancelled" ? Times.Never() : Times.Once());
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         moveOutcome.ShouldNotBeNull();
         moveOutcome!.Errors.Count.ShouldBe(1);
@@ -623,6 +623,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
                             t.JobKey.Equals(MoveDownloadFileJob.GetJobKey(key.Id))
                             && t.Key.Name == $"{MoveDownloadFileJob.GetJobKey(key.Id).Name}_Retry_move-job-test"
                         ),
+                        It.IsAny<ScheduleJobOptions>(),
                         token
                     ),
                 scenario == "cancelled" ? Times.Never() : Times.Once()
@@ -705,7 +706,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         (await dbContext.GetDownloadTaskStatusAsync(key, CancellationToken)).ShouldBe(status);
@@ -794,7 +795,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Failed);
@@ -855,7 +856,7 @@ public class MoveDownloadFileJobUnitTests : BaseUnitTest<MoveDownloadFileJob>
             .Verifiable(Times.Once());
 
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         if (missingPayload)

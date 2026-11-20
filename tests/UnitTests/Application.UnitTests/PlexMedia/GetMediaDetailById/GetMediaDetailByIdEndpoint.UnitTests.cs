@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Autofac;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Quartz;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -246,10 +247,13 @@ public class GetMediaDetailByIdEndpointUnitTests
                         )
             )
             .Verifiable(Times.Once());
-        Mock.Mock<Quartz.IScheduler>().Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]);
+        Mock.Mock<Quartz.IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<Quartz.IScheduler>()
-            .Setup(x => x.GetJobKeys(Quartz.Impl.Matchers.GroupMatcher<Quartz.JobKey>.AnyGroup(), CancellationToken))
-            .ReturnsAsync([]);
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<FireInstance>([], false));
+        Mock.Mock<Quartz.IScheduler>()
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<JobHeader>([], false));
 
         // Act
         var response = await TestEndpointHandleAsync(
@@ -444,12 +448,13 @@ public class GetMediaDetailByIdEndpointUnitTests
                             )
                 )
                 .Verifiable(Times.Once());
-            Mock.Mock<Quartz.IScheduler>().Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]);
+            Mock.Mock<Quartz.IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
             Mock.Mock<Quartz.IScheduler>()
-                .Setup(x =>
-                    x.GetJobKeys(Quartz.Impl.Matchers.GroupMatcher<Quartz.JobKey>.AnyGroup(), CancellationToken)
-                )
-                .ReturnsAsync([]);
+                .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+                .ReturnsAsync(new PagedResult<FireInstance>([], false));
+            Mock.Mock<Quartz.IScheduler>()
+                .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+                .ReturnsAsync(new PagedResult<JobHeader>([], false));
         }
 
         // Act

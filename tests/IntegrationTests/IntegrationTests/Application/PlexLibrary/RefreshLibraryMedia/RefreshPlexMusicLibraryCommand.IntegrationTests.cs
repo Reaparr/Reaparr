@@ -35,6 +35,16 @@ public class RefreshPlexMusicLibraryCommandIntegrationTests : BaseIntegrationTes
         (await container.DbContext.PlexMusicAlbums.ToListAsync(CancellationToken)).ShouldBeEmpty();
         (await container.DbContext.PlexMusicTracks.ToListAsync(CancellationToken)).ShouldBeEmpty();
         (await container.DbContext.PlexMusicTrackData.ToListAsync(CancellationToken)).ShouldBeEmpty();
+        var dbFactory = container.Resolve<IReaparrDbContextFactory>();
+        await container.BackgroundJobScheduler.AddJob(
+            JobBuilder
+                .Create<MediaOverviewSnapshotJob>()
+                .WithIdentity(MediaOverviewSnapshotJob.GetJobKey())
+                .StoreDurably()
+                .Build(),
+            new AddJobOptions { Replace = true },
+            CancellationToken
+        );
 
         // Act
         var response = await client.POSTAsync<
@@ -42,7 +52,23 @@ public class RefreshPlexMusicLibraryCommandIntegrationTests : BaseIntegrationTes
             RefreshLibraryMediaEndpointRequest,
             ResultDTO<LibrarySyncJobQueueDTO>
         >(new RefreshLibraryMediaEndpointRequest { PlexLibraryId = library.Id });
-        await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
+        await WaitForDatabaseConditionAsync(async () =>
+        {
+            using var context = await dbFactory.CreateAsync();
+            return await context.PlexLibraries.AnyAsync(
+                    x =>
+                        x.Id == library.Id
+                        && x.SyncedAt != null
+                        && x.MusicArtistCount == 2
+                        && x.MusicAlbumCount == 4
+                        && x.MusicTrackCount == 8,
+                    CancellationToken
+                )
+                && await context.LibrarySyncJobQueues.AnyAsync(
+                    x => x.PlexLibraryId == library.Id && x.Status == LibrarySyncJobStatus.Completed,
+                    CancellationToken
+                );
+        });
 
         // Assert
         response.Response.IsSuccessStatusCode.ShouldBeTrue();
@@ -141,7 +167,18 @@ public class RefreshPlexMusicLibraryCommandIntegrationTests : BaseIntegrationTes
         repeatResponse.Response.IsSuccessStatusCode.ShouldBeTrue();
         repeatResponse.Result.IsSuccess.ShouldBeTrue();
         repeatResponse.Result.Errors.Count.ShouldBe(0);
-        await container.BackgroundJobScheduler.AwaitScheduler(CancellationToken);
+        await WaitForDatabaseConditionAsync(async () =>
+        {
+            using var context = await dbFactory.CreateAsync();
+            return await context.PlexLibraries.AnyAsync(
+                    x => x.Id == library.Id && x.SyncedAt > refreshed.SyncedAt,
+                    CancellationToken
+                )
+                && await context.LibrarySyncJobQueues.AnyAsync(
+                    x => x.PlexLibraryId == library.Id && x.Status == LibrarySyncJobStatus.Completed,
+                    CancellationToken
+                );
+        });
 
         using var repeatedContext = await container.Resolve<IReaparrDbContextFactory>().CreateAsync();
         (

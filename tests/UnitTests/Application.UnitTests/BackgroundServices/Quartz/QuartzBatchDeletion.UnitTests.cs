@@ -5,7 +5,7 @@ namespace Reaparr.Application.UnitTests;
 public class QuartzBatchDeletionUnitTests : BaseUnitTest
 {
     [Test]
-    public async Task ShouldSucceed_WhenFalseBatchResultLeavesAllRequestedJobsAbsent()
+    public async Task ShouldSucceed_WhenReturnedKeysAreEmptyAndAllRequestedJobsAreAbsent()
     {
         // Arrange
         var keys = new[] { new JobKey("first", "comparison"), new JobKey("second", "comparison") };
@@ -14,10 +14,10 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
             .Setup(x =>
                 x.DeleteJobs(It.Is<IReadOnlyCollection<JobKey>>(value => value.SequenceEqual(keys)), CancellationToken)
             )
-            .ReturnsAsync(false)
+            .ReturnsAsync([])
             .Verifiable(Times.Once());
         foreach (var key in keys)
-            scheduler.Setup(x => x.CheckExists(key, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
+            scheduler.Setup(x => x.Exists(key, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
 
         // Act
         var result = await scheduler.Object.DeleteBatchJobs(keys, CancellationToken);
@@ -29,7 +29,7 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldFail_WhenARequestedJobStillExistsAfterFalseBatchResult()
+    public async Task ShouldFail_WhenARequestedJobStillExistsAfterReturnedKeysAreIncomplete()
     {
         // Arrange
         var absentKey = new JobKey("absent", "comparison");
@@ -40,13 +40,10 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
             .Setup(x =>
                 x.DeleteJobs(It.Is<IReadOnlyCollection<JobKey>>(value => value.SequenceEqual(keys)), CancellationToken)
             )
-            .ReturnsAsync(false)
+            .ReturnsAsync([absentKey])
             .Verifiable(Times.Once());
-        scheduler.Setup(x => x.CheckExists(absentKey, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Once());
-        scheduler
-            .Setup(x => x.CheckExists(remainingKey, CancellationToken))
-            .ReturnsAsync(true)
-            .Verifiable(Times.Once());
+        scheduler.Setup(x => x.Exists(remainingKey, CancellationToken)).ReturnsAsync(true).Verifiable(Times.Once());
+        scheduler.Setup(x => x.Exists(absentKey, CancellationToken)).ReturnsAsync(false).Verifiable(Times.Never());
 
         // Act
         var result = await scheduler.Object.DeleteBatchJobs(keys, CancellationToken);
@@ -58,7 +55,7 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
     }
 
     [Test]
-    public async Task ShouldSucceedWithoutExistenceChecks_WhenBatchDeletionSucceeds()
+    public async Task ShouldSucceedWithoutExistenceChecks_WhenAllRequestedKeysAreReturned()
     {
         // Arrange
         var key = new JobKey("deleted", "comparison");
@@ -70,7 +67,7 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
                     CancellationToken
                 )
             )
-            .ReturnsAsync(true)
+            .ReturnsAsync([key])
             .Verifiable(Times.Once());
 
         // Act
@@ -80,7 +77,7 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
         scheduler.Verify();
-        scheduler.Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(x => x.Exists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -99,7 +96,7 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
             x => x.DeleteJobs(It.IsAny<IReadOnlyCollection<JobKey>>(), It.IsAny<CancellationToken>()),
             Times.Never()
         );
-        scheduler.Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(x => x.Exists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 
     [Test]
@@ -119,8 +116,8 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
         );
         if (checkingAbsence)
         {
-            deletion.ReturnsAsync(false).Verifiable(Times.Once());
-            scheduler.Setup(x => x.CheckExists(key, CancellationToken)).ThrowsAsync(failure).Verifiable(Times.Once());
+            deletion.ReturnsAsync([]).Verifiable(Times.Once());
+            scheduler.Setup(x => x.Exists(key, CancellationToken)).ThrowsAsync(failure).Verifiable(Times.Once());
         }
         else
             deletion.ThrowsAsync(failure).Verifiable(Times.Once());
@@ -134,6 +131,6 @@ public class QuartzBatchDeletionUnitTests : BaseUnitTest
         result.Errors.Single().ShouldBeOfType<ExceptionalError>().Exception.ShouldBeSameAs(failure);
         scheduler.Verify();
         if (!checkingAbsence)
-            scheduler.Verify(x => x.CheckExists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            scheduler.Verify(x => x.Exists(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 }

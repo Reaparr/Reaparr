@@ -1,5 +1,3 @@
-using Quartz.Impl.Matchers;
-
 namespace Reaparr.IntegrationTests;
 
 public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
@@ -407,11 +405,11 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
         var snapshotJobKey = MediaOverviewSnapshotJob.GetJobKey();
         await scheduler.AddJob(
             JobBuilder.Create<MediaOverviewSnapshotJob>().WithIdentity(snapshotJobKey).StoreDurably().Build(),
-            true,
+            new AddJobOptions { Replace = true },
             CancellationToken
         );
         var snapshotObserver = new MediaOverviewSnapshotJobObserver();
-        scheduler.ListenerManager.AddJobListener(snapshotObserver, KeyMatcher<JobKey>.KeyEquals(snapshotJobKey));
+        scheduler.ListenerManager.AddJobListener(snapshotObserver, Matchers.Key(snapshotJobKey));
 
         try
         {
@@ -683,23 +681,23 @@ public class GetAllMediaByTypeEndpointIntegrationTests : BaseIntegrationTests
 
         public Task<BackgroundJobTerminalOutcome> Completion => _completion.Task;
 
-        public Task JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public ValueTask JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
 
-        public Task JobExecutionVetoed(IJobExecutionContext context, CancellationToken cancellationToken = default)
+        public ValueTask JobExecutionVetoed(IJobExecutionContext context, CancellationToken cancellationToken = default)
         {
             _completion.TrySetResult(new BackgroundJobTerminalOutcome(JobStatus.Failed, "Job execution was vetoed."));
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
 
-        public Task JobWasExecuted(
+        public ValueTask JobWasExecuted(
             IJobExecutionContext context,
             JobExecutionException? jobException,
             CancellationToken cancellationToken = default
         )
         {
             _completion.TrySetResult(BackgroundJobTerminalOutcome.From(context, jobException));
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 }

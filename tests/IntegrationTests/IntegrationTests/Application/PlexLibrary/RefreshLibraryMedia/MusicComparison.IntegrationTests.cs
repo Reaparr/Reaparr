@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
-using Quartz.Impl.Matchers;
 
 namespace Reaparr.IntegrationTests;
 
@@ -216,24 +215,21 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
             .ToListAsync(CancellationToken);
         var jobKey = PlexLibraryComparisonJob.GetJobKey(owned.Id, remote.Id);
         var observer = new ComparisonJobObserver();
-        scheduler.ListenerManager.AddJobListener(observer, KeyMatcher<JobKey>.KeyEquals(jobKey));
+        scheduler.ListenerManager.AddJobListener(observer, Matchers.Key(jobKey));
         var snapshotObserver = new ComparisonJobObserver(nameof(MediaOverviewSnapshotJob));
-        scheduler.ListenerManager.AddJobListener(
-            snapshotObserver,
-            KeyMatcher<JobKey>.KeyEquals(MediaOverviewSnapshotJob.GetJobKey())
-        );
+        scheduler.ListenerManager.AddJobListener(snapshotObserver, Matchers.Key(MediaOverviewSnapshotJob.GetJobKey()));
         await scheduler.AddJob(
             JobBuilder
                 .Create<MediaOverviewSnapshotJob>()
                 .WithIdentity(MediaOverviewSnapshotJob.GetJobKey())
                 .StoreDurably()
                 .Build(),
-            true,
+            new AddJobOptions { Replace = true },
             CancellationToken
         );
         // Publish once both fixture libraries are synced, not halfway through the coalesced rebuild.
         var snapshotGroup = GroupMatcher<JobKey>.GroupEquals(MediaOverviewSnapshotJob.GetJobKey().Group);
-        await scheduler.PauseJobs(snapshotGroup, CancellationToken);
+        await scheduler.PauseJobGroups(snapshotGroup, CancellationToken);
 
         // Act
         foreach (var library in new[] { owned, remote })
@@ -261,12 +257,8 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
                 delayMs: 200
             );
         }
-        await scheduler.ResumeJobs(snapshotGroup, CancellationToken);
-        await WaitForDatabaseConditionAsync(
-            async () => await scheduler.CheckExists(jobKey, CancellationToken),
-            60,
-            100
-        );
+        await scheduler.ResumeJobGroups(snapshotGroup, CancellationToken);
+        await WaitForDatabaseConditionAsync(async () => await scheduler.Exists(jobKey, CancellationToken), 60, 100);
         var scheduled = await scheduler.GetJobDetail(jobKey, CancellationToken);
         scheduled.ShouldNotBeNull();
         scheduled.JobType.ShouldBe(typeof(PlexLibraryComparisonJob));
@@ -274,9 +266,13 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
             .JobDataMap.GetPayload<PlexLibraryComparisonJobPayload>()
             .ShouldBe(new PlexLibraryComparisonJobPayload(owned.Id, remote.Id));
         (await scheduler.GetJobKeys(JobTypes.LibraryComparisonJob, CancellationToken)).ShouldBe([jobKey]);
-        var trigger = (await scheduler.GetTriggersOfJob(jobKey, CancellationToken)).Single();
-        trigger.GetNextFireTimeUtc().ShouldNotBeNull();
-        trigger.GetNextFireTimeUtc()!.Value.ShouldBeGreaterThan(DateTimeOffset.UtcNow);
+        var triggerHeader = (
+            await scheduler.QueryTriggers(new TriggerQuery { Job = jobKey, Take = PagedQuery.All }, CancellationToken)
+        ).Items.Single();
+        var trigger = await scheduler.GetTrigger(triggerHeader.Key, CancellationToken);
+        trigger.ShouldNotBeNull();
+        trigger.NextFireTimeUtc.ShouldNotBeNull();
+        trigger.NextFireTimeUtc!.Value.ShouldBeGreaterThan(DateTimeOffset.UtcNow);
         (
             await scheduler.RescheduleJob(
                 trigger.Key,
@@ -695,11 +691,7 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
             60,
             200
         );
-        await WaitForDatabaseConditionAsync(
-            async () => await scheduler.CheckExists(jobKey, CancellationToken),
-            60,
-            100
-        );
+        await WaitForDatabaseConditionAsync(async () => await scheduler.Exists(jobKey, CancellationToken), 60, 100);
         using var resynced = await dbFactory.CreateAsync();
         (
             await resynced
@@ -742,7 +734,11 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
         pending.Result.Value.State.ShouldBe(PlexMediaComparisonState.Pending);
         pending.Result.Value.Rows.ShouldBeEmpty();
         observer.Completed.Count.ShouldBe(1);
-        trigger = (await scheduler.GetTriggersOfJob(jobKey, CancellationToken)).Single();
+        triggerHeader = (
+            await scheduler.QueryTriggers(new TriggerQuery { Job = jobKey, Take = PagedQuery.All }, CancellationToken)
+        ).Items.Single();
+        trigger = await scheduler.GetTrigger(triggerHeader.Key, CancellationToken);
+        trigger.ShouldNotBeNull();
         (
             await scheduler.RescheduleJob(
                 trigger.Key,
@@ -1102,17 +1098,19 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
         public ConcurrentQueue<PlexLibraryComparisonJobPayload> Started { get; } = new();
         public ConcurrentQueue<(JobStatus Status, string? Error)> Completed { get; } = new();
 
-        public Task JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken = default)
+        public ValueTask JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken = default)
         {
             if (context.MergedJobDataMap.GetPayload<PlexLibraryComparisonJobPayload>() is { } payload)
                 Started.Enqueue(payload);
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
 
-        public Task JobExecutionVetoed(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public ValueTask JobExecutionVetoed(
+            IJobExecutionContext context,
+            CancellationToken cancellationToken = default
+        ) => ValueTask.CompletedTask;
 
-        public Task JobWasExecuted(
+        public ValueTask JobWasExecuted(
             IJobExecutionContext context,
             JobExecutionException? jobException,
             CancellationToken cancellationToken = default
@@ -1125,7 +1123,7 @@ public class MusicComparisonIntegrationTests : BaseIntegrationTests
                     jobException?.ToString() ?? result?.ErrorSummary
                 )
             );
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 
