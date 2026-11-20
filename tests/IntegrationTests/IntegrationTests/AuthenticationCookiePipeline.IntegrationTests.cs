@@ -101,10 +101,10 @@ public class AuthenticationCookiePipelineIntegrationTests : BaseIntegrationTests
         var userService = container.Resolve<IUserService>();
         var existingUser = await userService.FindByNameAsync(DefaultUserAppCredentials.DefaultUsername);
         existingUser.ShouldNotBeNull();
-        var existingUserId = existingUser!.Id;
+        var existingUserId = existingUser.Id;
 
         // Act
-        var deleteResult = await userService.DeleteAsync(existingUser!);
+        var deleteResult = await userService.DeleteAsync(existingUser);
         var recreatedUser = new AppUser { UserName = DefaultUserAppCredentials.DefaultUsername };
         var createResult = await userService.CreateAsync(recreatedUser, DefaultUserAppCredentials.DefaultPassword);
 

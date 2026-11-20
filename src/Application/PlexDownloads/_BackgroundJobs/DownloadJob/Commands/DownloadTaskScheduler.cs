@@ -11,10 +11,7 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
         _scheduler = scheduler;
     }
 
-    public async Task<Result> StartDownloadTaskJob(
-        DownloadTaskKey downloadTaskKey,
-        CancellationToken cancellationToken = default
-    )
+    public async Task<Result> StartDownloadTaskJob(DownloadTaskKey downloadTaskKey, CancellationToken cancellationToken)
     {
         if (!downloadTaskKey.IsValid)
             return ResultExtensions.IsInvalidId(nameof(DownloadTaskKey), downloadTaskKey.Id).LogWarning();
