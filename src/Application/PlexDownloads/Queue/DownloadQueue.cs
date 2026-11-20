@@ -99,6 +99,14 @@ public class DownloadQueue : IDownloadQueue
                     nextRetryAt = retryAt;
             }
 
+            foreach (var (taskId, retryAt) in _retryCooldownUntil)
+            {
+                if (retryAt <= now)
+                    _retryCooldownUntil.TryRemove(new KeyValuePair<Guid, DateTimeOffset>(taskId, retryAt));
+                else if (nextRetryAt is null || retryAt < nextRetryAt)
+                    nextRetryAt = retryAt;
+            }
+
             if (nextRetryAt is null || _plexServersToCheckChannel.Reader.TryPeek(out _))
                 return await _plexServersToCheckChannel.Reader.ReadAsync(cancellationToken);
 

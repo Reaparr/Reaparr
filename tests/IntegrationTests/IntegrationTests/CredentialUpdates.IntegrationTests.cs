@@ -98,7 +98,8 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
             DefaultUserAppCredentials.DefaultPassword
         );
         loginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var oldCookie = loginResponse.Headers.GetValues("Set-Cookie")
+        var oldCookie = loginResponse
+            .Headers.GetValues("Set-Cookie")
             .Single(x => x.StartsWith(DefaultUserAppCredentials.DefaultCookieName + "=", StringComparison.Ordinal))
             .Split(';')[0];
 
@@ -112,10 +113,7 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
         };
 
         // Act
-        var updateResponse = await authenticatedClient.PutAsJsonAsync(
-            ApiRoutes.AuthenticatedController,
-            updateRequest
-        );
+        var updateResponse = await authenticatedClient.PutAsJsonAsync(ApiRoutes.AuthenticatedController, updateRequest);
 
         // Assert
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -132,11 +130,7 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
 
         var staleMutationResponse = await staleSessionClient.PutAsJsonAsync(
             ApiRoutes.AuthenticatedController,
-            new UpdateCredentialsEndpointRequest
-            {
-                Username = null,
-                Password = "Another-password-54!",
-            }
+            new UpdateCredentialsEndpointRequest { Username = null, Password = "Another-password-54!" }
         );
         staleMutationResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
@@ -148,7 +142,8 @@ public class CredentialUpdatesIntegrationTests : BaseIntegrationTests
             "Replacement-password-43!"
         );
         freshLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var freshCookie = freshLoginResponse.Headers.GetValues("Set-Cookie")
+        var freshCookie = freshLoginResponse
+            .Headers.GetValues("Set-Cookie")
             .Single(x => x.StartsWith(DefaultUserAppCredentials.DefaultCookieName + "=", StringComparison.Ordinal))
             .Split(';')[0];
 

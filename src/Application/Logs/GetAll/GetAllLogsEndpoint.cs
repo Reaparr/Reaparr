@@ -1,6 +1,6 @@
 namespace Reaparr.Application;
 
-public class GetAllLogsEndpoint : EndpointWithoutRequest<List<LiveLogEventDTO>>
+public class GetAllLogsEndpoint : EndpointWithoutRequest<LiveLogEventDTO[]>
 {
     private readonly ILogger _log;
     private readonly ILogBufferService _logBufferService;
@@ -16,7 +16,7 @@ public class GetAllLogsEndpoint : EndpointWithoutRequest<List<LiveLogEventDTO>>
         Get(ApiRoutes.DebugController + "/logs/");
 
         Description(x =>
-            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<List<LiveLogEventDTO>>))
+            x.Produces(StatusCodes.Status200OK, typeof(ResultDTO<LiveLogEventDTO[]>))
                 .Produces(StatusCodes.Status500InternalServerError, typeof(BaseResultDTO))
         );
     }
@@ -24,6 +24,6 @@ public class GetAllLogsEndpoint : EndpointWithoutRequest<List<LiveLogEventDTO>>
     public override async Task HandleAsync(CancellationToken ct)
     {
         _log.Here().VerboseApiCall(HttpContext);
-        await Send.FluentResult(Result.Ok(_logBufferService.GetAll().ToList()), x => x, ct);
+        await Send.FluentResult(Result.Ok(_logBufferService.GetAll()), ct);
     }
 }

@@ -13,5 +13,5 @@ public interface ILogBufferService : ILogEventSink
     /// <summary>
     /// Returns all cached log events.
     /// </summary>
-    IReadOnlyCollection<LiveLogEventDTO> GetAll();
+    LiveLogEventDTO[] GetAll();
 }

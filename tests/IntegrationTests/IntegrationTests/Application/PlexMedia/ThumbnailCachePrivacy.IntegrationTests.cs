@@ -28,23 +28,28 @@ public class ThumbnailCachePrivacyIntegrationTests : BaseIntegrationTests
                 {
                     handler.SetupIdentityRequest(seed);
                     handler
-                        .SetupRequest(request => request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath == "/photo/:/transcode")
-                        .ReturnsAsync((HttpRequestMessage request, CancellationToken _) =>
-                        {
-                            upstreamRequests.Add(request.RequestUri!);
-                            var response = new HttpResponseMessage(HttpStatusCode.OK)
+                        .SetupRequest(request =>
+                            request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath == "/photo/:/transcode"
+                        )
+                        .ReturnsAsync(
+                            (HttpRequestMessage request, CancellationToken _) =>
                             {
-                                Content = new ByteArrayContent(image),
-                            };
-                            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-                            return response;
-                        });
+                                upstreamRequests.Add(request.RequestUri!);
+                                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                                {
+                                    Content = new ByteArrayContent(image),
+                                };
+                                response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+                                return response;
+                            }
+                        );
                 };
             },
             useTestAuthentication: !useCookieAuthentication
         );
         var serverId = await container.DbContext.PlexServers.Select(server => server.Id).SingleAsync(CancellationToken);
-        var path = $"{ApiRoutes.PlexMediaController}/thumbnail?plexServerId={serverId}&plexKey=123&metaDataKey=456&width=200&height=300";
+        var path =
+            $"{ApiRoutes.PlexMediaController}/thumbnail?plexServerId={serverId}&plexKey=123&metaDataKey=456&width=200&height=300";
         using var firstBrowser = container.GetApiClient();
         if (useCookieAuthentication)
         {
@@ -54,7 +59,11 @@ public class ThumbnailCachePrivacyIntegrationTests : BaseIntegrationTests
                 { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
                 { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
             };
-            using var firstLoginResponse = await firstBrowser.PostAsync(ApiRoutes.LoginEndpoint, firstLogin, CancellationToken);
+            using var firstLoginResponse = await firstBrowser.PostAsync(
+                ApiRoutes.LoginEndpoint,
+                firstLogin,
+                CancellationToken
+            );
             firstLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         }
         else
@@ -127,7 +136,11 @@ public class ThumbnailCachePrivacyIntegrationTests : BaseIntegrationTests
                 { new StringContent(DefaultUserAppCredentials.DefaultUsername), "Username" },
                 { new StringContent(DefaultUserAppCredentials.DefaultPassword), "Password" },
             };
-            using var secondLoginResponse = await secondBrowser.PostAsync(ApiRoutes.LoginEndpoint, secondLogin, CancellationToken);
+            using var secondLoginResponse = await secondBrowser.PostAsync(
+                ApiRoutes.LoginEndpoint,
+                secondLogin,
+                CancellationToken
+            );
             secondLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         }
         else
@@ -177,19 +190,25 @@ public class ThumbnailCachePrivacyIntegrationTests : BaseIntegrationTests
                 {
                     handler.SetupIdentityRequest(seed);
                     handler
-                        .SetupRequest(request => request.Method == HttpMethod.Get &&
-                            (request.RequestUri!.AbsolutePath == "/photo/:/transcode" ||
-                             request.RequestUri.AbsolutePath == "/library/metadata/123/thumb/456"))
-                        .ReturnsAsync((HttpRequestMessage request, CancellationToken _) =>
-                        {
-                            upstreamRequests.Add(request.RequestUri!.AbsolutePath);
-                            var response = new HttpResponseMessage((HttpStatusCode)upstreamStatus)
+                        .SetupRequest(request =>
+                            request.Method == HttpMethod.Get
+                            && (
+                                request.RequestUri!.AbsolutePath == "/photo/:/transcode"
+                                || request.RequestUri.AbsolutePath == "/library/metadata/123/thumb/456"
+                            )
+                        )
+                        .ReturnsAsync(
+                            (HttpRequestMessage request, CancellationToken _) =>
                             {
-                                Content = new StringContent("rejected-upstream-content"),
-                            };
-                            response.Content.Headers.ContentType = new MediaTypeHeaderValue(upstreamContentType);
-                            return response;
-                        });
+                                upstreamRequests.Add(request.RequestUri!.AbsolutePath);
+                                var response = new HttpResponseMessage((HttpStatusCode)upstreamStatus)
+                                {
+                                    Content = new StringContent("rejected-upstream-content"),
+                                };
+                                response.Content.Headers.ContentType = new MediaTypeHeaderValue(upstreamContentType);
+                                return response;
+                            }
+                        );
                 };
             },
             useTestAuthentication: !useCookieAuthentication
@@ -224,8 +243,10 @@ public class ThumbnailCachePrivacyIntegrationTests : BaseIntegrationTests
         result.StatusCode.ShouldBe(expectedStatus);
         result.Errors.Count.ShouldBe(1);
         (await response.Content.ReadAsStringAsync(CancellationToken)).ShouldNotContain("rejected-upstream-content");
-        upstreamRequests.ShouldBe(upstreamStatus == 404
-            ? new[] { "/photo/:/transcode", "/library/metadata/123/thumb/456" }
-            : new[] { "/photo/:/transcode" });
+        upstreamRequests.ShouldBe(
+            upstreamStatus == 404
+                ? new[] { "/photo/:/transcode", "/library/metadata/123/thumb/456" }
+                : new[] { "/photo/:/transcode" }
+        );
     }
 }

@@ -8,6 +8,7 @@ public class FastEndpointsModule : Module
     {
         // Register the command executor and event publisher
         builder.RegisterType<CommandExecutor>().As<ICommandExecutor>().InstancePerLifetimeScope();
+        builder.RegisterType<CommandServiceResolver>().As<IServiceResolver>().SingleInstance();
         builder.RegisterType<EventPublisher>().As<IEventPublisher>().InstancePerLifetimeScope();
     }
 }

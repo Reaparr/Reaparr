@@ -10,9 +10,9 @@ public static partial class Startup
     /// </summary>
     public static async Task<Result> SetupDatabase(this WebApplication app)
     {
-        var container = app.Services.GetAutofacRoot();
+        await using var scope = app.Services.GetAutofacRoot().BeginLifetimeScope();
 
-        var dbContextManager = container.Resolve<IReaparrDbContextManager>();
+        var dbContextManager = scope.Resolve<IReaparrDbContextManager>();
 
         return await dbContextManager.SetupAsync();
     }

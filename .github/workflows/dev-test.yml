@@ -435,7 +435,7 @@ jobs:
             (needs.Check-PR-Status.result == 'success' || github.event_name == 'workflow_dispatch') &&
             !contains(needs.*.result, 'failure') &&
             !contains(needs.*.result, 'cancelled')
-        uses: ./.github/workflows/docker-build-multiarch.yml
+        uses: ./.github/workflows/docker-validate.yml
         with:
             push: false
             version: 9.9.9
@@ -449,7 +449,7 @@ jobs:
             (needs.Check-PR-Status.result == 'success' || github.event_name == 'workflow_dispatch') &&
             !contains(needs.*.result, 'failure') &&
             !contains(needs.*.result, 'cancelled')
-        uses: ./.github/workflows/desktop-build.yml
+        uses: ./.github/workflows/desktop-validate.yml
         with:
             push: false
             version: 9.9.9

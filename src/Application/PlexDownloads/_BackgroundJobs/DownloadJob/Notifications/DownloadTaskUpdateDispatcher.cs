@@ -21,7 +21,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
     private readonly ConcurrentDictionary<Guid, BufferedProgressUpdate> _progressByNodeId;
     private readonly ConcurrentDictionary<int, long> _sequenceByServer;
     private readonly SemaphoreSlim _publicationGate;
-    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _progressGates;
+    private readonly SemaphoreSlim[] _progressGates;
     private readonly ConcurrentDictionary<Guid, byte> _finalizedProgressNodes;
     private readonly ConcurrentDictionary<Guid, ProgressScopeKey> _scopeByNodeId;
     private readonly ConcurrentDictionary<Guid, DownloadStatus> _statusByNodeId;
@@ -30,6 +30,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
     private readonly Channel<BufferedProgressUpdate> _firstProgressChannel;
     private const long PROGRESS_LOG_DATA_THRESHOLD_BYTES = 1024 * 1024;
     private const decimal PROGRESS_LOG_PERCENTAGE_THRESHOLD = 1m;
+    private int _retirementPending;
 
     /// <summary>
     /// Creates a new dispatcher instance.
@@ -53,7 +54,8 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
             new UnboundedChannelOptions { SingleReader = true, SingleWriter = false }
         );
         _progressByNodeId = new ConcurrentDictionary<Guid, BufferedProgressUpdate>();
-        _progressGates = new ConcurrentDictionary<Guid, SemaphoreSlim>();
+        // Fixed stripes stay alive while queued users finish, without retaining a gate per historical download.
+        _progressGates = Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
         _finalizedProgressNodes = new ConcurrentDictionary<Guid, byte>();
         _sequenceByServer = new ConcurrentDictionary<int, long>();
         _publicationGate = new SemaphoreSlim(1, 1);
@@ -107,88 +109,115 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
     {
         var result = await Result.Try(async Task () =>
         {
-            _statusByNodeId[key.Id] = newStatus;
-
             if (newStatus is DownloadStatus.Deleted)
             {
+                var retirement = await Result.Try(RetireDeletedNodesAsync);
+                if (retirement.IsFailed)
+                {
+                    Interlocked.Exchange(ref _retirementPending, 1);
+                    retirement.LogError();
+                }
                 await PublishDeletionPatchAsync(key, cancellationToken);
                 return;
             }
 
-            using var dbContext = await _dbContextFactory.CreateAsync();
-            var currentStatus = await dbContext.GetDownloadStatusAsync(key);
-            var hasStatusChanged = currentStatus != newStatus;
-
-            if (hasStatusChanged)
+            var statusGate = GetProgressGate(key.Id);
+            await statusGate.WaitAsync(cancellationToken);
+            try
             {
-                if (newStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused)
-                    await PersistBufferedProgressBeforePauseAsync(dbContext, key, cancellationToken);
+                using var dbContext = await _dbContextFactory.CreateAsync();
+                var currentStatus = await dbContext.GetDownloadStatusAsync(key);
+                if (currentStatus is null)
+                {
+                    RetireNode(key.Id);
+                    return;
+                }
+                var hasStatusChanged = currentStatus != newStatus;
+                _statusByNodeId[key.Id] = newStatus;
 
-                await dbContext.SetDownloadStatus(key, newStatus);
-                await LogStatusChangeAsync(dbContext, key, newStatus, cancellationToken);
-                ResetProgressJourneyTrackingIfNeeded(key.Id, newStatus);
+                if (hasStatusChanged)
+                {
+                    try
+                    {
+                        if (newStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused)
+                            await PersistBufferedProgressBeforePauseAsync(dbContext, key, cancellationToken);
 
-                if (newStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused)
-                    await dbContext.ClearDownloadSpeed(key, cancellationToken);
-            }
-            else
-            {
-                await dbContext.CreateDownloadClientLog(
-                    key,
-                    NotificationLevel.Debug,
-                    newStatus,
-                    $"Status change request ignored because task is already in status: {newStatus}"
+                        await dbContext.SetDownloadStatus(key, newStatus);
+                    }
+                    catch
+                    {
+                        _statusByNodeId[key.Id] = currentStatus.Value;
+                        throw;
+                    }
+                    await LogStatusChangeAsync(dbContext, key, newStatus, cancellationToken);
+                    ResetProgressJourneyTrackingIfNeeded(key.Id, newStatus);
+
+                    if (newStatus is DownloadStatus.Paused or DownloadStatus.AutoPaused)
+                        await dbContext.ClearDownloadSpeed(key, cancellationToken);
+                }
+                else
+                {
+                    await dbContext.CreateDownloadClientLog(
+                        key,
+                        NotificationLevel.Debug,
+                        newStatus,
+                        $"Status change request ignored because task is already in status: {newStatus}"
+                    );
+                }
+
+                if (
+                    currentStatus == DownloadStatus.Downloading
+                    || newStatus == DownloadStatus.Downloading
+                        && await _downloadTaskScheduler.IsServerDownloading(key.PlexServerId)
+                )
+                {
+                    var refresh = await _commandExecutor.Send(
+                        new UpdateScheduledDownloadLimitsCommand(),
+                        CancellationToken.None
+                    );
+                    refresh.LogIfFailed();
+                }
+                var changedParentStatuses = await dbContext.DetermineDownloadStatus(key, cancellationToken);
+                var rootKey = await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: cancellationToken);
+                if (rootKey is null)
+                    return;
+
+                var changedNodeIds = changedParentStatuses.Select(x => x.Key.Id).Append(key.Id).Distinct().ToList();
+                if (hasStatusChanged || changedParentStatuses.Count > 0)
+                {
+                    var rootStatus = changedParentStatuses.FirstOrDefault(x => x.Key == rootKey);
+                    if (rootStatus.Key is null && hasStatusChanged && key == rootKey)
+                        rootStatus = (rootKey, newStatus);
+
+                    if (rootStatus.Key is not null)
+                        _telemetry.DownloadLifecycleChanged(rootStatus.Key, rootStatus.Status);
+                    await _statusChannel.Writer.WriteAsync(
+                        new ImmediatePatchRequest(ProgressScopeKey.From(rootKey), changedNodeIds),
+                        cancellationToken
+                    );
+                }
+
+                var scope = ProgressScopeKey.From(rootKey);
+                _scopeByNodeId[key.Id] = scope;
+                _progressByNodeId.AddOrUpdate(
+                    key.Id,
+                    _ => BufferedProgressUpdate.FromStatus(key),
+                    (_, current) => current with { NodeId = key.Id, Key = key }
                 );
+
+                if (errorResult is not null)
+                {
+                    await dbContext.CreateDownloadClientLog(
+                        key,
+                        NotificationLevel.Error,
+                        newStatus,
+                        errorResult.ToString()
+                    );
+                }
             }
-
-            if (
-                currentStatus == DownloadStatus.Downloading
-                || newStatus == DownloadStatus.Downloading
-                    && await _downloadTaskScheduler.IsServerDownloading(key.PlexServerId)
-            )
+            finally
             {
-                var refresh = await _commandExecutor.Send(
-                    new UpdateScheduledDownloadLimitsCommand(),
-                    CancellationToken.None
-                );
-                refresh.LogIfFailed();
-            }
-            var changedParentStatuses = await dbContext.DetermineDownloadStatus(key, cancellationToken);
-            var rootKey = await dbContext.GetRootDownloadTaskKeyAsync(key, cancellationToken: cancellationToken);
-            if (rootKey is null)
-                return;
-
-            var changedNodeIds = changedParentStatuses.Select(x => x.Key.Id).Append(key.Id).Distinct().ToList();
-            if (hasStatusChanged || changedParentStatuses.Count > 0)
-            {
-                var rootStatus = changedParentStatuses.FirstOrDefault(x => x.Key == rootKey);
-                if (rootStatus.Key is null && hasStatusChanged && key == rootKey)
-                    rootStatus = (rootKey, newStatus);
-
-                if (rootStatus.Key is not null)
-                    _telemetry.DownloadLifecycleChanged(rootStatus.Key, rootStatus.Status);
-                await _statusChannel.Writer.WriteAsync(
-                    new ImmediatePatchRequest(ProgressScopeKey.From(rootKey), changedNodeIds),
-                    cancellationToken
-                );
-            }
-
-            var scope = ProgressScopeKey.From(rootKey);
-            _scopeByNodeId[key.Id] = scope;
-            _progressByNodeId.AddOrUpdate(
-                key.Id,
-                _ => BufferedProgressUpdate.FromStatus(key),
-                (_, current) => current with { NodeId = key.Id, Key = key }
-            );
-
-            if (errorResult is not null)
-            {
-                await dbContext.CreateDownloadClientLog(
-                    key,
-                    NotificationLevel.Error,
-                    newStatus,
-                    errorResult.ToString()
-                );
+                statusGate.Release();
             }
         });
 
@@ -214,7 +243,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         // cannot write an older estimate after this terminal value.
         _finalizedProgressNodes[key.Id] = 0;
 
-        var progressGate = _progressGates.GetOrAdd(key.Id, _ => new SemaphoreSlim(1, 1));
+        var progressGate = GetProgressGate(key.Id);
         await progressGate.WaitAsync(cancellationToken);
         try
         {
@@ -223,6 +252,11 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
             return await Result.Try(async Task<Result> () =>
             {
                 using var dbContext = await _dbContextFactory.CreateAsync();
+                if (await dbContext.GetDownloadStatusAsync(key) is null)
+                {
+                    RetireNode(key.Id);
+                    return Result.Ok();
+                }
                 await dbContext.UpdateDownloadProgress(key, progress, snapshot, cancellationToken);
 
                 var scope = await ResolveScopeAsync(dbContext, key, cancellationToken);
@@ -298,6 +332,15 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         {
             while (await periodicTimer.WaitForNextTickAsync(stoppingToken))
             {
+                if (Interlocked.Exchange(ref _retirementPending, 0) != 0)
+                {
+                    var retirement = await Result.Try(RetireDeletedNodesAsync);
+                    if (retirement.IsFailed)
+                    {
+                        Interlocked.Exchange(ref _retirementPending, 1);
+                        retirement.LogError();
+                    }
+                }
                 await FlushProgressAsync(stoppingToken);
             }
         });
@@ -396,15 +439,12 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
 
         foreach (var bufferedProgress in nodeSnapshot)
         {
-            if (!_progressByNodeId.TryRemove(bufferedProgress.NodeId, out var latestBufferedProgress))
-                continue;
-
             // TPC log tables generate IDs independently, so unrelated media families
             // must not share a change tracker while inserting their progress logs.
             using var dbContext = await _dbContextFactory.CreateAsync();
             var flushResult = await TryFlushBufferedProgressAsync(
                 dbContext,
-                latestBufferedProgress,
+                bufferedProgress,
                 changedNodeIdsByScope,
                 bufferedEntriesByScope,
                 cancellationToken
@@ -415,14 +455,9 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                 _log.Here()
                     .Error(
                         "Failed to flush buffered progress for {DownloadTaskKey}. Requeuing latest value",
-                        latestBufferedProgress.Key
+                        bufferedProgress.Key
                     );
                 flushResult.LogError();
-                _progressByNodeId.AddOrUpdate(
-                    latestBufferedProgress.NodeId,
-                    _ => latestBufferedProgress,
-                    (_, _) => latestBufferedProgress
-                );
             }
         }
 
@@ -450,7 +485,7 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         CancellationToken stoppingToken
     )
     {
-        var progressGate = _progressGates.GetOrAdd(update.NodeId, _ => new SemaphoreSlim(1, 1));
+        var progressGate = GetProgressGate(update.NodeId);
         await progressGate.WaitAsync(stoppingToken);
         try
         {
@@ -460,6 +495,11 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
                     return;
 
                 using var dbContext = await _dbContextFactory.CreateAsync();
+                if (await dbContext.GetDownloadStatusAsync(update.Key) is null)
+                {
+                    RetireNode(update.NodeId);
+                    return;
+                }
 
                 if (
                     !_progressByNodeId.TryGetValue(update.NodeId, out var effectiveUpdate)
@@ -497,18 +537,35 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
         CancellationToken cancellationToken
     )
     {
-        var progressGate = _progressGates.GetOrAdd(bufferedProgress.NodeId, _ => new SemaphoreSlim(1, 1));
+        var progressGate = GetProgressGate(bufferedProgress.NodeId);
         await progressGate.WaitAsync(cancellationToken);
         try
         {
-            return await Result.Try(async Task () =>
+            BufferedProgressUpdate? claimedProgress = null;
+            var result = await Result.Try(async Task () =>
             {
+                if (!_progressByNodeId.TryRemove(bufferedProgress.NodeId, out var latestBufferedProgress))
+                    return;
+                claimedProgress = latestBufferedProgress;
+                bufferedProgress = latestBufferedProgress;
                 if (
                     _finalizedProgressNodes.ContainsKey(bufferedProgress.NodeId)
                     && bufferedProgress.Progress is not null
                 )
                     return;
+                if (await dbContext.GetDownloadStatusAsync(bufferedProgress.Key) is null)
+                {
+                    RetireNode(bufferedProgress.NodeId);
+                    return;
+                }
 
+                if (
+                    bufferedProgress.Progress is not null
+                    && _statusByNodeId.GetValueOrDefault(bufferedProgress.NodeId)
+                        is DownloadStatus.Paused
+                            or DownloadStatus.AutoPaused
+                )
+                    return;
                 if (bufferedProgress.Progress is not null)
                 {
                     await dbContext.UpdateDownloadProgress(
@@ -546,11 +603,62 @@ public class DownloadTaskUpdateDispatcher : BackgroundService, IDownloadTaskUpda
 
                 bufferedEntries.Add(bufferedProgress);
             });
+            if (result.IsFailed && claimedProgress is not null)
+            {
+                _progressByNodeId.AddOrUpdate(claimedProgress.NodeId, _ => claimedProgress, (_, current) => current);
+            }
+            return result;
         }
         finally
         {
             progressGate.Release();
         }
+    }
+
+    private SemaphoreSlim GetProgressGate(Guid nodeId) =>
+        _progressGates[(int)((uint)nodeId.GetHashCode() % (uint)_progressGates.Length)];
+
+    private async Task RetireDeletedNodesAsync()
+    {
+        var candidates = _scopeByNodeId
+            .Keys.Concat(_statusByNodeId.Keys)
+            .Concat(_finalizedProgressNodes.Keys)
+            .Concat(_lastProgressLogByNodeId.Keys)
+            .Concat(_seenProgressNodes.Keys)
+            .Concat(_progressByNodeId.Keys)
+            .Distinct()
+            .ToArray();
+        using var dbContext = await _dbContextFactory.CreateAsync();
+        var existingIds = new HashSet<Guid>();
+        foreach (var batch in candidates.Chunk(500))
+            existingIds.UnionWith(
+                (await dbContext.GetDownloadTaskKeysAsync(batch, CancellationToken.None)).Select(existing =>
+                    existing.Id
+                )
+            );
+        foreach (var nodeId in candidates.Where(id => !existingIds.Contains(id)))
+        {
+            var gate = GetProgressGate(nodeId);
+            await gate.WaitAsync(CancellationToken.None);
+            try
+            {
+                RetireNode(nodeId);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+    }
+
+    private void RetireNode(Guid nodeId)
+    {
+        _progressByNodeId.TryRemove(nodeId, out _);
+        _scopeByNodeId.TryRemove(nodeId, out _);
+        _statusByNodeId.TryRemove(nodeId, out _);
+        _finalizedProgressNodes.TryRemove(nodeId, out _);
+        _lastProgressLogByNodeId.TryRemove(nodeId, out _);
+        _seenProgressNodes.TryRemove(nodeId, out _);
     }
 
     private async Task PublishDeletionPatchAsync(DownloadTaskKey key, CancellationToken cancellationToken)

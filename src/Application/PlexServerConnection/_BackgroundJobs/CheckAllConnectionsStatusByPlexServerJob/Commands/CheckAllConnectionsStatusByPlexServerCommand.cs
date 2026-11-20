@@ -141,6 +141,7 @@ public class CheckAllConnectionsStatusByPlexServerHandler
         {
             await _eventPublisher.PublishAsync(
                 new ServerOnlineStatusChangedNotification(plexServerId, currentOnlineStatus),
+                Mode.WaitForAll,
                 cancellationToken
             );
         }

@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Reaparr.IntegrationTests;
 
@@ -316,7 +317,7 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
             };
             // Startup Arr probing is outside these save requests and must not contact a real service.
             config.OverrideServices = builder =>
-                builder.RegisterInstance(new SaveEndpointCommandExecutor()).As<ICommandExecutor>();
+                builder.RegisterType<SaveEndpointCommandExecutor>().As<ICommandExecutor>();
         });
     }
 
@@ -626,7 +627,12 @@ public class UrlValidationIntegrationTests : BaseIntegrationTests
 
     private sealed class SaveEndpointCommandExecutor : ICommandExecutor
     {
-        private readonly ICommandExecutor _inner = new CommandExecutor();
+        private readonly ICommandExecutor _inner;
+
+        public SaveEndpointCommandExecutor(IServiceScopeFactory scopeFactory, IHttpContextAccessor httpContextAccessor)
+        {
+            _inner = new CommandExecutor(scopeFactory, httpContextAccessor);
+        }
 
         public Task<TResult> Send<TResult>(ICommand<TResult> command, CancellationToken ct = default)
             where TResult : ResultBase, new()
