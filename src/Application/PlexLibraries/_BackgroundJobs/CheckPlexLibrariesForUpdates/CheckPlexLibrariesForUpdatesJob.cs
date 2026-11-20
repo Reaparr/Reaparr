@@ -29,14 +29,13 @@ public class CheckPlexLibrariesForUpdatesJob : IJob
     public static JobKey GetJobKey() =>
         new(nameof(JobTypes.CheckPlexLibrariesForUpdatesJob), nameof(JobTypes.CheckPlexLibrariesForUpdatesJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.LibraryUpdateCheck,
             context.GetTelemetryContext()
         );
 
-        var cancellationToken = context.CancellationToken;
         _log.Here().Debug("Executing job: {JobName}", nameof(CheckPlexLibrariesForUpdatesJob));
 
         var result = await Result.Try(

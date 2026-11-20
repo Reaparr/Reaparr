@@ -51,6 +51,7 @@ public static partial class Startup
         });
 
         services.AddOptions();
+        services.ConfigureQuartz(appRuntimeInfo.IsIntegrationTestMode);
         services.ConfigureTelemetry(appBuildInfo, appRuntimeInfo);
         services.AddHttpForwarder();
 
@@ -227,9 +228,7 @@ public static partial class Startup
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AuthDbContext>();
 
-        services.Configure<SecurityStampValidatorOptions>(options =>
-            options.ValidationInterval = TimeSpan.Zero
-        );
+        services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.Zero);
 
         services.AddAuthenticationCookie(validFor: TimeSpan.FromHours(6), c =>
         {

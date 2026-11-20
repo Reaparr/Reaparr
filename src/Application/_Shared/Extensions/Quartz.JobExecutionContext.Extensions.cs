@@ -72,7 +72,10 @@ public static partial class QuartzExtensions
                     DefaultJsonSerializerOptions.ConfigStandard
                 );
             case JobTypes.LibraryComparisonJob:
-                if (context.Get(nameof(LibraryComparisonCompletedDTO)) is LibraryComparisonCompletedDTO completed)
+                if (
+                    context.MergedJobDataMap.TryGetValue(nameof(LibraryComparisonCompletedDTO), out var value)
+                    && value is LibraryComparisonCompletedDTO completed
+                )
                     return JsonSerializer.Serialize(completed, DefaultJsonSerializerOptions.ConfigStandard);
 
                 return JsonSerializer.Serialize(

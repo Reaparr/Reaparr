@@ -282,5 +282,4 @@ public class HeaderAuthenticationMiddleware
             _ => null,
         };
     }
-
 }

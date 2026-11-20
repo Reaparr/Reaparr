@@ -15,13 +15,13 @@ public sealed class AllJobListener : IJobListener
 
     public string Name => nameof(AllJobListener);
 
-    public Task JobExecutionVetoed(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
+    public ValueTask JobExecutionVetoed(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
         Publish(context, JobStatus.Cancelled);
 
-    public Task JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
+    public ValueTask JobToBeExecuted(IJobExecutionContext context, CancellationToken cancellationToken = default) =>
         Publish(context, JobStatus.Started);
 
-    public Task JobWasExecuted(
+    public ValueTask JobWasExecuted(
         IJobExecutionContext context,
         JobExecutionException? jobException,
         CancellationToken cancellationToken = default
@@ -40,7 +40,7 @@ public sealed class AllJobListener : IJobListener
         return Publish(context, BackgroundJobTerminalOutcome.From(context, jobException).Status);
     }
 
-    private async Task Publish(IJobExecutionContext context, JobStatus status)
+    private async ValueTask Publish(IJobExecutionContext context, JobStatus status)
     {
         var result = await Result.Try(async Task () =>
         {

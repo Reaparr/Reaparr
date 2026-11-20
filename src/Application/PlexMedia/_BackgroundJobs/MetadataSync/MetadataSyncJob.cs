@@ -38,7 +38,7 @@ public class MetadataSyncJob : IJob
     public static JobKey GetJobKey(int serverId) =>
         new($"{nameof(JobTypes.MetadataSyncJob)}_{serverId}", nameof(JobTypes.MetadataSyncJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.MetadataSync, context.GetTelemetryContext());
 
@@ -50,7 +50,6 @@ public class MetadataSyncJob : IJob
             return;
         }
 
-        var cancellationToken = context.CancellationToken;
         var serverId = payloadResult.Value.ServerId;
         using var dbContext = await _dbContextFactory.CreateAsync();
         var serverName = await dbContext.GetPlexServerNameById(serverId);

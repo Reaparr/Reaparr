@@ -32,7 +32,7 @@ public sealed class QueueMediaOverviewRebuildCommandHandler : ICommandHandler<Qu
             return Result.Ok();
 
         var result = await Result.Try(async Task () =>
-            await _scheduler.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken)
+            await _scheduler.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken: cancellationToken)
         );
         if (result.IsFailed)
             _coordinator.CancelPendingRebuild();

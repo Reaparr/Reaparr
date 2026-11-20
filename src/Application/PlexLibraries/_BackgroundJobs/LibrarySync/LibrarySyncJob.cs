@@ -38,7 +38,7 @@ public class LibrarySyncJob : IJob
     public static JobKey GetJobKey(int serverId, int libraryId) =>
         new($"{nameof(JobTypes.LibrarySyncJob)}_{serverId}_{libraryId}", nameof(JobTypes.LibrarySyncJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.LibrarySync, context.GetTelemetryContext());
 
@@ -51,7 +51,6 @@ public class LibrarySyncJob : IJob
             return;
         }
 
-        var cancellationToken = context.CancellationToken;
         _serverId = payloadResult.Value.ServerId;
         _libraryId = payloadResult.Value.LibraryId;
         _log.Here()
