@@ -4,11 +4,11 @@
     "net10.0": {
       "AppAny.Quartz.EntityFrameworkCore.Migrations.SQLite": {
         "type": "Direct",
-        "requested": "[0.6.0, )",
-        "resolved": "0.6.0",
-        "contentHash": "gyRyO8EFn3u0AmnJCBBVDzjSKwfJUkrMIFWHL7ox/tp5buezNjWb7K6pyM33wkRRbSvhNqKSQhjoYYkSwPsBMw==",
+        "requested": "[0.6.2, )",
+        "resolved": "0.6.2",
+        "contentHash": "7bVbfNRO8OjNTAOKoE36MvFm+fBCEU8ypupEMt4Q/NAgrG1tNPR710WzdJQxLVryJoAr4HZjWIqCZ/wSXe0ZNw==",
         "dependencies": {
-          "AppAny.Quartz.EntityFrameworkCore.Migrations": "0.6.0",
+          "AppAny.Quartz.EntityFrameworkCore.Migrations": "0.6.2",
           "Microsoft.EntityFrameworkCore.Sqlite": "10.0.8"
         }
       },
@@ -125,8 +125,8 @@
       },
       "AppAny.Quartz.EntityFrameworkCore.Migrations": {
         "type": "Transitive",
-        "resolved": "0.6.0",
-        "contentHash": "hhhg6TeGEl5qczPD67xhJ9IYCpZ7PAd6CNiaA9vqK9a8y9tdXUp/Nkca19oTs55BxF8mmNSNUTjnO4T7lhKnvQ==",
+        "resolved": "0.6.2",
+        "contentHash": "jdIufDGaQARrJxXOPF/vt/tytfqQJUrMp/4OTJqoqPn78D3lQwnOoTDDWRi5UsOQ9LiDU/BwQ8mQ6/8fsoZbCw==",
         "dependencies": {
           "Microsoft.EntityFrameworkCore": "10.0.8"
         }

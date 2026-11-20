@@ -2,17 +2,6 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
-      "Autofac.Extras.Quartz": {
-        "type": "Direct",
-        "requested": "[11.0.0, )",
-        "resolved": "11.0.0",
-        "contentHash": "EAojmP/iI02TnUndDLYa6MHS5OySVqntKA7owGRm8J/w4x2QwA/TTqOfSHWmtZ1BrZ17Bttko/JO6vssJAgQYQ==",
-        "dependencies": {
-          "Autofac": "[9.0.0, 10.0.0)",
-          "JetBrains.Annotations": "2025.2.4",
-          "Quartz": "[3.16.1, 4.0.0)"
-        }
-      },
       "CSharpier.MsBuild": {
         "type": "Direct",
         "requested": "[1.4.0, )",
@@ -74,14 +63,11 @@
         "resolved": "2.18.1",
         "contentHash": "PVBVT7rcqgc8MqMAxDuX4pD5R7l+A9jCLi0B378qRVXB/A3RmBOcK60jBuCm05HdOiH6hqOnS/QqQZAbYQ0n6g=="
       },
-      "Quartz.Serialization.SystemTextJson": {
+      "Quartz": {
         "type": "Direct",
-        "requested": "[3.19.1, )",
-        "resolved": "3.19.1",
-        "contentHash": "O2gM5JdvLiSwU79vIn93HbYKMv9NTblk6v2tcceo1qfGrWJqJuqAvM3xmZC6RSINXWOEXAQPeLb/dYjSX9l1XA==",
-        "dependencies": {
-          "Quartz": "3.19.1"
-        }
+        "requested": "[4.5.1, )",
+        "resolved": "4.5.1",
+        "contentHash": "vexFR5Z/Sbu0um75NOhjhinOEB4Acb/HAK6Q90EpGV44/YBxfchatXWoKJDOtYu8UtodBm6rs5GVtfM7TfUmsg=="
       },
       "Roslynator.Analyzers": {
         "type": "Direct",
@@ -410,11 +396,6 @@
         "type": "Transitive",
         "resolved": "2.1.0",
         "contentHash": "G70cCeAOYCk/uTuFw5PBGpYY9kmBZyzld7tphachvyU514PowMRDYyKwTefxIHNGWrhXY2d1DV5B1tDEnTtY3A=="
-      },
-      "Quartz": {
-        "type": "Transitive",
-        "resolved": "3.19.1",
-        "contentHash": "u+kAlmReZLLpKRG9TcPt8gP0H5e8Nff11fh9tz52e4B+GtXm9cLBOe/bfGcDs4IQftmEcxakpfTzOlsZdv9ekg=="
       },
       "Serilog": {
         "type": "Transitive",

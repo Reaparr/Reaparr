@@ -114,15 +114,6 @@
           "Photino.Native": "4.0.22"
         }
       },
-      "Quartz.Extensions.Hosting": {
-        "type": "Direct",
-        "requested": "[3.19.1, )",
-        "resolved": "3.19.1",
-        "contentHash": "gp6EUrreKcU/Az6b2bZNeebxJWMrmlLItXRmR9nX9zUSmMzQTIDWR7NTm3SsdmsoDBbrIU9vhkLD3uv1y5mMzA==",
-        "dependencies": {
-          "Quartz.Extensions.DependencyInjection": "3.19.1"
-        }
-      },
       "Roslynator.Analyzers": {
         "type": "Direct",
         "requested": "[5.0.1, )",
@@ -179,18 +170,18 @@
       },
       "AppAny.Quartz.EntityFrameworkCore.Migrations": {
         "type": "Transitive",
-        "resolved": "0.6.0",
-        "contentHash": "hhhg6TeGEl5qczPD67xhJ9IYCpZ7PAd6CNiaA9vqK9a8y9tdXUp/Nkca19oTs55BxF8mmNSNUTjnO4T7lhKnvQ==",
+        "resolved": "0.6.2",
+        "contentHash": "jdIufDGaQARrJxXOPF/vt/tytfqQJUrMp/4OTJqoqPn78D3lQwnOoTDDWRi5UsOQ9LiDU/BwQ8mQ6/8fsoZbCw==",
         "dependencies": {
           "Microsoft.EntityFrameworkCore": "10.0.8"
         }
       },
       "AppAny.Quartz.EntityFrameworkCore.Migrations.SQLite": {
         "type": "Transitive",
-        "resolved": "0.6.0",
-        "contentHash": "gyRyO8EFn3u0AmnJCBBVDzjSKwfJUkrMIFWHL7ox/tp5buezNjWb7K6pyM33wkRRbSvhNqKSQhjoYYkSwPsBMw==",
+        "resolved": "0.6.2",
+        "contentHash": "7bVbfNRO8OjNTAOKoE36MvFm+fBCEU8ypupEMt4Q/NAgrG1tNPR710WzdJQxLVryJoAr4HZjWIqCZ/wSXe0ZNw==",
         "dependencies": {
-          "AppAny.Quartz.EntityFrameworkCore.Migrations": "0.6.0",
+          "AppAny.Quartz.EntityFrameworkCore.Migrations": "0.6.2",
           "Microsoft.EntityFrameworkCore.Sqlite": "10.0.8"
         }
       },
@@ -198,16 +189,6 @@
         "type": "Transitive",
         "resolved": "9.1.0",
         "contentHash": "onT/BcnnfWcQNXiuC7R/0h8ALQzRdsAI20gpB7nfrudXpFMXdVZKz1umdtHXDwjc/bmWEsrCBAxck3+Arnk15g=="
-      },
-      "Autofac.Extras.Quartz": {
-        "type": "Transitive",
-        "resolved": "11.0.0",
-        "contentHash": "EAojmP/iI02TnUndDLYa6MHS5OySVqntKA7owGRm8J/w4x2QwA/TTqOfSHWmtZ1BrZ17Bttko/JO6vssJAgQYQ==",
-        "dependencies": {
-          "Autofac": "[9.0.0, 10.0.0)",
-          "JetBrains.Annotations": "2025.2.4",
-          "Quartz": "[3.16.1, 4.0.0)"
-        }
       },
       "BencodeNET": {
         "type": "Transitive",
@@ -652,24 +633,8 @@
       },
       "Quartz": {
         "type": "Transitive",
-        "resolved": "3.19.1",
-        "contentHash": "u+kAlmReZLLpKRG9TcPt8gP0H5e8Nff11fh9tz52e4B+GtXm9cLBOe/bfGcDs4IQftmEcxakpfTzOlsZdv9ekg=="
-      },
-      "Quartz.Extensions.DependencyInjection": {
-        "type": "Transitive",
-        "resolved": "3.19.1",
-        "contentHash": "6UKrPvWQBgOslVnhD6OgFBjBA3kO7kUc4bM2EXG8b+vSgB/EHqVP8cLOb9RePZQJb5OJeNunN9dNEmGLpg5wuw==",
-        "dependencies": {
-          "Quartz": "3.19.1"
-        }
-      },
-      "Quartz.Serialization.SystemTextJson": {
-        "type": "Transitive",
-        "resolved": "3.19.1",
-        "contentHash": "O2gM5JdvLiSwU79vIn93HbYKMv9NTblk6v2tcceo1qfGrWJqJuqAvM3xmZC6RSINXWOEXAQPeLb/dYjSX9l1XA==",
-        "dependencies": {
-          "Quartz": "3.19.1"
-        }
+        "resolved": "4.5.1",
+        "contentHash": "vexFR5Z/Sbu0um75NOhjhinOEB4Acb/HAK6Q90EpGV44/YBxfchatXWoKJDOtYu8UtodBm6rs5GVtfM7TfUmsg=="
       },
       "Semver": {
         "type": "Transitive",
@@ -877,14 +842,13 @@
       "Reaparr.Application": {
         "type": "Project",
         "dependencies": {
-          "Autofac.Extras.Quartz": "[11.0.0, )",
           "Downloader": "[5.5.0, )",
           "FastEndpoints": "[9.0.0, )",
           "FastEndpoints.Security": "[9.0.0, )",
           "Polly": "[8.6.5, )",
           "Polly.Core": "[8.6.6, )",
           "PostHog": "[2.18.1, )",
-          "Quartz.Serialization.SystemTextJson": "[3.19.1, )",
+          "Quartz": "[4.5.1, )",
           "Reaparr.Application.Contracts": "[1.0.0, )",
           "Reaparr.Data.Contracts": "[1.0.0, )",
           "Reaparr.Domain": "[1.0.0, )",
@@ -909,7 +873,7 @@
       "Reaparr.Data": {
         "type": "Project",
         "dependencies": {
-          "AppAny.Quartz.EntityFrameworkCore.Migrations.SQLite": "[0.6.0, )",
+          "AppAny.Quartz.EntityFrameworkCore.Migrations.SQLite": "[0.6.2, )",
           "Autofac": "[9.1.0, )",
           "Microsoft.Data.Sqlite": "[10.0.13, )",
           "Microsoft.EntityFrameworkCore.InMemory": "[10.0.13, )",
