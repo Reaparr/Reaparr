@@ -34,6 +34,26 @@ on:
                 required: false
                 type: string
                 default: ''
+            build:
+                description: 'Run desktop build and packaging jobs'
+                required: false
+                type: boolean
+                default: true
+            upload_artifacts:
+                description: 'Upload packaged installers for a later publish phase'
+                required: false
+                type: boolean
+                default: false
+            download_previous_release:
+                description: 'Download the previous release for delta packaging'
+                required: false
+                type: boolean
+                default: false
+            upload_source_maps:
+                description: 'Upload private frontend source maps during preparation'
+                required: false
+                type: boolean
+                default: false
             push:
                 description: 'Upload installers to the GitHub Release'
                 required: false
@@ -57,12 +77,14 @@ on:
 jobs:
     prepare-frontend:
         name: Prepare frontend assets
+        if: inputs.build
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout source code
                 uses: actions/checkout@v7
                 with:
                     persist-credentials: false
+                    ref: ${{ github.sha }}
 
             -   name: Client App Install
                 uses: ./.github/actions/client-app-install/
@@ -73,11 +95,31 @@ jobs:
                 env:
                     NUXT_PUBLIC_RP_HOST: ${{ inputs.telemetry_host }}
                     NUXT_PUBLIC_RP_KEY: ${{ inputs.telemetry_project_token }}
-                    NUXT_SOURCEMAP_CLIENT: ${{ (inputs.push || inputs.publish_release) && 'hidden' || '' }}
+                    NUXT_SOURCEMAP_CLIENT: ${{ (inputs.upload_artifacts || inputs.upload_source_maps || inputs.push || inputs.publish_release) && 'hidden' || '' }}
                 run: bun run generate --fail-on-error
 
+            -   name: Inject metadata for deferred source maps
+                if: inputs.upload_artifacts && !(inputs.upload_source_maps || inputs.push || inputs.publish_release)
+                working-directory: src/AppHost/ClientApp/
+                env:
+                    RELEASE_VERSION: ${{ inputs.informational_version }}
+                run: bunx --no-install posthog-cli sourcemap inject --directory .output/public --release-name reaparr --release-version "$RELEASE_VERSION"
+
+            -   name: Archive deferred source maps
+                if: inputs.upload_artifacts && !(inputs.upload_source_maps || inputs.push || inputs.publish_release)
+                run: tar -cf "${{ runner.temp }}/frontend-source-maps-desktop.tar" -C src/AppHost/ClientApp/.output/public .
+
+            -   name: Retain deferred source maps
+                if: inputs.upload_artifacts && !(inputs.upload_source_maps || inputs.push || inputs.publish_release)
+                uses: actions/upload-artifact@v7
+                with:
+                    name: frontend-source-maps-desktop
+                    path: ${{ runner.temp }}/frontend-source-maps-desktop.tar
+                    if-no-files-found: error
+                    retention-days: 1
+
             -   name: Upload private source maps
-                if: inputs.push || inputs.publish_release
+                if: inputs.upload_source_maps || inputs.push || inputs.publish_release
                 uses: ./.github/actions/posthog-source-maps/
                 with:
                     directory: .output/public
@@ -87,14 +129,19 @@ jobs:
                     ingestion-host: ${{ inputs.telemetry_host }}
                     release-version: ${{ inputs.informational_version }}
 
+            -   name: Package frontend without source maps
+                run: tar --exclude='*.map' -cf "${{ runner.temp }}/frontend-public-desktop.tar" -C src/AppHost/ClientApp/.output/public .
+
             -   name: Upload generated frontend artifact
                 uses: actions/upload-artifact@v7
                 with:
                     name: frontend-public
-                    path: src/AppHost/ClientApp/.output/public
+                    path: ${{ runner.temp }}/frontend-public-desktop.tar
+                    if-no-files-found: error
                     retention-days: 1
 
     build:
+        if: inputs.build
         name: Build ${{ matrix.rid }}
         needs: [ prepare-frontend ]
         strategy:
@@ -123,12 +170,17 @@ jobs:
                 uses: actions/checkout@v7
                 with:
                     persist-credentials: false
+                    ref: ${{ github.sha }}
 
             -   name: Download generated frontend artifact
                 uses: actions/download-artifact@v8
                 with:
                     name: frontend-public
-                    path: .tmp/frontend-public
+                    path: .tmp/frontend-public-archive
+
+            -   name: Extract generated frontend
+                shell: bash
+                run: mkdir -p .tmp/frontend-public && tar -xf .tmp/frontend-public-archive/frontend-public-desktop.tar -C .tmp/frontend-public
 
             -   name: Dotnet Setup (Restore only)
                 uses: ./.github/actions/dotnet-setup/
@@ -167,7 +219,7 @@ jobs:
                     esac
 
             -   name: Download previous release (for delta packages)
-                if: inputs.push
+                if: inputs.download_previous_release || inputs.push
                 shell: bash
                 run: |
                     mkdir -p Releases
@@ -197,17 +249,97 @@ jobs:
                         --preserve-existing-artifacts
 
             -   name: Upload packed installer artifact
-                if: inputs.push
+                if: inputs.upload_artifacts || inputs.push
                 uses: actions/upload-artifact@v7
                 with:
                     name: desktop-${{ matrix.rid }}
                     path: Releases/
+                    if-no-files-found: error
                     retention-days: 1
 
+    publish-source-maps:
+        name: Publish retained desktop source maps
+        if: inputs.push && !inputs.build
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout source code
+                uses: actions/checkout@v7
+                with:
+                    persist-credentials: false
+                    ref: ${{ github.sha }}
+            -   name: Client App Install
+                uses: ./.github/actions/client-app-install/
+            -   name: Download retained source maps
+                uses: actions/download-artifact@v8
+                with:
+                    name: frontend-source-maps-desktop
+                    path: .tmp/frontend-source-maps-desktop
+            -   name: Extract retained source maps
+                run: |
+                    mkdir -p src/AppHost/ClientApp/.output/public
+                    tar -xf .tmp/frontend-source-maps-desktop/frontend-source-maps-desktop.tar -C src/AppHost/ClientApp/.output/public
+            -   name: Upload retained source maps
+                uses: ./.github/actions/posthog-source-maps/
+                with:
+                    directory: .output/public
+                    project-id: ${{ inputs.posthog_cli_project_id }}
+                    api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+                    host: ${{ inputs.posthog_cli_host }}
+                    ingestion-host: ${{ inputs.telemetry_host }}
+                    release-version: ${{ inputs.informational_version }}
+                    inject: 'false'
+
+    upload-artifacts:
+        name: Upload ${{ matrix.rid }} to GitHub Release
+        if: ${{ !cancelled() && inputs.push && ((inputs.build && needs.build.result == 'success') || (!inputs.build && needs.publish-source-maps.result == 'success')) }}
+        needs: [build, publish-source-maps]
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            max-parallel: 2
+            matrix:
+                rid: [win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64]
+        steps:
+            -   name: Setup .NET 9 runtime for vpk
+                uses: actions/setup-dotnet@v6
+                with:
+                    dotnet-version: 9.0.x
+
+            -   name: Install Velopack CLI
+                run: dotnet tool install -g vpk --version 1.2.161
+
+            -   name: Download packaged installer artifact
+                uses: actions/download-artifact@v8
+                with:
+                    name: desktop-${{ matrix.rid }}
+                    path: Releases/${{ matrix.rid }}
+
+            -   name: Upload installer to GitHub Release
+                shell: bash
+                env:
+                    GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+                    RID: ${{ matrix.rid }}
+                    VERSION: ${{ inputs.version }}
+                    VELOPACK_CHANNEL: ${{ format('{0}-{1}', matrix.rid, inputs.velopack_channel) }}
+                run: |
+                    upload_args=(
+                        vpk upload github
+                        # Bound stalled GitHub asset requests; vpk retries failed uploads.
+                        --timeout "30"
+                        --repoUrl "https://github.com/$GITHUB_REPOSITORY"
+                        --merge
+                        --channel "$VELOPACK_CHANNEL"
+                        --outputDir "Releases/$RID"
+                        --releaseName "Reaparr $VERSION"
+                        --tag "v$VERSION"
+                        --token "$GITHUB_TOKEN"
+                    )
+                    "${upload_args[@]}"
     verify-release:
         name: Verify GitHub Release exists
-        needs: [ build ]
-        if: inputs.push
+        needs: [ upload-artifacts ]
+        if: ${{ !cancelled() && inputs.push && needs.upload-artifacts.result == 'success' }}
         runs-on: ubuntu-latest
         permissions:
             contents: write
@@ -224,87 +356,11 @@ jobs:
                         --json tagName \
                         --jq '.tagName'
 
-    upload-release:
-        name: Upload ${{ matrix.rid }} to GitHub Release
-        needs: [ build, verify-release ]
-        if: inputs.push
-        runs-on: ubuntu-latest
-        timeout-minutes: 30
-        strategy:
-            fail-fast: false
-            # Uploads use disjoint asset names. Publishing is handled by the
-            # dependent publish-release job after every platform upload completes.
-            max-parallel: 2
-            matrix:
-                include:
-                    -   rid: win-x64
-                    -   rid: win-arm64
-                    -   rid: linux-x64
-                    -   rid: linux-arm64
-                    -   rid: osx-x64
-                    -   rid: osx-arm64
-
-        steps:
-            -   name: Checkout source code
-                uses: actions/checkout@v7
-                with:
-                    persist-credentials: false
-
-            -   name: Setup .NET 9 runtime for vpk
-                uses: actions/setup-dotnet@v6
-                with:
-                    dotnet-version: 9.0.x
-
-            -   name: Install Velopack CLI
-                run: dotnet tool install -g vpk --version 1.2.161
-
-            -   name: Derive Velopack channel
-                shell: bash
-                env:
-                    RID: ${{ matrix.rid }}
-                    VELOPACK_CHANNEL_INPUT: ${{ inputs.velopack_channel }}
-                run: |
-                    case "$VELOPACK_CHANNEL_INPUT" in
-                        stable|dev)
-                            echo "VELOPACK_CHANNEL=$RID-$VELOPACK_CHANNEL_INPUT" >> "$GITHUB_ENV"
-                            ;;
-                        *)
-                            echo "Unsupported Velopack channel: $VELOPACK_CHANNEL_INPUT" >&2
-                            exit 1
-                            ;;
-                    esac
-
-            -   name: Download packed installer
-                uses: actions/download-artifact@v8
-                with:
-                    name: desktop-${{ matrix.rid }}
-                    path: Releases/${{ matrix.rid }}
-
-            -   name: Upload installer to GitHub Release
-                shell: bash
-                env:
-                    GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
-                    RID: ${{ matrix.rid }}
-                    VERSION: ${{ inputs.version }}
-                run: |
-                    upload_args=(
-                        vpk upload github
-                        # Bound stalled GitHub asset requests; vpk retries failed uploads.
-                        --timeout "30"
-                        --repoUrl "https://github.com/$GITHUB_REPOSITORY"
-                        --merge
-                        --channel "$VELOPACK_CHANNEL"
-                        --outputDir "Releases/$RID"
-                        --releaseName "Reaparr $VERSION"
-                        --tag "v$VERSION"
-                        --token "$GITHUB_TOKEN"
-                    )
-                    "${upload_args[@]}"
 
     publish-release:
         name: Publish GitHub Release
-        needs: [ upload-release ]
-        if: inputs.push && inputs.publish_release
+        needs: [ verify-release ]
+        if: ${{ !cancelled() && inputs.push && inputs.publish_release && needs.verify-release.result == 'success' }}
         runs-on: ubuntu-latest
 
         steps:
