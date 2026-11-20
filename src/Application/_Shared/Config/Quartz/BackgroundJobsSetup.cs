@@ -1,5 +1,3 @@
-using Quartz.Impl.Matchers;
-
 namespace Reaparr.Application;
 
 public interface IBackgroundJobsSetup : ISetupAsync, IStopAsync;
@@ -56,7 +54,7 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
 
     private void RegisterListeners()
     {
-        _scheduler.ListenerManager.AddJobListener(_allJobListener, EverythingMatcher<JobKey>.AllJobs());
+        _scheduler.ListenerManager.AddJobListener(_allJobListener, Matchers.AllJobs());
         _scheduler.ListenerManager.AddJobListener(
             _downloadJobListener,
             GroupMatcher<JobKey>.GroupEquals(nameof(JobTypes.DownloadJob))
@@ -92,11 +90,11 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
                 .ForJob(jobKey)
                 .WithCronSchedule(
                     "0 0/10 * * * ?", // Every 10 minutes
-                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionDoNothing()
+                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireInstruction(CronTriggerMisfireInstruction.DoNothing)
                 )
                 .Build();
 
-            await _scheduler.ScheduleJob(job, trigger, cancellationToken);
+            await _scheduler.ScheduleJob(job, trigger, cancellationToken: cancellationToken);
         }
 
         {
@@ -114,11 +112,11 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
                 .ForJob(jobKey)
                 .WithCronSchedule(
                     "0 0 0/3 * * ?", // Every 3 hours
-                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionDoNothing()
+                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireInstruction(CronTriggerMisfireInstruction.DoNothing)
                 )
                 .Build();
 
-            await _scheduler.ScheduleJob(job, trigger, cancellationToken);
+            await _scheduler.ScheduleJob(job, trigger, cancellationToken: cancellationToken);
         }
 
         {
@@ -136,11 +134,11 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
                 .ForJob(jobKey)
                 .WithCronSchedule(
                     "0 0 0/6 * * ?", // Every 6 hours
-                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionDoNothing()
+                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireInstruction(CronTriggerMisfireInstruction.DoNothing)
                 )
                 .Build();
 
-            await _scheduler.ScheduleJob(job, trigger, cancellationToken);
+            await _scheduler.ScheduleJob(job, trigger, cancellationToken: cancellationToken);
         }
 
         {
@@ -158,11 +156,11 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
                 .ForJob(jobKey)
                 .WithCronSchedule(
                     "0 0 * * * ?", // Every hour
-                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionDoNothing()
+                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireInstruction(CronTriggerMisfireInstruction.DoNothing)
                 )
                 .Build();
 
-            await _scheduler.ScheduleJob(job, trigger, cancellationToken);
+            await _scheduler.ScheduleJob(job, trigger, cancellationToken: cancellationToken);
         }
         {
             var jobKey = MediaOverviewSnapshotJob.GetJobKey();
@@ -181,11 +179,11 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
                 .StartNow()
                 .WithCronSchedule(
                     "0 0 * * * ?", // Every hour
-                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionDoNothing()
+                    x => x.InTimeZone(TimeZoneInfo.Utc).WithMisfireInstruction(CronTriggerMisfireInstruction.DoNothing)
                 )
                 .Build();
 
-            await _scheduler.ScheduleJob(job, trigger, cancellationToken);
+            await _scheduler.ScheduleJob(job, trigger, cancellationToken: cancellationToken);
         }
         {
             var jobKey = UpdateScheduledDownloadLimitsJob.GetJobKey();
@@ -193,19 +191,22 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
             await _scheduler.ScheduleJob(
                 job,
                 UpdateScheduledDownloadLimitsJob.CreateTrigger(_userSettings.DateTimeSettings.TimeZone),
-                cancellationToken
+                cancellationToken: cancellationToken
             );
         }
     }
 
     private async Task TriggerRecurringJobs(CancellationToken cancellationToken)
     {
-        await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), cancellationToken);
-        await _scheduler.TriggerJob(CheckAllConnectionsStatusByPlexServerJob.GetJobKey(), cancellationToken);
-        await _scheduler.TriggerJob(CheckPlexLibrariesForUpdatesJob.GetJobKey(), cancellationToken);
-        await _scheduler.TriggerJob(RefreshPlexAccountAccessJob.GetJobKey(), cancellationToken);
-        await _scheduler.TriggerJob(CheckForUpdateJob.GetJobKey(), cancellationToken);
-        await _scheduler.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken);
+        await _scheduler.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), cancellationToken: cancellationToken);
+        await _scheduler.TriggerJob(
+            CheckAllConnectionsStatusByPlexServerJob.GetJobKey(),
+            cancellationToken: cancellationToken
+        );
+        await _scheduler.TriggerJob(CheckPlexLibrariesForUpdatesJob.GetJobKey(), cancellationToken: cancellationToken);
+        await _scheduler.TriggerJob(RefreshPlexAccountAccessJob.GetJobKey(), cancellationToken: cancellationToken);
+        await _scheduler.TriggerJob(CheckForUpdateJob.GetJobKey(), cancellationToken: cancellationToken);
+        await _scheduler.TriggerJob(MediaOverviewSnapshotJob.GetJobKey(), cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
@@ -217,8 +218,8 @@ public sealed class BackgroundJobsSetup : IBackgroundJobsSetup
             shutdownTimeout.CancelAfter(TimeSpan.FromSeconds(30));
             await _scheduler.Standby(shutdownTimeout.Token);
 
-            foreach (var context in await _scheduler.GetCurrentlyExecutingJobs(shutdownTimeout.Token))
-                await _scheduler.Interrupt(context.FireInstanceId, shutdownTimeout.Token);
+            foreach (var firing in await _scheduler.QueryRunningJobs(shutdownTimeout.Token))
+                await _scheduler.InterruptFireInstance(firing.FireInstanceId, shutdownTimeout.Token);
 
             await _scheduler.Shutdown(waitForJobsToComplete: true, shutdownTimeout.Token);
         });

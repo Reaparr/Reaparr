@@ -31,7 +31,7 @@ public class InspectPlexServerJob : IJob
         _telemetry = telemetry;
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.ServerInspection,
@@ -47,7 +47,6 @@ public class InspectPlexServerJob : IJob
             return;
         }
 
-        var cancellationToken = context.CancellationToken;
         var plexServerIds = payloadResult.Value.PlexServerIds;
 
         _log.Here()

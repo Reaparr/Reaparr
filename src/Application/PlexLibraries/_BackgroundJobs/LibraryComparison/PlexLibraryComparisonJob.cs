@@ -31,7 +31,7 @@ public class PlexLibraryComparisonJob : IJob
             nameof(JobTypes.LibraryComparisonJob)
         );
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.LibraryComparison,
@@ -46,7 +46,6 @@ public class PlexLibraryComparisonJob : IJob
             return;
         }
 
-        var cancellationToken = context.CancellationToken;
         var ownedPlexLibraryId = payloadResult.Value.OwnedPlexLibraryId;
         var remotePlexLibraryId = payloadResult.Value.RemotePlexLibraryId;
 
@@ -170,15 +169,12 @@ public class PlexLibraryComparisonJob : IJob
             return;
         }
 
-        context.Put(
-            nameof(LibraryComparisonCompletedDTO),
-            new LibraryComparisonCompletedDTO
-            {
-                AffectedLibraryIds = [ownedLibrary.Id, remoteLibrary.Id],
-                MediaType = remoteLibrary.Type,
-                CompletedAt = DateTime.UtcNow,
-            }
-        );
+        context.MergedJobDataMap[nameof(LibraryComparisonCompletedDTO)] = new LibraryComparisonCompletedDTO
+        {
+            AffectedLibraryIds = [ownedLibrary.Id, remoteLibrary.Id],
+            MediaType = remoteLibrary.Type,
+            CompletedAt = DateTime.UtcNow,
+        };
         context.SetResult(JobStatus.Completed);
         _telemetry.LibraryComparisonFinished(ownedLibrary.Id, remoteLibrary.Id, remoteLibrary.Type, result);
     }

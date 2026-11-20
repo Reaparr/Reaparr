@@ -132,14 +132,14 @@ public class Boot : IHostedService
         _log.Here().Information("Shutting down the container");
 
         await _scheduler.Standby(cancellationToken);
-        var activeMoveJobs = (await _scheduler.GetCurrentlyExecutingJobs(cancellationToken))
-            .Where(x => x.JobDetail.Key.Group == nameof(JobTypes.MoveDownloadFileJob))
+        var activeMoveJobs = (await _scheduler.QueryRunningJobs(cancellationToken))
+            .Where(x => x.JobKey?.Group == nameof(JobTypes.MoveDownloadFileJob))
             .ToList();
-        foreach (var context in activeMoveJobs)
-            await _scheduler.Interrupt(context.FireInstanceId, cancellationToken);
+        foreach (var firing in activeMoveJobs)
+            await _scheduler.InterruptFireInstance(firing.FireInstanceId, cancellationToken);
 
         var moveJobsResult = await _scheduler.WaitForJobsToFinish(
-            activeMoveJobs.Select(x => x.JobDetail.Key),
+            activeMoveJobs.Select(x => x.JobKey!).Distinct(),
             TimeSpan.FromSeconds(30),
             cancellationToken
         );

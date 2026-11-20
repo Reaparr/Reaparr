@@ -25,7 +25,7 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
                 return Result.Ok();
             }
 
-            if (await _scheduler.CheckExists(jobKey, cancellationToken))
+            if (await _scheduler.Exists(jobKey, cancellationToken))
                 await _scheduler.DeleteJob(jobKey, cancellationToken);
 
             var schedulingResult = await _scheduler.ExecuteJob<DownloadJob, DownloadJobPayload>(
@@ -73,22 +73,22 @@ public class DownloadTaskScheduler : IDownloadTaskScheduler
     public async Task<List<DownloadTaskKey>> GetCurrentlyDownloadingKeysByServer(int plexServerId)
     {
         var keysById = new Dictionary<Guid, DownloadTaskKey>();
-        var capturedJobKeys = new HashSet<JobKey>();
-        var contexts = await _scheduler.GetCurrentlyExecutingJobs(CancellationToken.None);
-        foreach (var context in contexts.Where(x => x.JobDetail.Key.Group == nameof(JobTypes.DownloadJob)))
+        var runningJobKeys = (await _scheduler.QueryRunningJobs(CancellationToken.None))
+            .Where(x => x.JobKey?.Group == nameof(JobTypes.DownloadJob))
+            .Select(x => x.JobKey!)
+            .ToHashSet();
+        var runningDetails = await _scheduler.GetJobDetails(runningJobKeys, CancellationToken.None);
+        foreach (var detail in runningDetails)
         {
-            var key = context.MergedJobDataMap.GetPayload<DownloadJobPayload>()?.DownloadTaskKey;
-            if (key is null)
-                continue;
-
-            keysById[key.Id] = key;
-            capturedJobKeys.Add(context.JobDetail.Key);
+            var key = detail.JobDataMap.GetPayload<DownloadJobPayload>()?.DownloadTaskKey;
+            if (key is not null)
+                keysById[key.Id] = key;
         }
 
         var jobKeys = await _scheduler.GetJobKeys(JobTypes.DownloadJob, CancellationToken.None);
         foreach (var jobKey in jobKeys)
         {
-            if (capturedJobKeys.Contains(jobKey))
+            if (runningJobKeys.Contains(jobKey))
                 continue;
 
             var key = await GetActiveStoredKey(jobKey);

@@ -24,14 +24,13 @@ public class RefreshPlexAccountAccessJob : IJob
     public static JobKey GetJobKey() =>
         new(nameof(JobTypes.RefreshPlexAccountAccessJob), nameof(JobTypes.RefreshPlexAccountAccessJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.PlexAccessRefresh,
             context.GetTelemetryContext()
         );
 
-        var cancellationToken = context.CancellationToken;
         _log.Here().Debug("Executing job: {JobName}", nameof(RefreshPlexAccountAccessJob));
 
         var executionResult = await Result.Try(

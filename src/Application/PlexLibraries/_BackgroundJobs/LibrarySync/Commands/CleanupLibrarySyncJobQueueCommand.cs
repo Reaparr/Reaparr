@@ -41,15 +41,8 @@ public class CleanupLibrarySyncJobQueueCommandHandler : ICommandHandler<CleanupL
     )
     {
         // Remove stale Quartz jobs before re-queuing work so existing job keys cannot suppress scheduling.
-        var schedulerCleanupResult = await Result.Try(async Task<Result> () =>
-        {
-            var staleJobKeys = await _scheduler.GetJobKeys(JobTypes.LibrarySyncJob, cancellationToken);
-            if (staleJobKeys.Count == 0)
-                return Result.Ok();
-
-            var deleted = await _scheduler.DeleteJobs(staleJobKeys.ToList(), cancellationToken);
-            return deleted ? Result.Ok() : Result.Fail("Failed to delete persisted library sync Quartz jobs");
-        });
+        var staleJobKeys = await _scheduler.GetJobKeys(JobTypes.LibrarySyncJob, cancellationToken);
+        var schedulerCleanupResult = await _scheduler.DeleteBatchJobs(staleJobKeys, cancellationToken);
         if (schedulerCleanupResult.IsCancelledOrFailed)
             return schedulerCleanupResult.LogIfFailed();
 

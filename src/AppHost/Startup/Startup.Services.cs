@@ -51,6 +51,7 @@ public static partial class Startup
         });
 
         services.AddOptions();
+        services.ConfigureQuartz(appRuntimeInfo.IsIntegrationTestMode);
         services.ConfigureTelemetry(appBuildInfo, appRuntimeInfo);
         services.AddHttpForwarder();
 

@@ -30,14 +30,13 @@ public sealed class MediaOverviewSnapshotJob : IJob
     public static JobKey GetJobKey() =>
         new(nameof(JobTypes.MediaOverviewSnapshotJob), nameof(JobTypes.MediaOverviewSnapshotJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.MediaOverviewSnapshot,
             context.GetTelemetryContext()
         );
 
-        var cancellationToken = context.CancellationToken;
         var scope = _coordinator.BeginRebuild(DateTimeOffset.UtcNow);
         if (scope is null)
         {
@@ -95,7 +94,9 @@ public sealed class MediaOverviewSnapshotJob : IJob
 
     private async Task<Result> TriggerFollowUpRebuildAsync(CancellationToken cancellationToken)
     {
-        var result = await Result.Try(async Task () => await _scheduler.TriggerJob(GetJobKey(), cancellationToken));
+        var result = await Result.Try(async Task () =>
+            await _scheduler.TriggerJob(GetJobKey(), cancellationToken: cancellationToken)
+        );
         if (result.IsFailed)
             _coordinator.CancelPendingRebuild();
 

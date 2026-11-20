@@ -38,14 +38,14 @@ public class MoveDownloadFileJob : IJob
     {
         if (
             !context.MergedJobDataMap.TryGetValue(RetryCountKey, out var value)
-            || !int.TryParse(value.ToString(), out var retryCount)
+            || !int.TryParse(value?.ToString(), out var retryCount)
         )
             return 0;
 
         return Math.Max(retryCount, 0);
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.MoveDownloadJob,
@@ -61,7 +61,7 @@ public class MoveDownloadFileJob : IJob
 
         // Jobs should swallow exceptions as otherwise Quartz will keep re-executing it
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
-        var ct = context.CancellationToken;
+        var ct = cancellationToken;
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
         _telemetry.SetMoveDownloadJobContext(downloadTaskKey, GetRetryCount(context));
         var captureTerminalException = true;
@@ -151,7 +151,7 @@ public class MoveDownloadFileJob : IJob
                 {
                     var jobKey = GetJobKey(downloadTaskKey.Id);
                     var triggerKey = new TriggerKey($"{jobKey.Name}_Retry_{context.FireInstanceId}", jobKey.Group);
-                    if (await context.Scheduler.CheckExists(triggerKey, ct))
+                    if (await context.Scheduler.Exists(triggerKey, ct))
                         return;
 
                     var retryTrigger = TriggerBuilder
@@ -160,9 +160,9 @@ public class MoveDownloadFileJob : IJob
                         .ForJob(jobKey)
                         .UsingJobData(RetryCountKey, nextRetryCount)
                         .StartAt(DateTimeOffset.UtcNow.AddMinutes(1))
-                        .WithSimpleSchedule(x => x.WithMisfireHandlingInstructionFireNow())
+                        .WithSimpleSchedule(x => x.WithMisfireInstruction(SimpleTriggerMisfireInstruction.FireNow))
                         .Build();
-                    await context.Scheduler.ScheduleJob(retryTrigger, ct);
+                    await context.Scheduler.ScheduleJob(retryTrigger, cancellationToken: ct);
                 });
                 retryResult.LogIfFailed();
                 _telemetry.CaptureErrors(retryResult, TelemetryActivity.MoveDownloadJob);

@@ -48,12 +48,12 @@ public class ScheduleOptimizeDatabaseJobCommandHandler : ICommandHandler<Schedul
                 .WithIdentity(jobKey.Name, jobKey.Group)
                 .ForJob(jobKey)
                 .StartAt(DateTimeOffset.UtcNow.Add(DebounceDelay))
-                .WithSimpleSchedule(x => x.WithMisfireHandlingInstructionFireNow())
+                .WithSimpleSchedule(x => x.WithMisfireInstruction(SimpleTriggerMisfireInstruction.FireNow))
                 .Build();
 
             await _scheduler.ScheduleJobs(
                 new Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>> { [job] = [trigger] },
-                replace: true,
+                new ScheduleJobOptions { Replace = true },
                 CancellationToken.None
             );
         });
