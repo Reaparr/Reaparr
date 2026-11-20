@@ -258,7 +258,169 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
     }
 
     [Test]
-    public async Task ShouldIgnoreProgressUpdateAfterTaskHasBeenPaused()
+    public async Task ShouldKeepAcceptingProgress_WhenPauseIsCancelledBeforeGateAcquisition()
+    {
+        await SetupDatabase(84345, config => config.MovieDownloadTasksCount = 1);
+        var key = (await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
+        var sut = Sut;
+        var gates = (SemaphoreSlim[])
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetField(
+                    "_progressGates",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .GetValue(sut)!;
+        var gate = gates[(int)((uint)key.Id.GetHashCode() % (uint)gates.Length)];
+        await gate.WaitAsync(CancellationToken);
+        using var cancellation = new CancellationTokenSource();
+        try
+        {
+            var pause = sut.OnStatusChangedAsync(key, DownloadStatus.Paused, cancellation.Token);
+            cancellation.Cancel();
+            await pause;
+        }
+        finally
+        {
+            gate.Release();
+        }
+        sut.OnProgressUpdated(
+            key,
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                DownloadSpeed = 10,
+            }
+        );
+        var buffered =
+            (ConcurrentDictionary<Guid, BufferedProgressUpdate>)
+                typeof(DownloadTaskUpdateDispatcher)
+                    .GetField(
+                        "_progressByNodeId",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .GetValue(sut)!;
+        buffered[key.Id].Progress!.DataReceived.ShouldBe(25);
+        (await IDbContext.GetDownloadStatusAsync(key)).ShouldNotBe(DownloadStatus.Paused);
+    }
+
+    [Test]
+    public async Task ShouldRestoreProgressAdmission_WhenPauseCannotPersistBufferedProgress()
+    {
+        await SetupDatabase(84347, config => config.MovieDownloadTasksCount = 1);
+        var key = (await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
+        var factory = new Mock<IReaparrDbContextFactory>(MockBehavior.Strict);
+        var failing = new Mock<IReaparrDbContext>(MockBehavior.Strict);
+        failing.SetupGet(x => x.DownloadTaskMovieFile).Returns(IDbContext.DownloadTaskMovieFile);
+        failing.Setup(x => x.Dispose());
+        factory.Setup(x => x.CreateAsync()).ReturnsAsync(failing.Object);
+        var sut = new DownloadTaskUpdateDispatcher(
+            Mock.Container.Resolve<ILogger>(),
+            factory.Object,
+            Mock.Container.Resolve<IDownloadHubService>(),
+            Mock.Container.Resolve<ICommandExecutor>(),
+            Mock.Container.Resolve<IDownloadTaskScheduler>(),
+            Mock.Container.Resolve<ITelemetry>()
+        );
+        sut.OnProgressUpdated(
+            key,
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                DownloadSpeed = 10,
+            }
+        );
+
+        await sut.OnStatusChangedAsync(key, DownloadStatus.Paused, CancellationToken);
+        sut.OnProgressUpdated(
+            key,
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 50,
+                DownloadSpeed = 10,
+            }
+        );
+
+        var buffered =
+            (ConcurrentDictionary<Guid, BufferedProgressUpdate>)
+                typeof(DownloadTaskUpdateDispatcher)
+                    .GetField(
+                        "_progressByNodeId",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .GetValue(sut)!;
+        buffered[key.Id].Progress!.DataReceived.ShouldBe(50);
+        (await IDbContext.GetDownloadStatusAsync(key)).ShouldNotBe(DownloadStatus.Paused);
+        factory.Verify(x => x.CreateAsync(), Times.Once());
+    }
+
+    [Test]
+    public async Task ShouldLeaveEstimateAvailableToPause_WhenTimerWaitsForProgressGate()
+    {
+        await SetupDatabase(84346, config => config.MovieDownloadTasksCount = 1);
+        var key = (await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken)).ToKey();
+        var sut = Sut;
+        sut.OnProgressUpdated(
+            key,
+            new DownloadTaskProgress
+            {
+                DataTotal = 100,
+                DataReceived = 25,
+                DownloadSpeed = 10,
+            }
+        );
+        var buffered =
+            (ConcurrentDictionary<Guid, BufferedProgressUpdate>)
+                typeof(DownloadTaskUpdateDispatcher)
+                    .GetField(
+                        "_progressByNodeId",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .GetValue(sut)!;
+        var gates = (SemaphoreSlim[])
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetField(
+                    "_progressGates",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .GetValue(sut)!;
+        var gate = gates[(int)((uint)key.Id.GetHashCode() % (uint)gates.Length)];
+        var statuses =
+            (ConcurrentDictionary<Guid, DownloadStatus>)
+                typeof(DownloadTaskUpdateDispatcher)
+                    .GetField(
+                        "_statusByNodeId",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .GetValue(sut)!;
+        await gate.WaitAsync(CancellationToken);
+        var flush = (Task)
+            typeof(DownloadTaskUpdateDispatcher)
+                .GetMethod(
+                    "FlushProgressAsync",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+                )!
+                .Invoke(sut, [CancellationToken])!;
+        try
+        {
+            flush.IsCompleted.ShouldBeFalse();
+            buffered.ContainsKey(key.Id).ShouldBeTrue();
+            buffered.TryRemove(key.Id, out _).ShouldBeTrue();
+            statuses[key.Id] = DownloadStatus.Paused;
+        }
+        finally
+        {
+            gate.Release();
+            await flush.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        var after = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
+        after.DataReceived.ShouldNotBe(25);
+    }
+
+    [Test]
+    public async Task ShouldDrainLatestProgress_WhenPauseIsWaitingForDatabaseAccess()
     {
         await SetupDatabase(84328, config => config.MovieDownloadTasksCount = 1);
         var movieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
@@ -325,13 +487,12 @@ public class DownloadTaskUpdateDispatcherMovieUnitTests : BaseUnitTest<DownloadT
         await WaitUntilAsync(async () =>
         {
             var updatedMovieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
-            return updatedMovieFile.DownloadStatus == DownloadStatus.Paused
-                && updatedMovieFile.DataReceived == initialProgress.DataReceived;
+            return updatedMovieFile.DownloadStatus == DownloadStatus.Paused && updatedMovieFile.DataReceived == 999;
         });
 
         var updatedMovieFile = await IDbContext.DownloadTaskMovieFile.AsNoTracking().FirstAsync(CancellationToken);
         updatedMovieFile.DownloadStatus.ShouldBe(DownloadStatus.Paused);
-        updatedMovieFile.DataReceived.ShouldBe(initialProgress.DataReceived);
+        updatedMovieFile.DataReceived.ShouldBe(999);
     }
 
     [Test]
