@@ -226,7 +226,12 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                 fs.AddFile(destinationPath, new MockFileData(content.Take(4).ToArray()));
         });
         var fs = Mock.Container.Resolve<IFileSystem>();
-        fs.File.ReadAllBytes(strategy == "existing-destination" ? destinationPath : sourceToMove).ShouldBe(content);
+        (
+            await fs.File.ReadAllBytesAsync(
+                strategy == "existing-destination" ? destinationPath : sourceToMove,
+                CancellationToken
+            )
+        ).ShouldBe(content);
         (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!.DownloadStatus.ShouldBe(
             DownloadStatus.DownloadFinished
         );
@@ -311,7 +316,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                 _ => TelemetryRetentionReason.Destination,
             }
         );
-        fs.File.ReadAllBytes(finalPath).ShouldBe(content);
+        (await fs.File.ReadAllBytesAsync(finalPath, CancellationToken)).ShouldBe(content);
         fs.Path.GetFileName(finalPath).ShouldBe(target.FileName);
         fs.File.Exists(sourcePath).ShouldBeFalse();
         if (sourceToMove != finalPath)
@@ -338,7 +343,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
             retained.Percentage,
             retained.DirectoryMeta
         ).ShouldBe(controlBefore);
-        fs.File.ReadAllBytes(control.DownloadFilePath).ShouldBe(controlBytes);
+        (await fs.File.ReadAllBytesAsync(control.DownloadFilePath, CancellationToken)).ShouldBe(controlBytes);
         var logs = await dbContext.GetDownloadTaskLogsAsync(key, null, null, CancellationToken);
         logs.IsSuccess.ShouldBeTrue();
         logs.Errors.Count.ShouldBe(0);
@@ -506,9 +511,11 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         moveB.IsSuccess.ShouldBeTrue();
         moveB.Errors.Count.ShouldBe(0);
         var fs = Mock.Container.Resolve<IFileSystem>();
-        fs.File.ReadAllBytes(aFile.DestinationFilePath).ShouldBe(aBytes);
+        (await fs.File.ReadAllBytesAsync(aFile.DestinationFilePath, CancellationToken)).ShouldBe(aBytes);
         fs.File.Exists(aFile.DownloadFilePath).ShouldBeFalse();
-        fs.File.ReadAllBytes(bFile.DownloadFilePath.RemoveReapTempSuffix()).ShouldBe(bBytes);
+        (await fs.File.ReadAllBytesAsync(bFile.DownloadFilePath.RemoveReapTempSuffix(), CancellationToken)).ShouldBe(
+            bBytes
+        );
         fs.File.Exists(bFile.DownloadFilePath).ShouldBeFalse();
         fs.File.Exists(bFile.DestinationFilePath).ShouldBeFalse();
 
@@ -735,8 +742,10 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         result.IsCancelled.ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
         cancellation.IsCancellationRequested.ShouldBeTrue();
-        fs.File.ReadAllBytes(target.DownloadFilePath).ShouldBe(content);
-        fs.File.ReadAllBytes(target.DestinationFilePath).ShouldBe(content.Take(1024 * 1024).ToArray());
+        (await fs.File.ReadAllBytesAsync(target.DownloadFilePath, CancellationToken)).ShouldBe(content);
+        (await fs.File.ReadAllBytesAsync(target.DestinationFilePath, CancellationToken)).ShouldBe(
+            content.Take(1024 * 1024).ToArray()
+        );
         var persisted = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken))!;
         persisted.Id.ShouldBe(target.Id);
         persisted.DownloadStatus.ShouldBe(DownloadStatus.MovePaused);
@@ -752,7 +761,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         retained.DownloadStatus.ShouldBe(DownloadStatus.Queued);
         retained.FileDataTransferred.ShouldBe(0);
         retained.CurrentFileTransferBytesOffset.ShouldBe(0);
-        fs.File.ReadAllBytes(control.DownloadFilePath).ShouldBe(controlBytes);
+        (await fs.File.ReadAllBytesAsync(control.DownloadFilePath, CancellationToken)).ShouldBe(controlBytes);
         var logs = await dbContext.GetDownloadTaskLogsAsync(key, null, null, CancellationToken);
         logs.IsSuccess.ShouldBeTrue();
         logs.Errors.Count.ShouldBe(0);
@@ -923,14 +932,14 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         }
         else
         {
-            fs.File.ReadAllBytes(target.DownloadFilePath).ShouldBe(sourceBytes);
-            fs.File.ReadAllBytes(target.DestinationFilePath).ShouldBe(sourceBytes);
+            (await fs.File.ReadAllBytesAsync(target.DownloadFilePath, CancellationToken)).ShouldBe(sourceBytes);
+            (await fs.File.ReadAllBytesAsync(target.DestinationFilePath, CancellationToken)).ShouldBe(sourceBytes);
         }
         var retained = (await dbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken))!;
         retained.DownloadStatus.ShouldBe(DownloadStatus.Queued);
         retained.CurrentFileTransferBytesOffset.ShouldBe(0);
         retained.FileDataTransferred.ShouldBe(0);
-        fs.File.ReadAllBytes(control.DownloadFilePath).ShouldBe(controlBytes);
+        (await fs.File.ReadAllBytesAsync(control.DownloadFilePath, CancellationToken)).ShouldBe(controlBytes);
         var logs = await dbContext.GetDownloadTaskLogsAsync(key, null, null, CancellationToken);
         logs.IsSuccess.ShouldBeTrue();
         logs.Errors.Count.ShouldBe(0);
@@ -980,9 +989,11 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         var retained = (await dbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken))!;
         retained.DownloadStatus.ShouldBe(control.DownloadStatus);
         retained.FileDataTransferred.ShouldBe(control.FileDataTransferred);
-        Mock.Container.Resolve<IFileSystem>()
-            .File.ReadAllBytes(control.DownloadFilePath)
-            .ShouldBe(new byte[] { 99, 100 });
+        (
+            await Mock
+                .Container.Resolve<IFileSystem>()
+                .File.ReadAllBytesAsync(control.DownloadFilePath, CancellationToken)
+        ).ShouldBe(new byte[] { 99, 100 });
         Mock.Mock<ICommandExecutor>()
             .Verify(x => x.Send(It.IsAny<MoveFileWithResumeCommand>(), It.IsAny<CancellationToken>()), Times.Never());
         Mock.Mock<IEventPublisher>()
@@ -1022,7 +1033,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
             c.PlexOtherVideoLibraryCount = family == PlexMediaType.OtherVideos ? 1 : 0;
         });
         var dbContext = IDbContext;
-        DownloadTaskFileBase[] tasks = family switch
+        var tasks = family switch
         {
             PlexMediaType.MusicTrack => (
                 await dbContext
@@ -1101,7 +1112,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
             // Assert
             result.IsSuccess.ShouldBeTrue();
             result.Errors.ShouldBeEmpty();
-            fs.File.ReadAllBytes(tasks[i].DestinationFilePath).ShouldBe(contents[i]);
+            (await fs.File.ReadAllBytesAsync(tasks[i].DestinationFilePath, CancellationToken)).ShouldBe(contents[i]);
             fs.File.Exists(tasks[i].DownloadFilePath).ShouldBeFalse();
             var persisted = (await dbContext.GetDownloadTaskFileAsync(tasks[i].ToKey(), CancellationToken))!;
             persisted.DownloadStatus.ShouldBe(DownloadStatus.MoveFinished);
@@ -1115,7 +1126,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
                 var next = (await dbContext.GetDownloadTaskFileAsync(tasks[1].ToKey(), CancellationToken))!;
                 next.DownloadStatus.ShouldBe(DownloadStatus.DownloadFinished);
                 next.FileDataTransferred.ShouldBe(0);
-                fs.File.ReadAllBytes(tasks[1].DownloadFilePath).ShouldBe(contents[1]);
+                (await fs.File.ReadAllBytesAsync(tasks[1].DownloadFilePath, CancellationToken)).ShouldBe(contents[1]);
                 fs.File.Exists(tasks[1].DestinationFilePath).ShouldBeFalse();
                 var logs = await dbContext.GetDownloadTaskLogsAsync(tasks[1].ToKey(), null, null, CancellationToken);
                 logs.IsSuccess.ShouldBeTrue();
@@ -1233,7 +1244,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         persisted.FileDataTransferred.ShouldBe(0);
         persisted.CurrentFileTransferBytesOffset.ShouldBe(0);
         var fs = Mock.Container.Resolve<IFileSystem>();
-        fs.File.ReadAllBytes(target.DownloadFilePath).ShouldBe(bytes);
+        (await fs.File.ReadAllBytesAsync(target.DownloadFilePath, CancellationToken)).ShouldBe(bytes);
         fs.File.Exists(target.DestinationFilePath).ShouldBeFalse();
         if (cancelled)
         {
@@ -1383,7 +1394,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         );
         var destinationPath = Path.Combine(target.DirectoryMeta.DestinationRootPath, relative, target.FileName);
         var shortcutPath = renamedInDownloads ? sourcePath.RemoveReapTempSuffix() : destinationPath;
-        byte[] retainedBytes = Enumerable.Range(1, shortcutLength).Select(x => (byte)x).ToArray();
+        var retainedBytes = Enumerable.Range(1, shortcutLength).Select(x => (byte)x).ToArray();
         SetupFileSystem(fs => fs.AddFile(shortcutPath, new MockFileData(retainedBytes)));
         SetupDependencies(b =>
             b.RegisterType<DownloadTaskUpdateDispatcher>().As<IDownloadTaskUpdateDispatcher>().SingleInstance()
@@ -1420,7 +1431,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         persisted.FileDataTransferred.ShouldBe(0);
         persisted.CurrentFileTransferBytesOffset.ShouldBe(0);
         var fs = Mock.Container.Resolve<IFileSystem>();
-        fs.File.ReadAllBytes(shortcutPath).ShouldBe(retainedBytes);
+        (await fs.File.ReadAllBytesAsync(shortcutPath, CancellationToken)).ShouldBe(retainedBytes);
         fs.File.Exists(target.DownloadFilePath).ShouldBeFalse();
         if (renamedInDownloads)
             fs.File.Exists(destinationPath).ShouldBeFalse();
@@ -1576,11 +1587,11 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         persisted.FileTransferSpeed.ShouldBe(17);
         persisted.TimeRemaining.ShouldBe(13);
         var fs = Mock.Container.Resolve<IFileSystem>();
-        fs.File.ReadAllBytes(target.DownloadFilePath).ShouldBe(sourceBytes);
+        (await fs.File.ReadAllBytesAsync(target.DownloadFilePath, CancellationToken)).ShouldBe(sourceBytes);
         if (missingDestination)
             fs.File.Exists(target.DestinationFilePath).ShouldBeFalse();
         else
-            fs.File.ReadAllBytes(target.DestinationFilePath).ShouldBe(destinationBytes);
+            (await fs.File.ReadAllBytesAsync(target.DestinationFilePath, CancellationToken)).ShouldBe(destinationBytes);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IEventPublisher>().Verify();
     }
@@ -1714,7 +1725,9 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         interrupted.IsCancelled.ShouldBeTrue();
         interrupted.Errors.Count.ShouldBe(1);
         var fs = Mock.Container.Resolve<IFileSystem>();
-        fs.File.ReadAllBytes(target.DestinationFilePath).ShouldBe(content.Take(prefixLength).ToArray());
+        (await fs.File.ReadAllBytesAsync(target.DestinationFilePath, CancellationToken)).ShouldBe(
+            content.Take(prefixLength).ToArray()
+        );
         var paused = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken.None))!;
         paused.DownloadStatus.ShouldBe(DownloadStatus.MovePaused);
         paused.DataReceived.ShouldBe(total);
@@ -1741,7 +1754,9 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         pausedAfterCommand.CurrentFileTransferBytesOffset.ShouldBe(prefixLength);
         pausedAfterCommand.FileTransferSpeed.ShouldBe(0);
         pausedAfterCommand.TimeRemaining.ShouldBe(0);
-        fs.File.ReadAllBytes(target.DestinationFilePath).ShouldBe(content.Take(prefixLength).ToArray());
+        (await fs.File.ReadAllBytesAsync(target.DestinationFilePath, CancellationToken)).ShouldBe(
+            content.Take(prefixLength).ToArray()
+        );
 
         Mock.Mock<IMoveDownloadFileScheduler>()
             .Setup(x => x.StartMoveDownloadFileJob(key, CancellationToken.None))
@@ -1764,7 +1779,7 @@ public class MoveDownloadFileFromFileTaskCommandUnitTests : BaseCommandUnitTest<
         resumed.IsSuccess.ShouldBeTrue();
         resumed.Errors.Count.ShouldBe(0);
         moveOffsets.ShouldBe([0, prefixLength]);
-        fs.File.ReadAllBytes(target.DestinationFilePath).ShouldBe(content);
+        (await fs.File.ReadAllBytesAsync(target.DestinationFilePath, CancellationToken)).ShouldBe(content);
         fs.File.Exists(target.DownloadFilePath).ShouldBeFalse();
         var completed = (await dbContext.GetDownloadTaskFileAsync(key, CancellationToken.None))!;
         completed.DownloadStatus.ShouldBe(DownloadStatus.MoveFinished);

@@ -63,7 +63,7 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
         // Arrange
         using var cancellationSource = new CancellationTokenSource();
         var cancellationToken = cancellationSource.Token;
-        cancellationSource.Cancel();
+        await cancellationSource.CancelAsync();
         var context = SetupJobContext(cancellationToken);
         var exception = new OperationCanceledException(cancellationToken);
         ResultBase? capturedResult = null;

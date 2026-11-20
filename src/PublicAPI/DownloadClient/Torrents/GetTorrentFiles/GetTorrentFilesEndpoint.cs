@@ -58,9 +58,12 @@ public sealed class GetTorrentFilesEndpoint : Endpoint<GetTorrentFilesRequest, L
 
         await Task.WhenAll(episodeFilesTask, movieFilesTask);
 
-        var files = episodeFilesTask
-            .Result.Cast<DownloadTaskFileBase>()
-            .Concat(movieFilesTask.Result)
+        var episodeFiles = await episodeFilesTask;
+        var movieFiles = await movieFilesTask;
+
+        var files = episodeFiles
+            .Cast<DownloadTaskFileBase>()
+            .Concat(movieFiles)
             .Select(file => new QBittorrentTorrentFile { Name = ResolveTorrentFilePath(file) })
             .ToList();
 

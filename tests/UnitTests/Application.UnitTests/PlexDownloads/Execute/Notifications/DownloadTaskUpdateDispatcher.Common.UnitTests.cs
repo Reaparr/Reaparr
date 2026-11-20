@@ -840,7 +840,7 @@ public class DownloadTaskUpdateDispatcherCommonUnitTests : BaseUnitTest<Download
         var movieFile = await IDbContext.DownloadTaskMovieFile.FirstAsync(CancellationToken);
         var key = movieFile.ToKey();
         using var sendCancellation = new CancellationTokenSource();
-        sendCancellation.Cancel();
+        await sendCancellation.CancelAsync();
         Mock.Mock<IDownloadHubService>()
             .Setup(x =>
                 x.SendDownloadPatchAsync(

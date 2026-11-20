@@ -1,5 +1,4 @@
 using FlexQuery.NET;
-using FlexQuery.NET.Models;
 using Reaparr.Application.Contracts;
 using static Reaparr.Data.MediaByTypeQuerySupport;
 
@@ -115,9 +114,7 @@ public sealed class GetTvShowMediaByTypeCommandHandler
                     .ToListAsync(cancellationToken);
                 response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
                     materialized,
-                    ((IReadOnlyList<SortNode>)options.Sort).Count == 0
-                        ? SortType.Title
-                        : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
+                    options.Sort.Count == 0 ? SortType.Title : options.Sort[0].Field.ToSortType()
                 );
 
                 var pageCandidates =
@@ -141,9 +138,7 @@ public sealed class GetTvShowMediaByTypeCommandHandler
                     .ToListAsync(cancellationToken);
                 response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
                     materialized,
-                    ((IReadOnlyList<SortNode>)options.Sort).Count == 0
-                        ? SortType.Title
-                        : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
+                    options.Sort.Count == 0 ? SortType.Title : options.Sort[0].Field.ToSortType()
                 );
 
                 var pageCandidates = await sortedTvShowQuery

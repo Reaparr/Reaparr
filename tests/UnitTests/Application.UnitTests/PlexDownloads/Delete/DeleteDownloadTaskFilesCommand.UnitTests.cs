@@ -509,7 +509,7 @@ public class DeleteDownloadTaskFilesCommandUnitTests : BaseCommandUnitTest<Delet
         if (remainingContent == "empty" && taskType == DownloadTaskType.MusicTrackData)
             fileSystem.Directory.Exists(Path.GetDirectoryName(target.DownloadDirectory)!).ShouldBeFalse();
         if (remainingContent == "unrelated")
-            fileSystem.File.ReadAllBytes(unrelatedPath).ShouldBe(unrelatedBytes);
+            (await fileSystem.File.ReadAllBytesAsync(unrelatedPath, CancellationToken)).ShouldBe(unrelatedBytes);
 
         var persistedControl = await IDbContext.GetDownloadTaskFileAsync(control.ToKey(), CancellationToken);
         persistedControl.ShouldNotBeNull();

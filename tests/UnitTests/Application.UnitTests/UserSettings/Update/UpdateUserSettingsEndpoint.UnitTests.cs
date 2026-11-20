@@ -1,8 +1,5 @@
-using System.IO.Abstractions;
-using Autofac;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
-using Reaparr.Environment;
 using Reaparr.Settings;
 
 namespace Reaparr.Application.UnitTests;

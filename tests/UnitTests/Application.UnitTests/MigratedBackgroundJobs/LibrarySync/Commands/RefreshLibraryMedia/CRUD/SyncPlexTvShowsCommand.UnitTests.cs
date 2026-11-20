@@ -670,7 +670,7 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
         var originalSeasonIds = IDbContext.PlexTvShowSeason.Select(x => x.Id).Order().ToList();
         var originalEpisodeIds = IDbContext.PlexTvShowEpisodes.Select(x => x.Id).Order().ToList();
         using var cancellationTokenSource = new CancellationTokenSource();
-        cancellationTokenSource.Cancel();
+        await cancellationTokenSource.CancelAsync();
 
         // Act
         var result = await Mock.Create<SyncPlexTvShowsCommandHandler>()
@@ -1741,7 +1741,7 @@ public class SyncPlexTvShowsCommandUnitTests : BaseCommandUnitTest<SyncPlexTvSho
             })
             .Single();
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         SetIds(library, [show]);
         library.TvShows.Clear();
         library.TvShows.Add(show);

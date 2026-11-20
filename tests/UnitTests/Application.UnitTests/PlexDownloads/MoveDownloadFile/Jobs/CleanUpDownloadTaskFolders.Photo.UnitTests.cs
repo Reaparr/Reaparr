@@ -45,7 +45,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         fs.Directory.Exists(Path.GetDirectoryName(file.DownloadDirectory)!).ShouldBe(containsFile);
         fs.Directory.Exists(file.DirectoryMeta.GetDownloadCategoryDirectory(file.DownloadTaskType)).ShouldBeTrue();
         if (containsFile)
-            fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
+            (await fs.File.ReadAllTextAsync(file.DownloadFilePath, CancellationToken)).ShouldBe("target bytes");
         (await dbContext.DownloadTaskPhotoImageFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
             file.Id
         );
@@ -450,7 +450,7 @@ public class CleanUpDownloadTaskFoldersPhotoUnitTests : BaseCommandUnitTest<Clea
         fs.Directory.Exists(directDirectory).ShouldBeFalse();
         fs.Directory.Exists(parentDirectory).ShouldBeTrue();
         fs.Directory.Exists(ancestorDirectory).ShouldBeTrue();
-        fs.File.ReadAllText(retainedFilePath).ShouldBe("retained bytes");
+        (await fs.File.ReadAllTextAsync(retainedFilePath, CancellationToken)).ShouldBe("retained bytes");
     }
 
     [Test]

@@ -137,9 +137,7 @@ public sealed class GetMusicArtistMediaByTypeCommandHandler
         var materialized = await artistQuery.ProjectMusicArtistNavigationIndexRows().ToListAsync(ct);
         response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
             materialized,
-            ((IReadOnlyList<SortNode>)options.Sort).Count == 0
-                ? SortType.Title
-                : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
+            options.Sort.Count == 0 ? SortType.Title : options.Sort[0].Field.ToSortType()
         );
 
         response.Items = await artistQuery.ApplyPaging(options).ProjectMusicArtistPage().ToListAsync(ct);

@@ -432,7 +432,7 @@ public class MoveDownloadFileJobQueueUnitTests : BaseUnitTest<MoveDownloadFileJo
             .Select(file => file.DownloadStatus)
             .ShouldBe([DownloadStatus.DownloadFinished, DownloadStatus.DownloadFinished]);
         using var stopping = new CancellationTokenSource();
-        stopping.Cancel();
+        await stopping.CancelAsync();
         Mock.Mock<IHostApplicationLifetime>()
             .SetupSequence(x => x.ApplicationStopping)
             .Returns(stopsDuringSelection ? CancellationToken.None : stopping.Token)

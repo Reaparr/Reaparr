@@ -190,7 +190,7 @@ public class GenerateDownloadTaskPhotoImagesCommandHandler
     private static void UpdatePhotoFolderAggregates(DownloadTaskPhotoFolder folder, long dataTotal)
     {
         folder.DownloadStatus = DownloadStatus.Queued;
-        for (DownloadTaskPhotoFolder? current = folder; current is not null; current = current.Parent)
+        for (var current = folder; current is not null; current = current.Parent)
             current.DataTotal += dataTotal;
     }
 

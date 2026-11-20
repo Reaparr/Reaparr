@@ -387,7 +387,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         var firstCompleted = await Task.WhenAny(execution, leaseRequested.Task).WaitAsync(CancellationToken);
         firstCompleted.ShouldBe(leaseRequested.Task);
         execution.IsCompleted.ShouldBeFalse();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await execution.WaitAsync(CancellationToken);
 
         // Assert
@@ -734,7 +734,7 @@ public class LibrarySyncJobUnitTests : BaseUnitTest<LibrarySyncJob>
         );
         var cancellation = new CancellationTokenSource();
         var cancellationToken = cancellation.Token;
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var context = SetupJobContext(library.PlexServerId, library.Id, cancellationToken);
         Mock.Mock<ICommandExecutor>()
             .Setup(x =>

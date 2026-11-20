@@ -39,7 +39,7 @@ public class MoveFileWithResumeCommandHandlerUnitTests : BaseUnitTest<MoveFileWi
         result.IsSuccess.ShouldBeTrue();
 
         var file = Mock.Container.Resolve<IFile>();
-        using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         var readBack = new byte[targetStream.Length];
         _ = await targetStream.ReadAsync(readBack, 0, readBack.Length, CancellationToken.None);
 
@@ -112,7 +112,7 @@ public class MoveFileWithResumeCommandHandlerUnitTests : BaseUnitTest<MoveFileWi
         result.IsSuccess.ShouldBeTrue();
 
         var file = Mock.Container.Resolve<IFile>();
-        using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         var readBack = new byte[targetStream.Length];
         _ = await targetStream.ReadAsync(readBack, 0, readBack.Length, CancellationToken.None);
         readBack.ShouldBe(content);
@@ -137,7 +137,7 @@ public class MoveFileWithResumeCommandHandlerUnitTests : BaseUnitTest<MoveFileWi
         });
 
         var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         var command = new MoveFileWithResumeCommand
         {
@@ -153,7 +153,7 @@ public class MoveFileWithResumeCommandHandlerUnitTests : BaseUnitTest<MoveFileWi
         result.IsCancelled.ShouldBeTrue();
 
         var file = Mock.Container.Resolve<IFile>();
-        using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
         // Cancellation was requested before the first read, so no bytes should be written.
         targetStream.Length.ShouldBe(0);
@@ -193,7 +193,7 @@ public class MoveFileWithResumeCommandHandlerUnitTests : BaseUnitTest<MoveFileWi
         result.IsCancelled.ShouldBeTrue();
 
         var file = Mock.Container.Resolve<IFile>();
-        using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         targetStream.Length.ShouldBeLessThan(content.LongLength);
         targetStream.Length.ShouldBeGreaterThanOrEqualTo(1_048_576);
     }
@@ -282,7 +282,7 @@ public class MoveFileWithResumeCommandHandlerUnitTests : BaseUnitTest<MoveFileWi
         progressCalled.ShouldBeFalse();
 
         var file = Mock.Container.Resolve<IFile>();
-        using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         targetStream.Length.ShouldBe(content.LongLength);
     }
 
@@ -438,7 +438,7 @@ public class MoveFileWithResumeCommandHandlerUnitTests : BaseUnitTest<MoveFileWi
         });
 
         var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         var command = new MoveFileWithResumeCommand
         {
@@ -604,7 +604,7 @@ public class MoveFileWithResumeCommandHandlerUnitTests : BaseUnitTest<MoveFileWi
         result.IsSuccess.ShouldBeTrue();
 
         var file = Mock.Container.Resolve<IFile>();
-        using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var targetStream = file.Open(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         var readBack = new byte[targetStream.Length];
         _ = await targetStream.ReadAsync(readBack, 0, readBack.Length, CancellationToken.None);
 

@@ -52,13 +52,13 @@ public class GetDirectDownloadUrlCommandHandler : ICommandHandler<GetDirectDownl
         var initialProbeResult = await initialProbeTask;
         if (initialProbeResult.IsFailed)
         {
-            fallbackProbeCancellationTokenSource.Cancel();
+            await fallbackProbeCancellationTokenSource.CancelAsync();
             return initialProbeResult.ToResult();
         }
 
         if (initialProbeResult.Value.IsSuccessStatusCode)
         {
-            fallbackProbeCancellationTokenSource.Cancel();
+            await fallbackProbeCancellationTokenSource.CancelAsync();
             return Result.Ok(defaultDownloadUrl);
         }
 
@@ -66,7 +66,7 @@ public class GetDirectDownloadUrlCommandHandler : ICommandHandler<GetDirectDownl
 
         if (statusCode != HttpStatusCode.Forbidden)
         {
-            fallbackProbeCancellationTokenSource.Cancel();
+            await fallbackProbeCancellationTokenSource.CancelAsync();
             return Result
                 .Fail(
                     "Plex download URL probe failed with status {StatusCode} ({StatusCodeInt})",

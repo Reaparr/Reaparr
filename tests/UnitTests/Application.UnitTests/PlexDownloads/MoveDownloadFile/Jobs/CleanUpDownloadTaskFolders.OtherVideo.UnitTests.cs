@@ -40,7 +40,7 @@ public class CleanUpDownloadTaskFoldersOtherVideoUnitTests : BaseCommandUnitTest
         fs.Directory.Exists(Path.GetDirectoryName(file.DownloadDirectory)!).ShouldBe(containsFile);
         fs.Directory.Exists(file.DirectoryMeta.GetDownloadCategoryDirectory(file.DownloadTaskType)).ShouldBeTrue();
         if (containsFile)
-            fs.File.ReadAllText(file.DownloadFilePath).ShouldBe("target bytes");
+            (await fs.File.ReadAllTextAsync(file.DownloadFilePath, CancellationToken)).ShouldBe("target bytes");
         (await dbContext.DownloadTaskOtherVideoFiles.Select(x => x.Id).SingleAsync(CancellationToken)).ShouldBe(
             file.Id
         );

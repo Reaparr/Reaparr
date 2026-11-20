@@ -86,52 +86,52 @@ public interface IPathProvider
     /// <summary>
     /// Gets the default folder name used for application logs.
     /// </summary>
-    public static string DefaultLogsFolderName => "Logs";
+    static string DefaultLogsFolderName => "Logs";
 
     /// <summary>
     /// Gets the sub-folder in some cases such as in Desktop mode.
     /// </summary>
-    public static string DefaultReaparrFolderName => "Reaparr";
+    static string DefaultReaparrFolderName => "Reaparr";
 
     /// <summary>
     /// Gets the default folder name used for movie libraries under the root media directory.
     /// </summary>
-    public static string DefaultMovieFolderName => "Movies";
+    static string DefaultMovieFolderName => "Movies";
 
     /// <summary>
     /// Gets the default folder name used for downloaded files under the root media directory.
     /// </summary>
-    public static string DefaultDownloadsFolderName => "Downloads";
+    static string DefaultDownloadsFolderName => "Downloads";
 
     /// <summary>
     /// Gets the default folder name used for TV show libraries under the root media directory.
     /// </summary>
-    public static string DefaultTvShowsFolderName => "TvShows";
+    static string DefaultTvShowsFolderName => "TvShows";
 
     /// <summary>
     /// Gets the default folder name used for music libraries under the root media directory.
     /// </summary>
-    public static string DefaultMusicFolderName => "Music";
+    static string DefaultMusicFolderName => "Music";
 
     /// <summary>
     /// Gets the default folder name used for photo libraries under the root media directory.
     /// </summary>
-    public static string DefaultPhotosFolderName => "Photos";
+    static string DefaultPhotosFolderName => "Photos";
 
     /// <summary>
     /// Gets the default folder name used for uncategorized media under the root media directory.
     /// </summary>
-    public static string DefaultOtherFolderName => "OtherVideos";
+    static string DefaultOtherFolderName => "OtherVideos";
 
     /// <summary>
     /// Gets the default folder name used for game libraries under the root media directory.
     /// </summary>
-    public static string DefaultGamesFolderName => "Games";
+    static string DefaultGamesFolderName => "Games";
 
     /// <summary>
     /// Gets the default folder name used for the Config folder.
     /// </summary>
-    public static string DefaultConfigFolderName => "Config";
+    static string DefaultConfigFolderName => "Config";
 
     /// <summary>
     /// Gets the file name used for the main Reaparr settings file.

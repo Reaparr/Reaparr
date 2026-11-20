@@ -23,9 +23,9 @@ public class ReaparrDbContextManagerMigrationProgressUnitTests : BaseUnitTest
         var migrations = database.GetMigrations().ToArray();
         if (pendingCount > 0)
             await database.GetService<IMigrator>().MigrateAsync(migrations[^(pendingCount + 1)], CancellationToken);
-        var pending = database.GetPendingMigrations().ToArray();
+        var pending = (await database.GetPendingMigrationsAsync(CancellationToken)).ToArray();
         pending.ShouldBe(migrations.TakeLast(pendingCount).ToArray());
-        var appliedBefore = database.GetAppliedMigrations().ToArray();
+        var appliedBefore = (await database.GetAppliedMigrationsAsync(CancellationToken)).ToArray();
         var databasePath = Mock.Container.Resolve<IPathProvider>().DatabasePath;
         SetAppRuntimeInfo(x => x.IsIntegrationTestMode = false);
         Mock.Mock<IFile>().Setup(x => x.Exists(databasePath)).Returns(true).Verifiable(Times.Once());
@@ -42,8 +42,10 @@ public class ReaparrDbContextManagerMigrationProgressUnitTests : BaseUnitTest
         // Assert
         result.IsSuccess.ShouldBeTrue();
         result.Errors.Count.ShouldBe(0);
-        database.GetPendingMigrations().ShouldBeEmpty();
-        database.GetAppliedMigrations().ShouldBe(appliedBefore.Concat(pending).OrderBy(x => x).ToArray());
+        (await database.GetPendingMigrationsAsync(CancellationToken)).ShouldBeEmpty();
+        (await database.GetAppliedMigrationsAsync(CancellationToken)).ShouldBe(
+            appliedBefore.Concat(pending).OrderBy(x => x).ToArray()
+        );
         var events = TestCorrelator.GetLogEventsFromContextId(context.Id).ToArray();
         var steps = events
             .Where(x => x.Properties.ContainsKey("MigrationStep"))

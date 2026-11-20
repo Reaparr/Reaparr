@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
-using LukeHagar.PlexAPI.SDK.Models.Requests;
 using Reaparr.Application.Contracts;
 using Reaparr.Data.Contracts;
 using Reaparr.PlexApi.Contracts;
@@ -254,7 +253,7 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         var operation = client.General.GetIdentityAsync().ToResponse(cancellation.Token);
 
         // Act
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var result = await operation;
 
         result.IsCancelled.ShouldBeTrue();
@@ -293,7 +292,7 @@ public class PlexApiClientFactoryExecutionUnitTests : BaseUnitTest
         var operation = client.General.GetIdentityAsync().ToResponse(effectiveCancellation.Token);
 
         // Act
-        effectiveCancellation.Cancel();
+        await effectiveCancellation.CancelAsync();
         var result = await operation.WaitAsync(TimeSpan.FromSeconds(2));
 
         // Assert

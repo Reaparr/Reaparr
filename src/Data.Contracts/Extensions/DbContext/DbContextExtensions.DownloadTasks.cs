@@ -1958,18 +1958,22 @@ public static partial class DbContextExtensions
             episodeFileEpisodeIdsTask
         );
 
+        var movieRootIds = await movieRootIdsTask;
+        var movieFileRootIds = await movieFileRootIdsTask;
+        var tvShowRootIds = await tvShowRootIdsTask;
+        var directSeasonRootIds = await seasonRootIdsTask;
+        var episodeSeasonIds = await episodeSeasonIdsTask;
+        var episodeFileEpisodeIds = await episodeFileEpisodeIdsTask;
+
         var rootIds = new HashSet<Guid>(
-            movieRootIdsTask
-                .Result.Concat(movieFileRootIdsTask.Result)
-                .Concat(tvShowRootIdsTask.Result)
-                .Concat(seasonRootIdsTask.Result)
+            movieRootIds.Concat(movieFileRootIds).Concat(tvShowRootIds).Concat(directSeasonRootIds)
         );
 
-        var seasonIds = episodeSeasonIdsTask.Result;
-        if (episodeFileEpisodeIdsTask.Result.Count > 0)
+        var seasonIds = episodeSeasonIds;
+        if (episodeFileEpisodeIds.Count > 0)
         {
             var episodeDerivedSeasonIds = await dbContext
-                .DownloadTaskTvShowEpisode.Where(x => episodeFileEpisodeIdsTask.Result.Contains(x.Id))
+                .DownloadTaskTvShowEpisode.Where(x => episodeFileEpisodeIds.Contains(x.Id))
                 .Select(x => x.ParentId)
                 .ToListAsync(ct);
             seasonIds = seasonIds.Concat(episodeDerivedSeasonIds).Distinct().ToList();

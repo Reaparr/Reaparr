@@ -237,7 +237,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         var metadata = CreateSourceMetadata(movieData, movieData.PlexMovieId);
         var (torrentFile, torrentFileMock) = CreateMockTorrentFile(metadata, "task-creation-cancelled.torrent");
         var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
-        using var expectedHashStream = torrentFile.OpenReadStream();
+        await using var expectedHashStream = torrentFile.OpenReadStream();
         var expectedHashId = new BencodeParser().Parse<Torrent>(expectedHashStream).GetInfoHash();
         using var executionCancellation = new CancellationTokenSource();
         var executionCancellationToken = executionCancellation.Token;
@@ -440,7 +440,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         var metadata = CreateSourceMetadata(movieData, movieData.PlexMovieId);
         var (torrentFile, torrentFileMock) = CreateMockTorrentFile(metadata, "association-failure.torrent");
         var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
-        using var expectedHashStream = torrentFile.OpenReadStream();
+        await using var expectedHashStream = torrentFile.OpenReadStream();
         var expectedHashId = new BencodeParser().Parse<Torrent>(expectedHashStream).GetInfoHash();
         var endpointDbContext = IDbContext;
         var createResult = Result.Ok(new DownloadTaskCreationReport { Movies = 1 });
@@ -589,7 +589,7 @@ public class AddTorrentEndpointUnitTests : BaseEndpointUnitTest<AddTorrentEndpoi
         var metadata = CreateSourceMetadata(movieData, movieData.PlexMovieId);
         var (torrentFile, torrentFileMock) = CreateMockTorrentFile(metadata, "association-cancelled.torrent");
         var request = new AddTorrentEndpointRequest { TorrentFile = torrentFile };
-        using var expectedHashStream = torrentFile.OpenReadStream();
+        await using var expectedHashStream = torrentFile.OpenReadStream();
         var expectedHashId = new BencodeParser().Parse<Torrent>(expectedHashStream).GetInfoHash();
         using var cancellation = new CancellationTokenSource();
         var cancellationToken = cancellation.Token;

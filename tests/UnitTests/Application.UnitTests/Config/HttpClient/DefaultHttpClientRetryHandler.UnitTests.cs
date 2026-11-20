@@ -79,7 +79,7 @@ public class DefaultHttpClientRetryHandlerUnitTests : BaseUnitTest
         // Act
         var sendTask = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation.Token);
         await bufferingStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var exception = await Should.ThrowAsync<OperationCanceledException>(() => sendTask);
         await bufferingCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
 

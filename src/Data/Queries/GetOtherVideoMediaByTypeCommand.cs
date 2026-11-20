@@ -1,5 +1,4 @@
 using FlexQuery.NET;
-using FlexQuery.NET.Models;
 using static Reaparr.Data.MediaByTypeQuerySupport;
 
 namespace Reaparr.Data;
@@ -68,9 +67,7 @@ public sealed class GetOtherVideoMediaByTypeCommandHandler
         var materialized = await videoQuery.ProjectOtherVideoNavigationIndexRows().ToListAsync(cancellationToken);
         response.NavigationIndexes = MediaNavigationIndexBuilder.Build(
             materialized,
-            ((IReadOnlyList<SortNode>)options.Sort).Count == 0
-                ? SortType.Title
-                : ((IReadOnlyList<SortNode>)options.Sort)[0].Field.ToSortType()
+            options.Sort.Count == 0 ? SortType.Title : options.Sort[0].Field.ToSortType()
         );
 
         var pageCandidates = await videoQuery

@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Moq;
 using Moq.Contrib.HttpClient;
 
 namespace Reaparr.IntegrationTests;

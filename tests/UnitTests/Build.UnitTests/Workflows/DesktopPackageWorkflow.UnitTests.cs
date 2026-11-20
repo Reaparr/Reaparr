@@ -1,8 +1,6 @@
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using Autofac;
-using FastEndpoints;
-using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.TestCorrelator;
 
@@ -269,7 +267,7 @@ internal class DesktopPackageWorkflowUnitTests : BaseUnitTest
             DryRun = true,
         };
         using var context = TestCorrelator.CreateContext();
-        using var logger = new LoggerConfiguration().WriteTo.TestCorrelator().CreateLogger();
+        await using var logger = new LoggerConfiguration().WriteTo.TestCorrelator().CreateLogger();
         var concreteRunner = new DesktopCommandRunner(paths, fileSystem, logger);
         var runner = new Mock<IDesktopCommandRunner>(MockBehavior.Strict);
         runner

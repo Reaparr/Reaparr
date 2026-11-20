@@ -55,16 +55,19 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
                             )
                         )
                         .Returns<string, string, CancellationToken>(
-                            (url, targetPath, _) =>
+                            async (url, targetPath, cancellationToken) =>
                             {
                                 downloadRequests.Add((url, targetPath));
-                                file.WriteAllBytes(targetPath, originalBytes[new Uri(url).AbsolutePath]);
+                                await file.WriteAllBytesAsync(
+                                    targetPath,
+                                    originalBytes[new Uri(url).AbsolutePath],
+                                    cancellationToken
+                                );
                                 mock.Raise(
                                     x => x.DownloadFileCompleted += null,
                                     downloader,
                                     new AsyncCompletedEventArgs(null, false, downloader.Package)
                                 );
-                                return Task.CompletedTask;
                             }
                         );
                     return downloader;
@@ -243,7 +246,7 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         await arrangeContext.SaveChangesAsync(CancellationToken);
         byte[] controlBytes = [9, 8, 7];
         fileSystem.Directory.CreateDirectory(control.DownloadDirectory);
-        fileSystem.File.WriteAllBytes(control.DownloadFilePath, controlBytes);
+        await fileSystem.File.WriteAllBytesAsync(control.DownloadFilePath, controlBytes, CancellationToken);
         var controlSourcePath = control.DownloadFilePath;
         var controlDestinationPath = control.DestinationFilePath;
         var selections = new List<DownloadMediaDTO>
@@ -396,7 +399,9 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         files.ShouldAllBe(x => x.DataReceived == fileSize && x.FileDataTransferred == fileSize);
         foreach (var file in files)
         {
-            fileSystem.File.ReadAllBytes(file.DestinationFilePath).ShouldBe(originalBytes[file.FileLocationUrl]);
+            (await fileSystem.File.ReadAllBytesAsync(file.DestinationFilePath, CancellationToken)).ShouldBe(
+                originalBytes[file.FileLocationUrl]
+            );
             fileSystem.File.Exists(file.DownloadFilePath).ShouldBeFalse();
             fileSystem.File.Exists(file.DownloadFilePath.RemoveReapTempSuffix()).ShouldBeFalse();
             fileSystem.Directory.Exists(file.DownloadDirectory).ShouldBeFalse();
@@ -422,7 +427,7 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
         retainedControl.DownloadStatus.ShouldBe(DownloadStatus.Paused);
         retainedControl.DownloadFilePath.ShouldBe(controlSourcePath);
         retainedControl.DestinationFilePath.ShouldBe(controlDestinationPath);
-        fileSystem.File.ReadAllBytes(controlSourcePath).ShouldBe(controlBytes);
+        (await fileSystem.File.ReadAllBytesAsync(controlSourcePath, CancellationToken)).ShouldBe(controlBytes);
         fileSystem.File.Exists(controlDestinationPath).ShouldBeFalse();
         downloadRequests.Count.ShouldBe(files.Count);
         downloadRequests
@@ -435,7 +440,7 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
     public async Task ShouldCreateAndTransferDeduplicatedPhotoFiles_WhenAlbumAndDirectSelectionsOverlap()
     {
         // Arrange
-        byte[] expectedContent = FakeData.GetDownloadFile(1);
+        var expectedContent = FakeData.GetDownloadFile(1);
         var seed = new Seed(231156);
         using var container = await CreateContainer(seed, config =>
         {
@@ -463,15 +468,18 @@ public class CreateDownloadTasksEndpointIntegrationTests : BaseIntegrationTests
                             )
                         )
                         .Returns<string, string, CancellationToken>(
-                            (_, targetPath, _) =>
+                            async (_, targetPath, cancellationToken) =>
                             {
-                                file.WriteAllBytes(targetPath.RemoveReapTempSuffix(), expectedContent);
+                                await file.WriteAllBytesAsync(
+                                    targetPath.RemoveReapTempSuffix(),
+                                    expectedContent,
+                                    cancellationToken
+                                );
                                 mock.Raise(
                                     x => x.DownloadFileCompleted += null,
                                     downloader,
                                     new AsyncCompletedEventArgs(null, false, downloader.Package)
                                 );
-                                return Task.CompletedTask;
                             }
                         );
                     return downloader;

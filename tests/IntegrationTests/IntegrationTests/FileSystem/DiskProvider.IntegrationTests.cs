@@ -17,7 +17,7 @@ public class DiskProviderIntegrationTests : BaseIntegrationTests
         var zebraPath = Directory.CreateDirectory(Path.Combine(rootPath, "Zebra")).FullName;
         var cacheMediaPath = Directory.CreateDirectory(Path.Combine(rootPath, "CacheMedia")).FullName;
         var retainedFile = Path.Combine(excludedPath, "keep.txt");
-        File.WriteAllText(retainedFile, "preserved");
+        await File.WriteAllTextAsync(retainedFile, "preserved", CancellationToken);
         var modifiedUtc = new DateTime(2001, 2, 3, 4, 5, 6, DateTimeKind.Utc);
         Directory.SetLastWriteTimeUtc(excludedPath, modifiedUtc);
         Directory.SetLastWriteTimeUtc(zebraPath, modifiedUtc);
@@ -57,7 +57,7 @@ public class DiskProviderIntegrationTests : BaseIntegrationTests
         ]);
         Directory.GetLastWriteTimeUtc(excludedPath).ShouldBe(modifiedUtc);
         Directory.GetFileSystemEntries(excludedPath).ShouldBe([retainedFile]);
-        File.ReadAllText(retainedFile).ShouldBe("preserved");
+        (await File.ReadAllTextAsync(retainedFile, CancellationToken)).ShouldBe("preserved");
         Directory
             .GetDirectories(rootPath)
             .Select(Path.GetFileName)

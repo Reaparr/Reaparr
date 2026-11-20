@@ -78,7 +78,7 @@ public class MediaOverviewRebuildCoordinatorUnitTests
         using var syncLease = await coordinator.AcquireLibrarySyncLeaseAsync(CancellationToken.None);
         using var cancellation = new CancellationTokenSource();
         var rebuildTask = coordinator.AcquireRebuildLeaseAsync(cancellation.Token);
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
 
         // Act
         await Should.ThrowAsync<OperationCanceledException>(async () => await rebuildTask);

@@ -66,7 +66,7 @@ public abstract class DownloadTaskParentBase : DownloadTaskBase, IDownloadTaskPr
 
     private DownloadTaskDirectory? GetDirectoryMeta()
     {
-        IEnumerable<DownloadTaskBase> children = this switch
+        var children = this switch
         {
             DownloadTaskMovie x => x.Children,
             DownloadTaskTvShow x => x.Children,

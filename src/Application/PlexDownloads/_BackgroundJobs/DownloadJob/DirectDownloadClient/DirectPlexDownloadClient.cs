@@ -241,7 +241,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
 
                         if (completionSource.Task.IsCompleted)
                         {
-                            var completionArgs = completionSource.Task.Result;
+                            var completionArgs = await completionSource.Task;
                             latestCallbackSnapshot = (completionArgs.UserState as DownloadPackage)?.ToSnapshot();
                             return await ProcessDownloadCompletedAsync(
                                 completionArgs,
@@ -250,15 +250,11 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                                 downloadTask.DataTotal
                             );
                         }
-                        else
-                        {
-                            var reconciliationResult = await ReconcileMissingCompletionCallbackAsync(
-                                downloadTaskKey,
-                                downloadTask.DownloadFilePath,
-                                downloadTask.DataTotal
-                            );
-                            return reconciliationResult;
-                        }
+                        return await ReconcileMissingCompletionCallbackAsync(
+                            downloadTaskKey,
+                            downloadTask.DownloadFilePath,
+                            downloadTask.DataTotal
+                        );
                     }
                     finally
                     {

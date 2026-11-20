@@ -551,7 +551,7 @@ public class CompareMusicPlexLibraryCommandHandlerUnitTests : BaseCommandUnitTes
         beforeTracks.Count.ShouldBe(2);
         using var cancellation = new CancellationTokenSource();
         Action cancel = cancellation.Cancel;
-        using var writerContext = (ReaparrDbContext)IDbContext;
+        await using var writerContext = (ReaparrDbContext)IDbContext;
         var injected = false;
         writerContext.SavingChanges += (_, _) =>
         {

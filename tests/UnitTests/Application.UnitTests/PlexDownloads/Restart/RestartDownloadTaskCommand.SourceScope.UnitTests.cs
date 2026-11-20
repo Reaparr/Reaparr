@@ -155,9 +155,9 @@ public class RestartDownloadTaskCommandSourceScopeUnitTests : BaseCommandUnitTes
         BasePlexMedia originalMedia;
         BasePlexMedia competingMedia;
         string originalFullTitle;
-        string originalMovieTitle = string.Empty;
-        string originalTvShowTitle = string.Empty;
-        string originalSeasonTitle = string.Empty;
+        var originalMovieTitle = string.Empty;
+        var originalTvShowTitle = string.Empty;
+        var originalSeasonTitle = string.Empty;
         DownloadTaskBase root;
         DownloadTaskFileBase target;
         DownloadTaskFileBase control;

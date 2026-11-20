@@ -1,5 +1,3 @@
-using System.Net.Http;
-
 namespace Reaparr.FluentResultExtension.UnitTests;
 
 public class ResultExtensionsStorageTests

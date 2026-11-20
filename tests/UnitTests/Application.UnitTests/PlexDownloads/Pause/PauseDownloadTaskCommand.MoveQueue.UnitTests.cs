@@ -62,7 +62,7 @@ public class PauseDownloadTaskCommandMoveQueueUnitTests : BaseCommandUnitTest<Pa
         });
         using var stopping = new CancellationTokenSource();
         if (shuttingDown)
-            stopping.Cancel();
+            await stopping.CancelAsync();
         var activeKey = selected[0].ToKey();
         var waitingKey = waiting.ToKey();
         Mock.Mock<IHostApplicationLifetime>().SetupGet(x => x.ApplicationStopping).Returns(stopping.Token);
@@ -105,7 +105,7 @@ public class PauseDownloadTaskCommandMoveQueueUnitTests : BaseCommandUnitTest<Pa
             );
         var fs = Mock.Container.Resolve<IFileSystem>();
         foreach (var file in before)
-            fs.File.ReadAllBytes(file.DownloadFilePath).ShouldBe(bytes);
+            (await fs.File.ReadAllBytesAsync(file.DownloadFilePath, CancellationToken)).ShouldBe(bytes);
         (await dbContext.GetDownloadStatusAsync(waitingKey)).ShouldBe(DownloadStatus.DownloadFinished);
         Mock.Mock<IMoveDownloadFileScheduler>().Verify();
         Mock.Mock<IMoveDownloadFileScheduler>()

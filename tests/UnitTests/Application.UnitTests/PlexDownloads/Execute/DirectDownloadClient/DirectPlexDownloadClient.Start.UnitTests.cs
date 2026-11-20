@@ -199,9 +199,9 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         Mock.Mock<IDownloadManagerSettings>().Setup(x => x.DownloadSegments).Returns(0);
 
         SetupCommandExecutor();
-        int attemptNumber = 0;
-        int configuredSegments = 0;
-        int attemptSegments = 0;
+        var attemptNumber = 0;
+        var configuredSegments = 0;
+        var attemptSegments = 0;
         long effectiveSpeedLimitBytes = 0;
         DownloadTaskFileBase? attemptDownloadTask = null;
         Mock.Mock<ITelemetry>()
@@ -2606,10 +2606,10 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         downloadServiceMock
             .Setup(x => x.DownloadFileTaskAsync(It.IsAny<string>(), It.IsAny<string>(), cancellationTokenSource.Token))
             .Returns<string, string, CancellationToken>(
-                (_, _, token) =>
+                async (_, _, token) =>
                 {
-                    cancellationTokenSource.Cancel();
-                    return Task.FromCanceled(token);
+                    await cancellationTokenSource.CancelAsync();
+                    await Task.FromCanceled(token);
                 }
             );
 

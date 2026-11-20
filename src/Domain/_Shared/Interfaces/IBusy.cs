@@ -2,5 +2,5 @@
 
 public interface IBusy
 {
-    public bool IsBusy { get; }
+    bool IsBusy { get; }
 }

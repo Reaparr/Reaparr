@@ -37,7 +37,7 @@ public class RestartDownloadTaskCommandMusicUnitTests : BaseCommandUnitTest<Rest
             .ToArrayAsync(CancellationToken);
         DownloadTaskFileBase target = musicFiles[0];
         DownloadTaskFileBase retained = musicFiles[1];
-        PlexMusicTrackMediaData source = await dbContext
+        var source = await dbContext
             .PlexMusicTrackData.Include(x => x.PlexTrack)
                 .ThenInclude(x => x!.PlexAlbum)
                     .ThenInclude(x => x!.PlexArtist)
