@@ -20,6 +20,10 @@ inputs:
     release-version:
         description: 'Exact application informational version that produced these frontend assets'
         required: true
+    inject:
+        description: 'Inject metadata before upload; false for already-injected build artifacts'
+        required: false
+        default: 'true'
 runs:
     using: 'composite'
     steps:
@@ -33,12 +37,15 @@ runs:
                 TELEMETRY_HOST: ${{ inputs.ingestion-host }}
                 SOURCE_MAP_DIRECTORY: ${{ inputs.directory }}
                 RELEASE_VERSION: ${{ inputs.release-version }}
+                INJECT_SOURCE_MAPS: ${{ inputs.inject }}
             run: |
                 set -euo pipefail
                 if [ -z "$POSTHOG_CLI_HOST" ]; then
                     export POSTHOG_CLI_HOST="${TELEMETRY_HOST/.i.posthog.com/.posthog.com}"
                 fi
                 test -n "$(find "$SOURCE_MAP_DIRECTORY" -type f -name '*.map' -print -quit)" || { echo "::error::No generated source maps were found"; exit 1; }
-                bunx --no-install posthog-cli sourcemap inject --directory "$SOURCE_MAP_DIRECTORY" --release-name reaparr --release-version "$RELEASE_VERSION"
+                if [ "$INJECT_SOURCE_MAPS" = 'true' ]; then
+                    bunx --no-install posthog-cli sourcemap inject --directory "$SOURCE_MAP_DIRECTORY" --release-name reaparr --release-version "$RELEASE_VERSION"
+                fi
                 bunx --no-install posthog-cli sourcemap upload --directory "$SOURCE_MAP_DIRECTORY" --release-name reaparr --release-version "$RELEASE_VERSION" --delete-after
                 test -z "$(find "$SOURCE_MAP_DIRECTORY" -type f -name '*.map' -print -quit)" || { echo "::error::Source maps remain in public assets after upload"; exit 1; }
