@@ -37,12 +37,20 @@ public static partial class QuartzExtensions
         where TPayload : class
     {
         var update = new JobStatusUpdate<TPayload>(context.GetJobType(), status, payload);
-        context.Result = update;
+        context.Result = status is JobStatus.Failed or JobStatus.Cancelled
+            ? new BackgroundJobResult(status) { CronUpdate = update }
+            : update;
         return update;
     }
 
     public static TPayload? GetCronJobPayload<TPayload>(this IJobExecutionContext context)
-        where TPayload : class => (context.Result as JobStatusUpdate<TPayload>)?.Data;
+        where TPayload : class =>
+        context.Result switch
+        {
+            JobStatusUpdate<TPayload> update => update.Data,
+            BackgroundJobResult { CronUpdate: JobStatusUpdate<TPayload> update } => update.Data,
+            _ => null,
+        };
 
     public static JobTypes GetJobType(this IJobExecutionContext context) =>
         JobStatusUpdateMapper.ToJobType(context.JobDetail.Key.Group);

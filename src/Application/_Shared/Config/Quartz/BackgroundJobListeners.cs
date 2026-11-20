@@ -1,6 +1,27 @@
 namespace Reaparr.Application;
 
-public sealed record BackgroundJobResult(JobStatus Status, string? ErrorSummary = null);
+public sealed record BackgroundJobResult(JobStatus Status, string? ErrorSummary = null) : IJobRunReport
+{
+    JobRunResult IJobRunReport.Result =>
+        Status switch
+        {
+            JobStatus.Failed => JobRunResult.Failed,
+            JobStatus.Cancelled => JobRunResult.Cancelled,
+            _ => JobRunResult.Succeeded,
+        };
+
+    string? IJobRunReport.Summary =>
+        Status switch
+        {
+            JobStatus.Failed => "Job failed",
+            JobStatus.Cancelled => "Job was cancelled",
+            _ => null,
+        };
+
+    IReadOnlyDictionary<string, object?>? IJobRunReport.Metrics => null;
+
+    internal JobStatusUpdate? CronUpdate { get; init; }
+}
 
 public sealed record BackgroundJobTerminalOutcome(JobStatus Status, string? ErrorSummary)
 {

@@ -41,12 +41,19 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
     }
 
     [Test]
-    public async Task ShouldPreservePausedJobsAndPayloads_WhenPersistentSchedulerRestarts()
+    public async Task ShouldDeferPersistentStoreConstructionUntilAfterMigration_AndPreservePausedJobsAndPayloads()
     {
         // Arrange
         var databasePath = Path.Combine(Path.GetTempPath(), $"reaparr-quartz-{Guid.NewGuid():N}.db");
+        var databasePathReads = 0;
         var paths = new Mock<IPathProvider>();
-        paths.SetupGet(x => x.DatabasePath).Returns(databasePath);
+        paths
+            .SetupGet(x => x.DatabasePath)
+            .Returns(() =>
+            {
+                Interlocked.Increment(ref databasePathReads);
+                return databasePath;
+            });
         paths.SetupGet(x => x.DatabaseName).Returns(Path.GetFileNameWithoutExtension(databasePath));
         paths.SetupGet(x => x.DefaultDownloadsDestinationFolder).Returns("/quartz-test/downloads");
         paths.SetupGet(x => x.DefaultMovieDestinationFolder).Returns("/quartz-test/movies");
@@ -57,6 +64,31 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
         paths.SetupGet(x => x.DefaultGamesDestinationFolder).Returns("/quartz-test/games");
         paths.SetupGet(x => x.DataDirectory).Returns("/quartz-test/data");
         var runtime = new Mock<IAppRuntimeInfo>();
+        var completions = new ProbeState();
+        var restartedServices = new ServiceCollection();
+        restartedServices.AddLogging();
+        restartedServices.AddSingleton(paths.Object);
+        restartedServices.AddSingleton(completions);
+        restartedServices.AddScoped<ProbeScope>();
+        restartedServices.AddScoped<ProbeJob>();
+        restartedServices.ConfigureQuartz(integrationTestMode: false);
+        var applicationJobTypes = typeof(Reaparr.Application.BackgroundJobsSetup)
+            .Assembly.GetTypes()
+            .Where(type => typeof(IJob).IsAssignableFrom(type) && !type.IsAbstract && !type.IsInterface)
+            .OrderBy(type => type.FullName)
+            .ToArray();
+        var registeredApplicationJobTypes = restartedServices
+            .Where(descriptor => descriptor.ImplementationType is not null)
+            .Select(descriptor => descriptor.ImplementationType!)
+            .Where(applicationJobTypes.Contains)
+            .OrderBy(type => type.FullName)
+            .ToArray();
+        var restartedBuilder = new ContainerBuilder();
+        restartedBuilder.Populate(restartedServices);
+        await using var restartedContainer = restartedBuilder.Build();
+        databasePathReads.ShouldBe(0);
+        File.Exists(databasePath).ShouldBeFalse();
+        registeredApplicationJobTypes.ShouldBe(applicationJobTypes);
         await using var initializer = new SqliteConnection(
             DbContextConnections.GetConnectionString(databasePath, SqliteOpenMode.ReadWriteCreate)
         );
@@ -74,7 +106,6 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
         var jobKey = new JobKey("persisted", "upgrade-regression");
         var controlKey = new JobKey("control", "upgrade-regression");
         var triggerKey = new TriggerKey("paused", "upgrade-regression");
-        var completions = new ProbeState();
         var serializer = new Quartz.Impl.SystemTextJsonObjectSerializer();
         var payload = new Dictionary<string, object> { ["payload"] = "original", ["fail"] = false };
         var serializedPayload = serializer.Serialize(payload);
@@ -96,37 +127,147 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
             $"INSERT INTO QRTZ_SIMPLE_TRIGGERS (SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP, REPEAT_COUNT, REPEAT_INTERVAL, TIMES_TRIGGERED) VALUES ('Reaparr Scheduler', {triggerKey.Name}, {triggerKey.Group}, 0, 0, 0)",
             CancellationToken
         );
-        await migrator.MigrateAsync("20261120180716_UpgradeQuartzSchema", CancellationToken);
         await database.Database.MigrateAsync(CancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        await database.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO QRTZ_EXECUTION_HISTORY
+                (SCHED_NAME, ENTRY_ID, INSTANCE_NAME, JOB_NAME, JOB_GROUP, TRIGGER_NAME, TRIGGER_GROUP, FIRED_TIME, RUN_TIME, SUCCEEDED)
+            VALUES
+                ('Reaparr Scheduler', 'within-week', 'old-node', 'persisted', 'upgrade-regression', 'paused', 'upgrade-regression', {now.AddDays(
+                -6
+            ).UtcTicks}, 0, 1),
+                ('Reaparr Scheduler', 'expired', 'old-node', 'persisted', 'upgrade-regression', 'paused', 'upgrade-regression', {now.AddDays(
+                -8
+            ).UtcTicks}, 0, 1)
+            """,
+            CancellationToken
+        );
+        (
+            await database
+                .Database.SqlQueryRaw<string>("SELECT ENTRY_ID AS Value FROM QRTZ_EXECUTION_HISTORY ORDER BY ENTRY_ID")
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(["expired", "within-week"]);
+        Interlocked.Exchange(ref databasePathReads, 0);
+        databasePathReads.ShouldBe(0);
+        var schemaConnection = database.Database.GetDbConnection();
+        await database.Database.OpenConnectionAsync(CancellationToken);
+        await using (var schemaCommand = schemaConnection.CreateCommand())
+        {
+            schemaCommand.CommandText = "PRAGMA table_info('QRTZ_TRIGGERS')";
+            await using var schemaReader = await schemaCommand.ExecuteReaderAsync(CancellationToken);
+            var triggerColumns = new Dictionary<string, bool>();
+            while (await schemaReader.ReadAsync(CancellationToken))
+                triggerColumns.Add(schemaReader.GetString(1), schemaReader.GetInt64(3) == 0);
+
+            triggerColumns["MISFIRE_THRESHOLD"].ShouldBeTrue();
+            triggerColumns["FIXED_DELAY"].ShouldBeTrue();
+        }
+        await using (var schedulerColumnsCommand = schemaConnection.CreateCommand())
+        {
+            schedulerColumnsCommand.CommandText = "PRAGMA table_info('QRTZ_SCHEDULER_STATE')";
+            await using var schedulerColumnsReader = await schedulerColumnsCommand.ExecuteReaderAsync(
+                CancellationToken
+            );
+            var schedulerColumns = new Dictionary<string, bool>();
+            while (await schedulerColumnsReader.ReadAsync(CancellationToken))
+                schedulerColumns.Add(schedulerColumnsReader.GetString(1), schedulerColumnsReader.GetInt64(3) == 0);
+
+            schedulerColumns["QUARTZ_VERSION"].ShouldBeTrue();
+        }
+        await using (var firedTriggerColumnsCommand = schemaConnection.CreateCommand())
+        {
+            firedTriggerColumnsCommand.CommandText = "PRAGMA table_info('QRTZ_FIRED_TRIGGERS')";
+            await using var firedTriggerColumnsReader = await firedTriggerColumnsCommand.ExecuteReaderAsync(
+                CancellationToken
+            );
+            var firedTriggerColumns = new Dictionary<string, bool>();
+            while (await firedTriggerColumnsReader.ReadAsync(CancellationToken))
+                firedTriggerColumns.Add(
+                    firedTriggerColumnsReader.GetString(1),
+                    firedTriggerColumnsReader.GetInt64(3) == 0
+                );
+
+            firedTriggerColumns["INTERRUPT_REQUESTED_TIME"].ShouldBeTrue();
+        }
+        await using (var oldRowsCommand = schemaConnection.CreateCommand())
+        {
+            oldRowsCommand.CommandText = "SELECT MISFIRE_THRESHOLD, FIXED_DELAY FROM QRTZ_TRIGGERS";
+            await using var oldRowsReader = await oldRowsCommand.ExecuteReaderAsync(CancellationToken);
+            (await oldRowsReader.ReadAsync(CancellationToken)).ShouldBeTrue();
+            oldRowsReader.IsDBNull(0).ShouldBeTrue();
+            oldRowsReader.IsDBNull(1).ShouldBeTrue();
+        }
+        await database.Database.CloseConnectionAsync();
+        databasePathReads.ShouldBe(0);
 
         // Act
-        var restartedServices = new ServiceCollection();
-        restartedServices.AddLogging();
-        restartedServices.AddSingleton(paths.Object);
-        restartedServices.AddSingleton(completions);
-        restartedServices.AddScoped<ProbeScope>();
-        restartedServices.AddScoped<ProbeJob>();
-        restartedServices.ConfigureQuartz(integrationTestMode: false);
-        var restartedBuilder = new ContainerBuilder();
-        restartedBuilder.Populate(restartedServices);
-        await using var restartedContainer = restartedBuilder.Build();
         var restarted = restartedContainer.Resolve<IScheduler>();
         var restoredJob = await restarted.GetJobDetail(jobKey, CancellationToken);
         var restoredState = await restarted.GetTriggerState(triggerKey, CancellationToken);
         await restarted.Start(CancellationToken);
+        databasePathReads.ShouldBe(1);
         await restarted.TriggerJob(jobKey, cancellationToken: CancellationToken);
         await completions.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(15), CancellationToken);
+        foreach (var status in new[] { JobStatus.Failed, JobStatus.Cancelled })
+        {
+            await restarted.TriggerJob(
+                jobKey,
+                new JobDataMap { ["outcome"] = (int)status, [SchedulerConstants.JobInput] = "\"private input\"" },
+                CancellationToken
+            );
+        }
+
+        await WaitForDatabaseConditionAsync(async () =>
+            await database
+                .Database.SqlQueryRaw<int>(
+                    "SELECT COUNT(*) AS Value FROM QRTZ_EXECUTION_HISTORY WHERE RESULT IS NOT NULL"
+                )
+                .SingleAsync(CancellationToken) == 3
+            && !await database
+                .Database.SqlQueryRaw<string>("SELECT ENTRY_ID AS Value FROM QRTZ_EXECUTION_HISTORY")
+                .AnyAsync(id => id == "expired", CancellationToken)
+        );
         var pausedAfterFire = await restarted.GetTriggerState(triggerKey, CancellationToken);
         await restarted.Shutdown(true, CancellationToken);
 
-        // Assert
+        registeredApplicationJobTypes.ShouldBe(applicationJobTypes);
+        databasePathReads.ShouldBe(1);
         restoredJob.ShouldNotBeNull();
         restoredJob.JobDataMap.GetString("payload").ShouldBe("original");
         restoredState.ShouldBe(TriggerState.Paused);
         pausedAfterFire.ShouldBe(TriggerState.Paused);
-        completions.Payloads.ToArray().ShouldBe(["original"]);
-        completions.Created.ShouldBe(1);
-        completions.Released.ShouldBe(1);
+        completions.Payloads.ToArray().ShouldBe(["original", "original", "original"]);
+        completions.Created.ShouldBe(3);
+        completions.Released.ShouldBe(3);
+        (
+            await database
+                .Database.SqlQueryRaw<string>(
+                    "SELECT ENTRY_ID AS Value FROM QRTZ_EXECUTION_HISTORY WHERE RESULT IS NULL"
+                )
+                .ToListAsync(CancellationToken)
+        ).ShouldBe(["within-week"]);
+        var history = await database
+            .Database.SqlQueryRaw<int>(
+                """
+                SELECT RESULT AS Value FROM QRTZ_EXECUTION_HISTORY
+                WHERE JOB_NAME = 'persisted' AND RESULT IS NOT NULL AND JOB_INPUT IS NULL
+                  AND EXECUTION_LOG IS NULL AND ERROR_MESSAGE IS NULL AND COALESCE(SUMMARY, '') <> 'private failure detail'
+                """
+            )
+            .ToListAsync(CancellationToken);
+        history
+            .Order()
+            .ShouldBe(
+                new[] { (int)JobRunResult.Succeeded, (int)JobRunResult.Failed, (int)JobRunResult.Cancelled }.Order()
+            );
+        (
+            await database
+                .Database.SqlQueryRaw<long>(
+                    "SELECT RUN_COUNT AS Value FROM QRTZ_JOB_STATUS WHERE JOB_NAME = 'persisted'"
+                )
+                .SingleAsync(CancellationToken)
+        ).ShouldBe(3L);
         await using var connection = new SqliteConnection($"Data Source={databasePath}");
         await connection.OpenAsync(CancellationToken);
         await using var command = connection.CreateCommand();
@@ -262,6 +403,8 @@ public class QuartzRuntimeIntegrationTests : BaseIntegrationTests
             state.Payloads.Enqueue(context.MergedJobDataMap.GetString("payload")!);
             if (context.MergedJobDataMap.GetBoolean("fail"))
                 throw new InvalidOperationException("Expected Quartz regression failure");
+            if (context.MergedJobDataMap.TryGetValue("outcome", out var outcome) && outcome is int status)
+                context.SetResult((JobStatus)status, "private failure detail");
             return ValueTask.CompletedTask;
         }
     }

@@ -1,5 +1,3 @@
-using Quartz.Impl.Matchers;
-
 namespace Reaparr.Application;
 
 public static partial class QuartzExtensions
@@ -23,7 +21,7 @@ public static partial class QuartzExtensions
                 nameof(JobTypes)
             );
 
-        if (await scheduler.CheckExists(jobKey, cancellationToken))
+        if (await scheduler.Exists(jobKey, cancellationToken))
             return Result.Ok(DateTimeOffset.MinValue);
 
         var job = JobBuilder
@@ -35,10 +33,12 @@ public static partial class QuartzExtensions
             .Build();
         var triggerBuilder = TriggerBuilder.Create().WithIdentity(jobKey.Name, jobKey.Group).ForJob(job);
         triggerBuilder = executeAt.HasValue ? triggerBuilder.StartAt(executeAt.Value) : triggerBuilder.StartNow();
-        var trigger = triggerBuilder.WithSimpleSchedule(x => x.WithMisfireHandlingInstructionFireNow()).Build();
+        var trigger = triggerBuilder
+            .WithSimpleSchedule(x => x.WithMisfireInstruction(SimpleTriggerMisfireInstruction.FireNow))
+            .Build();
 
         return await Result.Try(async Task<DateTimeOffset> () =>
-            await scheduler.ScheduleJob(job, trigger, cancellationToken)
+            await scheduler.ScheduleJob(job, trigger, cancellationToken: cancellationToken)
         );
     }
 
@@ -72,7 +72,7 @@ public static partial class QuartzExtensions
         var jobsAndTriggers = new Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>>();
         foreach (var (key, dataMap) in jobs)
         {
-            if (await scheduler.CheckExists(key, cancellationToken))
+            if (await scheduler.Exists(key, cancellationToken))
                 continue;
 
             dataMap.SetTelemetryContext();
@@ -88,14 +88,18 @@ public static partial class QuartzExtensions
             triggerBuilder = executeAt.HasValue ? triggerBuilder.StartAt(executeAt.Value) : triggerBuilder.StartNow();
             jobsAndTriggers.Add(
                 detail,
-                [triggerBuilder.WithSimpleSchedule(x => x.WithMisfireHandlingInstructionFireNow()).Build()]
+                [
+                    triggerBuilder
+                        .WithSimpleSchedule(x => x.WithMisfireInstruction(SimpleTriggerMisfireInstruction.FireNow))
+                        .Build(),
+                ]
             );
         }
 
         if (jobsAndTriggers.Count == 0)
             return Result.Ok();
 
-        await scheduler.ScheduleJobs(jobsAndTriggers, replace: false, cancellationToken);
+        await scheduler.ScheduleJobs(jobsAndTriggers, new ScheduleJobOptions { Replace = false }, cancellationToken);
         return Result.Ok();
     }
 
@@ -108,20 +112,39 @@ public static partial class QuartzExtensions
         CancellationToken cancellationToken = default
     )
     {
-        if (!await scheduler.CheckExists(key, cancellationToken))
+        if (!await scheduler.Exists(key, cancellationToken))
             return false;
 
-        foreach (var trigger in await scheduler.GetTriggersOfJob(key, cancellationToken))
+        var skip = 0;
+        while (true)
         {
-            if (trigger is ICronTrigger)
-                continue;
+            var page = await scheduler.QueryTriggers(
+                new TriggerQuery
+                {
+                    Job = key,
+                    Skip = skip,
+                    Take = PagedQuery.DefaultTake,
+                },
+                cancellationToken
+            );
 
-            var state = await scheduler.GetTriggerState(trigger.Key, cancellationToken);
-            if (state is TriggerState.Normal or TriggerState.Blocked)
-                return true;
+            foreach (var trigger in page.Items)
+            {
+                if (trigger.TriggerType == "CRON")
+                    continue;
+
+                if (trigger.State is TriggerState.Normal or TriggerState.Blocked)
+                    return true;
+            }
+
+            if (!page.HasMore)
+                return false;
+            if (page.Items.Count == 0)
+                throw new InvalidOperationException(
+                    "Quartz returned an empty trigger page while reporting more results"
+                );
+            skip += page.Items.Count;
         }
-
-        return false;
     }
 
     /// <summary>
@@ -133,30 +156,49 @@ public static partial class QuartzExtensions
         CancellationToken cancellationToken = default
     )
     {
-        if (!await scheduler.CheckExists(key, cancellationToken))
+        if (!await scheduler.Exists(key, cancellationToken))
             return false;
 
-        foreach (var trigger in await scheduler.GetTriggersOfJob(key, cancellationToken))
+        var skip = 0;
+        while (true)
         {
-            if (trigger is ICronTrigger)
-                continue;
+            var page = await scheduler.QueryTriggers(
+                new TriggerQuery
+                {
+                    Job = key,
+                    Skip = skip,
+                    Take = PagedQuery.DefaultTake,
+                },
+                cancellationToken
+            );
 
-            var state = await scheduler.GetTriggerState(trigger.Key, cancellationToken);
-            if (state is TriggerState.Normal or TriggerState.Blocked or TriggerState.Paused)
-                return true;
+            foreach (var trigger in page.Items)
+            {
+                if (trigger.TriggerType == "CRON")
+                    continue;
+
+                if (trigger.State is TriggerState.Normal or TriggerState.Blocked or TriggerState.Paused)
+                    return true;
+            }
+
+            if (!page.HasMore)
+                return false;
+            if (page.Items.Count == 0)
+                throw new InvalidOperationException(
+                    "Quartz returned an empty trigger page while reporting more results"
+                );
+            skip += page.Items.Count;
         }
-
-        return false;
     }
 
     /// <summary>
-    /// Searches Quartz's current execution contexts for the specified job key.
+    /// Searches the current local-node Quartz firings for the specified job key.
     /// </summary>
     public static async Task<bool> IsJobExecuting(
         this IScheduler scheduler,
         JobKey key,
         CancellationToken cancellationToken = default
-    ) => (await scheduler.GetCurrentlyExecutingJobs(cancellationToken)).Any(x => x.JobDetail.Key.Equals(key));
+    ) => (await scheduler.GetLocalExecutingFireInstances(cancellationToken)).Any(x => x.JobKey == key);
 
     /// <summary>
     /// Cancels a queued or running job and returns failure when Quartz cannot prove the job was cancelled.
@@ -206,7 +248,7 @@ public static partial class QuartzExtensions
     }
 
     /// <summary>
-    /// Deletes the supplied jobs as a batch and succeeds when no keys are supplied or all requested keys are absent afterward.
+    /// Deletes the supplied jobs as a batch and succeeds when no requested key remains afterward.
     /// </summary>
     public static async Task<Result> DeleteBatchJobs(
         this IScheduler scheduler,
@@ -219,12 +261,13 @@ public static partial class QuartzExtensions
 
         return await Result.Try(async Task<Result> () =>
         {
-            if (await scheduler.DeleteJobs(keys.ToList(), cancellationToken))
+            var deletedKeys = await scheduler.DeleteJobs(keys, cancellationToken);
+            if (deletedKeys.Count == keys.Distinct().Count())
                 return Result.Ok();
 
-            foreach (var key in keys)
+            foreach (var key in keys.Except(deletedKeys))
             {
-                if (await scheduler.CheckExists(key, cancellationToken))
+                if (await scheduler.Exists(key, cancellationToken))
                     return Result.Fail("Failed to delete all requested Quartz jobs");
             }
 
@@ -282,7 +325,7 @@ public static partial class QuartzExtensions
     }
 
     /// <summary>
-    /// Waits up to thirty seconds for Quartz to have no executing jobs.
+    /// Waits up to thirty seconds for the local Quartz scheduler to have no executing jobs.
     /// </summary>
     public static async Task<Result> AwaitScheduler(
         this IScheduler scheduler,
@@ -293,7 +336,7 @@ public static partial class QuartzExtensions
             var timeoutAt = DateTime.UtcNow.AddSeconds(30);
             while (DateTime.UtcNow < timeoutAt)
             {
-                if ((await scheduler.GetCurrentlyExecutingJobs(cancellationToken)).Count == 0)
+                if (!(await scheduler.GetLocalExecutingFireInstances(cancellationToken)).Any())
                     return Result.Ok();
 
                 await Task.Delay(100, cancellationToken);
@@ -308,7 +351,64 @@ public static partial class QuartzExtensions
         this IScheduler scheduler,
         JobTypes jobType,
         CancellationToken cancellationToken = default
-    ) => await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(jobType.ToString()), cancellationToken);
+    )
+    {
+        var keys = new List<JobKey>();
+        var skip = 0;
+        while (true)
+        {
+            var page = await scheduler.QueryJobs(
+                new JobQuery
+                {
+                    Group = GroupMatcher<JobKey>.GroupEquals(jobType.ToString()),
+                    Skip = skip,
+                    Take = PagedQuery.DefaultTake,
+                },
+                cancellationToken
+            );
+            keys.AddRange(page.Items.Select(x => x.Key));
+
+            if (!page.HasMore)
+                return keys;
+            if (page.Items.Count == 0)
+                throw new InvalidOperationException("Quartz returned an empty job page while reporting more results");
+            skip += page.Items.Count;
+        }
+    }
+
+    /// <summary>
+    /// Returns the current local-node Quartz firings.
+    /// </summary>
+    public static async Task<IReadOnlyCollection<FireInstance>> GetLocalExecutingFireInstances(
+        this IScheduler scheduler,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var firings = new List<FireInstance>();
+        var skip = 0;
+        while (true)
+        {
+            var page = await scheduler.QueryFireInstances(
+                new FireInstanceQuery
+                {
+                    SchedulerInstanceId = scheduler.SchedulerInstanceId,
+                    State = FireInstanceState.Executing,
+                    Skip = skip,
+                    Take = PagedQuery.DefaultTake,
+                },
+                cancellationToken
+            );
+            firings.AddRange(page.Items);
+
+            if (!page.HasMore)
+                return firings;
+            if (page.Items.Count == 0)
+                throw new InvalidOperationException(
+                    "Quartz returned an empty firing page while reporting more results"
+                );
+            skip += page.Items.Count;
+        }
+    }
 
     /// <summary>
     /// Determines whether any supplied key is stored by Quartz or currently executing.
@@ -323,12 +423,27 @@ public static partial class QuartzExtensions
         if (requestedKeys.Count == 0)
             return false;
 
-        var executingKeys = (await scheduler.GetCurrentlyExecutingJobs(cancellationToken))
-            .Select(x => x.JobDetail.Key)
-            .ToHashSet();
-        var queuedKeys = await scheduler.GetJobKeys(GroupMatcher<JobKey>.AnyGroup(), cancellationToken);
+        var runningKeys = (await scheduler.GetLocalExecutingFireInstances(cancellationToken))
+            .Where(x => x.JobKey is not null)
+            .Select(x => x.JobKey!);
+        if (runningKeys.Any(requestedKeys.Contains))
+            return true;
 
-        return queuedKeys.Concat(executingKeys).Any(requestedKeys.Contains);
+        var skip = 0;
+        while (true)
+        {
+            var page = await scheduler.QueryJobs(
+                new JobQuery { Skip = skip, Take = PagedQuery.DefaultTake },
+                cancellationToken
+            );
+            if (page.Items.Any(x => requestedKeys.Contains(x.Key)))
+                return true;
+            if (!page.HasMore)
+                return false;
+            if (page.Items.Count == 0)
+                throw new InvalidOperationException("Quartz returned an empty job page while reporting more results");
+            skip += page.Items.Count;
+        }
     }
 
     /// <summary>
@@ -339,14 +454,56 @@ public static partial class QuartzExtensions
         CancellationToken cancellationToken = default
     )
     {
-        return (await scheduler.GetCurrentlyExecutingJobs(cancellationToken))
-            .Select(context => new JobStatusUpdate<string>(
-                JobStatusUpdateMapper.ToJobType(context.JobDetail.Key.Group),
+        var firings = await scheduler.GetLocalExecutingFireInstances(cancellationToken);
+        var jobKeys = firings.Where(x => x.JobKey is not null).Select(x => x.JobKey!).Distinct().ToArray();
+        var details = await scheduler.GetJobDetails(jobKeys, cancellationToken);
+        var detailsByKey = details.ToDictionary(x => x.Key);
+
+        return firings
+            .Where(x => x.JobKey is not null && detailsByKey.ContainsKey(x.JobKey!))
+            .Select(firing => new JobStatusUpdate<string>(
+                JobStatusUpdateMapper.ToJobType(firing.JobKey!.Group),
                 JobStatus.Started,
-                context.GetPayloadAsJson(),
-                context.JobDetail.Key.Name,
-                context.FireTimeUtc.UtcDateTime
+                GetStoredPayloadAsJson(detailsByKey[firing.JobKey!]),
+                firing.JobKey!.Name,
+                firing.FireTimeUtc.UtcDateTime
             ))
             .ToList();
+    }
+
+    private static string GetStoredPayloadAsJson(IJobDetail job)
+    {
+        return JobStatusUpdateMapper.ToJobType(job.Key.Group) switch
+        {
+            JobTypes.DownloadJob => JsonSerializer.Serialize(
+                job.JobDataMap.GetPayload<DownloadJobPayload>(),
+                DefaultJsonSerializerOptions.ConfigStandard
+            ),
+            JobTypes.MoveDownloadFileJob => JsonSerializer.Serialize(
+                job.JobDataMap.GetPayload<MoveDownloadFileJobPayload>(),
+                DefaultJsonSerializerOptions.ConfigStandard
+            ),
+            JobTypes.InspectPlexServerJob => JsonSerializer.Serialize(
+                job.JobDataMap.GetPayload<InspectPlexServerJobPayload>(),
+                DefaultJsonSerializerOptions.ConfigStandard
+            ),
+            JobTypes.LibrarySyncJob => JsonSerializer.Serialize(
+                job.JobDataMap.GetPayload<LibrarySyncJobPayload>(),
+                DefaultJsonSerializerOptions.ConfigStandard
+            ),
+            JobTypes.LibraryComparisonJob => JsonSerializer.Serialize(
+                job.JobDataMap.GetPayload<PlexLibraryComparisonJobPayload>(),
+                DefaultJsonSerializerOptions.ConfigStandard
+            ),
+            JobTypes.CheckAllConnectionsStatusByPlexServerJob => "{}",
+            JobTypes.MetadataSyncJob
+            or JobTypes.CheckForUpdateJob
+            or JobTypes.CheckPlexLibrariesForUpdatesJob
+            or JobTypes.RefreshPlexAccountAccessJob
+            or JobTypes.MediaOverviewSnapshotJob
+            or JobTypes.OptimizeDatabaseJob
+            or JobTypes.UpdateScheduledDownloadLimitsJob => "{}",
+            _ => throw new ArgumentOutOfRangeException(nameof(job), job.Key.Group, "Unknown job type"),
+        };
     }
 }
