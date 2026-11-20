@@ -358,13 +358,13 @@ public class UpdateUserSettingsEndpointUnitTests
                 .ReturnsAsync(DateTimeOffset.UnixEpoch)
                 .Verifiable(Times.Once());
         scheduler
-            .Setup(x => x.TriggerJob(jobKey, CancellationToken.None))
+            .Setup(x => x.TriggerJob(jobKey, null, CancellationToken.None))
             .Callback(() =>
             {
                 observedTimeZone = settings.DateTimeSettings.TimeZone;
                 observedSchedule = settings.DownloadManagerSettings.DownloadSchedule;
             })
-            .Returns(Task.CompletedTask)
+            .Returns(ValueTask.CompletedTask)
             .Verifiable(Times.Once());
 
         // Act
@@ -442,7 +442,10 @@ public class UpdateUserSettingsEndpointUnitTests
             x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
             Times.Never()
         );
-        scheduler.Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(
+            x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), null, CancellationToken.None),
+            Times.Never()
+        );
     }
 
     [Test]
@@ -475,7 +478,7 @@ public class UpdateUserSettingsEndpointUnitTests
                 .Verifiable(Times.Once());
         else
             scheduler
-                .Setup(x => x.TriggerJob(jobKey, CancellationToken.None))
+                .Setup(x => x.TriggerJob(jobKey, null, CancellationToken.None))
                 .ThrowsAsync(new SchedulerException("scheduler unavailable"))
                 .Verifiable(Times.Once());
 
@@ -497,7 +500,7 @@ public class UpdateUserSettingsEndpointUnitTests
         settings.DateTimeSettings.TimeZone.ShouldBe(dto.DateTimeSettings.TimeZone);
         scheduler.Verify();
         if (failRescheduling)
-            scheduler.Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+            scheduler.Verify(x => x.TriggerJob(jobKey, null, CancellationToken.None), Times.Never());
         else
             scheduler.Verify(
                 x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
@@ -576,7 +579,7 @@ public class UpdateUserSettingsEndpointUnitTests
         Result? allocationResult = null;
         var scheduler = new Mock<IScheduler>(MockBehavior.Strict);
         scheduler
-            .Setup(x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), CancellationToken.None))
+            .Setup(x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), null, CancellationToken.None))
             .Returns(async () =>
             {
                 allocationResult = await allocator.ExecuteAsync(command, CancellationToken.None);
@@ -656,7 +659,10 @@ public class UpdateUserSettingsEndpointUnitTests
         settings
             .ServerSettings.Data.Select(x => (x.MachineIdentifier, x.DownloadSpeedLimit))
             .ShouldBe([("unlimited", 0), ("limited", 100), ("new-unlimited", 0)]);
-        scheduler.Verify(x => x.TriggerJob(It.IsAny<JobKey>(), It.IsAny<CancellationToken>()), Times.Never());
+        scheduler.Verify(
+            x => x.TriggerJob(UpdateScheduledDownloadLimitsJob.GetJobKey(), null, CancellationToken.None),
+            Times.Never()
+        );
         scheduler.Verify(
             x => x.RescheduleJob(It.IsAny<TriggerKey>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
             Times.Never()
@@ -748,17 +754,17 @@ public class UpdateUserSettingsEndpointUnitTests
                     var zone = ((ICronTrigger)trigger).TimeZone.Id;
                     calls.Add("reschedule " + zone);
                     if (zone != "Asia/Kathmandu")
-                        return Task.FromResult<DateTimeOffset?>(DateTimeOffset.UnixEpoch);
+                        return new ValueTask<DateTimeOffset?>(DateTimeOffset.UnixEpoch);
 
                     firstEntered.TrySetResult();
-                    return firstRescheduled.Task;
+                    return new ValueTask<DateTimeOffset?>(firstRescheduled.Task);
                 }
             )
             .Verifiable(Times.Exactly(2));
         scheduler
-            .Setup(x => x.TriggerJob(jobKey, CancellationToken.None))
+            .Setup(x => x.TriggerJob(jobKey, null, CancellationToken.None))
             .Callback(() => calls.Add("trigger " + settings.DateTimeSettings.TimeZone))
-            .Returns(Task.CompletedTask)
+            .Returns(ValueTask.CompletedTask)
             .Verifiable(Times.Exactly(2));
 
         // Act

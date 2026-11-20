@@ -28,19 +28,19 @@ public sealed class UpdateScheduledDownloadLimitsJob : IJob
             .ForJob(GetJobKey())
             .WithCronSchedule("0 0,30 * * * ?", x =>
                 x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById(timeZoneId))
-                    .WithMisfireHandlingInstructionFireAndProceed()
+                    .WithMisfireInstruction(CronTriggerMisfireInstruction.FireAndProceed)
             )
             .Build();
 
     /// <inheritdoc />
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(
             TelemetryActivity.ScheduledDownloadLimits,
             context.GetTelemetryContext()
         );
 
-        var result = await _commandExecutor.Send(new UpdateScheduledDownloadLimitsCommand(), context.CancellationToken);
+        var result = await _commandExecutor.Send(new UpdateScheduledDownloadLimitsCommand(), cancellationToken);
         var status =
             result.IsCancelled ? JobStatus.Cancelled
             : result.IsFailed ? JobStatus.Failed

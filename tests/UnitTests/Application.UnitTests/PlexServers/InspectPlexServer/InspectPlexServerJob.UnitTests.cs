@@ -370,7 +370,7 @@ public class InspectPlexServerJobUnitTests : BaseUnitTest<InspectPlexServerJob>
 
         SetupBeginJob();
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);

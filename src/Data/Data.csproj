@@ -4,7 +4,7 @@
         <AssemblyName>Reaparr.Data</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="AppAny.Quartz.EntityFrameworkCore.Migrations.SQLite" Version="0.6.0" />
+        <PackageReference Include="AppAny.Quartz.EntityFrameworkCore.Migrations.SQLite" Version="0.6.2" />
         <PackageReference Include="Autofac" Version="9.1.0" />
         <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
             <PrivateAssets>all</PrivateAssets>

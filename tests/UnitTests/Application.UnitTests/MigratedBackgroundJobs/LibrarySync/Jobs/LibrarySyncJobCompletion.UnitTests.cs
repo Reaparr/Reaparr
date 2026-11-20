@@ -58,7 +58,7 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
             .Setup(x => x.Send(It.IsAny<ScheduleAffectedLibraryComparisonJobsCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Ok());
         var nextKey = LibrarySyncJob.GetJobKey(next.PlexServerId, next.Id);
-        Mock.Mock<IScheduler>().Setup(x => x.CheckExists(nextKey, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        Mock.Mock<IScheduler>().Setup(x => x.Exists(nextKey, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         Mock.Mock<IScheduler>()
             .Setup(x =>
                 x.ScheduleJob(
@@ -68,6 +68,7 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
                             == new LibrarySyncJobPayload(next.PlexServerId, next.Id)
                     ),
                     It.Is<ITrigger>(trigger => trigger.JobKey.Equals(nextKey)),
+                    It.IsAny<ScheduleJobOptions>(),
                     It.IsAny<CancellationToken>()
                 )
             )
@@ -76,7 +77,7 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
 
         SetupBeginJob();
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
         await Mock.Create<LibrarySyncJobListener>().JobWasExecuted(context.Object, null, CancellationToken);
 
         // Assert
@@ -139,7 +140,13 @@ public class LibrarySyncJobCompletionUnitTests : BaseUnitTest<LibrarySyncJob>
             );
         Mock.Mock<IScheduler>()
             .Verify(
-                x => x.ScheduleJob(It.IsAny<IJobDetail>(), It.IsAny<ITrigger>(), It.IsAny<CancellationToken>()),
+                x =>
+                    x.ScheduleJob(
+                        It.IsAny<IJobDetail>(),
+                        It.IsAny<ITrigger>(),
+                        It.IsAny<ScheduleJobOptions>(),
+                        It.IsAny<CancellationToken>()
+                    ),
                 offline ? Times.Never() : Times.Once()
             );
         Mock.Mock<ITelemetry>().Verify();

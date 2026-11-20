@@ -37,6 +37,8 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
     {
         // Arrange
         await SetupDatabase(135045, config => config.PlexServerCount = 1);
+        var server = await IDbContext.PlexServers.Include(x => x.PlexServerConnections).SingleAsync(CancellationToken);
+        var expectedConnectionIds = server.PlexServerConnections.Select(x => x.Id).Order().ToArray();
         var exception = new InvalidOperationException("connection check failed");
         Mock.Mock<ICommandExecutor>()
             .Setup(x => x.Send(It.IsAny<CheckAllConnectionsStatusByPlexServerCommand>(), It.IsAny<CancellationToken>()))
@@ -55,11 +57,15 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
 
         SetupBeginJob();
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
-        var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
+        var report = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
+        report.Status.ShouldBe(JobStatus.Failed);
+        var update = report.CronUpdate.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
         update.Status.ShouldBe(JobStatus.Failed);
+        update.Data.PlexServersWithConnectionIds.Keys.ShouldBe([server.Id]);
+        update.Data.PlexServersWithConnectionIds[server.Id].Order().ShouldBe(expectedConnectionIds);
         capturedResult.ShouldNotBeNull();
         capturedResult!.HasException<InvalidOperationException>(out var capturedErrors).ShouldBeTrue();
         capturedErrors.OfType<ExceptionalError>().Single().Exception.ShouldBeSameAs(exception);
@@ -93,10 +99,11 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         SetupBeginJob();
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
-        // Assert
-        var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
+        var report = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
+        report.Status.ShouldBe(JobStatus.Cancelled);
+        var update = report.CronUpdate.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
         update.Status.ShouldBe(JobStatus.Cancelled);
         Mock.Mock<ICommandExecutor>().Verify();
         Mock.Mock<IProgressHubService>().Verify();
@@ -147,11 +154,13 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         SetupBeginJob();
 
         // Act
-        var action = () => Sut.Execute(context.Object);
+        Func<Task> action = async () => await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         await action.ShouldNotThrowAsync();
-        var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
+        var report = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
+        ((IJobRunReport)report).Result.ShouldBe(JobRunResult.Failed);
+        var update = report.CronUpdate.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
         update.Status.ShouldBe(JobStatus.Failed);
         update.Data.PlexServersWithConnectionIds.Count.ShouldBe(expectedPayload.Count);
         update.Data.PlexServersWithConnectionIds.ShouldAllBe(pair =>
@@ -188,7 +197,7 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
         SetupBeginJob();
 
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
         Mock.Mock<ITelemetry>().Verify();
@@ -209,10 +218,12 @@ public class CheckAllConnectionsStatusByPlexServerJobUnitTests : BaseUnitTest<Ch
 
         SetupBeginJob();
         // Act
-        await Sut.Execute(context.Object);
+        await Sut.Execute(context.Object, context.Object.CancellationToken);
 
         // Assert
-        var update = context.Object.Result.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
+        var report = context.Object.Result.ShouldBeOfType<BackgroundJobResult>();
+        ((IJobRunReport)report).Result.ShouldBe(JobRunResult.Failed);
+        var update = report.CronUpdate.ShouldBeOfType<JobStatusUpdate<CheckAllConnectionStatusUpdateDTO>>();
         update.Status.ShouldBe(JobStatus.Failed);
         update.Data.PlexServersWithConnectionIds.ShouldBeEmpty();
         Mock.Mock<ITelemetry>().Verify();

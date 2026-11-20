@@ -43,7 +43,7 @@ public static partial class QuartzExtensions
                 x => x.Key,
                 x =>
                 {
-                    var value = x.Value.ToString();
+                    var value = x.Value?.ToString();
 
                     if (bool.TryParse(value, out var boolValue))
                         return (object)boolValue;

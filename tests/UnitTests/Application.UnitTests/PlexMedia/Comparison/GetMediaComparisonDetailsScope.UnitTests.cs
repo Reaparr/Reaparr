@@ -1,5 +1,4 @@
 using Quartz;
-using Quartz.Impl.Matchers;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -37,10 +36,28 @@ public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.Outdated, true), CancellationToken);
         }
         var scheduler = Mock.Mock<IScheduler>();
-        scheduler.Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken)).ReturnsAsync([]);
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         scheduler
-            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), CancellationToken))
-            .ReturnsAsync([PlexLibraryComparisonJob.GetJobKey(90001, 90002)]);
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+            .ReturnsAsync(new PagedResult<FireInstance>([], false));
+        scheduler
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(
+                new PagedResult<JobHeader>(
+                    [
+                        new JobHeader(
+                            PlexLibraryComparisonJob.GetJobKey(90001, 90002),
+                            null,
+                            typeof(PlexLibraryComparisonJob).FullName!,
+                            false,
+                            true,
+                            false,
+                            true
+                        ),
+                    ],
+                    false
+                )
+            );
 
         // Act
         var result = await GetDetailsAsync(mediaType, library.Id);
@@ -74,12 +91,48 @@ public class GetMediaComparisonDetailsScopeUnitTests : BaseUnitTest
             .SetupGet(x => x.JobDetail)
             .Returns(JobBuilder.Create<PlexLibraryComparisonJob>().WithIdentity(key).Build());
         var scheduler = Mock.Mock<IScheduler>();
+        scheduler.SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         scheduler
-            .Setup(x => x.GetCurrentlyExecutingJobs(CancellationToken))
-            .ReturnsAsync(isRunning ? new List<IJobExecutionContext> { execution.Object } : []);
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), CancellationToken))
+            .ReturnsAsync(
+                isRunning
+                    ? new PagedResult<FireInstance>(
+                        [
+                            new FireInstance(
+                                "fire-comparison",
+                                new TriggerKey(key.Name, key.Group),
+                                key,
+                                "test-scheduler",
+                                FireInstanceState.Executing,
+                                DateTimeOffset.UnixEpoch,
+                                DateTimeOffset.UnixEpoch,
+                                null
+                            ),
+                        ],
+                        false
+                    )
+                    : new PagedResult<FireInstance>([], false)
+            );
         scheduler
-            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), CancellationToken))
-            .ReturnsAsync(isRunning ? new HashSet<JobKey>() : [key]);
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), CancellationToken))
+            .ReturnsAsync(
+                isRunning
+                    ? new PagedResult<JobHeader>([], false)
+                    : new PagedResult<JobHeader>(
+                        [
+                            new JobHeader(
+                                key,
+                                null,
+                                typeof(PlexLibraryComparisonJob).FullName!,
+                                false,
+                                true,
+                                false,
+                                true
+                            ),
+                        ],
+                        false
+                    )
+            );
 
         // Act
         var result = await GetDetailsAsync(mediaType, isOwned ? owned.Id : remote.Id);

@@ -91,7 +91,7 @@ public class RefreshPlexAccountAccessJobUnitTests : BaseUnitTest<RefreshPlexAcco
 
         SetupBeginJob();
         // Act
-        await Sut.Execute(context);
+        await Sut.Execute(context, context.CancellationToken);
 
         // Assert
         context.Result.ShouldBeOfType<BackgroundJobResult>().Status.ShouldBe(JobStatus.Cancelled);

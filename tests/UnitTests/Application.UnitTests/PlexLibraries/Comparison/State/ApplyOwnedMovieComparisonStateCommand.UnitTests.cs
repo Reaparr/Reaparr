@@ -1,6 +1,4 @@
 using Quartz;
-using Quartz.Impl.Matchers;
-using Quartz.Spi;
 
 namespace Reaparr.Application.UnitTests;
 
@@ -75,29 +73,30 @@ public class ApplyOwnedMovieComparisonStateCommandUnitTests : BaseCommandUnitTes
         await SetLibraryUpdatedAtAsync(ownedLibrary.Id, new DateTime(2026, 7, 22, 10, 5, 0, DateTimeKind.Utc));
 
         var ownedMovie = await GetLibraryMovieAsync(ownedLibrary.Id);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
-            .Setup(x =>
-                x.CheckExists(
-                    PlexLibraryComparisonJob.GetJobKey(ownedLibrary.Id, remoteLibrary.Id),
-                    It.IsAny<CancellationToken>()
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)));
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(
+                new ValueTask<PagedResult<JobHeader>>(
+                    new PagedResult<JobHeader>(
+                        [
+                            new JobHeader(
+                                PlexLibraryComparisonJob.GetJobKey(ownedLibrary.Id, remoteLibrary.Id),
+                                null,
+                                typeof(PlexLibraryComparisonJob).FullName!,
+                                false,
+                                true,
+                                false,
+                                true
+                            ),
+                        ],
+                        false
+                    )
                 )
-            )
-            .ReturnsAsync(true);
-        Mock.Mock<IScheduler>()
-            .Setup(x =>
-                x.GetTriggersOfJob(
-                    PlexLibraryComparisonJob.GetJobKey(ownedLibrary.Id, remoteLibrary.Id),
-                    It.IsAny<CancellationToken>()
-                )
-            )
-            .ReturnsAsync([new Mock<IOperableTrigger>().Object]);
-        Mock.Mock<IScheduler>()
-            .Setup(x => x.GetTriggerState(It.IsAny<TriggerKey>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TriggerState.Normal);
-        Mock.Mock<IScheduler>().Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>())).ReturnsAsync([]);
-        Mock.Mock<IScheduler>()
-            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([PlexLibraryComparisonJob.GetJobKey(ownedLibrary.Id, remoteLibrary.Id)]);
+            );
 
         var items = new List<PlexMediaSlimDTO> { CreateMovieItem(ownedMovie) };
 
@@ -176,10 +175,13 @@ public class ApplyOwnedMovieComparisonStateCommandUnitTests : BaseCommandUnitTes
         await SetOwnedOverrideAsync(ownedLibrary.PlexServerId, true);
 
         var ownedMovie = await GetLibraryMovieAsync(ownedLibrary.Id);
-        Mock.Mock<IScheduler>().Setup(x => x.GetCurrentlyExecutingJobs(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        Mock.Mock<IScheduler>().SetupGet(x => x.SchedulerInstanceId).Returns("test-scheduler");
         Mock.Mock<IScheduler>()
-            .Setup(x => x.GetJobKeys(It.IsAny<GroupMatcher<JobKey>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+            .Setup(x => x.QueryFireInstances(It.IsAny<FireInstanceQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<PagedResult<FireInstance>>(new PagedResult<FireInstance>([], false)));
+        Mock.Mock<IScheduler>()
+            .Setup(x => x.QueryJobs(It.IsAny<JobQuery>(), It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<PagedResult<JobHeader>>(new PagedResult<JobHeader>([], false)));
 
         var items = new List<PlexMediaSlimDTO> { CreateMovieItem(ownedMovie) };
 

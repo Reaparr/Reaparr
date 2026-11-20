@@ -34,7 +34,7 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
             return Result.Ok();
         }
 
-        if (await _scheduler.CheckExists(jobKey, cancellationToken))
+        if (await _scheduler.Exists(jobKey, cancellationToken))
             await _scheduler.DeleteJob(jobKey, cancellationToken);
 
         var schedulingResult = await _scheduler.ExecuteJob<MoveDownloadFileJob, MoveDownloadFileJobPayload>(
@@ -79,29 +79,29 @@ public class MoveDownloadFileJobScheduler : IMoveDownloadFileScheduler
         );
 
     public async Task<bool> IsAnyMoveDownloadFileJobRunning() =>
-        (await _scheduler.GetCurrentlyExecutingJobs()).Any(x =>
-            x.JobDetail.Key.Group == nameof(JobTypes.MoveDownloadFileJob)
+        (await _scheduler.GetLocalExecutingFireInstances()).Any(x =>
+            x.JobKey?.Group == nameof(JobTypes.MoveDownloadFileJob)
         );
 
     public async Task<List<DownloadTaskKey>> GetCurrentlyMovingKeysByServer(int plexServerId)
     {
         var keysById = new Dictionary<Guid, DownloadTaskKey>();
-        var capturedJobKeys = new HashSet<JobKey>();
-        var contexts = await _scheduler.GetCurrentlyExecutingJobs(CancellationToken.None);
-        foreach (var context in contexts.Where(x => x.JobDetail.Key.Group == nameof(JobTypes.MoveDownloadFileJob)))
+        var runningJobKeys = (await _scheduler.GetLocalExecutingFireInstances(CancellationToken.None))
+            .Where(x => x.JobKey?.Group == nameof(JobTypes.MoveDownloadFileJob))
+            .Select(x => x.JobKey!)
+            .ToHashSet();
+        var runningDetails = await _scheduler.GetJobDetails(runningJobKeys, CancellationToken.None);
+        foreach (var detail in runningDetails)
         {
-            var key = context.MergedJobDataMap.GetPayload<MoveDownloadFileJobPayload>()?.DownloadTaskKey;
-            if (key is null)
-                continue;
-
-            keysById[key.Id] = key;
-            capturedJobKeys.Add(context.JobDetail.Key);
+            var key = detail.JobDataMap.GetPayload<MoveDownloadFileJobPayload>()?.DownloadTaskKey;
+            if (key is not null)
+                keysById[key.Id] = key;
         }
 
         var jobKeys = await _scheduler.GetJobKeys(JobTypes.MoveDownloadFileJob, CancellationToken.None);
         foreach (var jobKey in jobKeys)
         {
-            if (capturedJobKeys.Contains(jobKey))
+            if (runningJobKeys.Contains(jobKey))
                 continue;
 
             var key = await GetActiveStoredKey(jobKey);

@@ -36,7 +36,7 @@ public class DownloadJob : IJob
 
     public static JobKey GetJobKey(Guid id) => new($"{nameof(DownloadJob)}_{id}", nameof(DownloadJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         using var telemetryScope = _telemetry.BeginJob(TelemetryActivity.Download, context.GetTelemetryContext());
         var payloadResult = context.GetRequiredPayload<DownloadJobPayload>();
@@ -48,7 +48,6 @@ public class DownloadJob : IJob
         }
 
         var downloadTaskKey = payloadResult.Value.DownloadTaskKey;
-        var token = context.CancellationToken;
 
         // Preserve handled outcomes for Quartz listeners while containing unexpected exceptions.
         // https://www.quartz-scheduler.net/documentation/best-practices.html#throwing-exceptions
@@ -63,7 +62,7 @@ public class DownloadJob : IJob
                 );
 
             // Create the multiple download worker tasks which will split up the work
-            var downloadTask = await _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, token);
+            var downloadTask = await _dbContext.GetDownloadTaskFileAsync(downloadTaskKey, cancellationToken);
             if (downloadTask is null)
             {
                 return ResultExtensions.EntityNotFound(nameof(DownloadTaskFileBase), downloadTaskKey.Id).LogError();
@@ -80,7 +79,7 @@ public class DownloadJob : IJob
                     .LogWarning();
             }
 
-            var result = await SetDownloadAndDestination(downloadTask, token);
+            var result = await SetDownloadAndDestination(downloadTask, cancellationToken);
             if (result.IsCancelledOrFailed)
                 return result.LogIfFailed().ToResult();
 
@@ -92,7 +91,7 @@ public class DownloadJob : IJob
                     downloadTask.ToKey(),
                     $"/library/metadata/{downloadTask.PlexApiRatingKey}"
                 ),
-                token
+                cancellationToken
             );
             if (clientTypeResult.IsCancelled)
             {
@@ -106,9 +105,12 @@ public class DownloadJob : IJob
                     downloadTask.ToKey(),
                     DownloadStatus.DownloadClientError,
                     clientTypeResult.ToResult(),
-                    token
+                    cancellationToken
                 );
-                await _eventPublisher.PublishAsync(new SendNotificationResult(clientTypeResult.ToResult()), token);
+                await _eventPublisher.PublishAsync(
+                    new SendNotificationResult(clientTypeResult.ToResult()),
+                    cancellationToken
+                );
                 return clientTypeResult.ToResult();
             }
 
@@ -121,7 +123,7 @@ public class DownloadJob : IJob
                     downloadTask.FullTitle
                 );
 
-            var currentStatus = await _dbContext.GetDownloadTaskStatusAsync(downloadTaskKey, token);
+            var currentStatus = await _dbContext.GetDownloadTaskStatusAsync(downloadTaskKey, cancellationToken);
             if (!CanStartDownload(currentStatus))
             {
                 return Result
@@ -134,7 +136,7 @@ public class DownloadJob : IJob
             }
 
             await using var plexDownloadClient = _plexDownloadClientFactory[clientType];
-            var startResult = await plexDownloadClient.Start(downloadTask.ToKey(), token);
+            var startResult = await plexDownloadClient.Start(downloadTask.ToKey(), cancellationToken);
 
             if (startResult.IsCancelled)
             {
@@ -176,7 +178,7 @@ public class DownloadJob : IJob
                     );
                 }
 
-                await _eventPublisher.PublishAsync(new SendNotificationResult(startResult), token);
+                await _eventPublisher.PublishAsync(new SendNotificationResult(startResult), cancellationToken);
             }
 
             return startResult;
