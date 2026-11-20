@@ -1,10 +1,11 @@
+using System.ComponentModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 
 namespace Reaparr.Settings.Contracts;
 
-public abstract record BaseSettingsModule<TModel>
+public abstract record BaseSettingsModule<TModel> : INotifyPropertyChanged
     where TModel : class
 {
     protected BaseSettingsModule()
@@ -14,9 +15,12 @@ public abstract record BaseSettingsModule<TModel>
 
     private readonly BehaviorSubject<TModel> _moduleUpdatedSubject;
 
-    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         _moduleUpdatedSubject.OnNext((this as TModel)!);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     /// <summary>
