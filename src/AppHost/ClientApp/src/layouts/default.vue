@@ -121,7 +121,7 @@ onScopeDispose(nuxtApp.hook('page:finish', () => {
 			pendingPageCallbacks.delete(timer);
 			if (!authStore.isLoggedIn) return;
 			if (settingsStore.generalSettings.firstTimeSetup && !route.fullPath.includes('setup')) {
-				router.push('/setup');
+				router.push('/setup').catch((error) => Log.error('Failed to navigate to setup', error));
 			} else if (!settingsStore.generalSettings.hasBeenInvitedToDiscord && !route.fullPath.includes('setup')) {
 				dialogStore.openDialog(DialogType.DiscordServerInviteDialog);
 			}
@@ -139,7 +139,7 @@ onMounted(() => {
 					if (authStore.isLoggedIn && route.fullPath.includes('login')) {
 						// Keep the overlay up through the router transition — page:finish will clear pageLoading,
 						// and we clear pageApiLoading only after the navigation resolves so there is no flash.
-						router.push('/').finally(() => set(pageApiLoading, false));
+						router.push('/').catch((error) => Log.error('Failed to navigate home after login', error)).finally(() => set(pageApiLoading, false));
 					} else {
 						set(pageApiLoading, false);
 					}
