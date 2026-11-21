@@ -72,6 +72,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import { get, set, useClipboard } from '@vueuse/core';
 import { DialogType } from '@enums';
 import { useAccountDialogStore } from '@store';
@@ -98,8 +99,9 @@ function onComplete(verificationCode: string) {
 	set(verificationCodeValue, '');
 }
 function copyGeneratedToken() {
-	telemetry.accountTokenCopied(accountDialogStore.id);
-	copy(get(generatedToken));
+	copy(get(generatedToken)).then(() => {
+		telemetry.accountTokenCopied(accountDialogStore.id);
+	}).catch((error) => Log.error('Failed to copy generated account token', error));
 }
 
 function requestToken(verificationCode: string = '') {

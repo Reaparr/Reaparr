@@ -61,9 +61,9 @@
 				</MediaOverviewTable>
 			</div>
 			<PosterTable
+				v-else
 				ref="posterRef"
 				class="poster-table"
-				v-else
 				:item-count="props.itemCount"
 				:request-range="props.requestRange"
 				:range-context-key="props.rangeContextKey"

@@ -58,11 +58,11 @@ import { sendMediaOverviewDownloadCommand, useMediaOverviewBarDownloadCommandBus
 const props = defineProps<{ mediaItem: PlexMediaDTO }>();
 const { t } = useI18n();
 const mediaOverviewStore = useMediaOverviewStore();
-const selection = ref<ISelection>({
+const selection = computed<ISelection>(() => ({
 	indexKey: props.mediaItem.id,
 	keys: [],
 	allSelected: false,
-});
+}));
 
 const mediaRows = computed((): PlexMediaSlimDTO[] => props.mediaItem.mediaData.map((mediaData) => ({
 	id: mediaData.id,

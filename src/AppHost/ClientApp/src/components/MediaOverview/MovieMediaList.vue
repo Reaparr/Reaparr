@@ -60,11 +60,11 @@ const props = defineProps<{
 	mediaItem: PlexMediaDTO;
 }>();
 
-const selection = ref<ISelection>({
+const selection = computed<ISelection>(() => ({
 	indexKey: props.mediaItem.id,
 	keys: [],
 	allSelected: false,
-});
+}));
 
 const mediaRows = computed((): PlexMediaSlimDTO[] => {
 	return props.mediaItem.mediaData.map((mediaData) => ({

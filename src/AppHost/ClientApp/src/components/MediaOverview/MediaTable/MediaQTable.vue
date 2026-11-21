@@ -131,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import type { QTableProps } from 'quasar';
 import { get } from '@vueuse/core';
 import Convert from '@class/Convert';
@@ -220,7 +221,7 @@ function onRowAction(row: PlexMediaSlimDTO, action: IMediaOverviewCommands) {
 					libraryId: row.plexLibraryId.toString(),
 					tvShowId: row.id.toString(),
 				},
-			});
+			}).catch((error) => Log.error('Failed to navigate to TV show details', error));
 			break;
 		default:
 			throw new Error(`Unknown action: ${action.command} in MediaQTable.vue`);
@@ -229,7 +230,7 @@ function onRowAction(row: PlexMediaSlimDTO, action: IMediaOverviewCommands) {
 
 function updateSelected(selected: readonly PlexMediaSlimDTO[]) {
 	emit('selection', {
-		keys: selected.map((x) => x.id) as number[],
+		keys: selected.map((x) => x.id),
 		allSelected: selected.length === props.rows.length ? true : selected.length === 0 ? false : null,
 		indexKey: 0,
 	});

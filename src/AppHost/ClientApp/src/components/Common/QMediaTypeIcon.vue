@@ -26,7 +26,7 @@ const props = withDefaults(defineProps<{
 });
 
 const icon = computed((): string => {
-	return Convert.mediaTypeToIcon(props.mediaType as PlexMediaType);
+	return Convert.mediaTypeToIcon(props.mediaType);
 });
 </script>
 

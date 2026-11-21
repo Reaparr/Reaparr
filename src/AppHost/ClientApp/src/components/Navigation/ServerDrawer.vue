@@ -172,29 +172,32 @@ function isServerSyncing(serverId: number): boolean {
 	return libraries.some((library) => libraryStore.getIsLibrarySyncing(library.id));
 }
 
+function navigateToLibrary(path: string): void {
+	router.push(path).catch((error) => Log.error(`Failed to navigate to library: ${path}`, error));
+}
 function openMediaPage(library: PlexLibraryDTO): void {
 	switch (library.type) {
 		case PlexMediaType.Movie:
-			router.push(`/movies/${library.id}`);
+			navigateToLibrary(`/movies/${library.id}`);
 			break;
 		case PlexMediaType.OtherVideos:
-			router.push(`/other-videos/${library.id}`);
+			navigateToLibrary(`/other-videos/${library.id}`);
 			break;
 		case PlexMediaType.TvShow:
-			router.push(`/tvshows/${library.id}`);
+			navigateToLibrary(`/tvshows/${library.id}`);
 			break;
 		case PlexMediaType.MusicArtist:
 		case PlexMediaType.MusicAlbum:
 		case PlexMediaType.MusicTrack:
-			router.push(`/music/${library.id}`);
+			navigateToLibrary(`/music/${library.id}`);
 			break;
 		case PlexMediaType.PhotoAlbum:
 		case PlexMediaType.PhotoImage:
-			router.push(`/photos/${library.id}`);
+			navigateToLibrary(`/photos/${library.id}`);
 			break;
 		default:
 			Log.error(library.type + ' was neither a movie, tvshow or music library');
-			router.push(`/unknown/${library.id}`);
+			navigateToLibrary(`/unknown/${library.id}`);
 	}
 }
 

@@ -1,8 +1,8 @@
 <template>
 	<q-card
+		ref="card"
 		class="media-poster-card"
 		:class="{ 'media-poster-card--without-overlay': !overlay }"
-		ref="card"
 		flat
 		@click="onClick"
 		@contextmenu="onContextMenu"

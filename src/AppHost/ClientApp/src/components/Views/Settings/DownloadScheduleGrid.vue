@@ -134,7 +134,7 @@ function cellLabel(day: string, slot: number): string {
 	const daySlot = slot % 48;
 	const until = get(times)[daySlot + 1]!.label;
 	const limit = slotLimit(slot);
-	return `${day} ${get(times)[daySlot]!.label}–${until}: ${limit === null ? props.unlimitedLabel : `${get(numberFormat).format(limit!)} kB/s`}`;
+	return `${day} ${get(times)[daySlot]!.label}–${until}: ${limit === null ? props.unlimitedLabel : `${get(numberFormat).format(limit)} kB/s`}`;
 }
 
 function selectBetween(first: number, last: number) {

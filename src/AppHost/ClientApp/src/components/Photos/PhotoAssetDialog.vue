@@ -83,7 +83,7 @@
 								data-cy="photo-viewer-counter"
 								role="status"
 								:aria-label="`${photoStore.index + 1} / ${photoStore.count}`">
-								{{ photoStore.index + 1 }} / {{ photoStore.count }}
+								{{ t('components.photo-browser.asset-counter', { current: photoStore.index + 1, total: photoStore.count }) }}
 							</span>
 						</QCarouselControl>
 						<Dock

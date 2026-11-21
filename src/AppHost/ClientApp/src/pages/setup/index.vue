@@ -101,7 +101,7 @@ function finishSetup() {
 	});
 	useSubscription(settingsStore.saveSettings().pipe(switchMap(() => globalStore.setup()), tap(() => {
 		Log.info('Setup process is finished, redirecting to home page now and refreshing data');
-		router.push('/');
+		void router.push('/').catch((error) => Log.error('Failed to navigate home after setup', error));
 	})).subscribe());
 }
 </script>

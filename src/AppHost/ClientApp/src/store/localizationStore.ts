@@ -60,14 +60,14 @@ export const useLocalizationStore = defineStore(StoreNames.LocalizationStore, ()
 			state.i18nRef.setLocale(isoCode).then(() => {
 				useSettingsStore().languageSettings.language = isoCode;
 				Log.info('Localization has been set to:', isoCode);
-			});
+			}).catch((error) => Log.error('Failed to change localization to:', isoCode, error));
 		},
 		toILocalConfig(locale?: LocaleObject | null): ILocaleConfig {
 			if (!locale?.code || !locale?.name) {
 				return emptyLocale;
 			}
 			return {
-				text: locale.name!,
+				text: locale.name,
 				code: locale.code,
 				iso: locale.code,
 				bcp47Code: locale.code.slice(0, 2),
@@ -85,8 +85,8 @@ export const useLocalizationStore = defineStore(StoreNames.LocalizationStore, ()
 				return emptyLocale;
 			}
 
-			const locales = unref(state.i18nRef.locales) as LocaleObject[];
-			const locale = locales.find((locale) => locale.code === unref(state.i18nRef.locale)) as LocaleObject | undefined;
+			const locales = unref(state.i18nRef.locales);
+			const locale = locales.find((locale) => locale.code === unref(state.i18nRef.locale));
 			return actions.toILocalConfig(locale);
 		}),
 		getLanguageLocaleOptions: computed((): ILocaleConfig[] => {
@@ -94,7 +94,7 @@ export const useLocalizationStore = defineStore(StoreNames.LocalizationStore, ()
 				return [];
 			}
 
-			return (unref(state.i18nRef.locales) as LocaleObject[]).map((x) => (actions.toILocalConfig(x)));
+			return unref(state.i18nRef.locales).map((x) => (actions.toILocalConfig(x)));
 		}),
 	};
 

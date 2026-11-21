@@ -163,6 +163,7 @@
 </template>
 
 <script lang="ts" setup>
+import Log from 'consola';
 import { get, set, useClipboard } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
 import { useVirtualizer, type VirtualItem } from '@tanstack/vue-virtual';
@@ -284,15 +285,17 @@ function copyLogs() {
 	const text = get(logs)
 		.map((item) => formatLogCopyText(item))
 		.join('\n');
-	copy(text);
-	telemetry.downloadLogsCopied(props.downloadTaskId, logCount);
-	showSuccessNotification(t('components.download-details-dialog.logs.copied-to-clipboard'));
+	copy(text).then(() => {
+		telemetry.downloadLogsCopied(props.downloadTaskId, logCount);
+		showSuccessNotification(t('components.download-details-dialog.logs.copied-to-clipboard'));
+	}).catch((error) => Log.error('Failed to copy download logs', error));
 }
 
 function copyLogEntry(item: DownloadTaskLogDTO) {
-	copy(formatLogCopyText(item));
-	telemetry.downloadLogCopied(props.downloadTaskId, item.logLevel);
-	showSuccessNotification(t('components.download-details-dialog.logs.entry-copied-to-clipboard'));
+	copy(formatLogCopyText(item)).then(() => {
+		telemetry.downloadLogCopied(props.downloadTaskId, item.logLevel);
+		showSuccessNotification(t('components.download-details-dialog.logs.entry-copied-to-clipboard'));
+	}).catch((error) => Log.error('Failed to copy download log entry', error));
 }
 
 function formatLogCopyText(item: DownloadTaskLogDTO) {

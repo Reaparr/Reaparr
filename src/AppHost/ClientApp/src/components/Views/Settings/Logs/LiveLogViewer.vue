@@ -206,6 +206,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import { get, set, useClipboard, useDebounceFn } from '@vueuse/core';
 import { format } from 'date-fns';
 import { useLogsStore } from '@store';
@@ -231,7 +232,7 @@ const applySearch = useDebounceFn((value: string) => {
 function onSearchInput(value: string | number | null): void {
 	const text = value?.toString() ?? '';
 	set(searchInput, text);
-	applySearch(text);
+	applySearch(text).catch((error) => Log.error('Failed to apply live log search', error));
 }
 
 function onSearchClear(): void {
@@ -336,9 +337,10 @@ function formatLogEntry(item: LiveLogEventDTO): string {
 }
 
 function copyLogEntry(item: LiveLogEventDTO): void {
-	telemetry.logsCopied(1);
-	copy(formatLogEntry(item));
-	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	copy(formatLogEntry(item)).then(() => {
+		telemetry.logsCopied(1);
+		showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	}).catch((error) => Log.error('Failed to copy live log entry', error));
 }
 
 function onEntrySelectionChanged(sequence: number, selected: boolean): void {
@@ -355,18 +357,20 @@ function onEntrySelectionChanged(sequence: number, selected: boolean): void {
 function copySelectedEntries(): void {
 	const sequences = get(selectedEntries);
 	const entries = logsStore.getLogs.filter((x) => sequences.has(x.sequence));
-	telemetry.logsCopied(entries.length);
 	const text = entries.map(formatLogEntry).join('\n');
-	copy(text);
-	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	copy(text).then(() => {
+		telemetry.logsCopied(entries.length);
+		showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	}).catch((error) => Log.error('Failed to copy selected live logs', error));
 }
 
 function copyAllEntries(): void {
 	const entries = logsStore.getLogs;
-	telemetry.logsCopied(entries.length);
 	const text = entries.map(formatLogEntry).join('\n');
-	copy(text);
-	showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	copy(text).then(() => {
+		telemetry.logsCopied(entries.length);
+		showSuccessNotification(t('pages.settings.logs.copied-to-clipboard'), 2000);
+	}).catch((error) => Log.error('Failed to copy live logs', error));
 }
 
 function onSelectedLevelsChanged(value: LogSeverity[] | null): void {

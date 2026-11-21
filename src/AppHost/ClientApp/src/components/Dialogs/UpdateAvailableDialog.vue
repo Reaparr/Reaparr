@@ -25,12 +25,12 @@
 						<div class="update-dialog__sidebar-body">
 							<q-tabs
 								v-model="releaseIndex"
-								@update:model-value="onReleaseSelected"
 								vertical
 								active-color="primary"
 								indicator-color="primary"
 								class="update-dialog__tabs"
-								dense>
+								dense
+								@update:model-value="onReleaseSelected">
 								<q-tab
 									v-for="(release, index) in updateStore.releaseNotes"
 									:key="index"

@@ -23,15 +23,13 @@ declare module 'markdown-it' {
 		renderer: Renderer,
 	) => string;
 
-	export interface MarkdownItInstance {
-		renderer: Renderer;
-	}
+	export type PluginSimple = (markdownIt: MarkdownIt) => void;
 
-	export type PluginSimple = (markdownIt: MarkdownItInstance) => void;
-
-	class MarkdownIt implements MarkdownItInstance {
+	class MarkdownIt {
 		constructor(options?: Options);
 		renderer: Renderer;
+		use(plugin: PluginSimple): this;
+		render(source: string): string;
 	}
 
 	export default MarkdownIt;

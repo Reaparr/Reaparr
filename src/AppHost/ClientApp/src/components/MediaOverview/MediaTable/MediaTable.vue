@@ -150,7 +150,7 @@ const rowVirtualizer = useVirtualizer(
 	})),
 );
 watch(ROW_HEIGHT, () => {
-	nextTick(() => rowVirtualizer.value.measure());
+	nextTick(() => rowVirtualizer.value.measure()).catch((error) => Log.error('Failed to measure media table rows', error));
 });
 
 const safeTotalSize = computed(() => Math.min(rowVirtualizer.value.getTotalSize(), BROWSER_MAX_CSS_HEIGHT));
@@ -220,7 +220,7 @@ function highlightPendingMedia() {
 		if (element)
 			triggerBoxHighlight(element);
 		mediaOverviewStore.consumePendingMediaHighlight(pendingMediaHighlightId);
-	});
+	}).catch((error) => Log.error('Failed to highlight the pending media item', error));
 }
 
 onMounted(() => {

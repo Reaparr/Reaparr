@@ -246,7 +246,7 @@ const getIcon = (type: FileSystemEntityType): string => {
 };
 
 function open(data: FolderPathDTO): void {
-	let selectedPath = data as FolderPathDTO;
+	let selectedPath = data;
 	if (!selectedPath) {
 		Log.error('parameter was null when opening DirectoryBrowser');
 		return;

@@ -37,9 +37,11 @@
             "select-artist": "Select artist {title}",
             "select-album": "Select album {title}",
             "selected-count": "{count} selected",
-            "track-count": "{count} tracks",
+            "track-count-display": "({count} tracks)",
             "record-label": "Record label",
             "release-date": "Release date",
+            "record-label-display": "{label}: {value}",
+            "release-date-display": "{label}:",
             "no-tracks": "No tracks found",
             "no-albums": "No albums found"
         },
@@ -443,6 +445,7 @@
             "request-failed": "The backend could not complete this request.",
             "connection-failed": "Cannot reach the Reaparr backend. Check your connection and try again.",
             "endpoint": "Endpoint",
+            "endpoint-display": "{label}: {url}",
             "omitted-errors": "Only the first 10 distinct failures are shown. Additional failures were omitted; see the Reaparr logs.",
             "report-issue": "Report on GitHub",
             "report-description": "Please describe what you were doing and add relevant Reaparr logs."

@@ -124,6 +124,7 @@
 </template>
 
 <script lang="ts" setup>
+import Log from 'consola';
 import type { QTreeViewTableHeader } from '@props';
 import type { PlexMediaSlimDTO } from '@dto';
 import Convert from '@class/Convert';
@@ -172,7 +173,7 @@ function onRowAction(action: IMediaOverviewCommands) {
 				if (!path)
 					return;
 				mediaOverviewStore.setPendingMediaHighlight(props.row.id, mediaOverviewStore.libraryId);
-				router.push(path);
+				router.push(path).catch((error) => Log.error('Failed to navigate to media details', error));
 			}
 			break;
 		default:

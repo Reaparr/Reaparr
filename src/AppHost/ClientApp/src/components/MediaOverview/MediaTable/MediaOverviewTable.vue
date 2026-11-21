@@ -188,6 +188,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import type { Observable } from 'rxjs';
 import { useSubscription } from '@vueuse/rxjs';
 import { useVirtualizer } from '@tanstack/vue-virtual';
@@ -377,18 +378,18 @@ watch(() => props.rangeContextKey, () => {
 	nextTick(() => {
 		if (get(controlled))
 			requestControlledRange();
-	});
+	}).catch((error) => Log.error('Failed to request the updated controlled table range', error));
 });
 watch(() => props.itemCount, () => {
 	nextTick(() => {
 		get(rowVirtualizer).measure();
 		if (get(controlled))
 			requestControlledRange();
-	});
+	}).catch((error) => Log.error('Failed to update the controlled table after item count changed', error));
 });
 watch(() => props.initialScrollIndex, (index) => {
 	if (get(controlled) && index > 0)
-		nextTick(() => scrollToIndex(index));
+		nextTick(() => scrollToIndex(index)).catch((error) => Log.error('Failed to scroll to the initial controlled table index', error));
 });
 onMounted(() => {
 	if (!get(controlled))
@@ -397,7 +398,7 @@ onMounted(() => {
 		if (props.initialScrollIndex > 0)
 			scrollToIndex(props.initialScrollIndex);
 		requestControlledRange();
-	});
+	}).catch((error) => Log.error('Failed to initialize the controlled table after mount', error));
 });
 
 defineExpose({ scrollToIndex, focusItem });

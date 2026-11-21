@@ -66,12 +66,12 @@
 								:cy="`music-comparison-album-${album.id}`"
 								@click.stop />
 							<span>{{ album.title }}&nbsp;</span>
-							<span>({{ t('components.music-media-list.track-count', { count: album.children.length }) }})</span>
+							<span>{{ t('components.music-media-list.track-count-display', { count: album.children.length }) }}</span>
 						</QCol>
 						<QCol
 							v-if="album.recordLabel"
 							cols="2">
-							{{ t('components.music-media-list.record-label') }}: {{ album.recordLabel }}
+							{{ t('components.music-media-list.record-label-display', { label: t('components.music-media-list.record-label'), value: album.recordLabel }) }}
 						</QCol>
 						<QCol
 							cols="1"
@@ -85,7 +85,7 @@
 						<QCol
 							v-if="album.originallyAvailableAt"
 							cols="1">
-							{{ t('components.music-media-list.release-date') }}:
+							{{ t('components.music-media-list.release-date-display', { label: t('components.music-media-list.release-date') }) }}
 							<QDateTime
 								:text="album.originallyAvailableAt"
 								short-date />

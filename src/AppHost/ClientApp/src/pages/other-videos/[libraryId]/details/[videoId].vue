@@ -88,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import { Subject, of, switchMap, catchError, take } from 'rxjs';
 import { get, set } from '@vueuse/core';
 import { useSubscription } from '@vueuse/rxjs';
@@ -119,7 +120,7 @@ const dates = computed(() => [
 ].filter((date): date is { key: string; label: string; value: string } => !!date.value && Number.isFinite(Date.parse(date.value)) && !date.value.startsWith('0001-')));
 
 function backToVideos(): void {
-	router.push(get(libraryId) > 0 ? `/other-videos/${get(libraryId)}` : '/other-videos');
+	router.push(get(libraryId) > 0 ? `/other-videos/${get(libraryId)}` : '/other-videos').catch((error) => Log.error('Failed to return to other videos', error));
 }
 function onAction(action: IMediaOverviewBarActions): void {
 	if (action === 'back')

@@ -24,7 +24,7 @@
 						{{ `${error.method} — HTTP ${error.statusCode}` }}
 					</div>
 					<div style="overflow-wrap: anywhere">
-						{{ $t('components.alert-dialog.endpoint') }}: {{ error.url }}
+						{{ $t('components.alert-dialog.endpoint-display', { label: $t('components.alert-dialog.endpoint'), url: error.url }) }}
 					</div>
 					<pre style="white-space: break-spaces">{{ error.message }}</pre>
 				</div>

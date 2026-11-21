@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import { useSubscription } from '@vueuse/rxjs';
 import { settingsApi } from '@api';
 import { DialogType } from '@enums';
@@ -42,7 +43,7 @@ const resetDatabaseCommand = (): void => {
 				router.push('/setup').then(() => {
 					// Refresh the page when we go to the home page to make sure we get all new data.
 					location.reload();
-				});
+				}).catch((error) => Log.error('Failed to navigate to setup after resetting the database', error));
 			}
 		}),
 	);

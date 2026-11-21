@@ -142,7 +142,8 @@ const rowVirtualizer = useVirtualizer(
 
 			// Throttle scroll-index persistence: only run every 500ms to avoid layout thrashing
 			persistScrollIndex();
-			void highlightPendingMedia();
+			// This virtualizer callback is synchronous; keep highlighting detached and log failures.
+			highlightPendingMedia().catch((error) => Log.error('Failed to highlight pending poster media', error));
 		},
 	})),
 );
@@ -280,7 +281,7 @@ watch(containerWidth, (width) => {
 	if (!get(hasRunInitialPageReady)) {
 		set(hasRunInitialPageReady, true);
 		if (!get(controlled))
-			nextTick(() => onPageReady());
+			nextTick(() => onPageReady()).catch((error) => Log.error('Failed to initialize poster table after layout', error));
 	}
 });
 
@@ -292,7 +293,7 @@ function onPageReady() {
 	if (requestedScrollIndex > 0)
 		scrollToIndex(requestedScrollIndex - 1, get(mediaOverviewStore.pendingMediaHighlightId) === null);
 
-	highlightPendingMedia();
+	highlightPendingMedia().catch((error) => Log.error('Failed to highlight pending poster media', error));
 	if (get(mediaOverviewStore.pendingMediaHighlightId) !== null)
 		return;
 
@@ -407,7 +408,7 @@ function scrollToIndex(index: number, highlight = true) {
 		waitForElement(container, `[data-scroll-index="${index}"]`).then((element) => {
 			if (element)
 				triggerBoxHighlight(element);
-		});
+		}).catch((error) => Log.error('Failed to highlight scrolled poster item', error));
 	}
 }
 async function focusItem(index: number): Promise<boolean> {
@@ -424,22 +425,22 @@ async function focusItem(index: number): Promise<boolean> {
 watch(() => props.rangeContextKey, () => {
 	set(requestedRange, '');
 	if (get(controlled))
-		nextTick(() => requestControlledRange(false));
+		nextTick(() => requestControlledRange(false)).catch((error) => Log.error('Failed to request updated controlled poster range', error));
 });
 watch(() => props.itemCount, () => {
 	if (get(controlled))
-		nextTick(() => requestControlledRange(false));
+		nextTick(() => requestControlledRange(false)).catch((error) => Log.error('Failed to request updated controlled poster range', error));
 });
 watch(() => props.initialScrollIndex, (index) => {
 	if (get(controlled) && index > 0)
-		nextTick(() => scrollToIndex(index, false));
+		nextTick(() => scrollToIndex(index, false)).catch((error) => Log.error('Failed to scroll to initial controlled poster index', error));
 });
 
 onMounted(() => {
 	if (get(controlled)) {
 		if (props.initialScrollIndex > 0)
-			nextTick(() => scrollToIndex(props.initialScrollIndex, false));
-		nextTick(() => requestControlledRange(false));
+			nextTick(() => scrollToIndex(props.initialScrollIndex, false)).catch((error) => Log.error('Failed to scroll to initial controlled poster index', error));
+		nextTick(() => requestControlledRange(false)).catch((error) => Log.error('Failed to initialize controlled poster range', error));
 		return;
 	}
 

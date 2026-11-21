@@ -1,10 +1,10 @@
 <template>
 	<q-tabs
 		v-model="model"
-		@update:model-value="onStepSelected"
 		active-color="primary"
 		indicator-color="primary"
-		:vertical="$q.screen.gt.xs">
+		:vertical="$q.screen.gt.xs"
+		@update:model-value="onStepSelected">
 		<!-- Step headers	-->
 		<template
 			v-for="(header, index) in headers"

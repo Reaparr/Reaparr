@@ -100,6 +100,7 @@
 </template>
 
 <script setup lang="ts">
+import Log from 'consola';
 import { get, set } from '@vueuse/core';
 import { Subject, of, switchMap, catchError, take } from 'rxjs';
 import { useSubscription } from '@vueuse/rxjs';
@@ -132,7 +133,7 @@ const dates = computed(() => [
 
 function backToArtists(): void {
 	const id = get(libraryId);
-	router.push(Number.isSafeInteger(id) && id > 0 ? `/music/${id}` : '/music');
+	router.push(Number.isSafeInteger(id) && id > 0 ? `/music/${id}` : '/music').catch((error) => Log.error('Failed to return to music artists', error));
 }
 
 function onAction(event: IMediaOverviewBarActions): void {
