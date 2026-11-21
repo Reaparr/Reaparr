@@ -37,9 +37,11 @@
             "select-artist": "Wybierz wykonawcę {title}",
             "select-album": "Wybierz album {title}",
             "selected-count": "Wybrano: {count}",
-            "track-count": "Utwory: {count}",
+            "track-count-display": "(Utwory: {count})",
             "record-label": "Wytwórnia",
             "release-date": "Data wydania",
+            "record-label-display": "{label}: {value}",
+            "release-date-display": "{label}:",
             "no-tracks": "Nie znaleziono utworów",
             "no-albums": "Nie znaleziono albumów"
         },
@@ -86,6 +88,7 @@
             "details-loading": "Wczytywanie szczegółów elementu",
             "memberships-loading": "Wczytywanie przynależności do albumów",
             "asset-viewer": "Przeglądarka zdjęć",
+            "asset-counter": "{current} / {total}",
             "close-asset-viewer": "Zamknij przeglądarkę zdjęć",
             "close-details": "Zamknij szczegóły elementu",
             "previous-asset": "Poprzedni element",
@@ -438,7 +441,6 @@
             "next-steps": "Zamknij tylko ukrywa to okno; nie ponawia nieudanych żądań. Jeśli problem się powtarza, Zgłoś na GitHubie otwiera wstępnie wypełnione zgłoszenie do sprawdzenia. Nic nie jest wysyłane automatycznie. Przed wysłaniem usuń poufne informacje, dodaj kroki odtworzenia problemu i dołącz odpowiednie logi serwera.",
             "request-failed": "Serwer nie mógł ukończyć tego żądania.",
             "connection-failed": "Nie można połączyć się z serwerem Reaparr. Sprawdź połączenie i spróbuj ponownie.",
-            "endpoint": "Punkt końcowy",
             "omitted-errors": "Wyświetlono tylko pierwszych 10 różnych błędów. Kolejne błędy pominięto; sprawdź logi Reaparr.",
             "report-issue": "Zgłoś na GitHubie",
             "report-description": "Opisz wykonywane czynności i dodaj odpowiednie logi Reaparr."
