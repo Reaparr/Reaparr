@@ -1,5 +1,4 @@
 using FlexQuery.NET;
-using FlexQuery.NET.Parsers;
 
 namespace Reaparr.Application;
 
@@ -47,7 +46,7 @@ public sealed class GetMediaOverviewOtherVideoCommandHandler
     {
         var stopwatch = Stopwatch.StartNew();
         var filter = command.Filter;
-        var options = QueryOptionsParser.Parse(filter.Parameters);
+        var options = filter.Parameters.ToQueryOptions();
         var sort = options.ResolveSort();
         if (sort is null)
         {

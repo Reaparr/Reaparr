@@ -49,11 +49,21 @@ public class MediaQueryFilterUnitTests : BaseUnitTest<MediaQueryFilterUnitTests>
         originalHash.ShouldNotBe(duplicateHash);
     }
 
+    [Test]
+    public void ShouldHaveDifferentHash_WhenIncludeChanges()
+    {
+        var withoutInclude = CreateFilter(include: null);
+        var withInclude = CreateFilter(include: "MediaDataList");
+
+        withoutInclude.QueryHash.ShouldNotBe(withInclude.QueryHash);
+    }
+
     private static MediaQueryFilter CreateFilter(
         int? page = null,
         int? pageSize = null,
         string? sort = null,
-        string? filter = null
+        string? filter = null,
+        string? include = null
     ) =>
         new()
         {
@@ -67,7 +77,7 @@ public class MediaQueryFilterUnitTests : BaseUnitTest<MediaQueryFilterUnitTests>
                 PageSize = pageSize,
                 Sort = sort,
                 Filter = filter,
-                Query = "Title ~= 'Matrix'",
+                Include = include,
             },
         };
 }

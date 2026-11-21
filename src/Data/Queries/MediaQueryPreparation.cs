@@ -1,6 +1,8 @@
+using FlexQuery.NET;
 using FlexQuery.NET.Constants;
 using FlexQuery.NET.Models;
-using FlexQuery.NET.Parsers;
+using FlexQuery.NET.Models.Filters;
+using FlexQuery.NET.Models.Paging;
 
 namespace Reaparr.Data;
 
@@ -16,7 +18,7 @@ internal static class MediaQueryPreparation
         if (libraryIds.Count == 0)
             return (new QueryOptions(), libraryIds, false);
 
-        var options = QueryOptionsParser.Parse(filter.Parameters);
+        var options = filter.Parameters.ToQueryOptions();
         options.Paging.Disabled = filter.PageSize == 0;
         options.Paging.PageSize = filter.PageSize;
         var hasUserFilters = options.HasFiltersApplied() || filter.ComparisonState.HasValue;

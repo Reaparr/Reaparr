@@ -1,5 +1,6 @@
+using FlexQuery.NET;
 using FlexQuery.NET.Models;
-using FlexQuery.NET.Parsers;
+using FlexQuery.NET.Models.Paging;
 using SortDirection = Reaparr.Domain.SortDirection;
 
 namespace Reaparr.Application.UnitTests;
@@ -63,7 +64,7 @@ public class MediaOverviewExtensionsUnitTests
     )
     {
         // Arrange
-        var options = QueryOptionsParser.Parse(new FlexQueryParameters { Sort = value });
+        var options = new FlexQueryParameters { Sort = value }.ToQueryOptions();
 
         // Act
         var result = options.ResolveSort();

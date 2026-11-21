@@ -1,4 +1,5 @@
 using FlexQuery.NET;
+using FlexQuery.NET.Models.Paging;
 using Reaparr.Application.Contracts;
 using static Reaparr.Data.MediaByTypeQuerySupport;
 

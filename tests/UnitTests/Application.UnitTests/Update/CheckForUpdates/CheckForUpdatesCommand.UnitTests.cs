@@ -1,4 +1,3 @@
-using NuGet.Versioning;
 using Velopack;
 using Velopack.Locators;
 using Velopack.Sources;

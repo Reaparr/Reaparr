@@ -4,7 +4,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
 using Reaparr.AppHost;
 
 namespace Reaparr.IntegrationTests;

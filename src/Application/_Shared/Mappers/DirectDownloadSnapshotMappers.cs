@@ -25,6 +25,8 @@ public static class DirectDownloadSnapshotMapper
                 })
                 .ToList()
                 ?? [],
+            ETag = package.ETag,
+            LastModified = package.LastModified,
             IsSupportDownloadInRange = package.IsSupportDownloadInRange,
         };
 
@@ -37,6 +39,8 @@ public static class DirectDownloadSnapshotMapper
             TotalFileSize = snapshot.TotalFileSize,
             FileName = snapshot.FileName,
             DownloadingFileExtension = snapshot.DownloadingFileExtension,
+            ETag = snapshot.ETag,
+            LastModified = snapshot.LastModified,
             IsSupportDownloadInRange = snapshot.IsSupportDownloadInRange,
             Chunks = snapshot
                 .Chunks.Select(x => new Chunk(x.Start, x.End)

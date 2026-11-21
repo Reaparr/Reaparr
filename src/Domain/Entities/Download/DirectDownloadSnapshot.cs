@@ -9,6 +9,8 @@ public record DirectDownloadSnapshot
     public required string FileName { get; init; } = string.Empty;
     public required string DownloadingFileExtension { get; init; } = string.Empty;
     public required List<DirectDownloadSnapshotChunk> Chunks { get; init; } = [];
+    public string? ETag { get; init; }
+    public string? LastModified { get; init; }
     public required bool IsSupportDownloadInRange { get; init; }
 }
 
