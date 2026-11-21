@@ -11,7 +11,7 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <!-- Keep third-party analyzers private to this repository's builds. -->
-        <MeziantouAnalysisMode>None</MeziantouAnalysisMode>
+        <MeziantouAnalysisMode>Default</MeziantouAnalysisMode>
         <!-- Require forwarding an in-scope CancellationToken to cancellable async APIs. -->
         <AnalysisLevel>latest</AnalysisLevel>
         <WarningsAsErrors>$(WarningsAsErrors);CA2016</WarningsAsErrors>

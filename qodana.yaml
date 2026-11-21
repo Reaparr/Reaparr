@@ -55,5 +55,6 @@ exclude:
     -   name: SuggestDiscardDeclarationVarStyle
     -   name: XmlHighlighting
     -   name: ExplicitCallerInfoArgument
+    -   name: RedundantAnonymousTypePropertyName
 
 fixesStrategy: none
