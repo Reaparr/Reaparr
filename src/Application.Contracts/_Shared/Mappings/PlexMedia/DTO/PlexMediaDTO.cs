@@ -18,7 +18,7 @@ public record PlexMediaDTO : PlexMediaSlimDTO
 
     public required string? RecordLabel { get; init; }
 
-    public required List<PlexGenreDTO> Genres { get; init; } = [];
+    public required IReadOnlyList<PlexGenreDTO> Genres { get; init; } = [];
 
     public required int? DiscNumber { get; set; }
 
@@ -28,7 +28,7 @@ public record PlexMediaDTO : PlexMediaSlimDTO
 
     public required int TvShowSeasonId { get; set; }
 
-    public required List<PlexMediaDataDTO> MediaData { get; set; } = [];
+    public required IReadOnlyList<PlexMediaDataDTO> MediaData { get; set; } = [];
 
-    public required List<PlexMediaDTO> Children { get; set; } = [];
+    public required IReadOnlyList<PlexMediaDTO> Children { get; set; } = [];
 }

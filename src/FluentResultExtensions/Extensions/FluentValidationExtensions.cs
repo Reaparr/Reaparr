@@ -26,8 +26,7 @@ public static class FluentValidationExtensions
         if (!validationResult.IsValid)
         {
             var error = ResultExtensions.Create400BadRequestResult("Fluent Validation Pipeline Failed.").Errors.First();
-            foreach (var reason in validationResult.Errors)
-                error.Reasons.Add(new Error(reason.ErrorMessage));
+            error.Reasons.AddRange(validationResult.Errors.Select(reason => new Error(reason.ErrorMessage)));
 
             result.Reasons.Add(error);
         }

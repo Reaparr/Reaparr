@@ -344,7 +344,10 @@ namespace Reaparr.FluentResults
         public Result<TNewValue> Map<TNewValue>(Func<TValue, TNewValue>? mapLogic)
         {
             if (IsSuccess && mapLogic == null)
-                throw new ArgumentException("If result is success then valueConverter should not be null");
+                throw new ArgumentException(
+                    "If result is success then valueConverter should not be null",
+                    nameof(mapLogic)
+                );
 
             return new Result<TNewValue>().WithValue(IsFailed ? default : mapLogic!(Value!)).WithReasons(Reasons);
         }

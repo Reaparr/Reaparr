@@ -2,9 +2,9 @@ namespace Reaparr.Application.Contracts;
 
 public record PlexLibraryAccessTimelineDTO
 {
-    public required List<PlexLibraryAccessTimelineEventDTO> Events { get; init; } = [];
+    public required IReadOnlyList<PlexLibraryAccessTimelineEventDTO> Events { get; init; } = [];
 
-    public required List<PlexLibraryAccessCurrentStateDTO> CurrentState { get; init; } = [];
+    public required IReadOnlyList<PlexLibraryAccessCurrentStateDTO> CurrentState { get; init; } = [];
 }
 
 public record PlexLibraryAccessTimelineEventDTO
@@ -36,7 +36,7 @@ public record PlexLibraryAccessCurrentStateDTO
 
     public string? PlexServerName { get; init; }
 
-    public required List<PlexLibraryAccessCurrentStateLibraryDTO> Libraries { get; init; } = [];
+    public required IReadOnlyList<PlexLibraryAccessCurrentStateLibraryDTO> Libraries { get; init; } = [];
 }
 
 public record PlexLibraryAccessCurrentStateLibraryDTO

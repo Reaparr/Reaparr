@@ -152,16 +152,10 @@
         }
     }
 
-    internal class ReasonFormat
+    internal static class ReasonFormat
     {
-        public static string ErrorReasonsToString(IReadOnlyCollection<IError> errorReasons)
-        {
-            return string.Join("; ", errorReasons);
-        }
+        public static string ErrorReasonsToString(IEnumerable<IError> errorReasons) => string.Join("; ", errorReasons);
 
-        public static string ReasonsToString(IReadOnlyCollection<IReason> errorReasons)
-        {
-            return string.Join("; ", errorReasons);
-        }
+        public static string ReasonsToString(IEnumerable<IReason> reasons) => string.Join("; ", reasons);
     }
 }
