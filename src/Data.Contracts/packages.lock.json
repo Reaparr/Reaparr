@@ -19,14 +19,14 @@
           "NetTopologySuite.IO.SpatiaLite": "2.0.0"
         }
       },
-      "FlexQuery.NET.EFCore": {
+      "FlexQuery.NET.EntityFrameworkCore": {
         "type": "Direct",
-        "requested": "[2.5.0, )",
-        "resolved": "2.5.0",
-        "contentHash": "GVtJI1w0hP2HSdWuky1hjoJls9+1e9J4sGWb/01WcvA0A9m0czzt7i6bO+w/GB9Qx8oJDmYBOr0cWfl0om46GQ==",
+        "requested": "[4.0.0, )",
+        "resolved": "4.0.0",
+        "contentHash": "uBFoPXMTyd2c7nxFSdEOlABgcAK2PWhiwQRW340reZvz72ecUAEJ1ZPt1VhO3JRk6jgKqsd1hVfjpFk0iK9jcw==",
         "dependencies": {
-          "FlexQuery.NET": "2.5.0",
-          "Microsoft.EntityFrameworkCore": "8.0.0"
+          "FlexQuery.NET": "4.0.0",
+          "Microsoft.EntityFrameworkCore": "10.0.0"
         }
       },
       "Meziantou.Analyzer": {
@@ -145,10 +145,10 @@
       },
       "FlexQuery.NET": {
         "type": "Transitive",
-        "resolved": "2.5.0",
-        "contentHash": "ViwgidP4KyQJj0UkGutsHOqV/XCrRnAo/0AySeRP7/Cv2TeDGneA5HWaWyPKqMjURtdNNGPC/hvgKV3eL6uhmQ==",
+        "resolved": "4.0.0",
+        "contentHash": "qDH2hHrd6pbDmO9lzX1ru5YumuZxnIlvXu2pvHanXV/oHf8X0hWaBPU6YzyIV76cjwmJlZDW/qGrDuzYkdguDA==",
         "dependencies": {
-          "Microsoft.Extensions.Primitives": "8.0.0"
+          "Microsoft.Extensions.Primitives": "10.0.0"
         }
       },
       "FluentValidation": {
@@ -494,8 +494,8 @@
       },
       "System.Reactive": {
         "type": "Transitive",
-        "resolved": "6.1.0",
-        "contentHash": "M5cCC1ZMkZr9jbSQGTHnVkb5TDN67qWCV7AP8TAHdGkvDlu0puT5NzemESNn9+HkYIDpWpocP68/i+/ame2/2w=="
+        "resolved": "7.0.0",
+        "contentHash": "VYaSP2Kt+45GFnr3q7c/b4awT48VvueOJV4jPjdUXi5MxC9mSUy+HkJYtm8rGZ6fC3tNHG9gBu/YwNAR/FYqhg=="
       },
       "Xdg.Directories": {
         "type": "Transitive",
@@ -519,7 +519,7 @@
           "PasswordGenerator": "[2.1.0, )",
           "Reaparr.FluentResultExtensions": "[1.0.0, )",
           "System.ComponentModel.Annotations": "[5.0.0, )",
-          "System.Reactive": "[6.1.0, )"
+          "System.Reactive": "[7.0.0, )"
         }
       },
       "Reaparr.Environment": {

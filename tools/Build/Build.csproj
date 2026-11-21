@@ -18,7 +18,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
         <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
         <PackageReference Include="Spectre.Console.Cli" Version="0.55.0" />
-        <PackageReference Include="System.IO.Abstractions" Version="22.1.1" />
+        <PackageReference Include="System.IO.Abstractions" Version="23.0.1" />
     </ItemGroup>
     <ItemGroup>
         <Using Include="Serilog" />

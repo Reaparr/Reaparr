@@ -13,7 +13,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="EFCore.BulkExtensions.SQLite" Version="10.0.1" />
-        <PackageReference Include="FlexQuery.NET.EFCore" Version="2.5.0" />
+        <PackageReference Include="FlexQuery.NET.EntityFrameworkCore" Version="4.0.0" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
         <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />

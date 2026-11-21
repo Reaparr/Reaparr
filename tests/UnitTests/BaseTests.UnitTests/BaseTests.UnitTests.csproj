@@ -9,7 +9,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="TUnit" Version="1.45.29" />
-        <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.1.1" />
+        <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="23.0.1" />
         <PackageReference Include="coverlet.collector" Version="8.0.1">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
