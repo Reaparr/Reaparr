@@ -61,85 +61,102 @@ resharper_use_method_any_2_highlighting = warning
 resharper_use_method_any_3_highlighting = warning
 resharper_use_method_any_4_highlighting = warning
 
-# CA1827: Do not use Count()/LongCount() when Any() can be used
+# CA1827 blocks Count/LongCount for existence checks; warn to use Any() and avoid enumerating all matches.
 dotnet_diagnostic.CA1827.severity = warning
 
-# Do not suggest replacing Any() with a Count/Length/IsEmpty property.
+# CA1860 prefers Count/Length/IsEmpty over Any(); disable because project policy uses Any() for existence checks.
 dotnet_diagnostic.CA1860.severity = none
-# Added analyzers are opt-in; SDK and framework analyzer defaults remain unchanged.
-dotnet_analyzer_diagnostic.category-roslynator.severity = none
+# Roslynator's default-enabled analyzers are active as feedback; explicit per-rule severities below define the intended build gate.
+dotnet_analyzer_diagnostic.category-roslynator.severity = default
+# MA0004 requires ConfigureAwait choices; disable blanket enforcement because the right context behavior varies by UI/request call chain.
+dotnet_diagnostic.MA0004.severity = none
+# MA0006 prefers String.Equals over ==/!=; disable because the repository deliberately uses ==/is for canonical string equality.
+dotnet_diagnostic.MA0006.severity = none
+# MA0051 flags long methods; disable because length thresholds prompt arbitrary extraction, not evidence of a clearer operation.
+dotnet_diagnostic.MA0051.severity = none
 
-# Blocking SDK style diagnostics.
-# IDE0007 reports explicit local types where the configured style prefers var.
+# IDE0007 enforces var for locals; warning keeps declarations concise and consistent.
 dotnet_diagnostic.IDE0007.severity = warning
-# IDE0036 reports modifiers that do not follow the configured modifier order.
+# IDE0036 enforces modifier order; warning prevents inconsistent declaration syntax.
 dotnet_diagnostic.IDE0036.severity = warning
-# IDE0040 enforces the configured accessibility style, requiring modifiers outside interfaces and omitting unnecessary interface modifiers.
+# IDE0040 enforces accessibility modifiers outside interfaces; warning clarifies API visibility without redundant modifiers.
 dotnet_diagnostic.IDE0040.severity = warning
-# IDE0049 recommends C# keywords such as int instead of Int32, but is disabled because it is not part of the verified compiler gate.
+# IDE0049 prefers C# aliases over framework names; disabled because alias spelling is outside the verified compiler gate.
 dotnet_diagnostic.IDE0049.severity = none
 
 # Blocking style/readability rules.
-# MA0071 reports an unnecessary else after a branch that unconditionally exits.
+# MA0071 flags unnecessary else after an exiting branch; warning reduces nesting without altering control flow.
 dotnet_diagnostic.MA0071.severity = warning
-# MA0037 reports empty statements, including stray semicolons after control flow headers.
+# MA0037 flags empty statements; warning catches stray semicolons that can hide an accidental empty body.
 dotnet_diagnostic.MA0037.severity = warning
-# MA0090 reports empty else or finally blocks without comments or directives.
+# MA0090 flags empty else/finally blocks; warn because unexplained empty branches obscure missing behavior or cleanup.
 dotnet_diagnostic.MA0090.severity = warning
-# MA0100 reports a returned task that can outlive a disposable resource used by its operation.
+# MA0073 removes redundant true/false comparisons; warn because simpler conditions improve readability without changing behavior.
+dotnet_diagnostic.MA0073.severity = warning
+# MA0100 detects tasks that outlive a disposable they use; warn to prevent use-after-dispose races and resource leaks.
 dotnet_diagnostic.MA0100.severity = warning
-# MA0129 reports using a task as a disposable instead of awaiting the disposable resource it produces.
+# MA0129 flags disposing a Task instead of its produced async resource; warn because the intended resource may remain undisposed.
 dotnet_diagnostic.MA0129.severity = warning
-# RCS1151 reports casts that are unnecessary for the accessed member or operation.
+# RCS1151 flags unnecessary casts; warn to remove noise and avoid obscuring the accessed member's actual type.
 dotnet_diagnostic.RCS1151.severity = warning
-# RCS1238 reports nested ternary operators, but is disabled because those expressions are an accepted readability choice.
+# RCS1238 flags nested ternaries; none because nested conditional expressions are an accepted readability choice here.
 dotnet_diagnostic.RCS1238.severity = none
-# RCS1015 recommends nameof for symbol-name strings and equivalent constant enum member ToString calls.
+# RCS1015 replaces symbol-name strings with nameof; warn to keep references synchronized with renames.
 dotnet_diagnostic.RCS1015.severity = warning
-# RCS1172 recommends an is type test instead of an as cast used only for a null check.
+# RCS1172 prefers is over as for null checks; warn because the type test is clearer and avoids a cast local.
 dotnet_diagnostic.RCS1172.severity = warning
-# RCS1113 recommends string.IsNullOrEmpty for equivalent combined null and empty checks.
+# RCS1113 simplifies null-plus-empty checks to IsNullOrEmpty; warn to express the exact intent once.
 dotnet_diagnostic.RCS1113.severity = warning
-# RCS1032 reports parentheses that are unnecessary for the expression's syntax and precedence.
+# RCS1032 flags redundant parentheses; warn to remove syntax noise while retaining required grouping.
 dotnet_diagnostic.RCS1032.severity = warning
-# RCS1163 reports parameters that are unused by their implementation.
+# RCS1163 flags unused parameters; warn because unused inputs confuse APIs and hide stale call contracts.
 dotnet_diagnostic.RCS1163.severity = warning
-# RCS1199 reports redundant null checks that can be simplified without changing the result.
+# RCS1199 flags redundant null checks; warn to simplify conditions whose nullability is already established.
 dotnet_diagnostic.RCS1199.severity = warning
 
 # Approved blocking correctness targets.
-# CA1828 reports CountAsync or LongCountAsync calls used only to test whether any results exist.
+# CA1828 flags CountAsync/LongCountAsync for existence checks; warning favors AnyAsync to avoid unnecessary counting.
 dotnet_diagnostic.CA1828.severity = warning
-# CA2012 reports unsafe ValueTask consumption, such as awaiting the same instance more than once.
+# CA2012 flags unsafe ValueTask use; warn to prevent consuming a single-use asynchronous result more than once.
 dotnet_diagnostic.CA2012.severity = warning
-# MA0042 reports synchronous operations in async-capable code when an asynchronous alternative is available.
+# MA0042 flags sync calls when an async alternative exists; warn to avoid blocking I/O threads in async-capable paths.
 dotnet_diagnostic.MA0042.severity = warning
-# MA0022 reports null task returns and recommends returning a completed task containing the intended result.
+# MA0022 flags null Task returns; warn because callers expect an awaitable representing completion/value.
 dotnet_diagnostic.MA0022.severity = warning
-# MA0054 reports newly thrown exceptions that discard the caught exception instead of preserving it as an inner exception.
+# MA0054 flags replacement exceptions that discard the caught cause; warn to preserve diagnostic and causal context.
 dotnet_diagnostic.MA0054.severity = warning
-# RCS1075 reports empty catch clauses that silently swallow System.Exception.
+# RCS1075 flags empty catch blocks; warn because swallowed failures conceal broken behavior and diagnostics.
 dotnet_diagnostic.RCS1075.severity = warning
-# MA0085 reports event unsubscriptions that use an anonymous delegate instead of the subscribed handler.
+# MA0085 flags anonymous event unsubscription handlers; warn because they cannot reliably detach the subscribed delegate.
 dotnet_diagnostic.MA0085.severity = warning
-# MA0010 requires custom attribute classes to declare their supported targets with AttributeUsage.
+# MA0061 catches changed optional defaults across overrides; warn because static receiver type would otherwise change omitted-argument behavior.
+dotnet_diagnostic.MA0061.severity = warning
+# MA0010 requires AttributeUsage on custom attributes; warn to prevent unintended application targets.
 dotnet_diagnostic.MA0010.severity = warning
-# MA0047 reports types declared outside a named namespace.
+# MA0047 requires a named namespace; warn to prevent global collisions and allow ordinary namespace-based discovery.
 dotnet_diagnostic.MA0047.severity = warning
-# MA0002 is disabled to avoid requiring explicit comparers on ordinary sorting and equality assertions.
+# MA0048 requires type/file names to match; none because cohesive files may group related types and filename-only consistency is not a project requirement.
+dotnet_diagnostic.MA0048.severity = none
+# MA0074 requires an explicit string-comparison culture; disable it because the correct ordinal/culture semantics are contract-specific.
+dotnet_diagnostic.MA0074.severity = none
+# MA0016 prefers interfaces over List/Dictionary; suggestion only because concrete types may be required by mutation/DTO contracts, not worth changing signatures blindly.
+dotnet_diagnostic.MA0016.severity = suggestion
+# MA0002 requires explicit string comparers; disable because ordinary ordering/equality follows project defaults unless identity requires otherwise.
 dotnet_diagnostic.MA0002.severity = none
-
-# Approved advisory targets.
-# CA1508 reports conditions that dataflow analysis determines are always true or false.
+# CA1508 flags conditions statically known to be constant; suggestion because dataflow analysis can produce false positives that need human review.
 dotnet_diagnostic.CA1508.severity = suggestion
-# CA2000 reports disposable objects that leave their ownership scope without being disposed or transferred safely.
+# CA2000 flags undisposed IDisposable instances; suggestion because ownership sometimes transfers across layers and needs review.
 dotnet_diagnostic.CA2000.severity = suggestion
-# MA0134 reports unobserved awaitable results in synchronous methods or non-async lambdas.
+# MA0134 flags discarded awaitables in synchronous contexts; suggestion because intentional fire-and-forget needs contextual review.
 dotnet_diagnostic.MA0134.severity = suggestion
-# MA0140 reports conditional branches that execute identical code.
+# MA0140 flags identical conditional branches; suggestion because branch intent can be clearer than mechanical consolidation.
 dotnet_diagnostic.MA0140.severity = suggestion
-# MA0024 recommends explicit StringComparer instances instead of default string equality or ordering comparers.
+# MA0024 prefers explicit string comparers; suggestion because domain-specific sorting/equality may intentionally use defaults.
 dotnet_diagnostic.MA0024.severity = suggestion
+# MA0084 flags locals hiding other symbols; suggestion because some shadowing is harmless but may hinder comprehension.
+dotnet_diagnostic.MA0084.severity = suggestion
+# MA0108 removes explicit CallerArgumentExpression arguments; suggestion because explicit values may intentionally communicate intent.
+dotnet_diagnostic.MA0108.severity = suggestion
 
 dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary:none
 dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:none
@@ -179,10 +196,13 @@ dotnet_naming_style.camel_with_underscore.required_suffix =
 
 
 
-# TUnit test methods must be instance methods (TUnit0048).
-# Keep CA1822 active for private/internal helpers, not framework-invoked public tests.
+# TUnit0048 requires instance test methods, so CA1822 is limited to private/internal helpers instead of framework-invoked public tests.
+# CA1822 flags members that can be static; exclude public test methods because TUnit discovers/invokes them as instance methods.
 [tests/UnitTests/**/*Tests.cs]
 dotnet_code_quality.CA1822.api_surface = private, internal
 
 [tests/IntegrationTests/**/*Tests.cs]
 dotnet_code_quality.CA1822.api_surface = private, internal
+
+# Disable ReSharper's using-resource-initialization suggestion here: explicit disposal scopes are intentional across async test flows.
+resharper_using_statement_resource_initialization_highlighting = none
