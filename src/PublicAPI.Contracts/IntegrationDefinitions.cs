@@ -40,5 +40,3 @@ public static class IntegrationDefinitions
     public static IReadOnlyList<TorznabCategoryDefinition> TvCategories { get; } =
     [.. SupportedTorznabCategories.Where(x => (int)x.Id is >= 5000 and < 6000)];
 }
-
-public sealed record TorznabCategoryDefinition(TorznabCategoryId Id, string Name);
