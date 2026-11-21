@@ -22,7 +22,7 @@ public interface IPathProvider
     /// </summary>
     string LogsDirectory { get; }
 
-    List<string> DatabaseFiles { get; }
+    IReadOnlyList<string> DatabaseFiles { get; }
 
     /// <summary>
     /// Gets the default downloads destination path based on the configured data root or the current platform fallback.
