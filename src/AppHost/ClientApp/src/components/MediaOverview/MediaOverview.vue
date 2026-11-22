@@ -18,23 +18,23 @@
 					:library-id="libraryId"
 					:refresh-disabled="isRefreshDisabled"
 					@action="onAction" />
-				<!-- Library Inaccessible Alert -->
-				<q-banner
-					v-if="isLibraryInaccessible"
-					class="media-overview-inaccessible-banner bg-warning text-black"
-					dense
-					role="status"
-					aria-live="polite"
-					data-cy="media-overview-inaccessible-library-banner">
-					<template #avatar>
-						<q-icon
-							name="mdi-alert"
-							aria-hidden="true" />
-					</template>
-					<strong>{{ $t('components.media-overview.library-inaccessible-title') }}</strong>
-					{{ $t('components.media-overview.library-inaccessible') }}
-				</q-banner>
 			</div>
+			<!-- Library Inaccessible Alert -->
+			<q-banner
+				v-if="isLibraryInaccessible"
+				class="media-overview-inaccessible-banner bg-warning text-black"
+				dense
+				role="status"
+				aria-live="polite"
+				data-cy="media-overview-inaccessible-library-banner">
+				<template #avatar>
+					<q-icon
+						name="mdi-alert"
+						aria-hidden="true" />
+				</template>
+				<strong>{{ $t('components.media-overview.library-inaccessible-title') }}</strong>
+				{{ $t('components.media-overview.library-inaccessible') }}
+			</q-banner>
 			<QBanner
 				v-if="refreshSubmitting && !isQueued"
 				class="media-overview-refresh-requesting"
