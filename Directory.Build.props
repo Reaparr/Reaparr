@@ -9,9 +9,24 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <!-- Keep third-party analyzers private to this repository's builds. -->
+        <MeziantouAnalysisMode>None</MeziantouAnalysisMode>
         <!-- Require forwarding an in-scope CancellationToken to cancellable async APIs. -->
         <AnalysisLevel>latest</AnalysisLevel>
         <WarningsAsErrors>$(WarningsAsErrors);CA2016</WarningsAsErrors>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+        <PackageReference Include="Meziantou.Analyzer" Version="3.0.341">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Roslynator.Analyzers" Version="5.0.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+    <PropertyGroup>
         <ReaparrRuntimeMode Condition="'$(ReaparrRuntimeMode)' == ''">docker</ReaparrRuntimeMode>
         <ReaparrRuntimeIdentifier Condition="'$(ReaparrRuntimeIdentifier)' == '' and '$(RuntimeIdentifier)' != ''"
             >$(RuntimeIdentifier)</ReaparrRuntimeIdentifier>

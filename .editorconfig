@@ -11,10 +11,14 @@ max_line_length = 120
 
 # Microsoft .NET properties
 csharp_new_line_before_members_in_object_initializers = false
-csharp_preferred_modifier_order = public, private, protected, internal, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:suggestion
-csharp_style_var_elsewhere = true:suggestion
-csharp_style_var_for_built_in_types = true:suggestion
-csharp_style_var_when_type_is_apparent = true:suggestion
+# Require modifiers to follow the project's configured order.
+csharp_preferred_modifier_order = public, private, protected, internal, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:warning
+# Prefer var for local declarations outside built-in and immediately apparent type cases.
+csharp_style_var_elsewhere = true:warning
+# Prefer var when declaring locals with built-in types such as int or string.
+csharp_style_var_for_built_in_types = true:warning
+# Prefer var when the initializer makes the local variable's type apparent.
+csharp_style_var_when_type_is_apparent = true:warning
 
 # Keep optional single-statement if bodies brace-free.
 resharper_csharp_braces_for_ifelse = not_required
@@ -58,13 +62,58 @@ dotnet_diagnostic.CA1827.severity = warning
 
 # Do not suggest replacing Any() with a Count/Length/IsEmpty property.
 dotnet_diagnostic.CA1860.severity = none
+# Added analyzers are opt-in; SDK and framework analyzer defaults remain unchanged.
+dotnet_analyzer_diagnostic.category-roslynator.severity = none
+
+# Blocking SDK style diagnostics.
+# IDE0007 reports explicit local types where the configured style prefers var.
+dotnet_diagnostic.IDE0007.severity = warning
+# IDE0036 reports modifiers that do not follow the configured modifier order.
+dotnet_diagnostic.IDE0036.severity = warning
+# IDE0040 enforces the configured accessibility style, requiring modifiers outside interfaces and omitting unnecessary interface modifiers.
+dotnet_diagnostic.IDE0040.severity = warning
+# IDE0049 recommends C# keywords such as int instead of Int32, but is disabled because it is not part of the verified compiler gate.
+dotnet_diagnostic.IDE0049.severity = none
+
+# Blocking style/readability rules.
+# MA0071 reports an unnecessary else after a branch that unconditionally exits.
+dotnet_diagnostic.MA0071.severity = warning
+# MA0100 reports a returned task that can outlive a disposable resource used by its operation.
+dotnet_diagnostic.MA0100.severity = warning
+# MA0129 reports using a task as a disposable instead of awaiting the disposable resource it produces.
+dotnet_diagnostic.MA0129.severity = warning
+# RCS1151 reports casts that are unnecessary for the accessed member or operation.
+dotnet_diagnostic.RCS1151.severity = warning
+# RCS1238 reports nested ternary operators, but is disabled because those expressions are an accepted readability choice.
+dotnet_diagnostic.RCS1238.severity = none
+
+# Approved blocking correctness targets.
+# CA1828 reports CountAsync or LongCountAsync calls used only to test whether any results exist.
+dotnet_diagnostic.CA1828.severity = warning
+# CA2012 reports unsafe ValueTask consumption, such as awaiting the same instance more than once.
+dotnet_diagnostic.CA2012.severity = warning
+# MA0042 reports synchronous operations in async-capable code when an asynchronous alternative is available.
+dotnet_diagnostic.MA0042.severity = warning
+
+# Approved advisory targets.
+# CA1508 reports conditions that dataflow analysis determines are always true or false.
+dotnet_diagnostic.CA1508.severity = suggestion
+# CA2000 reports disposable objects that leave their ownership scope without being disposed or transferred safely.
+dotnet_diagnostic.CA2000.severity = suggestion
+# MA0134 reports unobserved awaitable results in synchronous methods or non-async lambdas.
+dotnet_diagnostic.MA0134.severity = suggestion
+# MA0140 reports conditional branches that execute identical code.
+dotnet_diagnostic.MA0140.severity = suggestion
 
 dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary:none
 dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:none
 dotnet_style_parentheses_in_relational_binary_operators = never_if_unnecessary:none
-dotnet_style_predefined_type_for_locals_parameters_members = true:suggestion
-dotnet_style_predefined_type_for_member_access = true:suggestion
-dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+# Prefer C# keywords such as int and string over framework type names in declarations.
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+# Prefer C# keywords such as int and string over framework type names when accessing static members.
+dotnet_style_predefined_type_for_member_access = true:warning
+# Require explicit accessibility on non-interface members while omitting unnecessary accessibility on interface members.
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
 
 # Private constants rule
 dotnet_naming_rule.private_constants_rule.severity = warning

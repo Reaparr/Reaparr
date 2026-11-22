@@ -33,7 +33,7 @@ runs:
             uses: actions/cache@v6
             with:
                 path: ~/.nuget/packages
-                key: ${{ runner.os }}-nuget-${{ inputs.runtime != '' && format('{0}-', inputs.runtime) || '' }}${{ hashFiles('**/*.csproj', '**/packages.lock.json') }}
+                key: ${{ runner.os }}-nuget-${{ inputs.runtime != '' && format('{0}-', inputs.runtime) || '' }}${{ hashFiles('Directory.Build.props', '**/*.csproj', '**/packages.lock.json') }}
                 restore-keys: |
                     ${{ runner.os }}-nuget-${{ inputs.runtime != '' && format('{0}-', inputs.runtime) || '' }}
                     ${{ runner.os }}-nuget-
