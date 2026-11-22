@@ -1,5 +1,30 @@
 Reaparr Changelog
 
+# [0.41.0-dev.6](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.5...v0.41.0-dev.6) (2026-11-22)
+
+
+### Bug Fixes
+
+* **WebAPI:** Allow draft release verification ([baa1eff](https://github.com/Reaparr/Reaparr/commit/baa1efff96ccf26731d6c7b0991c8130c91b3a40))
+* **Web-UI:** Authenticate deferred PostHog source-map injection ([5c247c1](https://github.com/Reaparr/Reaparr/commit/5c247c189b776c38faf60edf05919a237f501f76))
+* **WebAPI:** Bound live log history retention ([135011a](https://github.com/Reaparr/Reaparr/commit/135011a5cb12f3190f53fe4e5e0ee8205a92c860))
+* **WebAPI:** Build release artifacts before publishing ([e7b7ba8](https://github.com/Reaparr/Reaparr/commit/e7b7ba8746067d3b1d6acb45279927cd0f9279c7))
+* **WebAPI:** Build release artifacts before publishing ([e48e6a1](https://github.com/Reaparr/Reaparr/commit/e48e6a13fed839ea04b5a1ac84ac3a6173a9cce3))
+* **WebAPI:** Expire historical download retry cooldowns ([530a02d](https://github.com/Reaparr/Reaparr/commit/530a02dd0776a64ad6821240ef920d1f202bacc0))
+* **WebAPI:** Fix background command and download memory retention ([#721](https://github.com/Reaparr/Reaparr/issues/721)) ([184b076](https://github.com/Reaparr/Reaparr/commit/184b07619ff660f672219abc2c8b41465113c483))
+* **WebAPI:** Preserve buffered progress during flush failures ([90efec3](https://github.com/Reaparr/Reaparr/commit/90efec30c6d06990acd6af855f7e4d9d02b93de9))
+* **WebAPI:** Preserve caller permissions in desktop workflow ([c82746e](https://github.com/Reaparr/Reaparr/commit/c82746e78b1a14691de5274f9a0400bc32a6e611))
+* **WebAPI:** Preserve deletion notifications and pause progress ordering ([80d0a2b](https://github.com/Reaparr/Reaparr/commit/80d0a2bd7275342fdfe00873754f1afff58b2844))
+* **Web-UI:** Preserve Vue setup initialization order ([b4d6435](https://github.com/Reaparr/Reaparr/commit/b4d643578ecdd6c4d132cd5b78f60aa4d78331c4))
+* **WebAPI:** Release deleted download progress tracking ([0193976](https://github.com/Reaparr/Reaparr/commit/0193976da3ebd563484d40ab184cc32e8fbc6e59))
+* **WebAPI:** Repair desktop release workflow shell syntax ([db08b95](https://github.com/Reaparr/Reaparr/commit/db08b953f2234ff138467de07cd2d85879c46f21))
+* **WebAPI:** Resolve InspectCode warnings ([c1510b5](https://github.com/Reaparr/Reaparr/commit/c1510b55194e655608302713e9d1325c04afb6ad))
+* **Web-UI:** Restore dialog and tree table type contracts ([e92032a](https://github.com/Reaparr/Reaparr/commit/e92032a62ed1ab05290a33a582a498e8acdda075))
+* **Web-UI:** Restore the English photo viewer counter ([e6d87e9](https://github.com/Reaparr/Reaparr/commit/e6d87e9cd040fd5a09edf995ca7d13f481364ef0))
+* **Web-UI:** Restore writable video file selection ([041210e](https://github.com/Reaparr/Reaparr/commit/041210e87b3293ba09b6f3e49298c5a62825f45a))
+* **WebAPI:** Scope background command dependency lifetimes ([f74eab3](https://github.com/Reaparr/Reaparr/commit/f74eab32ac5eebb20443dbf2770db1b58f0ce581))
+* **WebAPI:** Separate PR build checks from release publishing ([6f74d7b](https://github.com/Reaparr/Reaparr/commit/6f74d7bcd8cc7a21703ead726f80d11a467ee1fc))
+
 # [0.41.0-dev.5](https://github.com/Reaparr/Reaparr/compare/v0.41.0-dev.4...v0.41.0-dev.5) (2026-11-18)
 
 
