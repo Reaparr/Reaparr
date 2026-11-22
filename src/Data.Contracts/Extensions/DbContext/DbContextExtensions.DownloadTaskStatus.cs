@@ -510,7 +510,7 @@ public static partial class DbContextExtensions
                     .Select(x => (DownloadStatus?)x.DownloadStatus)
                     .FirstOrDefaultAsync(CancellationToken.None);
             default:
-                throw new ArgumentOutOfRangeException(nameof(key.Type), key.Type, null);
+                throw new ArgumentOutOfRangeException(nameof(key), key, "Unsupported download task type.");
         }
     }
 }

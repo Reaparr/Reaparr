@@ -179,8 +179,13 @@ public static class MediaSpecMapper
             .Select(lang =>
             {
                 var lowerLang = lang.ToLowerInvariant();
-                var match = Regex.Match(lowerLang, @"^([a-z]{2,3})");
-                return match.Success ? match.Groups[1].Value.ToUpperInvariant() : string.Empty;
+                var match = Regex.Match(
+                    lowerLang,
+                    @"^(?<language>[a-z]{2,3})",
+                    RegexOptions.None,
+                    TimeSpan.FromSeconds(1)
+                );
+                return match.Success ? match.Groups["language"].Value.ToUpperInvariant() : string.Empty;
             })
             .Where(lang => !string.IsNullOrEmpty(lang))
             .Distinct()

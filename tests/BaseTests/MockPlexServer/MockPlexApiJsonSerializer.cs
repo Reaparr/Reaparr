@@ -113,5 +113,5 @@ public class JsonPropertyEnumConverter : JsonConverter
         Type objectType,
         object? existingValue,
         JsonSerializer serializer
-    ) => throw new NotImplementedException("JsonPropertyEnumConverter only supports serialization.");
+    ) => throw new NotSupportedException("JsonPropertyEnumConverter only supports serialization.");
 }

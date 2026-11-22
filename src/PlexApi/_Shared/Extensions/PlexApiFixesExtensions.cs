@@ -6,16 +6,16 @@ public static class PlexApiFixesExtensions
 {
     private static readonly Regex[] _compiledPatterns =
     [
-        new Regex(@"(?<!\d)(4320p|8K)(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)(2160p|4K)(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)1440p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)1080p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)720p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)576p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)480p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)360p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)240p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"(?<!\d)144p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"(?<!\d)(?<quality>4320p|8K)(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)(?<quality>2160p|4K)(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)1440p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)1080p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)720p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)576p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)480p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)360p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)240p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
+        new Regex(@"(?<!\d)144p(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1)),
     ];
 
     /// <summary>
@@ -32,7 +32,7 @@ public static class PlexApiFixesExtensions
         {
             var match = regex.Match(filename);
             if (match.Success)
-                return match.Value.ToLowerInvariant();
+                return match.Groups["quality"].Success ? match.Groups["quality"].Value.ToLowerInvariant() : match.Value.ToLowerInvariant();
         }
         return string.Empty;
     }

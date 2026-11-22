@@ -17,7 +17,7 @@ public record PlexQualityDTO
             VideoQuality.QHD => 8,
             VideoQuality.UHD_4K => 9,
             VideoQuality.UHD_8K => 10,
-            _ => throw new ArgumentOutOfRangeException(),
+            _ => throw new InvalidOperationException($"Unsupported video quality: {Quality}."),
         };
 
     public required string Name { get; init; }

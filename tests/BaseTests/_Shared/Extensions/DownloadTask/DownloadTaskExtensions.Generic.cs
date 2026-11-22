@@ -34,7 +34,6 @@ public static partial class DownloadTaskExtensions
     /// </summary>
     /// <param name="downloadTask"></param>
     /// <param name="downloadStatus"></param>
-    /// <returns></returns>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     private static void SetPercentageBasedOnStatus(
         this DownloadTaskFileBase downloadTask,

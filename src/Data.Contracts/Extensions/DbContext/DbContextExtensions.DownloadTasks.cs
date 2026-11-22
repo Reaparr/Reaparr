@@ -1379,7 +1379,7 @@ public static partial class DbContextExtensions
                     );
                 return;
             default:
-                throw new ArgumentOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(key), key, "Unsupported download task type.");
         }
     }
 
@@ -1696,7 +1696,7 @@ public static partial class DbContextExtensions
                     );
                 return;
             default:
-                throw new ArgumentOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(key), key, "Unsupported download task type.");
         }
     }
 
@@ -1739,9 +1739,15 @@ public static partial class DbContextExtensions
     {
         var keys = await dbContext.GetDownloadableChildTaskKeys(key, cancellationToken);
 
-        var results = await Task.WhenAll(keys.Select(x => dbContext.GetDownloadTaskAsync(x, cancellationToken)));
+        var results = new List<DownloadTaskGeneric>(keys.Count);
+        foreach (var childKey in keys)
+        {
+            var task = await dbContext.GetDownloadTaskAsync(childKey, cancellationToken);
+            if (task is not null)
+                results.Add(task);
+        }
 
-        return results.Where(x => x != null).ToList()!;
+        return results;
     }
 
     public static async Task<int> DeleteOrphanedParentTasksAsync(this IReaparrDbContext dbContext, CancellationToken ct)
@@ -1919,51 +1925,35 @@ public static partial class DbContextExtensions
         if (downloadTaskIds.Count == 0)
             return [];
 
-        var movieRootIdsTask = dbContext
+        var movieRootIds = await dbContext
             .DownloadTaskMovie.Where(x => downloadTaskIds.Contains(x.Id))
             .Select(x => x.Id)
             .ToListAsync(ct);
 
-        var movieFileRootIdsTask = dbContext
+        var movieFileRootIds = await dbContext
             .DownloadTaskMovieFile.Where(x => downloadTaskIds.Contains(x.Id))
             .Select(x => x.ParentId)
             .ToListAsync(ct);
 
-        var tvShowRootIdsTask = dbContext
+        var tvShowRootIds = await dbContext
             .DownloadTaskTvShow.Where(x => downloadTaskIds.Contains(x.Id))
             .Select(x => x.Id)
             .ToListAsync(ct);
 
-        var seasonRootIdsTask = dbContext
+        var directSeasonRootIds = await dbContext
             .DownloadTaskTvShowSeason.Where(x => downloadTaskIds.Contains(x.Id))
             .Select(x => x.ParentId)
             .ToListAsync(ct);
 
-        var episodeSeasonIdsTask = dbContext
+        var episodeSeasonIds = await dbContext
             .DownloadTaskTvShowEpisode.Where(x => downloadTaskIds.Contains(x.Id))
             .Select(x => x.ParentId)
             .ToListAsync(ct);
 
-        var episodeFileEpisodeIdsTask = dbContext
+        var episodeFileEpisodeIds = await dbContext
             .DownloadTaskTvShowEpisodeFile.Where(x => downloadTaskIds.Contains(x.Id))
             .Select(x => x.ParentId)
             .ToListAsync(ct);
-
-        await Task.WhenAll(
-            movieRootIdsTask,
-            movieFileRootIdsTask,
-            tvShowRootIdsTask,
-            seasonRootIdsTask,
-            episodeSeasonIdsTask,
-            episodeFileEpisodeIdsTask
-        );
-
-        var movieRootIds = await movieRootIdsTask;
-        var movieFileRootIds = await movieFileRootIdsTask;
-        var tvShowRootIds = await tvShowRootIdsTask;
-        var directSeasonRootIds = await seasonRootIdsTask;
-        var episodeSeasonIds = await episodeSeasonIdsTask;
-        var episodeFileEpisodeIds = await episodeFileEpisodeIdsTask;
 
         var rootIds = new HashSet<Guid>(
             movieRootIds.Concat(movieFileRootIds).Concat(tvShowRootIds).Concat(directSeasonRootIds)

@@ -48,7 +48,7 @@ public class Boot : IHostedService
         _downloadQueue = downloadQueue;
         _moveDownloadFileQueue = moveDownloadFileQueue;
         _telemetry = telemetry;
-        appLifetime.ApplicationStarted.Register(OnStarted);
+        appLifetime.ApplicationStarted.Register(() => _ = OnStartedAsync());
         appLifetime.ApplicationStopping.Register(OnStopping);
         appLifetime.ApplicationStopped.Register(OnStopped);
     }
@@ -164,8 +164,7 @@ public class Boot : IHostedService
         _appLifetime.StopApplication();
     }
 
-    // ReSharper disable once AsyncVoidMethod
-    private async void OnStarted()
+    private async Task OnStartedAsync()
     {
         _log.Here().Debug("Boot.OnStarted has been called");
 

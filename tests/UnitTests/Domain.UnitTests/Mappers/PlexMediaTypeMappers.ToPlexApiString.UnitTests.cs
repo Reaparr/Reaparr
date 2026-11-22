@@ -30,10 +30,10 @@ public partial class PlexMediaTypeMappersUnitTests
     [Arguments((PlexMediaType)(-1))]
     [Arguments((PlexMediaType)100)]
     [Arguments((PlexMediaType)6)]
-    public void ShouldThrowNotImplementedException_WhenUnsupportedEnumValueProvided(PlexMediaType input)
+    public void ShouldThrowNotSupportedException_WhenUnsupportedEnumValueProvided(PlexMediaType input)
     {
         // Act & Assert
-        Should.Throw<NotImplementedException>(() => input.ToPlexApiString());
+        Should.Throw<NotSupportedException>(() => input.ToPlexApiString());
     }
 
     [Test]
@@ -148,9 +148,9 @@ public partial class PlexMediaTypeMappersUnitTests
         // Act & Assert
         foreach (var enumValue in unsupportedEnumValues)
         {
-            Should.Throw<NotImplementedException>(
+            Should.Throw<NotSupportedException>(
                 () => enumValue.ToPlexApiString(),
-                $"Expected {enumValue} to throw NotImplementedException"
+                $"Expected {enumValue} to throw NotSupportedException"
             );
         }
     }

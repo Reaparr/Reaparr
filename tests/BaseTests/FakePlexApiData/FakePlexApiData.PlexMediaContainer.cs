@@ -120,7 +120,7 @@ public partial class FakePlexApiData
             PlexMediaType.TvShow => config.TvShowsPerLibraryCount
                 * config.SeasonsPerTvShowCount
                 * config.EpisodesPerSeasonCount,
-            _ => throw new ArgumentOutOfRangeException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(library), type, null),
         };
 
         return new MediaContainerWithMetadata

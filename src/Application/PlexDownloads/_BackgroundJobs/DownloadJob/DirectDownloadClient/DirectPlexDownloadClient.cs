@@ -28,7 +28,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
     private readonly int _configuredDownloadSegments;
     private readonly CompositeDisposable _subscriptions = new();
     private readonly Subject<Unit> _destroy = new();
-    private readonly object _disposeLock = new();
+    private readonly Lock _disposeLock = new();
     private bool _isDisposed;
     private const int MAX_TRANSIENT_DOWNLOAD_RETRIES = 2;
 

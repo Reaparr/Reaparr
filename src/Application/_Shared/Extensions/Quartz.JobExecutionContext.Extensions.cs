@@ -8,9 +8,19 @@ public static partial class QuartzExtensions
     {
         context.MergedJobDataMap.TryGetValue(TelemetryProtocol.TraceParentMetadata, out var traceParent);
         context.MergedJobDataMap.TryGetValue(TelemetryProtocol.TraceStateMetadata, out var traceState);
-        ActivityContext.TryParse(traceParent as string, traceState as string, isRemote: true, out var parent);
+        var hasParent = ActivityContext.TryParse(
+            traceParent as string,
+            traceState as string,
+            isRemote: true,
+            out var parent
+        );
         context.MergedJobDataMap.TryGetValue(TelemetryProtocol.SessionIdMetadata, out var sessionId);
-        return (parent, sessionId as string, context.JobDetail.Key.ToString(), context.FireInstanceId);
+        return (
+            hasParent ? parent : default,
+            sessionId as string,
+            context.JobDetail.Key.ToString(),
+            context.FireInstanceId
+        );
     }
 
     public static void SetResult(this IJobExecutionContext context, JobStatus status, ResultBase result) =>

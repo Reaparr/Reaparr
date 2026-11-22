@@ -1,6 +1,6 @@
 namespace Reaparr.BaseTests;
 
-public class PlexMediaGenreDataset
+public static class PlexMediaGenreDataset
 {
     public static readonly Lazy<HashSet<string>> PlexMediaGenres = new(() =>
         [

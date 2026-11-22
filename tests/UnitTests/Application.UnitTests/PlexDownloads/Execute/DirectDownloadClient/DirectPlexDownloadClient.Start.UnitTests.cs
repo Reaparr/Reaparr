@@ -905,7 +905,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
         var serverMachineIdentifier = await dbContext.GetPlexServerMachineIdentifierById(downloadTask.PlexServerId);
 
         using var speedLimits = new DownloadSpeedLimitProvider(new UserSettings());
-        Action<IReadOnlyDictionary<string, long>> setScheduledSpeedLimits = speedLimits.SetScheduledDownloadSpeedLimits;
+        var setScheduledSpeedLimits = speedLimits.SetScheduledDownloadSpeedLimits;
         speedLimits.SetScheduledDownloadSpeedLimits(
             new Dictionary<string, long> { [serverMachineIdentifier] = 1000L * 1024 }
         );
@@ -2166,7 +2166,7 @@ public class DirectPlexDownloadClientStartUnitTests : BaseUnitTest<DirectPlexDow
                 HttpRequestError.ResponseEnded,
                 "The response ended prematurely."
             ),
-            CompletionFailureKind.Argument => new ArgumentException("Invalid downloader argument."),
+            CompletionFailureKind.Argument => new ArgumentException("Invalid downloader argument.", nameof(failureKind)),
             CompletionFailureKind.NotSupported => new NotSupportedException("Unsupported operation."),
             CompletionFailureKind.Format => new FormatException("Malformed response."),
             _ => new InvalidOperationException("Unexpected downloader failure."),

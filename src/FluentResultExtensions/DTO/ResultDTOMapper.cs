@@ -44,7 +44,6 @@ public static class ResultDTOMapper
             })
             .ToList();
 
-
     private static IReadOnlyList<SuccessDTO> ToSuccessDTOs(this IReadOnlyList<ISuccess> reasons) =>
         reasons.Select(x => new SuccessDTO { Message = x.Message, Metadata = x.Metadata }).ToList();
 
