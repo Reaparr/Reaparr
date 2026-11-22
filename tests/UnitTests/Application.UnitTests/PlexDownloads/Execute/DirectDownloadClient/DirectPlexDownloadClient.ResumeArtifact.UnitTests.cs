@@ -96,8 +96,7 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
     }
 
     [Test]
-    [Arguments(20, 21, 8, 4)]
-    [Arguments(20, 20, 8, 4)]
+    [Arguments(32, 20, 8, 4)]
     [Arguments(32, 0, 16, 16)]
     [Arguments(-1, 32, 8, 4, true)]
     public async Task ShouldFinishDownload_WhenResumeArtifactIsPartialOrAlreadyRenamed(
@@ -247,6 +246,7 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
 
     [Test]
     [Arguments(ResumeSpaceScenario.Partial, 19, 20)]
+    [Arguments(ResumeSpaceScenario.ShortArtifact, 31, 32)]
     [Arguments(ResumeSpaceScenario.Fresh, 31, 32)]
     [Arguments(ResumeSpaceScenario.NoChunks, 31, 32)]
     [Arguments(ResumeSpaceScenario.NoRanges, 31, 32)]
@@ -259,7 +259,10 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
     )
     {
         // Arrange
-        var (task, snapshot, fileSystem) = await CreateScenario(32, availableSpace);
+        var (task, snapshot, fileSystem) = await CreateScenario(
+            scenario == ResumeSpaceScenario.ShortArtifact ? 20 : 32,
+            availableSpace
+        );
         var key = task.ToKey();
         var dbContext = IDbContext;
         var taskId = task.Id;
@@ -349,6 +352,7 @@ public class DirectPlexDownloadClientResumeArtifactUnitTests : BaseUnitTest<Dire
     public enum ResumeSpaceScenario
     {
         Partial,
+        ShortArtifact,
         Fresh,
         NoChunks,
         NoRanges,

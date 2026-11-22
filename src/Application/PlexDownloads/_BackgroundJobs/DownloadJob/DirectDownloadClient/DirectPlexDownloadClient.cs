@@ -1,4 +1,5 @@
 using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -33,6 +34,8 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
     private const int MAX_TRANSIENT_DOWNLOAD_RETRIES = 2;
 
     private int _lastObservedProgressPercentagePercent;
+
+    internal System.Reactive.Concurrency.IScheduler ProgressScheduler { get; set; } = Scheduler.Default;
 
     public DirectPlexDownloadClient(
         ILogger log,
@@ -186,11 +189,58 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                     if (attempt > 0)
                         await _downloader.Clear();
 
+                    var progressGate = new object();
+                    var progressCompleted = false;
+                    using var progressSubscription = Observable
+                        .FromEventPattern<DownloadProgressChangedEventArgs>(
+                            h => _downloader.DownloadProgressChanged += h,
+                            h => _downloader.DownloadProgressChanged -= h
+                        )
+                        .Select(x => x.EventArgs)
+                        .Sample(TimeSpan.FromMilliseconds(300), ProgressScheduler)
+                        .Subscribe(args =>
+                        {
+                            lock (progressGate)
+                            {
+                                if (progressCompleted)
+                                    return;
+
+                                var progress = new DownloadTaskProgress
+                                {
+                                    DataTotal = args.TotalBytesToReceive,
+                                    Percentage = Convert.ToDecimal(args.ProgressPercentage),
+                                    DataReceived = args.ReceivedBytesSize,
+                                    DownloadSpeed =
+                                        args.ProgressPercentage < 100 ? Convert.ToInt64(args.BytesPerSecondSpeed) : 0,
+                                    TimeRemaining = DataFormat.GetTimeRemaining(
+                                        args.TotalBytesToReceive - args.ReceivedBytesSize,
+                                        args.BytesPerSecondSpeed
+                                    ),
+                                };
+
+                                var progressPercentagePercent = Math.Clamp(
+                                    (int)Math.Round(progress.Percentage),
+                                    0,
+                                    100
+                                );
+                                Volatile.Write(ref _lastObservedProgressPercentagePercent, progressPercentagePercent);
+                                _downloadTaskUpdateDispatcher.OnProgressUpdated(
+                                    downloadTaskKey,
+                                    progress,
+                                    _downloader.Package.ToSnapshot()
+                                );
+                            }
+                        });
                     var completionSource = new TaskCompletionSource<AsyncCompletedEventArgs>(
                         TaskCreationOptions.RunContinuationsAsynchronously
                     );
-                    void OnDownloadCompleted(object? _, AsyncCompletedEventArgs args) =>
+                    void OnDownloadCompleted(object? _, AsyncCompletedEventArgs args)
+                    {
+                        lock (progressGate)
+                            progressCompleted = true;
+
                         completionSource.TrySetResult(args);
+                    }
                     _downloader.DownloadFileCompleted += OnDownloadCompleted;
 
                     try
@@ -236,6 +286,8 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                             attemptDownloadUrl,
                             token
                         );
+                        lock (progressGate)
+                            progressCompleted = true;
                         if (downloadResult.IsCancelledOrFailed)
                             return downloadResult;
 
@@ -311,11 +363,13 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
         {
             if (!HasRenamedDownloadFile(snapshot))
             {
-                var artifactResult = ValidateResumeArtifact(snapshot);
-                if (artifactResult.IsFailed)
-                    return artifactResult;
+                var artifactLength = GetValidatedResumeArtifactLength(snapshot);
+                if (artifactLength.IsFailed)
+                    return artifactLength.ToResult();
 
-                requiredBytes = GetRemainingDownloadBytes(snapshot);
+                // Downloader 7.1 restarts instead of reusing saved offsets in a short file.
+                if (artifactLength.Value >= snapshot.TotalFileSize)
+                    requiredBytes = GetRemainingDownloadBytes(snapshot);
             }
         }
 
@@ -365,11 +419,12 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
 
         if (snapshot is { Chunks.Count: > 0 })
         {
-            var artifactResult = ValidateResumeArtifact(snapshot);
-            if (artifactResult.IsCancelledOrFailed)
+            var artifactLength = GetValidatedResumeArtifactLength(snapshot);
+            if (artifactLength.IsCancelledOrFailed)
             {
-                await SetDownloadStatusAsync(Domain.DownloadStatus.StorageError, artifactResult);
-                return artifactResult;
+                var failure = artifactLength.ToResult();
+                await SetDownloadStatusAsync(Domain.DownloadStatus.StorageError, failure);
+                return failure;
             }
 
             await SendDownloadClientLog(
@@ -398,7 +453,7 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
     private bool HasRenamedDownloadFile(DirectDownloadSnapshot snapshot) =>
         _file.Exists(snapshot.FileName) && !_file.Exists(snapshot.FileName + snapshot.DownloadingFileExtension);
 
-    private Result ValidateResumeArtifact(DirectDownloadSnapshot snapshot) =>
+    private Result<long> GetValidatedResumeArtifactLength(DirectDownloadSnapshot snapshot) =>
         Result.Try(() =>
         {
             var requiredLength = 0L;
@@ -407,18 +462,19 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                     requiredLength = Math.Max(requiredLength, chunk.Start + chunk.Position);
 
             if (requiredLength == 0)
-                return Result.Ok();
+                return Result.Ok(0L);
 
             // The downloader can recreate a missing file without resetting valid saved offsets.
             var partialPath = snapshot.FileName + snapshot.DownloadingFileExtension;
-            if (!_file.Exists(partialPath) || _fileInfoFactory.New(partialPath).Length < requiredLength)
-                return Result.Fail(
+            var length = _file.Exists(partialPath) ? _fileInfoFactory.New(partialPath).Length : 0;
+            if (length < requiredLength)
+                return Result.Fail<long>(
                     new ExceptionalError(
                         new IOException("The partial download file is missing or shorter than its saved progress.")
                     )
                 );
 
-            return Result.Ok();
+            return Result.Ok(length);
         });
 
     /// <inheritdoc/>
@@ -458,35 +514,6 @@ public class DirectPlexDownloadClient : IPlexDownloadClient
                 .Subscribe(value =>
                 {
                     _configuration.MaximumBytesPerSecond = value;
-                })
-        );
-
-        // Setup DownloadProgressChanged Subscription
-        _subscriptions.Add(
-            Observable
-                .FromEventPattern<DownloadProgressChangedEventArgs>(
-                    h => _downloader.DownloadProgressChanged += h,
-                    h => _downloader.DownloadProgressChanged -= h
-                )
-                .Select(x => x.EventArgs)
-                .Sample(TimeSpan.FromMilliseconds(300))
-                .Subscribe(args =>
-                {
-                    var progress = new DownloadTaskProgress
-                    {
-                        DataTotal = args.TotalBytesToReceive,
-                        Percentage = Convert.ToDecimal(args.ProgressPercentage),
-                        DataReceived = args.ReceivedBytesSize,
-                        DownloadSpeed = args.ProgressPercentage < 100 ? Convert.ToInt64(args.BytesPerSecondSpeed) : 0,
-                        TimeRemaining = DataFormat.GetTimeRemaining(
-                            args.TotalBytesToReceive - args.ReceivedBytesSize,
-                            args.BytesPerSecondSpeed
-                        ),
-                    };
-
-                    var progressPercentagePercent = Math.Clamp((int)Math.Round(progress.Percentage), 0, 100);
-                    Volatile.Write(ref _lastObservedProgressPercentagePercent, progressPercentagePercent);
-                    _downloadTaskUpdateDispatcher.OnProgressUpdated(key, progress, _downloader.Package.ToSnapshot());
                 })
         );
     }
