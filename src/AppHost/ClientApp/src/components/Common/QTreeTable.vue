@@ -107,12 +107,26 @@
 	</TreeTable>
 </template>
 
-<script setup lang="ts" generic="TData extends object">
-import { get, set } from '@vueuse/core';
+<script lang="ts">
 import type { TreeNode } from 'primevue/treenode';
+import { get, set } from '@vueuse/core';
 import type { QTreeTableColumn } from '@props';
 import { QTreeTableColumnType } from '@props';
 
+export interface TreeTableSelectionKeyState {
+	checked: boolean;
+	partialChecked: boolean;
+}
+
+export interface QTreeNode<TNodeData extends object> extends TreeNode {
+	data: TNodeData;
+	children?: QTreeNode<TNodeData>[];
+}
+
+export type TreeTableSelectionKeys = Record<string, TreeTableSelectionKeyState>;
+</script>
+
+<script setup lang="ts" generic="TData extends object">
 defineOptions({
 	inheritAttrs: false,
 });
@@ -166,16 +180,6 @@ const headerSelectionValue = computed((): boolean | null => {
 
 	return checkedCount === nodeKeys.length ? true : null;
 });
-
-export interface TreeTableSelectionKeyState {
-	checked: boolean;
-	partialChecked: boolean;
-}
-export interface QTreeNode<TNodeData extends object> extends TreeNode {
-	data: TNodeData;
-	children?: QTreeNode<TNodeData>[];
-}
-export type TreeTableSelectionKeys = Record<string, TreeTableSelectionKeyState>;
 
 function getColumnType(column: QTreeTableColumn, columnIndex: number): QTreeTableColumnType {
 	return column.type ?? (columnIndex === 0 ? QTreeTableColumnType.Title : QTreeTableColumnType.Text);

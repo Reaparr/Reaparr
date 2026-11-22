@@ -151,7 +151,7 @@ onMounted(() => {
 				}
 
 				if (state) {
-					openDialog(data, id);
+					openDialog(data as T, id);
 				} else {
 					closeDialog(id);
 				}
