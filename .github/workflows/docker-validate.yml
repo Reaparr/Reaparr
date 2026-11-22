@@ -80,7 +80,17 @@ jobs:
             - name: Inject source-map metadata for deferred upload
               if: inputs.export_images && !inputs.push
               working-directory: src/AppHost/ClientApp/
-              run: bunx --no-install posthog-cli sourcemap inject --directory .output/public --release-name reaparr --release-version "${{ inputs.informational_version }}"
+              env:
+                  POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+                  POSTHOG_CLI_PROJECT_ID: ${{ inputs.posthog_cli_project_id }}
+                  POSTHOG_CLI_HOST: ${{ inputs.posthog_cli_host }}
+                  TELEMETRY_HOST: ${{ inputs.telemetry_host }}
+                  RELEASE_VERSION: ${{ inputs.informational_version }}
+              run: |
+                  if [ -z "$POSTHOG_CLI_HOST" ]; then
+                      export POSTHOG_CLI_HOST="${TELEMETRY_HOST/.i.posthog.com/.posthog.com}"
+                  fi
+                  bunx --no-install posthog-cli sourcemap inject --directory .output/public --release-name reaparr --release-version "$RELEASE_VERSION"
 
             - name: Archive injected frontend source maps
               if: inputs.export_images && !inputs.push
