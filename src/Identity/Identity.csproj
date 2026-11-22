@@ -10,22 +10,21 @@
         <ProjectReference Include="..\Logging\Logging.csproj" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="FastEndpoints.Security" Version="9.0.0" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.13" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="11.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="11.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="11.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
     </ItemGroup>
     <ItemGroup>
         <Folder Include="_Shared\" />

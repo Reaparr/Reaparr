@@ -11,9 +11,9 @@
         />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Autofac" Version="9.1.0" />
-        <PackageReference Include="CliWrap" Version="3.10.1" />
-        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
+        <PackageReference Include="Autofac" Version="9.3.4" />
+        <PackageReference Include="CliWrap" Version="3.10.5" />
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>

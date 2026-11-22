@@ -4,15 +4,11 @@
         <AssemblyName>Reaparr.PublicAPI.UnitTests</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="CSharpier.MsBuild" Version="1.4.0">
+        <PackageReference Include="CSharpier.MsBuild" Version="1.4.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="TUnit" Version="1.45.29" />
-        <PackageReference Include="coverlet.collector" Version="8.0.1">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
+        <PackageReference Include="TUnit" Version="1.87.12" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\..\src\PublicAPI\PublicAPI.csproj" />

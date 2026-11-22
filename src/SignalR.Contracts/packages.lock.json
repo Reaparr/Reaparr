@@ -4,26 +4,14 @@
     "net11.0": {
       "CSharpier.MsBuild": {
         "type": "Direct",
-        "requested": "[1.4.0, )",
-        "resolved": "1.4.0",
-        "contentHash": "2pR0Bp8MyoXmakDJgJDGbXGl0553Qd/p9xIl4odOoET2jxSGgvJ+ffw49sAmr6FuUbmvixgjQSIOE5i/GRs4jA=="
-      },
-      "Meziantou.Analyzer": {
-        "type": "Direct",
-        "requested": "[3.0.341, )",
-        "resolved": "3.0.341",
-        "contentHash": "zpogT6IwYBgNRa9+oETzs7aTU6Te3M/Osdkk/HN1TlJTDjz9dZwoUgh/yWqovT3jTofQGGLB1JqEK8I4uA6+yA=="
-      },
-      "Roslynator.Analyzers": {
-        "type": "Direct",
-        "requested": "[5.0.1, )",
-        "resolved": "5.0.1",
-        "contentHash": "sCZ0Di4B937wKa9pwKbdsE6Njr8A/FdCLw28+yDKyMaDZ/f8JWxcFn6NOCukzKhCG/eA6M2DbXlKkrPi0g0lIA=="
+        "requested": "[1.4.1, )",
+        "resolved": "1.4.1",
+        "contentHash": "hu0SfQwYxpv97DFkayf1LOxgVIS58xhcmFr45GSDchEPvXL58JGQj3gxZs/fyYhKtb5a4KlDRnqr6JwgQFkttQ=="
       },
       "Autofac": {
         "type": "Transitive",
-        "resolved": "9.1.0",
-        "contentHash": "onT/BcnnfWcQNXiuC7R/0h8ALQzRdsAI20gpB7nfrudXpFMXdVZKz1umdtHXDwjc/bmWEsrCBAxck3+Arnk15g=="
+        "resolved": "9.3.4",
+        "contentHash": "sKldkrIDjhic/BtE6KBl50VjwnuVVOXMnJgh9CsG5uHa8IsGR1BkvjyF6UifPfXPfnkauPqJrAF0QF+JhhRTsw=="
       },
       "ByteSize": {
         "type": "Transitive",
@@ -111,21 +99,39 @@
       },
       "JetBrains.Annotations": {
         "type": "Transitive",
-        "resolved": "2025.2.4",
-        "contentHash": "TwbgxAkXxY+vNEhNVx/QXjJ4vqxmepOjsgRvvImQPbHkHMMb4W+ahL3laMsxXKtNT7iMy+E1B3xkqao2hf1n3A=="
+        "resolved": "2026.2.0",
+        "contentHash": "drvAEaI7Xf4wU6dx4UTB9MoZWXZlraaQ0qoeThPQ411FxNhId7QdUTukIC9I8aUHP0ycAaGwZNKqSvfOZQvUlg=="
       },
       "Microsoft.AspNetCore.Http.Abstractions": {
         "type": "Transitive",
-        "resolved": "2.3.13",
-        "contentHash": "V40/i3RzwjOpC7aUXkWYac45lD5o/HH/BF6KDgWpto/YWGHW9oHd4OSYg+WkaZxZYXxF4t2fRUWA4KyyABxw8g==",
+        "resolved": "2.3.14",
+        "contentHash": "QZAX9SnL88A/ea0XV/GpyH93gwdP81n8XRq/WxpL119lf951LPCKCvejzLUV1cFabFW3AlhXSxZ8jY9DGBsqyA==",
         "dependencies": {
-          "Microsoft.AspNetCore.Http.Features": "2.3.12"
+          "Microsoft.AspNetCore.Http.Features": "2.3.13"
         }
       },
       "Microsoft.AspNetCore.Http.Features": {
         "type": "Transitive",
-        "resolved": "2.3.12",
-        "contentHash": "Lq3xByu3oBaIPJrKhL8NIRTwQO177NhztvBG6FBoajnxeDIZn2N5vzfDjcp7eQcyPbWPm9G1yMEi9ah+yMR7kw=="
+        "resolved": "2.3.13",
+        "contentHash": "B4qCTzbJlz/pLUThK/bkh+ENcw/54Ugd+OiE1H2t9hI9vdjzz1ZKsHx/EWDi1wDx2eaXKltw9V41DTAEzSm7IA=="
+      },
+      "Microsoft.Extensions.Configuration": {
+        "type": "Transitive",
+        "resolved": "10.0.8",
+        "contentHash": "ehZcoPbjzWzS4XFvuz7R3V55SmpdkyMqFURLH3yXaN9NtXd9tR6CGB7pd49HYtCkenl+G7ctXSFLhNI08xLfRg=="
+      },
+      "Microsoft.Extensions.Configuration.Binder": {
+        "type": "Transitive",
+        "resolved": "10.0.8",
+        "contentHash": "R3NN1X+kVu14uoxLEW6sBSQyhogDSbaOQzILnCtuXxBN4hx22AgjWPwZX6v/suERFkEDgU1lk12AglHTrUxhlw==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "10.0.8"
+        }
+      },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "f5VCIE7AJpd5YvzNTeMGVzQIgyE9tX+AreTYwQF+REbu+DZo/2Ae+jNSwhPEYrVz6RRkd7y8ubXjk6Nn6Ka+Cg=="
       },
       "NaturalSort.Extension": {
         "type": "Transitive",
@@ -134,13 +140,16 @@
       },
       "PasswordGenerator": {
         "type": "Transitive",
-        "resolved": "2.1.0",
-        "contentHash": "G70cCeAOYCk/uTuFw5PBGpYY9kmBZyzld7tphachvyU514PowMRDYyKwTefxIHNGWrhXY2d1DV5B1tDEnTtY3A=="
+        "resolved": "3.0.0",
+        "contentHash": "sIsvJDS7IH7z+KWuGFttVDjQj89KOu767220Wj0H21yrr+nw9zAty55A7rKvSk0zoYmCduTgJI1lghII7h878w==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.Binder": "10.0.8"
+        }
       },
       "Serilog": {
         "type": "Transitive",
-        "resolved": "4.3.1",
-        "contentHash": "savYe7h5yRlkqBVOwP8cIRDOdqKiPmYCU4W87JH38sBmcKD5EBoXvQIw6bNEvZ/pTe1gsiye3VFCzBsoppGkXQ=="
+        "resolved": "4.4.0",
+        "contentHash": "ZC6Le3rr4TVJJjS4KsQAesxeF1EhW9qcZmmG7eP5Y2G3+gTGkJEUXkq4+tZNPtyp05I0wWOxnIjwtxFweJsObw=="
       },
       "Serilog.Enrichers.Sensitive": {
         "type": "Transitive",
@@ -199,17 +208,17 @@
       },
       "Serilog.Sinks.Seq": {
         "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "aNU8A0K322q7+voPNmp1/qNPH+9QK8xvM1p72sMmCG0wGlshFzmtDW9QnVSoSYCj0MgQKcMOlgooovtBhRlNHw==",
+        "resolved": "9.1.0",
+        "contentHash": "4Dam+H9AlYigRgvPmbEJmw7jgz2y2He1qmuopAWt/EnZJ2vlrcG5Nmh934LHq4lfKgF6cAau8NIFMCZrq1u2Hw==",
         "dependencies": {
-          "Serilog": "4.2.0",
-          "Serilog.Sinks.File": "6.0.0"
+          "Serilog": "4.3.1",
+          "Serilog.Sinks.File": "7.0.0"
         }
       },
       "Serilog.Sinks.TestCorrelator": {
         "type": "Transitive",
-        "resolved": "4.0.0",
-        "contentHash": "jGedEvMtohtUTmRix+P4aR7bsz9h+LqCIrF9oBPz90Q68r2pCeXkipWD3dvLopTFsNWSJDHlZpkosPy/xFUshg==",
+        "resolved": "4.0.2",
+        "contentHash": "QNXCtB0qawC5qWyHEP993DdVuPo1h3CPRrXLqDBBQjIT8AR5QeomP3pXIQ32ZX2+/iNrT4u/Il/gpwi93KzBiA==",
         "dependencies": {
           "Serilog": "3.1.1",
           "System.Reactive": "6.0.1"
@@ -222,8 +231,11 @@
       },
       "Xdg.Directories": {
         "type": "Transitive",
-        "resolved": "0.1.2",
-        "contentHash": "Zhw6wmXwdLkhCvgBfVd9D8UL62IF2xnmbWDckQVoZMT9lBKCuVLwaVrkXhhJtP6pxcRaf7caauNCWOUngoPNsQ=="
+        "resolved": "0.2.0",
+        "contentHash": "Jiz/CBsO6NPH1xPp3+yQTS+NrNrAgFHF+wcYczXZDoTCuVIQlAPpcrT45RiJIOcgdJO9Pdzgqlkgj7lLs90gIw==",
+        "dependencies": {
+          "Microsoft.NET.ILLink.Tasks": "10.0.10"
+        }
       },
       "Reaparr.Domain": {
         "type": "Project",
@@ -231,9 +243,9 @@
           "ByteSize": "[2.1.2, )",
           "FastEndpoints": "[9.0.0, )",
           "Flurl": "[4.0.0, )",
-          "JetBrains.Annotations": "[2025.2.4, )",
+          "JetBrains.Annotations": "[2026.2.0, )",
           "NaturalSort.Extension": "[4.4.1, )",
-          "PasswordGenerator": "[2.1.0, )",
+          "PasswordGenerator": "[3.0.0, )",
           "Reaparr.FluentResultExtensions": "[1.0.0, )",
           "System.Reactive": "[7.0.0, )"
         }
@@ -241,15 +253,15 @@
       "Reaparr.Environment": {
         "type": "Project",
         "dependencies": {
-          "Autofac": "[9.1.0, )",
-          "Serilog": "[4.3.1, )",
-          "Xdg.Directories": "[0.1.2, )"
+          "Autofac": "[9.3.4, )",
+          "Serilog": "[4.4.0, )",
+          "Xdg.Directories": "[0.2.0, )"
         }
       },
       "Reaparr.FluentResultExtensions": {
         "type": "Project",
         "dependencies": {
-          "FluentValidation": "[12.1.1, )",
+          "FluentValidation": "[12.2.0, )",
           "Reaparr.FluentResults": "[1.0.0, )",
           "Reaparr.Logging": "[1.0.0, )"
         }
@@ -257,17 +269,17 @@
       "Reaparr.FluentResults": {
         "type": "Project",
         "dependencies": {
-          "Serilog": "[4.3.1, )"
+          "Serilog": "[4.4.0, )"
         }
       },
       "Reaparr.Logging": {
         "type": "Project",
         "dependencies": {
-          "Autofac": "[9.1.0, )",
-          "Microsoft.AspNetCore.Http.Abstractions": "[2.3.13, )",
+          "Autofac": "[9.3.4, )",
+          "Microsoft.AspNetCore.Http.Abstractions": "[2.3.14, )",
           "Reaparr.Environment": "[1.0.0, )",
           "Reaparr.FluentResults": "[1.0.0, )",
-          "Serilog": "[4.3.1, )",
+          "Serilog": "[4.4.0, )",
           "Serilog.Enrichers.Sensitive": "[2.1.0, )",
           "Serilog.Expressions": "[5.0.0, )",
           "Serilog.Sinks.Console": "[6.1.1, )",
@@ -275,8 +287,8 @@
           "Serilog.Sinks.Debug": "[3.0.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
           "Serilog.Sinks.OpenTelemetry": "[4.2.0, )",
-          "Serilog.Sinks.Seq": "[9.0.0, )",
-          "Serilog.Sinks.TestCorrelator": "[4.0.0, )"
+          "Serilog.Sinks.Seq": "[9.1.0, )",
+          "Serilog.Sinks.TestCorrelator": "[4.0.2, )"
         }
       }
     }
